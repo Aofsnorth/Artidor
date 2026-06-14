@@ -38,10 +38,13 @@ export default function RootLayout({
 			<head>
 				<BotIdClient protect={protectedRoutes} />
 			</head>
-			<body className={`${siteFont.variable} ${serifFont.variable} font-sans antialiased`}>
+			<body
+				className={`${siteFont.variable} ${serifFont.variable} font-sans antialiased`}
+			>
 				<ThemeProvider
 					attribute="class"
-					defaultTheme="system"
+					defaultTheme="dark"
+					forcedTheme="dark"
 					disableTransitionOnChange={true}
 				>
 					<TooltipProvider>

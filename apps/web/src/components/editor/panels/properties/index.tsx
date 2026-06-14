@@ -8,6 +8,8 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { LockKeyIcon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { usePropertiesStore } from "./stores/properties-store";
@@ -116,35 +118,48 @@ function InspectorView() {
 				</div>
 				<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
 					{primaryTabs.map((tab) => (
-						<button
-							key={tab.label}
-							type="button"
-							disabled={!tab.target}
-							className={cn(
-								"relative rounded-md px-1.5 py-1.5 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
-								tab.isActive && "bg-white/[0.12] text-white shadow-sm",
-								!tab.target &&
-									"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
-							)}
-							onClick={() => {
-								if (tab.target) setActiveTab(element.type, tab.target.id);
-							}}
-						>
-							{tab.label}
-						</button>
+						<TooltipProvider key={tab.label} delayDuration={0}>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										disabled={!tab.target}
+										className={cn(
+											"relative flex items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
+											!tab.target &&
+												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
+										)}
+										onClick={() => {
+											if (tab.target) setActiveTab(element.type, tab.target.id);
+										}}
+									>
+										{!tab.target && (
+											<HugeiconsIcon
+												icon={LockKeyIcon}
+												className="size-2.5 opacity-70"
+											/>
+										)}
+										<span>{tab.label}</span>
+									</button>
+								</TooltipTrigger>
+								{!tab.target && (
+									<TooltipContent
+										side="bottom"
+										className="max-w-[180px] text-center"
+									>
+										This tab is not available for the selected element.
+									</TooltipContent>
+								)}
+							</Tooltip>
+						</TooltipProvider>
 					))}
 				</div>
 			</div>
 
 			<SelectedElementSummary element={element} mediaAssets={mediaAssets} />
 
-			<div className="border-b border-white/10 px-3.5 py-3">
-				<div className="mb-2.5 flex items-center justify-between">
-					<div className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white/38">
-						Advanced controls
-					</div>
-					<div className="h-px flex-1 bg-white/[0.06] ml-3" />
-				</div>
+			<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
 				<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
 					{visibleTabs.map((tab) => (
 						<TooltipProvider key={tab.id} delayDuration={0}>
@@ -212,12 +227,15 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 const PRIMARY_INSPECTOR_TABS = [
 	{
 		label: "Video",
-		ids: ["transform", "text", "graphic", "blending", "parenting", "camera"],
+		ids: ["transform", "audio", "speed", "speed-ramp", "text", "graphic", "blending", "parenting", "camera"],
 	},
-	{ label: "Audio", ids: ["audio", "audio-effects"] },
+	{
+		label: "Audio",
+		ids: ["audio-element", "audio-effects"],
+	},
 	{ label: "Effects", ids: ["effects", "color", "adjustments", "masks"] },
 	{ label: "Animation", ids: ["animations"] },
-	{ label: "AI", ids: ["speed-ramp"] },
+	{ label: "AI", ids: ["ai-tools"] },
 ] as const;
 
 function buildPrimaryInspectorTabs({

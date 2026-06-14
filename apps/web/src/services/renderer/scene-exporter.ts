@@ -37,6 +37,26 @@ const qualityMap = {
 	very_high: QUALITY_VERY_HIGH,
 };
 
+// How often (in frames) the export loop hands control back to the browser. The
+// render/encode work is otherwise all microtasks, which would starve paints and
+// macrotask timers — freezing the progress bar and the cancel interval. Yielding
+// a real macrotask lets React repaint and the cancel check fire.
+const YIELD_EVERY_FRAMES = 8;
+
+// Yield a macrotask so the browser can paint and run timers. MessageChannel is
+// used over setTimeout(0) because it is not subject to the 4ms clamp, keeping
+// the yield overhead negligible.
+function yieldToEventLoop(): Promise<void> {
+	return new Promise((resolve) => {
+		const channel = new MessageChannel();
+		channel.port1.onmessage = () => {
+			channel.port1.close();
+			resolve();
+		};
+		channel.port2.postMessage(undefined);
+	});
+}
+
 export type SceneExporterEvents = {
 	progress: [progress: number];
 	complete: [buffer: ArrayBuffer];
@@ -86,13 +106,13 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	}): Promise<ArrayBuffer | null> {
 		const fps = this.renderer.fps;
 		const fpsFloat = frameRateToFloat(fps);
-		const ticksPerFrame = Math.round(TICKS_PER_SECOND * fps.denominator / fps.numerator);
+		const ticksPerFrame = Math.round(
+			(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+		);
 		const frameCount = Math.floor(rootNode.duration / ticksPerFrame);
 
 		const outputFormat =
-			this.format === "webm"
-				? new WebMOutputFormat()
-				: new Mp4OutputFormat();
+			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
 
 		const output = new Output({
 			format: outputFormat,
@@ -103,11 +123,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		// H.265 codec (smaller files, modern devices); AVC is the broadly
 		// compatible H.264 codec; VP9 is the WebM default.
 		const videoCodec: "avc" | "vp9" | "hevc" =
-			this.format === "webm"
-				? "vp9"
-				: this.format === "hevc"
-					? "hevc"
-					: "avc";
+			this.format === "webm" ? "vp9" : this.format === "hevc" ? "hevc" : "avc";
 
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: videoCodec,
@@ -121,8 +137,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			// AAC for MP4 (H.264 and H.265 share the same container / audio codec),
 			// Opus for WebM. If the browser can't encode AAC we silently fall back
 			// to Opus.
-			let audioCodec: "aac" | "opus" =
-				this.format === "webm" ? "opus" : "aac";
+			let audioCodec: "aac" | "opus" = this.format === "webm" ? "opus" : "aac";
 
 			if (audioCodec === "aac" && typeof AudioEncoder !== "undefined") {
 				const { supported } = await AudioEncoder.isConfigSupported({
@@ -148,8 +163,24 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			audioSource.close();
 		}
 
+		// Pipeline render and encode. `videoSource.add()` snapshots the canvas
+		// synchronously into an independent VideoFrame, hands it to the WebCodecs
+		// encoder (which runs on its own thread), and returns a promise that
+		// resolves once the encoder is ready for more (backpressure: it only blocks
+		// once ~4 frames are queued).
+		//
+		// Order per frame: await previous backpressure → render(i) → add(i). The
+		// backpressure await normally resolves immediately, so render(i) proceeds
+		// while the previous frame is still encoding on the codec thread — that is
+		// the overlap. render(i) and add(i) are kept adjacent with no await between
+		// them so the shared compositor canvas (also used by the live preview)
+		// cannot be overwritten before add() captures frame i.
+		let pendingEncode: Promise<void> | null = null;
+		const frameDuration = 1 / fpsFloat;
+
 		for (let i = 0; i < frameCount; i++) {
 			if (this.isCancelled) {
+				if (pendingEncode) await pendingEncode.catch(() => {});
 				await output.cancel();
 				this.emit("cancelled");
 				return null;
@@ -157,11 +188,28 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			const timeTicks = i * ticksPerFrame;
 			const timeSeconds = mediaTimeToSeconds({ time: timeTicks });
+
+			// Respect the previous frame's encoder backpressure before rendering the
+			// next one. Usually already resolved, so this does not stall the overlap.
+			if (pendingEncode) await pendingEncode;
+
+			// Composite frame i, then immediately capture it. add() snapshots the
+			// canvas synchronously, so these two must stay adjacent (no await).
 			await this.renderer.render({ node: rootNode, time: timeTicks });
-			await videoSource.add(timeSeconds, 1 / fpsFloat);
+			pendingEncode = videoSource.add(timeSeconds, frameDuration);
 
 			this.emit("progress", i / frameCount);
+
+			// Periodically hand control back to the browser so the UI (progress
+			// bar) repaints and the cancel interval can fire. Safe here: frame i has
+			// already been captured by add() above.
+			if (i % YIELD_EVERY_FRAMES === 0) {
+				await yieldToEventLoop();
+			}
 		}
+
+		// Drain the last in-flight encode before finalizing.
+		if (pendingEncode) await pendingEncode;
 
 		if (this.isCancelled) {
 			await output.cancel();

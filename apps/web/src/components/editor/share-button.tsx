@@ -64,7 +64,7 @@ export function ShareButton() {
 						type="button"
 						aria-label="Invite collaborators"
 						disabled={!hasProject}
-						className="group flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:border-white/30 hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						className="group flex h-8 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 text-xs font-medium text-white/70 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						<HugeiconsIcon icon={UserAddIcon} className="size-3.5" />
 						<span>Invite</span>

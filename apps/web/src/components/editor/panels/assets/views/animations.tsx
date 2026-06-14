@@ -5,9 +5,20 @@ import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { PlayIcon, ArrowDown01Icon, ArrowUp01Icon, RefreshIcon } from "@hugeicons/core-free-icons";
-import { useAnimationPresets, useApplyAnimationPreset } from "@/hooks/use-animation-presets";
-import type { AnimationPreset, AnimationPresetCategory } from "@/lib/animation/presets";
+import {
+	PlayIcon,
+	ArrowDown01Icon,
+	ArrowUp01Icon,
+	RefreshIcon,
+} from "@hugeicons/core-free-icons";
+import {
+	useAnimationPresets,
+	useApplyAnimationPreset,
+} from "@/hooks/use-animation-presets";
+import type {
+	AnimationPreset,
+	AnimationPresetCategory,
+} from "@/lib/animation/presets";
 import { cn } from "@/utils/ui";
 
 const CATEGORIES: { key: AnimationPresetCategory | "all"; label: string }[] = [
@@ -101,11 +112,12 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 				`asset-preview-container group ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`,
 			)}
 		>
-			<div className="asset-preview-badge">ANI</div>
-			<div className="asset-preview-corner">0x{preset.type.substring(0, 4).toUpperCase()}</div>
 			<div className="asset-preview-overlay" />
 
-			<div className="relative size-full overflow-hidden rounded-sm mx-auto mt-2" style={{ width: '80%', height: '80%' }}>
+			<div
+				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
+				style={{ width: "80%", height: "80%" }}
+			>
 				<div
 					className="absolute inset-0 flex items-center justify-center z-10"
 					style={previewStyle}
@@ -127,7 +139,9 @@ function PresetIcon({ preset }: { preset: AnimationPreset }) {
 	return (
 		<div
 			className="flex size-12 items-center justify-center rounded-md bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 text-white"
-			style={{ animation: `${preset.type} 2.4s ease-in-out infinite alternate` }}
+			style={{
+				animation: `${preset.type} 2.4s ease-in-out infinite alternate`,
+			}}
 		>
 			<HugeiconsIcon icon={PlayIcon} className="size-5" />
 			<style>{presetStyleKeyframes(preset)}</style>

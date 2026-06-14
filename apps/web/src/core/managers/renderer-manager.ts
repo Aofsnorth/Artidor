@@ -121,7 +121,10 @@ export class RendererManager {
 				return { success: false, error: "Failed to create image" };
 			}
 
-			const timecode = formatTimecode({ time: Math.round(renderTime), rate: fps })?.replace(/:/g, "-");
+			const timecode = formatTimecode({
+				time: Math.round(renderTime),
+				rate: fps,
+			})?.replace(/:/g, "-");
 			const safeName =
 				activeProject.metadata.name.replace(/[<>:"/\\|?*]/g, "-").trim() ||
 				"snapshot";
@@ -165,10 +168,13 @@ export class RendererManager {
 			const exportFps = fps ?? activeProject.settings.fps;
 			const canvasSize = activeProject.settings.canvasSize;
 
-			let audioBuffer: AudioBuffer | null = null;
+			// Kick off audio mixing first (it is I/O heavy: decode + offline
+			// resampling) so its async work overlaps the synchronous scene build
+			// below instead of running strictly before it.
+			let audioBufferPromise: Promise<AudioBuffer | null> | null = null;
 			if (includeAudio) {
 				onProgress?.({ progress: 0.05 });
-				audioBuffer = await createTimelineAudioBuffer({
+				audioBufferPromise = createTimelineAudioBuffer({
 					tracks,
 					mediaAssets,
 					duration,
@@ -182,6 +188,8 @@ export class RendererManager {
 				canvasSize,
 				background: activeProject.settings.background,
 			});
+
+			const audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
 
 			const exporter = new SceneExporter({
 				width: canvasSize.width,

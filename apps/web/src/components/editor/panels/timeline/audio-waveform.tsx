@@ -3,10 +3,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useResizeObserver } from "@/hooks/use-resize-observer";
 import {
-	computeGlobalMaxRms,
 	createAudioContext,
 	decodeMediaFileAudioBuffer,
-	extractRmsRange,
 } from "@/lib/media/audio";
 import { findScrollParent } from "@/utils/browser";
 import { cn } from "@/utils/ui";
@@ -15,6 +13,11 @@ const WAVEFORM_BAR_WIDTH = 2;
 const WAVEFORM_BAR_GAP = 1;
 const BEAT_BAR_WIDTH = 3;
 const BEAT_BAR_GAP = 2;
+
+// Resolution of the precomputed peak buffer. The raw audio is reduced to one
+// peak per block so that scroll / resize redraws never touch the full sample
+// data again.
+const PEAK_BLOCK_SIZE = 256;
 
 interface AudioWaveformProps {
 	audioUrl?: string;
@@ -25,8 +28,96 @@ interface AudioWaveformProps {
 	symmetric?: boolean;
 	variant?: "waveform" | "beats";
 	className?: string;
+	trimStartTicks?: number;
+	trimEndTicks?: number;
+	sourceDurationTicks?: number;
 }
 
+// ---------------------------------------------------------------------------
+// Shared decode cache – keyed by File identity (or URL string).
+// Multiple AudioWaveform instances pointing at the same underlying File share
+// one decode, eliminating duplicate WASM work and lag. We only keep the
+// downsampled peak buffer (not the full AudioBuffer) so memory stays small.
+// ---------------------------------------------------------------------------
+interface DecodedPeaks {
+	peakBuffer: Float32Array;
+	bufferLength: number;
+	globalPeak: number;
+}
+
+const DECODE_CACHE = new Map<string, Promise<DecodedPeaks>>();
+
+function getCacheKey(audioUrl?: string, mediaFile?: File): string {
+	if (mediaFile) {
+		return `file:${mediaFile.name}:${mediaFile.size}:${mediaFile.lastModified}`;
+	}
+	if (audioUrl) return `url:${audioUrl}`;
+	return "";
+}
+
+async function decodeAndCache(
+	cacheKey: string,
+	audioUrl: string | undefined,
+	mediaFile: File | undefined,
+): Promise<DecodedPeaks> {
+	const cached = DECODE_CACHE.get(cacheKey);
+	if (cached) return cached;
+
+	const promise = (async (): Promise<DecodedPeaks> => {
+		const audioContext = createAudioContext();
+		try {
+			let buffer: AudioBuffer | null = null;
+
+			// 1. Native decode for pure audio URLs (not video files).
+			if (audioUrl && !mediaFile?.type.startsWith("video/")) {
+				try {
+					const resp = await fetch(audioUrl);
+					const arrayBuffer = await resp.arrayBuffer();
+					buffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+				} catch {
+					// fall through to mediaFile path
+				}
+			}
+
+			// 2. Native decode for pure audio files.
+			if (!buffer && mediaFile) {
+				const isAudioFile =
+					mediaFile.type.startsWith("audio/") ||
+					/\.(wav|mp3|m4a|aac|ogg|oga|opus|flac)$/i.test(mediaFile.name);
+				if (isAudioFile) {
+					try {
+						const arrayBuffer = await mediaFile.arrayBuffer();
+						buffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+					} catch {
+						// fall through to WASM extractor
+					}
+				}
+			}
+
+			// 3. WASM fallback for video files or failed native decode.
+			if (!buffer && mediaFile) {
+				buffer = await decodeMediaFileAudioBuffer({
+					file: mediaFile,
+					audioContext,
+				});
+			}
+
+			if (!buffer) throw new Error("Could not decode audio");
+
+			return computePeakBuffer(buffer);
+		} finally {
+			audioContext.close().catch(() => {});
+		}
+	})();
+
+	DECODE_CACHE.set(cacheKey, promise);
+	promise.catch(() => DECODE_CACHE.delete(cacheKey));
+	return promise;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 export function AudioWaveform({
 	audioUrl,
 	mediaFile,
@@ -36,25 +127,30 @@ export function AudioWaveform({
 	symmetric = false,
 	variant = "waveform",
 	className = "",
+	trimStartTicks,
+	trimEndTicks,
+	sourceDurationTicks,
 }: AudioWaveformProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
-	const bufferRef = useRef<AudioBuffer | null>(null);
-	const globalMaxRef = useRef<number>(1);
+	const decodedRef = useRef<DecodedPeaks | null>(null);
 	const scrollParentRef = useRef<HTMLElement | null>(null);
 	const heightRef = useRef<number>(0);
 
 	const drawVisible = useCallback(() => {
 		const container = containerRef.current;
 		const canvas = canvasRef.current;
-		const buffer = bufferRef.current;
+		const decoded = decodedRef.current;
 		const height = heightRef.current;
 
-		if (!container || !canvas || !buffer || height <= 0) return;
+		if (!container || !canvas || !decoded || height <= 0) return;
 
 		const elementWidth = container.offsetWidth;
 		if (elementWidth <= 0) return;
 
+		// Only render the portion of the element currently visible inside its
+		// scroll parent (timeline can be very wide). This keeps the canvas tiny
+		// regardless of clip length.
 		const containerRect = container.getBoundingClientRect();
 		const scrollParent = scrollParentRef.current;
 
@@ -79,7 +175,6 @@ export function AudioWaveform({
 		const dpr = window.devicePixelRatio || 1;
 		const canvasW = Math.round(visibleWidth * dpr);
 		const canvasH = Math.round(height * dpr);
-
 		if (canvasW <= 0 || canvasH <= 0) return;
 
 		canvas.width = canvasW;
@@ -92,27 +187,46 @@ export function AudioWaveform({
 		const barGap = variant === "beats" ? BEAT_BAR_GAP : WAVEFORM_BAR_GAP;
 		const barStep = barWidth + barGap;
 		const barCount = Math.max(1, Math.floor(visibleWidth / barStep));
+
+		// Trim-aware source range. The element width maps to the *trimmed* region
+		// of the source, so we offset into the buffer accordingly before applying
+		// the visible-window fractions.
+		const duration =
+			sourceDurationTicks && sourceDurationTicks > 0 ? sourceDurationTicks : 0;
+		const trimStartRatio =
+			duration > 0 && trimStartTicks
+				? Math.min(1, Math.max(0, trimStartTicks / duration))
+				: 0;
+		const trimEndRatio =
+			duration > 0 && trimEndTicks
+				? Math.min(1, Math.max(0, trimEndTicks / duration))
+				: 0;
+		const sourceStart = trimStartRatio * decoded.bufferLength;
+		const sourceEnd =
+			decoded.bufferLength - trimEndRatio * decoded.bufferLength;
+		const sourceRange = Math.max(0, sourceEnd - sourceStart);
+
 		const startFraction = clipLeft / elementWidth;
 		const endFraction = clipRight / elementWidth;
-		const startSample = Math.floor(startFraction * buffer.length);
-		const endSample = Math.min(
-			buffer.length,
-			Math.ceil(endFraction * buffer.length),
-		);
+		const startSample = Math.floor(sourceStart + startFraction * sourceRange);
+		const endSample = Math.floor(sourceStart + endFraction * sourceRange);
 
-		const peaks = extractRmsRange({
-			buffer,
+		const peaks = extractPeakRange({
+			peakBuffer: decoded.peakBuffer,
 			count: barCount,
 			startSample,
 			endSample,
-			globalMax: globalMaxRef.current,
 		});
 
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
+		const safePeak = Math.max(decoded.globalPeak, 0.01);
+		const logBase = Math.log1p(1);
+
 		ctx.clearRect(0, 0, canvasW, canvasH);
 		ctx.scale(dpr, dpr);
+
 		if (variant === "beats") {
 			ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
 			ctx.fillRect(0, Math.floor(height / 2), visibleWidth, 1);
@@ -127,7 +241,8 @@ export function AudioWaveform({
 		const centerY = height / 2;
 
 		for (let i = 0; i < barCount; i++) {
-			const scaled = Math.log1p(peaks[i]) / Math.log1p(1);
+			const normalized = Math.min(1, peaks[i] / safePeak);
+			const scaled = Math.log1p(normalized) / logBase;
 			const leftPeak = peaks[Math.max(0, i - 1)] ?? 0;
 			const rightPeak = peaks[Math.min(peaks.length - 1, i + 1)] ?? 0;
 			const isBeat =
@@ -138,6 +253,7 @@ export function AudioWaveform({
 			const barH = Math.max(variant === "beats" ? 2 : 1, scaled * maxBarHeight);
 			const x = i * barStep;
 			const radius = variant === "beats" ? Math.min(barWidth, 2) : 0;
+
 			ctx.fillStyle = isBeat ? beatColor : color;
 			ctx.shadowColor = isBeat ? beatColor : "transparent";
 			ctx.shadowBlur = isBeat ? 10 : 0;
@@ -162,9 +278,8 @@ export function AudioWaveform({
 				});
 			}
 
-			// Beat marker: a bright horizontal accent line that cuts across the bar
-			// at the vertical center. Combined with the white beat color and 10px
-			// glow, this makes beat positions obvious even at small zoom levels.
+			// Beat marker: a bright horizontal accent that cuts across the bar at
+			// the vertical center, making beat positions obvious even when zoomed out.
 			if (isBeat) {
 				ctx.shadowBlur = 0;
 				ctx.fillStyle = "rgba(255, 255, 255, 1)";
@@ -175,78 +290,57 @@ export function AudioWaveform({
 				} else {
 					ctx.fillRect(x - 0.5, height - barH, tickW, tickH);
 				}
-				if (isBeat) ctx.shadowBlur = 10;
 			}
 		}
 
 		ctx.shadowBlur = 0;
-	}, [beatColor, color, symmetric, variant]);
+	}, [
+		beatColor,
+		color,
+		symmetric,
+		variant,
+		trimStartTicks,
+		trimEndTicks,
+		sourceDurationTicks,
+	]);
 
+	// Keep a stable reference to the latest draw fn so the decode effect can
+	// trigger a redraw without re-running when only styling / trim changes.
+	const drawVisibleRef = useRef(drawVisible);
+	drawVisibleRef.current = drawVisible;
+
+	// Decode (or read directly) the audio source, then redraw once.
 	useEffect(() => {
-		let isCancelled = false;
+		let cancelled = false;
 
-		async function load() {
-			let buffer = audioBuffer ?? null;
-			let audioContext: AudioContext | null = null;
-
-			if (!buffer && (audioUrl || mediaFile)) {
-				try {
-					audioContext = createAudioContext();
-
-					if (audioUrl) {
-						try {
-							const resp = await fetch(audioUrl);
-							const arrayBuffer = await resp.arrayBuffer();
-							buffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-						} catch (error) {
-							if (!mediaFile) throw error;
-						}
-					}
-
-					if (!buffer && mediaFile) {
-						// Audio-only files: detect by mime type OR file extension
-						// (some uploads do not set a proper audio/* mime).
-						const isAudio =
-							mediaFile.type.startsWith("audio/") ||
-							/\.(wav|mp3|m4a|aac|ogg|oga|opus|flac)$/i.test(mediaFile.name);
-						if (isAudio) {
-							try {
-								const arrayBuffer = await mediaFile.arrayBuffer();
-								buffer = await audioContext.decodeAudioData(
-									arrayBuffer.slice(0),
-								);
-							} catch {
-								buffer = null;
-							}
-						}
-
-						// Video or unknown: pull the audio track out via the unified
-						// extractor (mediabunny handles the format dance).
-						buffer ??= await decodeMediaFileAudioBuffer({
-							file: mediaFile,
-							audioContext,
-						});
-					}
-				} catch {
-					return;
-				} finally {
-					audioContext?.close().catch(() => undefined);
-				}
-			}
-
-			if (!buffer || isCancelled) return;
-
-			bufferRef.current = buffer;
-			globalMaxRef.current = computeGlobalMaxRms({ buffer });
-			drawVisible();
+		if (audioBuffer) {
+			decodedRef.current = computePeakBuffer(audioBuffer);
+			drawVisibleRef.current();
+			return;
 		}
 
-		load();
-		return () => {
-			isCancelled = true;
-		};
-	}, [audioUrl, mediaFile, audioBuffer, drawVisible]);
+		const cacheKey = getCacheKey(audioUrl, mediaFile);
+		if (!cacheKey) return;
 
+		decodeAndCache(cacheKey, audioUrl, mediaFile)
+			.then((result) => {
+				if (cancelled) return;
+				decodedRef.current = result;
+				drawVisibleRef.current();
+			})
+			.catch(() => {});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [audioBuffer, audioUrl, mediaFile]);
+
+	// Redraw when styling / trim changes (drawVisible identity changes).
+	useEffect(() => {
+		drawVisible();
+	}, [drawVisible]);
+
+	// Redraw while scrolling the timeline (virtualized rendering).
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -274,6 +368,72 @@ export function AudioWaveform({
 			<canvas ref={canvasRef} className="absolute bottom-0" />
 		</div>
 	);
+}
+
+// ---------------------------------------------------------------------------
+// Peak computation
+// ---------------------------------------------------------------------------
+function computePeakBuffer(buffer: AudioBuffer): DecodedPeaks {
+	const channels = buffer.numberOfChannels;
+	const blockCount = Math.ceil(buffer.length / PEAK_BLOCK_SIZE);
+	const peakBuffer = new Float32Array(blockCount);
+	let globalPeak = 0;
+
+	for (let c = 0; c < channels; c++) {
+		const data = buffer.getChannelData(c);
+		for (let b = 0; b < blockCount; b++) {
+			const start = b * PEAK_BLOCK_SIZE;
+			const end = Math.min(start + PEAK_BLOCK_SIZE, buffer.length);
+			let max = 0;
+			for (let i = start; i < end; i++) {
+				const abs = data[i] < 0 ? -data[i] : data[i];
+				if (abs > max) max = abs;
+			}
+			peakBuffer[b] += max / channels;
+		}
+	}
+
+	for (let b = 0; b < blockCount; b++) {
+		if (peakBuffer[b] > globalPeak) globalPeak = peakBuffer[b];
+	}
+
+	return {
+		peakBuffer,
+		bufferLength: buffer.length,
+		globalPeak: Math.max(globalPeak, 0.01),
+	};
+}
+
+function extractPeakRange({
+	peakBuffer,
+	count,
+	startSample,
+	endSample,
+}: {
+	peakBuffer: Float32Array;
+	count: number;
+	startSample: number;
+	endSample: number;
+}): number[] {
+	const rangeLength = endSample - startSample;
+	if (rangeLength <= 0 || count <= 0) return new Array<number>(count).fill(0);
+
+	const step = Math.max(1, Math.floor(rangeLength / count));
+	const result = new Array<number>(count).fill(0);
+
+	for (let i = 0; i < count; i++) {
+		const start = Math.floor(startSample + i * step);
+		const end = Math.floor(Math.min(start + step, endSample));
+		const blockStart = Math.floor(start / PEAK_BLOCK_SIZE);
+		const blockEnd = Math.ceil(end / PEAK_BLOCK_SIZE);
+		let max = 0;
+		for (let b = blockStart; b < blockEnd && b < peakBuffer.length; b++) {
+			if (peakBuffer[b] > max) max = peakBuffer[b];
+		}
+		result[i] = max;
+	}
+
+	return result;
 }
 
 function drawRoundedBar({

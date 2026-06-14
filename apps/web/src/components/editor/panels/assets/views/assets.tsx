@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
+import { FolderGrid } from "@/components/editor/panels/assets/folder-grid";
+import { FolderNameDialog } from "@/components/editor/panels/assets/folder-name-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -46,15 +48,17 @@ import {
 	useAssetsPanelStore,
 } from "@/stores/assets-panel-store";
 import { MASKABLE_ELEMENT_TYPES } from "@/lib/timeline";
-import type { MediaAsset } from "@/lib/media/types";
+import type { MediaAsset, MediaFolder } from "@/lib/media/types";
 import { cn } from "@/utils/ui";
 import {
 	CloudUploadIcon,
+	FolderAddIcon,
 	GridViewIcon,
 	LeftToRightListDashIcon,
 	SortingOneNineIcon,
 	Image02Icon,
 	MusicNote03Icon,
+	UploadIcon,
 	Video01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
@@ -79,6 +83,15 @@ export function MediaView() {
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [progress, setProgress] = useState(0);
 	const [assetSource, setAssetSource] = useState<AssetSource>("library");
+	const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+	const folders = useEditor((e) => e.media.getFolders());
+
+	// Folder-name dialog state. `null` means closed.
+	const [folderDialog, setFolderDialog] = useState<
+		| { mode: "create" }
+		| { mode: "rename"; folderId: string; initialName: string }
+		| null
+	>(null);
 
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
@@ -125,6 +138,46 @@ export function MediaView() {
 			onFilesSelected: (files) => processFiles({ files }),
 		});
 
+	// Detect "user dragged in then dragged out without dropping" so the
+	// overlay can briefly show a "drop cancelled" hint before unmounting.
+	const prevIsDragOverRef = useRef(false);
+	const [showCancelHint, setShowCancelHint] = useState(false);
+	const cancelHintTimerRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		const wasOver = prevIsDragOverRef.current;
+		const isOver = isDragOver;
+		prevIsDragOverRef.current = isOver;
+
+		// true → false without a drop in between: surface the cancel hint.
+		// (The drop handler resets isDragOver synchronously, so the cancel
+		// branch only fires when the user actually left the drop zone.)
+		if (wasOver && !isOver) {
+			setShowCancelHint(true);
+			if (cancelHintTimerRef.current) {
+				window.clearTimeout(cancelHintTimerRef.current);
+			}
+			cancelHintTimerRef.current = window.setTimeout(() => {
+				setShowCancelHint(false);
+				cancelHintTimerRef.current = null;
+			}, 950);
+		} else if (isOver) {
+			// Re-entered the drop zone — clear any pending cancel.
+			setShowCancelHint(false);
+			if (cancelHintTimerRef.current) {
+				window.clearTimeout(cancelHintTimerRef.current);
+				cancelHintTimerRef.current = null;
+			}
+		}
+
+		return () => {
+			if (cancelHintTimerRef.current) {
+				window.clearTimeout(cancelHintTimerRef.current);
+				cancelHintTimerRef.current = null;
+			}
+		};
+	}, [isDragOver]);
+
 	const handleRemove = ({
 		event,
 		ids,
@@ -140,6 +193,70 @@ export function MediaView() {
 		});
 	};
 
+	// ── Folder handlers ───────────────────────────────────────
+
+	const handleCreateFolder = () => {
+		setFolderDialog({ mode: "create" });
+	};
+
+	const openRenameFolderDialog = ({ folderId }: { folderId: string }) => {
+		const folder = folders.find((f) => f.id === folderId);
+		if (!folder) return;
+		setFolderDialog({
+			mode: "rename",
+			folderId,
+			initialName: folder.name,
+		});
+	};
+
+	const handleFolderDialogSubmit = (name: string) => {
+		const dialog = folderDialog;
+		if (!dialog) return;
+		if (dialog.mode === "create") {
+			void editor.media.createFolder({
+				projectId: activeProject.metadata.id,
+				name,
+			});
+		} else {
+			void editor.media.renameFolder({
+				id: dialog.folderId,
+				name,
+			});
+		}
+		setFolderDialog(null);
+	};
+
+	const handleRenameFolder = async ({
+		folderId,
+		name,
+	}: {
+		folderId: string;
+		name: string;
+	}) => {
+		await editor.media.renameFolder({ id: folderId, name });
+	};
+
+	const handleDeleteFolder = async ({ folderId }: { folderId: string }) => {
+		const folder = folders.find((f) => f.id === folderId);
+		if (!folder) return;
+		const ok = window.confirm(
+			`Delete "${folder.name}"? Assets inside will be moved to the library root.`,
+		);
+		if (!ok) return;
+		if (currentFolderId === folderId) setCurrentFolderId(null);
+		await editor.media.deleteFolder({ id: folderId });
+	};
+
+	const assetCountByFolder = useMemo(() => {
+		const map = new Map<string, number>();
+		for (const asset of mediaFiles) {
+			if (asset.folderId) {
+				map.set(asset.folderId, (map.get(asset.folderId) ?? 0) + 1);
+			}
+		}
+		return map;
+	}, [mediaFiles]);
+
 	const handleSort = ({ key }: { key: MediaSortKey }) => {
 		if (mediaSortBy === key) {
 			setMediaSort(key, mediaSortOrder === "asc" ? "desc" : "asc");
@@ -149,7 +266,13 @@ export function MediaView() {
 	};
 
 	const filteredMediaItems = useMemo(() => {
-		const filtered = mediaFiles.filter((item) => !item.ephemeral);
+		const filtered = mediaFiles.filter(
+			(item) =>
+				!item.ephemeral &&
+				(currentFolderId === null
+					? !item.folderId
+					: item.folderId === currentFolderId),
+		);
 
 		filtered.sort((a, b) => {
 			let valueA: string | number;
@@ -182,7 +305,7 @@ export function MediaView() {
 		});
 
 		return filtered;
-	}, [mediaFiles, mediaSortBy, mediaSortOrder]);
+	}, [mediaFiles, mediaSortBy, mediaSortOrder, currentFolderId]);
 	const orderedMediaIds = useMemo(() => {
 		return filteredMediaItems.map((item) => item.id);
 	}, [filteredMediaItems]);
@@ -216,12 +339,13 @@ export function MediaView() {
 				className={cn(isDragOver && "bg-accent/30")}
 				{...dragProps}
 			>
-				{isDragOver ? (
+				{isDragOver || showCancelHint ? (
 					<MediaDragOverlay
-						isVisible={true}
+						isVisible={isDragOver}
 						isProcessing={isProcessing}
 						progress={progress}
-						onClick={openFilePicker}
+						onClick={isDragOver ? openFilePicker : undefined}
+						showCancelHint={showCancelHint}
 					/>
 				) : (
 					<div className="flex flex-col gap-3">
@@ -231,29 +355,85 @@ export function MediaView() {
 						/>
 						<QuickAccessGrid stats={mediaStats} />
 						{assetSource === "library" ? (
-							filteredMediaItems.length === 0 ? (
-								<EmptyLibraryState />
-							) : (
-								<SelectableSurface
-									ariaLabel="Assets"
-									orderedIds={orderedMediaIds}
-									revealId={highlightMediaId}
-									onRevealComplete={clearHighlight}
-								>
-									<MediaScopeRegistrar />
-									<MediaItemList
-										items={filteredMediaItems}
-										mode={mediaViewMode}
-										onRemove={handleRemove}
+							<div className="flex flex-col gap-2">
+								{currentFolderId === null && folders.length > 0 && (
+									<FolderGrid
+										folders={folders}
+										assetCountByFolder={assetCountByFolder}
+										currentFolderId={currentFolderId}
+										onEnterFolder={(folderId) => setCurrentFolderId(folderId)}
+										onCreateFolder={handleCreateFolder}
+										onRenameFolder={(folderId, name) =>
+											handleRenameFolder({ folderId, name })
+										}
+										onDeleteFolder={(folderId) =>
+											handleDeleteFolder({ folderId })
+										}
+										onExitFolder={() => setCurrentFolderId(null)}
 									/>
-								</SelectableSurface>
-							)
+								)}
+								{currentFolderId !== null && (
+									<FolderGrid
+										folders={folders}
+										assetCountByFolder={assetCountByFolder}
+										currentFolderId={currentFolderId}
+										onEnterFolder={(folderId) => setCurrentFolderId(folderId)}
+										onCreateFolder={handleCreateFolder}
+										onRenameFolder={(folderId, name) =>
+											handleRenameFolder({ folderId, name })
+										}
+										onDeleteFolder={(folderId) =>
+											handleDeleteFolder({ folderId })
+										}
+										onExitFolder={() => setCurrentFolderId(null)}
+									/>
+								)}
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={handleCreateFolder}
+									className="h-7 w-full justify-center gap-1.5 border border-dashed border-white/[0.08] bg-white/[0.02] text-[0.68rem] text-white/55 hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
+								>
+									<HugeiconsIcon icon={FolderAddIcon} className="size-3.5" />
+									New folder
+								</Button>
+								{filteredMediaItems.length === 0 ? (
+									<EmptyLibraryState onImport={openFilePicker} />
+								) : (
+									<SelectableSurface
+										ariaLabel="Assets"
+										orderedIds={orderedMediaIds}
+										revealId={highlightMediaId}
+										onRevealComplete={clearHighlight}
+									>
+										<MediaScopeRegistrar />
+										<MediaItemList
+											items={filteredMediaItems}
+											mode={mediaViewMode}
+											onRemove={handleRemove}
+										/>
+									</SelectableSurface>
+								)}
+							</div>
 						) : (
 							<RemoteAssetPlaceholder source={assetSource} />
 						)}
 					</div>
 				)}
 			</PanelView>
+
+			<FolderNameDialog
+				open={folderDialog !== null}
+				mode={folderDialog?.mode === "rename" ? "rename" : "create"}
+				initialName={
+					folderDialog?.mode === "rename" ? folderDialog.initialName : ""
+				}
+				onOpenChange={(open) => {
+					if (!open) setFolderDialog(null);
+				}}
+				onSubmit={handleFolderDialogSubmit}
+			/>
 		</>
 	);
 }
@@ -356,22 +536,33 @@ function QuickAccessGrid({
 	);
 }
 
-function EmptyLibraryState() {
+function EmptyLibraryState({ onImport }: { onImport: () => void }) {
 	return (
-		<div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-6 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-			<div className="rounded-full border border-white/[0.08] bg-white/[0.06] p-3 text-white/[0.55]">
-				<HugeiconsIcon icon={CloudUploadIcon} className="size-5" />
+		<button
+			type="button"
+			onClick={onImport}
+			className="glass relative flex min-h-[20rem] w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-xl p-8 text-center transition hover:bg-white/[0.08]"
+		>
+			<div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_58%_22%,rgba(255,255,255,0.16),transparent_24%),radial-gradient(circle_at_50%_36%,rgba(255,255,255,0.06),transparent_36%)]" />
+			<div className="relative grid size-24 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10">
+				<div className="absolute size-40 rounded-full border border-dashed border-white/10" />
+				<div className="absolute size-28 rounded-full border border-dashed border-white/15" />
+				<HugeiconsIcon icon={UploadIcon} className="size-8 text-white/80" />
 			</div>
-			<div>
-				<p className="text-sm font-semibold text-white/[0.82]">
-					No media files yet
-				</p>
-				<p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-white/[0.38]">
-					Drop files above, use the source tabs to import, or paste a public
-					Google Drive link from the projects page.
+
+			<div className="relative space-y-2">
+				<h3 className="font-serif text-lg text-white">
+					Your creative journey begins here
+				</h3>
+				<p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
+					Import media or drag and drop to get started.
 				</p>
 			</div>
-		</div>
+
+			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2 text-xs text-white/85">
+				Import media
+			</span>
+		</button>
 	);
 }
 

@@ -33,18 +33,18 @@ import { cn } from "@/utils/ui";
 
 export function EditorHeader() {
 	return (
-		<header className="z-50 flex h-[3.25rem] items-center justify-between bg-[#08080a]/40 backdrop-blur-2xl px-4 shadow-[0_8px_30px_rgba(0,0,0,0.55),inset_0_1.5px_0_rgba(255,255,255,0.05)] transition-all">
-			{/* Left Corner Logo & Breadcrumbs (Style 1 capsules but logo standalone on absolute left) */}
+		<header className="z-50 flex h-14 items-center justify-between bg-[#030303]/40 px-4 backdrop-blur-2xl transition-all">
+			{/* Left Corner Logo & Breadcrumbs */}
 			<div className="flex min-w-0 items-center gap-3">
 				{/* Logo at the absolute far-left corner */}
 				<ProjectDropdown />
 
 				{/* Identity Pod Capsule */}
-				<div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.015] px-3.5 py-1 shadow-[inset_0_1px_rgba(255,255,255,0.02)] backdrop-blur-md">
-					<div className="hidden items-center gap-1.5 text-[0.62rem] font-mono text-white/40 md:flex select-none tracking-wider">
+				<div className="group flex h-8 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04]">
+					<div className="hidden items-center gap-1.5 text-[0.65rem] font-mono text-white/40 md:flex select-none tracking-wider">
 						<Link
 							href="/projects"
-							className="hover:text-white/80 transition-colors uppercase font-bold"
+							className="hover:text-white/80 transition-colors uppercase font-medium"
 						>
 							Projects
 						</Link>
@@ -54,17 +54,17 @@ export function EditorHeader() {
 				</div>
 			</div>
 
-			{/* Center: Zoom Capsule (Style 1 Capsule) */}
-			<div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0c0c0e]/35 p-1 px-2.5 shadow-[inset_0_1px_rgba(255,255,255,0.03),0_8px_24px_rgba(0,0,0,0.3)] backdrop-blur-md transition-all duration-300 hover:border-white/15 hover:bg-[#0c0c0e]/50 lg:flex">
+			{/* Center: Zoom Capsule */}
+			<div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] h-8 px-1 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04] lg:flex">
 				<HeaderZoomDropdown />
 			</div>
 
-			{/* Right: Segmented Action Hub (Style 1 Capsules) */}
+			{/* Right: Segmented Action Hub */}
 			<nav className="flex items-center gap-2.5">
 				{/* Utilities Capsule */}
-				<div className="flex items-center rounded-full border border-white/[0.06] bg-white/[0.015] p-0.5 shadow-[inset_0_1px_rgba(255,255,255,0.02)] backdrop-blur-md">
+				<div className="flex h-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.02] px-1 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04]">
 					<ThemeToggle
-						className="size-7 rounded-full text-white/60 hover:bg-white/[0.05] hover:text-white transition-all duration-200"
+						className="size-6 rounded-full text-white/60 hover:text-white transition-all duration-200 flex items-center justify-center"
 						iconClassName="!size-3.5"
 					/>
 				</div>
@@ -101,7 +101,7 @@ function HeaderZoomDropdown() {
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[0.68rem] font-semibold text-white/80 transition hover:bg-white/[0.08] hover:text-white focus:outline-none"
+					className="flex h-full items-center gap-1.5 rounded-full px-2 text-[0.68rem] font-medium text-white/70 transition hover:text-white focus:outline-none"
 				>
 					<span>{zoomLabel}</span>
 					<HugeiconsIcon
@@ -205,7 +205,8 @@ function ProjectDropdown() {
 				<DropdownMenuTrigger asChild>
 					<button
 						type="button"
-						className="relative size-9 shrink-0 cursor-pointer bg-[#0d0d0e] transition rounded-full [mask-image:radial-gradient(circle_at_center,black_45%,transparent_75%)] hover:scale-105 hover:ring-1 hover:ring-white/30 focus:outline-none flex items-center justify-center"
+						className="relative size-10 shrink-0 cursor-pointer bg-[#0d0d0e] transition rounded-full [mask-image:radial-gradient(circle_at_center,black_45%,transparent_75%)] hover:scale-105 hover:ring-1 hover:ring-white/30 focus:outline-none flex items-center justify-center"
+						aria-label="Artidor Logo"
 					>
 						<Image
 							src={DEFAULT_LOGO_URL}

@@ -326,14 +326,20 @@ function getVideoConfig({
 	element: VideoElement;
 	mediaAsset: MediaAsset | undefined;
 }): ElementPropertiesConfig {
-	// Only expose the Audio tab when the underlying media actually has an
-	// audio track. Videos with no audio stream get a Transform-only inspector.
-	const showAudioTab = mediaAsset?.hasAudio === true;
+	// Show the Audio tab whenever the underlying media *might* have an
+	// audio track. We treat `undefined` and `true` as "show" — only an
+	// explicit `hasAudio === false` hides the tab. This is more
+	// forgiving than `=== true` because mediabunny occasionally returns
+	// `null` for the audio track on container formats it can decode but
+	// doesn't fully introspect (especially mid-file scans), and the
+	// user expects the audio tab to be there when they drop a music
+	// video — the worst case is the volume slider becomes a no-op.
+	const hideAudioTab = mediaAsset?.hasAudio === false;
 	return {
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
-			...(showAudioTab ? [buildAudioTab({ element })] : []),
+			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
 			buildColorGradingTab({ element }),
