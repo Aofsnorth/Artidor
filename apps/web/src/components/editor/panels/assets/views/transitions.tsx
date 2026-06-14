@@ -73,8 +73,12 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 				return;
 			}
 
-			const firstTrack = editor.timeline.getTrackById({ trackId: first.trackId });
-			const firstEl = firstTrack?.elements.find((e) => e.id === first.elementId);
+			const firstTrack = editor.timeline.getTrackById({
+				trackId: first.trackId,
+			});
+			const firstEl = firstTrack?.elements.find(
+				(e) => e.id === first.elementId,
+			);
 			if (!firstEl) {
 				toast.error("First clip not found");
 				return;
@@ -121,10 +125,8 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			}}
 			className={`asset-preview-container group ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
 		>
-			<div className="asset-preview-badge">TRN</div>
-			<div className="asset-preview-corner">0x{definition.type.substring(0, 4).toUpperCase()}</div>
 			<div className="asset-preview-overlay" />
-			
+
 			<TransitionPreview definition={definition} />
 			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">
 				{definition.name}
@@ -147,16 +149,27 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	);
 }
 
-function TransitionPreview({ definition }: { definition: TransitionDefinition }) {
+function TransitionPreview({
+	definition,
+}: {
+	definition: TransitionDefinition;
+}) {
 	return (
-		<div className="relative size-full overflow-hidden rounded-sm mx-auto mt-2" style={{ width: '80%', height: '80%' }}>
+		<div
+			className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
+			style={{ width: "80%", height: "80%" }}
+		>
 			<div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-br from-indigo-500/80 to-purple-500/80" />
 			<div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-tl from-cyan-400/80 to-blue-500/80" />
 			<div
 				className="absolute inset-0 z-10"
-				style={{ animation: `preview-${definition.type} 2s ease-in-out infinite alternate` }}
+				style={{
+					animation: `preview-${definition.type} 2s ease-in-out infinite alternate`,
+				}}
 			/>
-			<style>{definition.previewStyle({ duration: 1000, direction: "cross" })}</style>
+			<style>
+				{definition.previewStyle({ duration: 1000, direction: "cross" })}
+			</style>
 		</div>
 	);
 }

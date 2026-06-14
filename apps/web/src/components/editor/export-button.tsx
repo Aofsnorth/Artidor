@@ -90,10 +90,10 @@ export function ExportButton() {
 				<button
 					type="button"
 					className={cn(
-						"group relative flex items-center gap-1.5 overflow-hidden rounded-full border px-4 py-1.5 text-xs transition-all duration-350",
+						"group relative flex h-8 items-center gap-1.5 overflow-hidden rounded-full border px-4 text-xs font-medium transition-all duration-350",
 						isExportPopoverOpen
-							? "border-white/50 bg-white/[0.14] text-white shadow-[0_0_18px_rgba(255,255,255,0.28)]"
-							: "border-white/35 bg-white/[0.06] text-white shadow-[0_0_14px_rgba(255,255,255,0.18)] hover:border-white/60 hover:bg-white/[0.13] hover:shadow-[0_0_22px_rgba(255,255,255,0.32)]",
+							? "border-white/20 bg-white/[0.08] text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+							: "border-white/[0.1] bg-white/[0.03] text-white/80 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
 						hasProject ? "cursor-pointer active:scale-95" : "cursor-not-allowed opacity-40",
 					)}
 					onClick={hasProject ? () => setIsExportPopoverOpen(true) : undefined}

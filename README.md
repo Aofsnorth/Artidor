@@ -1,154 +1,106 @@
-<table width="100%">
-  <tr>
-    <td align="left" width="120">
-      <img src="apps/web/public/logos/artidor/icon.svg" alt="Artidor Logo" width="100" />
-    </td>
-    <td align="right">
-      <h1>Artidor</h1>
-      <h3 style="margin-top: -10px;">A free, open-source video editor for web, desktop, and mobile.</h3>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="apps/web/public/logos/artidor/logo-uploaded.png" alt="Artidor" width="180" />
+</p>
 
-## Sponsors
+<p align="center">
+  <strong>Artidor</strong> &nbsp;·&nbsp; a video editor that respects your machine and your time
+</p>
 
-Thanks to [Vercel](https://vercel.com?utm_source=github-artidor&utm_campaign=oss) and [fal.ai](https://fal.ai?utm_source=github-artidor&utm_campaign=oss) for their support of open-source software.
+<p align="center">
+  <a href="https://artidor.app">Website</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="https://github.com/Aofsnorth/Artidor/issues">Issues</a> ·
+  <a href="./LICENSE">MIT License</a>
+</p>
 
-<a href="https://vercel.com/oss">
-  <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge.svg" />
-</a>
-
-<a href="https://fal.ai">
-  <img alt="Powered by fal.ai" src="https://img.shields.io/badge/Powered%20by-fal.ai-000000?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCAxMEwxMy4wOSAxNS43NEwxMiAyMkwxMC45MSAxNS43NEw0IDEwTDEwLjkxIDguMjZMMTIgMloiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=" />
-</a>
-
-## Why?
-
-- **Privacy**: Your videos stay on your device
-- **Free features**: Most basic CapCut features are now paywalled 
-- **Simple**: People want editors that are easy to use - CapCut proved that
-
-## Project Structure
-
-- `apps/web/`: Next.js web application
-- `apps/desktop/`: Native desktop app built with GPUI (in progress)
-- `rust/`: Platform-agnostic core: GPU compositor, effects, masks, and WASM bindings. We're actively migrating business logic here from TypeScript.
-- `docs/`: Architecture and subsystem documentation
-
-## Getting Started
-
-### Prerequisites
-
-- [Bun](https://bun.sh/docs/installation)
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-
-> **Note:** Docker is optional but recommended for running the local database and Redis. If you only want to work on frontend features, you can skip it.
-
-### Setup
-
-1. Fork and clone the repository
-
-2. Copy the environment file:
-
-   ```bash
-   # Unix/Linux/Mac
-   cp apps/web/.env.example apps/web/.env.local
-
-   # Windows PowerShell
-   Copy-Item apps/web/.env.example apps/web/.env.local
-   ```
-
-3. Start the database and Redis:
-
-   ```bash
-   docker compose up -d db redis serverless-redis-http
-   ```
-
-4. Install dependencies and start the dev server:
-
-   ```bash
-   bun install
-   bun dev:web
-   ```
-
-The application will be available at [http://localhost:3000](http://localhost:3000).
-
-The `.env.example` has sensible defaults that match the Docker Compose config — it should work out of the box.
-
-### Desktop setup
-
-Desktop is opt-in. If you're only working on the web app, skip this entirely.
-
-If you want to get ready for `apps/desktop`, see [`apps/desktop/README.md`](apps/desktop/README.md). It's a two-step setup: Rust toolchain first, then desktop native dependencies.
-
-### Local WASM development
-
-Only needed if you're editing `rust/wasm` and want the web app to use your local build instead of the published package.
-
-1. Build the package once from the repo root:
-
-   ```bash
-   bun run build:wasm
-   ```
-
-2. Register the generated package for linking:
-
-   ```bash
-   cd rust/wasm/pkg
-   bun link
-   ```
-
-3. Link `apps/web` to the local package:
-
-   ```bash
-   cd apps/web
-   bun link artidor-wasm
-   ```
-
-4. Rebuild on changes while you work:
-
-   ```bash
-   bun dev:wasm
-   ```
-
-To switch `apps/web` back to the published package, run:
-
-```bash
-cd apps/web
-bun add artidor-wasm
-```
-
-### Self-Hosting with Docker
-
-To run everything (including a production build of the app) in Docker:
-
-```bash
-docker compose up -d
-```
-
-The app will be available at [http://localhost:3100](http://localhost:3100).
-
-## Contributing
-
-We welcome contributions! While we're actively developing and refactoring certain areas, there are plenty of opportunities to contribute effectively.
-
-**🎯 Focus areas:** Timeline functionality, project management, performance, bug fixes, and UI improvements outside the preview panel.
-
-**⚠️ Avoid for now:** Preview panel enhancements (fonts, stickers, effects) and export functionality - we're refactoring these with a new binary rendering approach.
-
-See our [Contributing Guide](.github/CONTRIBUTING.md) for detailed setup instructions, development guidelines, and complete focus area guidance.
-
-**Quick start for contributors:**
-
-- Fork the repo and clone locally
-- Follow the setup instructions in CONTRIBUTING.md
-- Working on `apps/desktop`? See [`apps/desktop/README.md`](apps/desktop/README.md) for setup
-- Create a feature branch and submit a PR
-
-## License
-
-[MIT LICENSE](LICENSE)
+<p align="center">
+  <sub>Built on the foundation of <a href="https://github.com/OpenCut-app/OpenCut">OpenCut</a> &nbsp;·&nbsp; MIT</sub>
+</p>
 
 ---
 
-![Star History Chart](https://api.star-history.com/svg?repos=Aofsnorth/Artidor&type=Date)
+## Why
+
+The short version: most "free" video editors are paywalled, the rest upload your footage to a server you don't control, and the ones that don't are unusable.
+
+Artidor does the obvious things:
+
+- **Local-first.** Your media and your projects live on your device. No upload, no cloud relay, no "free tier" that throttles after 50 exports.
+- **Actually free.** MIT-licensed. Nothing paywalled, nothing watermarked, nothing "Pro" tier.
+- **Web, desktop, mobile.** Same Rust core, three frontends. Open a project on your laptop, continue on your phone.
+- **AI-native.** Optional tools that fit your workflow, not the other way around.
+
+No manifesto. No "rethinking the creative process". Just a tool that works.
+
+---
+
+## Quick start
+
+Prerequisites: [Bun](https://bun.sh) and (optionally) [Docker](https://docs.docker.com).
+
+```bash
+git clone https://github.com/Aofsnorth/Artidor.git
+cd Artidor
+bun install
+bun dev:web
+```
+
+Open <http://localhost:3000>. That's it.
+
+For local Postgres + Redis (needed for cloud features like collab):
+
+```bash
+docker compose up -d db redis serverless-redis-http
+cp apps/web/.env.example apps/web/.env.local
+bun dev:web
+```
+
+The default `.env.example` works out of the box. Skip Docker entirely if you only need the offline editor.
+
+### Editing the Rust core
+
+```bash
+bun run build:wasm
+cd rust/wasm/pkg && bun link
+cd apps/web && bun link artidor-wasm
+```
+
+Then `bun dev:wasm` rebuilds on every change.
+
+### Desktop
+
+`apps/desktop` uses GPUI. See [`apps/desktop/README.md`](apps/desktop/README.md) for the Rust toolchain setup.
+
+---
+
+## Project layout
+
+```
+Artidor/
+├─ apps/
+│  ├─ web/       Next.js 16 + React 19
+│  └─ desktop/   GPUI (in progress)
+├─ rust/
+│  ├─ wasm/      Compiles to a JS-callable package
+│  └─ crates/    Compositor, effects, masks, decoder
+└─ docs/         Architecture notes
+```
+
+All business logic is moving into `rust/`. Frontend code is a UI shell — it never owns logic, only rendering and interaction.
+
+---
+
+## Contributing
+
+Two rules:
+
+1. Don't write what the platform already gives you. `aria-` beats `div`. CSS `transition` beats an animation lib. Postgres constraints beat app code.
+2. Logic goes in `rust/`, UI goes in `apps/`. If you find yourself putting a domain rule in a React component, move it.
+
+See [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) for the rest.
+
+---
+
+## License
+
+[MIT](./LICENSE). Use it, fork it, ship a competitor, whatever.

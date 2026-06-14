@@ -16,7 +16,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/utils/ui";
-import { DEFAULT_LOGO_URL, } from "@/lib/site/brand";
+import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
 import {
 	ContextMenu,
@@ -57,10 +57,10 @@ export function Header() {
 							<Link href="/" className="flex items-center gap-3">
 								<Image
 									src={DEFAULT_LOGO_URL}
-									alt="OpenCut Logo"
+									alt="Artidor Logo"
 									className="invert dark:invert-0"
-									width={32}
-									height={32}
+									width={36}
+									height={36}
 								/>
 							</Link>
 						</ContextMenuTrigger>

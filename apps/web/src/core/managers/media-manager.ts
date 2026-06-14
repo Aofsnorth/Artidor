@@ -1,6 +1,6 @@
 import type { EditorCore } from "@/core";
 import { toast } from "sonner";
-import type { MediaAsset } from "@/lib/media/types";
+import type { MediaAsset, MediaFolder } from "@/lib/media/types";
 import { storageService } from "@/services/storage/service";
 import { generateUUID } from "@/utils/id";
 import { videoCache } from "@/services/video-cache/service";
@@ -8,10 +8,82 @@ import { BatchCommand, RemoveMediaAssetCommand } from "@/lib/commands";
 
 export class MediaManager {
 	private assets: MediaAsset[] = [];
+	private folders: MediaFolder[] = [];
 	private isLoading = false;
 	private listeners = new Set<() => void>();
 
 	constructor(private editor: EditorCore) {}
+
+	// ── Folder API ────────────────────────────────────────────
+
+	getFolders(): MediaFolder[] {
+		return this.folders;
+	}
+
+	async createFolder({
+		projectId,
+		name,
+	}: {
+		projectId: string;
+		name: string;
+	}): Promise<MediaFolder> {
+		const now = new Date();
+		const folder: MediaFolder = {
+			id: generateUUID(),
+			projectId,
+			name: name.trim() || "Untitled folder",
+			createdAt: now,
+			updatedAt: now,
+		};
+		this.folders = [...this.folders, folder];
+		this.notify();
+		return folder;
+	}
+
+	async renameFolder({
+		id,
+		name,
+	}: {
+		id: string;
+		name: string;
+	}): Promise<void> {
+		const next = name.trim();
+		if (!next) return;
+		this.folders = this.folders.map((folder) =>
+			folder.id === id
+				? { ...folder, name: next, updatedAt: new Date() }
+				: folder,
+		);
+		this.notify();
+	}
+
+	async deleteFolder({ id }: { id: string }): Promise<void> {
+		// Move any assets that lived inside the folder back to root so
+		// nothing is silently lost when the folder goes away.
+		this.assets = this.assets.map((asset) =>
+			asset.folderId === id ? { ...asset, folderId: null } : asset,
+		);
+		this.folders = this.folders.filter((folder) => folder.id !== id);
+		this.notify();
+	}
+
+	async moveAssetToFolder({
+		assetId,
+		folderId,
+	}: {
+		assetId: string;
+		folderId: string | null;
+	}): Promise<void> {
+		this.assets = this.assets.map((asset) =>
+			asset.id === assetId ? { ...asset, folderId } : asset,
+		);
+		this.notify();
+	}
+
+	setFolders({ folders }: { folders: MediaFolder[] }): void {
+		this.folders = folders;
+		this.notify();
+	}
 
 	async addMediaAsset({
 		projectId,

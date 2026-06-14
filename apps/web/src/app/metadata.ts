@@ -1,30 +1,56 @@
 import type { Metadata } from "next";
 import { SITE_INFO, SITE_URL } from "@/lib/site/brand";
 
+const OG_TITLE = "Artidor \u2014 free, open-source video editor";
+const OG_DESCRIPTION =
+	"A simple but powerful video editor that gets the job done. In your browser, on your desktop, or on the go. Privacy-first, no paywalls, no upload wait times.";
+
 export const baseMetaData: Metadata = {
 	metadataBase: new URL(SITE_URL),
-	title: SITE_INFO.title,
+	title: {
+		default: SITE_INFO.title,
+		template: `%s \u2014 ${SITE_INFO.title}`,
+	},
 	description: SITE_INFO.description,
+	applicationName: SITE_INFO.title,
+	keywords: [
+		"video editor",
+		"open source",
+		"free video editor",
+		"browser video editor",
+		"privacy",
+		"artidor",
+		"capcut alternative",
+	],
+	authors: [{ name: "Artidor" }],
+	creator: "Artidor",
+	publisher: "Artidor",
+	category: "video editing",
 	openGraph: {
-		title: SITE_INFO.title,
-		description: SITE_INFO.description,
+		type: "website",
+		title: OG_TITLE,
+		description: OG_DESCRIPTION,
 		url: SITE_URL,
 		siteName: SITE_INFO.title,
 		locale: "en_US",
-		type: "website",
+		determiner: "the",
 		images: [
 			{
 				url: SITE_INFO.openGraphImage,
 				width: 1200,
 				height: 630,
-				alt: "Artidor Wordmark",
+				type: "image/jpeg",
+				alt: "Artidor \u2014 open-source video editor for web and desktop",
+				secureUrl: SITE_INFO.openGraphImage,
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: SITE_INFO.title,
-		description: SITE_INFO.description,
+		site: "@artidorapp",
+		creator: "@artidorapp",
+		title: OG_TITLE,
+		description: OG_DESCRIPTION,
 		images: [SITE_INFO.twitterImage],
 	},
 	pinterest: {
@@ -33,6 +59,12 @@ export const baseMetaData: Metadata = {
 	robots: {
 		index: true,
 		follow: true,
+		googleBot: {
+			index: true,
+			follow: true,
+			"max-image-preview": "large",
+			"max-snippet": -1,
+		},
 	},
 	icons: {
 		icon: [{ url: "/favicon.ico" }],
@@ -66,9 +98,19 @@ export const baseMetaData: Metadata = {
 	appleWebApp: {
 		capable: true,
 		title: SITE_INFO.title,
+		statusBarStyle: "black-translucent",
+	},
+	formatDetection: {
+		telephone: false,
 	},
 	manifest: "/manifest.json",
 	other: {
 		"msapplication-config": "/browserconfig.xml",
+		"theme-color": "#0a0a0c",
+		"color-scheme": "dark",
+		"apple-mobile-web-app-capable": "yes",
+		"apple-mobile-web-app-status-bar-style": "black-translucent",
+		"apple-mobile-web-app-title": SITE_INFO.title,
+		"mobile-web-app-capable": "yes",
 	},
 };

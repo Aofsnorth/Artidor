@@ -25,7 +25,6 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 
 const MAX_AUDIO_CHANNELS = 2;
 const EXPORT_SAMPLE_RATE = 44100;
-const COARSE_SAMPLE_COUNT = 2048;
 
 export interface CollectedAudioElement {
 	timelineElement: AudioCapableElement;
@@ -704,72 +703,6 @@ export async function createTimelineAudioBuffer({
 	}
 
 	return await applyAudioMasteringToBuffer({ audioBuffer: outputBuffer });
-}
-
-export function computeGlobalMaxRms({
-	buffer,
-}: {
-	buffer: AudioBuffer;
-}): number {
-	// Use the max RMS across coarse sample windows as the visualizer's
-	// reference amplitude. Peak amplitude is too sensitive to transients
-	// and tends to flatten the visualizer to almost 100% everywhere,
-	// which makes the beat threshold useless.
-	const channels = buffer.numberOfChannels;
-	const step = Math.max(1, Math.floor(buffer.length / COARSE_SAMPLE_COUNT));
-	let globalMaxRms = 0;
-
-	for (let c = 0; c < channels; c++) {
-		const data = buffer.getChannelData(c);
-		for (let i = 0; i + step <= buffer.length; i += step) {
-			let sumSquares = 0;
-			for (let j = i; j < i + step; j++) {
-				const sample = data[j];
-				sumSquares += sample * sample;
-			}
-			const rms = Math.sqrt(sumSquares / step);
-			if (rms > globalMaxRms) globalMaxRms = rms;
-		}
-	}
-
-	return globalMaxRms || 1;
-}
-
-export function extractRmsRange({
-	buffer,
-	count,
-	startSample,
-	endSample,
-	globalMax,
-}: {
-	buffer: AudioBuffer;
-	count: number;
-	startSample: number;
-	endSample: number;
-	globalMax: number;
-}): number[] {
-	const channels = buffer.numberOfChannels;
-	const rangeLength = endSample - startSample;
-	const step = Math.max(1, Math.floor(rangeLength / count));
-	const peaks = new Float32Array(count);
-
-	for (let c = 0; c < channels; c++) {
-		const data = buffer.getChannelData(c);
-		for (let i = 0; i < count; i++) {
-			const start = startSample + i * step;
-			const end = Math.min(start + step, endSample);
-			for (let j = start; j < end; j++) {
-				const abs = Math.abs(data[j]);
-				if (abs > peaks[i]) peaks[i] = abs;
-			}
-		}
-	}
-
-	const norm = 1 / globalMax;
-	const result = new Array<number>(count);
-	for (let i = 0; i < count; i++) result[i] = Math.min(1, peaks[i] * norm);
-
-	return result;
 }
 
 function mixAudioChannels({

@@ -400,17 +400,165 @@
 	background-size: 8px 8px;
 }
 
-@utility asset-preview-badge {
-	@apply absolute top-1 left-1.5 text-[0.5rem] text-white/50 pointer-events-none z-10;
+/* ── Drop-zone animations ─────────────────────────────────────── */
+
+/* Pulsing radial glow behind the upload icon */
+@keyframes drop-glow-pulse {
+	0%,
+	100% {
+		opacity: 0.55;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.9;
+		transform: scale(1.05);
+	}
 }
 
-@utility asset-preview-corner {
-	@apply absolute bottom-1 right-1.5 text-[0.45rem] text-white/40 pointer-events-none z-10;
+.drop-glow-pulse {
+	animation: drop-glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* Slow counter-clockwise spin for the outer dashed ring */
+@keyframes drop-ring-rotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(-360deg);
+	}
+}
+
+.drop-ring-rotate-slow {
+	animation: drop-ring-rotate 24s linear infinite;
+}
+
+/* Faster clockwise spin for the inner dashed ring */
+.drop-ring-rotate-fast {
+	animation: drop-ring-rotate 14s linear infinite reverse;
+}
+
+/* Expanding ring that pulses outward and fades, mimicking a sonar ping */
+@keyframes drop-ring-sonar {
+	0% {
+		transform: scale(0.6);
+		opacity: 0.65;
+	}
+	100% {
+		transform: scale(1.6);
+		opacity: 0;
+	}
+}
+
+.drop-ring-sonar {
+	animation: drop-ring-sonar 1.8s ease-out infinite;
+}
+
+.drop-ring-sonar-delay-1 {
+	animation: drop-ring-sonar 1.8s ease-out infinite;
+	animation-delay: 0.6s;
+}
+
+.drop-ring-sonar-delay-2 {
+	animation: drop-ring-sonar 1.8s ease-out infinite;
+	animation-delay: 1.2s;
+}
+
+/* Subtle scale + glow pulse for the upload icon container */
+@keyframes drop-icon-pulse {
+	0%,
+	100% {
+		transform: scale(1);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.08),
+			0 0 0 0 rgba(255, 255, 255, 0);
+	}
+	50% {
+		transform: scale(1.04);
+		box-shadow:
+			inset 0 1px 0 rgba(255, 255, 255, 0.18),
+			0 0 24px 4px rgba(255, 255, 255, 0.12);
+	}
+}
+
+.drop-icon-pulse {
+	animation: drop-icon-pulse 1.8s ease-in-out infinite;
+}
+
+/* Soft fade-in / fade-out for the whole overlay */
+@keyframes drop-overlay-in {
+	from {
+		opacity: 0;
+		transform: scale(0.985);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.drop-overlay-enter {
+	animation: drop-overlay-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Cancel-fade: a quick scale-down + opacity drop when the user drags out */
+@keyframes drop-overlay-out {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: scale(0.985);
+	}
+}
+
+.drop-overlay-exit {
+	animation: drop-overlay-out 200ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+}
+
+/* Subtle vertical float for the hero text */
+@keyframes drop-text-float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-2px);
+	}
+}
+
+.drop-text-float {
+	animation: drop-text-float 3.2s ease-in-out infinite;
+}
+
+/* Brief shake (when the user drops a folder or invalid file) */
+@keyframes drop-shake {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	20%,
+	60% {
+		transform: translateX(-3px);
+	}
+	40%,
+	80% {
+		transform: translateX(3px);
+	}
+}
+
+.drop-shake {
+	animation: drop-shake 360ms ease-in-out;
 }
 
 .editing-screen {
 	background:
-		radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.05), transparent 18rem),
+		radial-gradient(
+			circle at 100% 100%,
+			rgba(255, 255, 255, 0.05),
+			transparent 18rem
+		),
 		linear-gradient(180deg, #0e0e0f 0%, #0a0a0b 44%, #070708 100%);
 }
 
@@ -421,9 +569,18 @@
 	inset: 0;
 	z-index: 0;
 	opacity: 0.24;
-	background-image: radial-gradient(rgba(255, 255, 255, 0.28) 0.6px, transparent 0.8px);
+	background-image: radial-gradient(
+		rgba(255, 255, 255, 0.28) 0.6px,
+		transparent 0.8px
+	);
 	background-size: 22px 22px;
-	mask-image: linear-gradient(to bottom, black, transparent 18%, transparent 78%, black);
+	mask-image: linear-gradient(
+		to bottom,
+		black,
+		transparent 18%,
+		transparent 78%,
+		black
+	);
 }
 
 .editing-screen > * {
@@ -453,7 +610,8 @@
 }
 
 @keyframes audio-meter-left {
-	0%, 100% {
+	0%,
+	100% {
 		filter: saturate(0.7) brightness(0.7);
 		transform: scaleX(0.35);
 	}
@@ -468,7 +626,8 @@
 }
 
 @keyframes audio-meter-right {
-	0%, 100% {
+	0%,
+	100% {
 		filter: saturate(0.8) brightness(0.75);
 		transform: scaleX(0.45);
 	}

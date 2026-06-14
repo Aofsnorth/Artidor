@@ -3,14 +3,18 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { Button, } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useApplyAnimationPreset } from "@/hooks/use-animation-presets";
 import { animationPresetsRegistry } from "@/lib/animation/presets";
 import { buildTextElement } from "@/lib/timeline/element-utils";
-import { textPresets, type TextPreset, type TextPresetCategory } from "@/lib/text/presets";
+import {
+	textPresets,
+	type TextPreset,
+	type TextPresetCategory,
+} from "@/lib/text/presets";
 import { cn } from "@/utils/ui";
 
 const CATEGORIES: { key: TextPresetCategory | "all"; label: string }[] = [
@@ -91,9 +95,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				const lastInserted = textTrack?.elements[textTrack.elements.length - 1];
 				if (textTrack && lastInserted) {
 					editor.selection.setSelectedElements({
-						elements: [
-							{ trackId: textTrack.id, elementId: lastInserted.id },
-						],
+						elements: [{ trackId: textTrack.id, elementId: lastInserted.id }],
 					});
 					applyAnimation(fadeInPreset);
 					editor.selection.clearSelection();
@@ -143,10 +145,12 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				`asset-preview-container group ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`,
 			)}
 		>
-			<div className="asset-preview-badge">TXT</div>
 			<div className="asset-preview-overlay" />
 
-			<div className="line-clamp-2 text-balance break-words z-10 mx-auto mt-4" style={previewStyle}>
+			<div
+				className="line-clamp-2 text-balance break-words z-10 mx-auto mt-4"
+				style={previewStyle}
+			>
 				{preset.build().content}
 			</div>
 			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">

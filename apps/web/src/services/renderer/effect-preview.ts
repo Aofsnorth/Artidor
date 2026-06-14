@@ -61,12 +61,21 @@ class EffectPreviewService {
 				width: uniformDimensions?.width ?? size,
 				height: uniformDimensions?.height ?? size,
 			});
-			result = this.applyGpuEffect({
+			const gpuResult = this.applyGpuEffect({
 				source,
 				width: size,
 				height: size,
 				passes,
 			});
+
+			// Validate the GPU result is usable. A lost WebGL context or
+			// failed shader can produce a canvas with 0 dimensions or a
+			// blank image. Fall back to the unprocessed source in that case.
+			if (this.isValidCanvasResult(gpuResult)) {
+				result = gpuResult;
+			} else {
+				console.warn(`GPU effect preview for ${effectType} produced invalid result, using source fallback`);
+			}
 		} catch (error) {
 			console.warn(`Failed to render effect preview for ${effectType}:`, error);
 		}
@@ -74,9 +83,40 @@ class EffectPreviewService {
 		targetCtx.clearRect(0, 0, size, size);
 		try {
 			targetCtx.drawImage(result, 0, 0, size, size);
+			
+			// Even if the canvas object is valid, the underlying WebGL/WebGPU
+			// pipeline might fail silently and return a completely empty or
+			// black canvas. We sample the center pixel to ensure it actually
+			// rendered something.
+			if (result !== source) {
+				const pixels = targetCtx.getImageData(
+					Math.floor(size / 2),
+					Math.floor(size / 2),
+					1,
+					1,
+				).data;
+				
+				const isBlank =
+					pixels[3] === 0 || // fully transparent
+					(pixels[0] === 0 && pixels[1] === 0 && pixels[2] === 0); // pure black
+					
+				if (isBlank) {
+					console.warn(
+						`GPU effect preview for ${effectType} produced visually blank/black canvas, falling back to source.`,
+					);
+					targetCtx.clearRect(0, 0, size, size);
+					targetCtx.drawImage(source, 0, 0, size, size);
+				}
+			}
 		} catch (error) {
 			console.warn(`Failed to draw effect preview for ${effectType}:`, error);
-			targetCtx.drawImage(source, 0, 0, size, size);
+			// Last resort: draw the original source without effects
+			try {
+				targetCtx.clearRect(0, 0, size, size);
+				targetCtx.drawImage(source, 0, 0, size, size);
+			} catch {
+				// Nothing we can do — leave the canvas cleared
+			}
 		}
 	}
 
@@ -197,6 +237,24 @@ class EffectPreviewService {
 			height,
 			passes,
 		}) as OffscreenCanvas | HTMLCanvasElement;
+	}
+
+	/**
+	 * Check that the GPU output canvas is actually usable. A lost WebGL
+	 * context or failed shader compilation can produce a canvas whose
+	 * dimensions are 0, or whose context is marked as lost. Either case
+	 * renders as a solid black rectangle when drawn into the 2D preview.
+	 */
+	private isValidCanvasResult(canvas: CanvasImageSource): boolean {
+		if (canvas instanceof HTMLCanvasElement) {
+			if (canvas.width === 0 || canvas.height === 0) return false;
+			const gl =
+				canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+			if (gl && gl.isContextLost()) return false;
+		} else if (canvas instanceof OffscreenCanvas) {
+			if (canvas.width === 0 || canvas.height === 0) return false;
+		}
+		return true;
 	}
 }
 

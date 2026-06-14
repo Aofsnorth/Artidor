@@ -27,6 +27,15 @@ export interface MediaAssetData {
 	hasAudio?: boolean;
 	ephemeral?: boolean;
 	thumbnailUrl?: string;
+	folderId?: string | null;
+}
+
+export interface MediaFolderData {
+	id: string;
+	projectId: string;
+	name: string;
+	createdAt: string;
+	updatedAt: string;
 }
 
 export type SerializedScene = Omit<TScene, "createdAt" | "updatedAt"> & {

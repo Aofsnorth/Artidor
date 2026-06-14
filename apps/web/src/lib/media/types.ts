@@ -7,3 +7,11 @@ export interface MediaAsset
 	file: File;
 	url?: string;
 }
+
+export interface MediaFolder {
+	id: string;
+	projectId: string;
+	name: string;
+	createdAt: Date;
+	updatedAt: Date;
+}

@@ -871,7 +871,7 @@ function ElementInner({
 							)}
 							style={{ height: `${baseTrackHeight}px` }}
 						>
-							<div className="flex flex-1 min-h-0 items-center overflow-hidden">
+							<div className="flex h-full flex-1 min-h-0 items-center overflow-hidden">
 								<ElementContent element={element} track={track} />
 							</div>
 						</div>
@@ -1355,7 +1355,12 @@ function AudioElementContent({
 					beatColor={themeVariant.beatColor}
 					variant="beats"
 					symmetric
-					className="px-1.5 py-1"
+					trimStartTicks={element.trimStart}
+					trimEndTicks={element.trimEnd}
+					sourceDurationTicks={
+						element.sourceDuration ||
+						element.duration + element.trimStart + element.trimEnd
+					}
 				/>
 				<div className="pointer-events-none absolute right-1.5 bottom-1 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.18em] text-white/42">
 					Beat
@@ -1453,7 +1458,7 @@ function TiledMediaContent({
 			{isVideo && mediaAsset?.url && hasAudio && (
 				<div
 					className="absolute bottom-0 left-0 right-0"
-					style={{ height: "30%" }}
+					style={{ height: "40%" }}
 				>
 					<AudioWaveform
 						audioUrl={mediaAsset.url}

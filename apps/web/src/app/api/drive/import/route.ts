@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildDriveDirectUrl, parseDriveFileId } from "@/lib/drive/parse";
+import { buildDriveDirectUrl, parseDriveUrl } from "@/lib/drive/parse";
 
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_FILE_BYTES = 200 * 1024 * 1024; // 200 MB safety cap
@@ -11,6 +11,29 @@ export type DriveImportError =
 	| { code: "too_large"; message: string }
 	| { code: "unsupported_host"; message: string }
 	| { code: "fetch_failed"; message: string };
+
+// Folder URLs cannot be enumerated or fetched over the public link
+// surface, so we hand them back as descriptors and the client creates a
+// new empty project that the user can populate manually.
+export type DriveFolderImport = {
+	ok: true;
+	kind: "folder";
+	folderId: string;
+	folderUrl: string;
+	folderLabel: string;
+};
+
+export type DriveFileImport = {
+	ok: true;
+	kind: "file";
+	fileId: string;
+	fileName: string;
+	contentType: string;
+	sizeBytes: number;
+	dataBase64: string;
+};
+
+export type DriveImportResult = DriveFileImport | DriveFolderImport;
 
 export async function POST(request: Request) {
 	const body = (await request.json().catch(() => null)) as {
@@ -26,8 +49,8 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const fileId = parseDriveFileId({ url: body.url });
-	if (!fileId) {
+	const parsed = parseDriveUrl({ url: body.url });
+	if (!parsed) {
 		return NextResponse.json(
 			{
 				code: "unsupported_host",
@@ -37,11 +60,53 @@ export async function POST(request: Request) {
 		);
 	}
 
+	// Folder link: turn into a new empty project. The Google Drive public
+	// surface does not expose folder contents without an API key, so we
+	// simply create the project shell and let the user drop files in
+	// from the asset panel afterwards. If the folder is not public (403
+	// when we ping it below) we surface that as an error.
+	if (parsed.kind === "folder") {
+		// Lightweight accessibility probe: try to load the folder's
+		// public HTML page. We don't need its body — only the status
+		// code, to distinguish 200 (public, proceed) from 401/403/404
+		// (not public / not found).
+		const probe = await probeDriveFolder({ url: parsed.url });
+		if (probe === "not_public") {
+			return NextResponse.json(
+				{
+					code: "not_public",
+					message:
+						"This Drive folder is not public. Open Drive sharing, set it to 'Anyone with the link', and try again.",
+				} satisfies DriveImportError,
+				{ status: 403 },
+			);
+		}
+		if (probe === "not_found") {
+			return NextResponse.json(
+				{
+					code: "not_found",
+					message:
+						"Drive could not find this folder. Check the link or ask the owner to re-share it.",
+				} satisfies DriveImportError,
+				{ status: 404 },
+			);
+		}
+		return NextResponse.json({
+			ok: true,
+			kind: "folder",
+			folderId: parsed.id,
+			folderUrl: parsed.url,
+			folderLabel: deriveFolderLabel({ folderId: parsed.id }),
+		} satisfies DriveFolderImport);
+	}
+
+	// File link: stream the bytes and return them base64-encoded so the
+	// client can rehydrate a File without further round-trips.
+	const fileId = parsed.id;
 	const directUrl = buildDriveDirectUrl({ fileId });
 
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
 	let response: Response;
 	try {
 		response = await fetch(directUrl, {
@@ -126,12 +191,53 @@ export async function POST(request: Request) {
 
 	return NextResponse.json({
 		ok: true,
+		kind: "file",
 		fileId,
 		fileName,
 		contentType,
 		sizeBytes: buffer.byteLength,
 		dataBase64: buffer.toString("base64"),
-	});
+	} satisfies DriveFileImport);
+}
+
+type ProbeResult = "ok" | "not_public" | "not_found" | "unknown";
+
+async function probeDriveFolder({
+	url,
+}: {
+	url: string;
+}): Promise<ProbeResult> {
+	// Public Drive folders render an HTML page when the link is reachable.
+	// A 401/403/404 status is enough to know the folder is gated.
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+	try {
+		const res = await fetch(url, {
+			method: "GET",
+			redirect: "follow",
+			signal: controller.signal,
+			headers: { "cache-control": "no-cache" },
+		});
+		clearTimeout(timer);
+		if (res.status === 200) return "ok";
+		if (res.status === 401 || res.status === 403) return "not_public";
+		if (res.status === 404) return "not_found";
+		return "unknown";
+	} catch {
+		clearTimeout(timer);
+		// Network failure: treat as a soft "unknown" so the user can still
+		// create the project shell — the actual folder content import is
+		// a manual step anyway.
+		return "unknown";
+	}
+}
+
+function deriveFolderLabel({ folderId }: { folderId: string }): string {
+	// Without Drive API access we cannot resolve a folder name from the
+	// ID, so we surface the ID-derived stub and let the user rename the
+	// project from the projects page.
+	const tail = folderId.slice(-6);
+	return `Drive folder \u2026${tail}`;
 }
 
 function extractFileName({
