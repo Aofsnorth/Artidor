@@ -1,0 +1,131 @@
+import type { TrackType } from "@/lib/timeline";
+
+export const TIMELINE_TRACK_THEME: Record<
+	Exclude<TrackType, "audio">,
+	{ elementClassName: string; waveformColor?: string }
+> & {
+	audio: {
+		variants: {
+			elementClassName: string;
+			waveformColor: string;
+			beatColor: string;
+		}[];
+	};
+} = {
+	video: { elementClassName: "transparent" },
+	text: { elementClassName: "bg-[#4c2d78]/90 border border-[#9a73ff]/45" },
+	audio: {
+		variants: [
+			{
+				elementClassName:
+					"bg-linear-to-br from-[#0b0b0d]/98 via-[#151517]/96 to-[#050506]/98 border border-white/25",
+				waveformColor: "rgba(255, 255, 255, 0.52)",
+				beatColor: "rgba(255, 255, 255, 1)",
+			},
+			{
+				elementClassName:
+					"bg-linear-to-br from-[#111113]/98 via-[#1a1a1d]/96 to-[#060607]/98 border border-white/20",
+				waveformColor: "rgba(255, 255, 255, 0.45)",
+				beatColor: "rgba(255, 255, 255, 1)",
+			},
+		],
+	},
+	graphic: { elementClassName: "bg-[#053b4a]/90 border border-[#52d8ff]/35" },
+	effect: { elementClassName: "bg-[#3a2867]/90 border border-[#b28cff]/35" },
+} as const;
+
+export const SELECTED_TRACK_ROW_CLASS =
+	"border-white/[0.18] bg-white/[0.065] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_12px_34px_rgba(0,0,0,0.28)]";
+export const DEFAULT_TIMELINE_BOOKMARK_COLOR = "#ffffff";
+
+/**
+ * Accent palette per track type. Used for the "fx" badge, track label dot,
+ * and the top accent stripe inside clip cards. Pairs with the gradient
+ * backgrounds in TIMELINE_TRACK_THEME so the visual identity matches.
+ */
+export const TRACK_TYPE_PALETTE: Record<
+	TrackType,
+	{ accent: string; accentSoft: string; badgeBg: string; badgeText: string }
+> = {
+	video: {
+		accent: "rgba(96, 165, 250, 0.95)",
+		accentSoft: "rgba(96, 165, 250, 0.18)",
+		badgeBg: "rgba(96, 165, 250, 0.18)",
+		badgeText: "rgba(191, 219, 254, 1)",
+	},
+	text: {
+		accent: "rgba(168, 132, 255, 0.95)",
+		accentSoft: "rgba(168, 132, 255, 0.18)",
+		badgeBg: "rgba(168, 132, 255, 0.18)",
+		badgeText: "rgba(221, 214, 254, 1)",
+	},
+	audio: {
+		accent: "rgba(255, 255, 255, 0.95)",
+		accentSoft: "rgba(255, 255, 255, 0.16)",
+		badgeBg: "rgba(255, 255, 255, 0.16)",
+		badgeText: "rgba(255, 255, 255, 0.92)",
+	},
+	graphic: {
+		accent: "rgba(82, 216, 255, 0.95)",
+		accentSoft: "rgba(82, 216, 255, 0.18)",
+		badgeBg: "rgba(82, 216, 255, 0.18)",
+		badgeText: "rgba(186, 230, 253, 1)",
+	},
+	effect: {
+		accent: "rgba(178, 140, 255, 0.95)",
+		accentSoft: "rgba(178, 140, 255, 0.18)",
+		badgeBg: "rgba(178, 140, 255, 0.18)",
+		badgeText: "rgba(221, 214, 254, 1)",
+	},
+};
+
+/**
+ * Audio tracks stay monochrome so beat visualizers read as black/white instead
+ * of duplicating the old green/cyan music track language.
+ */
+export const AUDIO_VARIANT_ACCENT: Array<{
+	accent: string;
+	accentSoft: string;
+}> = [
+	{
+		accent: "rgba(255, 255, 255, 0.95)",
+		accentSoft: "rgba(255, 255, 255, 0.16)",
+	},
+	{
+		accent: "rgba(210, 210, 215, 0.9)",
+		accentSoft: "rgba(255, 255, 255, 0.11)",
+	},
+];
+
+export function getTrackTypeAccent({
+	type,
+	trackIndex = 0,
+}: {
+	type: TrackType;
+	trackIndex?: number;
+}): { accent: string; accentSoft: string } {
+	if (type === "audio") {
+		return AUDIO_VARIANT_ACCENT[
+			Math.max(0, trackIndex) % AUDIO_VARIANT_ACCENT.length
+		];
+	}
+	const palette = TRACK_TYPE_PALETTE[type];
+	return { accent: palette.accent, accentSoft: palette.accentSoft };
+}
+
+export function getTimelineElementClassName({
+	type,
+	trackIndex = 0,
+}: {
+	type: TrackType;
+	trackIndex?: number;
+}): string {
+	if (type === "audio") {
+		const variant =
+			TIMELINE_TRACK_THEME.audio.variants[
+				trackIndex % TIMELINE_TRACK_THEME.audio.variants.length
+			];
+		return variant.elementClassName.trim();
+	}
+	return TIMELINE_TRACK_THEME[type].elementClassName.trim();
+}
