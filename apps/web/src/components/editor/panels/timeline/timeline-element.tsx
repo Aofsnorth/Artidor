@@ -64,6 +64,7 @@ import {
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { resolveStickerId } from "@/lib/stickers";
 import { buildGraphicPreviewUrl } from "@/lib/graphics";
+import { Input, ALL_FORMATS, BlobSource, CanvasSink } from "mediabunny";
 import Image from "next/image";
 import {
 	ScissorIcon,
@@ -1533,23 +1534,22 @@ function EffectsButton({
 }
 
 function VideoFilmstrip({
-	mediaUrl,
+	mediaFile,
 	element,
 	tileWidth,
 	topHeight,
 	zoomLevel,
 }: {
-	mediaUrl: string;
+	mediaFile: File;
 	element: VideoElement;
 	tileWidth: number;
 	topHeight: number;
 	zoomLevel: number;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const extractionFailedRef = useRef(false);
 
 	useEffect(() => {
-		if (!mediaUrl || !canvasRef.current) return;
+		if (!mediaFile || !canvasRef.current) return;
 		const canvas = canvasRef.current;
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
@@ -1564,152 +1564,94 @@ function VideoFilmstrip({
 		canvas.style.height = `${topHeight}px`;
 		ctx.scale(dpr, dpr);
 
-		// Fill with solid black background initially so the track
-		// colour doesn't bleed through before frames arrive.
-		ctx.fillStyle = "rgba(0, 0, 0, 1)";
-		ctx.fillRect(0, 0, numTiles * tileWidth, topHeight);
+		// Leave the canvas transparent: the parent paints the
+		// pre-rendered poster as a repeating background behind it, so
+		// during decode the user sees the poster and each tile is
+		// replaced by its real frame as it arrives (progressive,
+		// left-to-right) instead of flashing black.
 
 		let isCancelled = false;
-		extractionFailedRef.current = false;
+		let input: Input | null = null;
 
-		// `preload = "metadata"` is enough to seek the video; the
-		// previous `"auto"` forced a full download which thrashed
-		// memory on long videos AND often timed out before the
-		// `seeked` event fired.
-		const video = document.createElement("video");
-		video.preload = "metadata";
-		if (!mediaUrl.startsWith("blob:") && !mediaUrl.startsWith("data:")) {
-			video.crossOrigin = "anonymous";
-		}
-		video.muted = true;
-		video.playsInline = true;
+		// Decode the filmstrip with mediabunny instead of an HTML
+		// <video> element. HTML video seeking snaps to the nearest
+		// keyframe (so tiles didn't match the actual frame) and the
+		// old timeout-based `drawImage` could fire before the decode
+		// completed, copying uninitialized GPU memory — which is what
+		// produced the magenta/garbage tiles. `CanvasSink` decodes the
+		// exact frame for each timestamp in a single forward pass.
+		const run = async () => {
+			input = new Input({
+				source: new BlobSource(mediaFile),
+				formats: ALL_FORMATS,
+			});
 
-		// Surface load errors so we don't silently produce a black
-		// canvas. The parent already paints the `thumbnailUrl`
-		// fallback, so even on failure the user sees SOMETHING.
-		const onError = () => {
-			console.warn("[VideoFilmstrip] failed to load", mediaUrl);
-			extractionFailedRef.current = true;
-		};
-		video.addEventListener("error", onError);
-
-		let currentTile = 0;
-
-		const extractNextFrame = async () => {
-			if (isCancelled || currentTile >= numTiles) return;
-
-			const timeInClip = (currentTile * tileWidth) / zoomLevel;
-			const sourceTime =
-				element.trimStart / TICKS_PER_SECOND + timeInClip;
-
-			// Bound-checking against the source duration. Without
-			// this clamp the seek jumps to NaN and `seeked` never
-			// fires, leaving the canvas black.
-			let safeTime = Math.max(0, Math.min(video.duration || 0, sourceTime));
-			if (!Number.isFinite(safeTime)) safeTime = 0;
-
-			// Seek only when we need to change position. The seek
-			// promise has a 750ms fail-safe so a stalled decode
-			// can't hang the whole loop.
-			if (Math.abs(video.currentTime - safeTime) > 0.01) {
-				video.currentTime = safeTime;
-				await new Promise((resolve) => {
-					const onSeeked = () => {
-						video.removeEventListener("seeked", onSeeked);
-						resolve(true);
-					};
-					video.addEventListener("seeked", onSeeked);
-					setTimeout(resolve, 750);
-				});
-			} else if (video.readyState < 2) {
-				await new Promise((resolve) => {
-					const onLoadedData = () => {
-						video.removeEventListener("loadeddata", onLoadedData);
-						resolve(true);
-					};
-					video.addEventListener("loadeddata", onLoadedData);
-					setTimeout(resolve, 750);
-				});
+			const videoTrack = await input.getPrimaryVideoTrack();
+			if (!videoTrack || !(await videoTrack.canDecode())) {
+				// Parent already paints the pre-rendered `thumbnailUrl`
+				// behind this canvas, so the user still sees a poster.
+				return;
 			}
-
 			if (isCancelled) return;
 
-			// Cover-strategy crop: scale source into tile, keeping
-			// the aspect ratio. Skip the draw entirely if the
-			// decoder hasn't reported dimensions yet (HAVE_NOTHING).
-			if (video.videoWidth > 0 && video.videoHeight > 0) {
-				const videoRatio = video.videoWidth / video.videoHeight;
-				const tileRatio = tileWidth / topHeight;
-				let sx = 0;
-				let sy = 0;
-				let sWidth = video.videoWidth;
-				let sHeight = video.videoHeight;
+			const duration = await videoTrack.computeDuration();
+			const trimStartSeconds = element.trimStart / TICKS_PER_SECOND;
 
-				if (videoRatio > tileRatio) {
-					sWidth = video.videoHeight * tileRatio;
-					sx = (video.videoWidth - sWidth) / 2;
-				} else {
-					sHeight = video.videoWidth / tileRatio;
-					sy = (video.videoHeight - sHeight) / 2;
-				}
-
-				ctx.drawImage(
-					video,
-					sx,
-					sy,
-					sWidth,
-					sHeight,
-					currentTile * tileWidth,
-					0,
-					tileWidth,
-					topHeight,
+			// One timestamp per tile, clamped to the source duration and
+			// kept monotonically increasing so `canvasesAtTimestamps` can
+			// use its optimized single-decode-per-packet pipeline.
+			const timestamps: number[] = [];
+			for (let tile = 0; tile < numTiles; tile++) {
+				const timeInClip = (tile * tileWidth) / zoomLevel;
+				timestamps.push(
+					Math.max(0, Math.min(duration, trimStartSeconds + timeInClip)),
 				);
 			}
 
-			currentTile++;
-			// Yield to the main thread between tiles so React
-			// can re-render and the user sees progress rather
-			// than a single block that pops in at the end.
-			requestAnimationFrame(() => {
-				if (!isCancelled) extractNextFrame();
+			// Render each tile at device resolution with a cover-fit crop
+			// so the strip stays crisp on HiDPI displays. `poolSize` keeps
+			// VRAM constant by reusing canvases in a ring buffer.
+			const sink = new CanvasSink(videoTrack, {
+				width: Math.max(1, Math.round(tileWidth * dpr)),
+				height: Math.max(1, Math.round(topHeight * dpr)),
+				fit: "cover",
+				poolSize: 2,
 			});
+
+			let tile = 0;
+			for await (const wrapped of sink.canvasesAtTimestamps(timestamps)) {
+				if (isCancelled) return;
+				if (wrapped) {
+					// Draw in logical pixels — the context is already scaled
+					// by `dpr`, and the source canvas is `tileWidth*dpr` wide.
+					ctx.drawImage(
+						wrapped.canvas,
+						0,
+						0,
+						wrapped.canvas.width,
+						wrapped.canvas.height,
+						tile * tileWidth,
+						0,
+						tileWidth,
+						topHeight,
+					);
+				}
+				tile++;
+			}
 		};
 
-		let started = false;
-		const startExtraction = () => {
-			if (started || isCancelled) return;
-			started = true;
-			extractNextFrame();
-		};
-
-		// `loadeddata` fires once enough of the video is buffered
-		// for `drawImage` to succeed — more reliable than
-		// `loadedmetadata` (which only fires once and can fire
-		// before frames are seekable).
-		video.addEventListener("loadeddata", startExtraction);
-		video.addEventListener("loadedmetadata", startExtraction);
-
-		// Set src after attaching listeners to avoid missing the
-		// event. The synchronous readyState check catches the
-		// edge case where metadata was already loaded by the
-		// browser cache.
-		video.src = mediaUrl;
-		video.load();
-
-		if (video.readyState >= 1) {
-			startExtraction();
-		}
+		run().catch((error) => {
+			if (!isCancelled) {
+				console.warn("[VideoFilmstrip] decode failed", error);
+			}
+		});
 
 		return () => {
 			isCancelled = true;
-			video.removeEventListener("error", onError);
-			video.removeEventListener("loadeddata", startExtraction);
-			video.removeEventListener("loadedmetadata", startExtraction);
-			video.src = "";
-			video.load();
+			input?.dispose();
 		};
 	}, [
-		mediaUrl,
+		mediaFile,
 		element.duration,
 		element.trimStart,
 		zoomLevel,
@@ -1793,9 +1735,9 @@ function TiledMediaContent({
 						pointerEvents: "none",
 					}}
 				>
-					{mediaAsset?.url ? (
+					{mediaAsset?.file ? (
 						<VideoFilmstrip
-							mediaUrl={mediaAsset.url}
+							mediaFile={mediaAsset.file}
 							element={element as VideoElement}
 							tileWidth={tileWidth}
 							topHeight={filmstripHeight}

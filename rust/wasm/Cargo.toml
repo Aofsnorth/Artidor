@@ -29,3 +29,20 @@ web-sys = { version = "0.3.93", features = ["OffscreenCanvas", "HtmlCanvasElemen
 [features]
 default = ["wasm"]
 wasm = []
+
+# wasm-pack bundles its own (older) `wasm-opt`, which defaults to the WebAssembly
+# MVP feature set and aborts with "Only 1 table definition allowed in MVP".
+# Recent Rust toolchains enable the reference-types / multivalue / bulk-memory
+# proposals by default for wasm32-unknown-unknown, and reference-types emits a
+# second table. Tell wasm-opt to accept those proposals so it still optimizes the
+# module — the alternative (`wasm-opt = false`) would ship an unoptimized binary.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = [
+    '-O',
+    '--enable-reference-types',
+    '--enable-bulk-memory',
+    '--enable-multivalue',
+    '--enable-mutable-globals',
+    '--enable-sign-ext',
+    '--enable-nontrapping-float-to-int',
+]
