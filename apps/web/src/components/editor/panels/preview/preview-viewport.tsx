@@ -183,12 +183,13 @@ function getFitScale({
 		return 1;
 	}
 
-	// Cover fit: the canvas always fills the card (the longer axis overflows
-	// and is clipped by the viewport's `overflow-hidden`). Switching from
-	// `Math.min` (contain) to `Math.max` (cover) is what makes the preview
-	// grow to meet the card edges instead of letterboxing whenever the
-	// window is wider/taller than the project's aspect ratio.
-	return Math.max(viewportWidth / canvasWidth, viewportHeight / canvasHeight);
+	// Contain fit: the whole canvas is always visible at the project's true
+	// aspect ratio, letterboxed inside the card on whichever axis has spare
+	// room. This is WYSIWYG — what you see in the preview is exactly the
+	// framing that gets exported. (Cover fit / `Math.max` filled the card by
+	// overflowing and clipping the longer axis, which made a portrait project
+	// look cropped/landscape and never matched the export.)
+	return Math.min(viewportWidth / canvasWidth, viewportHeight / canvasHeight);
 }
 
 function getClampedZoom({ zoom }: { zoom: number }): number {

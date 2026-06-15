@@ -147,7 +147,9 @@ export function BlendingTab({
 	return (
 		<Section collapsible sectionKey={`${element.id}:blending`}>
 			<SectionHeader>
-				<SectionTitle>Blending</SectionTitle>
+				<SectionTitle className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+					Blending
+				</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
 				<div className="flex items-start gap-2">

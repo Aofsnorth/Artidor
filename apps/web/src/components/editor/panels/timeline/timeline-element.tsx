@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEditor } from "@/hooks/use-editor";
+import { useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { useState, useRef, useEffect } from "react";
 import { ReplaceMediaDialog } from "@/components/editor/dialogs/replace-media-dialog";
@@ -85,6 +85,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { uppercase } from "@/utils/string";
 import { useMemo, type ComponentProps, type ReactNode } from "react";
 import type {
+	AnimationPath,
 	SelectedKeyframeRef,
 	ElementKeyframe,
 } from "@/lib/animation/types";
@@ -125,7 +126,7 @@ function ElementEnvelope({
 	baseTrackHeight: number;
 	elementLeft: number;
 	dragState: KeyframeDragState;
-	propertyPath: string;
+	propertyPath: AnimationPath;
 	color?: string;
 	envelopeHeight?: number;
 	envelopeTop?: number;
@@ -612,6 +613,7 @@ export function TimelineElement({
 						<ElementInner
 							element={element}
 							track={track}
+							zoomLevel={zoomLevel}
 							isSelected={isSelected}
 							isExpanded={expandedRows.length > 0}
 							baseTrackHeight={baseTrackHeight}
@@ -864,6 +866,7 @@ export function TimelineElement({
 function ElementInner({
 	element,
 	track,
+	zoomLevel,
 	isSelected,
 	isExpanded,
 	baseTrackHeight,
@@ -875,6 +878,7 @@ function ElementInner({
 }: {
 	element: TimelineElementType;
 	track: TimelineTrack;
+	zoomLevel: number;
 	isSelected: boolean;
 	isExpanded: boolean;
 	baseTrackHeight: number;
@@ -915,7 +919,7 @@ function ElementInner({
 			}}
 		>
 			<div
-				className="absolute inset-0 rounded-[10px] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
+				className="absolute inset-0 rounded-xl shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
 				style={
 					isSelected
 						? {
@@ -926,7 +930,7 @@ function ElementInner({
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden rounded-[10px] border border-white/[0.04]",
+						"absolute inset-0 overflow-hidden rounded-xl border border-white/[0.04]",
 						isExpanded && "bg-background",
 					)}
 				>
@@ -945,20 +949,18 @@ function ElementInner({
 							onElementMouseDown(event, element);
 						}}
 					>
-						{/* Top accent stripe (1.5px) so the track-type color is
-						    visible even on small clips. pointer-events-none keeps
-						    click-through semantics intact. */}
+						{/* Top accent stripe (1.5px) */}
 						<div
 							aria-hidden="true"
-							className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[1.5px]"
-							style={{ backgroundColor: accent.accent }}
+							className="pointer-events-none absolute inset-0 z-10 rounded-xl"
+							style={{ borderTop: `1.5px solid ${accent.accent}` }}
 						/>
 						{/* Group visual indicator: left edge stripe */}
 						{groupColor && (
 							<div
 								aria-hidden="true"
-								className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-[3px] rounded-l-[3px]"
-								style={{ backgroundColor: groupColor }}
+								className="pointer-events-none absolute inset-0 z-20 rounded-xl"
+								style={{ borderLeft: `3px solid ${groupColor}` }}
 							/>
 						)}
 						{/* "fx" badge: a small monospace pill anchored to the
@@ -990,7 +992,7 @@ function ElementInner({
 							style={{ height: `${baseTrackHeight}px` }}
 						>
 							<div className="flex h-full flex-1 min-h-0 items-center overflow-hidden">
-								<ElementContent element={element} track={track} />
+								<ElementContent element={element} track={track} zoomLevel={zoomLevel} />
 							</div>
 						</div>
 						{expandedContent}
@@ -1350,6 +1352,7 @@ function ExpandedKeyframeLanes({
 interface ElementContentProps {
 	element: TimelineElementType;
 	track: TimelineTrack;
+	zoomLevel: number;
 }
 
 function TextElementContent({
@@ -1534,14 +1537,15 @@ function VideoFilmstrip({
 	element,
 	tileWidth,
 	topHeight,
+	zoomLevel,
 }: {
 	mediaUrl: string;
 	element: VideoElement;
 	tileWidth: number;
 	topHeight: number;
+	zoomLevel: number;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const zoomLevel = useTimelineStore((s) => s.zoomLevel);
 	const extractionFailedRef = useRef(false);
 
 	useEffect(() => {
@@ -1726,9 +1730,11 @@ function VideoFilmstrip({
 function TiledMediaContent({
 	element,
 	track,
+	zoomLevel,
 }: {
 	element: VideoElement | ImageElement;
 	track: TimelineTrack;
+	zoomLevel: number;
 }) {
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 
@@ -1773,8 +1779,12 @@ function TiledMediaContent({
 			   - For image: just the tiled `imageUrl`. */}
 			{isVideo && imageUrl ? (
 				<div
-					className="absolute top-0 left-0 right-0 overflow-hidden bg-black"
+					className={cn(
+						"absolute top-0 left-0 right-0 overflow-hidden bg-black",
+						hasAudio ? "rounded-t-xl" : "rounded-xl",
+					)}
 					style={{
+						isolation: "isolate",
 						height: `${filmstripHeight}px`,
 						backgroundImage: `url(${imageUrl})`,
 						backgroundRepeat: "repeat",
@@ -1789,13 +1799,15 @@ function TiledMediaContent({
 							element={element as VideoElement}
 							tileWidth={tileWidth}
 							topHeight={filmstripHeight}
+							zoomLevel={zoomLevel}
 						/>
 					) : null}
 				</div>
 			) : imageUrl ? (
 				<div
-					className="absolute top-0 left-0 right-0"
+					className="absolute top-0 left-0 right-0 overflow-hidden rounded-xl"
 					style={{
+						isolation: "isolate",
 						height: "100%",
 						backgroundColor: "rgba(0, 0, 0, 1)",
 						backgroundImage: `url(${imageUrl})`,
@@ -1810,8 +1822,8 @@ function TiledMediaContent({
 			{/* Bottom portion: Audio Waveform (video only) */}
 			{isVideo && mediaAsset?.url && hasAudio && (
 				<div
-					className="absolute bottom-0 left-0 right-0"
-					style={{ height: `${trackHeight - filmstripHeight}px` }}
+					className="absolute bottom-0 left-0 right-0 overflow-hidden rounded-b-xl"
+					style={{ height: `${trackHeight - filmstripHeight}px`, isolation: "isolate" }}
 				>
 					<AudioWaveform
 						audioUrl={mediaAsset.url}
@@ -1868,7 +1880,7 @@ function MediaElementHeader({
 	);
 }
 
-function ElementContent({ element, track }: ElementContentProps) {
+function ElementContent({ element, track, zoomLevel }: ElementContentProps) {
 	switch (element.type) {
 		case "text":
 			return <TextElementContent element={element} />;
@@ -1882,7 +1894,7 @@ function ElementContent({ element, track }: ElementContentProps) {
 			return <AudioElementContent element={element} track={track} />;
 		case "video":
 		case "image":
-			return <TiledMediaContent element={element} track={track} />;
+			return <TiledMediaContent element={element} track={track} zoomLevel={zoomLevel} />;
 	}
 }
 

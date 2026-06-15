@@ -243,7 +243,7 @@ function ProjectHero({
 					Reset all
 				</button>
 			</div>
-			<div className="mt-1 flex items-center gap-1.5 text-[0.62rem] text-white/40">
+			<div className="mt-1 flex items-center justify-center gap-1.5 text-[0.62rem] text-white/40">
 				<span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-1.5 py-px uppercase tracking-[0.14em]">
 					Project
 				</span>

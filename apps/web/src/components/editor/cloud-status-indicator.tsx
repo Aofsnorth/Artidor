@@ -6,8 +6,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	AlertCircleIcon,
 	CloudIcon,
-	CloudSavingIcon,
-	FolderUploadIcon,
 	CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";

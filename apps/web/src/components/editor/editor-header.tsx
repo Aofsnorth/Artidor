@@ -16,7 +16,6 @@ import { useRouter } from "next/navigation";
 import { FaDiscord } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
 import { ShareButton } from "./share-button";
-import { ThemeToggle } from "../theme-toggle";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
 import { toast } from "sonner";
@@ -94,13 +93,8 @@ export function EditorHeader() {
 			   flush against the panel boundary. */}
 			<nav className="relative ml-auto flex items-center gap-2.5 pr-1">
 				<CloudStatusIndicator />
-				{/* Utilities Capsule */}
-				<div className="flex h-7 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.025] px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
-					<ThemeToggle
-						className="size-5 rounded-full text-white/60 hover:text-white transition-all duration-200 flex items-center justify-center"
-						iconClassName="!size-3.5"
-					/>
-				</div>
+				{/* Theme toggle removed — the editor is pinned to dark, so a
+					light/dark switch did nothing visible here. */}
 
 				<ShareButton />
 				<div className="ml-1">
