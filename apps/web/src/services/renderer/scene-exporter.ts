@@ -43,6 +43,18 @@ const qualityMap = {
 // a real macrotask lets React repaint and the cancel check fire.
 const YIELD_EVERY_FRAMES = 8;
 
+// Stage-1 export profiling. Render and encode are pipelined, so the only number
+// that tells us *what* is slow is how main-thread wall-clock per frame splits:
+//   - render (composite + video decode, all on the main thread)
+//   - backpressure wait (stalling for the WebCodecs encoder to drain)
+//   - add() snapshot (canvas -> VideoFrame copy)
+//   - yield (the deliberate macrotask hand-back)
+// If render dominates and backpressure is ~0, the compositor is the bottleneck
+// and moving it to a Worker/OffscreenCanvas raises throughput. If backpressure
+// dominates, the encoder is the limit and a Worker only smooths the UI.
+// Flip to false to silence the summary once the numbers are in.
+const PROFILE_EXPORT = true;
+
 // Yield a macrotask so the browser can paint and run timers. MessageChannel is
 // used over setTimeout(0) because it is not subject to the 4ms clamp, keeping
 // the yield overhead negligible.
@@ -178,6 +190,13 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		let pendingEncode: Promise<void> | null = null;
 		const frameDuration = 1 / fpsFloat;
 
+		// Stage-1 profiling accumulators (ms). Only touched when PROFILE_EXPORT.
+		let profRender = 0;
+		let profBackpressure = 0;
+		let profAdd = 0;
+		let profYield = 0;
+		const profStart = PROFILE_EXPORT ? performance.now() : 0;
+
 		for (let i = 0; i < frameCount; i++) {
 			if (this.isCancelled) {
 				if (pendingEncode) await pendingEncode.catch(() => {});
@@ -191,12 +210,29 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			// Respect the previous frame's encoder backpressure before rendering the
 			// next one. Usually already resolved, so this does not stall the overlap.
-			if (pendingEncode) await pendingEncode;
+			if (pendingEncode) {
+				if (PROFILE_EXPORT) {
+					const t = performance.now();
+					await pendingEncode;
+					profBackpressure += performance.now() - t;
+				} else {
+					await pendingEncode;
+				}
+			}
 
 			// Composite frame i, then immediately capture it. add() snapshots the
 			// canvas synchronously, so these two must stay adjacent (no await).
-			await this.renderer.render({ node: rootNode, time: timeTicks });
-			pendingEncode = videoSource.add(timeSeconds, frameDuration);
+			if (PROFILE_EXPORT) {
+				const tRender = performance.now();
+				await this.renderer.render({ node: rootNode, time: timeTicks });
+				const tAdd = performance.now();
+				profRender += tAdd - tRender;
+				pendingEncode = videoSource.add(timeSeconds, frameDuration);
+				profAdd += performance.now() - tAdd;
+			} else {
+				await this.renderer.render({ node: rootNode, time: timeTicks });
+				pendingEncode = videoSource.add(timeSeconds, frameDuration);
+			}
 
 			this.emit("progress", i / frameCount);
 
@@ -204,12 +240,42 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			// bar) repaints and the cancel interval can fire. Safe here: frame i has
 			// already been captured by add() above.
 			if (i % YIELD_EVERY_FRAMES === 0) {
-				await yieldToEventLoop();
+				if (PROFILE_EXPORT) {
+					const t = performance.now();
+					await yieldToEventLoop();
+					profYield += performance.now() - t;
+				} else {
+					await yieldToEventLoop();
+				}
 			}
 		}
 
 		// Drain the last in-flight encode before finalizing.
-		if (pendingEncode) await pendingEncode;
+		if (pendingEncode) {
+			if (PROFILE_EXPORT) {
+				const t = performance.now();
+				await pendingEncode;
+				profBackpressure += performance.now() - t;
+			} else {
+				await pendingEncode;
+			}
+		}
+
+		if (PROFILE_EXPORT && frameCount > 0) {
+			const wall = performance.now() - profStart;
+			const per = (ms: number) => (ms / frameCount).toFixed(2);
+			const pct = (ms: number) => ((ms / wall) * 100).toFixed(0);
+			// One compact summary. render = composite+decode (Worker-offloadable);
+			// backpressure = waiting on the WebCodecs encoder (NOT Worker-fixable).
+			console.log(
+				`[export-profile] ${frameCount} frames @ ${fpsFloat.toFixed(2)}fps | ` +
+					`wall ${(wall / 1000).toFixed(2)}s (${(frameCount / (wall / 1000)).toFixed(1)} fps) | ` +
+					`render ${per(profRender)}ms/f (${pct(profRender)}%) | ` +
+					`backpressure ${per(profBackpressure)}ms/f (${pct(profBackpressure)}%) | ` +
+					`add ${per(profAdd)}ms/f (${pct(profAdd)}%) | ` +
+					`yield ${per(profYield)}ms/f (${pct(profYield)}%)`,
+			);
+		}
 
 		if (this.isCancelled) {
 			await output.cancel();
