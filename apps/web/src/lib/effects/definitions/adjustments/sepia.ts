@@ -20,9 +20,10 @@ export const sepiaAdjustmentDefinition: EffectDefinition = {
 			{
 				shader: "sepia",
 				uniforms: ({ effectParams }) => {
-					const amount = typeof effectParams.amount === "number"
-						? effectParams.amount
-						: Number.parseFloat(String(effectParams.amount));
+					const amount =
+						typeof effectParams.amount === "number"
+							? effectParams.amount
+							: Number.parseFloat(String(effectParams.amount));
 					return {
 						u_amount: amount / 100,
 					};

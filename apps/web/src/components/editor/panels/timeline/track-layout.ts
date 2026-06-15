@@ -5,7 +5,20 @@ import {
 	TIMELINE_TRACK_HEIGHTS_PX,
 } from "./layout";
 
-export function getTrackHeight({ type }: { type: TrackType }): number {
+export function getTrackHeight({
+	type,
+	overrideHeight,
+}: {
+	type: TrackType;
+	overrideHeight?: number;
+}): number {
+	// `overrideHeight` lets the user-resizable track height bypass the
+	// default per-type height. We clamp the override to a sane range so a
+	// stray drag can't collapse a track to 0px or balloon it to fill the
+	// whole editor.
+	if (typeof overrideHeight === "number" && Number.isFinite(overrideHeight)) {
+		return Math.max(20, Math.min(400, Math.round(overrideHeight)));
+	}
 	return TIMELINE_TRACK_HEIGHTS_PX[type];
 }
 
@@ -26,33 +39,43 @@ export function getCumulativeHeightBefore({
 	tracks,
 	trackIndex,
 	getExtraHeight,
+	overrideHeights,
 }: {
-	tracks: Array<{ type: TrackType }>;
+	tracks: Array<{ type: TrackType; id: string }>;
 	trackIndex: number;
 	getExtraHeight?: (trackIndex: number) => number;
+	overrideHeights?: Record<string, number>;
 }): number {
-	return tracks
-		.slice(0, trackIndex)
-		.reduce(
-			(sum, track, i) =>
-				sum +
-				getTrackHeight({ type: track.type }) +
-				(getExtraHeight?.(i) ?? 0) +
-				TIMELINE_TRACK_GAP_PX,
-			0,
-		);
+	return tracks.slice(0, trackIndex).reduce(
+		(sum, track, i) =>
+			sum +
+			getTrackHeight({
+				type: track.type,
+				overrideHeight: overrideHeights?.[track.id],
+			}) +
+			(getExtraHeight?.(i) ?? 0) +
+			TIMELINE_TRACK_GAP_PX,
+		0,
+	);
 }
 
 export function getTotalTracksHeight({
 	tracks,
 	getExtraHeight,
+	overrideHeights,
 }: {
-	tracks: Array<{ type: TrackType }>;
+	tracks: Array<{ type: TrackType; id: string }>;
 	getExtraHeight?: (trackIndex: number) => number;
+	overrideHeights?: Record<string, number>;
 }): number {
 	const tracksHeight = tracks.reduce(
 		(sum, track, i) =>
-			sum + getTrackHeight({ type: track.type }) + (getExtraHeight?.(i) ?? 0),
+			sum +
+			getTrackHeight({
+				type: track.type,
+				overrideHeight: overrideHeights?.[track.id],
+			}) +
+			(getExtraHeight?.(i) ?? 0),
 		0,
 	);
 	const gapsHeight = Math.max(0, tracks.length - 1) * TIMELINE_TRACK_GAP_PX;

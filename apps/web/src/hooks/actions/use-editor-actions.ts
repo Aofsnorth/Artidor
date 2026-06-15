@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
 import { useActionHandler } from "@/hooks/actions/use-action-handler";
 import { useEditor } from "../use-editor";
 import { useElementSelection } from "../timeline/element/use-element-selection";
@@ -10,13 +11,20 @@ import { useKeyframeSelection } from "../timeline/element/use-keyframe-selection
 import { getElementsAtTime, hasMediaId } from "@/lib/timeline";
 import { cancelInteraction } from "@/lib/cancel-interaction";
 import { invokeAction } from "@/lib/actions";
-import { canToggleSourceAudio } from "@/lib/timeline/audio-separation";
+import {
+	canToggleSourceAudio,
+	doesElementHaveEnabledAudio,
+} from "@/lib/timeline/audio-separation";
 import { toast } from "sonner";
 import {
 	activateScope,
 	clearActiveScope,
 	type ScopeEntry,
 } from "@/lib/selection/scope";
+import {
+	decodeAndCache,
+	getCacheKey,
+} from "@/components/editor/panels/timeline/audio-waveform";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -378,9 +386,80 @@ export function useEditorActions() {
 	);
 
 	useActionHandler(
+		"fit-to-screen",
+		() => {
+			// The actual zoom math lives in the Timeline component
+			// (because it needs the live viewport width). We just
+			// broadcast a window event; the Timeline's listener
+			// computes and applies the fit. This keeps the action
+			// fully decoupled from the timeline component lifecycle.
+			window.dispatchEvent(new CustomEvent("timeline-fit-to-screen"));
+		},
+		undefined,
+	);
+
+	useActionHandler(
 		"toggle-bookmark",
 		() => {
 			editor.scenes.toggleBookmark({ time: editor.playback.getCurrentTime() });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"toggle-element-bookmark",
+		() => {
+			if (selectedElements.length !== 1) {
+				toast.info("Please select a single element to add a bookmark.");
+				return;
+			}
+			const selectedRef = selectedElements[0]!;
+			const track = editor.timeline.getTrackById({
+				trackId: selectedRef.trackId,
+			});
+			const element = track?.elements.find(
+				(el) => el.id === selectedRef.elementId,
+			);
+			if (!element) return;
+
+			const currentTime = editor.playback.getCurrentTime();
+			// The bookmark time should be relative to the element's inner time (source time).
+			// element.trimStart + (currentTime - element.startTime)
+			const relativeTime =
+				element.trimStart + (currentTime - element.startTime);
+
+			// Check if we are inside the element's bounds
+			if (
+				currentTime < element.startTime ||
+				currentTime > element.startTime + element.duration
+			) {
+				toast.info("Playhead must be over the selected element.");
+				return;
+			}
+
+			const existingBookmarks = element.bookmarks ?? [];
+			// Toggle logic: if there is a bookmark near this time (e.g. within 0.1s), remove it.
+			const threshold = 0.1 * TICKS_PER_SECOND;
+			const existingIndex = existingBookmarks.findIndex(
+				(b) => Math.abs(b.time - relativeTime) < threshold,
+			);
+
+			let newBookmarks;
+			if (existingIndex !== -1) {
+				newBookmarks = existingBookmarks.filter((_, i) => i !== existingIndex);
+			} else {
+				newBookmarks = [...existingBookmarks, { time: relativeTime }];
+			}
+
+			editor.timeline.updateElements({
+				updates: [
+					{
+						trackId: selectedRef.trackId,
+						elementId: selectedRef.elementId,
+						patch: { bookmarks: newBookmarks },
+					},
+				],
+			});
 		},
 		undefined,
 	);
@@ -522,8 +601,123 @@ export function useEditorActions() {
 
 	useActionHandler(
 		"add-beat-markers",
-		() => {
-			invokeAction("add-beat-markers");
+		async () => {
+			if (selectedElements.length !== 1) {
+				toast.info("Please select a single audio or video element.");
+				return;
+			}
+			const selectedRef = selectedElements[0]!;
+			const track = editor.timeline.getTrackById({
+				trackId: selectedRef.trackId,
+			});
+			const element = track?.elements.find(
+				(el) => el.id === selectedRef.elementId,
+			);
+			if (!element) return;
+
+			const mediaAssets = editor.media.getAssets();
+			const mediaAsset = hasMediaId(element)
+				? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+				: null;
+
+			if (element.type !== "audio" && element.type !== "video") {
+				toast.info(
+					"Beat markers can only be added to audio or video elements.",
+				);
+				return;
+			}
+			if (!doesElementHaveEnabledAudio({ element, mediaAsset })) {
+				toast.info("Selected element does not have active audio.");
+				return;
+			}
+
+			toast.loading("Analyzing beats...", { id: "beat-analysis" });
+
+			try {
+				let audioUrl: string | undefined;
+				let mediaFile: File | undefined;
+
+				if (element.type === "audio") {
+					audioUrl =
+						element.sourceType === "library"
+							? element.sourceUrl
+							: mediaAsset?.url;
+					mediaFile =
+						element.sourceType === "library" ? undefined : mediaAsset?.file;
+				} else {
+					audioUrl = mediaAsset?.url;
+					mediaFile = mediaAsset?.file;
+				}
+
+				const cacheKey = getCacheKey(audioUrl, mediaFile);
+				const decoded = await decodeAndCache(cacheKey, audioUrl, mediaFile);
+
+				const peaks = decoded.peakBuffer;
+				const safePeak = Math.max(decoded.globalPeak, 0.01);
+				const logBase = Math.log1p(1);
+
+				const newBookmarks = [...(element.bookmarks ?? [])];
+				const blockDurationTicks = (TICKS_PER_SECOND * 256) / 44100; // rough approximation, PEAK_BLOCK_SIZE=256 and ~44100 sampleRate
+
+				// Scan for beats using the same heuristic as the visualizer
+				for (let i = 1; i < peaks.length - 1; i++) {
+					const normalized = Math.min(1, peaks[i] / safePeak);
+					const scaled = Math.log1p(normalized) / logBase;
+					const leftPeak = peaks[i - 1] ?? 0;
+					const rightPeak = peaks[i + 1] ?? 0;
+
+					const isBeat =
+						scaled > 0.32 && peaks[i] >= leftPeak && peaks[i] >= rightPeak;
+					if (isBeat) {
+						// i is the block index. PEAK_BLOCK_SIZE is 256
+						// We don't have the exact sampleRate here, but typical is 44100
+						// Actually we can approximate time using block duration
+						// but wait, we need exact time. bufferLength is the total samples.
+						// time = (i * 256) / sampleRate. sampleRate = bufferLength / sourceDurationSeconds
+						const sourceDurationSeconds = element.sourceDuration
+							? element.sourceDuration / TICKS_PER_SECOND
+							: (element.duration + element.trimStart + element.trimEnd) /
+								TICKS_PER_SECOND;
+
+						const sampleRate = decoded.bufferLength / sourceDurationSeconds;
+						const timeInSeconds = (i * 256) / sampleRate;
+						const timeInTicks = Math.round(timeInSeconds * TICKS_PER_SECOND);
+
+						// Only add if it's within the trimmed bounds
+						if (
+							timeInTicks >= element.trimStart &&
+							timeInTicks <= element.sourceDuration - element.trimEnd
+						) {
+							// Avoid duplicates
+							if (
+								!newBookmarks.some(
+									(b) =>
+										Math.abs(b.time - timeInTicks) < TICKS_PER_SECOND * 0.1,
+								)
+							) {
+								newBookmarks.push({ time: timeInTicks });
+							}
+						}
+					}
+				}
+
+				editor.timeline.updateElements({
+					updates: [
+						{
+							trackId: track.id,
+							elementId: element.id,
+							patch: { bookmarks: newBookmarks },
+						},
+					],
+				});
+				toast.success(
+					`Added ${newBookmarks.length - (element.bookmarks?.length ?? 0)} beat markers!`,
+					{ id: "beat-analysis" },
+				);
+			} catch (error) {
+				console.error("Beat analysis failed", error);
+				toast.error("Failed to analyze beats.", { id: "beat-analysis" });
+			}
 		},
 		undefined,
 	);
@@ -589,7 +783,7 @@ export function useEditorActions() {
 	useActionHandler(
 		"open-teleprompter",
 		() => {
-			editor.teleprompter.open();
+			useOpenDialogsStore.getState().setOpen("teleprompter", true);
 		},
 		undefined,
 	);
@@ -597,7 +791,7 @@ export function useEditorActions() {
 	useActionHandler(
 		"open-templates",
 		() => {
-			editor.teleprompter.open(); // we reuse a generic "secondary panel" call
+			useOpenDialogsStore.getState().setOpen("templates", true);
 		},
 		undefined,
 	);

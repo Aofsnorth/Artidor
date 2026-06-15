@@ -2,7 +2,9 @@ import { EditorCore } from "@/core";
 import { Command, type CommandResult } from "@/lib/commands/base-command";
 import type { SceneTracks, TimelineTrack } from "@/lib/timeline";
 
-export type TrackPropertyUpdates = Partial<Pick<TimelineTrack, "name">>;
+export type TrackPropertyUpdates = Partial<
+	Pick<TimelineTrack, "name" | "color">
+>;
 
 export class UpdateTrackCommand extends Command {
 	private savedState: SceneTracks | null = null;

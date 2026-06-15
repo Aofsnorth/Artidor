@@ -10,9 +10,33 @@ export const hslAdjustmentDefinition: EffectDefinition = {
 	name: "HSL",
 	keywords: ["hsl", "hue", "saturation", "luminance", "adjust"],
 	params: [
-		{ key: "hue", label: "Hue", type: "number", default: 0, min: -180, max: 180, step: 1 },
-		{ key: "saturation", label: "Saturation", type: "number", default: 0, min: -100, max: 100, step: 1 },
-		{ key: "luminance", label: "Luminance", type: "number", default: 0, min: -100, max: 100, step: 1 },
+		{
+			key: "hue",
+			label: "Hue",
+			type: "number",
+			default: 0,
+			min: -180,
+			max: 180,
+			step: 1,
+		},
+		{
+			key: "saturation",
+			label: "Saturation",
+			type: "number",
+			default: 0,
+			min: -100,
+			max: 100,
+			step: 1,
+		},
+		{
+			key: "luminance",
+			label: "Luminance",
+			type: "number",
+			default: 0,
+			min: -100,
+			max: 100,
+			step: 1,
+		},
 	],
 	renderer: {
 		passes: [],
@@ -24,7 +48,15 @@ export const curvesAdjustmentDefinition: EffectDefinition = {
 	name: "RGB Curves",
 	keywords: ["curves", "rgb", "tone", "adjust"],
 	params: [
-		{ key: "intensity", label: "Intensity", type: "number", default: 100, min: 0, max: 100, step: 1 },
+		{
+			key: "intensity",
+			label: "Intensity",
+			type: "number",
+			default: 100,
+			min: 0,
+			max: 100,
+			step: 1,
+		},
 	],
 	renderer: {
 		passes: [],
@@ -36,7 +68,15 @@ export const lutAdjustmentDefinition: EffectDefinition = {
 	name: "LUT",
 	keywords: ["lut", "cube", "color", "look", "adjust"],
 	params: [
-		{ key: "intensity", label: "Intensity", type: "number", default: 100, min: 0, max: 100, step: 1 },
+		{
+			key: "intensity",
+			label: "Intensity",
+			type: "number",
+			default: 100,
+			min: 0,
+			max: 100,
+			step: 1,
+		},
 	],
 	renderer: {
 		passes: [],

@@ -35,7 +35,8 @@ export const TEXT_ANIM_PRESETS: TextAnimPreset[] = [
 		id: "typewriter",
 		name: "Typewriter",
 		category: "typewriter",
-		description: "Each character appears one at a time (clip-based approximation)",
+		description:
+			"Each character appears one at a time (clip-based approximation)",
 		keyframes: [
 			{ propertyPath: "opacity", time: 0, value: 0 },
 			{ propertyPath: "opacity", time: 1, value: 100 },
@@ -339,7 +340,8 @@ export const TEXT_ANIM_PRESETS: TextAnimPreset[] = [
 		id: "type-cursor",
 		name: "Blink Cursor",
 		category: "typewriter",
-		description: "Text appears with a blinking cursor at the end (static approximation)",
+		description:
+			"Text appears with a blinking cursor at the end (static approximation)",
 		keyframes: [
 			{ propertyPath: "opacity", time: 0, value: 0 },
 			{ propertyPath: "opacity", time: 0.8, value: 100 },

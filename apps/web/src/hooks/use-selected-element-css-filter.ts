@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
-import { effectsToCssFilter, isAdjustmentEffect } from "@/lib/effects/css-filter";
+import {
+	effectsToCssFilter,
+	isAdjustmentEffect,
+} from "@/lib/effects/css-filter";
 import type { Effect } from "@/lib/effects/types";
-import type { TimelineElement, VisualElement, EffectElement } from "@/lib/timeline";
+import type {
+	TimelineElement,
+	VisualElement,
+	EffectElement,
+} from "@/lib/timeline";
 
 function getElementEffects({
 	element,
@@ -12,7 +19,11 @@ function getElementEffects({
 	element: TimelineElement | undefined;
 }): Effect[] {
 	if (!element) return [];
-	if (element.type === "video" || element.type === "image" || element.type === "audio") {
+	if (
+		element.type === "video" ||
+		element.type === "image" ||
+		element.type === "audio"
+	) {
 		const visual = element as VisualElement;
 		return visual.effects ?? [];
 	}

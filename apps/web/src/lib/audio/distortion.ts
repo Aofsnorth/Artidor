@@ -1,7 +1,19 @@
 /**
  * Distortion / saturation effects.
  */
-export type DistortionType = "overdrive" | "distortion" | "fuzz" | "bit-crusher" | "saturation" | "telephone" | "radio" | "megaphone" | "underwater" | "cave" | "bathroom" | "garage";
+export type DistortionType =
+	| "overdrive"
+	| "distortion"
+	| "fuzz"
+	| "bit-crusher"
+	| "saturation"
+	| "telephone"
+	| "radio"
+	| "megaphone"
+	| "underwater"
+	| "cave"
+	| "bathroom"
+	| "garage";
 
 export interface DistortionParams {
 	enabled: boolean;
@@ -22,18 +34,66 @@ export const DISTORTION_PRESETS: Array<{
 	name: string;
 	params: DistortionParams;
 }> = [
-	{ id: "overdrive", name: "Overdrive", params: { enabled: true, type: "overdrive", amount: 0.3, mix: 1.0 } },
-	{ id: "distortion", name: "Distortion", params: { enabled: true, type: "distortion", amount: 0.5, mix: 1.0 } },
-	{ id: "fuzz", name: "Fuzz", params: { enabled: true, type: "fuzz", amount: 0.7, mix: 1.0 } },
-	{ id: "bit-crusher", name: "Bit Crusher", params: { enabled: true, type: "bit-crusher", amount: 0.5, mix: 1.0 } },
-	{ id: "saturation", name: "Saturation", params: { enabled: true, type: "saturation", amount: 0.4, mix: 1.0 } },
-	{ id: "telephone", name: "Telephone", params: { enabled: true, type: "telephone", amount: 1.0, mix: 1.0 } },
-	{ id: "radio", name: "Radio", params: { enabled: true, type: "radio", amount: 1.0, mix: 1.0 } },
-	{ id: "megaphone", name: "Megaphone", params: { enabled: true, type: "megaphone", amount: 1.0, mix: 1.0 } },
-	{ id: "underwater", name: "Underwater", params: { enabled: true, type: "underwater", amount: 1.0, mix: 1.0 } },
-	{ id: "cave", name: "Cave", params: { enabled: true, type: "cave", amount: 0.7, mix: 1.0 } },
-	{ id: "bathroom", name: "Bathroom", params: { enabled: true, type: "bathroom", amount: 0.6, mix: 1.0 } },
-	{ id: "garage", name: "Garage", params: { enabled: true, type: "garage", amount: 0.5, mix: 1.0 } },
+	{
+		id: "overdrive",
+		name: "Overdrive",
+		params: { enabled: true, type: "overdrive", amount: 0.3, mix: 1.0 },
+	},
+	{
+		id: "distortion",
+		name: "Distortion",
+		params: { enabled: true, type: "distortion", amount: 0.5, mix: 1.0 },
+	},
+	{
+		id: "fuzz",
+		name: "Fuzz",
+		params: { enabled: true, type: "fuzz", amount: 0.7, mix: 1.0 },
+	},
+	{
+		id: "bit-crusher",
+		name: "Bit Crusher",
+		params: { enabled: true, type: "bit-crusher", amount: 0.5, mix: 1.0 },
+	},
+	{
+		id: "saturation",
+		name: "Saturation",
+		params: { enabled: true, type: "saturation", amount: 0.4, mix: 1.0 },
+	},
+	{
+		id: "telephone",
+		name: "Telephone",
+		params: { enabled: true, type: "telephone", amount: 1.0, mix: 1.0 },
+	},
+	{
+		id: "radio",
+		name: "Radio",
+		params: { enabled: true, type: "radio", amount: 1.0, mix: 1.0 },
+	},
+	{
+		id: "megaphone",
+		name: "Megaphone",
+		params: { enabled: true, type: "megaphone", amount: 1.0, mix: 1.0 },
+	},
+	{
+		id: "underwater",
+		name: "Underwater",
+		params: { enabled: true, type: "underwater", amount: 1.0, mix: 1.0 },
+	},
+	{
+		id: "cave",
+		name: "Cave",
+		params: { enabled: true, type: "cave", amount: 0.7, mix: 1.0 },
+	},
+	{
+		id: "bathroom",
+		name: "Bathroom",
+		params: { enabled: true, type: "bathroom", amount: 0.6, mix: 1.0 },
+	},
+	{
+		id: "garage",
+		name: "Garage",
+		params: { enabled: true, type: "garage", amount: 0.5, mix: 1.0 },
+	},
 ];
 
 /**

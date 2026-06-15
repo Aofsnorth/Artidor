@@ -9,7 +9,7 @@ if (webEnv.NODE_ENV === "production") {
 }
 
 export default {
-	schema: "./src/schema.ts",
+	schema: "./src/lib/db/schema.ts",
 	dialect: "postgresql",
 	migrations: {
 		table: "drizzle_migrations",

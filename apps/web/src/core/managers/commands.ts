@@ -13,19 +13,19 @@ export class CommandManager {
 	public isRippleEnabled = false;
 	private history: CommandHistoryEntry[] = [];
 	private redoStack: CommandHistoryEntry[] = [];
-	private reactors: Array<() => void> = [];
+	private reactors: Array<(command: Command) => void> = [];
 
 	constructor(private editor: EditorCore) {}
 
 	execute({ command }: { command: Command }): Command {
 		const beforeTracks = this.isRippleEnabled
-			? this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null
+			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
 		const previousSelection = this.getSelectionSnapshot();
 		const result = command.execute();
 		this.applyRippleIfEnabled({ beforeTracks });
 		const selectionOverride = this.applySelectionOverride(result);
-		this.runReactors();
+		this.runReactors(command);
 		this.history.push({
 			command,
 			previousSelection,
@@ -43,7 +43,7 @@ export class CommandManager {
 		this.redoStack = [];
 	}
 
-	registerReactor(reactor: () => void): void {
+	registerReactor(reactor: (command: Command) => void): void {
 		this.reactors.push(reactor);
 	}
 
@@ -74,13 +74,13 @@ export class CommandManager {
 		}
 
 		const beforeTracks = this.isRippleEnabled
-			? this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null
+			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
 		const previousSelection = this.getSelectionSnapshot();
 		const result = entry.command.redo();
 		this.applyRippleIfEnabled({ beforeTracks });
 		const selectionOverride = this.applySelectionOverride(result);
-		this.runReactors();
+		this.runReactors(entry.command);
 
 		this.history.push({
 			command: entry.command,
@@ -126,9 +126,9 @@ export class CommandManager {
 		return selectionOverride;
 	}
 
-	private runReactors(): void {
+	private runReactors(command: Command): void {
 		for (const reactor of this.reactors) {
-			reactor();
+			reactor(command);
 		}
 	}
 

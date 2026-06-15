@@ -41,10 +41,7 @@ export async function captureFrameFromVideo({
 			video.addEventListener("error", onError);
 		});
 
-		const safeTime = Math.max(
-			0,
-			Math.min(timeSeconds, video.duration - 0.01),
-		);
+		const safeTime = Math.max(0, Math.min(timeSeconds, video.duration - 0.01));
 		video.currentTime = safeTime;
 		await new Promise<void>((resolve) => {
 			const onSeeked = () => {

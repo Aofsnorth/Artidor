@@ -12,7 +12,7 @@ import { useElementSelection } from "@/hooks/timeline/element/use-element-select
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { TIMELINE_DRAG_THRESHOLD_PX } from "@/components/editor/panels/timeline/interaction";
-import { roundToFrame } from "opencut-wasm";
+import { roundToFrame } from "artidor-wasm";
 import { computeDropTarget } from "@/components/editor/panels/timeline/drop-target";
 import { getMouseTimeFromClientX } from "@/lib/timeline/drag-utils";
 import { generateUUID } from "@/utils/id";
@@ -116,11 +116,9 @@ function getDragDropTarget({
 	const scrollContainer = tracksScrollRef.current;
 	if (!containerRect || !scrollContainer) return null;
 
-	const sourceTrack = [
-		...tracks.overlay,
-		tracks.main,
-		...tracks.audio,
-	].find(({ id }) => id === trackId);
+	const sourceTrack = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+		({ id }) => id === trackId,
+	);
 	const movingElement = sourceTrack?.elements.find(
 		({ id }) => id === elementId,
 	);
@@ -153,7 +151,11 @@ function getDragDropTarget({
 interface StartDragParams
 	extends Omit<
 		ElementDragState,
-		"isDragging" | "currentTime" | "currentMouseY" | "dragElementIds" | "dragTimeOffsets"
+		| "isDragging"
+		| "currentTime"
+		| "currentMouseY"
+		| "dragElementIds"
+		| "dragTimeOffsets"
 	> {
 	initialCurrentTime: number;
 	initialCurrentMouseY: number;
@@ -314,17 +316,18 @@ export function useElementInteraction({
 						zoomLevel,
 						scrollLeft,
 					});
-				const adjustedTime = Math.max(
-					0,
-					mouseTime - pendingDragRef.current.clickOffsetTime,
-				);
-				const snappedTime = roundToFrame({
-					time: adjustedTime,
-					rate: activeProject.settings.fps,
-				}) ?? adjustedTime;
-				startDrag({
-					...pendingDragRef.current,
-					initialCurrentTime: snappedTime,
+					const adjustedTime = Math.max(
+						0,
+						mouseTime - pendingDragRef.current.clickOffsetTime,
+					);
+					const snappedTime =
+						roundToFrame({
+							time: adjustedTime,
+							rate: activeProject.settings.fps,
+						}) ?? adjustedTime;
+					startDrag({
+						...pendingDragRef.current,
+						initialCurrentTime: snappedTime,
 						initialCurrentMouseY: clientY,
 					});
 					startedDragThisEvent = true;
@@ -364,7 +367,8 @@ export function useElementInteraction({
 			});
 			const adjustedTime = Math.max(0, mouseTime - dragState.clickOffsetTime);
 			const fps = activeProject.settings.fps;
-			const frameSnappedTime = roundToFrame({ time: adjustedTime, rate: fps }) ?? adjustedTime;
+			const frameSnappedTime =
+				roundToFrame({ time: adjustedTime, rate: fps }) ?? adjustedTime;
 
 			const sourceTrack = tracks.find(({ id }) => id === dragState.trackId);
 			const movingElement = sourceTrack?.elements.find(
@@ -406,24 +410,25 @@ export function useElementInteraction({
 		document.addEventListener("mousemove", handleMouseMove);
 		return () => document.removeEventListener("mousemove", handleMouseMove);
 	}, [
-		dragState.isDragging, 
-		dragState.clickOffsetTime, 
-		dragState.elementId, 
-		dragState.startMouseY, 
-		dragState.trackId, 
-		zoomLevel, 
-		isElementSelected, 
-		selectElement, 
-		editor.project, 
-		timelineRef, 
-		tracksScrollRef, 
-		tracksContainerRef, 
-		headerRef, 
-		tracks, 
-		isPendingDrag, 
-		startDrag, 
-		getDragSnapResult, 
-		onSnapPointChange, sceneTracks
+		dragState.isDragging,
+		dragState.clickOffsetTime,
+		dragState.elementId,
+		dragState.startMouseY,
+		dragState.trackId,
+		zoomLevel,
+		isElementSelected,
+		selectElement,
+		editor.project,
+		timelineRef,
+		tracksScrollRef,
+		tracksContainerRef,
+		headerRef,
+		tracks,
+		isPendingDrag,
+		startDrag,
+		getDragSnapResult,
+		onSnapPointChange,
+		sceneTracks,
 	]);
 
 	useEffect(() => {
@@ -476,7 +481,8 @@ export function useElementInteraction({
 				return;
 			}
 			const movingElement =
-				sourceTrack.elements.find(({ id }) => id === dragState.elementId) ?? null;
+				sourceTrack.elements.find(({ id }) => id === dragState.elementId) ??
+				null;
 			if (
 				movingElement &&
 				!dropTarget.isNewTrack &&
@@ -524,20 +530,21 @@ export function useElementInteraction({
 		document.addEventListener("mouseup", handleMouseUp);
 		return () => document.removeEventListener("mouseup", handleMouseUp);
 	}, [
-		dragState.isDragging, 
-		dragState.elementId, 
-		dragState.startMouseY, 
-		dragState.trackId, 
-		dragState.currentTime, 
-		zoomLevel, 
-		tracks, 
-		endDrag, 
-		onSnapPointChange, 
-		editor.timeline, 
-		tracksContainerRef, 
-		tracksScrollRef, 
-		headerRef, 
-		selectElement, sceneTracks
+		dragState.isDragging,
+		dragState.elementId,
+		dragState.startMouseY,
+		dragState.trackId,
+		dragState.currentTime,
+		zoomLevel,
+		tracks,
+		endDrag,
+		onSnapPointChange,
+		editor.timeline,
+		tracksContainerRef,
+		tracksScrollRef,
+		headerRef,
+		selectElement,
+		sceneTracks,
 	]);
 
 	useEffect(() => {

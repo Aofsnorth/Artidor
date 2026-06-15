@@ -1,4 +1,4 @@
-import type { FrameRate } from "opencut-wasm";
+import type { FrameRate } from "artidor-wasm";
 import { EXPORT_MIME_TYPES } from "./mime-types";
 
 export const EXPORT_QUALITY_VALUES = [

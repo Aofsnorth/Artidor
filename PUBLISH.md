@@ -20,7 +20,7 @@ gh repo create Aofsnorth/Artidor --public --description "Artidor: free, open-sou
 ## Push the initial commit (after auth is set)
 
 ```bash
-cd "C:/Users/Arthe/Documents/MyProject/OpenCut"
+cd "C:/Users/Arthe/Documents/MyProject/Artidor"
 
 # Stage everything
 git add -A

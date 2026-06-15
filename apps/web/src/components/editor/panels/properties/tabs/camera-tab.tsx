@@ -2,7 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
-import { Camera01Icon, Layers01Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import {
+	Camera01Icon,
+	Layers01Icon,
+	ViewIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 export function CameraTab() {
@@ -12,12 +16,14 @@ export function CameraTab() {
 		? [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio]
 		: [];
 	const cameraLayers = tracks.flatMap((track) =>
-		track.elements.filter((element) =>
-			(element as { type?: string }).type === "camera",
+		track.elements.filter(
+			(element) => (element as { type?: string }).type === "camera",
 		),
 	);
 	const nullLayers = tracks.flatMap((track) =>
-		track.elements.filter((element) => (element as { nullLayer?: boolean }).nullLayer),
+		track.elements.filter(
+			(element) => (element as { nullLayer?: boolean }).nullLayer,
+		),
 	);
 
 	return (

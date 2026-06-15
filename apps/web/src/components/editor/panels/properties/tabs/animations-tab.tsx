@@ -132,7 +132,9 @@ function PresetIcon({ preset }: { preset: AnimationPreset }) {
 	return (
 		<div
 			className="flex size-12 items-center justify-center rounded-md bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 text-white"
-			style={{ animation: `${preset.type} 2.4s ease-in-out infinite alternate` }}
+			style={{
+				animation: `${preset.type} 2.4s ease-in-out infinite alternate`,
+			}}
 		>
 			<HugeiconsIcon icon={PlayIcon} className="size-5" />
 			<style>{presetStyleKeyframes(preset)}</style>

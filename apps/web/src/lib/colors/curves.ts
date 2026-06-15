@@ -81,8 +81,14 @@ export function applyCurvesToRgb({
 	greenLut: Uint8Array | null;
 	blueLut: Uint8Array | null;
 }): { r: number; g: number; b: number } {
-	const rOut = redLut ? redLut[Math.max(0, Math.min(255, Math.round(r)))] : rgbLut[Math.max(0, Math.min(255, Math.round(r)))];
-	const gOut = greenLut ? greenLut[Math.max(0, Math.min(255, Math.round(g)))] : rgbLut[Math.max(0, Math.min(255, Math.round(g)))];
-	const bOut = blueLut ? blueLut[Math.max(0, Math.min(255, Math.round(b)))] : rgbLut[Math.max(0, Math.min(255, Math.round(b)))];
+	const rOut = redLut
+		? redLut[Math.max(0, Math.min(255, Math.round(r)))]
+		: rgbLut[Math.max(0, Math.min(255, Math.round(r)))];
+	const gOut = greenLut
+		? greenLut[Math.max(0, Math.min(255, Math.round(g)))]
+		: rgbLut[Math.max(0, Math.min(255, Math.round(g)))];
+	const bOut = blueLut
+		? blueLut[Math.max(0, Math.min(255, Math.round(b)))]
+		: rgbLut[Math.max(0, Math.min(255, Math.round(b)))];
 	return { r: rOut, g: gOut, b: bOut };
 }

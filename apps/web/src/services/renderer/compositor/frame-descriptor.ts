@@ -6,7 +6,10 @@ import { createOffscreenCanvas } from "../canvas-utils";
 import { BlurBackgroundNode } from "../nodes/blur-background-node";
 import { ColorNode } from "../nodes/color-node";
 import { EffectLayerNode } from "../nodes/effect-layer-node";
-import { GraphicNode, type ResolvedGraphicNodeState } from "../nodes/graphic-node";
+import {
+	GraphicNode,
+	type ResolvedGraphicNodeState,
+} from "../nodes/graphic-node";
 import { ImageNode } from "../nodes/image-node";
 import { RootNode } from "../nodes/root-node";
 import { StickerNode } from "../nodes/sticker-node";
@@ -363,8 +366,10 @@ function computeVisualTransform({
 	const absHeight = Math.abs(scaledHeight);
 
 	return {
-		centerX: renderer.width / 2 + resolved.transform.position.x * perspectiveScale,
-		centerY: renderer.height / 2 + resolved.transform.position.y * perspectiveScale,
+		centerX:
+			renderer.width / 2 + resolved.transform.position.x * perspectiveScale,
+		centerY:
+			renderer.height / 2 + resolved.transform.position.y * perspectiveScale,
 		width: absWidth,
 		height: absHeight,
 		rotationDegrees: resolved.transform.rotate,
@@ -373,7 +378,9 @@ function computeVisualTransform({
 	};
 }
 
-function fullCanvasTransform(renderer: CanvasRenderer): QuadTransformDescriptor {
+function fullCanvasTransform(
+	renderer: CanvasRenderer,
+): QuadTransformDescriptor {
 	return {
 		centerX: renderer.width / 2,
 		centerY: renderer.height / 2,
@@ -431,11 +438,12 @@ function buildMaskArtifacts({
 			feather: mask.params.feather,
 		});
 		feather = 0;
-		strokePath = definition.renderer.buildStrokePath?.({
-			resolvedParams: mask.params,
-			width: transform.width,
-			height: transform.height,
-		}) ?? null;
+		strokePath =
+			definition.renderer.buildStrokePath?.({
+				resolvedParams: mask.params,
+				width: transform.width,
+				height: transform.height,
+			}) ?? null;
 	} else {
 		const path2d = definition.renderer.buildPath({
 			resolvedParams: mask.params,
@@ -562,4 +570,3 @@ function drawTransformedCanvas({
 	ctx.drawImage(source, x, y, transform.width, transform.height);
 	ctx.restore();
 }
-

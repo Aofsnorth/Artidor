@@ -78,6 +78,7 @@ export function MediaView() {
 		mediaSortBy,
 		mediaSortOrder,
 		setMediaSort,
+		assetCardSize,
 	} = useAssetsPanelStore();
 
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -348,14 +349,14 @@ export function MediaView() {
 						showCancelHint={showCancelHint}
 					/>
 				) : (
-					<div className="flex flex-col gap-3">
+					<div className="@container flex h-full min-h-0 flex-1 flex-col gap-3">
 						<AssetSourceTabs
 							activeSource={assetSource}
 							onChange={setAssetSource}
 						/>
 						<QuickAccessGrid stats={mediaStats} />
 						{assetSource === "library" ? (
-							<div className="flex flex-col gap-2">
+							<div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden">
 								{currentFolderId === null && folders.length > 0 && (
 									<FolderGrid
 										folders={folders}
@@ -412,6 +413,7 @@ export function MediaView() {
 											items={filteredMediaItems}
 											mode={mediaViewMode}
 											onRemove={handleRemove}
+											assetCardSize={assetCardSize}
 										/>
 									</SelectableSurface>
 								)}
@@ -515,7 +517,7 @@ function QuickAccessGrid({
 	] as const;
 
 	return (
-		<div className="grid grid-cols-3 gap-2">
+		<div className="grid grid-cols-1 gap-2 @sm:grid-cols-3 @xs:grid-cols-2">
 			{cards.map((card) => (
 				<div
 					key={card.label}
@@ -541,25 +543,28 @@ function EmptyLibraryState({ onImport }: { onImport: () => void }) {
 		<button
 			type="button"
 			onClick={onImport}
-			className="glass relative flex min-h-[20rem] w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-xl p-8 text-center transition hover:bg-white/[0.08]"
+			className="glass relative flex h-full min-h-[20rem] w-full flex-1 flex-col items-center justify-center gap-[3cqi] overflow-hidden rounded-xl p-[4cqi] text-center transition hover:bg-white/[0.08] @xs:gap-[4cqi] @xs:p-[5cqi] @sm:gap-[5cqi] @sm:p-[6cqi] @lg:gap-[6cqi] @lg:p-[7cqi]"
 		>
 			<div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_58%_22%,rgba(255,255,255,0.16),transparent_24%),radial-gradient(circle_at_50%_36%,rgba(255,255,255,0.06),transparent_36%)]" />
-			<div className="relative grid size-24 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10">
-				<div className="absolute size-40 rounded-full border border-dashed border-white/10" />
-				<div className="absolute size-28 rounded-full border border-dashed border-white/15" />
-				<HugeiconsIcon icon={UploadIcon} className="size-8 text-white/80" />
+			<div className="relative grid size-[15cqi] min-size-16 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10 @xs:size-[18cqi] @sm:size-[20cqi] @lg:size-[22cqi]">
+				<div className="absolute size-[25cqi] rounded-full border border-dashed border-white/10 @xs:size-[30cqi] @sm:size-[32cqi] @lg:size-[36cqi]" />
+				<div className="absolute size-[19cqi] rounded-full border border-dashed border-white/15 @xs:size-[22cqi] @sm:size-[24cqi] @lg:size-[26cqi]" />
+				<HugeiconsIcon
+					icon={UploadIcon}
+					className="size-[6cqi] min-size-6 text-white/80 @xs:size-[7cqi] @sm:size-[8cqi] @lg:size-[9cqi]"
+				/>
 			</div>
 
-			<div className="relative space-y-2">
-				<h3 className="font-serif text-lg text-white">
+			<div className="relative space-y-[1cqi] @xs:space-y-[1.5cqi] @sm:space-y-[2cqi]">
+				<h3 className="font-serif text-[4.5cqi] min-text-sm text-white @xs:text-[5cqi] @sm:text-[5.5cqi] @lg:text-[6cqi]">
 					Your creative journey begins here
 				</h3>
-				<p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
+				<p className="text-muted-foreground mx-auto max-w-sm text-[2.8cqi] min-text-[0.6rem] leading-relaxed @xs:text-[3cqi] @sm:text-[3.2cqi] @lg:text-[3.5cqi]">
 					Import media or drag and drop to get started.
 				</p>
 			</div>
 
-			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2 text-xs text-white/85">
+			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-[3cqi] py-[1.5cqi] text-[2.8cqi] min-text-[0.6rem] text-white/85 @xs:px-[3.5cqi] @xs:text-[3cqi] @sm:px-[4cqi] @sm:py-[2cqi] @sm:text-[3.2cqi]">
 				Import media
 			</span>
 		</button>
@@ -704,6 +709,7 @@ function MediaItemList({
 	items,
 	mode,
 	onRemove,
+	assetCardSize,
 }: {
 	items: MediaAsset[];
 	mode: MediaViewMode;
@@ -714,17 +720,24 @@ function MediaItemList({
 		event: React.MouseEvent;
 		ids: string[];
 	}) => void;
+	assetCardSize: number;
 }) {
 	const isGrid = mode === "grid";
 
 	return (
 		<div
-			className={cn(isGrid ? "grid gap-2.5" : "flex flex-col gap-1.5")}
-			style={
+			className={cn(
 				isGrid
-					? { gridTemplateColumns: "repeat(auto-fill, minmax(6.2rem, 1fr))" }
-					: undefined
-			}
+					? "grid gap-2.5"
+					: "flex min-w-0 flex-col gap-1.5", // `min-w-0` lets the
+					  //   compact list shrink inside the parent flex
+					  //   column without forcing the panel wider.
+			)}
+			style={{
+				gridTemplateColumns: isGrid
+					? `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`
+					: undefined,
+			}}
 		>
 			{items.map((item) => (
 				<MediaItemWithContextMenu item={item} onRemove={onRemove} key={item.id}>

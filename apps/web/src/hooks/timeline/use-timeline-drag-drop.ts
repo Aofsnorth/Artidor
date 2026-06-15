@@ -6,7 +6,7 @@ import { showMediaUploadToast } from "@/lib/media/upload-toast";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
-import { roundToFrame } from "opencut-wasm";
+import { roundToFrame } from "artidor-wasm";
 import {
 	buildTextElement,
 	buildGraphicElement,
@@ -89,8 +89,8 @@ export function useTimelineDragDrop({
 				const mediaAssets = editor.media.getAssets();
 				const media = mediaAssets.find((m) => m.id === mediaId);
 				return media?.duration != null
-				? Math.round(media.duration * TICKS_PER_SECOND)
-				: DEFAULT_NEW_ELEMENT_DURATION;
+					? Math.round(media.duration * TICKS_PER_SECOND)
+					: DEFAULT_NEW_ELEMENT_DURATION;
 			}
 			return DEFAULT_NEW_ELEMENT_DURATION;
 		},
@@ -476,10 +476,10 @@ export function useTimelineDragDrop({
 						});
 						if (!createdAsset) continue;
 
-					const duration =
-						createdAsset.duration != null
-							? Math.round(createdAsset.duration * TICKS_PER_SECOND)
-							: DEFAULT_NEW_ELEMENT_DURATION;
+						const duration =
+							createdAsset.duration != null
+								? Math.round(createdAsset.duration * TICKS_PER_SECOND)
+								: DEFAULT_NEW_ELEMENT_DURATION;
 						const sceneTracks = editor.scenes.getActiveScene().tracks;
 						const currentTime = editor.playback.getCurrentTime();
 						const reuseMainTrackId =

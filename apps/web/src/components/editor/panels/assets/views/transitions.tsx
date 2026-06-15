@@ -11,9 +11,11 @@ import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import type { TransitionDefinition } from "@/lib/transitions";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function TransitionsView() {
 	const transitions = transitionsRegistry.getAll();
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
 	return (
 		<PanelView title="Transitions">
@@ -25,7 +27,7 @@ export function TransitionsView() {
 				<div
 					className="grid gap-2"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{transitions.map((def) => (

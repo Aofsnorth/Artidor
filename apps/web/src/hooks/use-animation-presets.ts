@@ -3,9 +3,10 @@ import { useEditor } from "@/hooks/use-editor";
 import { animationPresetsRegistry } from "@/lib/animation/presets";
 import type { AnimationPreset } from "@/lib/animation/presets";
 
-export function useApplyAnimationPreset(): (
-	preset: AnimationPreset,
-) => { ok: boolean; error?: string } {
+export function useApplyAnimationPreset(): (preset: AnimationPreset) => {
+	ok: boolean;
+	error?: string;
+} {
 	const editor = useEditor();
 
 	return useCallback(
@@ -21,7 +22,9 @@ export function useApplyAnimationPreset(): (
 				const element = track.elements.find((el) => el.id === ref.elementId);
 				if (!element) continue;
 
-				const keyframes = preset.keyframes({ elementDuration: element.duration });
+				const keyframes = preset.keyframes({
+					elementDuration: element.duration,
+				});
 				editor.timeline.upsertKeyframes({
 					keyframes: keyframes.map((k) => ({
 						trackId: ref.trackId,

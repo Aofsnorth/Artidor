@@ -25,16 +25,34 @@ export const DELAY_PRESETS: Array<{
 	{
 		id: "echo",
 		name: "Echo",
-		params: { enabled: true, time: 0.5, feedback: 0.4, mix: 0.3, pingPong: false },
+		params: {
+			enabled: true,
+			time: 0.5,
+			feedback: 0.4,
+			mix: 0.3,
+			pingPong: false,
+		},
 	},
 	{
 		id: "ping-pong",
 		name: "Ping Pong",
-		params: { enabled: true, time: 0.25, feedback: 0.5, mix: 0.35, pingPong: true },
+		params: {
+			enabled: true,
+			time: 0.25,
+			feedback: 0.5,
+			mix: 0.35,
+			pingPong: true,
+		},
 	},
 	{
 		id: "slapback",
 		name: "Slapback",
-		params: { enabled: true, time: 0.08, feedback: 0.0, mix: 0.2, pingPong: false },
+		params: {
+			enabled: true,
+			time: 0.08,
+			feedback: 0.0,
+			mix: 0.2,
+			pingPong: false,
+		},
 	},
 ];

@@ -95,7 +95,9 @@ export function SpeedRampTab({
 			const normalizedCurve = normalizeCurve(newCurve);
 			if (!newEnabled || newCurve.length === 0) {
 				editor.timeline.updateElements({
-					updates: [{ trackId, elementId: element.id, patch: { retime: undefined } }],
+					updates: [
+						{ trackId, elementId: element.id, patch: { retime: undefined } },
+					],
 				});
 				return;
 			}
@@ -105,7 +107,9 @@ export function SpeedRampTab({
 				duration: element.duration,
 			});
 			editor.timeline.updateElements({
-				updates: [{ trackId, elementId: element.id, patch: { retime: newRetime } }],
+				updates: [
+					{ trackId, elementId: element.id, patch: { retime: newRetime } },
+				],
 			});
 		},
 		[editor, element.duration, element.id, preservePitch, trackId],
@@ -125,7 +129,10 @@ export function SpeedRampTab({
 		setEnabled(true);
 	};
 
-	const updatePoint = (index: number, partial: Partial<{ time: number; speed: number }>) => {
+	const updatePoint = (
+		index: number,
+		partial: Partial<{ time: number; speed: number }>,
+	) => {
 		const nextCurve = normalizeCurve(
 			localCurve.map((point, pointIndex) => {
 				if (pointIndex !== index) return point;
@@ -170,7 +177,11 @@ export function SpeedRampTab({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:speed-ramp`} defaultOpen={enabled}>
+		<Section
+			collapsible
+			sectionKey={`${element.id}:speed-ramp`}
+			defaultOpen={enabled}
+		>
 			<SectionHeader
 				trailing={
 					<div className="flex items-center gap-2">
@@ -189,7 +200,9 @@ export function SpeedRampTab({
 			>
 				<SectionTitle>Speed Ramp</SectionTitle>
 			</SectionHeader>
-			<SectionContent className={cn(!enabled && "pointer-events-none opacity-50")}>
+			<SectionContent
+				className={cn(!enabled && "pointer-events-none opacity-50")}
+			>
 				<SectionFields>
 					<SectionField label="Preset">
 						<Select onValueChange={applyPreset}>
@@ -217,8 +230,12 @@ export function SpeedRampTab({
 								<div className="mb-2 flex items-center justify-between gap-2">
 									<span className="text-xs font-medium">Point {i + 1}</span>
 									<div className="flex items-center gap-2 text-xs text-muted-foreground">
-										<span className="tabular-nums">{Math.round(point.time * 100)}%</span>
-										<span className="tabular-nums text-foreground">{point.speed.toFixed(2)}x</span>
+										<span className="tabular-nums">
+											{Math.round(point.time * 100)}%
+										</span>
+										<span className="tabular-nums text-foreground">
+											{point.speed.toFixed(2)}x
+										</span>
 										<Button
 											variant="ghost"
 											size="icon"
@@ -289,14 +306,18 @@ function CurvePreview({ curve }: { curve: SpeedCurve }) {
 			const x = padding + k.time * (width - padding * 2);
 			const yMin = 0;
 			const yMax = 5;
-			const y = height - padding - ((k.speed - yMin) / (yMax - yMin)) * (height - padding * 2);
+			const y =
+				height -
+				padding -
+				((k.speed - yMin) / (yMax - yMin)) * (height - padding * 2);
 			return { x, y };
 		});
 	}, [curve]);
 
-	const path = points.length > 0
-		? `M ${points.map((p) => `${p.x},${p.y}`).join(" L ")}`
-		: "";
+	const path =
+		points.length > 0
+			? `M ${points.map((p) => `${p.x},${p.y}`).join(" L ")}`
+			: "";
 
 	return (
 		<div className="rounded-md bg-muted/30 p-2">
@@ -319,13 +340,7 @@ function CurvePreview({ curve }: { curve: SpeedCurve }) {
 					strokeLinejoin="round"
 				/>
 				{points.map((p, i) => (
-					<circle
-						key={i}
-						cx={p.x}
-						cy={p.y}
-						r={4}
-						fill="currentColor"
-					/>
+					<circle key={i} cx={p.x} cy={p.y} r={4} fill="currentColor" />
 				))}
 			</svg>
 		</div>

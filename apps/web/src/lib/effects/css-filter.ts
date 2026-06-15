@@ -23,7 +23,11 @@ const ADJUSTMENT_TYPES = new Set([
 	"blacks",
 ]);
 
-export function isAdjustmentEffect({ effectType }: { effectType: string }): boolean {
+export function isAdjustmentEffect({
+	effectType,
+}: {
+	effectType: string;
+}): boolean {
 	return ADJUSTMENT_TYPES.has(effectType);
 }
 
@@ -90,17 +94,17 @@ function adjustmentToFilter({ effect }: { effect: Effect }): string | null {
 		}
 		case "highlights": {
 			const amount = readAmount(effect.params, 0);
-			const factor = 1 + (amount / 200);
+			const factor = 1 + amount / 200;
 			return `contrast(${(1 + Math.abs(amount) / 400).toFixed(3)}) brightness(${factor.toFixed(3)})`;
 		}
 		case "shadows": {
 			const amount = readAmount(effect.params, 0);
-			const factor = 1 + (amount / 200);
+			const factor = 1 + amount / 200;
 			return `brightness(${factor.toFixed(3)}) contrast(${(1 - amount / 400).toFixed(3)})`;
 		}
 		case "sharpen": {
 			const amount = readAmount(effect.params, 0);
-			const factor = 1 + (amount / 300);
+			const factor = 1 + amount / 300;
 			return `contrast(${factor.toFixed(3)}) saturate(${(1 + amount / 500).toFixed(3)})`;
 		}
 		case "vibrance": {
@@ -139,7 +143,11 @@ function adjustmentToFilter({ effect }: { effect: Effect }): string | null {
 	}
 }
 
-export function effectsToCssFilter({ effects }: { effects: Effect[] | undefined }): string {
+export function effectsToCssFilter({
+	effects,
+}: {
+	effects: Effect[] | undefined;
+}): string {
 	if (!effects || effects.length === 0) return "none";
 	const parts: string[] = [];
 	for (const effect of effects) {

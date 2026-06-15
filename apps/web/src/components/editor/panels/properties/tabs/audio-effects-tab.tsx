@@ -15,10 +15,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { MusicNote01Icon, VolumeHighIcon } from "@hugeicons/core-free-icons";
 import { useAudioEffects } from "@/hooks/use-audio-effects";
 import { EQ_BANDS, EQ_PRESETS } from "@/lib/audio/equalizer";
-import {
-	formatNumberForDisplay,
-	getFractionDigitsForStep,
-} from "@/utils/math";
+import { formatNumberForDisplay, getFractionDigitsForStep } from "@/utils/math";
 import {
 	Section,
 	SectionContent,

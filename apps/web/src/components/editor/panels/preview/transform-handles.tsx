@@ -83,10 +83,7 @@ export function TransformHandles({
 	const onPointerUp = () => handlePointerUp();
 
 	return (
-		<div
-			className="pointer-events-none absolute inset-0 overflow-hidden"
-			aria-hidden
-		>
+		<div className="pointer-events-none absolute inset-0" aria-hidden>
 			<BoundingBoxOutline
 				center={center}
 				outlineWidth={outlineWidth}

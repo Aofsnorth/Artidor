@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useEditor } from "@/hooks/use-editor";
-import { formatTimecode, type FrameRate } from "opencut-wasm";
+import { formatTimecode, type FrameRate } from "artidor-wasm";
 import { invokeAction } from "@/lib/actions";
 import { EditableTimecode } from "@/components/editable-timecode";
 import { Button } from "@/components/ui/button";
+import { MiniAudioVisualizer } from "@/components/editor/audio-visualizer";
 import {
 	FullScreenIcon,
 	PauseIcon,
@@ -105,6 +106,8 @@ function TimecodeDisplay() {
 
 	return (
 		<div className="flex items-center">
+			<MiniAudioVisualizer />
+			<div className="mx-2 h-4 w-px bg-white/[0.08]" aria-hidden="true" />
 			<EditableTimecode
 				time={currentTime}
 				duration={totalDuration}

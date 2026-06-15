@@ -7,11 +7,9 @@
     "rust/wasm/pkg"
   ],
   "scripts": {
-    "build:tools": "turbo run build --filter=@artidor/tools",
     "build:wasm": "wasm-pack build rust/wasm --target bundler --out-dir pkg",
     "build:web": "turbo run build --filter=@artidor/web",
-    "deploy:web": "turbo run deploy --filter=@opencut/web",
-    "dev:tools": "turbo run dev --filter=@artidor/tools",
+    "deploy:web": "turbo run deploy --filter=@artidor/web",
     "dev:wasm": "cargo watch -w rust/crates -w rust/wasm/src -s 'wasm-pack build rust/wasm --target bundler --out-dir pkg'",
     "dev:web": "turbo run dev --filter=@artidor/web",
     "format:web": "biome format apps/web/src/services/renderer --write --max-diagnostics=1000",
@@ -20,7 +18,6 @@
     "lint:web:fix": "biome lint apps/web/src --write --unsafe --max-diagnostics=1000",
     "preview:web": "turbo run preview --filter=@artidor/web",
     "publish:wasm": "bun run build:wasm && npm publish rust/wasm/pkg --access public",
-    "start:tools": "turbo run start --filter=@artidor/tools",
     "test": "bun test"
   },
   "dependencies": {

@@ -1,6 +1,9 @@
 import { useCallback } from "react";
 import { useEditor } from "@/hooks/use-editor";
-import { captureFrameFromVideo, ticksToSeconds } from "@/lib/media/frame-capture";
+import {
+	captureFrameFromVideo,
+	ticksToSeconds,
+} from "@/lib/media/frame-capture";
 import { processMediaAssets } from "@/lib/media/processing";
 import { buildImageElement } from "@/lib/timeline/element-utils";
 import { toast } from "sonner";
@@ -39,7 +42,9 @@ export function useFreezeFrame() {
 			return;
 		}
 
-		const asset = editor.media.getAssets().find((a) => a.id === element.mediaId);
+		const asset = editor.media
+			.getAssets()
+			.find((a) => a.id === element.mediaId);
 		if (!asset) {
 			toast.error("Source media not found");
 			return;
@@ -67,7 +72,9 @@ export function useFreezeFrame() {
 				return;
 			}
 
-			const file = new File([frame.blob], frame.fileName, { type: "image/png" });
+			const file = new File([frame.blob], frame.fileName, {
+				type: "image/png",
+			});
 			const [processed] = await processMediaAssets({ files: [file] });
 			if (!processed) {
 				toast.error("Could not process captured frame", { id: toastId });

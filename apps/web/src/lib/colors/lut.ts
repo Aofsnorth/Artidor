@@ -11,7 +11,11 @@ export interface ParsedLut {
 	data: Float32Array;
 }
 
-export function parseCubeLut({ content }: { content: string }): ParsedLut | null {
+export function parseCubeLut({
+	content,
+}: {
+	content: string;
+}): ParsedLut | null {
 	const lines = content.split(/\r?\n/);
 	let size = 0;
 	let title = "";

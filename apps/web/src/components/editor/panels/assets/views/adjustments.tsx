@@ -8,6 +8,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { buildEffectElement } from "@/lib/timeline/element-utils";
 import type { EffectDefinition } from "@/lib/effects/types";
 import { isAdjustmentEffect } from "@/lib/effects/css-filter";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function AdjustmentsView() {
 	const all = effectsRegistry.getAll();
@@ -23,10 +24,13 @@ export function AdjustmentsView() {
 }
 
 function AdjustmentsGrid({ adjustments }: { adjustments: EffectDefinition[] }) {
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	return (
 		<div
 			className="grid gap-2"
-			style={{ gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" }}
+			style={{
+				gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
+			}}
 		>
 			{adjustments.map((effect) => (
 				<AdjustmentItem key={effect.type} effect={effect} />

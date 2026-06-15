@@ -39,6 +39,60 @@ export const SELECTED_TRACK_ROW_CLASS =
 export const DEFAULT_TIMELINE_BOOKMARK_COLOR = "#ffffff";
 
 /**
+ * Curated color presets for custom track colors. The user picks from these
+ * in a compact swatch row inside the track-label popover.
+ */
+export const TRACK_COLOR_PRESETS: string[] = [
+	"#ef4444", // red
+	"#f97316", // orange
+	"#eab308", // yellow
+	"#22c55e", // green
+	"#06b6d4", // cyan
+	"#3b82f6", // blue
+	"#8b5cf6", // violet
+	"#ec4899", // pink
+	"#f43f5e", // rose
+	"#ffffff", // white (reset to default)
+];
+
+/** Derive accent/accentSoft from an arbitrary hex color. */
+export function customColorToAccent(color: string): {
+	accent: string;
+	accentSoft: string;
+} {
+	// Parse hex to rgb
+	const hex = color.replace("#", "");
+	const r = parseInt(hex.substring(0, 2), 16);
+	const g = parseInt(hex.substring(2, 4), 16);
+	const b = parseInt(hex.substring(4, 6), 16);
+	return {
+		accent: `rgba(${r}, ${g}, ${b}, 0.95)`,
+		accentSoft: `rgba(${r}, ${g}, ${b}, 0.18)`,
+	};
+}
+
+export const GROUP_COLORS: string[] = [
+	"#f97316", // orange
+	"#22c55e", // green
+	"#3b82f6", // blue
+	"#ec4899", // pink
+	"#eab308", // yellow
+	"#8b5cf6", // violet
+	"#06b6d4", // cyan
+	"#ef4444", // red
+];
+
+export function getGroupColor(groupId?: string): string | null {
+	if (!groupId) return null;
+	let hash = 0;
+	for (let i = 0; i < groupId.length; i++) {
+		hash = groupId.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	const index = Math.abs(hash) % GROUP_COLORS.length;
+	return GROUP_COLORS[index];
+}
+
+/**
  * Accent palette per track type. Used for the "fx" badge, track label dot,
  * and the top accent stripe inside clip cards. Pairs with the gradient
  * backgrounds in TIMELINE_TRACK_THEME so the visual identity matches.
@@ -100,10 +154,15 @@ export const AUDIO_VARIANT_ACCENT: Array<{
 export function getTrackTypeAccent({
 	type,
 	trackIndex = 0,
+	customColor,
 }: {
 	type: TrackType;
 	trackIndex?: number;
+	customColor?: string;
 }): { accent: string; accentSoft: string } {
+	if (customColor) {
+		return customColorToAccent(customColor);
+	}
 	if (type === "audio") {
 		return AUDIO_VARIANT_ACCENT[
 			Math.max(0, trackIndex) % AUDIO_VARIANT_ACCENT.length

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,25 +9,46 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { LockKeyIcon } from "@hugeicons/core-free-icons";
+import {
+	LockKeyIcon,
+	MoreHorizontalIcon,
+	StarIcon,
+} from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
-import { usePropertiesStore } from "./stores/properties-store";
+import {
+	usePropertiesStore,
+	type MediaSummarySize,
+} from "./stores/properties-store";
 import { getPropertiesConfig, type PropertiesTabDef } from "./registry";
 import { cn } from "@/utils/ui";
-import { EmptyView } from "./empty-view";
+import { ProjectDetailsView } from "./details-view";
 import type { MediaAsset } from "@/lib/media/types";
 import type { TimelineElement } from "@/lib/timeline";
 import Image from "next/image";
 
-export function PropertiesPanel() {
+// Wrap the panel in React.memo so re-renders of the editor page
+// (which happen on every playhead tick via useElementPlayhead) don't
+// cascade down through this entire tree when nothing the panel
+// depends on has actually changed. Combined with the narrow Zustand
+// selectors below, the panel now only re-renders when the user
+// switches tabs, favourites a media, or changes the summary size.
+export const PropertiesPanel = memo(function PropertiesPanel() {
 	return (
 		<div className="panel glass-strong flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#09090b]/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
 			<InspectorView />
 		</div>
 	);
-}
+});
 
 function InspectorView() {
 	const editor = useEditor();
@@ -36,14 +58,7 @@ function InspectorView() {
 	const { activeTabPerType, setActiveTab } = usePropertiesStore();
 
 	if (selectedElements.length === 0) {
-		return (
-			<>
-				<InspectorHeader disabled />
-				<div className="flex flex-1 flex-col items-center justify-center overflow-hidden">
-					<EmptyView />
-				</div>
-			</>
-		);
+		return <ProjectDetailsView />;
 	}
 
 	if (selectedElements.length > 1) {
@@ -159,34 +174,43 @@ function InspectorView() {
 
 			<SelectedElementSummary element={element} mediaAssets={mediaAssets} />
 
-			<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
-				<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
-					{visibleTabs.map((tab) => (
-						<TooltipProvider key={tab.id} delayDuration={0}>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button
-										variant={tab.id === activeTab.id ? "secondary" : "ghost"}
-										size="sm"
-										onClick={() => setActiveTab(element.type, tab.id)}
-										aria-label={tab.label}
-										className={cn(
-											"h-7 shrink-0 rounded-md border px-2 text-[0.68rem]",
-											tab.id === activeTab.id
-												? "border-white/20 bg-white text-black hover:bg-white/90"
-												: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
-										)}
-									>
-										<span className="mr-1.5 opacity-70">{tab.icon}</span>
-										{tab.label}
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent side="bottom">{tab.label}</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					))}
+			{/* Hide the secondary tab bar when the active tab is one of the
+			   "focus" categories (Effects / Animation). The reasoning: when
+			   you're tweaking an effect or an animation preset, the
+			   transform/audio/speed row underneath is irrelevant noise that
+			   eats vertical space. The primary tabs at the top of the
+			   inspector still let the user jump back to "Video" if they
+			   want to access transform etc. */}
+			{activeTab.id !== "effects" && activeTab.id !== "animations" && (
+				<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
+					<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
+						{visibleTabs.map((tab) => (
+							<TooltipProvider key={tab.id} delayDuration={0}>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant={tab.id === activeTab.id ? "secondary" : "ghost"}
+											size="sm"
+											onClick={() => setActiveTab(element.type, tab.id)}
+											aria-label={tab.label}
+											className={cn(
+												"h-7 shrink-0 rounded-md border px-2 text-[0.68rem]",
+												tab.id === activeTab.id
+													? "border-white/20 bg-white text-black hover:bg-white/90"
+													: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+											)}
+										>
+											<span className="mr-1.5 opacity-70">{tab.icon}</span>
+											{tab.label}
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent side="bottom">{tab.label}</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
 				{activeTab.content({ trackId: track.id })}
@@ -198,19 +222,26 @@ function InspectorView() {
 function InspectorHeader({ disabled }: { disabled?: boolean }) {
 	return (
 		<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
-			<div className="flex items-center justify-between">
-				<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+			<div className="flex items-center justify-between gap-2">
+				<div className="min-w-0 truncate text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 					Inspector
 				</div>
 				<button
 					type="button"
 					disabled={disabled}
-					className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+					className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 				>
 					Reset all
 				</button>
 			</div>
-			<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
+			{/* Only render the 5-tab quick switcher when an element IS
+			   actually selected. When `disabled` (nothing selected,
+			   details view), the tabs would just take up vertical
+			   space AND squish into ~30px columns at narrow panel
+			   widths. Hiding them gives the details card the full
+			   panel to work with. */}
+			{!disabled && (
+				<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
 				{PRIMARY_INSPECTOR_TABS.map((tab) => (
 					<span
 						key={tab.label}
@@ -220,6 +251,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 					</span>
 				))}
 			</div>
+			)}
 		</div>
 	);
 }
@@ -227,7 +259,17 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 const PRIMARY_INSPECTOR_TABS = [
 	{
 		label: "Video",
-		ids: ["transform", "audio", "speed", "speed-ramp", "text", "graphic", "blending", "parenting", "camera"],
+		ids: [
+			"transform",
+			"audio",
+			"speed",
+			"speed-ramp",
+			"text",
+			"graphic",
+			"blending",
+			"parenting",
+			"camera",
+		],
 	},
 	{
 		label: "Audio",
@@ -268,7 +310,64 @@ function SelectedElementSummary({
 	const mediaId = "mediaId" in element ? element.mediaId : undefined;
 	const media = mediaAssets.find((asset) => asset.id === mediaId);
 	const thumbnail = media?.thumbnailUrl ?? media?.url;
+	const mediaSummarySize = usePropertiesStore((s) => s.mediaSummarySize);
+	const setMediaSummarySize = usePropertiesStore((s) => s.setMediaSummarySize);
+	const favoriteMediaIds = usePropertiesStore((s) => s.favoriteMediaIds);
+	const toggleMediaFavorite = usePropertiesStore((s) => s.toggleMediaFavorite);
+	const isFavorited = mediaId ? favoriteMediaIds.has(mediaId) : false;
+	const canFavorite = Boolean(mediaId);
 
+	if (mediaSummarySize === "hidden") {
+		return (
+			<div className="mx-3.5 mt-3 flex shrink-0 items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
+				<div className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-white/[0.9]">
+					{media?.name ?? element.name}
+				</div>
+				<MediaSummaryMenu
+					size={mediaSummarySize}
+					onSizeChange={setMediaSummarySize}
+				/>
+			</div>
+		);
+	}
+
+	if (mediaSummarySize === "compact") {
+		return (
+			<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 shadow-inner shadow-white/[0.02]">
+				<div className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-white/[0.06]">
+					{thumbnail ? (
+						<Image
+							src={thumbnail}
+							alt=""
+							fill
+							sizes="28px"
+							className="object-cover"
+							unoptimized
+						/>
+					) : (
+						<span className="text-[0.55rem] uppercase text-white/[0.35]">
+							{element.type}
+						</span>
+					)}
+				</div>
+				<div className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-white/[0.9]">
+					{media?.name ?? element.name}
+				</div>
+				<StarButton
+					isFavorited={isFavorited}
+					disabled={!canFavorite}
+					onClick={() => mediaId && toggleMediaFavorite(mediaId)}
+				/>
+				<MediaSummaryMenu
+					size={mediaSummarySize}
+					onSizeChange={setMediaSummarySize}
+				/>
+			</div>
+		);
+	}
+
+	// "default" — original card layout, now wired to favourite state and
+	// with the size dropdown slotted in next to the star.
 	return (
 		<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 shadow-inner shadow-white/[0.02]">
 			<div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
@@ -302,12 +401,137 @@ function SelectedElementSummary({
 					)}
 				</div>
 			</div>
-			<button
-				type="button"
-				className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-base leading-none text-white/[0.42] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-			>
-				☆
-			</button>
+			<StarButton
+				isFavorited={isFavorited}
+				disabled={!canFavorite}
+				onClick={() => mediaId && toggleMediaFavorite(mediaId)}
+			/>
+			<MediaSummaryMenu
+				size={mediaSummarySize}
+				onSizeChange={setMediaSummarySize}
+			/>
 		</div>
+	);
+}
+
+/**
+ * Star button that toggles the media favourite flag. Filled yellow when
+ * the media is favourited, dim outline otherwise. Disabled (no-op click)
+ * when the selected element has no media asset to favourite.
+ */
+function StarButton({
+	isFavorited,
+	disabled,
+	onClick,
+}: {
+	isFavorited: boolean;
+	disabled?: boolean;
+	onClick: () => void;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			disabled={disabled}
+			aria-label={isFavorited ? "Unfavourite media" : "Favourite media"}
+			aria-pressed={isFavorited}
+			title={
+				disabled
+					? "This element has no media to favourite"
+					: isFavorited
+						? "Unfavourite this media"
+						: "Mark this media as a favourite"
+			}
+			className={cn(
+				"grid size-7 shrink-0 place-items-center rounded-md border transition focus:outline-none",
+				isFavorited
+					? "border-yellow-500/30 bg-yellow-400/[0.08] text-yellow-300 hover:border-yellow-500/50 hover:bg-yellow-400/[0.14]"
+					: "border-white/[0.08] bg-white/[0.03] text-white/[0.42] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+				disabled &&
+					"cursor-not-allowed opacity-40 hover:bg-white/[0.03] hover:text-white/[0.42]",
+			)}
+		>
+			<HugeiconsIcon
+				icon={StarIcon}
+				// Fill makes the difference between "favourited" (solid
+				// yellow star) and "not favourited" (outline only).
+				className={cn("size-3.5", isFavorited && "[&_path]:fill-current")}
+			/>
+		</button>
+	);
+}
+
+/**
+ * Dropdown that controls the media card's display size. The three
+ * options trade vertical space against how much info is shown at a
+ * glance — useful when the inspector is short on height and the
+ * effect / animation content needs the room.
+ */
+function MediaSummaryMenu({
+	size,
+	onSizeChange,
+}: {
+	size: MediaSummarySize;
+	onSizeChange: (size: MediaSummarySize) => void;
+}) {
+	return (
+		<DropdownMenu>
+			<TooltipProvider delayDuration={0}>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<DropdownMenuTrigger asChild>
+							<button
+								type="button"
+								aria-label="Media card options"
+								className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+							>
+								<HugeiconsIcon icon={MoreHorizontalIcon} className="size-3.5" />
+							</button>
+						</DropdownMenuTrigger>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">Media card options</TooltipContent>
+				</Tooltip>
+			</TooltipProvider>
+			<DropdownMenuContent
+				align="end"
+				sideOffset={6}
+				className="z-100 min-w-[11rem] rounded-lg border border-white/[0.08] bg-[#09090b]/95 p-1 text-white/95 shadow-xl backdrop-blur-md"
+			>
+				<DropdownMenuLabel className="px-2 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white/40">
+					Card size
+				</DropdownMenuLabel>
+				<DropdownMenuRadioGroup
+					value={size}
+					onValueChange={(value) => {
+						if (
+							value === "default" ||
+							value === "compact" ||
+							value === "hidden"
+						) {
+							onSizeChange(value as MediaSummarySize);
+						}
+					}}
+				>
+					<DropdownMenuRadioItem
+						value="default"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+					>
+						Default
+					</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem
+						value="compact"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+					>
+						Compact
+					</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem
+						value="hidden"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+					>
+						Hidden
+					</DropdownMenuRadioItem>
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

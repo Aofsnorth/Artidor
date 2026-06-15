@@ -9,13 +9,15 @@ const webEnvSchema = z.object({
 	// Public
 	NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
 	NEXT_PUBLIC_MARBLE_API_URL: z.url(),
+	NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 
 	// Server
-	DATABASE_URL: z.string().refine(
-		(url) =>
-			url.startsWith("postgres://") || url.startsWith("postgresql://"),
-		"DATABASE_URL must be a postgres:// or postgresql:// URL",
-	),
+	DATABASE_URL: z
+		.string()
+		.refine(
+			(url) => url.startsWith("postgres://") || url.startsWith("postgresql://"),
+			"DATABASE_URL must be a postgres:// or postgresql:// URL",
+		),
 
 	BETTER_AUTH_SECRET: z.string(),
 	UPSTASH_REDIS_REST_URL: z.url(),

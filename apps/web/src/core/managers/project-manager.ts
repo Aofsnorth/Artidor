@@ -7,6 +7,14 @@ import type {
 	TProjectSettings,
 	TTimelineViewState,
 } from "@/lib/project/types";
+import {
+	getGoogleAccessToken,
+	fetchFolderMetadata,
+	fetchFolderFiles,
+	downloadFileBlob,
+	saveProjectToDrive,
+} from "@/lib/drive/api";
+import { processMediaAssets } from "@/lib/media/processing";
 import type { ExportOptions, ExportResult, ExportState } from "@/lib/export";
 import { storageService } from "@/services/storage/service";
 import { toast } from "sonner";
@@ -37,6 +45,12 @@ export interface MigrationState {
 	projectName: string | null;
 }
 
+export interface DriveSyncState {
+	status: "idle" | "saving" | "saved" | "error" | "syncing-assets";
+	progress: number;
+	message: string | null;
+}
+
 export class ProjectManager {
 	private active: TProject | null = null;
 	private savedProjects: TProjectMetadata[] = [];
@@ -57,6 +71,11 @@ export class ProjectManager {
 		result: null,
 	};
 	private exportCancelRequested = false;
+	private driveSyncState: DriveSyncState = {
+		status: "idle",
+		progress: 0,
+		message: null,
+	};
 
 	constructor(private editor: EditorCore) {}
 
@@ -200,6 +219,44 @@ export class ProjectManager {
 			await storageService.saveProject({ project: updatedProject });
 			this.active = updatedProject;
 			this.updateMetadata(updatedProject);
+
+			// If linked to Google Drive, save there in the background
+			const folderId = updatedProject.metadata.googleDriveFolderId;
+			const fileId = updatedProject.metadata.googleDriveFileId;
+			if (folderId) {
+				void (async () => {
+					const token = getGoogleAccessToken();
+					if (!token) return;
+
+					try {
+						this.setDriveSyncState("saving", 0, "Saving to Drive...");
+						const newFileId = await saveProjectToDrive(
+							folderId,
+							fileId || null,
+							updatedProject,
+						);
+
+						if (
+							newFileId !== fileId &&
+							this.active &&
+							this.active.metadata.id === updatedProject.metadata.id
+						) {
+							this.active.metadata.googleDriveFileId = newFileId;
+							await storageService.saveProject({ project: this.active });
+						}
+
+						this.setDriveSyncState("saved", 100, "Saved to Drive");
+						setTimeout(() => {
+							if (this.driveSyncState.status === "saved") {
+								this.setDriveSyncState("idle");
+							}
+						}, 2000);
+					} catch (driveErr) {
+						console.error("Failed to save project to Google Drive:", driveErr);
+						this.setDriveSyncState("error", 0, "Save to Drive failed");
+					}
+				})();
+			}
 		} catch (error) {
 			console.error("Failed to save project:", error);
 		}
@@ -501,7 +558,7 @@ export class ProjectManager {
 		importedAssets,
 	}: {
 		importedAssets: Array<Pick<MediaAsset, "type" | "fps">>;
-	}): import("opencut-wasm").FrameRate | null {
+	}): import("artidor-wasm").FrameRate | null {
 		if (!this.active) return null;
 
 		const nextFps = getRaisedProjectFpsForImportedMedia({
@@ -693,6 +750,185 @@ export class ProjectManager {
 		}
 
 		this.notify();
+	}
+
+	getDriveSyncState(): DriveSyncState {
+		return this.driveSyncState;
+	}
+
+	setDriveSyncState(
+		status: DriveSyncState["status"],
+		progress = 0,
+		message: string | null = null,
+	): void {
+		this.driveSyncState = { status, progress, message };
+		this.notify();
+	}
+
+	async syncProjectFromDrive(folderId: string): Promise<string> {
+		this.setDriveSyncState(
+			"syncing-assets",
+			0,
+			"Connecting to Google Drive...",
+		);
+		const token = getGoogleAccessToken();
+		if (!token) {
+			this.setDriveSyncState("error", 0, "Drive unauthenticated");
+			throw new Error("unauthenticated");
+		}
+
+		try {
+			// 1. Check if we already have this folder loaded or stored locally
+			const existingProjectMeta = this.savedProjects.find(
+				(p) => p.googleDriveFolderId === folderId,
+			);
+
+			let projectId: string;
+			let projectFileId: string | null = null;
+			let projectData: TProject | null = null;
+
+			// Fetch Google Drive folder metadata and file listing
+			this.setDriveSyncState(
+				"syncing-assets",
+				10,
+				"Fetching folder metadata...",
+			);
+			const folderMeta = await fetchFolderMetadata(folderId);
+			const folderName = folderMeta.name || "Drive Project";
+
+			const files = await fetchFolderFiles(folderId);
+			const artidorFile = files.find(
+				(f) => f.name === "artidor.json" || f.name === "project.json",
+			);
+
+			if (artidorFile) {
+				projectFileId = artidorFile.id;
+				this.setDriveSyncState(
+					"syncing-assets",
+					25,
+					"Downloading project configuration...",
+				);
+				const blob = await downloadFileBlob(artidorFile.id);
+				const text = await blob.text();
+				projectData = JSON.parse(text) as TProject;
+			}
+
+			if (projectData) {
+				// We have project data from Drive!
+				projectId = projectData.metadata.id || generateUUID();
+				projectData.metadata.id = projectId;
+				projectData.metadata.googleDriveFolderId = folderId;
+				projectData.metadata.googleDriveFileId = projectFileId;
+
+				// Update/Save locally
+				await storageService.saveProject({ project: projectData });
+				await this.loadProject({ id: projectId });
+			} else {
+				// No project file on Drive, create new project
+				if (existingProjectMeta) {
+					projectId = existingProjectMeta.id;
+					await this.loadProject({ id: projectId });
+				} else {
+					this.setDriveSyncState(
+						"syncing-assets",
+						40,
+						"Creating new project...",
+					);
+					projectId = await this.createNewProject({ name: folderName });
+				}
+
+				// Set Drive folder metadata on active project
+				if (this.active) {
+					this.active.metadata.googleDriveFolderId = folderId;
+
+					// Upload initially to Google Drive
+					this.setDriveSyncState(
+						"syncing-assets",
+						50,
+						"Creating artidor.json on Drive...",
+					);
+					const driveFileId = await saveProjectToDrive(
+						folderId,
+						null,
+						this.active,
+					);
+					this.active.metadata.googleDriveFileId = driveFileId;
+
+					// Save updated project locally
+					await storageService.saveProject({ project: this.active });
+					this.updateMetadata(this.active);
+				}
+			}
+
+			// 2. Now import/sync other media files from the folder
+			const mediaFiles = files.filter((f) => {
+				const mime = f.mimeType.toLowerCase();
+				return (
+					mime.startsWith("video/") ||
+					mime.startsWith("audio/") ||
+					mime.startsWith("image/")
+				);
+			});
+
+			if (mediaFiles.length > 0 && this.active) {
+				const activeId = this.active.metadata.id;
+				const currentAssets = this.editor.media.getAssets();
+
+				for (let i = 0; i < mediaFiles.length; i++) {
+					const file = mediaFiles[i];
+					// Check if file is already imported (by name)
+					const alreadyImported = currentAssets.some(
+						(asset) => asset.name === file.name,
+					);
+
+					if (!alreadyImported) {
+						const pct = Math.round(50 + (i / mediaFiles.length) * 45);
+						this.setDriveSyncState(
+							"syncing-assets",
+							pct,
+							`Downloading asset ${i + 1}/${mediaFiles.length}: ${file.name}`,
+						);
+
+						try {
+							const blob = await downloadFileBlob(file.id);
+							const localFile = new File([blob], file.name, {
+								type: file.mimeType,
+							});
+							const processedAssets = await processMediaAssets({
+								files: [localFile],
+							});
+							const processed = processedAssets[0];
+							if (processed) {
+								await this.editor.media.addMediaAsset({
+									projectId: activeId,
+									asset: processed,
+								});
+							}
+						} catch (assetErr) {
+							console.error(
+								`Failed to download/process media ${file.name}:`,
+								assetErr,
+							);
+						}
+					}
+				}
+			}
+
+			this.setDriveSyncState("saved", 100, "Sync complete");
+			setTimeout(() => {
+				this.setDriveSyncState("idle");
+			}, 3000);
+
+			return projectId;
+		} catch (err) {
+			console.error("Google Drive sync failed:", err);
+			this.setDriveSyncState(
+				"error",
+				0,
+				err instanceof Error ? err.message : "Sync failed",
+			);
+			throw err;
+		}
 	}
 
 	private notify(): void {

@@ -46,17 +46,20 @@ describe("retime resolve", () => {
 		expect(getSourceTimeAtClipTime({ clipTime: 5, retime: { rate: 0 } })).toBe(
 			5,
 		);
-		expect(
-			getSourceTimeAtClipTime({ clipTime: 5, retime: { rate: -1 } }),
-		).toBe(5);
+		expect(getSourceTimeAtClipTime({ clipTime: 5, retime: { rate: -1 } })).toBe(
+			5,
+		);
 	});
 
 	test("caps retime rates above 5x", () => {
-		expect(getSourceTimeAtClipTime({ clipTime: 5, retime: { rate: 100 } })).toBe(
-			25,
-		);
 		expect(
-			getTimelineDurationForSourceSpan({ sourceSpan: 10, retime: { rate: 100 } }),
+			getSourceTimeAtClipTime({ clipTime: 5, retime: { rate: 100 } }),
+		).toBe(25);
+		expect(
+			getTimelineDurationForSourceSpan({
+				sourceSpan: 10,
+				retime: { rate: 100 },
+			}),
 		).toBe(2);
 	});
 
@@ -69,8 +72,14 @@ describe("retime resolve", () => {
 			],
 		});
 
-		expect(getSourceTimeAtClipTime({ clipTime: 5, retime, clipDuration: 10 })).toBe(10);
-		expect(getClipTimeAtSourceTime({ sourceTime: 10, retime, clipDuration: 10 })).toBeCloseTo(5, 3);
-		expect(getTimelineDurationForSourceSpan({ sourceSpan: 20, retime })).toBe(10);
+		expect(
+			getSourceTimeAtClipTime({ clipTime: 5, retime, clipDuration: 10 }),
+		).toBe(10);
+		expect(
+			getClipTimeAtSourceTime({ sourceTime: 10, retime, clipDuration: 10 }),
+		).toBeCloseTo(5, 3);
+		expect(getTimelineDurationForSourceSpan({ sourceSpan: 20, retime })).toBe(
+			10,
+		);
 	});
 });

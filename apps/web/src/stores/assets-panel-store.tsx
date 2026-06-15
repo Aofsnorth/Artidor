@@ -152,6 +152,19 @@ export type MediaViewMode = "grid" | "list";
 export type MediaSortKey = "name" | "type" | "duration" | "size";
 export type MediaSortOrder = "asc" | "desc";
 
+/**
+ * Bounds for the user-resizable asset card size. The lower bound keeps
+ * thumbnails recognisable on small panels; the upper bound prevents a
+ * single card from filling the whole assets panel. 96px matches the
+ * historical default for most of the asset grids (effects, transitions,
+ * animations, filters, adjustments) and 120px was the special-case value
+ * for templates and text — we now let the user pick a single value
+ * that the CSS grid `minmax(...)` honours uniformly.
+ */
+export const ASSET_CARD_SIZE_MIN_PX = 64;
+export const ASSET_CARD_SIZE_MAX_PX = 220;
+export const ASSET_CARD_SIZE_DEFAULT_PX = 96;
+
 interface AssetsPanelStore {
 	activeTab: Tab;
 	setActiveTab: (tab: Tab) => void;
@@ -165,6 +178,12 @@ interface AssetsPanelStore {
 	mediaSortBy: MediaSortKey;
 	mediaSortOrder: MediaSortOrder;
 	setMediaSort: (key: MediaSortKey, order: MediaSortOrder) => void;
+
+	/* Asset card size (the minimum width each grid item will accept before
+	   wrapping). The value is clamped to ASSET_CARD_SIZE_MIN_PX .. MAX. */
+	assetCardSize: number;
+	setAssetCardSize: (sizePx: number) => void;
+	resetAssetCardSize: () => void;
 }
 
 export const useAssetsPanelStore = create<AssetsPanelStore>()(
@@ -182,6 +201,19 @@ export const useAssetsPanelStore = create<AssetsPanelStore>()(
 			mediaSortOrder: "asc",
 			setMediaSort: (key, order) =>
 				set({ mediaSortBy: key, mediaSortOrder: order }),
+
+			assetCardSize: ASSET_CARD_SIZE_DEFAULT_PX,
+			setAssetCardSize: (sizePx) => {
+				// Clamp at the store boundary so consumers can rely on the
+				// value being in-range even if a stray slider goes wild.
+				const clamped = Math.max(
+					ASSET_CARD_SIZE_MIN_PX,
+					Math.min(ASSET_CARD_SIZE_MAX_PX, Math.round(sizePx)),
+				);
+				set({ assetCardSize: clamped });
+			},
+			resetAssetCardSize: () =>
+				set({ assetCardSize: ASSET_CARD_SIZE_DEFAULT_PX }),
 		}),
 		{
 			name: "assets-panel",
@@ -189,6 +221,7 @@ export const useAssetsPanelStore = create<AssetsPanelStore>()(
 				mediaViewMode: state.mediaViewMode,
 				mediaSortBy: state.mediaSortBy,
 				mediaSortOrder: state.mediaSortOrder,
+				assetCardSize: state.assetCardSize,
 			}),
 		},
 	),

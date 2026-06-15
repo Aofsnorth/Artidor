@@ -1,4 +1,3 @@
-
 import { Input, ALL_FORMATS, BlobSource, CanvasSink } from "mediabunny";
 
 /**
@@ -21,7 +20,11 @@ export async function generateReversedVideo({
 		if (!videoTrack) return null;
 
 		const sink = new CanvasSink(videoTrack);
-		const frames: { canvas: HTMLCanvasElement | OffscreenCanvas; timestamp: number; duration: number }[] = [];
+		const frames: {
+			canvas: HTMLCanvasElement | OffscreenCanvas;
+			timestamp: number;
+			duration: number;
+		}[] = [];
 		for await (const wrapped of sink.canvases()) {
 			frames.push({
 				canvas: wrapped.canvas,
@@ -35,10 +38,8 @@ export async function generateReversedVideo({
 		// Simpler approach: use captureStream from a canvas and playback frames in reverse.
 		const reversed = [...frames].reverse();
 		const first = frames[0]!;
-		const width =
-			"width" in first.canvas ? first.canvas.width : 1280;
-		const height =
-			"height" in first.canvas ? first.canvas.height : 720;
+		const width = "width" in first.canvas ? first.canvas.width : 1280;
+		const height = "height" in first.canvas ? first.canvas.height : 720;
 
 		const canvas = document.createElement("canvas");
 		canvas.width = width;

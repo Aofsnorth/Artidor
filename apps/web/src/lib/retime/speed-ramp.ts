@@ -158,7 +158,7 @@ export function clipTimeToSourceTime({
 		const avgSpeed = (prevSpeed + speed) / 2;
 		// dt of normalized time = dt * totalDuration in clip time.
 		// Source time advances faster when the playback rate is higher.
-		const segmentSource = (dt * totalDuration) * Math.max(0.001, avgSpeed);
+		const segmentSource = dt * totalDuration * Math.max(0.001, avgSpeed);
 		cumulative += segmentSource;
 		prevSpeed = speed;
 		if (ti >= t) break;

@@ -11,10 +11,7 @@ export function buildEqPresets(): Record<string, EqGains> {
 	return out;
 }
 
-export function applyEqPreset(
-	presetId: string,
-	current: EqGains,
-): EqGains {
+export function applyEqPreset(presetId: string, current: EqGains): EqGains {
 	const flat = buildEqPresets().flat;
 	if (presetId === "flat") return { ...flat };
 	// For non-flat presets, use sensible defaults
@@ -24,7 +21,14 @@ export function applyEqPreset(
 		case "treble-boost":
 			return { ...flat, "4khz": 4, "8khz": 6, "16khz": 8 };
 		case "vocal-booster":
-			return { ...flat, "125hz": -3, "250hz": -2, "1khz": 3, "2khz": 4, "4khz": 3 };
+			return {
+				...flat,
+				"125hz": -3,
+				"250hz": -2,
+				"1khz": 3,
+				"2khz": 4,
+				"4khz": 3,
+			};
 		case "bass-reducer":
 			return { ...flat, "31hz": -6, "62hz": -4, "125hz": -2 };
 		case "loudness":
@@ -79,7 +83,14 @@ export function applyEqPreset(
 				"16khz": 3,
 			};
 		case "classical":
-			return { ...flat, "31hz": 4, "125hz": 2, "2khz": -1, "4khz": -1, "16khz": 3 };
+			return {
+				...flat,
+				"31hz": 4,
+				"125hz": 2,
+				"2khz": -1,
+				"4khz": -1,
+				"16khz": 3,
+			};
 		case "dance":
 			return { ...flat, "31hz": 6, "62hz": 4, "8khz": 3, "16khz": 4 };
 		default:

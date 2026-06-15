@@ -67,9 +67,14 @@ function buildOverlayArrowPath({
 		{ x: centerX - halfWidth / 2, y: centerY },
 		{ x: centerX - halfWidth, y: centerY },
 	];
-	return `M ${points[0].x},${points[0].y} ` +
-		points.slice(1).map((p) => `L ${p.x},${p.y}`).join(" ") +
-		" Z";
+	return (
+		`M ${points[0].x},${points[0].y} ` +
+		points
+			.slice(1)
+			.map((p) => `L ${p.x},${p.y}`)
+			.join(" ") +
+		" Z"
+	);
 }
 
 export const arrowMaskDefinition: MaskDefinition<RectangleMaskParams> = {

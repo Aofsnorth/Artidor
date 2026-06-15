@@ -16,6 +16,7 @@ import {
 	type TextPresetCategory,
 } from "@/lib/text/presets";
 import { cn } from "@/utils/ui";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 const CATEGORIES: { key: TextPresetCategory | "all"; label: string }[] = [
 	{ key: "all", label: "All" },
@@ -27,6 +28,7 @@ const CATEGORIES: { key: TextPresetCategory | "all"; label: string }[] = [
 ];
 
 export function TextView() {
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const [filter, setFilter] = useState<TextPresetCategory | "all">("all");
 
 	const filtered = useMemo(() => {
@@ -53,7 +55,7 @@ export function TextView() {
 				<div
 					className="grid gap-2"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{filtered.map((preset) => (

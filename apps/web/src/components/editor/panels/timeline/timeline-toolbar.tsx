@@ -19,20 +19,39 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import {
-	Bookmark02Icon,
-	Delete02Icon,
-	SnowIcon,
-	ScissorIcon,
-	MagnetIcon,
-	SearchAddIcon,
-	SearchMinusIcon,
-	Copy01Icon,
 	AlignLeftIcon,
 	AlignRightIcon,
+	ArrowShrinkIcon,
+	Bookmark01Icon,
+	Bookmark02Icon,
+	Camera01Icon,
+	ClipboardIcon,
+	Copy01Icon,
+	Copy02Icon,
+	Delete02Icon,
+	EaseCurveControlPointsIcon,
+	EyeIcon,
+	GroupLayersIcon,
+	Layers01Icon,
+	Link01Icon,
+	Maximize01Icon,
+	MagnetIcon,
+	MusicNote03Icon,
+	RefreshIcon,
+	RepeatIcon,
+	ScissorIcon,
+	SnowIcon,
+	Square01Icon,
+	Target01Icon,
+	Tick01Icon,
+	TickDouble01Icon,
 	UndoIcon,
 	RedoIcon,
-	Layers01Icon,
-	EaseCurveControlPointsIcon,
+	Unlink01Icon,
+	VolumeMute02Icon,
+	VolumeOffIcon,
+	SearchAddIcon,
+	SearchMinusIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
@@ -133,6 +152,7 @@ function ToolbarLeftSection() {
 	return (
 		<div className="flex items-center gap-0.5">
 			<TooltipProvider delayDuration={400}>
+				{/* History */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={UndoIcon} />}
 					tooltip="Undo"
@@ -143,6 +163,38 @@ function ToolbarLeftSection() {
 					tooltip="Redo"
 					onClick={() => invokeAction("redo")}
 				/>
+
+				<SectionDivider />
+
+				{/* Selection */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={TickDouble01Icon} />}
+					tooltip="Select all"
+					onClick={() => invokeAction("select-all")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Tick01Icon} />}
+					tooltip="Deselect all"
+					onClick={() => invokeAction("deselect-all")}
+				/>
+
+				<SectionDivider />
+
+				{/* Clipboard */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Copy01Icon} />}
+					tooltip="Copy selected"
+					onClick={() => invokeAction("copy-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={ClipboardIcon} />}
+					tooltip="Paste at playhead"
+					onClick={() => invokeAction("paste-copied")}
+				/>
+
+				<SectionDivider />
+
+				{/* Edit operations */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
 					tooltip="Freeze frame"
@@ -163,7 +215,7 @@ function ToolbarLeftSection() {
 					onClick={() => invokeAction("split")}
 				/>
 				<ToolbarButton
-					icon={<HugeiconsIcon icon={Copy01Icon} />}
+					icon={<HugeiconsIcon icon={Copy02Icon} />}
 					tooltip="Duplicate selected"
 					onClick={() => invokeAction("duplicate-selected")}
 				/>
@@ -177,9 +229,51 @@ function ToolbarLeftSection() {
 					tooltip="Split right"
 					onClick={() => invokeAction("split-right")}
 				/>
+
+				<SectionDivider />
+
+				{/* Grouping & parenting */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={GroupLayersIcon} />}
+					tooltip="Group selected"
+					onClick={() => invokeAction("group-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Layers01Icon} />}
+					tooltip="Ungroup selected"
+					onClick={() => invokeAction("ungroup-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Link01Icon} />}
+					tooltip="Link parent"
+					onClick={() => invokeAction("link-parent")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Unlink01Icon} />}
+					tooltip="Unlink parent"
+					onClick={() => invokeAction("unlink-parent")}
+				/>
+
+				<SectionDivider />
+
+				{/* Audio workflow */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
+					tooltip="Add beat markers"
+					onClick={() => invokeAction("add-beat-markers")}
+				/>
 			</TooltipProvider>
 		</div>
 	);
+}
+
+/**
+ * Thin vertical divider between toolbar button groups. Keeps the
+ * toolbar legible when it gets crowded without committing to a
+ * hard-coded count of buttons per group.
+ */
+function SectionDivider() {
+	return <div className="mx-1 h-5 w-px bg-white/10" />;
 }
 
 function SceneSelector() {
@@ -235,6 +329,8 @@ function ToolbarRightSection({
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
+	const toggleAutoScroll = useTimelineStore((s) => s.toggleAutoScroll);
 
 	const isCurrentlyBookmarked = useEditor((e) =>
 		e.scenes.isBookmarked({ time: e.playback.getCurrentTime() }),
@@ -243,13 +339,22 @@ function ToolbarRightSection({
 	return (
 		<div className="flex items-center gap-1.5 p-0.5 z-20">
 			<TooltipProvider delayDuration={400}>
+				{/* Bookmarks */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Bookmark02Icon} />}
 					isActive={isCurrentlyBookmarked}
 					tooltip={isCurrentlyBookmarked ? "Remove bookmark" : "Add bookmark"}
 					onClick={() => invokeAction("toggle-bookmark")}
 				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Bookmark01Icon} />}
+					tooltip="Toggle bookmark on selected element"
+					onClick={() => invokeAction("toggle-element-bookmark")}
+				/>
 
+				<SectionDivider />
+
+				{/* Toggles */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
@@ -258,10 +363,66 @@ function ToolbarRightSection({
 				/>
 
 				<ToolbarButton
+					icon={<HugeiconsIcon icon={Target01Icon} />}
+					isActive={autoScrollEnabled}
+					tooltip="Auto-scroll timeline during playback"
+					onClick={() => toggleAutoScroll()}
+				>
+					{autoScrollEnabled && (
+						<span
+							aria-hidden="true"
+							className="pointer-events-none absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]"
+						/>
+					)}
+				</ToolbarButton>
+
+				<ToolbarButton
 					icon={<OcRippleIcon size={20} className="scale-110" />}
 					isActive={rippleEditingEnabled}
 					tooltip="Ripple editing"
 					onClick={() => toggleRippleEditing()}
+				/>
+
+				<SectionDivider />
+
+				{/* Audio */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={VolumeOffIcon} />}
+					tooltip="Toggle source audio (mute video clip's original audio)"
+					onClick={() => invokeAction("toggle-source-audio")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={VolumeMute02Icon} />}
+					tooltip="Toggle elements muted (selected)"
+					onClick={() => invokeAction("toggle-elements-muted-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={EyeIcon} />}
+					tooltip="Toggle elements visibility (selected)"
+					onClick={() => invokeAction("toggle-elements-visibility-selected")}
+				/>
+
+				<SectionDivider />
+
+				{/* View */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Maximize01Icon} />}
+					tooltip="Fit timeline to view"
+					onClick={() => invokeAction("fit-to-screen")}
+				/>
+
+				<SectionDivider />
+
+				{/* Insert */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Camera01Icon} />}
+					tooltip="Add camera layer"
+					onClick={() => invokeAction("add-camera")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Square01Icon} />}
+					tooltip="Add null layer"
+					onClick={() => invokeAction("add-null-layer")}
 				/>
 			</TooltipProvider>
 
@@ -307,12 +468,14 @@ function ToolbarButton({
 	onClick,
 	disabled,
 	isActive,
+	children,
 }: {
 	icon: React.ReactNode;
 	tooltip: string;
 	onClick?: (event: React.MouseEvent) => void;
 	disabled?: boolean;
 	isActive?: boolean;
+	children?: React.ReactNode;
 }) {
 	return (
 		<Tooltip delayDuration={200}>
@@ -323,13 +486,17 @@ function ToolbarButton({
 					disabled={disabled}
 					onClick={onClick}
 					className={cn(
-						"size-7 rounded-md text-white/60 hover:bg-white/[0.08] hover:text-white transition",
+						// Compact button — fits more tools in a small
+						// toolbar without scroll. The cursor + tooltip
+						// remain the only affordance.
+						"relative size-6 rounded text-white/60 hover:bg-white/[0.08] hover:text-white transition",
 						isActive &&
 							"bg-white text-black hover:bg-white/90 hover:text-black",
 						disabled ? "cursor-not-allowed opacity-50" : "",
 					)}
 				>
 					{icon}
+					{children}
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>{tooltip}</TooltipContent>

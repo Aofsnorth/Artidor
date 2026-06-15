@@ -55,7 +55,9 @@ export class RemoveTransitionCommand extends Command {
 			scenes,
 			sceneId: activeScene.id,
 			updates: {
-				transitions: currentTransitions.filter((t) => t.id !== this.transitionId),
+				transitions: currentTransitions.filter(
+					(t) => t.id !== this.transitionId,
+				),
 			},
 		});
 		editor.scenes.setScenes({ scenes: updatedScenes });

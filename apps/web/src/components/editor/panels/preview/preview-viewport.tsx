@@ -183,7 +183,12 @@ function getFitScale({
 		return 1;
 	}
 
-	return Math.min(viewportWidth / canvasWidth, viewportHeight / canvasHeight);
+	// Cover fit: the canvas always fills the card (the longer axis overflows
+	// and is clipped by the viewport's `overflow-hidden`). Switching from
+	// `Math.min` (contain) to `Math.max` (cover) is what makes the preview
+	// grow to meet the card edges instead of letterboxing whenever the
+	// window is wider/taller than the project's aspect ratio.
+	return Math.max(viewportWidth / canvasWidth, viewportHeight / canvasHeight);
 }
 
 function getClampedZoom({ zoom }: { zoom: number }): number {

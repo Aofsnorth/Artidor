@@ -95,10 +95,24 @@ export function DraggableItem({
 			{variant === "card" ? (
 				<div
 					ref={dragRef}
-					className={cn("group relative", containerClassName ?? "w-28")}
+					className={cn(
+						// `w-full` instead of the old hard-coded `w-28` so the
+						// card actually fills the grid column width that the
+						// parent `minmax(assetCardSize, 1fr)` layout produced.
+						// Without this the column is e.g. 200px wide but the
+						// card stays at 112px with empty space on the sides.
+						"group relative w-full",
+						containerClassName,
+					)}
 				>
 					<div
 						className={cn(
+							// `w-full` propagates the parent's width down so
+							// the AspectRatio can pick it up. Previously the
+							// card was sized `w-28` (hard-coded 112px) which
+							// meant the AspectRatio rendered a 112px-wide
+							// thumbnail regardless of the user's chosen
+							// card size or the column width.
 							"asset-preview-container relative flex h-auto w-full cursor-default flex-col gap-1",
 							className,
 						)}

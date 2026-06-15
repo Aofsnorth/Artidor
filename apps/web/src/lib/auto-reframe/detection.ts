@@ -38,9 +38,13 @@ export async function detectSubjectCenter({
 
 	await new Promise<void>((resolve, reject) => {
 		video.addEventListener("loadeddata", () => resolve(), { once: true });
-		video.addEventListener("error", () => reject(new Error("Video load failed")), {
-			once: true,
-		});
+		video.addEventListener(
+			"error",
+			() => reject(new Error("Video load failed")),
+			{
+				once: true,
+			},
+		);
 	});
 
 	const samples: number = Math.max(

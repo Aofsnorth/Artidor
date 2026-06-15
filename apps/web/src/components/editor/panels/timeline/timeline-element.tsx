@@ -1,8 +1,8 @@
 "use client";
 
-import { useEditor } from "@/hooks/use-editor";
+import { memo, useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ReplaceMediaDialog } from "@/components/editor/dialogs/replace-media-dialog";
 import { AudioWaveform } from "./audio-waveform";
 import { useElementPreview } from "@/hooks/use-element-preview";
@@ -13,6 +13,8 @@ import {
 import { useKeyframeSelection } from "@/hooks/timeline/element/use-keyframe-selection";
 import { useKeyframeBoxSelect } from "@/hooks/timeline/element/use-keyframe-box-select";
 import { useTimelineElementResize } from "@/hooks/timeline/element/use-element-resize";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { dBToLinear } from "@/lib/timeline/audio-state";
 import { SelectionBox } from "@/lib/selection/selection-box";
 import { getElementKeyframes } from "@/lib/animation";
 import {
@@ -29,6 +31,7 @@ import {
 	getTimelineElementClassName,
 	TIMELINE_TRACK_THEME,
 	TRACK_TYPE_PALETTE,
+	getGroupColor,
 } from "./theme";
 import {
 	ContextMenu,
@@ -66,6 +69,7 @@ import {
 	ScissorIcon,
 	Delete02Icon,
 	Copy01Icon,
+	Copy02Icon,
 	ViewIcon,
 	ViewOffSlashIcon,
 	VolumeHighIcon,
@@ -75,6 +79,7 @@ import {
 	Exchange01Icon,
 	KeyframeIcon,
 	MagicWand05Icon,
+	Layers01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { uppercase } from "@/utils/string";
@@ -104,6 +109,10 @@ function ElementEnvelope({
 	baseTrackHeight,
 	elementLeft,
 	dragState,
+	propertyPath,
+	color = "rgba(255,255,255,0.75)",
+	envelopeHeight,
+	envelopeTop = 0,
 	onKeyframeMouseDown,
 	onKeyframeClick,
 	getVisualOffsetPx,
@@ -116,6 +125,10 @@ function ElementEnvelope({
 	baseTrackHeight: number;
 	elementLeft: number;
 	dragState: KeyframeDragState;
+	propertyPath: string;
+	color?: string;
+	envelopeHeight?: number;
+	envelopeTop?: number;
 	onKeyframeMouseDown: (params: {
 		event: React.MouseEvent;
 		keyframes: SelectedKeyframeRef[];
@@ -135,15 +148,6 @@ function ElementEnvelope({
 	}) => number;
 }) {
 	const { isKeyframeSelected } = useKeyframeSelection();
-	const propertyPath =
-		track.type === "audio"
-			? "volume"
-			: track.type === "video"
-				? "opacity"
-				: track.type === "text"
-					? "opacity"
-					: null;
-	if (!propertyPath) return null;
 
 	const elementKeyframes = getElementKeyframes({
 		animations: element.animations,
@@ -165,7 +169,8 @@ function ElementEnvelope({
 		keyframeRef?: SelectedKeyframeRef;
 	}[] = [];
 	const linePaddingY = 4;
-	const usableHeight = baseTrackHeight - linePaddingY * 2;
+	const resolvedHeight = envelopeHeight ?? baseTrackHeight;
+	const usableHeight = resolvedHeight - linePaddingY * 2;
 
 	if (elementKeyframes.length === 0) {
 		const y =
@@ -219,8 +224,8 @@ function ElementEnvelope({
 
 	return (
 		<div
-			className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
-			style={{ height: `${baseTrackHeight}px` }}
+			className="pointer-events-none absolute inset-x-0 overflow-hidden"
+			style={{ height: `${resolvedHeight}px`, top: `${envelopeTop}px` }}
 		>
 			<svg
 				aria-hidden="true"
@@ -229,7 +234,7 @@ function ElementEnvelope({
 				<polyline
 					points={pointsString}
 					fill="none"
-					stroke="rgba(255,255,255,0.75)"
+					stroke={color}
 					strokeWidth="1.25"
 				/>
 			</svg>
@@ -413,6 +418,7 @@ export function TimelineElement({
 	dragState,
 	isDropTarget = false,
 }: TimelineElementProps) {
+	const editor = useEditor();
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const lockedTrackIds = useTimelineStore((s) => s.lockedTrackIds);
 	const isTrackLocked = lockedTrackIds.has(track.id);
@@ -615,19 +621,97 @@ export function TimelineElement({
 							onResizeStart={handleElementResizeStart}
 							isDropTarget={isDropTarget}
 						/>
-						<ElementEnvelope
-							element={element}
-							track={track}
-							displayedStartTime={displayedStartTime}
-							elementWidth={elementWidth}
-							elementLeft={elementLeft}
-							zoomLevel={zoomLevel}
-							baseTrackHeight={baseTrackHeight}
-							dragState={keyframeDragState}
-							onKeyframeMouseDown={handleKeyframeMouseDown}
-							onKeyframeClick={handleKeyframeClick}
-							getVisualOffsetPx={getVisualOffsetPx}
-						/>
+						{track.type === "video" && (
+							<>
+								<ElementEnvelope
+									element={element}
+									track={track}
+									displayedStartTime={displayedStartTime}
+									elementWidth={elementWidth}
+									elementLeft={elementLeft}
+									zoomLevel={zoomLevel}
+									baseTrackHeight={baseTrackHeight}
+									dragState={keyframeDragState}
+									propertyPath="opacity"
+									color="rgba(255,255,255,0.75)"
+									envelopeHeight={baseTrackHeight / 2}
+									envelopeTop={0}
+									onKeyframeMouseDown={handleKeyframeMouseDown}
+									onKeyframeClick={handleKeyframeClick}
+									getVisualOffsetPx={getVisualOffsetPx}
+								/>
+								{((element as VideoElement).isSourceAudioEnabled ?? true) && (
+									<ElementEnvelope
+										element={element}
+										track={track}
+										displayedStartTime={displayedStartTime}
+										elementWidth={elementWidth}
+										elementLeft={elementLeft}
+										zoomLevel={zoomLevel}
+										baseTrackHeight={baseTrackHeight}
+										dragState={keyframeDragState}
+										propertyPath="volume"
+										color="rgba(255,255,255,0.4)"
+										envelopeHeight={baseTrackHeight / 2}
+										envelopeTop={baseTrackHeight / 2}
+										onKeyframeMouseDown={handleKeyframeMouseDown}
+										onKeyframeClick={handleKeyframeClick}
+										getVisualOffsetPx={getVisualOffsetPx}
+									/>
+								)}
+							</>
+						)}
+						{track.type === "audio" && (
+							<ElementEnvelope
+								element={element}
+								track={track}
+								displayedStartTime={displayedStartTime}
+								elementWidth={elementWidth}
+								elementLeft={elementLeft}
+								zoomLevel={zoomLevel}
+								baseTrackHeight={baseTrackHeight}
+								dragState={keyframeDragState}
+								propertyPath="volume"
+								color="rgba(255,255,255,0.75)"
+								onKeyframeMouseDown={handleKeyframeMouseDown}
+								onKeyframeClick={handleKeyframeClick}
+								getVisualOffsetPx={getVisualOffsetPx}
+							/>
+						)}
+						{track.type === "text" && (
+							<ElementEnvelope
+								element={element}
+								track={track}
+								displayedStartTime={displayedStartTime}
+								elementWidth={elementWidth}
+								elementLeft={elementLeft}
+								zoomLevel={zoomLevel}
+								baseTrackHeight={baseTrackHeight}
+								dragState={keyframeDragState}
+								propertyPath="opacity"
+								color="rgba(255,255,255,0.75)"
+								onKeyframeMouseDown={handleKeyframeMouseDown}
+								onKeyframeClick={handleKeyframeClick}
+								getVisualOffsetPx={getVisualOffsetPx}
+							/>
+						)}
+						{element.bookmarks?.map((bookmark, index) => {
+							const bookmarkLeftPx = timelineTimeToPixels({
+								time: bookmark.time - element.trimStart,
+								zoomLevel,
+							});
+							return (
+								<div
+									key={`bookmark-${index}`}
+									className="pointer-events-none absolute top-0 bottom-0 w-px bg-blue-400 z-30"
+									style={{
+										left: `${bookmarkLeftPx}px`,
+									}}
+								>
+									<div className="absolute -top-1 -translate-x-1/2 w-2 h-2 rounded-full bg-blue-400" />
+								</div>
+							);
+						})}
 						{isSelected && (
 							<div
 								className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
@@ -666,10 +750,34 @@ export function TimelineElement({
 					{selectedElements.length === 1 && (
 						<ActionMenuItem
 							action="duplicate-selected"
-							icon={<HugeiconsIcon icon={Copy01Icon} />}
+							icon={<HugeiconsIcon icon={Copy02Icon} />}
 						>
 							Duplicate
 						</ActionMenuItem>
+					)}
+					{selectedElements.length > 1 && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={Layers01Icon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								editor.timeline.groupElements({
+									elementRefs: selectedElements,
+								});
+							}}
+						>
+							Group elements
+						</ContextMenuItem>
+					)}
+					{element.groupId && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={Layers01Icon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								editor.timeline.ungroupElements({ groupId: element.groupId! });
+							}}
+						>
+							Ungroup elements
+						</ContextMenuItem>
 					)}
 					{canElementHaveAudio(element) && hasAudio && (
 						<MuteMenuItem
@@ -793,9 +901,11 @@ function ElementInner({
 	const isTrackLocked = lockedTrackIds.has(track.id);
 	const accent = getTrackTypeAccent({
 		type: track.type,
+		customColor: track.color,
 	});
 	const palette = TRACK_TYPE_PALETTE[track.type];
 	const hasFx = hasElementEffects({ element });
+	const groupColor = getGroupColor(element.groupId);
 	return (
 		<div
 			className="absolute top-0 bottom-0"
@@ -805,7 +915,7 @@ function ElementInner({
 			}}
 		>
 			<div
-				className="absolute inset-0 rounded-md shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_10px_28px_rgba(0,0,0,0.25)]"
+				className="absolute inset-0 rounded-[10px] shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
 				style={
 					isSelected
 						? {
@@ -816,7 +926,7 @@ function ElementInner({
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden rounded-[4px] border border-white/5",
+						"absolute inset-0 overflow-hidden rounded-[10px] border border-white/[0.04]",
 						isExpanded && "bg-background",
 					)}
 				>
@@ -843,6 +953,14 @@ function ElementInner({
 							className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[1.5px]"
 							style={{ backgroundColor: accent.accent }}
 						/>
+						{/* Group visual indicator: left edge stripe */}
+						{groupColor && (
+							<div
+								aria-hidden="true"
+								className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-[3px] rounded-l-[3px]"
+								style={{ backgroundColor: groupColor }}
+							/>
+						)}
 						{/* "fx" badge: a small monospace pill anchored to the
 						    bottom-right that tells the user this clip has effects
 						    applied. Uses the track-type accent for color, so it
@@ -1343,6 +1461,11 @@ function AudioElementContent({
 			Math.max(0, trackIndex) % TIMELINE_TRACK_THEME.audio.variants.length
 		];
 
+	const trackVolume =
+		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
+	const elementVolume = dBToLinear(element.volume ?? 0);
+	const effectiveVolume = trackVolume * elementVolume;
+
 	if (hasAudioSource) {
 		return (
 			<div className="relative size-full overflow-hidden bg-[radial-gradient(circle_at_50%_120%,rgba(255,255,255,0.16),transparent_52%)]">
@@ -1361,6 +1484,7 @@ function AudioElementContent({
 						element.sourceDuration ||
 						element.duration + element.trimStart + element.trimEnd
 					}
+					scale={effectiveVolume}
 				/>
 				<div className="pointer-events-none absolute right-1.5 bottom-1 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.18em] text-white/42">
 					Beat
@@ -1405,6 +1529,200 @@ function EffectsButton({
 	);
 }
 
+function VideoFilmstrip({
+	mediaUrl,
+	element,
+	tileWidth,
+	topHeight,
+}: {
+	mediaUrl: string;
+	element: VideoElement;
+	tileWidth: number;
+	topHeight: number;
+}) {
+	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const zoomLevel = useTimelineStore((s) => s.zoomLevel);
+	const extractionFailedRef = useRef(false);
+
+	useEffect(() => {
+		if (!mediaUrl || !canvasRef.current) return;
+		const canvas = canvasRef.current;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+
+		const elementWidth = (element.duration / TICKS_PER_SECOND) * zoomLevel;
+		const numTiles = Math.max(1, Math.ceil(elementWidth / tileWidth));
+
+		const dpr = window.devicePixelRatio || 1;
+		canvas.width = numTiles * tileWidth * dpr;
+		canvas.height = topHeight * dpr;
+		canvas.style.width = `${numTiles * tileWidth}px`;
+		canvas.style.height = `${topHeight}px`;
+		ctx.scale(dpr, dpr);
+
+		// Fill with solid black background initially so the track
+		// colour doesn't bleed through before frames arrive.
+		ctx.fillStyle = "rgba(0, 0, 0, 1)";
+		ctx.fillRect(0, 0, numTiles * tileWidth, topHeight);
+
+		let isCancelled = false;
+		extractionFailedRef.current = false;
+
+		// `preload = "metadata"` is enough to seek the video; the
+		// previous `"auto"` forced a full download which thrashed
+		// memory on long videos AND often timed out before the
+		// `seeked` event fired.
+		const video = document.createElement("video");
+		video.preload = "metadata";
+		if (!mediaUrl.startsWith("blob:") && !mediaUrl.startsWith("data:")) {
+			video.crossOrigin = "anonymous";
+		}
+		video.muted = true;
+		video.playsInline = true;
+
+		// Surface load errors so we don't silently produce a black
+		// canvas. The parent already paints the `thumbnailUrl`
+		// fallback, so even on failure the user sees SOMETHING.
+		const onError = () => {
+			console.warn("[VideoFilmstrip] failed to load", mediaUrl);
+			extractionFailedRef.current = true;
+		};
+		video.addEventListener("error", onError);
+
+		let currentTile = 0;
+
+		const extractNextFrame = async () => {
+			if (isCancelled || currentTile >= numTiles) return;
+
+			const timeInClip = (currentTile * tileWidth) / zoomLevel;
+			const sourceTime =
+				element.trimStart / TICKS_PER_SECOND + timeInClip;
+
+			// Bound-checking against the source duration. Without
+			// this clamp the seek jumps to NaN and `seeked` never
+			// fires, leaving the canvas black.
+			let safeTime = Math.max(0, Math.min(video.duration || 0, sourceTime));
+			if (!Number.isFinite(safeTime)) safeTime = 0;
+
+			// Seek only when we need to change position. The seek
+			// promise has a 750ms fail-safe so a stalled decode
+			// can't hang the whole loop.
+			if (Math.abs(video.currentTime - safeTime) > 0.01) {
+				video.currentTime = safeTime;
+				await new Promise((resolve) => {
+					const onSeeked = () => {
+						video.removeEventListener("seeked", onSeeked);
+						resolve(true);
+					};
+					video.addEventListener("seeked", onSeeked);
+					setTimeout(resolve, 750);
+				});
+			} else if (video.readyState < 2) {
+				await new Promise((resolve) => {
+					const onLoadedData = () => {
+						video.removeEventListener("loadeddata", onLoadedData);
+						resolve(true);
+					};
+					video.addEventListener("loadeddata", onLoadedData);
+					setTimeout(resolve, 750);
+				});
+			}
+
+			if (isCancelled) return;
+
+			// Cover-strategy crop: scale source into tile, keeping
+			// the aspect ratio. Skip the draw entirely if the
+			// decoder hasn't reported dimensions yet (HAVE_NOTHING).
+			if (video.videoWidth > 0 && video.videoHeight > 0) {
+				const videoRatio = video.videoWidth / video.videoHeight;
+				const tileRatio = tileWidth / topHeight;
+				let sx = 0;
+				let sy = 0;
+				let sWidth = video.videoWidth;
+				let sHeight = video.videoHeight;
+
+				if (videoRatio > tileRatio) {
+					sWidth = video.videoHeight * tileRatio;
+					sx = (video.videoWidth - sWidth) / 2;
+				} else {
+					sHeight = video.videoWidth / tileRatio;
+					sy = (video.videoHeight - sHeight) / 2;
+				}
+
+				ctx.drawImage(
+					video,
+					sx,
+					sy,
+					sWidth,
+					sHeight,
+					currentTile * tileWidth,
+					0,
+					tileWidth,
+					topHeight,
+				);
+			}
+
+			currentTile++;
+			// Yield to the main thread between tiles so React
+			// can re-render and the user sees progress rather
+			// than a single block that pops in at the end.
+			requestAnimationFrame(() => {
+				if (!isCancelled) extractNextFrame();
+			});
+		};
+
+		let started = false;
+		const startExtraction = () => {
+			if (started || isCancelled) return;
+			started = true;
+			extractNextFrame();
+		};
+
+		// `loadeddata` fires once enough of the video is buffered
+		// for `drawImage` to succeed — more reliable than
+		// `loadedmetadata` (which only fires once and can fire
+		// before frames are seekable).
+		video.addEventListener("loadeddata", startExtraction);
+		video.addEventListener("loadedmetadata", startExtraction);
+
+		// Set src after attaching listeners to avoid missing the
+		// event. The synchronous readyState check catches the
+		// edge case where metadata was already loaded by the
+		// browser cache.
+		video.src = mediaUrl;
+		video.load();
+
+		if (video.readyState >= 1) {
+			startExtraction();
+		}
+
+		return () => {
+			isCancelled = true;
+			video.removeEventListener("error", onError);
+			video.removeEventListener("loadeddata", startExtraction);
+			video.removeEventListener("loadedmetadata", startExtraction);
+			video.src = "";
+			video.load();
+		};
+	}, [
+		mediaUrl,
+		element.duration,
+		element.trimStart,
+		zoomLevel,
+		tileWidth,
+		topHeight,
+	]);
+
+	return (
+		<div className="absolute inset-0 overflow-hidden pointer-events-none">
+			<canvas
+				ref={canvasRef}
+				className="absolute top-0 left-0 h-full w-full"
+			/>
+		</div>
+	);
+}
+
 function TiledMediaContent({
 	element,
 	track,
@@ -1431,34 +1749,69 @@ function TiledMediaContent({
 	const trackHeight = getTrackHeight({ type: track.type });
 	const isVideo = element.type === "video";
 
-	// Split layout for video elements: 50% thumbnails, 50% audio waveform
-	const topHeight = isVideo ? trackHeight / 2 : trackHeight;
-	const tileWidth = topHeight * THUMBNAIL_ASPECT_RATIO;
+	// The track-row is split vertically: top 60% is the thumbnail
+	// strip, bottom 40% is the audio waveform. Both halves are
+	// sized off `trackHeight` so the thumbnails stay readable as
+	// the user resizes the row.
+	const filmstripHeight = isVideo ? Math.round(trackHeight * 0.6) : trackHeight;
+	const tileWidth = filmstripHeight * THUMBNAIL_ASPECT_RATIO;
 	const hasAudio = isVideo && (element.isSourceAudioEnabled ?? true);
+
+	const trackVolume =
+		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
+	const elementVolume = dBToLinear((element as VideoElement).volume ?? 0);
+	const effectiveVolume = trackVolume * elementVolume;
 
 	return (
 		<>
-			{/* Top Half: Video Thumbnails */}
-			{imageUrl && (
+			{/* Top portion: Thumbnail strip.
+			   - For video: ALWAYS render the pre-rendered `thumbnailUrl`
+			     as a tiled background first (synchronous, guaranteed
+			     visible), then layer the canvas-based VideoFilmstrip
+			     on top. The canvas can fail to extract frames (blob URL
+			     race, browser quirks) and the user still sees SOMETHING.
+			   - For image: just the tiled `imageUrl`. */}
+			{isVideo && imageUrl ? (
+				<div
+					className="absolute top-0 left-0 right-0 overflow-hidden bg-black"
+					style={{
+						height: `${filmstripHeight}px`,
+						backgroundImage: `url(${imageUrl})`,
+						backgroundRepeat: "repeat",
+						backgroundSize: `${tileWidth}px ${filmstripHeight}px`,
+						backgroundPosition: "left center",
+						pointerEvents: "none",
+					}}
+				>
+					{mediaAsset?.url ? (
+						<VideoFilmstrip
+							mediaUrl={mediaAsset.url}
+							element={element as VideoElement}
+							tileWidth={tileWidth}
+							topHeight={filmstripHeight}
+						/>
+					) : null}
+				</div>
+			) : imageUrl ? (
 				<div
 					className="absolute top-0 left-0 right-0"
 					style={{
-						height: isVideo ? "70%" : "100%",
-						backgroundColor: "var(--muted)",
+						height: "100%",
+						backgroundColor: "rgba(0, 0, 0, 1)",
 						backgroundImage: `url(${imageUrl})`,
-						backgroundRepeat: isVideo ? "repeat-x" : "no-repeat", // Use repeat-x for filmstrip look on videos
-						backgroundSize: `${tileWidth}px ${topHeight}px`,
+						backgroundRepeat: "repeat",
+						backgroundSize: `${tileWidth}px ${filmstripHeight}px`,
 						backgroundPosition: "left center",
 						pointerEvents: "none",
 					}}
 				/>
-			)}
+			) : null}
 
-			{/* Bottom Half: Audio Waveform */}
+			{/* Bottom portion: Audio Waveform (video only) */}
 			{isVideo && mediaAsset?.url && hasAudio && (
 				<div
 					className="absolute bottom-0 left-0 right-0"
-					style={{ height: "40%" }}
+					style={{ height: `${trackHeight - filmstripHeight}px` }}
 				>
 					<AudioWaveform
 						audioUrl={mediaAsset.url}
@@ -1467,6 +1820,7 @@ function TiledMediaContent({
 						beatColor="rgba(255, 255, 255, 1)"
 						variant="beats"
 						symmetric={true}
+						scale={effectiveVolume}
 					/>
 				</div>
 			)}

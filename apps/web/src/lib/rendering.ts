@@ -27,11 +27,10 @@ export interface Transform {
 
 export const DEFAULT_PIVOT: { x: number; y: number } = { x: 0.5, y: 0.5 };
 
-export function resolvePivot({
-	transform,
-}: {
-	transform: Transform;
-}): { x: number; y: number } {
+export function resolvePivot({ transform }: { transform: Transform }): {
+	x: number;
+	y: number;
+} {
 	return transform.pivot ?? DEFAULT_PIVOT;
 }
 
@@ -147,8 +146,10 @@ export function project3DToScreen({
 		return { x: canvasWidth / 2, y: canvasHeight / 2 };
 	}
 	const scale = 1 / Math.tan(fovRad / 2);
-	const sx = (point.x - camera.position.x) * scale * (canvasWidth / 2) / distance;
-	const sy = (point.y - camera.position.y) * scale * (canvasHeight / 2) / distance;
+	const sx =
+		((point.x - camera.position.x) * scale * (canvasWidth / 2)) / distance;
+	const sy =
+		((point.y - camera.position.y) * scale * (canvasHeight / 2)) / distance;
 	return {
 		x: canvasWidth / 2 + sx,
 		y: canvasHeight / 2 + sy,

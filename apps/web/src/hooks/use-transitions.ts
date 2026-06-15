@@ -16,7 +16,9 @@ export function useTransitions(): {
 	updateTransition: (id: string, patch: Partial<Transition>) => void;
 } {
 	const editor = useEditor();
-	const transitions = useEditor((e) => e.scenes.getActiveScene()?.transitions ?? []);
+	const transitions = useEditor(
+		(e) => e.scenes.getActiveScene()?.transitions ?? [],
+	);
 
 	const addTransition = useCallback(
 		(params: Omit<Transition, "id">): Transition => {
@@ -50,12 +52,13 @@ export function useTransitions(): {
 	return { transitions, addTransition, removeTransition, updateTransition };
 }
 
-export function useActiveTransitionsAtTime({
-	time,
-}: {
-	time: number;
-}): Array<{ transition: Transition; definition: ReturnType<typeof transitionsRegistry.get> }> {
-	const transitions = useEditor((e) => e.scenes.getActiveScene()?.transitions ?? []);
+export function useActiveTransitionsAtTime({ time }: { time: number }): Array<{
+	transition: Transition;
+	definition: ReturnType<typeof transitionsRegistry.get>;
+}> {
+	const transitions = useEditor(
+		(e) => e.scenes.getActiveScene()?.transitions ?? [],
+	);
 
 	return transitions
 		.filter((t) => time >= t.startTime && time < t.startTime + t.duration)

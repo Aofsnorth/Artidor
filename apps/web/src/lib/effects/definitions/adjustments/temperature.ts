@@ -20,9 +20,10 @@ export const temperatureAdjustmentDefinition: EffectDefinition = {
 			{
 				shader: "temperature",
 				uniforms: ({ effectParams }) => {
-					const amount = typeof effectParams.amount === "number"
-						? effectParams.amount
-						: Number.parseFloat(String(effectParams.amount));
+					const amount =
+						typeof effectParams.amount === "number"
+							? effectParams.amount
+							: Number.parseFloat(String(effectParams.amount));
 					return {
 						u_amount: amount,
 					};
