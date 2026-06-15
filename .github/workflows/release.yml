@@ -1,0 +1,43 @@
+name: Release
+
+# Cutting a release is driven by pushing a version tag, e.g.
+#   git tag v0.0.1-beta && git push origin v0.0.1-beta
+# bun-ci.yml already build-checks every push to main, so by the time a tag
+# points at a main commit the code has been validated — this workflow only
+# turns that tag into a GitHub Release entry with auto-generated notes.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Required so the GITHUB_TOKEN may create the release.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history (and prior tags) so --generate-notes can diff against
+          # the previous release instead of producing an empty changelog.
+          fetch-depth: 0
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # A hyphen in the tag marks a semver pre-release (v0.0.1-beta), so
+          # flag it as such; a clean tag (v1.2.3) becomes the "Latest" release.
+          if [[ "$TAG" == *-* ]]; then
+            FLAGS="--prerelease"
+          else
+            FLAGS="--latest"
+          fi
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            $FLAGS
