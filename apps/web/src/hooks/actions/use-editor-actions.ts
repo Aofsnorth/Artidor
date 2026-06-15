@@ -610,7 +610,8 @@ export function useEditorActions() {
 			const track = editor.timeline.getTrackById({
 				trackId: selectedRef.trackId,
 			});
-			const element = track?.elements.find(
+			if (!track) return;
+			const element = track.elements.find(
 				(el) => el.id === selectedRef.elementId,
 			);
 			if (!element) return;
@@ -684,9 +685,11 @@ export function useEditorActions() {
 						const timeInTicks = Math.round(timeInSeconds * TICKS_PER_SECOND);
 
 						// Only add if it's within the trimmed bounds
+						const trimmedEnd =
+							element.sourceDuration ?? element.duration + element.trimStart + element.trimEnd;
 						if (
 							timeInTicks >= element.trimStart &&
-							timeInTicks <= element.sourceDuration - element.trimEnd
+							timeInTicks <= trimmedEnd - element.trimEnd
 						) {
 							// Avoid duplicates
 							if (

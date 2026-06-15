@@ -590,7 +590,7 @@ export function Timeline() {
 
 	return (
 		<section
-			className="panel glass-strong relative flex h-full flex-col overflow-hidden rounded-lg border border-white/10 bg-transparent"
+			className="panel glass-strong relative flex h-full flex-col overflow-hidden rounded-[2px] border border-white/10 bg-transparent"
 			{...dragProps}
 			aria-label="Timeline"
 		>
@@ -877,8 +877,6 @@ function TrackLabelsPanel({
 	const setTrackSlider = useTimelineStore((s) => s.setTrackSlider);
 	const trackOpacity = useTimelineStore((s) => s.trackOpacity);
 	const setTrackOpacity = useTimelineStore((s) => s.setTrackOpacity);
-	const targetTrackIds = useTimelineStore((s) => s.targetTrackIds);
-	const toggleTrackTarget = useTimelineStore((s) => s.toggleTrackTarget);
 	// Per-track row height overrides. Read here so the track labels
 	// column (rendered separately) can match the height of the actual
 	// track row when the user has dragged it taller or shorter.
@@ -954,7 +952,6 @@ function TrackLabelsPanel({
 									overrideHeight: trackHeights[track.id],
 								});
 								const isLocked = lockedTrackIds.has(track.id);
-								const isTarget = targetTrackIds.has(track.id);
 								const sliderValue = trackSliders[track.id] ?? 100;
 
 								const isHidden =
@@ -974,9 +971,9 @@ function TrackLabelsPanel({
 									toggleTrackLock(track.id);
 								};
 
-								const handleTargetToggle = (e: React.MouseEvent) => {
+								const handleTrackDelete = (e: React.MouseEvent) => {
 									e.stopPropagation();
-									toggleTrackTarget(track.id);
+									editor.timeline.removeTrack({ trackId: track.id });
 								};
 
 								const handleOpacityChange = (
@@ -1036,9 +1033,12 @@ function TrackLabelsPanel({
 									<div
 										key={track.id}
 										className={cn(
-											"group relative mx-2 flex flex-col overflow-hidden rounded-md border border-white/[0.05] bg-linear-to-br from-white/[0.045] via-white/[0.02] to-black/[0.18] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.035)] transition-colors hover:border-white/[0.1]",
+											"group relative mx-2 flex flex-col overflow-hidden rounded-xl border border-white/[0.05] bg-linear-to-br from-white/[0.045] via-white/[0.02] to-black/[0.18] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.035)] transition-[color,border-color,opacity] hover:border-white/[0.1]",
 											tracksWithSelection.has(track.id) &&
 												SELECTED_TRACK_ROW_CLASS,
+											// Dim a hidden/muted lane so the eye-toggle has an
+											// obvious effect in the label column at a glance.
+											isHidden && "opacity-45",
 										)}
 										style={{
 											height: `${baseHeight + getTrackExpansionHeight(index)}px`,
@@ -1050,9 +1050,9 @@ function TrackLabelsPanel({
 										{track.color ? (
 											<div
 												aria-hidden="true"
-												className="pointer-events-none absolute inset-y-0 left-0 w-[3px] z-10"
+												className="pointer-events-none absolute inset-0 z-10 rounded-xl"
 												style={{
-													backgroundColor: trackAccent.accent,
+													borderLeft: `3px solid ${trackAccent.accent}`,
 												}}
 											/>
 										) : null}
@@ -1141,29 +1141,19 @@ function TrackLabelsPanel({
 													</button>
 													<button
 														type="button"
-														onClick={handleTargetToggle}
+														onClick={handleTrackDelete}
 														className={cn(
-															"grid size-5 shrink-0 cursor-pointer place-items-center rounded-md transition hover:bg-white/[0.08] focus:outline-none",
-															// The "set as target" toggle renders as an "X" at
-															// this size and is meaningless on the main track
-															// (it's the implicit default and can't be removed),
-															// so hide it there.
+															"grid size-5 shrink-0 cursor-pointer place-items-center rounded-md text-white/25 transition hover:bg-red-500/15 hover:text-red-300 focus:outline-none",
+															// The delete (X) button can't apply to the main
+															// track — it's the implicit default lane and can't
+															// be removed — so hide it there.
 															track.id === mainTrackId && "hidden",
 														)}
-														title={
-															isTarget
-																? "Clear target track"
-																: "Set as target track"
-														}
+														title="Delete track"
 													>
 														<svg
 															aria-hidden="true"
-															className={cn(
-																"size-3.5 transition",
-																isTarget
-																	? "text-white opacity-85"
-																	: "text-white/25 hover:text-white/50",
-															)}
+															className="size-3.5 transition"
 															viewBox="0 0 24 24"
 															fill="none"
 															stroke="currentColor"
@@ -1171,8 +1161,8 @@ function TrackLabelsPanel({
 															strokeLinecap="round"
 															strokeLinejoin="round"
 														>
-															<path d="M8 8l4 4-4 4" />
-															<path d="M16 8l-4 4 4 4" />
+															<path d="M6 6l12 12" />
+															<path d="M18 6L6 18" />
 														</svg>
 													</button>
 												</div>
@@ -1350,7 +1340,7 @@ function TimelineTrackRows({
 						<ContextMenuTrigger asChild>
 							<div
 								className={cn(
-									"group absolute left-0 right-0 overflow-hidden rounded-md border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
+									"group absolute left-0 right-0 overflow-hidden rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
 									tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
 								)}
 								style={{
@@ -1368,8 +1358,8 @@ function TimelineTrackRows({
 								{track.color ? (
 									<div
 										aria-hidden="true"
-										className="pointer-events-none absolute inset-y-0 left-0 w-[3px] z-20"
-										style={{ backgroundColor: trackAccent.accent }}
+										className="pointer-events-none absolute inset-0 z-20 rounded-xl"
+										style={{ borderLeft: `3px solid ${trackAccent.accent}` }}
 									/>
 								) : null}
 								<TimelineTrackContent

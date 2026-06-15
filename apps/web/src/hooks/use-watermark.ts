@@ -5,6 +5,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { toast } from "sonner";
 import type { TextElement, TimelineElement } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { DEFAULTS } from "@/lib/timeline/defaults";
 
 /**
  * Watermark tool — bakes a text overlay onto the selected clip
@@ -82,9 +83,9 @@ export function useWatermark() {
 						config,
 						target,
 					});
-					editor.timeline.addElement({
-						trackId: ref.trackId,
+					editor.timeline.insertElement({
 						element: watermark,
+						placement: { mode: "explicit", trackId: ref.trackId },
 					});
 					applied += 1;
 				}
@@ -155,27 +156,27 @@ function buildWatermarkElement({
 		trimStart: 0,
 		trimEnd: 0,
 		hidden: false,
-		locked: false,
 		opacity: config.opacity,
 		// Text content + style. Real values land here so the
 		// renderer can show them as overlay text in the preview
 		// and bake them into the exported MP4.
-		text: config.text,
+		content: config.text,
 		fontFamily: "Inter, sans-serif",
 		fontSize: config.fontSizePx,
 		color: "#FFFFFF",
 		textAlign,
-		verticalAlign,
-		position: {
-			x: anchor.x,
-			y: anchor.y,
+		fontWeight: "normal",
+		fontStyle: "normal",
+		textDecoration: "none",
+		background: { ...DEFAULTS.text.background },
+		letterSpacing: DEFAULTS.text.letterSpacing,
+		lineHeight: DEFAULTS.text.lineHeight,
+		transform: {
+			...DEFAULTS.element.transform,
+			position: { x: anchor.x, y: anchor.y },
 		},
 		// Store some metadata for the editor to round-trip.
 		// (Hidden from the user, but keeps the config recoverable.)
-		animations: [],
-		keyframes: {},
-		...(target.type === "video" || target.type === "image"
-			? {}
-			: {}),
-	} as TextElement;
+		animations: { bindings: {}, channels: {} },
+	};
 }

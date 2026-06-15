@@ -16,7 +16,6 @@ import { registerDefaultMasks } from "@/lib/masks";
 import { registerDefaultTransitions } from "@/lib/transitions";
 import { registerDefaultAnimationPresets } from "@/lib/animation/presets";
 import { registerTranscriptionDiagnostics } from "@/lib/transcription/diagnostics";
-import { AddTrackCommand } from "@/lib/commands/timeline/track/add-track";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -54,26 +53,35 @@ export class EditorCore {
 		this.teleprompter = new TeleprompterManager(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
-		this.command.registerReactor((command) => {
-			// Empty tracks are normally pruned after each command so the
-			// timeline doesn't accumulate dead lanes. But adding a track
-			// is the one case where an empty lane is intentional — the
-			// user just asked for it and hasn't dropped a clip yet. Skip
-			// the prune for AddTrackCommand so the new track survives.
-			if (command instanceof AddTrackCommand) {
-				return;
-			}
-
+		// Tracks that have held at least one element at some point. An empty
+		// lane is only "dead" (safe to prune) if it once had a clip and then
+		// lost it — e.g. the user dragged the last element out. A track the
+		// user just created has never been in this set, so it survives until
+		// they actually use it. This is what makes "Add track" stick and lets
+		// a still-empty track be hidden / renamed without vanishing on the
+		// very next command (the previous prune nuked every empty lane, so
+		// any action after adding a track silently deleted it again).
+		const tracksThatHeldElements = new Set<string>();
+		this.command.registerReactor(() => {
 			const activeScene = this.scenes.getActiveSceneOrNull();
 			if (!activeScene) {
 				return;
 			}
 
 			const tracks = activeScene.tracks;
+			for (const track of [...tracks.overlay, ...tracks.audio]) {
+				if (track.elements.length > 0) {
+					tracksThatHeldElements.add(track.id);
+				}
+			}
+
+			const isDeadLane = (track: { id: string; elements: unknown[] }) =>
+				track.elements.length === 0 && tracksThatHeldElements.has(track.id);
+
 			const prunedTracks = {
 				...tracks,
-				overlay: tracks.overlay.filter((track) => track.elements.length > 0),
-				audio: tracks.audio.filter((track) => track.elements.length > 0),
+				overlay: tracks.overlay.filter((track) => !isDeadLane(track)),
+				audio: tracks.audio.filter((track) => !isDeadLane(track)),
 			};
 			if (
 				prunedTracks.overlay.length !== tracks.overlay.length ||
