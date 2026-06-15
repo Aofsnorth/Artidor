@@ -1,9 +1,6 @@
 import type { EditorCore } from "@/core";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import {
-	clampRetimeRate,
-	shouldMaintainPitch,
-} from "@/lib/retime/rate";
+import { clampRetimeRate, shouldMaintainPitch } from "@/lib/retime/rate";
 import type { AudioClipSource } from "@/lib/media/audio";
 import { createAudioContext, collectAudioClips } from "@/lib/media/audio";
 import {
@@ -134,7 +131,9 @@ export class AudioManager {
 
 		if (!this.editor.playback.getIsPlaying()) return;
 
-		void this.startPlayback({ time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND });
+		void this.startPlayback({
+			time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
+		});
 	};
 
 	private ensureAudioContext(): AudioContext | null {
@@ -349,7 +348,8 @@ export class AudioManager {
 								nextCompensationSeconds >
 								this.playbackLatencyCompensationSeconds + 0.001
 							) {
-								this.playbackLatencyCompensationSeconds = nextCompensationSeconds;
+								this.playbackLatencyCompensationSeconds =
+									nextCompensationSeconds;
 							}
 							const resyncStartTime = this.getPlaybackTime();
 							this.clipIterators.delete(clip.id);

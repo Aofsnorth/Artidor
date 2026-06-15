@@ -3,7 +3,7 @@ import { generateUUID } from "@/utils/id";
 import { DEFAULT_BACKGROUND_COLOR } from "@/lib/background/color";
 import { DEFAULT_CANVAS_SIZE } from "@/lib/canvas/sizes";
 import { floatToFrameRate } from "@/lib/fps/utils";
-import type { TimelineElement, TScene, } from "@/lib/timeline";
+import type { TimelineElement, TScene } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 
 export interface TemplatePlaceholder {
@@ -219,7 +219,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 20,
 				color: "#ffffff",
 				backgroundColor: "#000000",
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [makePlaceholder("title", "Title", "text", false)],
@@ -241,7 +246,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 16,
 				color: "#ffffff",
 				backgroundColor: "transparent",
-				transform: { position: { x: 0, y: 200 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 200 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [makePlaceholder("cta", "Call to Action", "text", false)],
@@ -259,7 +269,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 4 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			textElement({
 				id: "title",
@@ -271,7 +286,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 18,
 				color: "#ffffff",
 				backgroundColor: "transparent",
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [
@@ -292,7 +312,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 6 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			textElement({
 				id: "step-num",
@@ -304,7 +329,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 14,
 				color: "#fbbf24",
 				backgroundColor: "transparent",
-				transform: { position: { x: 0, y: -250 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: -250 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			textElement({
 				id: "step-desc",
@@ -316,7 +346,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 12,
 				color: "#ffffff",
 				backgroundColor: "rgba(0,0,0,0.7)",
-				transform: { position: { x: 0, y: 250 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 250 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [
@@ -338,7 +373,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 5 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			audioPlaceholder({
 				id: "music",
@@ -359,7 +399,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 14,
 				color: "#ffffff",
 				backgroundColor: "transparent",
-				transform: { position: { x: 0, y: 100 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 100 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [
@@ -381,7 +426,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 5 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			textElement({
 				id: "headline",
@@ -393,7 +443,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 18,
 				color: "#ffffff",
 				backgroundColor: "transparent",
-				transform: { position: { x: 0, y: -200 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: -200 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [
@@ -414,7 +469,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 3 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			imagePlaceholder({
 				id: "img2",
@@ -422,7 +482,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 3 * TICKS_PER_SECOND,
 				durationTicks: 3 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			imagePlaceholder({
 				id: "img3",
@@ -430,7 +495,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 6 * TICKS_PER_SECOND,
 				durationTicks: 3 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			audioPlaceholder({
 				id: "music",
@@ -463,7 +533,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				trackType: "main",
 				startTick: 0,
 				durationTicks: 8 * TICKS_PER_SECOND,
-				transform: { position: { x: 0, y: 0 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 			textElement({
 				id: "swipe",
@@ -475,7 +550,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 				fontSize: 14,
 				color: "#ffffff",
 				backgroundColor: "rgba(0,0,0,0.5)",
-				transform: { position: { x: 0, y: 700 }, scaleX: 1, scaleY: 1, rotate: 0 },
+				transform: {
+					position: { x: 0, y: 700 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
 			}),
 		],
 		placeholders: [
@@ -496,7 +576,10 @@ export function applyTemplateToProject({
 	template: ProjectTemplate;
 	mediaIdsByPlaceholder: Record<string, string>;
 }): TProject {
-	const tracksByType: Record<"main" | "overlay" | "audio", Array<{ id: string; name: string; elements: TimelineElement[] }>> = {
+	const tracksByType: Record<
+		"main" | "overlay" | "audio",
+		Array<{ id: string; name: string; elements: TimelineElement[] }>
+	> = {
 		main: [{ id: "main", name: "Main", elements: [] }],
 		overlay: [],
 		audio: [],
@@ -601,7 +684,9 @@ function buildElementFromSpec({
 				lineHeight: 1.2,
 				color: spec.color ?? "#ffffff",
 				background: {
-					enabled: spec.backgroundColor !== undefined && spec.backgroundColor !== "transparent",
+					enabled:
+						spec.backgroundColor !== undefined &&
+						spec.backgroundColor !== "transparent",
 					color: spec.backgroundColor ?? "#000000",
 					cornerRadius: 0,
 					paddingX: 0,

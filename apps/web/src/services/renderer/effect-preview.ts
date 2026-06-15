@@ -74,7 +74,9 @@ class EffectPreviewService {
 			if (this.isValidCanvasResult(gpuResult)) {
 				result = gpuResult;
 			} else {
-				console.warn(`GPU effect preview for ${effectType} produced invalid result, using source fallback`);
+				console.warn(
+					`GPU effect preview for ${effectType} produced invalid result, using source fallback`,
+				);
 			}
 		} catch (error) {
 			console.warn(`Failed to render effect preview for ${effectType}:`, error);
@@ -83,7 +85,7 @@ class EffectPreviewService {
 		targetCtx.clearRect(0, 0, size, size);
 		try {
 			targetCtx.drawImage(result, 0, 0, size, size);
-			
+
 			// Even if the canvas object is valid, the underlying WebGL/WebGPU
 			// pipeline might fail silently and return a completely empty or
 			// black canvas. We sample the center pixel to ensure it actually
@@ -95,11 +97,11 @@ class EffectPreviewService {
 					1,
 					1,
 				).data;
-				
+
 				const isBlank =
 					pixels[3] === 0 || // fully transparent
 					(pixels[0] === 0 && pixels[1] === 0 && pixels[2] === 0); // pure black
-					
+
 				if (isBlank) {
 					console.warn(
 						`GPU effect preview for ${effectType} produced visually blank/black canvas, falling back to source.`,
@@ -248,8 +250,7 @@ class EffectPreviewService {
 	private isValidCanvasResult(canvas: CanvasImageSource): boolean {
 		if (canvas instanceof HTMLCanvasElement) {
 			if (canvas.width === 0 || canvas.height === 0) return false;
-			const gl =
-				canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+			const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
 			if (gl && gl.isContextLost()) return false;
 		} else if (canvas instanceof OffscreenCanvas) {
 			if (canvas.width === 0 || canvas.height === 0) return false;

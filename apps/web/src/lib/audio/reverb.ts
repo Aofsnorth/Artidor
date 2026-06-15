@@ -13,13 +13,62 @@ export interface ReverbPreset {
 }
 
 export const REVERB_PRESETS: ReverbPreset[] = [
-	{ id: "room", name: "Room", duration: 0.6, decay: 2.5, preDelay: 0.005, damping: 0.6 },
-	{ id: "hall", name: "Hall", duration: 2.4, decay: 1.6, preDelay: 0.03, damping: 0.35 },
-	{ id: "plate", name: "Plate", duration: 1.6, decay: 1.8, preDelay: 0.001, damping: 0.2 },
-	{ id: "cathedral", name: "Cathedral", duration: 4.5, decay: 1.2, preDelay: 0.06, damping: 0.4 },
-	{ id: "chamber", name: "Chamber", duration: 1.2, decay: 2.0, preDelay: 0.01, damping: 0.5 },
-	{ id: "spring", name: "Spring", duration: 1.0, decay: 3.0, preDelay: 0.001, damping: 0.1 },
-	{ id: "ambient", name: "Ambient", duration: 3.0, decay: 1.4, preDelay: 0.02, damping: 0.5 },
+	{
+		id: "room",
+		name: "Room",
+		duration: 0.6,
+		decay: 2.5,
+		preDelay: 0.005,
+		damping: 0.6,
+	},
+	{
+		id: "hall",
+		name: "Hall",
+		duration: 2.4,
+		decay: 1.6,
+		preDelay: 0.03,
+		damping: 0.35,
+	},
+	{
+		id: "plate",
+		name: "Plate",
+		duration: 1.6,
+		decay: 1.8,
+		preDelay: 0.001,
+		damping: 0.2,
+	},
+	{
+		id: "cathedral",
+		name: "Cathedral",
+		duration: 4.5,
+		decay: 1.2,
+		preDelay: 0.06,
+		damping: 0.4,
+	},
+	{
+		id: "chamber",
+		name: "Chamber",
+		duration: 1.2,
+		decay: 2.0,
+		preDelay: 0.01,
+		damping: 0.5,
+	},
+	{
+		id: "spring",
+		name: "Spring",
+		duration: 1.0,
+		decay: 3.0,
+		preDelay: 0.001,
+		damping: 0.1,
+	},
+	{
+		id: "ambient",
+		name: "Ambient",
+		duration: 3.0,
+		decay: 1.4,
+		preDelay: 0.02,
+		damping: 0.5,
+	},
 ];
 
 export interface ReverbParams {

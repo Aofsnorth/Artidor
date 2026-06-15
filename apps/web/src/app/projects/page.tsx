@@ -22,7 +22,9 @@ import type {
 	TProjectSortKey,
 	TProjectSortOption,
 } from "@/lib/project/types";
-import { formatTimecode, mediaTimeToSeconds } from "opencut-wasm";
+import { parseDriveUrl } from "@/lib/drive/parse";
+import { getGoogleAccessToken } from "@/lib/drive/api";
+import { formatTimecode, mediaTimeToSeconds } from "artidor-wasm";
 import { formatDate } from "@/utils/date";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -42,7 +44,7 @@ import {
 	Video01Icon,
 	MoreHorizontalIcon,
 	Delete02Icon,
-	Copy01Icon,
+	Copy02Icon,
 	Edit03Icon,
 	ArrowDown02Icon,
 	InformationCircleIcon,
@@ -91,6 +93,7 @@ const VIEW_MODE_OPTIONS = [
 export default function ProjectsPage() {
 	const { searchQuery, sortKey, sortOrder, viewMode } = useProjectsStore();
 	const editor = useEditor();
+	const router = useRouter();
 	const sortOption: TProjectSortOption = `${sortKey}-${sortOrder}`;
 
 	const isLoading = useEditor((e) => e.project.getIsLoading());
@@ -98,6 +101,7 @@ export default function ProjectsPage() {
 	const projectsToDisplay = useEditor((e) =>
 		e.project.getFilteredAndSortedProjects({ searchQuery, sortOption }),
 	);
+	const syncState = useEditor((e) => e.project.getDriveSyncState());
 
 	useEffect(() => {
 		if (!editor.project.getIsInitialized()) {
@@ -105,9 +109,74 @@ export default function ProjectsPage() {
 		}
 	}, [editor.project]);
 
+	// Listen for URL query parameters to auto-load drive folder links
+	useEffect(() => {
+		if (!isInitialized) return;
+
+		const params = new URLSearchParams(window.location.search);
+		const importDrive =
+			params.get("import_drive") || params.get("drive_folder");
+		if (!importDrive) return;
+
+		const parsed = parseDriveUrl({ url: importDrive });
+		const folderId = parsed?.kind === "folder" ? parsed.id : importDrive;
+
+		if (!folderId) return;
+
+		const runImport = async () => {
+			// Clear query params so it doesn't trigger again on reload
+			window.history.replaceState({}, document.title, window.location.pathname);
+
+			const token = getGoogleAccessToken();
+			if (!token) {
+				toast.error("Google Drive authentication required", {
+					description:
+						"Please click 'Import' at the top right, configure your Client ID if needed, and Sign In with Google.",
+					duration: 10000,
+				});
+				return;
+			}
+
+			try {
+				const projectId = await editor.project.syncProjectFromDrive(folderId);
+				router.push(`/editor/${projectId}`);
+			} catch (err) {
+				toast.error("Google Drive sync failed", {
+					description:
+						err instanceof Error ? err.message : "Could not import the folder.",
+				});
+			}
+		};
+
+		void runImport();
+	}, [editor.project, isInitialized, router]);
+
 	return (
 		<PageTransition>
-			<div className="bg-transparent min-h-screen">
+			<div className="bg-transparent min-h-screen relative">
+				{/* Full-screen asset sync progress overlay */}
+				{syncState.status === "syncing-assets" && (
+					<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
+						<div className="flex flex-col items-center gap-4 max-w-sm w-full px-6 text-center">
+							<div className="size-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+							<h2 className="text-lg font-semibold text-white tracking-wide">
+								Syncing Google Drive Folder
+							</h2>
+							<p className="text-xs text-white/55 min-h-8 truncate w-full">
+								{syncState.message}
+							</p>
+							<div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-2 relative">
+								<div
+									className="bg-white h-full transition-all duration-300 rounded-full"
+									style={{ width: `${syncState.progress}%` }}
+								/>
+							</div>
+							<span className="text-xs font-mono text-white/40">
+								{syncState.progress}% complete
+							</span>
+						</div>
+					</div>
+				)}
 				<MigrationDialog />
 				<StoragePersistenceDialog />
 				<ChangelogNotification />
@@ -352,7 +421,7 @@ const PROJECT_ACTIONS = [
 	{
 		id: "duplicate",
 		label: "Duplicate",
-		icon: Copy01Icon,
+		icon: Copy02Icon,
 		variant: "outline" as const,
 	},
 	{
@@ -785,7 +854,7 @@ function ProjectContextMenuContent({
 				Rename
 			</ContextMenuItem>
 			<ContextMenuItem
-				icon={<HugeiconsIcon icon={Copy01Icon} />}
+				icon={<HugeiconsIcon icon={Copy02Icon} />}
 				onClick={onDuplicateClick}
 			>
 				Duplicate
@@ -905,7 +974,7 @@ function ProjectMenu({
 					Rename
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={handleDuplicate}>
-					<HugeiconsIcon icon={Copy01Icon} />
+					<HugeiconsIcon icon={Copy02Icon} />
 					Duplicate
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={handleInfoClick}>

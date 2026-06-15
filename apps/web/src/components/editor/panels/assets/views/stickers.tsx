@@ -26,9 +26,7 @@ import type {
 } from "@/lib/stickers";
 import { useStickersStore } from "@/stores/stickers-store";
 import { cn } from "@/utils/ui";
-import {
-	HappyIcon,
-} from "@hugeicons/core-free-icons";
+import { HappyIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 export function StickersView() {
@@ -79,9 +77,16 @@ export function StickersView() {
 				variant="underline"
 				className="mt-2 flex min-h-0 flex-1 flex-col"
 			>
-				<TabsList aria-label="Sticker categories">
+				<TabsList
+					aria-label="Sticker categories"
+					className="w-full overflow-x-auto scrollbar-hidden"
+				>
 					{Object.entries(STICKER_CATEGORIES).map(([key, label]) => (
-						<TabsTrigger key={key} value={key}>
+						<TabsTrigger
+							key={key}
+							value={key}
+							className="shrink-0 whitespace-nowrap"
+						>
 							{label}
 						</TabsTrigger>
 					))}
@@ -343,7 +348,9 @@ function StickerItem({
 
 	const displayName = item.name;
 	const shapePreset =
-		item.provider === "shapes" ? parseShapeStickerId({ stickerId: item.id }) : null;
+		item.provider === "shapes"
+			? parseShapeStickerId({ stickerId: item.id })
+			: null;
 
 	const handleAdd = async () => {
 		setIsAdding(true);

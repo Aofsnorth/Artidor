@@ -19,41 +19,29 @@ export function ThemeToggle({
 	iconClassName,
 	onToggle,
 }: ThemeToggleProps) {
-	const { resolvedTheme, setTheme, forcedTheme } = useTheme();
+	const { resolvedTheme, setTheme } = useTheme();
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => {
 		setMounted(true);
 	}, []);
 	const isDark = mounted && resolvedTheme === "dark";
-	// When the ThemeProvider is in forcedTheme mode, flipping the toggle
-	// is a no-op. Surface that explicitly so the user knows light mode
-	// is on the way but not ready yet (the rest of the UI is still
-	// hand-tuned for the dark palette).
-	const isForced = forcedTheme != null;
+	// `forcedTheme` is no longer set on the ThemeProvider (see
+	// `app/layout.tsx`) so light mode is always available. The CSS
+	// variables in `globals.css` provide a full light palette; any
+	// remaining dark-only hand-tuned surfaces (timeline ruler tint,
+	// editor backdrop) can be migrated to dark: variants later.
 
 	return (
 		<Button
 			size="icon"
 			variant="ghost"
 			aria-label={
-				isForced
-					? "Light mode is not available yet"
-					: isDark
-						? "Switch to light theme"
-						: "Switch to dark theme"
+				isDark ? "Switch to light theme" : "Switch to dark theme"
 			}
-			disabled={isForced}
-			title={
-				isForced
-					? "Light mode is on the roadmap"
-					: isDark
-						? "Switch to light theme"
-						: "Switch to dark theme"
-			}
+			title={isDark ? "Switch to light theme" : "Switch to dark theme"}
 			className={cn("relative size-8 overflow-hidden", className)}
 			suppressHydrationWarning
 			onClick={(e) => {
-				if (isForced) return;
 				if (
 					typeof document !== "undefined" &&
 					"startViewTransition" in document
@@ -85,11 +73,7 @@ export function ThemeToggle({
 				)}
 			</AnimatePresence>
 			<span className="sr-only">
-				{isForced
-					? "Light mode is on the roadmap"
-					: isDark
-						? "Light mode"
-						: "Dark mode"}
+				{isDark ? "Light mode" : "Dark mode"}
 			</span>
 		</Button>
 	);

@@ -640,3 +640,40 @@
 		transform: scaleX(0.62);
 	}
 }
+
+/* ── Export button aura ────────────────────────────────────────── */
+/* Two layers: a slow base pulse that's always on, and a faster,    */
+/* brighter pulse that takes over on hover. Together they give the   */
+/* export CTA a "this is the action you want" presence in the bar.  */
+
+@keyframes export-pulse {
+	0%,
+	100% {
+		opacity: 0.35;
+		transform: scale(0.985);
+	}
+	50% {
+		opacity: 0.75;
+		transform: scale(1.015);
+	}
+}
+
+@keyframes export-pulse-strong {
+	0%,
+	100% {
+		opacity: 0.55;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.04);
+	}
+}
+
+.export-pulse {
+	animation: export-pulse 3.2s ease-in-out infinite;
+}
+
+.export-pulse-strong {
+	animation: export-pulse-strong 1.6s ease-in-out infinite;
+}

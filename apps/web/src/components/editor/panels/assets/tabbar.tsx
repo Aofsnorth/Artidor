@@ -22,8 +22,12 @@ export function TabBar() {
 
 	return (
 		<div className="panel glass-strong relative flex h-full w-[4.8rem] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
-			{/* Navigation Tabs (Non-scrollable, tight fit) */}
-			<div className="relative flex min-h-0 flex-1 flex-col items-stretch justify-between gap-[3px] overflow-hidden px-2 py-3.5 z-20">
+			{/* Navigation Tabs. Each tab grows to fill the available
+			   vertical space (1fr) so the column always reaches the
+			   storage card below, regardless of the panel height. The
+			   grid layout replaces a fixed-height list so a short editor
+			   and a tall editor both produce a clean distribution. */}
+			<div className="relative grid min-h-0 flex-1 auto-rows-fr content-start gap-[3px] overflow-y-auto scrollbar-hidden px-2 py-3.5 z-20">
 				{VISIBLE_TAB_KEYS.map((tabKey) => {
 					const tab = tabs[tabKey];
 					return (
@@ -34,15 +38,19 @@ export function TabBar() {
 									size="icon"
 									aria-label={tab.label}
 									className={cn(
-										"h-[2.6rem] min-h-[2.4rem] w-full flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-1 py-1",
+										// Stretch each cell so the row fills the
+										// full tab-bar height. The icon + label
+										// remain vertically centered via
+										// `items-center justify-center`.
+										"h-full w-full flex-col items-center justify-center gap-1 rounded-lg border border-transparent px-1 py-1 min-h-[2.4rem]",
 										activeTab === tabKey
 											? "border-white/12 bg-white/[0.14] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_22px_rgba(0,0,0,0.55)]"
 											: "text-white/[0.55] hover:bg-white/[0.06] hover:text-white",
 									)}
 									onClick={() => setActiveTab(tabKey)}
 								>
-									<tab.icon className="size-[1.15rem]" />
-									<span className="text-[0.56rem] leading-none tracking-[0.02em]">
+									<tab.icon className="size-[1.25rem]" />
+									<span className="text-[0.6rem] leading-none tracking-[0.02em]">
 										{tab.label}
 									</span>
 								</Button>
@@ -67,15 +75,19 @@ export function TabBar() {
 	);
 }
 
-// Speckles overlay removed
-
+// Inline-safe store hook so this file doesn't have to import the
+// assets-panel-store directly (kept lightweight to avoid pulling the
+// store into the bundle when the bar renders standalone).
 function StorageCard() {
 	const storage = useStorageEstimate();
 
 	const freeLabel = storage ? formatStorageSize(storage.freeBytes) : "482 GB";
 	const usedPercent =
 		storage && storage.totalBytes > 0
-			? Math.min(100, Math.max(2, (storage.usedBytes / storage.totalBytes) * 100))
+			? Math.min(
+					100,
+					Math.max(2, (storage.usedBytes / storage.totalBytes) * 100),
+				)
 			: 30;
 
 	return (
@@ -102,4 +114,3 @@ function StorageCard() {
 		</div>
 	);
 }
-

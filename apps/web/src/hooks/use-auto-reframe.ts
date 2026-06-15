@@ -11,7 +11,7 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { toast } from "sonner";
 import type { TCanvasSize } from "@/lib/project/types";
 import type { VideoElement } from "@/lib/timeline";
-import type { AnimationPath, } from "@/lib/animation/types";
+import type { AnimationPath } from "@/lib/animation/types";
 
 export function useAutoReframe() {
 	const editor = useEditor();
@@ -19,11 +19,7 @@ export function useAutoReframe() {
 	const [isProcessing, setIsProcessing] = useState(false);
 
 	const reframe = useCallback(
-		async ({
-			targetSize,
-		}: {
-			targetSize: TCanvasSize;
-		}) => {
+		async ({ targetSize }: { targetSize: TCanvasSize }) => {
 			if (!activeProject) {
 				toast.error("No active project");
 				return;
@@ -51,7 +47,9 @@ export function useAutoReframe() {
 				return;
 			}
 
-			const asset = editor.media.getAssets().find((a) => a.id === element.mediaId);
+			const asset = editor.media
+				.getAssets()
+				.find((a) => a.id === element.mediaId);
 			if (!asset) {
 				toast.error("Source media not found");
 				return;
@@ -73,7 +71,10 @@ export function useAutoReframe() {
 					const reframes = computeReframeFrames({
 						frames,
 						options: {
-							sourceSize: { width: asset.width ?? 1920, height: asset.height ?? 1080 },
+							sourceSize: {
+								width: asset.width ?? 1920,
+								height: asset.height ?? 1080,
+							},
 							targetSize,
 							padding: 0.1,
 							smoothing: 0.5,
@@ -101,10 +102,9 @@ export function useAutoReframe() {
 						},
 					]);
 					editor.timeline.upsertKeyframes({ keyframes });
-					toast.success(
-						`Auto reframe applied: ${frames.length} frames`,
-						{ id: toastId },
-					);
+					toast.success(`Auto reframe applied: ${frames.length} frames`, {
+						id: toastId,
+					});
 				} finally {
 					URL.revokeObjectURL(url);
 				}

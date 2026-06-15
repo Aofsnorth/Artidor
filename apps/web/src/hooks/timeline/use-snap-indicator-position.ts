@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { timelineTimeToSnappedPixels } from "@/lib/timeline";
-import { TIMELINE_TRACK_LABELS_COLUMN_WIDTH_PX } from "@/components/editor/panels/timeline/layout";
+
 interface UseSnapIndicatorPositionParams {
 	snapPoint: { time: number } | null;
 	zoomLevel: number;
 	timelineRef: React.RefObject<HTMLDivElement | null>;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
+	/**
+	 * Width of the track labels column in pixels. The snap indicator
+	 * sits in the tracks viewport, so its left position is offset by the
+	 * labels column. Pass the current value from `usePanelStore` so the
+	 * indicator tracks the user's resize.
+	 */
+	trackLabelsWidth: number;
 }
 
 interface SnapIndicatorPosition {
@@ -19,6 +26,7 @@ export function useSnapIndicatorPosition({
 	zoomLevel,
 	timelineRef,
 	tracksScrollRef,
+	trackLabelsWidth,
 }: UseSnapIndicatorPositionParams): SnapIndicatorPosition {
 	const [scrollLeft, setScrollLeft] = useState(0);
 
@@ -44,8 +52,7 @@ export function useSnapIndicatorPosition({
 		time: snapPoint?.time ?? 0,
 		zoomLevel,
 	});
-	const leftPosition =
-		TIMELINE_TRACK_LABELS_COLUMN_WIDTH_PX + timelinePosition - scrollLeft;
+	const leftPosition = trackLabelsWidth + timelinePosition - scrollLeft;
 
 	return {
 		leftPosition,

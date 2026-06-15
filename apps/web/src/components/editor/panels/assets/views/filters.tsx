@@ -15,9 +15,11 @@ import { useEditor } from "@/hooks/use-editor";
 import type { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
 import { cn } from "@/utils/ui";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function FiltersView() {
 	const [category, setCategory] = useState<string>("all");
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const editor = useEditor();
 
 	const filtered =
@@ -29,8 +31,8 @@ export function FiltersView() {
 		<PanelView title="Filters">
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					One-click color grading. Select a video clip first, then tap a
-					filter to apply.
+					One-click color grading. Select a video clip first, then tap a filter
+					to apply.
 				</p>
 				<div className="flex flex-wrap gap-1">
 					<FilterCategoryChip
@@ -52,7 +54,7 @@ export function FiltersView() {
 				<div
 					className="grid gap-3"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{filtered.map((preset) => (
@@ -92,8 +94,16 @@ function applyFilter({
 		return;
 	}
 	const existingEffects =
-		(element as { effects?: Array<{ id: string; type: string; params: Record<string, number | string>; enabled: boolean }> })
-			.effects ?? [];
+		(
+			element as {
+				effects?: Array<{
+					id: string;
+					type: string;
+					params: Record<string, number | string>;
+					enabled: boolean;
+				}>;
+			}
+		).effects ?? [];
 
 	const newEffects = [
 		...existingEffects,

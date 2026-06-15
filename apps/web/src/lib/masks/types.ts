@@ -153,7 +153,9 @@ export interface MaskDefaultContext {
 	elementSize?: { width: number; height: number };
 }
 
-export interface MaskParamUpdateArgs<TParams extends BaseMaskParams = BaseMaskParams> {
+export interface MaskParamUpdateArgs<
+	TParams extends BaseMaskParams = BaseMaskParams,
+> {
 	handleId: string;
 	startParams: TParams;
 	deltaX: number;
@@ -164,7 +166,9 @@ export interface MaskParamUpdateArgs<TParams extends BaseMaskParams = BaseMaskPa
 	canvasSize: { width: number; height: number };
 }
 
-export interface MaskDefinition<TParams extends BaseMaskParams = BaseMaskParams> {
+export interface MaskDefinition<
+	TParams extends BaseMaskParams = BaseMaskParams,
+> {
 	type: MaskType;
 	name: string;
 	overlayShape: MaskOverlayShape;

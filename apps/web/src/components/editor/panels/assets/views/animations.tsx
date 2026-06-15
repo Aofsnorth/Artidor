@@ -20,6 +20,7 @@ import type {
 	AnimationPresetCategory,
 } from "@/lib/animation/presets";
 import { cn } from "@/utils/ui";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 const CATEGORIES: { key: AnimationPresetCategory | "all"; label: string }[] = [
 	{ key: "all", label: "All" },
@@ -37,6 +38,7 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 export function AnimationsView() {
 	const all = useAnimationPresets();
 	const [filter, setFilter] = useState<AnimationPresetCategory | "all">("all");
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
 	const filtered = useMemo(() => {
 		if (filter === "all") return all;
@@ -65,7 +67,7 @@ export function AnimationsView() {
 				<div
 					className="grid gap-2"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{filtered.map((preset) => (

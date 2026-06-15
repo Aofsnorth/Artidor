@@ -11,12 +11,7 @@ import { useAutoReframe } from "@/hooks/use-auto-reframe";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 
-type ToolId =
-	| "teleprompter"
-	| "reverse"
-	| "stabilize"
-	| "auto-reframe"
-	| null;
+type ToolId = "teleprompter" | "reverse" | "stabilize" | "auto-reframe" | null;
 
 export function QuickToolsView() {
 	const [activeTool, setActiveTool] = useState<ToolId>(null);
@@ -76,8 +71,8 @@ export function QuickToolsView() {
 		<PanelView title="Quick Tools">
 			<div className="flex flex-col gap-2 pb-3">
 				<p className="text-muted-foreground text-xs">
-					One-tap tools for common operations. Select a video clip first
-					for tools that need a source.
+					One-tap tools for common operations. Select a video clip first for
+					tools that need a source.
 				</p>
 				{tools.map((tool) => (
 					<button
@@ -96,9 +91,7 @@ export function QuickToolsView() {
 							/>
 							<span className="text-sm font-medium">{tool.label}</span>
 						</div>
-						<p className="text-xs text-muted-foreground">
-							{tool.description}
-						</p>
+						<p className="text-xs text-muted-foreground">{tool.description}</p>
 					</button>
 				))}
 			</div>

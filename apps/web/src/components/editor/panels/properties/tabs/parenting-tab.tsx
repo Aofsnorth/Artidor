@@ -2,8 +2,16 @@
 
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
-import type { TimelineElement, TimelineTrack, VisualElement } from "@/lib/timeline";
-import { Link01Icon, Layers01Icon, UnlinkIcon } from "@hugeicons/core-free-icons";
+import type {
+	TimelineElement,
+	TimelineTrack,
+	VisualElement,
+} from "@/lib/timeline";
+import {
+	Link01Icon,
+	Layers01Icon,
+	UnlinkIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useMemo } from "react";
 
@@ -55,8 +63,9 @@ export function ParentingTab({
 					<h3 className="text-sm font-medium">Link Parent Layer</h3>
 				</header>
 				<p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-					Connect this layer to another one. Parent movement, rotation, and scale
-					will drive the child layer, like Alight Motion's parent-child rigging.
+					Connect this layer to another one. Parent movement, rotation, and
+					scale will drive the child layer, like Alight Motion's parent-child
+					rigging.
 				</p>
 				<label className="mt-3 block text-xs font-medium">Parent</label>
 				<select
@@ -76,7 +85,11 @@ export function ParentingTab({
 						variant="outline"
 						className="mt-3 w-full"
 						size="sm"
-						onClick={() => editor.timeline.unlinkParent({ ref: { trackId, elementId: element.id } })}
+						onClick={() =>
+							editor.timeline.unlinkParent({
+								ref: { trackId, elementId: element.id },
+							})
+						}
 					>
 						<HugeiconsIcon icon={UnlinkIcon} size={14} />
 						Unlink {parent.name}
@@ -111,7 +124,9 @@ export function ParentingTab({
 	);
 }
 
-function isVisualTimelineElement(element: TimelineElement): element is VisualElement {
+function isVisualTimelineElement(
+	element: TimelineElement,
+): element is VisualElement {
 	return (
 		element.type === "video" ||
 		element.type === "image" ||

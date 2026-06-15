@@ -1,14 +1,8 @@
 import { BaseNode } from "./base-node";
 import type { TextElement } from "@/lib/timeline";
 import type { EffectPass } from "@/lib/effects/types";
-import {
-	getTransformPerspectiveScale,
-	type Transform,
-} from "@/lib/rendering";
-import {
-	CORNER_RADIUS_MAX,
-	CORNER_RADIUS_MIN,
-} from "@/lib/text/background";
+import { getTransformPerspectiveScale, type Transform } from "@/lib/rendering";
+import { CORNER_RADIUS_MAX, CORNER_RADIUS_MIN } from "@/lib/text/background";
 import {
 	drawTextDecoration,
 	getTextBackgroundRect,
@@ -50,9 +44,11 @@ export function renderTextToContext({
 		positionZ: resolved.transform.positionZ,
 	});
 	const x =
-		resolved.transform.position.x * perspectiveScale + node.params.canvasCenter.x;
+		resolved.transform.position.x * perspectiveScale +
+		node.params.canvasCenter.x;
 	const y =
-		resolved.transform.position.y * perspectiveScale + node.params.canvasCenter.y;
+		resolved.transform.position.y * perspectiveScale +
+		node.params.canvasCenter.y;
 	const baseline = node.params.textBaseline ?? "middle";
 	const {
 		scaledFontSize,

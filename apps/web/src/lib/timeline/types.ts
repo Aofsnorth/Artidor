@@ -2,7 +2,12 @@ import type { ElementAnimations } from "@/lib/animation/types";
 import type { Effect } from "@/lib/effects/types";
 import type { Mask } from "@/lib/masks/types";
 import type { ParamValues } from "@/lib/params";
-import type { BlendMode, Camera3D, Transform, Transform3D } from "@/lib/rendering";
+import type {
+	BlendMode,
+	Camera3D,
+	Transform,
+	Transform3D,
+} from "@/lib/rendering";
 
 export type ElementRef = {
 	trackId: string;
@@ -47,6 +52,8 @@ export type TrackType = "video" | "text" | "audio" | "graphic" | "effect";
 interface BaseTrack {
 	id: string;
 	name: string;
+	/** Custom accent color for the track (hex string). When set, overrides the default type-based palette. */
+	color?: string;
 }
 
 export interface VideoTrack extends BaseTrack {
@@ -175,6 +182,10 @@ interface BaseTimelineElement {
 	 * Matches Blurrr's "Null Object Layers" feature.
 	 */
 	nullLayer?: boolean;
+	/**
+	 * Element-level bookmarks/markers. The `time` is relative to the element's start time + trim.
+	 */
+	bookmarks?: Bookmark[];
 }
 
 export interface VideoElement extends BaseTimelineElement {
@@ -292,7 +303,8 @@ export interface EffectElement extends BaseTimelineElement {
 export type ElementUpdatePatch =
 	| { transform: Transform }
 	| { opacity: number }
-	| { volume: number };
+	| { volume: number }
+	| { bookmarks: Bookmark[] };
 
 export type TimelineElement =
 	| AudioElement

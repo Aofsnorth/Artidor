@@ -1,4 +1,4 @@
-import { mediaTimeToSeconds } from "opencut-wasm";
+import { mediaTimeToSeconds } from "artidor-wasm";
 import {
 	getElementLocalTime,
 	resolveColorAtTime,
@@ -27,7 +27,10 @@ import {
 	type BackdropSource,
 	type ResolvedBlurBackgroundNodeState,
 } from "./nodes/blur-background-node";
-import { EffectLayerNode, type ResolvedEffectLayerNodeState } from "./nodes/effect-layer-node";
+import {
+	EffectLayerNode,
+	type ResolvedEffectLayerNodeState,
+} from "./nodes/effect-layer-node";
 import {
 	GraphicNode,
 	type ResolvedGraphicNodeState,
@@ -233,7 +236,10 @@ async function resolveImageNode({
 	node: ImageNode;
 	context: ResolveContext;
 }): Promise<ResolvedVisualSourceNodeState | null> {
-	const source = await loadImageSource(node.params.url, node.params.maxSourceSize);
+	const source = await loadImageSource(
+		node.params.url,
+		node.params.maxSourceSize,
+	);
 	const visualState = resolveVisualState({
 		params: node.params,
 		context,

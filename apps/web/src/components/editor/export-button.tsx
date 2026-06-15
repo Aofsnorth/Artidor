@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { TransitionTopIcon } from "@hugeicons/core-free-icons";
+import {
+	ArrowRight01Icon,
+	TransitionTopIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Popover,
@@ -46,7 +49,7 @@ const CustomEmblem = () => (
 	<div className="relative flex items-center justify-center size-8 select-none">
 		{/* Ambient white glowing background */}
 		<div className="absolute inset-0 bg-white/5 rounded-full blur-md" />
-		
+
 		<svg
 			className="size-6 text-stone-300 z-10"
 			viewBox="0 0 100 100"
@@ -62,7 +65,12 @@ const CustomEmblem = () => (
 			<line x1="71" y1="29" x2="29" y2="71" strokeWidth="1.2" />
 			{/* Symmetrical diamond */}
 			<path d="M50 35 L65 50 L50 65 L35 50 Z" />
-			<circle cx="50" cy="50" r="3" className="fill-[#0a0a0a] stroke-stone-300" />
+			<circle
+				cx="50"
+				cy="50"
+				r="3"
+				className="fill-[#0a0a0a] stroke-stone-300"
+			/>
 		</svg>
 	</div>
 );
@@ -90,12 +98,25 @@ export function ExportButton() {
 				<button
 					type="button"
 					className={cn(
-						"group relative flex h-8 items-center gap-1.5 overflow-hidden rounded-full border px-4 text-xs font-medium transition-all duration-350",
-						isExportPopoverOpen
-							? "border-white/20 bg-white/[0.08] text-white shadow-[0_0_15px_rgba(255,255,255,0.1)]"
-							: "border-white/[0.1] bg-white/[0.03] text-white/80 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
-						hasProject ? "cursor-pointer active:scale-95" : "cursor-not-allowed opacity-40",
+						"group/export relative flex h-8 items-center gap-1.5 overflow-hidden rounded-full border px-3.5 text-xs font-semibold transition-all duration-300",
+						// Always-glowing base state — soft halo + warm tint so it reads as the primary CTA in the header
+						"border-white/30 text-white",
+						"shadow-[0_0_14px_rgba(255,255,255,0.18),0_0_2px_rgba(255,255,255,0.35)_inset,inset_0_1px_0_rgba(255,255,255,0.22)]",
+						// Hover: pump the glow + add a wider color halo
+						"hover:border-white/50 hover:shadow-[0_0_28px_rgba(255,255,255,0.42),0_0_8px_rgba(255,255,255,0.5),inset_0_1px_0_rgba(255,255,255,0.32)]",
+						// Open: same as hover but locked
+						isExportPopoverOpen &&
+							"border-white/55 shadow-[0_0_30px_rgba(255,255,255,0.5),inset_0_1px_0_rgba(255,255,255,0.35)]",
+						hasProject
+							? "cursor-pointer active:scale-95"
+							: "cursor-not-allowed opacity-40",
 					)}
+					style={{
+						// Permanent radial sheen so the button never reads as flat
+						background: isExportPopoverOpen
+							? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%)"
+							: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%)",
+					}}
 					onClick={hasProject ? () => setIsExportPopoverOpen(true) : undefined}
 					disabled={!hasProject}
 					onKeyDown={(event) => {
@@ -105,10 +126,34 @@ export function ExportButton() {
 						}
 					}}
 				>
-					{/* Symmetrical glowing backdrop on hover */}
-					<div className="pointer-events-none absolute inset-0 bg-white/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-					<HugeiconsIcon icon={TransitionTopIcon} className="z-10 size-3.5 transition-transform group-hover:-translate-y-[1px]" />
-					<span className="z-10 font-sans text-xs">Export</span>
+					{/* Slow-pulsing aura so the button feels alive even when untouched */}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -inset-1 rounded-full bg-gradient-to-r from-white/0 via-white/35 to-white/0 opacity-60 blur-md export-pulse"
+					/>
+					{/* Hover boost: a faster, brighter pulse layered on top */}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -inset-0.5 rounded-full bg-gradient-to-r from-white/0 via-white/55 to-white/0 opacity-0 blur-md transition-opacity duration-300 group-hover/export:opacity-100 group-hover/export:export-pulse-strong"
+					/>
+					{/* Inner highlight ring (permanent) */}
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]"
+					/>
+					{/* Icon: extra drop-shadow so it doesn't get lost in the glow */}
+					<HugeiconsIcon
+						icon={TransitionTopIcon}
+						className="z-10 size-3.5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.85)] transition-transform duration-300 group-hover/export:-translate-y-[1px] group-hover/export:drop-shadow-[0_0_8px_rgba(255,255,255,1)]"
+					/>
+					<span className="z-10 font-sans text-xs font-semibold tracking-wide">
+						Export
+					</span>
+					{/* Subtle arrow affordance — hints at the action without adding weight */}
+					<HugeiconsIcon
+						icon={ArrowRight01Icon}
+						className="z-10 size-3 text-white/70 transition-all duration-300 group-hover/export:translate-x-0.5 group-hover/export:text-white"
+					/>
 				</button>
 			</PopoverTrigger>
 			{hasProject && <ExportPopover onOpenChange={setIsExportPopoverOpen} />}
@@ -173,18 +218,20 @@ function ExportPopover({
 			className={cn(
 				"mr-4 flex w-80 flex-col p-0 overflow-hidden rounded-xl select-none",
 				"bg-gradient-to-b from-[#0a0a0a] to-[#050505] border border-stone-900",
-				"shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200"
+				"shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200",
 			)}
-			style={{
-				"--primary": "0 0% 100%",
-				"--primary-foreground": "0 0% 0%",
-				"--border": "0 0% 12%",
-				"--accent": "0 0% 15%",
-				"--accent-foreground": "0 0% 100%",
-				"--muted-foreground": "0 0% 50%",
-				"--foreground": "0 0% 90%",
-				"--ring": "0 0% 100%",
-			} as React.CSSProperties}
+			style={
+				{
+					"--primary": "0 0% 100%",
+					"--primary-foreground": "0 0% 0%",
+					"--border": "0 0% 12%",
+					"--accent": "0 0% 15%",
+					"--accent-foreground": "0 0% 100%",
+					"--muted-foreground": "0 0% 50%",
+					"--foreground": "0 0% 90%",
+					"--ring": "0 0% 100%",
+				} as React.CSSProperties
+			}
 		>
 			{exportResult && !exportResult.success ? (
 				<ExportError
@@ -196,9 +243,9 @@ function ExportPopover({
 					<div className="flex flex-col items-center justify-center pt-6 pb-4 px-4 border-b border-stone-900 bg-gradient-to-b from-stone-900/10 to-transparent relative">
 						{/* Ambient light streak behind the emblem */}
 						<div className="absolute top-0 w-32 h-10 bg-radial-gradient from-white/5 to-transparent blur-md pointer-events-none" />
-						
+
 						<CustomEmblem />
-						
+
 						<h3 className="font-sans tracking-[0.2em] text-stone-200 text-[10px] uppercase mt-3">
 							{isExporting ? "exporting project" : "export project"}
 						</h3>
@@ -215,7 +262,9 @@ function ExportPopover({
 										className="border-b border-stone-950 hover:bg-stone-900/20 transition-colors"
 									>
 										<SectionHeader>
-											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">format</SectionTitle>
+											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">
+												format
+											</SectionTitle>
 										</SectionHeader>
 										<SectionContent>
 											<RadioGroup
@@ -255,7 +304,9 @@ function ExportPopover({
 										className="border-b border-stone-950 hover:bg-stone-900/20 transition-colors"
 									>
 										<SectionHeader>
-											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">quality</SectionTitle>
+											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">
+												quality
+											</SectionTitle>
 										</SectionHeader>
 										<SectionContent>
 											<RadioGroup
@@ -268,20 +319,54 @@ function ExportPopover({
 												className="gap-2.5 pt-1"
 											>
 												<div className="flex items-center space-x-2.5 cursor-pointer">
-													<RadioGroupItem value="low" id="low" className="border-stone-700 text-stone-300" />
-													<Label htmlFor="low" className="text-stone-300 text-xs font-light cursor-pointer select-none">Low - Smallest file size</Label>
+													<RadioGroupItem
+														value="low"
+														id="low"
+														className="border-stone-700 text-stone-300"
+													/>
+													<Label
+														htmlFor="low"
+														className="text-stone-300 text-xs font-light cursor-pointer select-none"
+													>
+														Low - Smallest file size
+													</Label>
 												</div>
 												<div className="flex items-center space-x-2.5 cursor-pointer">
-													<RadioGroupItem value="medium" id="medium" className="border-stone-700 text-stone-300" />
-													<Label htmlFor="medium" className="text-stone-300 text-xs font-light cursor-pointer select-none">Medium - Balanced</Label>
+													<RadioGroupItem
+														value="medium"
+														id="medium"
+														className="border-stone-700 text-stone-300"
+													/>
+													<Label
+														htmlFor="medium"
+														className="text-stone-300 text-xs font-light cursor-pointer select-none"
+													>
+														Medium - Balanced
+													</Label>
 												</div>
 												<div className="flex items-center space-x-2.5 cursor-pointer">
-													<RadioGroupItem value="high" id="high" className="border-stone-700 text-stone-300" />
-													<Label htmlFor="high" className="text-stone-300 text-xs font-light cursor-pointer select-none">High - Recommended</Label>
+													<RadioGroupItem
+														value="high"
+														id="high"
+														className="border-stone-700 text-stone-300"
+													/>
+													<Label
+														htmlFor="high"
+														className="text-stone-300 text-xs font-light cursor-pointer select-none"
+													>
+														High - Recommended
+													</Label>
 												</div>
 												<div className="flex items-center space-x-2.5 cursor-pointer">
-													<RadioGroupItem value="very_high" id="very_high" className="border-stone-700 text-stone-300" />
-													<Label htmlFor="very_high" className="text-stone-300 text-xs font-light cursor-pointer select-none">
+													<RadioGroupItem
+														value="very_high"
+														id="very_high"
+														className="border-stone-700 text-stone-300"
+													/>
+													<Label
+														htmlFor="very_high"
+														className="text-stone-300 text-xs font-light cursor-pointer select-none"
+													>
 														Very high - Largest file size
 													</Label>
 												</div>
@@ -295,7 +380,9 @@ function ExportPopover({
 										className="border-b border-stone-950 hover:bg-stone-900/20 transition-colors"
 									>
 										<SectionHeader>
-											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">audio</SectionTitle>
+											<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">
+												audio
+											</SectionTitle>
 										</SectionHeader>
 										<SectionContent>
 											<div className="flex items-center space-x-2.5 pt-1 cursor-pointer">
@@ -307,7 +394,10 @@ function ExportPopover({
 													}
 													className="border-stone-700 text-stone-300 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-black"
 												/>
-												<Label htmlFor="include-audio" className="text-stone-300 text-xs font-light cursor-pointer select-none">
+												<Label
+													htmlFor="include-audio"
+													className="text-stone-300 text-xs font-light cursor-pointer select-none"
+												>
 													Include audio in export
 												</Label>
 											</div>
@@ -321,7 +411,7 @@ function ExportPopover({
 										className={cn(
 											"w-full gap-2 py-5 rounded-lg border-0 shadow-[0_4px_20px_rgba(255,255,255,0.05)] select-none",
 											"bg-[#FAF8F5] text-black hover:bg-white hover:shadow-[0_4px_25px_rgba(255,255,255,0.15)] active:scale-98 transition-all duration-300",
-											"font-sans text-xs uppercase tracking-widest font-semibold"
+											"font-sans text-xs uppercase tracking-widest font-semibold",
 										)}
 									>
 										<Download className="size-4 stroke-black stroke-[2.5px]" />
@@ -339,7 +429,10 @@ function ExportPopover({
 											{Math.round(progress * 100)}%
 										</p>
 									</div>
-									<Progress value={progress * 100} className="w-full bg-stone-900" />
+									<Progress
+										value={progress * 100}
+										className="w-full bg-stone-900"
+									/>
 								</div>
 
 								<Button

@@ -113,13 +113,19 @@ export function AdjustmentsTab({
 					</DropdownMenu>
 				)}
 			</div>
-			
+
 			{adjustments.length === 0 ? (
-				<EmptyView onAdd={() => handleAddAdjustment(availableAdjustments[0]?.type)} hasAvailable={availableAdjustments.length > 0} />
+				<EmptyView
+					onAdd={() => handleAddAdjustment(availableAdjustments[0]?.type)}
+					hasAvailable={availableAdjustments.length > 0}
+				/>
 			) : (
 				<ul className="flex flex-col">
 					{adjustments.map((effect) => (
-						<li key={effect.id} className="list-none border-b border-border/50 last:border-b-0">
+						<li
+							key={effect.id}
+							className="list-none border-b border-border/50 last:border-b-0"
+						>
 							<AdjustmentSection
 								effect={effect}
 								renderParams={getRenderParams({ effectId: effect.id })}
@@ -148,7 +154,13 @@ export function AdjustmentsTab({
 	);
 }
 
-function EmptyView({ onAdd, hasAvailable }: { onAdd: () => void, hasAvailable: boolean }) {
+function EmptyView({
+	onAdd,
+	hasAvailable,
+}: {
+	onAdd: () => void;
+	hasAvailable: boolean;
+}) {
 	return (
 		<div className="flex flex-col h-full items-center justify-center gap-4 text-center p-6">
 			<div className="flex flex-col gap-2">
@@ -184,10 +196,7 @@ function AdjustmentSection({
 	const definition = effectsRegistry.get(effect.type);
 
 	return (
-		<Section
-			sectionKey={`clip-adjustment:${effect.id}`}
-			showTopBorder={false}
-		>
+		<Section sectionKey={`clip-adjustment:${effect.id}`} showTopBorder={false}>
 			<SectionHeader
 				trailing={
 					<div className="flex items-center gap-1">
@@ -218,9 +227,7 @@ function AdjustmentSection({
 					{definition.name}
 				</SectionTitle>
 			</SectionHeader>
-			<SectionContent
-				className={cn("p-0", !effect.enabled && "opacity-50")}
-			>
+			<SectionContent className={cn("p-0", !effect.enabled && "opacity-50")}>
 				<SectionFields>
 					{definition.params.map((param) => (
 						<div key={param.key} className="flex flex-col gap-3.5">

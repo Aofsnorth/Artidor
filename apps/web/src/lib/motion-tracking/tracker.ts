@@ -95,9 +95,14 @@ export async function trackObject({
 			video.addEventListener("seeked", () => resolve(), { once: true });
 		});
 		ctx.drawImage(video, 0, 0, width, height);
-		const gray = rgbToGray(ctx.getImageData(0, 0, width, height).data, width, height);
+		const gray = rgbToGray(
+			ctx.getImageData(0, 0, width, height).data,
+			width,
+			height,
+		);
 
-		const prevBox = results.length > 0 ? results[results.length - 1]?.box : initialBox;
+		const prevBox =
+			results.length > 0 ? results[results.length - 1]?.box : initialBox;
 		const newBox = searchTemplate({
 			image: gray,
 			imageWidth: width,
@@ -123,7 +128,9 @@ export async function trackObject({
 			opts.templateSize,
 		);
 		for (let k = 0; k < template.length; k++) {
-			template[k] = template[k]! * (1 - opts.learningRate) + newTemplate[k]! * opts.learningRate;
+			template[k] =
+				template[k]! * (1 - opts.learningRate) +
+				newTemplate[k]! * opts.learningRate;
 		}
 	}
 
@@ -193,7 +200,11 @@ async function extractTemplate({
 		video.addEventListener("seeked", () => resolve(), { once: true });
 	});
 	ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-	const gray = rgbToGray(ctx.getImageData(0, 0, canvas.width, canvas.height).data, canvas.width, canvas.height);
+	const gray = rgbToGray(
+		ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+		canvas.width,
+		canvas.height,
+	);
 	return extractSubImage(gray, canvas.width, canvas.height, box, templateSize);
 }
 
@@ -242,7 +253,11 @@ function searchTemplate({
 	let bestY = 0;
 	let bestScore = -1;
 	const stride = 2;
-	for (let y = 0; y <= searchBox.height - templateSize / searchBox.width * searchBox.width; y += stride) {
+	for (
+		let y = 0;
+		y <= searchBox.height - (templateSize / searchBox.width) * searchBox.width;
+		y += stride
+	) {
 		for (let x = 0; x <= searchBox.width - templateSize; x += stride) {
 			const score = correlationAt({
 				image,
@@ -293,7 +308,10 @@ function correlationAt({
 		for (let x = 0; x < templateSize; x++) {
 			const srcX = Math.floor(boxX + x);
 			const srcY = Math.floor(boxY + y);
-			const idx = Math.max(0, Math.min(image.length - 1, srcY * imageWidth + srcX));
+			const idx = Math.max(
+				0,
+				Math.min(image.length - 1, srcY * imageWidth + srcX),
+			);
 			const v = image[idx] ?? 0;
 			sum += v * (template[y * templateSize + x] ?? 0);
 			sumSq += v * v;

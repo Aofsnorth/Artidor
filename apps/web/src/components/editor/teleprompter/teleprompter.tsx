@@ -33,13 +33,11 @@ const SCROLL_PRESETS = [
 	{ id: "custom", label: "Custom", value: null },
 ];
 
-export function Teleprompter({
-	onClose,
-}: {
-	onClose: () => void;
-}) {
+export function Teleprompter({ onClose }: { onClose: () => void }) {
 	const [script, setScript] = useState("");
-	const [settings, setSettings] = useState<TeleprompterSettings>(DEFAULT_TELEPROMPTER_SETTINGS);
+	const [settings, setSettings] = useState<TeleprompterSettings>(
+		DEFAULT_TELEPROMPTER_SETTINGS,
+	);
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [scrollOffset, setScrollOffset] = useState(0);
 	const [presetId, setPresetId] = useState("medium");
@@ -93,10 +91,20 @@ export function Teleprompter({
 			<div className="border-b px-4 h-12 flex items-center justify-between">
 				<div className="font-medium">Teleprompter</div>
 				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="icon" onClick={fullscreen} title="Fullscreen">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={fullscreen}
+						title="Fullscreen"
+					>
 						<HugeiconsIcon icon={ArrowExpandIcon} className="size-4" />
 					</Button>
-					<Button variant="ghost" size="icon" onClick={copyScript} title="Copy script">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={copyScript}
+						title="Copy script"
+					>
 						<HugeiconsIcon icon={Copy01Icon} className="size-4" />
 					</Button>
 					<Button variant="ghost" size="sm" onClick={onClose}>
@@ -108,7 +116,9 @@ export function Teleprompter({
 			<div className="flex flex-1 overflow-hidden">
 				<div className="w-72 border-r overflow-y-auto p-4 space-y-4">
 					<div>
-						<label className="text-xs font-medium text-muted-foreground">Script</label>
+						<label className="text-xs font-medium text-muted-foreground">
+							Script
+						</label>
 						<Textarea
 							value={script}
 							onChange={(e) => setScript(e.target.value)}

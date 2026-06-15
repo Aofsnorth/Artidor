@@ -3,7 +3,19 @@
 import { useEditor } from "@/hooks/use-editor";
 import { useEffect, useRef, useState } from "react";
 
-const DB_LABELS = ["0", "-6", "-12", "-18", "-24", "-30", "-36", "-42", "-48", "-54", "-60"];
+const DB_LABELS = [
+	"0",
+	"-6",
+	"-12",
+	"-18",
+	"-24",
+	"-30",
+	"-36",
+	"-42",
+	"-48",
+	"-54",
+	"-60",
+];
 
 interface Particle {
 	x: number;
@@ -59,7 +71,8 @@ export function AudioMetersCard() {
 			ctx.clearRect(0, 0, w, h);
 
 			const state = animState.current;
-			const { left: leftAnalyser, right: rightAnalyser } = editor.audio.getAnalysers();
+			const { left: leftAnalyser, right: rightAnalyser } =
+				editor.audio.getAnalysers();
 
 			// 1. Update Levels
 			if (state.isPlaying && leftAnalyser && rightAnalyser) {
@@ -90,8 +103,8 @@ export function AudioMetersCard() {
 				const dbR = maxValR > 0 ? 20 * Math.log10(maxValR) : -100;
 
 				// Map amplitude to percentage using a more dynamic perceived-loudness curve (square root)
-				let targetL = Math.pow(maxValL, 0.5) * 100;
-				let targetR = Math.pow(maxValR, 0.5) * 100;
+				const targetL = maxValL ** 0.5 * 100;
+				const targetR = maxValR ** 0.5 * 100;
 
 				// Fast attack, constant decay
 				if (targetL > state.left) {
@@ -162,7 +175,14 @@ export function AudioMetersCard() {
 				ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
 
 				// Star glow gradient
-				const radGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
+				const radGrad = ctx.createRadialGradient(
+					p.x,
+					p.y,
+					0,
+					p.x,
+					p.y,
+					p.size * 2,
+				);
 				radGrad.addColorStop(0, `rgba(255, 255, 255, ${p.alpha})`);
 				radGrad.addColorStop(0.3, `rgba(255, 255, 255, ${p.alpha * 0.4})`);
 				radGrad.addColorStop(1, "rgba(255, 255, 255, 0)");
@@ -199,15 +219,32 @@ export function AudioMetersCard() {
 				{/* Header */}
 				<div className="flex items-center justify-between mb-3 shrink-0">
 					<div className="flex items-center gap-1.5">
-						<svg className="size-3 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+						<svg
+							className="size-3 text-white/40"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2.5"
+						>
 							<line x1="12" y1="5" x2="12" y2="19" />
 							<line x1="5" y1="12" x2="19" y2="12" />
 						</svg>
-						<span className="font-serif text-xs font-semibold text-white/90">Meters</span>
+						<span className="font-serif text-xs font-semibold text-white/90">
+							Meters
+						</span>
 					</div>
-					<button type="button" className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-white/10 bg-white/[0.04] text-[0.62rem] text-white/70 hover:bg-white/[0.08] hover:text-white transition focus:outline-none cursor-pointer">
+					<button
+						type="button"
+						className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-white/10 bg-white/[0.04] text-[0.62rem] text-white/70 hover:bg-white/[0.08] hover:text-white transition focus:outline-none cursor-pointer"
+					>
 						<span>Full</span>
-						<svg className="size-2 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+						<svg
+							className="size-2 text-white/40"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="3"
+						>
 							<polyline points="6 9 12 15 18 9" />
 						</svg>
 					</button>
@@ -218,7 +255,9 @@ export function AudioMetersCard() {
 					{/* DB labels scale */}
 					<div className="flex flex-col justify-between text-[0.55rem] text-white/30 font-medium select-none w-5 leading-none py-1">
 						{DB_LABELS.map((label) => (
-							<span key={label} className="text-right pr-1">{label}</span>
+							<span key={label} className="text-right pr-1">
+								{label}
+							</span>
 						))}
 					</div>
 
@@ -253,7 +292,8 @@ function VerticalTrack({ level }: { level: number }) {
 				className="w-full rounded-sm transition-all duration-75 relative"
 				style={{
 					height: `${level}%`,
-					background: "linear-gradient(to top, #10b981 0%, #10b981 60%, #eab308 78%, #ef4444 100%)",
+					background:
+						"linear-gradient(to top, #10b981 0%, #10b981 60%, #eab308 78%, #ef4444 100%)",
 					boxShadow: "0 0 4px rgba(16, 185, 129, 0.4)",
 				}}
 			/>

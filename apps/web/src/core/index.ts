@@ -16,6 +16,7 @@ import { registerDefaultMasks } from "@/lib/masks";
 import { registerDefaultTransitions } from "@/lib/transitions";
 import { registerDefaultAnimationPresets } from "@/lib/animation/presets";
 import { registerTranscriptionDiagnostics } from "@/lib/transcription/diagnostics";
+import { AddTrackCommand } from "@/lib/commands/timeline/track/add-track";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -53,7 +54,16 @@ export class EditorCore {
 		this.teleprompter = new TeleprompterManager(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
-		this.command.registerReactor(() => {
+		this.command.registerReactor((command) => {
+			// Empty tracks are normally pruned after each command so the
+			// timeline doesn't accumulate dead lanes. But adding a track
+			// is the one case where an empty lane is intentional — the
+			// user just asked for it and hasn't dropped a clip yet. Skip
+			// the prune for AddTrackCommand so the new track survives.
+			if (command instanceof AddTrackCommand) {
+				return;
+			}
+
 			const activeScene = this.scenes.getActiveSceneOrNull();
 			if (!activeScene) {
 				return;

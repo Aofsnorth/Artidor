@@ -4,16 +4,12 @@ import {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
-import {
-	TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD,
-} from "@/components/editor/panels/timeline/interaction";
-import {
-	TIMELINE_ZOOM_MAX,
-	TIMELINE_ZOOM_MIN,
-} from "@/lib/timeline/scale";
+import { TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD } from "@/components/editor/panels/timeline/interaction";
+import { TIMELINE_ZOOM_MAX, TIMELINE_ZOOM_MIN } from "@/lib/timeline/scale";
 import { timelineTimeToPixels } from "@/lib/timeline/pixel-utils";
 import { useEditor } from "@/hooks/use-editor";
 import { zoomToSlider } from "@/lib/timeline/zoom-utils";
@@ -54,10 +50,7 @@ export function useTimelineZoom({
 	const [zoomLevel, setZoomLevelRaw] = useState(() => {
 		if (initialZoom !== undefined) {
 			hasInitializedRef.current = true;
-			return Math.max(
-				minZoom,
-					Math.min(TIMELINE_ZOOM_MAX, initialZoom),
-			);
+			return Math.max(minZoom, Math.min(TIMELINE_ZOOM_MAX, initialZoom));
 		}
 		return minZoom;
 	});
@@ -88,22 +81,22 @@ export function useTimelineZoom({
 				return;
 			}
 
-		// pinch-zoom (ctrl/meta + wheel)
-		if (isZoomGesture) {
-			const normalizedDelta =
-				event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
-			const cappedDelta =
-				Math.sign(normalizedDelta) * Math.min(Math.abs(normalizedDelta), 30);
-			const zoomFactor = Math.exp(-cappedDelta / 300);
-			setZoomLevel((prev) => {
-				const nextZoom = Math.max(
-					minZoom,
-					Math.min(TIMELINE_ZOOM_MAX, prev * zoomFactor),
-				);
-				return nextZoom;
-			});
-			return;
-		}
+			// pinch-zoom (ctrl/meta + wheel)
+			if (isZoomGesture) {
+				const normalizedDelta =
+					event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+				const cappedDelta =
+					Math.sign(normalizedDelta) * Math.min(Math.abs(normalizedDelta), 30);
+				const zoomFactor = Math.exp(-cappedDelta / 300);
+				setZoomLevel((prev) => {
+					const nextZoom = Math.max(
+						minZoom,
+						Math.min(TIMELINE_ZOOM_MAX, prev * zoomFactor),
+					);
+					return nextZoom;
+				});
+				return;
+			}
 		},
 		[minZoom, setZoomLevel],
 	);
@@ -111,9 +104,7 @@ export function useTimelineZoom({
 	useEffect(() => {
 		if (initialZoom !== undefined && !hasInitializedRef.current) {
 			hasInitializedRef.current = true;
-			setZoomLevel(
-				Math.max(minZoom, Math.min(TIMELINE_ZOOM_MAX, initialZoom)),
-			);
+			setZoomLevel(Math.max(minZoom, Math.min(TIMELINE_ZOOM_MAX, initialZoom)));
 			return;
 		}
 		setZoomLevel((prev) => {
@@ -159,12 +150,10 @@ export function useTimelineZoom({
 			minZoom,
 		});
 		const isCrossingThresholdUp =
-			previousSliderPercent <
-				TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD &&
+			previousSliderPercent < TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD &&
 			sliderPercent >= TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD;
 		const isCrossingThresholdDown =
-			previousSliderPercent >=
-				TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD &&
+			previousSliderPercent >= TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD &&
 			sliderPercent < TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD;
 
 		const syncScroll = (scrollLeft: number) => {
@@ -186,8 +175,14 @@ export function useTimelineZoom({
 		}
 
 		if (sliderPercent >= TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD) {
-		const playheadPixelsBefore = timelineTimeToPixels({ time: playheadTime, zoomLevel: previousZoom });
-		const playheadPixelsAfter = timelineTimeToPixels({ time: playheadTime, zoomLevel });
+			const playheadPixelsBefore = timelineTimeToPixels({
+				time: playheadTime,
+				zoomLevel: previousZoom,
+			});
+			const playheadPixelsAfter = timelineTimeToPixels({
+				time: playheadTime,
+				zoomLevel,
+			});
 
 			const viewportOffset = playheadPixelsBefore - currentScrollLeft;
 			const newScrollLeft = playheadPixelsAfter - viewportOffset;
@@ -288,10 +283,21 @@ export function useTimelineZoom({
 		};
 	}, [containerRef]);
 
-	return {
-		zoomLevel,
-		setZoomLevel: wrappedSetZoomLevel,
-		handleWheel,
-		saveScrollPosition,
-	};
+	// Memoize the returned object so consumers (Timeline component, fit-to-screen
+	// listener, etc.) don't see a fresh reference on every render of the
+	// parent. With this in place, the three ref-sync `useEffect`s in
+	// `Timeline` (`setZoomLevelRef`, `saveScrollPositionRef`, `minZoomRef`)
+	// become redundant and can be deleted; the consumer just uses the
+	// functions directly from the hook's return value.
+	const returnValue = useMemo(
+		() => ({
+			zoomLevel,
+			setZoomLevel: wrappedSetZoomLevel,
+			handleWheel,
+			saveScrollPosition,
+		}),
+		[zoomLevel, wrappedSetZoomLevel, handleWheel, saveScrollPosition],
+	);
+
+	return returnValue;
 }

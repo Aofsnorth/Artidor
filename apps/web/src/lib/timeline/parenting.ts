@@ -22,7 +22,8 @@ export function getEffectiveTransform({
 	element: TimelineElement;
 	tracks: SceneTracks;
 }): Transform {
-	const baseTransform = "transform" in element ? element.transform : DEFAULT_TRANSFORM;
+	const baseTransform =
+		"transform" in element ? element.transform : DEFAULT_TRANSFORM;
 	const allElements = collectAllElements({ tracks });
 	return composeParentTransform({
 		element,
@@ -118,11 +119,7 @@ function collectAllElements({
 	tracks: SceneTracks;
 }): Map<string, { element: TimelineElement; trackId: string }> {
 	const map = new Map<string, { element: TimelineElement; trackId: string }>();
-	for (const track of [
-		...tracks.overlay,
-		tracks.main,
-		...tracks.audio,
-	]) {
+	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
 		for (const el of track.elements) {
 			map.set(el.id, { element: el, trackId: track.id });
 		}

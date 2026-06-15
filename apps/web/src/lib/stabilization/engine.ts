@@ -92,7 +92,10 @@ export async function stabilizeVideo({
 	let prevGray: Float32Array | null = null;
 
 	for (let i = 0; i < samples; i++) {
-		const t = Math.min(duration - 0.05, (i * duration) / Math.max(1, samples - 1));
+		const t = Math.min(
+			duration - 0.05,
+			(i * duration) / Math.max(1, samples - 1),
+		);
 		video.currentTime = t;
 		await new Promise<void>((resolve) => {
 			video.addEventListener("seeked", () => resolve(), { once: true });

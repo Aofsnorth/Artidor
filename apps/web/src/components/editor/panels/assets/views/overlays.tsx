@@ -7,6 +7,7 @@ import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { useEditor } from "@/hooks/use-editor";
 import type { ParamValues } from "@/lib/params";
 import { buildGraphicElement } from "@/lib/timeline/element-utils";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 interface OverlayPreset {
 	id: string;
@@ -143,6 +144,7 @@ const OVERLAY_PRESETS: OverlayPreset[] = [
 ];
 
 export function OverlaysView() {
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	return (
 		<PanelView title="Overlays">
 			<div className="flex flex-col gap-3 pb-3">
@@ -153,7 +155,7 @@ export function OverlaysView() {
 				<div
 					className="grid gap-2"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{OVERLAY_PRESETS.map((preset) => (

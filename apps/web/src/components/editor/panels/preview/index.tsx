@@ -280,12 +280,12 @@ function PreviewCanvas({
 		<PreviewViewportProvider value={viewport}>
 			<PreviewZoomBridge />
 			<div className="flex size-full min-h-0 min-w-0 flex-col bg-transparent">
-				<div className="flex min-h-0 min-w-0 flex-1 p-3 pb-0">
+				<div className="flex min-h-0 min-w-0 flex-1 px-1 pt-1.5">
 					<ContextMenu>
 						<ContextMenuTrigger asChild>
 							<div
 								ref={viewportRef}
-								className="group relative flex size-full min-h-0 min-w-0 items-center justify-center overflow-hidden rounded-xl bg-[#070708] shadow-inner shadow-black/80"
+								className="group relative flex size-full min-h-0 min-w-0 items-center justify-center rounded-xl bg-[#070708] shadow-inner shadow-black/80 overflow-hidden"
 							>
 								<PreviewOverlayControls
 									onToggleFullscreen={onToggleFullscreen}

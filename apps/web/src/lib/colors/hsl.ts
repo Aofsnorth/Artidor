@@ -49,7 +49,11 @@ export function rgbToHsl(r: number, g: number, b: number): HslColor {
 	return { h, s, l };
 }
 
-export function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+export function hslToRgb(
+	h: number,
+	s: number,
+	l: number,
+): { r: number; g: number; b: number } {
 	const sNorm = s / 100;
 	const lNorm = l / 100;
 	const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;

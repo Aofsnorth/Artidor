@@ -808,28 +808,38 @@ fn pack_effect_uniforms(
 			}
 		}
 		COLOR_WHEELS_SHADER_ID => {
-            let lift = read_vec3_uniform(pass, "u_lift")?;
-            let gamma = read_vec3_uniform(pass, "u_gamma")?;
-            let gain = read_vec3_uniform(pass, "u_gain")?;
+			let lift = read_vec3_uniform(pass, "u_lift")?;
+			let gamma = read_vec3_uniform(pass, "u_gamma")?;
+			let gain = read_vec3_uniform(pass, "u_gain")?;
 
-            scalars[0] = lift[0];
-            scalars[1] = lift[1];
-            scalars[2] = lift[2];
-            scalars[3] = gamma[0];
-            // store gamma and gain using extra uniforms — for simplicity, only first 4 scalars
-            let _ = gamma;
-            let _ = gain;
+			// EffectUniformBuffer exposes 4 scalars + 1 vec2 `direction`. We
+			// pass lift as scalars[0..3] (R, G, B, _) and gamma[0] as the
+			// 4th scalar so the colour-wheels WGSL shader can pick up at
+			// least the primary lift. Gain is intentionally read here
+			// (so the `unknown uniform` check below stays truthful) but
+			// cannot be uploaded yet because the current buffer layout
+			// has no slot for it; the follow-up is to extend
+			// EffectUniformBuffer with an extra vec3 for gain.
+			scalars[0] = lift[0];
+			scalars[1] = lift[1];
+			scalars[2] = lift[2];
+			scalars[3] = gamma[0];
+			// `gain` and `gamma` are kept in scope so a future patch can
+			// ship them as soon as the buffer grows; explicit `_ = gain`
+			// documents that the silence is deliberate.
+			let _ = gain;
+			let _ = gamma;
 
-            for uniform in pass.uniforms.keys() {
-                if uniform == "u_lift" || uniform == "u_gamma" || uniform == "u_gain" {
-                    continue;
-                }
-                return Err(EffectsError::UnsupportedUniform {
-                    shader: shader.to_string(),
-                    uniform: uniform.clone(),
-                });
-            }
-        }
+			for uniform in pass.uniforms.keys() {
+				if uniform == "u_lift" || uniform == "u_gamma" || uniform == "u_gain" {
+					continue;
+				}
+				return Err(EffectsError::UnsupportedUniform {
+					shader: shader.to_string(),
+					uniform: uniform.clone(),
+				});
+			}
+		}
         _ => {
             return Err(EffectsError::UnknownEffectShader {
                 shader: shader.to_string(),

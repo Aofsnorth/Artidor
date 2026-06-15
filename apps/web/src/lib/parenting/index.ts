@@ -87,8 +87,9 @@ export function collectAncestors({
 	elementsById: Map<string, TimelineElement>;
 }): TimelineElement[] {
 	const ancestors: TimelineElement[] = [];
-	let cursor: string | undefined = (elementsById.get(elementId) as VisualElement | undefined)
-		?.parentId;
+	let cursor: string | undefined = (
+		elementsById.get(elementId) as VisualElement | undefined
+	)?.parentId;
 	const seen = new Set<string>();
 	while (cursor) {
 		if (seen.has(cursor)) break;
@@ -154,8 +155,12 @@ export function composeWorldTransform({
 		const rx = lx * cos - ly * sin;
 		const ry = lx * sin + ly * cos;
 
-		posX = (parent.transform.position.x + rx) / Math.max(1e-6, parent.transform.scaleX);
-		posY = (parent.transform.position.y + ry) / Math.max(1e-6, parent.transform.scaleY);
+		posX =
+			(parent.transform.position.x + rx) /
+			Math.max(1e-6, parent.transform.scaleX);
+		posY =
+			(parent.transform.position.y + ry) /
+			Math.max(1e-6, parent.transform.scaleY);
 		scaleX *= parent.transform.scaleX;
 		scaleY *= parent.transform.scaleY;
 		rotate += parent.transform.rotate;

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePanelStore } from "@/stores/panel-store";
 import { useSnapIndicatorPosition } from "@/hooks/timeline/use-snap-indicator-position";
 import type { SnapPoint } from "@/lib/timeline/snap-utils";
 import {
@@ -22,11 +23,13 @@ export function SnapIndicator({
 	timelineRef,
 	tracksScrollRef,
 }: SnapIndicatorProps) {
+	const trackLabelsWidth = usePanelStore((s) => s.trackLabelsWidth);
 	const { leftPosition, topPosition, height } = useSnapIndicatorPosition({
 		snapPoint,
 		zoomLevel,
 		timelineRef,
 		tracksScrollRef,
+		trackLabelsWidth,
 	});
 
 	if (!isVisible || !snapPoint) {

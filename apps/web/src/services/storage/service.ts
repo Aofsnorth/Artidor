@@ -16,7 +16,11 @@ import type {
 	SerializedProject,
 	SerializedScene,
 } from "./types";
-import type { SavedSoundsData, SavedSound, SoundEffect } from "@/lib/sounds/types";
+import type {
+	SavedSoundsData,
+	SavedSound,
+	SoundEffect,
+} from "@/lib/sounds/types";
 import {
 	migrations,
 	runStorageMigrations,
@@ -113,11 +117,7 @@ class StorageService {
 		return isStorageQuotaExceededError({ error });
 	}
 
-	private stripAudioBuffers({
-		tracks,
-	}: {
-		tracks: SceneTracks;
-	}): SceneTracks {
+	private stripAudioBuffers({ tracks }: { tracks: SceneTracks }): SceneTracks {
 		return {
 			...tracks,
 			audio: tracks.audio.map((track) => ({
@@ -152,6 +152,8 @@ class StorageService {
 				duration,
 				createdAt: project.metadata.createdAt.toISOString(),
 				updatedAt: project.metadata.updatedAt.toISOString(),
+				googleDriveFolderId: project.metadata.googleDriveFolderId,
+				googleDriveFileId: project.metadata.googleDriveFileId,
 			},
 			scenes: serializedScenes,
 			currentSceneId: project.currentSceneId,
@@ -194,6 +196,8 @@ class StorageService {
 					getProjectDurationFromScenes({ scenes }),
 				createdAt: new Date(serializedProject.metadata.createdAt),
 				updatedAt: new Date(serializedProject.metadata.updatedAt),
+				googleDriveFolderId: serializedProject.metadata.googleDriveFolderId,
+				googleDriveFileId: serializedProject.metadata.googleDriveFileId,
 			},
 			scenes,
 			currentSceneId: serializedProject.currentSceneId || "",

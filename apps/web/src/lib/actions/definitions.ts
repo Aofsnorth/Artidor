@@ -1,7 +1,4 @@
-import type {
-	KeybindingConfig,
-	ShortcutKey,
-} from "@/lib/actions/keybinding";
+import type { KeybindingConfig, ShortcutKey } from "@/lib/actions/keybinding";
 import type { TActionWithOptionalArgs } from "./types";
 
 export type TActionCategory =
@@ -131,6 +128,10 @@ export const ACTIONS = {
 	},
 	"toggle-bookmark": {
 		description: "Toggle bookmark at playhead",
+		category: "timeline",
+	},
+	"toggle-element-bookmark": {
+		description: "Toggle bookmark on selected element",
 		category: "timeline",
 	},
 	undo: {
@@ -265,10 +266,13 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	"ungroup-selected": ["ctrl+shift+g"],
 	"add-bookmark": ["m"],
 	"toggle-bookmark": ["ctrl+m"],
+	"toggle-element-bookmark": ["shift+m"],
 	"reverse-clip": ["ctrl+r"],
 	"open-teleprompter": ["ctrl+t"],
 	"fit-to-screen": ["f"],
-} as const satisfies Partial<Record<TActionWithOptionalArgs, readonly ShortcutKey[]>>;
+} as const satisfies Partial<
+	Record<TActionWithOptionalArgs, readonly ShortcutKey[]>
+>;
 
 const ACTION_DEFAULT_SHORTCUTS_BY_ACTION: Partial<
 	Record<TAction, readonly ShortcutKey[]>

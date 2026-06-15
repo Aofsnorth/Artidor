@@ -31,6 +31,7 @@ interface AudioWaveformProps {
 	trimStartTicks?: number;
 	trimEndTicks?: number;
 	sourceDurationTicks?: number;
+	scale?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ interface AudioWaveformProps {
 // one decode, eliminating duplicate WASM work and lag. We only keep the
 // downsampled peak buffer (not the full AudioBuffer) so memory stays small.
 // ---------------------------------------------------------------------------
-interface DecodedPeaks {
+export interface DecodedPeaks {
 	peakBuffer: Float32Array;
 	bufferLength: number;
 	globalPeak: number;
@@ -47,7 +48,7 @@ interface DecodedPeaks {
 
 const DECODE_CACHE = new Map<string, Promise<DecodedPeaks>>();
 
-function getCacheKey(audioUrl?: string, mediaFile?: File): string {
+export function getCacheKey(audioUrl?: string, mediaFile?: File): string {
 	if (mediaFile) {
 		return `file:${mediaFile.name}:${mediaFile.size}:${mediaFile.lastModified}`;
 	}
@@ -55,7 +56,7 @@ function getCacheKey(audioUrl?: string, mediaFile?: File): string {
 	return "";
 }
 
-async function decodeAndCache(
+export async function decodeAndCache(
 	cacheKey: string,
 	audioUrl: string | undefined,
 	mediaFile: File | undefined,
@@ -130,6 +131,7 @@ export function AudioWaveform({
 	trimStartTicks,
 	trimEndTicks,
 	sourceDurationTicks,
+	scale = 1,
 }: AudioWaveformProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -221,7 +223,8 @@ export function AudioWaveform({
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
-		const safePeak = Math.max(decoded.globalPeak, 0.01);
+		// Do not normalize to globalPeak so the waveform size reflects absolute volume
+		const safePeak = 1.0;
 		const logBase = Math.log1p(1);
 
 		ctx.clearRect(0, 0, canvasW, canvasH);
@@ -250,13 +253,31 @@ export function AudioWaveform({
 				scaled > 0.32 &&
 				peaks[i] >= leftPeak &&
 				peaks[i] >= rightPeak;
-			const barH = Math.max(variant === "beats" ? 2 : 1, scaled * maxBarHeight);
+			const rawBarH = Math.max(
+				variant === "beats" ? 2 : 1,
+				scaled * maxBarHeight,
+			);
+			const barH = rawBarH * scale;
 			const x = i * barStep;
 			const radius = variant === "beats" ? Math.min(barWidth, 2) : 0;
 
-			ctx.fillStyle = isBeat ? beatColor : color;
-			ctx.shadowColor = isBeat ? beatColor : "transparent";
-			ctx.shadowBlur = isBeat ? 10 : 0;
+			const finalAmplitude = normalized * scale;
+			const isOversound = finalAmplitude >= 1.0;
+
+			if (isOversound) {
+				ctx.fillStyle = "rgba(255, 255, 255, 1)";
+				ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+				ctx.shadowBlur = 6;
+			} else if (finalAmplitude > 0.7) {
+				const ratio = (finalAmplitude - 0.7) / 0.3; // 0 to 1
+				ctx.fillStyle = `rgba(255, 255, 255, ${0.55 + ratio * 0.45})`;
+				ctx.shadowColor = `rgba(255, 255, 255, ${ratio * 0.5})`;
+				ctx.shadowBlur = ratio * 4;
+			} else {
+				ctx.fillStyle = isBeat ? beatColor : color;
+				ctx.shadowColor = isBeat ? beatColor : "transparent";
+				ctx.shadowBlur = isBeat ? 10 : 0;
+			}
 
 			if (symmetric) {
 				drawRoundedBar({
@@ -302,6 +323,7 @@ export function AudioWaveform({
 		trimStartTicks,
 		trimEndTicks,
 		sourceDurationTicks,
+		scale,
 	]);
 
 	// Keep a stable reference to the latest draw fn so the decode effect can

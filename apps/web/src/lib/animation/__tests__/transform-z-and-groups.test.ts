@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, mock, test } from "bun:test";
 import type { ElementAnimations } from "@/lib/animation/types";
 
-mock.module("opencut-wasm", () => ({
+mock.module("artidor-wasm", () => ({
 	TICKS_PER_SECOND: () => 1000,
 }));
 

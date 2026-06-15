@@ -138,7 +138,14 @@ export const EQ_PRESETS: Array<{
 	{
 		id: "classical",
 		name: "Classical",
-		gains: { ...defaultEqGains(), "31hz": 4, "125hz": 2, "2khz": -1, "4khz": -1, "16khz": 3 },
+		gains: {
+			...defaultEqGains(),
+			"31hz": 4,
+			"125hz": 2,
+			"2khz": -1,
+			"4khz": -1,
+			"16khz": 3,
+		},
 	},
 	{
 		id: "dance",

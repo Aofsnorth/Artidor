@@ -20,9 +20,10 @@ export const hueRotateAdjustmentDefinition: EffectDefinition = {
 			{
 				shader: "hue-rotate",
 				uniforms: ({ effectParams }) => {
-					const amount = typeof effectParams.amount === "number"
-						? effectParams.amount
-						: Number.parseFloat(String(effectParams.amount));
+					const amount =
+						typeof effectParams.amount === "number"
+							? effectParams.amount
+							: Number.parseFloat(String(effectParams.amount));
 					return {
 						u_amount: (amount * Math.PI) / 180,
 					};

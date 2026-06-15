@@ -39,7 +39,9 @@ export function useReverseVideo() {
 			return;
 		}
 
-		const asset = editor.media.getAssets().find((a) => a.id === element.mediaId);
+		const asset = editor.media
+			.getAssets()
+			.find((a) => a.id === element.mediaId);
 		if (!asset) {
 			toast.error("Source media not found");
 			return;

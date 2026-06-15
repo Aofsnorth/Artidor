@@ -1,5 +1,3 @@
-
-
 /**
  * A filter preset is a named bundle of one or more effects with their default
  * parameter values. Applying a preset creates a single "filter" element on the

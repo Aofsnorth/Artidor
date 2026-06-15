@@ -3,10 +3,7 @@
 import { useCallback, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import type { AudioEffectsChain } from "@/hooks/audio-effects-engine";
-import {
-	EQ_PRESETS,
-	defaultEqGains,
-} from "@/lib/audio/equalizer";
+import { EQ_PRESETS, defaultEqGains } from "@/lib/audio/equalizer";
 import { REVERB_PRESETS } from "@/lib/audio/reverb";
 import { DELAY_PRESETS } from "@/lib/audio/delay";
 import { MODULATION_PRESETS } from "@/lib/audio/modulation";
@@ -25,10 +22,31 @@ export interface AudioEffectsState {
 const DEFAULT_CHAIN: AudioEffectsChain = {
 	eq: { enabled: false, gains: defaultEqGains() },
 	reverb: { enabled: false, presetId: "hall", mix: 0.3 },
-	delay: { enabled: false, time: 0.3, feedback: 0.35, mix: 0.3, pingPong: false },
-	modulation: { enabled: false, type: "chorus", rate: 1.0, depth: 0.5, mix: 0.5, stereo: 0.5 },
+	delay: {
+		enabled: false,
+		time: 0.3,
+		feedback: 0.35,
+		mix: 0.3,
+		pingPong: false,
+	},
+	modulation: {
+		enabled: false,
+		type: "chorus",
+		rate: 1.0,
+		depth: 0.5,
+		mix: 0.5,
+		stereo: 0.5,
+	},
 	distortion: { enabled: false, type: "overdrive", amount: 0.5, mix: 1.0 },
-	compressor: { enabled: false, threshold: -18, ratio: 3, attack: 0.003, release: 0.25, knee: 6, gain: 0 },
+	compressor: {
+		enabled: false,
+		threshold: -18,
+		ratio: 3,
+		attack: 0.003,
+		release: 0.25,
+		knee: 6,
+		gain: 0,
+	},
 	voiceChanger: { enabled: false, presetId: "robot", pitchShift: 0, mix: 1.0 },
 	noiseReduction: { enabled: false, strength: 0.5 },
 };
@@ -47,12 +65,18 @@ export function useAudioEffects({
 	const [isProcessing, _setIsProcessing] = useState(false);
 	const [lastAppliedAt, _setLastAppliedAt] = useState<number | null>(null);
 
-	const updateChain = useCallback((updater: (c: AudioEffectsChain) => AudioEffectsChain) => {
-		setChain((prev) => updater(prev));
-	}, []);
+	const updateChain = useCallback(
+		(updater: (c: AudioEffectsChain) => AudioEffectsChain) => {
+			setChain((prev) => updater(prev));
+		},
+		[],
+	);
 
 	const resetEffects = useCallback(() => {
-		setChain({ ...DEFAULT_CHAIN, eq: { enabled: false, gains: defaultEqGains() } });
+		setChain({
+			...DEFAULT_CHAIN,
+			eq: { enabled: false, gains: defaultEqGains() },
+		});
 	}, []);
 
 	const setEqEnabled = useCallback(
@@ -81,7 +105,11 @@ export function useAudioEffects({
 			if (!preset) return;
 			updateChain((c) => ({
 				...c,
-				eq: { ...c.eq, enabled: true, gains: applyEqPreset(presetId, c.eq.gains) ?? preset.gains },
+				eq: {
+					...c.eq,
+					enabled: true,
+					gains: applyEqPreset(presetId, c.eq.gains) ?? preset.gains,
+				},
 			}));
 		},
 		[updateChain],
@@ -110,7 +138,10 @@ export function useAudioEffects({
 			mix?: number;
 			stereo?: number;
 		}) => {
-			updateChain((c) => ({ ...c, modulation: { ...c.modulation, ...params } as typeof c.modulation }));
+			updateChain((c) => ({
+				...c,
+				modulation: { ...c.modulation, ...params } as typeof c.modulation,
+			}));
 		},
 		[updateChain],
 	);
@@ -122,14 +153,20 @@ export function useAudioEffects({
 			amount?: number;
 			mix?: number;
 		}) => {
-			updateChain((c) => ({ ...c, distortion: { ...c.distortion, ...params } as typeof c.distortion }));
+			updateChain((c) => ({
+				...c,
+				distortion: { ...c.distortion, ...params } as typeof c.distortion,
+			}));
 		},
 		[updateChain],
 	);
 
 	const setCompressor = useCallback(
 		(params: Partial<typeof chain.compressor>) => {
-			updateChain((c) => ({ ...c, compressor: { ...c.compressor, ...params } }));
+			updateChain((c) => ({
+				...c,
+				compressor: { ...c.compressor, ...params },
+			}));
 		},
 		[updateChain],
 	);
@@ -141,14 +178,20 @@ export function useAudioEffects({
 			pitchShift?: number;
 			mix?: number;
 		}) => {
-			updateChain((c) => ({ ...c, voiceChanger: { ...c.voiceChanger, ...params } as typeof c.voiceChanger }));
+			updateChain((c) => ({
+				...c,
+				voiceChanger: { ...c.voiceChanger, ...params } as typeof c.voiceChanger,
+			}));
 		},
 		[updateChain],
 	);
 
 	const setNoiseReduction = useCallback(
 		(params: Partial<typeof chain.noiseReduction>) => {
-			updateChain((c) => ({ ...c, noiseReduction: { ...c.noiseReduction, ...params } }));
+			updateChain((c) => ({
+				...c,
+				noiseReduction: { ...c.noiseReduction, ...params },
+			}));
 		},
 		[updateChain],
 	);

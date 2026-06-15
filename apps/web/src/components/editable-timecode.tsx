@@ -7,7 +7,7 @@ import {
 	snappedSeekTime,
 	type FrameRate,
 	type TimeCodeFormat,
-} from "opencut-wasm";
+} from "artidor-wasm";
 import { cn } from "@/utils/ui";
 
 interface EditableTimecodeProps {
@@ -57,7 +57,11 @@ export function EditableTimecode({
 	};
 
 	const applyEdit = () => {
-		const parsedTime = parseTimecode({ timeCode: inputValue, format, rate: fps });
+		const parsedTime = parseTimecode({
+			timeCode: inputValue,
+			format,
+			rate: fps,
+		});
 
 		if (parsedTime == null) {
 			setHasError(true);
@@ -65,7 +69,8 @@ export function EditableTimecode({
 		}
 
 		const clampedTime = duration
-			? (snappedSeekTime({ time: parsedTime, duration, rate: fps }) ?? parsedTime)
+			? (snappedSeekTime({ time: parsedTime, duration, rate: fps }) ??
+				parsedTime)
 			: parsedTime;
 
 		onTimeChange?.({ time: clampedTime });

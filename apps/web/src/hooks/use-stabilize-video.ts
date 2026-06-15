@@ -38,7 +38,9 @@ export function useStabilizeVideo() {
 			return;
 		}
 
-		const asset = editor.media.getAssets().find((a) => a.id === element.mediaId);
+		const asset = editor.media
+			.getAssets()
+			.find((a) => a.id === element.mediaId);
 		if (!asset) {
 			toast.error("Source media not found");
 			return;
@@ -74,10 +76,9 @@ export function useStabilizeVideo() {
 					},
 				]);
 				editor.timeline.upsertKeyframes({ keyframes });
-				toast.success(
-					`Stabilized: ${result.frames.length} frames analyzed`,
-					{ id: toastId },
-				);
+				toast.success(`Stabilized: ${result.frames.length} frames analyzed`, {
+					id: toastId,
+				});
 			} finally {
 				URL.revokeObjectURL(url);
 			}

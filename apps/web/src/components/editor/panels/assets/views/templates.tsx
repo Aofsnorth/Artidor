@@ -16,10 +16,12 @@ import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { cn } from "@/utils/ui";
 import type { EditorCore } from "@/core";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function TemplatesView() {
 	const [category, setCategory] = useState<string>("all");
 	const editor = useEditor();
+	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
 	const filteredTemplates =
 		category === "all"
@@ -30,8 +32,8 @@ export function TemplatesView() {
 		<PanelView title="Templates">
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Start with a pre-built template and replace the placeholder media
-					with your own.
+					Start with a pre-built template and replace the placeholder media with
+					your own.
 				</p>
 				<div className="flex flex-wrap gap-1">
 					<TemplateCategoryChip
@@ -53,7 +55,7 @@ export function TemplatesView() {
 				<div
 					className="grid gap-3"
 					style={{
-						gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
 					{filteredTemplates.map((template) => (

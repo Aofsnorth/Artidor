@@ -10,7 +10,9 @@ function getSafeRate({ rate }: { rate: number }): number {
 	return clampRetimeRate({ rate });
 }
 
-function getCurveDuration(retime: RetimeConfig | undefined): number | undefined {
+function getCurveDuration(
+	retime: RetimeConfig | undefined,
+): number | undefined {
 	return getSpeedRampDuration(retime);
 }
 
@@ -20,7 +22,9 @@ function getCurveDuration(retime: RetimeConfig | undefined): number | undefined 
 function isCurveRetime(retime: RetimeConfig | undefined): boolean {
 	if (!retime) return false;
 	const r = retime as { mode?: unknown; keyframes?: unknown };
-	return r.mode === "curve" && Array.isArray(r.keyframes) && r.keyframes.length > 0;
+	return (
+		r.mode === "curve" && Array.isArray(r.keyframes) && r.keyframes.length > 0
+	);
 }
 export function getSourceTimeAtClipTime({
 	clipTime,

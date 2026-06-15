@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useEditor } from "@/hooks/use-editor";
 import { processMediaAssets } from "@/lib/media/processing";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	Dialog,
 	DialogContent,
@@ -17,9 +18,20 @@ import {
 	AlertCircleIcon,
 	CloudIcon,
 	Link01Icon,
+	Settings01Icon,
+	GoogleIcon,
+	Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { cn } from "@/utils/ui";
+import { parseDriveUrl } from "@/lib/drive/parse";
+import {
+	getGoogleClientId,
+	setGoogleClientId,
+	getGoogleAccessToken,
+	initiateGoogleOAuth,
+	logoutGoogle,
+} from "@/lib/drive/api";
 
 type DriveError = { code: string; message: string };
 type DriveFileSuccess = {
@@ -77,10 +89,57 @@ function ImportDriveDialog({
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<DriveError | null>(null);
 
+	// Google Drive OAuth states
+	const [hasToken, setHasToken] = useState(false);
+	const [clientId, setClientId] = useState("");
+	const [showConfig, setShowConfig] = useState(false);
+
+	useEffect(() => {
+		if (open) {
+			setHasToken(!!getGoogleAccessToken());
+			const currentId = getGoogleClientId() || "";
+			setClientId(currentId);
+			setShowConfig(!currentId);
+		}
+	}, [open]);
+
 	const reset = () => {
 		setLink("");
 		setBusy(false);
 		setError(null);
+	};
+
+	const handleGoogleLogin = async () => {
+		if (!clientId.trim()) {
+			setError({
+				code: "invalid_client_id",
+				message: "Please enter a Google Client ID first.",
+			});
+			return;
+		}
+
+		setGoogleClientId(clientId.trim());
+		setBusy(true);
+		setError(null);
+
+		try {
+			const token = await initiateGoogleOAuth();
+			setHasToken(true);
+			toast.success("Signed in with Google successfully!");
+		} catch (err) {
+			setError({
+				code: "auth_failed",
+				message: err instanceof Error ? err.message : "Authentication failed.",
+			});
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	const handleGoogleLogout = () => {
+		logoutGoogle();
+		setHasToken(false);
+		toast.info("Logged out from Google Drive.");
 	};
 
 	const handleImport = async () => {
@@ -88,6 +147,107 @@ function ImportDriveDialog({
 		setBusy(true);
 		setError(null);
 
+		const parsed = parseDriveUrl({ url: link });
+		if (!parsed) {
+			setError({
+				code: "unsupported_host",
+				message: "Only Google Drive share links are supported.",
+			});
+			setBusy(false);
+			return;
+		}
+
+		// Folder link logic (OAuth Sync)
+		if (parsed.kind === "folder") {
+			if (!getGoogleAccessToken()) {
+				setError({
+					code: "not_authenticated",
+					message:
+						"Authentication is required to sync Drive folders. Please sign in above.",
+				});
+				setBusy(false);
+				return;
+			}
+
+			try {
+				toast.info("Starting Google Drive Folder Sync...", {
+					description:
+						"Connecting and enumerating assets. You will be redirected to the editor shortly.",
+				});
+
+				const projectId = await editor.project.syncProjectFromDrive(parsed.id);
+
+				toast.success("Folder Synced!", {
+					description:
+						"Assets are downloading in the background. Edits will save back to Drive.",
+				});
+
+				onOpenChange(false);
+				reset();
+				router.push(`/editor/${projectId}`);
+			} catch (caught) {
+				const message =
+					caught instanceof Error
+						? caught.message
+						: "Unexpected error syncing Drive folder.";
+				setError({ code: "fetch_failed", message });
+			} finally {
+				setBusy(false);
+			}
+			return;
+		}
+
+		// File link logic: check if we are authenticated to stream directly, or use public API fallback
+		const token = getGoogleAccessToken();
+		if (token) {
+			// Direct client-side streaming over OAuth
+			try {
+				const { fetchFolderFiles, downloadFileBlob } = await import(
+					"@/lib/drive/api"
+				);
+				toast.info("Downloading file from Google Drive...");
+
+				const blob = await downloadFileBlob(parsed.id);
+				const file = new File([blob], `drive-${parsed.id}`, {
+					type: blob.type,
+				});
+
+				const projectId = await editor.project.createNewProject({
+					name: deriveProjectName({ fileName: file.name }),
+				});
+
+				const processedAssets = await processMediaAssets({ files: [file] });
+				const processed = processedAssets[0];
+				if (!processed) {
+					setError({
+						code: "fetch_failed",
+						message: "Drive file was fetched but could not be processed.",
+					});
+					return;
+				}
+
+				const asset = await editor.media.addMediaAsset({
+					projectId,
+					asset: processed,
+				});
+
+				toast.success("Project imported from Drive!");
+				onOpenChange(false);
+				reset();
+				router.push(`/editor/${projectId}?focus=${asset?.id}`);
+			} catch (caught) {
+				const message =
+					caught instanceof Error
+						? caught.message
+						: "OAuth file import failed.";
+				setError({ code: "fetch_failed", message });
+			} finally {
+				setBusy(false);
+			}
+			return;
+		}
+
+		// Fallback to public backend fetch (requires file to be shared publicly)
 		try {
 			const response = await fetch("/api/drive/import", {
 				method: "POST",
@@ -115,16 +275,12 @@ function ImportDriveDialog({
 
 			const ok = payload as DriveSuccess;
 			if (ok.kind === "folder") {
-				// Folder link: the public Drive surface does not expose
-				// the folder's contents, so we create a new empty
-				// project and persist it locally. The user can then drag
-				// files in from the assets panel or use the Import
-				// button again per-file.
+				// Fallback when not authenticated: create empty project shell
 				const projectId = await editor.project.createNewProject({
 					name: ok.folderLabel,
 				});
 				toast.success("Project created from Drive folder", {
-					description: `${ok.folderLabel} opened in the editor. Drop files in from the assets panel to populate it.`,
+					description: `${ok.folderLabel} opened. Drop files to populate or authenticate to sync automatically.`,
 				});
 				onOpenChange(false);
 				reset();
@@ -163,14 +319,6 @@ function ImportDriveDialog({
 				projectId,
 				asset: processed,
 			});
-			if (!asset) {
-				setError({
-					code: "fetch_failed",
-					message:
-						"Drive file was processed but could not be saved to the project.",
-				});
-				return;
-			}
 
 			toast.success("Project imported from Drive", {
 				description: `${ok.fileName} added to the timeline as a new track.`,
@@ -178,7 +326,7 @@ function ImportDriveDialog({
 
 			onOpenChange(false);
 			reset();
-			router.push(`/editor/${projectId}?focus=${asset.id}`);
+			router.push(`/editor/${projectId}?focus=${asset?.id}`);
 		} catch (caught) {
 			const message =
 				caught instanceof Error
@@ -190,7 +338,6 @@ function ImportDriveDialog({
 		}
 	};
 
-	// Keyboard ergonomics: ⏎ on the input submits, ⎋ closes the dialog.
 	const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
 		if (event.key === "Enter" && !busy && link.trim()) {
 			event.preventDefault();
@@ -207,9 +354,6 @@ function ImportDriveDialog({
 			}}
 		>
 			<DialogContent className="overflow-hidden border-white/[0.08] bg-[#09090b]/95 text-white shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-md sm:max-w-[460px]">
-				{/* Subtle background gradient: a soft Drive-blue radial wash to
-				    hint at the action ("import from cloud") without overpowering
-				    the rest of the dialog. */}
 				<div
 					className="pointer-events-none absolute inset-0 opacity-70"
 					style={{
@@ -219,8 +363,8 @@ function ImportDriveDialog({
 					aria-hidden="true"
 				/>
 
-				<div className="relative p-6">
-					{/* ── Header ──────────────────────────────────────────── */}
+				<div className="relative p-6 max-h-[90vh] overflow-y-auto scrollbar-hidden">
+					{/* Header */}
 					<DialogHeader className="space-y-2 pb-3 [&]:border-b-0 [&]:p-0">
 						<DialogTitle className="flex items-center gap-2.5 text-[0.95rem] font-semibold tracking-tight text-white">
 							<span className="grid size-8 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.05] shadow-inner shadow-white/[0.02]">
@@ -229,18 +373,105 @@ function ImportDriveDialog({
 									className="size-4 text-white/85"
 								/>
 							</span>
-							<span>Import from Google Drive</span>
+							<span>Import / Sync with Google Drive</span>
 						</DialogTitle>
 						<DialogDescription className="pl-[2.65rem] text-[0.78rem] leading-relaxed text-white/55 [&]:p-0">
-							Paste a public Google Drive share link. The file is fetched once,
-							added to a new project, and opened in the editor.
+							Paste a Google Drive sharing link for a folder or file. Folders
+							will sync metadata and assets automatically.
 						</DialogDescription>
 					</DialogHeader>
 
-					{/* ── Divider ──────────────────────────────────────────── */}
+					{/* Divider */}
 					<div className="-mx-6 my-4 h-px bg-white/[0.06]" />
 
-					{/* ── Form ────────────────────────────────────────────── */}
+					{/* OAuth Section */}
+					<div className="mb-4 flex flex-col gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-[0.75rem]">
+						<div className="flex items-center justify-between">
+							<span className="font-semibold text-white/80">
+								Google Auth Write Access
+							</span>
+							<button
+								type="button"
+								onClick={() => setShowConfig(!showConfig)}
+								className="flex items-center gap-1 text-[0.65rem] text-white/40 hover:text-white/70"
+							>
+								<HugeiconsIcon icon={Settings01Icon} className="size-3" />
+								Configure
+							</button>
+						</div>
+
+						{showConfig && (
+							<div className="mt-2 flex flex-col gap-2 border-t border-white/[0.04] pt-2">
+								<label className="text-[0.62rem] uppercase tracking-wider text-white/45">
+									Google OAuth Client ID
+								</label>
+								<div className="flex gap-2">
+									<Input
+										placeholder="Paste Client ID..."
+										value={clientId}
+										disabled={busy}
+										onChange={(e) => setClientId(e.target.value)}
+										className="h-8 font-mono text-[0.7rem]"
+									/>
+									<Button
+										size="sm"
+										variant="outline"
+										onClick={() => {
+											setGoogleClientId(clientId.trim());
+											setShowConfig(false);
+											toast.success("Client ID saved!");
+										}}
+										className="h-8 text-[0.7rem]"
+									>
+										Save
+									</Button>
+								</div>
+								<p className="text-[0.58rem] leading-snug text-white/35">
+									Ensure you configure{" "}
+									<code className="bg-white/10 px-1 rounded">
+										http://localhost:3000/oauth-callback
+									</code>{" "}
+									in your Google console.
+								</p>
+							</div>
+						)}
+
+						<div className="mt-1 flex items-center justify-between gap-2 border-t border-white/[0.04] pt-2.5">
+							{hasToken ? (
+								<>
+									<div className="flex items-center gap-1.5 text-emerald-400 font-medium text-[0.72rem]">
+										<HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+										Authenticated
+									</div>
+									<Button
+										size="sm"
+										variant="destructive"
+										onClick={handleGoogleLogout}
+										className="h-7 px-2.5 text-[0.68rem]"
+									>
+										Sign Out
+									</Button>
+								</>
+							) : (
+								<>
+									<span className="text-[0.68rem] text-white/45">
+										Sign in to enable write-access syncing:
+									</span>
+									<Button
+										size="sm"
+										onClick={handleGoogleLogin}
+										disabled={busy}
+										className="h-8 gap-1.5 bg-white text-black hover:bg-white/90 text-[0.7rem]"
+									>
+										<HugeiconsIcon icon={GoogleIcon} className="size-3" />
+										Sign In
+									</Button>
+								</>
+							)}
+						</div>
+					</div>
+
+					{/* Form */}
 					<div className="flex flex-col gap-3">
 						<div className="flex flex-col gap-1.5">
 							<div className="flex items-center justify-between pl-0.5">
@@ -248,7 +479,7 @@ function ImportDriveDialog({
 									htmlFor="drive-link"
 									className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45"
 								>
-									Share link
+									Share link (Folder or File)
 								</label>
 								<button
 									type="button"
@@ -260,7 +491,7 @@ function ImportDriveDialog({
 												if (error) setError(null);
 											}
 										} catch {
-											/* clipboard blocked — silent fall-through */
+											/* clipboard blocked */
 										}
 									}}
 									disabled={busy}
@@ -288,8 +519,7 @@ function ImportDriveDialog({
 									inputMode="url"
 									spellCheck={false}
 									autoComplete="off"
-									autoFocus
-									placeholder="https://drive.google.com/file/d/…/view"
+									placeholder="https://drive.google.com/drive/folders/…"
 									value={link}
 									disabled={busy}
 									onChange={(event) => {
@@ -320,14 +550,11 @@ function ImportDriveDialog({
 							</div>
 						)}
 
-						{/* ── Help + Action ────────────────────────────────────── */}
+						{/* Action */}
 						<div className="flex items-center justify-between gap-3 pt-1">
 							<p className="text-[0.68rem] leading-snug text-white/40">
-								Set Drive sharing to{" "}
-								<span className="text-white/60">
-									&ldquo;Anyone with the link&rdquo;
-								</span>
-								.
+								Folders will sync metadata and assets, files will be imported as
+								tracks.
 							</p>
 							<Button
 								type="button"
@@ -344,7 +571,7 @@ function ImportDriveDialog({
 								{busy ? (
 									<>
 										<span className="size-3 animate-pulse rounded-full bg-current" />
-										Importing…
+										Loading…
 									</>
 								) : (
 									<>
@@ -355,19 +582,6 @@ function ImportDriveDialog({
 							</Button>
 						</div>
 					</div>
-
-					{/* ── Footer reassurance strip ──────────────────────────── */}
-					<div className="mt-5 flex items-center gap-2 border-t border-white/[0.05] pt-3 text-[0.66rem] text-white/35">
-						<HugeiconsIcon
-							icon={CloudIcon}
-							className="size-3 shrink-0 text-white/25"
-							aria-hidden="true"
-						/>
-						<span>
-							We only download the file you paste &mdash; your Drive credentials
-							and other files are never touched.
-						</span>
-					</div>
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -376,6 +590,8 @@ function ImportDriveDialog({
 
 function labelForError({ code }: { code: string }): string {
 	switch (code) {
+		case "not_authenticated":
+			return "Authentication required";
 		case "not_public":
 			return "Drive file is not public";
 		case "not_found":

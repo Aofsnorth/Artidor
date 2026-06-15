@@ -3,20 +3,14 @@
  * effects (EQ, reverb, delay, modulation, distortion, compressor, voice changer)
  * in a single OfflineAudioContext pass, returning a processed AudioBuffer.
  */
-import {
-	EQ_BANDS,
-	type EqParams,
-} from "@/lib/audio/equalizer";
+import { EQ_BANDS, type EqParams } from "@/lib/audio/equalizer";
 import {
 	DEFAULT_REVERB_PARAMS,
 	REVERB_PRESETS,
 	type ReverbParams,
 	buildReverbImpulseResponse,
 } from "@/lib/audio/reverb";
-import {
-	DEFAULT_DELAY_PARAMS,
-	type DelayParams,
-} from "@/lib/audio/delay";
+import { DEFAULT_DELAY_PARAMS, type DelayParams } from "@/lib/audio/delay";
 import {
 	DEFAULT_MODULATION_PARAMS,
 	type ModulationParams,
@@ -34,7 +28,7 @@ import {
 	DEFAULT_VOICE_CHANGER_PARAMS,
 	type VoiceChangerParams,
 } from "@/lib/audio/voice-changer";
-import { buildEqPresets, } from "./eq-presets";
+import { buildEqPresets } from "./eq-presets";
 
 export interface AudioEffectsChain {
 	eq: EqParams;
@@ -227,9 +221,14 @@ export async function processAudioEffects({
 
 	// 7) Reverb
 	if (chain.reverb.enabled) {
-		const preset = REVERB_PRESETS.find((p) => p.id === chain.reverb.presetId) ?? REVERB_PRESETS[1];
+		const preset =
+			REVERB_PRESETS.find((p) => p.id === chain.reverb.presetId) ??
+			REVERB_PRESETS[1];
 		const convolver = offline.createConvolver();
-		convolver.buffer = buildReverbImpulseResponse({ audioContext: offline, preset });
+		convolver.buffer = buildReverbImpulseResponse({
+			audioContext: offline,
+			preset,
+		});
 		const mix = offline.createGain();
 		mix.gain.value = chain.reverb.mix;
 		const dry = offline.createGain();

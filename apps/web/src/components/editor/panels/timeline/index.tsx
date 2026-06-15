@@ -5,6 +5,7 @@ import {
 	Delete02Icon,
 	MagicWand05Icon,
 	MusicNote03Icon,
+	RefreshIcon,
 	TaskAdd02Icon,
 	TextIcon,
 	ViewIcon,
@@ -13,10 +14,12 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { OcShapesIcon, OcVideoIcon } from "@/components/icons";
+import { toast } from "sonner";
 import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
@@ -45,10 +48,11 @@ import type { TimelineTrack } from "@/lib/timeline";
 import {
 	TIMELINE_SCROLLBAR_SIZE_PX,
 	TIMELINE_CONTENT_TOP_PADDING_PX,
+	TIMELINE_CONTENT_LEFT_INSET_PX,
 	TIMELINE_TRACK_GAP_PX,
-	TIMELINE_TRACK_LABELS_COLUMN_WIDTH_PX,
 	KEYFRAME_LANE_HEIGHT_PX,
 } from "./layout";
+import { usePanelStore } from "@/stores/panel-store";
 import { useElementInteraction } from "@/hooks/timeline/element/use-element-interaction";
 import {
 	canTrackHaveAudio,
@@ -62,7 +66,16 @@ import {
 	getCumulativeHeightBefore,
 	getTotalTracksHeight,
 } from "./track-layout";
-import { SELECTED_TRACK_ROW_CLASS, getTrackTypeAccent } from "./theme";
+import {
+	SELECTED_TRACK_ROW_CLASS,
+	getTrackTypeAccent,
+	TRACK_COLOR_PRESETS,
+} from "./theme";
+import {
+	Popover,
+	PopoverTrigger,
+	PopoverContent,
+} from "@/components/ui/popover";
 
 function TrackNameInput({ track }: { track: TimelineTrack }) {
 	const editor = useEditor();
@@ -125,6 +138,70 @@ function TrackNameInput({ track }: { track: TimelineTrack }) {
 		/>
 	);
 }
+
+function TrackColorPicker({ track }: { track: TimelineTrack }) {
+	const editor = useEditor();
+	const accent = getTrackTypeAccent({
+		type: track.type,
+		customColor: track.color,
+	});
+
+	const handleColorSelect = (color: string) => {
+		editor.timeline.updateTrack({
+			trackId: track.id,
+			updates: { color },
+		});
+	};
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					className="size-2.5 shrink-0 rounded-full ring-1 ring-white/15 transition-transform hover:scale-125 focus:outline-none"
+					style={{ backgroundColor: accent.accent }}
+					title="Change track color"
+					onClick={(e) => e.stopPropagation()}
+				/>
+			</PopoverTrigger>
+			<PopoverContent
+				side="bottom"
+				align="start"
+				sideOffset={6}
+				className="w-auto rounded-lg border border-white/10 bg-[#1a1a1e] p-2 shadow-2xl"
+			>
+				<div className="flex flex-col gap-1.5">
+					<span className="px-0.5 text-[0.58rem] uppercase tracking-widest text-white/35">
+						Track color
+					</span>
+					<div className="flex flex-wrap gap-1.5">
+						{TRACK_COLOR_PRESETS.map((color) => {
+							const isSelected =
+								track.color === color || (!track.color && color === "#ffffff");
+							return (
+								<button
+									key={color}
+									type="button"
+									className={cn(
+										"size-5 rounded-full ring-1 ring-white/15 transition-all hover:scale-110 hover:ring-white/40 focus:outline-none",
+										isSelected && "ring-2 ring-white/80 scale-110",
+									)}
+									style={{ backgroundColor: color }}
+									title={color === "#ffffff" ? "Reset to default" : color}
+									onClick={(e) => {
+										e.stopPropagation();
+										handleColorSelect(color);
+									}}
+								/>
+							);
+						})}
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 import {
 	computeTrackExpansionHeight,
 	getTrackExpandedRows,
@@ -246,6 +323,38 @@ export function Timeline() {
 			rulerScrollRef,
 		});
 
+	// Listen for the `timeline-fit-to-screen` window event dispatched
+	// by the toolbar's `fit-to-screen` action. The event lives in
+	// window scope (rather than the store) because fitting requires
+	// the live viewport width from `tracksContainerRef`, which is
+	// scoped to this component. We compute the zoom that makes the
+	// total duration just fit the visible width and re-apply it,
+	// with a 10% headroom so the last clip doesn't sit flush against
+	// the right edge of the panel.
+	//
+	// This effect must come *after* `useTimelineZoom` because the
+	// effect closure captures `setZoomLevel`; declaring it earlier
+	// triggers a temporal dead zone error at render time.
+	useEffect(() => {
+		const handler = () => {
+			const viewportWidth = tracksContainerRef.current?.clientWidth;
+			if (!viewportWidth) return;
+			const fitZoom = getTimelineZoomMin({
+				duration: timeline.getTotalDuration() || 0,
+				containerWidth: viewportWidth,
+			});
+			setZoomLevel(Math.max(minZoomLevel, fitZoom * 0.9));
+			toast.success("Timeline fit to view", { id: "fit-to-screen" });
+		};
+		window.addEventListener("timeline-fit-to-screen", handler);
+		return () => window.removeEventListener("timeline-fit-to-screen", handler);
+		// We intentionally don't depend on `minZoomLevel` here — using
+		// its current value in the closure would force a re-bind every
+		// time the duration changes, which is fine for correctness but
+		// adds churn. The handler reads the live ref value instead.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [timeline, setZoomLevel]);
+
 	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
 
 	const getTrackExpansionHeight = useCallback(
@@ -257,21 +366,12 @@ export function Timeline() {
 		[tracks, expandedElementIds],
 	);
 
-	// Stable refs so the wheel listener never goes stale
-	const setZoomLevelRef = useRef(setZoomLevel);
-	useEffect(() => {
-		setZoomLevelRef.current = setZoomLevel;
-	}, [setZoomLevel]);
-
-	const saveScrollPositionRef = useRef(saveScrollPosition);
-	useEffect(() => {
-		saveScrollPositionRef.current = saveScrollPosition;
-	}, [saveScrollPosition]);
-
-	const minZoomLevelRef = useRef(minZoomLevel);
-	useEffect(() => {
-		minZoomLevelRef.current = minZoomLevel;
-	}, [minZoomLevel]);
+	// `setZoomLevel`, `saveScrollPosition`, and `minZoomLevel` are
+	// now stable (see `useTimelineZoom` which memoises its return
+	// object), so we can use them directly inside the wheel/fit-to-screen
+	// effects below without ref-syncing. The previous 3 ref-sync
+	// `useEffect`s were a workaround for unstable callbacks and
+	// caused an extra render every time the deps changed.
 
 	// Pushes tracks scroll position to the two overflow:hidden followers
 	// (ruler and track labels). Called from the wheel handler (before paint,
@@ -310,7 +410,7 @@ export function Timeline() {
 						const cappedDelta =
 							Math.sign(frameRawDelta) * Math.min(Math.abs(frameRawDelta), 30);
 						const zoomFactor = Math.exp(-cappedDelta / 300);
-						setZoomLevelRef.current((prev) => prev * zoomFactor);
+						setZoomLevel((prev) => prev * zoomFactor);
 						pendingZoomDelta = 0;
 						zoomRafId = null;
 					});
@@ -338,7 +438,7 @@ export function Timeline() {
 			}
 
 			syncFollowers();
-			saveScrollPositionRef.current();
+			saveScrollPosition();
 		};
 
 		container.addEventListener("wheel", onWheel, {
@@ -354,7 +454,7 @@ export function Timeline() {
 	useInitialScrollBottom({
 		tracksScrollRef,
 		trackLabelsScrollRef,
-		onAfterScroll: () => saveScrollPositionRef.current(),
+		onAfterScroll: () => saveScrollPosition(),
 		isReady: tracks.length > 0,
 	});
 
@@ -490,7 +590,7 @@ export function Timeline() {
 
 	return (
 		<section
-			className="panel glass-strong relative flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-transparent"
+			className="panel glass-strong relative flex h-full flex-col overflow-hidden rounded-lg border border-white/10 bg-transparent"
 			{...dragProps}
 			aria-label="Timeline"
 		>
@@ -539,7 +639,10 @@ export function Timeline() {
 						<div
 							ref={timelineHeaderRef}
 							className="flex flex-col"
-							style={{ width: `${dynamicTimelineWidth}px` }}
+							style={{
+								width: `${dynamicTimelineWidth}px`,
+								paddingLeft: `${TIMELINE_CONTENT_LEFT_INSET_PX}px`,
+							}}
 						>
 							<TimelineRuler
 								zoomLevel={zoomLevel}
@@ -574,7 +677,10 @@ export function Timeline() {
 					>
 						<div
 							className="flex min-h-full flex-col"
-							style={{ width: `${dynamicTimelineWidth}px` }}
+							style={{
+								width: `${dynamicTimelineWidth}px`,
+								paddingLeft: `${TIMELINE_CONTENT_LEFT_INSET_PX}px`,
+							}}
 						>
 							{/* biome-ignore lint/a11y/noStaticElementInteractions: canvas seek surface; keyboard seeking is handled by the global keybindings system */}
 							{/* biome-ignore lint/a11y/useKeyWithClickEvents: canvas seek surface; keyboard seeking is handled by the global keybindings system */}
@@ -733,8 +839,15 @@ function TrackLabelsPanel({
 	hasHorizontalScrollbar: boolean;
 	getTrackExpansionHeight: (trackIndex: number) => number;
 }) {
+	// Pull the resizable labels-column width from the panel store. The
+	// value is persisted, clamped, and also used by the snap indicator
+	// hook so all timeline surfaces agree on the offset.
+	const trackLabelsWidth = usePanelStore((s) => s.trackLabelsWidth);
+	const setTrackLabelsWidth = usePanelStore((s) => s.setTrackLabelsWidth);
+	const resetTrackLabelsWidth = usePanelStore((s) => s.resetTrackLabelsWidth);
 	const editor = useEditor();
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
+	const mainTrackId = scene?.tracks.main.id ?? null;
 	const tracks = useMemo<TimelineTrack[]>(
 		() =>
 			scene
@@ -762,8 +875,15 @@ function TrackLabelsPanel({
 	const toggleTrackLock = useTimelineStore((s) => s.toggleTrackLock);
 	const trackSliders = useTimelineStore((s) => s.trackSliders);
 	const setTrackSlider = useTimelineStore((s) => s.setTrackSlider);
+	const trackOpacity = useTimelineStore((s) => s.trackOpacity);
+	const setTrackOpacity = useTimelineStore((s) => s.setTrackOpacity);
 	const targetTrackIds = useTimelineStore((s) => s.targetTrackIds);
 	const toggleTrackTarget = useTimelineStore((s) => s.toggleTrackTarget);
+	// Per-track row height overrides. Read here so the track labels
+	// column (rendered separately) can match the height of the actual
+	// track row when the user has dragged it taller or shorter.
+	const trackHeights = useTimelineStore((s) => s.trackHeights);
+	const resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
 
 	const trackPrefixes = useMemo(() => {
 		if (!scene) return new Map<string, string>();
@@ -806,9 +926,14 @@ function TrackLabelsPanel({
 
 	return (
 		<div
-			className="flex shrink-0 flex-col border-r border-white/10 bg-[#0d0d0f] shadow-[inset_-18px_0_42px_rgba(0,0,0,0.22)]"
-			style={{ width: `${TIMELINE_TRACK_LABELS_COLUMN_WIDTH_PX}px` }}
+			className="relative flex shrink-0 flex-col bg-[#0d0d0f] shadow-[inset_-18px_0_42px_rgba(0,0,0,0.22)]"
+			style={{ width: `${trackLabelsWidth}px` }}
 		>
+			<TrackLabelsResizeHandle
+				currentWidth={trackLabelsWidth}
+				onResize={setTrackLabelsWidth}
+				onDoubleClick={resetTrackLabelsWidth}
+			/>
 			<div
 				className="flex shrink-0 items-end justify-between bg-linear-to-b from-white/[0.04] to-transparent px-3 pb-2 text-[0.62rem] uppercase tracking-[0.16em] text-white/35"
 				style={{ height: timelineHeaderHeight || 48 }}
@@ -824,7 +949,10 @@ function TrackLabelsPanel({
 						>
 							{tracks.map((track, index) => {
 								const expandedRows = trackExpandedRowsMap[index];
-								const baseHeight = getTrackHeight({ type: track.type });
+								const baseHeight = getTrackHeight({
+									type: track.type,
+									overrideHeight: trackHeights[track.id],
+								});
 								const isLocked = lockedTrackIds.has(track.id);
 								const isTarget = targetTrackIds.has(track.id);
 								const sliderValue = trackSliders[track.id] ?? 100;
@@ -851,29 +979,20 @@ function TrackLabelsPanel({
 									toggleTrackTarget(track.id);
 								};
 
-								const handleSliderChange = (
+								const handleOpacityChange = (
 									e: React.ChangeEvent<HTMLInputElement>,
 								) => {
 									const val = Number(e.target.value);
-									setTrackSlider(track.id, val);
+									setTrackOpacity(track.id, val);
 
-									const newVolumeOrOpacity = val / 100;
+									const newOpacity = val / 100;
 									const trackElements = track.elements;
 									if (trackElements && trackElements.length > 0) {
-										const updates = trackElements.map((el) => {
-											if (track.type === "audio") {
-												return {
-													trackId: track.id,
-													elementId: el.id,
-													patch: { volume: newVolumeOrOpacity },
-												};
-											}
-											return {
-												trackId: track.id,
-												elementId: el.id,
-												patch: { opacity: newVolumeOrOpacity },
-											};
-										});
+										const updates = trackElements.map((el) => ({
+											trackId: track.id,
+											elementId: el.id,
+											patch: { opacity: newOpacity },
+										}));
 										editor.timeline.updateElements({
 											updates,
 											pushHistory: false,
@@ -881,18 +1000,62 @@ function TrackLabelsPanel({
 									}
 								};
 
+								const handleVolumeChange = (
+									e: React.ChangeEvent<HTMLInputElement>,
+								) => {
+									const val = Number(e.target.value);
+									setTrackSlider(track.id, val);
+
+									const newVolume = val / 100;
+									const trackElements = track.elements;
+									if (trackElements && trackElements.length > 0) {
+										const updates = trackElements.map((el) => ({
+											trackId: track.id,
+											elementId: el.id,
+											patch: { volume: newVolume },
+										}));
+										editor.timeline.updateElements({
+											updates,
+											pushHistory: false,
+										});
+									}
+								};
+
+								const opacityValue = trackOpacity[track.id] ?? 100;
+								const volumeValue = ["audio", "video", "main"].includes(
+									track.type,
+								)
+									? (trackSliders[track.id] ?? 100)
+									: null;
+
+								const trackAccent = getTrackTypeAccent({
+									type: track.type,
+									customColor: track.color,
+								});
 								return (
 									<div
 										key={track.id}
 										className={cn(
-											"group mx-2 flex flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-linear-to-br from-white/[0.055] via-white/[0.025] to-black/[0.18] shadow-[0_8px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors hover:border-white/[0.13]",
+											"group relative mx-2 flex flex-col overflow-hidden rounded-md border border-white/[0.05] bg-linear-to-br from-white/[0.045] via-white/[0.02] to-black/[0.18] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.035)] transition-colors hover:border-white/[0.1]",
 											tracksWithSelection.has(track.id) &&
 												SELECTED_TRACK_ROW_CLASS,
 										)}
 										style={{
 											height: `${baseHeight + getTrackExpansionHeight(index)}px`,
+											borderColor: track.color
+												? trackAccent.accentSoft
+												: undefined,
 										}}
 									>
+										{track.color ? (
+											<div
+												aria-hidden="true"
+												className="pointer-events-none absolute inset-y-0 left-0 w-[3px] z-10"
+												style={{
+													backgroundColor: trackAccent.accent,
+												}}
+											/>
+										) : null}
 										<div
 											className={cn(
 												"flex shrink-0 flex-col justify-center gap-1.5 border-b border-white/[0.045] px-3",
@@ -917,15 +1080,7 @@ function TrackLabelsPanel({
 															className="size-3.5"
 														/>
 													</button>
-													<span
-														aria-hidden="true"
-														className="size-1.5 shrink-0 rounded-full"
-														style={{
-															backgroundColor: getTrackTypeAccent({
-																type: track.type,
-															}).accent,
-														}}
-													/>
+													<TrackColorPicker track={track} />
 													<span className="w-6 shrink-0 select-none rounded-md border border-white/[0.08] bg-black/25 px-1 py-0.5 text-center text-[0.6rem] font-bold text-white/50">
 														{trackPrefixes.get(track.id) || "V"}
 													</span>
@@ -987,7 +1142,14 @@ function TrackLabelsPanel({
 													<button
 														type="button"
 														onClick={handleTargetToggle}
-														className="grid size-5 shrink-0 cursor-pointer place-items-center rounded-md transition hover:bg-white/[0.08] focus:outline-none"
+														className={cn(
+															"grid size-5 shrink-0 cursor-pointer place-items-center rounded-md transition hover:bg-white/[0.08] focus:outline-none",
+															// The "set as target" toggle renders as an "X" at
+															// this size and is meaningless on the main track
+															// (it's the implicit default and can't be removed),
+															// so hide it there.
+															track.id === mainTrackId && "hidden",
+														)}
 														title={
 															isTarget
 																? "Clear target track"
@@ -1015,28 +1177,55 @@ function TrackLabelsPanel({
 													</button>
 												</div>
 											</div>
-											{/* Bottom row: Slider */}
-											<div className="flex w-full items-center gap-2 pl-[30px] pr-1">
-												<span className="text-[0.52rem] tabular-nums text-white/30">
-													{sliderValue}%
-												</span>
-												<input
-													type="range"
-													min="0"
-													max="100"
-													value={sliderValue}
-													onChange={handleSliderChange}
-													disabled={isLocked}
-													title={
-														track.type === "audio"
-															? `Track volume: ${sliderValue}%`
-															: `Track opacity: ${sliderValue}%`
-													}
-													className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125"
-													style={{
-														background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${sliderValue}%, rgba(255,255,255,0.15) ${sliderValue}%, rgba(255,255,255,0.15) 100%)`,
-													}}
-												/>
+											{/* Bottom rows: Opacity (no fill) and optional Volume (with fill) */}
+											<div className="flex flex-col gap-1 pl-[30px] pr-1">
+												{/* Opacity slider — no fill line */}
+												<div className="flex w-full items-center gap-2">
+													<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
+														O
+													</span>
+													<input
+														type="range"
+														min="0"
+														max="100"
+														value={opacityValue}
+														onChange={handleOpacityChange}
+														disabled={isLocked}
+														title={`Track opacity: ${opacityValue}%`}
+														className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_rgba(0,0,0,0.35)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-track]:bg-transparent"
+														style={{
+															background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${opacityValue}%, rgba(255,255,255,0.15) ${opacityValue}%, rgba(255,255,255,0.15) 100%)`,
+														}}
+													/>
+													<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
+														{opacityValue}%
+													</span>
+												</div>
+												{/* Volume slider — on audio, video, and main tracks, with fill line */}
+												{["audio", "video", "main"].includes(track.type) &&
+													volumeValue !== null && (
+														<div className="flex w-full items-center gap-2">
+															<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
+																V
+															</span>
+															<input
+																type="range"
+																min="0"
+																max="100"
+																value={volumeValue}
+																onChange={handleVolumeChange}
+																disabled={isLocked}
+																title={`Track volume: ${volumeValue}%`}
+																className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_rgba(0,0,0,0.35)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-track]:bg-transparent"
+																style={{
+																	background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${volumeValue}%, rgba(255,255,255,0.15) ${volumeValue}%, rgba(255,255,255,0.15) 100%)`,
+																}}
+															/>
+															<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
+																{volumeValue}%
+															</span>
+														</div>
+													)}
 											</div>
 										</div>
 										{expandedRows.length > 0 && (
@@ -1097,6 +1286,12 @@ function TimelineTrackRows({
 }) {
 	const timeline = useEditor((e) => e.timeline);
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
+	// Per-track height overrides live in the timeline store; reading
+	// them here (and passing them to getTrackHeight + getCumulativeHeightBefore)
+	// keeps every track row vertically aligned with its track-label
+	// counterpart when the user drags a row to resize.
+	const trackHeights = useTimelineStore((s) => s.trackHeights);
+	const resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
 	const tracks = useMemo<TimelineTrack[]>(
 		() =>
 			scene
@@ -1140,88 +1335,128 @@ function TimelineTrackRows({
 
 	return (
 		<>
-			{sortedTracks.map(({ track, index }) => (
-				<ContextMenu key={track.id}>
-					<ContextMenuTrigger asChild>
-						<div
-							className={cn(
-								"absolute left-0 right-0 overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.018] shadow-[0_8px_24px_rgba(0,0,0,0.18),inset_0_1px_0_rgba(255,255,255,0.035)] transition-colors hover:border-white/[0.12]",
-								tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
-							)}
-							style={{
-								top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight })}px`,
-								height: `${getTrackHeight({ type: track.type }) + getTrackExpansionHeight(index)}px`,
-							}}
-						>
-							<TimelineTrackContent
-								track={track}
-								zoomLevel={zoomLevel}
-								dragState={dragState}
-								rulerScrollRef={tracksScrollRef}
-								tracksScrollRef={tracksScrollRef}
-								lastMouseXRef={lastMouseXRef}
-								onSnapPointChange={onSnapPointChange}
-								onResizeStateChange={onResizeStateChange}
-								onElementMouseDown={onElementMouseDown}
-								onElementClick={onElementClick}
-								onTrackMouseDown={onTrackMouseDown}
-								onTrackMouseUp={onTrackMouseUp}
-								shouldIgnoreClick={shouldIgnoreClick}
-								targetElementId={
-									isDragOver
-										? (dropTarget?.targetElement?.elementId ?? null)
-										: null
-								}
-							/>
-						</div>
-					</ContextMenuTrigger>
-					<ContextMenuContent className="w-40">
-						<ContextMenuItem
-							icon={<HugeiconsIcon icon={TaskAdd02Icon} />}
-							onClick={(event: React.MouseEvent) => {
-								event.stopPropagation();
-								invokeAction("paste-copied");
-							}}
-						>
-							Paste elements
-						</ContextMenuItem>
-						<ContextMenuItem
-							icon={<HugeiconsIcon icon={VolumeHighIcon} />}
-							onClick={(event: React.MouseEvent) => {
-								event.stopPropagation();
-								timeline.toggleTrackMute({ trackId: track.id });
-							}}
-						>
-							{canTrackHaveAudio(track) && track.muted
-								? "Unmute track"
-								: "Mute track"}
-						</ContextMenuItem>
-						<ContextMenuItem
-							icon={<HugeiconsIcon icon={ViewIcon} />}
-							onClick={(event: React.MouseEvent) => {
-								event.stopPropagation();
-								timeline.toggleTrackVisibility({ trackId: track.id });
-							}}
-						>
-							{canTrackBeHidden(track) && track.hidden
-								? "Show track"
-								: "Hide track"}
-						</ContextMenuItem>
-						{track.id !== mainTrackId && (
+			{sortedTracks.map(({ track, index }) => {
+				const trackAccent = getTrackTypeAccent({
+					type: track.type,
+					customColor: track.color,
+				});
+				const trackRowHeight =
+					getTrackHeight({
+						type: track.type,
+						overrideHeight: trackHeights[track.id],
+					}) + getTrackExpansionHeight(index);
+				return (
+					<ContextMenu key={track.id}>
+						<ContextMenuTrigger asChild>
+							<div
+								className={cn(
+									"group absolute left-0 right-0 overflow-hidden rounded-md border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
+									tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
+								)}
+								style={{
+									top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight, overrideHeights: trackHeights })}px`,
+									height: `${trackRowHeight}px`,
+									// Track colour used to tint the whole row, which
+									// muddied the clip thumbnails. The accent now
+									// lives on a thin left stripe (rendered below
+									// as an absolute child) so the tile image
+									// stays clean while the colour cue is still
+									// visible at a glance.
+									borderColor: track.color ? trackAccent.accentSoft : undefined,
+								}}
+							>
+								{track.color ? (
+									<div
+										aria-hidden="true"
+										className="pointer-events-none absolute inset-y-0 left-0 w-[3px] z-20"
+										style={{ backgroundColor: trackAccent.accent }}
+									/>
+								) : null}
+								<TimelineTrackContent
+									track={track}
+									zoomLevel={zoomLevel}
+									dragState={dragState}
+									rulerScrollRef={tracksScrollRef}
+									tracksScrollRef={tracksScrollRef}
+									lastMouseXRef={lastMouseXRef}
+									onSnapPointChange={onSnapPointChange}
+									onResizeStateChange={onResizeStateChange}
+									onElementMouseDown={onElementMouseDown}
+									onElementClick={onElementClick}
+									onTrackMouseDown={onTrackMouseDown}
+									onTrackMouseUp={onTrackMouseUp}
+									shouldIgnoreClick={shouldIgnoreClick}
+									targetElementId={
+										isDragOver
+											? (dropTarget?.targetElement?.elementId ?? null)
+											: null
+									}
+								/>
+								<TrackHeightHandle
+									trackId={track.id}
+									currentHeight={trackRowHeight}
+								/>
+							</div>
+						</ContextMenuTrigger>
+						<ContextMenuContent className="w-40">
 							<ContextMenuItem
-								icon={<HugeiconsIcon icon={Delete02Icon} />}
+								icon={<HugeiconsIcon icon={TaskAdd02Icon} />}
 								onClick={(event: React.MouseEvent) => {
 									event.stopPropagation();
-									timeline.removeTrack({ trackId: track.id });
+									invokeAction("paste-copied");
 								}}
-								variant="destructive"
 							>
-								Delete track
+								Paste elements
 							</ContextMenuItem>
-						)}
-					</ContextMenuContent>
-				</ContextMenu>
-			))}
+							{trackHeights[track.id] !== undefined && (
+								<ContextMenuItem
+									icon={<HugeiconsIcon icon={RefreshIcon} />}
+									onClick={(event: React.MouseEvent) => {
+										event.stopPropagation();
+										resetTrackHeight(track.id);
+									}}
+								>
+									Reset track height
+								</ContextMenuItem>
+							)}
+							<ContextMenuItem
+								icon={<HugeiconsIcon icon={VolumeHighIcon} />}
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									timeline.toggleTrackMute({ trackId: track.id });
+								}}
+							>
+								{canTrackHaveAudio(track) && track.muted
+									? "Unmute track"
+									: "Mute track"}
+							</ContextMenuItem>
+							<ContextMenuItem
+								icon={<HugeiconsIcon icon={ViewIcon} />}
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									timeline.toggleTrackVisibility({ trackId: track.id });
+								}}
+							>
+								{canTrackBeHidden(track) && track.hidden
+									? "Show track"
+									: "Hide track"}
+							</ContextMenuItem>
+							{track.id !== mainTrackId && (
+								<ContextMenuItem
+									icon={<HugeiconsIcon icon={Delete02Icon} />}
+									onClick={(event: React.MouseEvent) => {
+										event.stopPropagation();
+										timeline.removeTrack({ trackId: track.id });
+									}}
+									variant="destructive"
+								>
+									Delete track
+								</ContextMenuItem>
+							)}
+						</ContextMenuContent>
+					</ContextMenu>
+				);
+			})}
 		</>
 	);
 }
@@ -1236,6 +1471,130 @@ function TimelineGutter({
 	// biome-ignore lint/a11y/noStaticElementInteractions: canvas seek surface; keyboard seeking is handled by the global keybindings system
 	// biome-ignore lint/a11y/useKeyWithClickEvents: canvas seek surface; keyboard seeking is handled by the global keybindings system
 	return <div className="flex-1" onMouseDown={onMouseDown} onClick={onClick} />;
+}
+
+/**
+ * Drag-to-resize handle for the track labels column.
+ *
+ * Sits on the right edge of the labels column as a thin vertical strip.
+ * Mousedown records the start X + start width, then we listen on the
+ * window for mousemove / mouseup so the drag keeps tracking even when
+ * the cursor leaves the column.
+ *
+ * The store's `setTrackLabelsWidth` clamps to a sane range (140–480px)
+ * so a stray drag can't collapse the column to nothing or stretch it
+ * past the editor.
+ */
+/**
+ * Drag-to-resize handle for the track labels column.
+ *
+ * Sits on the right edge of the labels column as a thin vertical strip.
+ * Mousedown records the start X + start width, then we listen on the
+ * window for mousemove / mouseup so the drag keeps tracking even when
+ * the cursor leaves the column.
+ *
+ * The store's `setTrackLabelsWidth` clamps to a sane range (140–480px)
+ * so a stray drag can't collapse the column to nothing or stretch it
+ * past the editor.
+ */
+function TrackLabelsResizeHandle({
+	currentWidth,
+	onResize,
+	onDoubleClick,
+}: {
+	currentWidth: number;
+	onResize: (widthPx: number) => void;
+	onDoubleClick: () => void;
+}) {
+	const startRef = useRef<{ x: number; width: number } | null>(null);
+	const [isResizing, setIsResizing] = useState(false);
+
+	useEffect(() => {
+		if (!isResizing) return;
+		const handleMove = (event: MouseEvent) => {
+			const start = startRef.current;
+			if (!start) return;
+			const nextWidth = start.width + (event.clientX - start.x);
+			onResize(nextWidth);
+		};
+		const handleUp = () => {
+			setIsResizing(false);
+			startRef.current = null;
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+		};
+		window.addEventListener("mousemove", handleMove);
+		window.addEventListener("mouseup", handleUp);
+		return () => {
+			window.removeEventListener("mousemove", handleMove);
+			window.removeEventListener("mouseup", handleUp);
+		};
+	}, [isResizing, onResize]);
+
+	return (
+		<div
+			role="separator"
+			aria-label="Resize track labels column"
+			aria-orientation="vertical"
+			title={
+				currentWidth
+					? `Drag to resize (currently ${Math.round(currentWidth)}px — double-click to reset)`
+					: "Drag to resize track labels column"
+			}
+			onMouseDown={(event) => {
+				event.stopPropagation();
+				event.preventDefault();
+				startRef.current = { x: event.clientX, width: currentWidth };
+				setIsResizing(true);
+				document.body.style.cursor = "ew-resize";
+				document.body.style.userSelect = "none";
+			}}
+			onDoubleClick={(event) => {
+				event.stopPropagation();
+				onDoubleClick();
+			}}
+			// Replaces the old hard 1px divider on the labels column: a
+			// slightly-wider accent seam plus a chevron pull-tab so the
+			// resize affordance is obvious. Lives on the track side only —
+			// the timeline side of the seam is left clean.
+			className={cn(
+				"group/resize absolute top-0 right-0 z-30 h-full w-2 cursor-ew-resize",
+			)}
+		>
+			{/* A-bit-wider accent line (was a 1px border). Subtle at rest,
+			   brightens on hover / while dragging. */}
+			<div
+				aria-hidden="true"
+				className={cn(
+					"absolute right-0 top-0 h-full w-0.5 bg-white/[0.07] transition-colors",
+					"group-hover/resize:bg-white/25",
+					isResizing && "bg-white/35",
+				)}
+			/>
+			{/* Chevron pull-tab anchored to the seam at the vertical centre. */}
+			<div
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute right-0 top-1/2 grid h-9 w-3.5 -translate-y-1/2 place-items-center rounded-l-md border border-r-0 border-white/10 bg-[#161619] text-white/40 shadow-md transition-colors",
+					"group-hover/resize:border-white/25 group-hover/resize:text-white/85",
+					isResizing && "border-white/40 text-white",
+				)}
+			>
+				<svg
+					aria-hidden="true"
+					className="size-3"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="2.4"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					<path d="M9 6l6 6-6 6" />
+				</svg>
+			</div>
+		</div>
+	);
 }
 
 function _TrackIcon({ track }: { track: TimelineTrack }) {
@@ -1288,5 +1647,82 @@ function PropertyTree({ rows }: { rows: ExpandedRow[] }) {
 				</div>
 			))}
 		</div>
+	);
+}
+
+/**
+ * Drag-to-resize handle for a single track row.
+ *
+ * Sits as an absolutely-positioned strip across the bottom of the track
+ * row. On mousedown we record the start Y + start height, then listen
+ * on the window for mousemove / mouseup so the drag keeps tracking even
+ * when the cursor leaves the row.
+ *
+ * The store's `setTrackHeight` clamps to a sane range (20–400px) so a
+ * stray drag can't collapse a track to 0px or balloon it past the
+ * editor.
+ */
+function TrackHeightHandle({
+	trackId,
+	currentHeight,
+}: {
+	trackId: string;
+	currentHeight: number;
+}) {
+	const setTrackHeight = useTimelineStore((s) => s.setTrackHeight);
+	const resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
+	const startRef = useRef<{ y: number; height: number } | null>(null);
+	const [isResizing, setIsResizing] = useState(false);
+
+	useEffect(() => {
+		if (!isResizing) return;
+		const handleMove = (event: MouseEvent) => {
+			const start = startRef.current;
+			if (!start) return;
+			const nextHeight = start.height + (event.clientY - start.y);
+			setTrackHeight(trackId, nextHeight);
+		};
+		const handleUp = () => {
+			setIsResizing(false);
+			startRef.current = null;
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+		};
+		window.addEventListener("mousemove", handleMove);
+		window.addEventListener("mouseup", handleUp);
+		return () => {
+			window.removeEventListener("mousemove", handleMove);
+			window.removeEventListener("mouseup", handleUp);
+		};
+	}, [isResizing, trackId, setTrackHeight]);
+
+	return (
+		<div
+			role="separator"
+			aria-label="Resize track height"
+			aria-orientation="horizontal"
+			title={
+				currentHeight
+					? `Drag to resize (currently ${Math.round(currentHeight)}px — double-click to reset)`
+					: "Drag to resize track height"
+			}
+			onMouseDown={(event) => {
+				event.stopPropagation();
+				event.preventDefault();
+				startRef.current = { y: event.clientY, height: currentHeight };
+				setIsResizing(true);
+				document.body.style.cursor = "ns-resize";
+				document.body.style.userSelect = "none";
+			}}
+			onDoubleClick={(event) => {
+				event.stopPropagation();
+				resetTrackHeight(trackId);
+			}}
+			// No visible strip — the cursor + tooltip are the only
+			// affordance. Reduces visual clutter in the track row.
+			className={cn(
+				"absolute bottom-0 left-0 right-0 z-20 h-1.5 cursor-ns-resize",
+			)}
+		/>
 	);
 }

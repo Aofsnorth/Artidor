@@ -44,7 +44,12 @@ export default function RootLayout({
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="dark"
-					forcedTheme="dark"
+					// Light mode is wired through the CSS variables in
+					// globals.css (`:root` + `.dark` overrides) so the
+					// theme toggle actually works. The editor still has
+					// a few hand-tuned surfaces (timeline ruler tint,
+					// property cards, dialog backdrops) that look best
+					// in dark — those will catch up in a follow-up.
 					disableTransitionOnChange={true}
 				>
 					<TooltipProvider>

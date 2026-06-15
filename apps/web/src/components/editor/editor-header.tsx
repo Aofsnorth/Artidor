@@ -31,20 +31,43 @@ import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
 
+import { CloudStatusIndicator } from "./cloud-status-indicator";
+
 export function EditorHeader() {
 	return (
-		<header className="z-50 flex h-14 items-center justify-between bg-[#030303]/40 px-4 backdrop-blur-2xl transition-all">
+		<header className="relative z-50 flex h-12 items-center justify-between gap-2 overflow-hidden bg-gradient-to-b from-[#111114] to-transparent px-4 transition-all">
+			{/* Subtle top glow that fades into the body. No bottom border
+			   (the header is the same color as the body, so the seam
+			   disappears). The radial accent stays to give the bar a
+			   little depth so it doesn't read as a flat strip. */}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 opacity-60"
+				style={{
+					background:
+						"radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255,255,255,0.035), transparent 70%)",
+				}}
+			/>
+			{/* Hairline at the very top to lift the bar off the canvas.
+			   Kept intentionally: it catches the light from the radial
+			   accent above and avoids a hard pixel edge against the
+			   window chrome. */}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
+			/>
+
 			{/* Left Corner Logo & Breadcrumbs */}
-			<div className="flex min-w-0 items-center gap-3">
+			<div className="relative flex min-w-0 items-center gap-3">
 				{/* Logo at the absolute far-left corner */}
 				<ProjectDropdown />
 
 				{/* Identity Pod Capsule */}
-				<div className="group flex h-8 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04]">
+				<div className="group flex h-7 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
 					<div className="hidden items-center gap-1.5 text-[0.65rem] font-mono text-white/40 md:flex select-none tracking-wider">
 						<Link
 							href="/projects"
-							className="hover:text-white/80 transition-colors uppercase font-medium"
+							className="hover:text-white/90 transition-colors uppercase font-medium"
 						>
 							Projects
 						</Link>
@@ -54,23 +77,35 @@ export function EditorHeader() {
 				</div>
 			</div>
 
-			{/* Center: Zoom Capsule */}
-			<div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] h-8 px-1 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04] lg:flex">
+			{/* Center: Zoom Capsule — absolutely positioned at the header's
+			   true centre (left-1/2 + -translate-x-1/2). `mx-auto` only
+			   centres within the leftover space between the two side
+			   sections, so an asymmetric left/right made the "Fit" control
+			   drift off-centre; pulling it out of flex flow pins it to the
+			   middle of the bar regardless of how wide either side grows.
+			   Hidden on <lg where the left/right sections already saturate
+			   the header. */}
+			<div className="absolute left-1/2 top-1/2 hidden min-w-0 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.025] h-7 px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045] lg:flex">
 				<HeaderZoomDropdown />
 			</div>
 
-			{/* Right: Segmented Action Hub */}
-			<nav className="flex items-center gap-2.5">
+			{/* Right: Segmented Action Hub — pushed to the right edge
+			   with breathing room so the Export button doesn't sit
+			   flush against the panel boundary. */}
+			<nav className="relative ml-auto flex items-center gap-2.5 pr-1">
+				<CloudStatusIndicator />
 				{/* Utilities Capsule */}
-				<div className="flex h-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.02] px-1 shadow-sm backdrop-blur-md transition-all hover:border-white/[0.12] hover:bg-white/[0.04]">
+				<div className="flex h-7 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.025] px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
 					<ThemeToggle
-						className="size-6 rounded-full text-white/60 hover:text-white transition-all duration-200 flex items-center justify-center"
+						className="size-5 rounded-full text-white/60 hover:text-white transition-all duration-200 flex items-center justify-center"
 						iconClassName="!size-3.5"
 					/>
 				</div>
 
 				<ShareButton />
-				<ExportButton />
+				<div className="ml-1">
+					<ExportButton />
+				</div>
 			</nav>
 		</header>
 	);

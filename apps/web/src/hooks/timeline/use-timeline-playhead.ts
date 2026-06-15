@@ -1,16 +1,29 @@
-import { snappedSeekTime } from "opencut-wasm";
+import { snappedSeekTime } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEffect, useCallback, useRef } from "react";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useEditor } from "../use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
-import { findSnapPoints, snapToNearestPoint } from "@/lib/timeline/snap-utils";
+import {
+	findNearestClipEdge,
+	findSnapPoints,
+	snapToNearestPoint,
+} from "@/lib/timeline/snap-utils";
 import {
 	getCenteredLineLeft,
 	timelineTimeToPixels,
 	timelineTimeToSnappedPixels,
 } from "@/lib/timeline";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+import { useTimelineStore } from "@/stores/timeline-store";
+
+// Where the playhead parks horizontally while auto-scroll follows it,
+// as a fraction of the tracks viewport width. A true 0.5 (dead-centre of
+// the tracks area) reads as "too far right" because the ~230px track-labels
+// column shifts the visual centre of the whole timeline to the left. Anchoring
+// a little before half (0.42) lands the playhead near the centre of the panel
+// and gives a touch of look-ahead room on the right.
+const PLAYHEAD_VIEWPORT_ANCHOR = 0.42;
 
 interface UseTimelinePlayheadProps {
 	zoomLevel: number;
@@ -29,21 +42,25 @@ export function useTimelinePlayhead({
 }: UseTimelinePlayheadProps) {
 	const editor = useEditor();
 	const isScrubbing = useEditor((e) => e.playback.getIsScrubbing());
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
 	const activeProject = editor.project.getActive();
 	const duration = editor.timeline.getTotalDuration();
 	const isShiftHeldRef = useShiftKey();
+	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
 
 	const zoomLevelRef = useRef(zoomLevel);
 	const durationRef = useRef(duration);
 	const isScrubbingRef = useRef(isScrubbing);
-	const isPlayingRef = useRef(false);
+	const isPlayingRef = useRef(isPlaying);
+	const autoScrollEnabledRef = useRef(autoScrollEnabled);
 
 	useEffect(() => {
 		zoomLevelRef.current = zoomLevel;
 		durationRef.current = duration;
 		isScrubbingRef.current = isScrubbing;
-		isPlayingRef.current = editor.playback.getIsPlaying();
-	}, [zoomLevel, duration, isScrubbing, editor.playback]);
+		isPlayingRef.current = isPlaying;
+		autoScrollEnabledRef.current = autoScrollEnabled;
+	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled]);
 
 	const seek = useCallback(
 		({ time }: { time: number }) => editor.playback.seek({ time }),
@@ -68,30 +85,36 @@ export function useTimelinePlayhead({
 			const rulerRect = ruler.getBoundingClientRect();
 			const relativeMouseX = event.clientX - rulerRect.left;
 
-		const timelineContentWidth = timelineTimeToPixels({ time: duration, zoomLevel });
+			const timelineContentWidth = timelineTimeToPixels({
+				time: duration,
+				zoomLevel,
+			});
 
-		const clampedMouseX = Math.max(
-			0,
-			Math.min(timelineContentWidth, relativeMouseX),
-		);
+			const clampedMouseX = Math.max(
+				0,
+				Math.min(timelineContentWidth, relativeMouseX),
+			);
 
-		const rawTimeSeconds = Math.max(
-			0,
-			Math.min(
-				duration / TICKS_PER_SECOND,
-				clampedMouseX / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel),
-			),
-		);
-		const rawTime = Math.round(rawTimeSeconds * TICKS_PER_SECOND);
+			const rawTimeSeconds = Math.max(
+				0,
+				Math.min(
+					duration / TICKS_PER_SECOND,
+					clampedMouseX / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel),
+				),
+			);
+			const rawTime = Math.round(rawTimeSeconds * TICKS_PER_SECOND);
 
-		const rate = activeProject.settings.fps;
-		const frameTime = snappedSeekTime({ time: rawTime, duration, rate }) ?? rawTime;
+			const rate = activeProject.settings.fps;
+			const frameTime =
+				snappedSeekTime({ time: rawTime, duration, rate }) ?? rawTime;
 
 			const shouldSnap = snappingEnabled && !isShiftHeldRef.current;
 			const time = (() => {
 				if (!shouldSnap) return frameTime;
+
 				const tracks = editor.scenes.getActiveScene().tracks;
 				const bookmarks = editor.scenes.getActiveScene()?.bookmarks ?? [];
+
 				const snapPoints = findSnapPoints({
 					tracks,
 					playheadTime: frameTime,
@@ -112,13 +135,13 @@ export function useTimelinePlayhead({
 			lastMouseXRef.current = event.clientX;
 		},
 		[
-			duration, 
-			zoomLevel, 
-			seek, 
-			rulerRef, 
-			activeProject.settings.fps, 
-			isShiftHeldRef, 
-			editor.scenes
+			duration,
+			zoomLevel,
+			seek,
+			rulerRef,
+			activeProject.settings.fps,
+			isShiftHeldRef,
+			editor.scenes,
 		],
 	);
 
@@ -257,24 +280,36 @@ export function useTimelinePlayhead({
 			const tracksViewport = tracksScrollRef.current;
 			if (!rulerViewport || !tracksViewport) return;
 
-		const playheadPixels = timelineTimeToPixels({
-			time,
-			zoomLevel: zoomLevelRef.current,
-		});
+			const playheadPixels = timelineTimeToPixels({
+				time,
+				zoomLevel: zoomLevelRef.current,
+			});
 			const viewportWidth = rulerViewport.clientWidth;
 			const scrollMinimum = 0;
 			const scrollMaximum = rulerViewport.scrollWidth - viewportWidth;
 
-			const needsScroll =
-				playheadPixels < rulerViewport.scrollLeft ||
-				playheadPixels > rulerViewport.scrollLeft + viewportWidth;
+			const isAutoScrollOn = autoScrollEnabledRef.current;
 
-			if (needsScroll) {
+			// If auto-scroll is on, always try to keep it centered (within bounds)
+			if (isAutoScrollOn) {
 				const desiredScroll = Math.max(
 					scrollMinimum,
-					Math.min(scrollMaximum, playheadPixels - viewportWidth / 2),
+					Math.min(scrollMaximum, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
 				);
 				rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+			} else {
+				// Otherwise only scroll if the playhead actually leaves the screen
+				const needsScroll =
+					playheadPixels < rulerViewport.scrollLeft ||
+					playheadPixels > rulerViewport.scrollLeft + viewportWidth;
+
+				if (needsScroll) {
+					const desiredScroll = Math.max(
+						scrollMinimum,
+						Math.min(scrollMaximum, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
+					);
+					rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+				}
 			}
 		};
 
@@ -289,9 +324,48 @@ export function useTimelinePlayhead({
 			window.removeEventListener("playback-update", handlePlaybackUpdate);
 			window.removeEventListener("playback-seek", handlePlaybackUpdate);
 		};
-	}, [editor.playback, rulerScrollRef, tracksScrollRef, updatePlayheadLeft]);
+		}, [editor.playback, rulerScrollRef, tracksScrollRef, updatePlayheadLeft]);
 
-	return {
+		// rAF-driven autoscroll follower. `handlePlaybackUpdate` only fires
+		// on `playback-update` / `playback-seek` events, which can be
+		// throttled or arrive in irregular bursts depending on the playback
+		// source. To guarantee the playhead always stays centred while
+		// autoscroll is on, this effect kicks in a rAF loop that re-centres
+		// the viewport every frame. The Math.abs(>0.5) guard stops the loop
+		// from fighting the user's own scroll wheel input.
+		useEffect(() => {
+		if (!autoScrollEnabled) return;
+		const rulerViewport = rulerScrollRef.current;
+		const tracksViewport = tracksScrollRef.current;
+		if (!rulerViewport || !tracksViewport) return;
+
+		let rafId: number;
+		const tick = () => {
+			const time = editor.playback.getCurrentTime();
+			const playheadPixels = timelineTimeToPixels({
+				time,
+				zoomLevel: zoomLevelRef.current,
+			});
+			const viewportWidth = rulerViewport.clientWidth;
+			const scrollMax = Math.max(
+				0,
+				rulerViewport.scrollWidth - viewportWidth,
+			);
+			const desiredScroll = Math.max(
+				0,
+				Math.min(scrollMax, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
+			);
+			if (Math.abs(rulerViewport.scrollLeft - desiredScroll) > 0.5) {
+				rulerViewport.scrollLeft = desiredScroll;
+				tracksViewport.scrollLeft = desiredScroll;
+			}
+			rafId = requestAnimationFrame(tick);
+		};
+		rafId = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(rafId);
+		}, [autoScrollEnabled, editor.playback, rulerScrollRef, tracksScrollRef]);
+
+		return {
 		handlePlayheadMouseDown: handlePlayheadMouseDownEvent,
 		handleRulerMouseDown: handleRulerMouseDownEvent,
 	};

@@ -321,9 +321,7 @@ export function Captions() {
 											<HugeiconsIcon icon={AlertCircleIcon} size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent>
-										{diagnostic.message}
-									</TooltipContent>
+									<TooltipContent>{diagnostic.message}</TooltipContent>
 								</Tooltip>
 							))}
 						<Button
@@ -383,7 +381,9 @@ export function Captions() {
 						disabled={isProcessing || activeDiagnostics.length > 0}
 					>
 						{isProcessing && <Spinner className="mr-1" />}
-						{isProcessing ? processing.step : "Generate transcript (full timeline)"}
+						{isProcessing
+							? processing.step
+							: "Generate transcript (full timeline)"}
 					</Button>
 					<Button
 						type="button"

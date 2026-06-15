@@ -129,6 +129,86 @@ export function snapToNearestPoint({
 	};
 }
 
+/**
+ * Find the nearest clip edge (start or end of any element) to a target time.
+ *
+ * This is the underlying primitive for the playhead "auto-aim" feature: when
+ * the user clicks/drags the playhead with auto-aim enabled, we want the
+ * playhead to jump to the closest clip edge instead of landing wherever
+ * the cursor happened to be.
+ *
+ * - `thresholdPx` mirrors the snap threshold used elsewhere; if the nearest
+ *   edge is further than that, `snappedTime` falls back to `targetTime`.
+ * - The function is symmetrical across tracks: it doesn't prefer a track
+ *   over another, just whichever edge happens to be closer in time.
+ */
+export function findNearestClipEdge({
+	targetTime,
+	tracks,
+	zoomLevel,
+	snapThreshold = DEFAULT_SNAP_THRESHOLD_PX,
+}: {
+	targetTime: number;
+	tracks: SceneTracks;
+	zoomLevel: number;
+	snapThreshold?: number;
+}): SnapResult {
+	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
+	const thresholdInTicks = (snapThreshold / pixelsPerSecond) * TICKS_PER_SECOND;
+	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+
+	let bestEdge: {
+		time: number;
+		type: "element-start" | "element-end";
+		elementId: string;
+		trackId: string;
+	} | null = null;
+	let bestDistance = Infinity;
+
+	for (const track of orderedTracks) {
+		for (const element of track.elements) {
+			const startTime = element.startTime;
+			const endTime = element.startTime + element.duration;
+
+			const startDist = Math.abs(targetTime - startTime);
+			if (startDist < bestDistance) {
+				bestDistance = startDist;
+				bestEdge = {
+					time: startTime,
+					type: "element-start",
+					elementId: element.id,
+					trackId: track.id,
+				};
+			}
+
+			const endDist = Math.abs(targetTime - endTime);
+			if (endDist < bestDistance) {
+				bestDistance = endDist;
+				bestEdge = {
+					time: endTime,
+					type: "element-end",
+					elementId: element.id,
+					trackId: track.id,
+				};
+			}
+		}
+	}
+
+	if (!bestEdge || bestDistance > thresholdInTicks) {
+		return {
+			snappedTime: targetTime,
+			snapPoint: null,
+			snapDistance: bestDistance,
+		};
+	}
+
+	return {
+		snappedTime: bestEdge.time,
+		snapPoint: { ...bestEdge, type: bestEdge.type },
+		snapDistance: bestDistance,
+	};
+}
+
 export function snapElementEdge({
 	targetTime,
 	elementDuration,

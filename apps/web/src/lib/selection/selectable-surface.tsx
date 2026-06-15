@@ -197,7 +197,11 @@ export function SelectableSurface({
 				return;
 			}
 
-			if (event.key !== "Enter" && event.key !== " " && event.key !== "Escape") {
+			if (
+				event.key !== "Enter" &&
+				event.key !== " " &&
+				event.key !== "Escape"
+			) {
 				return;
 			}
 
@@ -266,7 +270,12 @@ export function SelectableSurface({
 		<SelectionContext.Provider value={contextValue}>
 			<div
 				ref={containerRef}
-				className={cn("relative min-h-full", className)}
+				// `min-w-0` lets this surface shrink inside a flex parent
+				// without forcing the panel wider than its allocation.
+				// Without it the box-select layer's intrinsic min-content
+				// width can grow the panel and break the responsive
+				// layout of the surrounding column.
+				className={cn("relative min-h-full min-w-0", className)}
 				role="listbox"
 				aria-label={ariaLabel}
 				aria-multiselectable="true"

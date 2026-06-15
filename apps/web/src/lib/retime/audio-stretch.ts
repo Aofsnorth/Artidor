@@ -2,10 +2,7 @@ import { PitchShifter } from "soundtouchjs";
 import { clampRetimeRate, shouldMaintainPitch } from "@/lib/retime/rate";
 import type { RetimeConfig } from "@/lib/timeline";
 import { getSourceTimeAtClipTime } from "./resolve";
-import {
-	getSpeedCurveFromRetime,
-	isSpeedRampRetime,
-} from "./speed-ramp";
+import { getSpeedCurveFromRetime, isSpeedRampRetime } from "./speed-ramp";
 
 const RATE_EPSILON = 1e-6;
 
@@ -143,10 +140,11 @@ async function buildPitchPreservedBuffer({
 			retime,
 		});
 	}
-	const usePitch = shouldMaintainPitch({
-		rate,
-		maintainPitch: retime?.maintainPitch === true,
-	}) && Math.abs(rate - 1) > RATE_EPSILON;
+	const usePitch =
+		shouldMaintainPitch({
+			rate,
+			maintainPitch: retime?.maintainPitch === true,
+		}) && Math.abs(rate - 1) > RATE_EPSILON;
 	if (!usePitch) {
 		return buildResampledBuffer({
 			audioContext: new OfflineAudioContext(
@@ -206,10 +204,7 @@ async function buildPitchPreservedBuffer({
 	resampleSourceNode.start(0);
 	const resampledBuffer = await resampleCtx.startRendering();
 
-	const outputSamples = Math.max(
-		1,
-		Math.ceil(clipDuration * targetSampleRate),
-	);
+	const outputSamples = Math.max(1, Math.ceil(clipDuration * targetSampleRate));
 	const stretchCtx = new OfflineAudioContext(
 		numChannels,
 		outputSamples,

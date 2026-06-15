@@ -48,13 +48,31 @@ export const accounts = pgTable("accounts", {
 	updatedAt: timestamp("updated_at").notNull(),
 }).enableRLS();
 
-export const feedback = pgTable("feedback", {
+// TODO: re-add a `feedback` table here once a migration is generated for it.
+// The original Drizzle migration (`apps/web/migrations/0000_*.sql`) only
+// declares the `waitlist` table, so the schema is intentionally kept in
+// sync with the migration. Once feedback collection is wired up, generate
+// a new migration via `bun run db:generate` and re-introduce the table.
+//
+// export const feedback = pgTable("feedback", {
+// 	id: text("id").primaryKey(),
+// 	message: text("message").notNull(),
+// 	createdAt: timestamp("created_at")
+// 		.$defaultFn(() => new Date())
+// 		.notNull(),
+// });
+
+// Mirror the `waitlist` table from the SQL migration so Drizzle clients can
+// query it. It is not yet referenced from any feature code, but defining
+// it here keeps the typed schema complete and prevents drift if a future
+// feature needs it.
+export const waitlist = pgTable("waitlist", {
 	id: text("id").primaryKey(),
-	message: text("message").notNull(),
+	email: text("email").notNull().unique(),
 	createdAt: timestamp("created_at")
-		.$defaultFn(() => new Date())
+		.$defaultFn(() => /* @__PURE__ */ new Date())
 		.notNull(),
-});
+}).enableRLS();
 
 export const verifications = pgTable("verifications", {
 	id: text("id").primaryKey(),

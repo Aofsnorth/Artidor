@@ -1,4 +1,4 @@
-import type { FrameRate } from "opencut-wasm";
+import type { FrameRate } from "artidor-wasm";
 import type { TScene } from "@/lib/timeline/types";
 
 export type TBackground =
@@ -23,6 +23,8 @@ export interface TProjectMetadata {
 	duration: number;
 	createdAt: Date;
 	updatedAt: Date;
+	googleDriveFolderId?: string | null;
+	googleDriveFileId?: string | null;
 }
 
 export interface TProjectSettings {

@@ -3,9 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
-import {
-	HSL_COLOR_BANDS,
-} from "@/lib/colors/hsl";
+import { HSL_COLOR_BANDS } from "@/lib/colors/hsl";
 import { DEFAULT_CURVE, type CurvePoint } from "@/lib/colors/curves";
 import type { VisualElement } from "@/lib/timeline";
 import {
@@ -19,7 +17,10 @@ import {
 import { NumberField } from "@/components/ui/number-field";
 import { Slider } from "@/components/ui/slider";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { ArrowTurnBackwardIcon, FileImportIcon } from "@hugeicons/core-free-icons";
+import {
+	ArrowTurnBackwardIcon,
+	FileImportIcon,
+} from "@hugeicons/core-free-icons";
 import { parseCubeLut } from "@/lib/colors/lut";
 import { toast } from "sonner";
 
@@ -50,8 +51,11 @@ function HslSection({
 	const effects = (element as VisualElement).effects ?? [];
 	const hslEffect = effects.find((e) => e.type === "hsl");
 
-	const initialParams = (hslEffect?.params as Record<string, number> | undefined) ?? {};
-	const [params, setParams] = useState<Record<string, number>>({ ...initialParams });
+	const initialParams =
+		(hslEffect?.params as Record<string, number> | undefined) ?? {};
+	const [params, setParams] = useState<Record<string, number>>({
+		...initialParams,
+	});
 
 	useEffect(() => {
 		if (hslEffect) {
@@ -70,9 +74,7 @@ function HslSection({
 						elementId: element.id,
 						patch: {
 							effects: effects.map((e) =>
-								e.id === hslEffect.id
-									? { ...e, params: newParams }
-									: e,
+								e.id === hslEffect.id ? { ...e, params: newParams } : e,
 							),
 						},
 					},
@@ -96,7 +98,11 @@ function HslSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:hsl`} defaultOpen={!!hslEffect}>
+		<Section
+			collapsible
+			sectionKey={`${element.id}:hsl`}
+			defaultOpen={!!hslEffect}
+		>
 			<SectionHeader
 				trailing={
 					!hslEffect && (
@@ -108,7 +114,9 @@ function HslSection({
 			>
 				<SectionTitle>HSL</SectionTitle>
 			</SectionHeader>
-			<SectionContent className={cn(!hslEffect && "pointer-events-none opacity-50")}>
+			<SectionContent
+				className={cn(!hslEffect && "pointer-events-none opacity-50")}
+			>
 				<SectionFields>
 					<SectionField label="Master Hue">
 						<Slider
@@ -154,7 +162,12 @@ function HslSection({
 										min={-180}
 										max={180}
 										step={1}
-										onChange={(e) => updateParam(hueKey, Number.parseFloat(e.target.value) || 0)}
+										onChange={(e) =>
+											updateParam(
+												hueKey,
+												Number.parseFloat(e.target.value) || 0,
+											)
+										}
 										onFocus={() => {}}
 										onBlur={() => {}}
 										onScrub={() => {}}
@@ -166,7 +179,12 @@ function HslSection({
 										min={-100}
 										max={100}
 										step={1}
-										onChange={(e) => updateParam(satKey, Number.parseFloat(e.target.value) || 0)}
+										onChange={(e) =>
+											updateParam(
+												satKey,
+												Number.parseFloat(e.target.value) || 0,
+											)
+										}
 										onFocus={() => {}}
 										onBlur={() => {}}
 										onScrub={() => {}}
@@ -178,7 +196,12 @@ function HslSection({
 										min={-100}
 										max={100}
 										step={1}
-										onChange={(e) => updateParam(lumKey, Number.parseFloat(e.target.value) || 0)}
+										onChange={(e) =>
+											updateParam(
+												lumKey,
+												Number.parseFloat(e.target.value) || 0,
+											)
+										}
 										onFocus={() => {}}
 										onBlur={() => {}}
 										onScrub={() => {}}
@@ -207,8 +230,11 @@ function CurvesSection({
 	const effects = (element as VisualElement).effects ?? [];
 	const curvesEffect = effects.find((e) => e.type === "curves");
 
-	const initialParams = (curvesEffect?.params as Record<string, string> | undefined) ?? {};
-	const [params, setParams] = useState<Record<string, string>>({ ...initialParams });
+	const initialParams =
+		(curvesEffect?.params as Record<string, string> | undefined) ?? {};
+	const [params, setParams] = useState<Record<string, string>>({
+		...initialParams,
+	});
 
 	useEffect(() => {
 		if (curvesEffect) {
@@ -225,7 +251,8 @@ function CurvesSection({
 		return [...DEFAULT_CURVE];
 	};
 
-	const serializeCurve = (points: CurvePoint[]): string => JSON.stringify(points);
+	const serializeCurve = (points: CurvePoint[]): string =>
+		JSON.stringify(points);
 
 	const updateCurve = (key: string, points: CurvePoint[]) => {
 		const newParams = { ...params, [key]: serializeCurve(points) };
@@ -238,9 +265,7 @@ function CurvesSection({
 						elementId: element.id,
 						patch: {
 							effects: effects.map((e) =>
-								e.id === curvesEffect.id
-									? { ...e, params: newParams }
-									: e,
+								e.id === curvesEffect.id ? { ...e, params: newParams } : e,
 							),
 						},
 					},
@@ -264,7 +289,11 @@ function CurvesSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:curves`} defaultOpen={!!curvesEffect}>
+		<Section
+			collapsible
+			sectionKey={`${element.id}:curves`}
+			defaultOpen={!!curvesEffect}
+		>
 			<SectionHeader
 				trailing={
 					!curvesEffect && (
@@ -276,7 +305,9 @@ function CurvesSection({
 			>
 				<SectionTitle>RGB Curves</SectionTitle>
 			</SectionHeader>
-			<SectionContent className={cn(!curvesEffect && "pointer-events-none opacity-50")}>
+			<SectionContent
+				className={cn(!curvesEffect && "pointer-events-none opacity-50")}
+			>
 				<SectionFields>
 					<CurveChannelControl
 						label="Master (RGB)"
@@ -328,7 +359,10 @@ function CurveChannelControl({
 		})
 		.join(" ");
 
-	const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>, index: number) => {
+	const handlePointerDown = (
+		e: React.PointerEvent<SVGSVGElement>,
+		index: number,
+	) => {
 		e.preventDefault();
 		(e.currentTarget as Element).setPointerCapture(e.pointerId);
 		setDragging(index);
@@ -373,7 +407,9 @@ function CurveChannelControl({
 
 	return (
 		<div className="rounded-md bg-muted/30 p-2">
-			<div className="text-xs font-medium text-muted-foreground mb-1">{label}</div>
+			<div className="text-xs font-medium text-muted-foreground mb-1">
+				{label}
+			</div>
 			<svg
 				ref={svgRef}
 				width={width}
@@ -408,9 +444,9 @@ function CurveChannelControl({
 				/>
 				<line
 					x1={padding}
-					y1={height - padding - ((height - padding * 2) / 2)}
+					y1={height - padding - (height - padding * 2) / 2}
 					x2={width - padding}
-					y2={height - padding - ((height - padding * 2) / 2)}
+					y2={height - padding - (height - padding * 2) / 2}
 					stroke="currentColor"
 					strokeOpacity={0.15}
 					strokeDasharray="2 2"
@@ -457,7 +493,8 @@ function LutSection({
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const effects = (element as VisualElement).effects ?? [];
 	const lutEffect = effects.find((e) => e.type === "lut");
-	const params = (lutEffect?.params as Record<string, string | number> | undefined) ?? {};
+	const params =
+		(lutEffect?.params as Record<string, string | number> | undefined) ?? {};
 
 	const onImport = async (file: File) => {
 		const text = await file.text();
@@ -477,7 +514,7 @@ function LutSection({
 							effects: effects.map((e) =>
 								e.id === lutEffect.id
 									? {
-										...e,
+											...e,
 											params: {
 												...e.params,
 												intensity: 100,

@@ -32,14 +32,15 @@ export class GroupElementsCommand extends Command {
 
 		const beforeByRef = new Map<string, string | undefined>();
 		for (const ref of this.elementRefs) {
-			const track = [
-				...tracks.overlay,
-				tracks.main,
-				...tracks.audio,
-			].find((t) => t.id === ref.trackId);
+			const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+				(t) => t.id === ref.trackId,
+			);
 			const element = track?.elements.find((el) => el.id === ref.elementId);
 			if (element) {
-				beforeByRef.set(ref.elementId, (element as { groupId?: string }).groupId);
+				beforeByRef.set(
+					ref.elementId,
+					(element as { groupId?: string }).groupId,
+				);
 			}
 		}
 		this.previousGroupIds = this.elementRefs.map((ref) => ({
@@ -101,11 +102,7 @@ export class UngroupElementsCommand extends Command {
 		const tracks = scene.tracks;
 
 		const members: ElementRef[] = [];
-		for (const track of [
-			...tracks.overlay,
-			tracks.main,
-			...tracks.audio,
-		]) {
+		for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
 			for (const el of track.elements) {
 				if ((el as { groupId?: string }).groupId === this.groupId) {
 					members.push({ trackId: track.id, elementId: el.id });
@@ -114,11 +111,9 @@ export class UngroupElementsCommand extends Command {
 		}
 
 		for (const ref of members) {
-			const track = [
-				...tracks.overlay,
-				tracks.main,
-				...tracks.audio,
-			].find((t) => t.id === ref.trackId);
+			const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+				(t) => t.id === ref.trackId,
+			);
 			const element = track?.elements.find((el) => el.id === ref.elementId);
 			if (element) {
 				this.previousAssignments.push({
@@ -188,11 +183,9 @@ export class SetParentCommand extends Command {
 		const tracks = scene.tracks;
 
 		// Find the element
-		const track = [
-			...tracks.overlay,
-			tracks.main,
-			...tracks.audio,
-		].find((t) => t.id === this.ref.trackId);
+		const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+			(t) => t.id === this.ref.trackId,
+		);
 		const element = track?.elements.find((el) => el.id === this.ref.elementId);
 		if (!element) return undefined;
 
@@ -208,8 +201,9 @@ export class SetParentCommand extends Command {
 		}
 
 		this.previousParentId = (element as { parentId?: string }).parentId;
-		this.previousParentEnabled = (element as { parentEnabled?: boolean })
-			.parentEnabled;
+		this.previousParentEnabled = (
+			element as { parentEnabled?: boolean }
+		).parentEnabled;
 
 		editor.timeline.updateElements({
 			updates: [
@@ -261,17 +255,16 @@ export class UnlinkParentCommand extends Command {
 		const editor = EditorCore.getInstance();
 		const scene = editor.scenes.getActiveScene();
 		const tracks = scene.tracks;
-		const track = [
-			...tracks.overlay,
-			tracks.main,
-			...tracks.audio,
-		].find((t) => t.id === this.ref.trackId);
+		const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+			(t) => t.id === this.ref.trackId,
+		);
 		const element = track?.elements.find((el) => el.id === this.ref.elementId);
 		if (!element) return undefined;
 
 		this.previousParentId = (element as { parentId?: string }).parentId;
-		this.previousParentEnabled = (element as { parentEnabled?: boolean })
-			.parentEnabled;
+		this.previousParentEnabled = (
+			element as { parentEnabled?: boolean }
+		).parentEnabled;
 
 		editor.timeline.updateElements({
 			updates: [
