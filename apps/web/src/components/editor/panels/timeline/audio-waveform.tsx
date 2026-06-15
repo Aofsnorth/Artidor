@@ -232,12 +232,19 @@ export function AudioWaveform({
 
 		if (variant === "beats") {
 			ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-			ctx.fillRect(0, Math.floor(height / 2), visibleWidth, 1);
+			// Baseline sits at the vertical center when mirrored, otherwise it
+			// anchors the bars to the bottom of the strip.
+			const baselineY = symmetric ? Math.floor(height / 2) : height - 1;
+			ctx.fillRect(0, baselineY, visibleWidth, 1);
 		}
 
+		// Bottom-anchored bars grow in a single direction, so they get more of
+		// the strip height than mirrored bars (which use it on both sides).
 		const maxBarHeight =
 			variant === "beats"
-				? height * 0.44
+				? symmetric
+					? height * 0.44
+					: height * 0.85
 				: symmetric
 					? height * 0.45
 					: height * 0.7;

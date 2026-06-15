@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
+import { getElementDisplayName } from "@/lib/timeline";
 import type {
 	TimelineElement,
 	TimelineTrack,
@@ -24,6 +25,15 @@ export function ParentingTab({
 }) {
 	const editor = useEditor();
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
+	const mediaAssets = useEditor((e) => e.media.getAssets());
+	const labelFor = (candidate: TimelineElement) =>
+		getElementDisplayName({
+			element: candidate,
+			mediaName:
+				"mediaId" in candidate
+					? mediaAssets.find((asset) => asset.id === candidate.mediaId)?.name
+					: undefined,
+		});
 	const tracks = useMemo<TimelineTrack[]>(() => {
 		if (!scene) return [];
 		return [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio];
@@ -76,7 +86,7 @@ export function ParentingTab({
 					<option value="">None</option>
 					{candidates.map((candidate) => (
 						<option key={candidate.id} value={candidate.id}>
-							{candidate.name} ({candidate.type})
+							{labelFor(candidate)} ({candidate.type})
 						</option>
 					))}
 				</select>
@@ -92,7 +102,7 @@ export function ParentingTab({
 						}
 					>
 						<HugeiconsIcon icon={UnlinkIcon} size={14} />
-						Unlink {parent.name}
+						Unlink {labelFor(parent)}
 					</Button>
 				)}
 			</section>
@@ -113,7 +123,7 @@ export function ParentingTab({
 								key={child.id}
 								className="bg-secondary/40 flex items-center justify-between rounded-md px-2 py-1.5 text-xs"
 							>
-								<span className="truncate">{child.name}</span>
+								<span className="truncate">{labelFor(child)}</span>
 								<span className="text-muted-foreground">{child.type}</span>
 							</li>
 						))}

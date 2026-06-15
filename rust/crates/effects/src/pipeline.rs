@@ -47,6 +47,33 @@ const CHROMATIC_ABERRATION_SHADER_ID: &str = "chromatic-aberration";
 const CHROMATIC_ABERRATION_SHADER_SOURCE: &str =
     include_str!("shaders/chromatic-aberration.wgsl");
 
+const CHROMA_KEY_SHADER_ID: &str = "chroma-key";
+const CHROMA_KEY_SHADER_SOURCE: &str = include_str!("shaders/chroma-key.wgsl");
+
+const POSTERIZE_SHADER_ID: &str = "posterize";
+const POSTERIZE_SHADER_SOURCE: &str = include_str!("shaders/posterize.wgsl");
+
+const EDGE_DETECT_SHADER_ID: &str = "edge-detect";
+const EDGE_DETECT_SHADER_SOURCE: &str = include_str!("shaders/edge-detect.wgsl");
+
+const HALFTONE_SHADER_ID: &str = "halftone";
+const HALFTONE_SHADER_SOURCE: &str = include_str!("shaders/halftone.wgsl");
+
+const MIRROR_SHADER_ID: &str = "mirror";
+const MIRROR_SHADER_SOURCE: &str = include_str!("shaders/mirror.wgsl");
+
+const SWIRL_SHADER_ID: &str = "swirl";
+const SWIRL_SHADER_SOURCE: &str = include_str!("shaders/swirl.wgsl");
+
+const BULGE_SHADER_ID: &str = "bulge";
+const BULGE_SHADER_SOURCE: &str = include_str!("shaders/bulge.wgsl");
+
+const TWIST_SHADER_ID: &str = "twist";
+const TWIST_SHADER_SOURCE: &str = include_str!("shaders/twist.wgsl");
+
+const THERMAL_SHADER_ID: &str = "thermal";
+const THERMAL_SHADER_SOURCE: &str = include_str!("shaders/thermal.wgsl");
+
 const MOTION_BLUR_SHADER_ID: &str = "motion-blur";
 const MOTION_BLUR_SHADER_SOURCE: &str = include_str!("shaders/motion-blur.wgsl");
 
@@ -269,6 +296,69 @@ impl EffectPipeline {
                     label: Some("effects-chromatic-aberration-shader"),
                     source: wgpu::ShaderSource::Wgsl(CHROMATIC_ABERRATION_SHADER_SOURCE.into()),
                 });
+        let chroma_key_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-chroma-key-shader"),
+                    source: wgpu::ShaderSource::Wgsl(CHROMA_KEY_SHADER_SOURCE.into()),
+                });
+        let posterize_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-posterize-shader"),
+                    source: wgpu::ShaderSource::Wgsl(POSTERIZE_SHADER_SOURCE.into()),
+                });
+        let edge_detect_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-edge-detect-shader"),
+                    source: wgpu::ShaderSource::Wgsl(EDGE_DETECT_SHADER_SOURCE.into()),
+                });
+        let halftone_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-halftone-shader"),
+                    source: wgpu::ShaderSource::Wgsl(HALFTONE_SHADER_SOURCE.into()),
+                });
+        let mirror_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-mirror-shader"),
+                    source: wgpu::ShaderSource::Wgsl(MIRROR_SHADER_SOURCE.into()),
+                });
+        let swirl_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-swirl-shader"),
+                    source: wgpu::ShaderSource::Wgsl(SWIRL_SHADER_SOURCE.into()),
+                });
+        let bulge_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-bulge-shader"),
+                    source: wgpu::ShaderSource::Wgsl(BULGE_SHADER_SOURCE.into()),
+                });
+        let twist_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-twist-shader"),
+                    source: wgpu::ShaderSource::Wgsl(TWIST_SHADER_SOURCE.into()),
+                });
+        let thermal_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-thermal-shader"),
+                    source: wgpu::ShaderSource::Wgsl(THERMAL_SHADER_SOURCE.into()),
+                });
         let motion_blur_shader_module =
             context
                 .device()
@@ -481,6 +571,15 @@ impl EffectPipeline {
         pipelines.insert(SHADOWS_SHADER_ID.to_string(), build_pipeline("effects-shadows-pipeline", &shadows_shader_module));
         pipelines.insert(SHARPEN_SHADER_ID.to_string(), build_pipeline("effects-sharpen-pipeline", &sharpen_shader_module));
         pipelines.insert(CHROMATIC_ABERRATION_SHADER_ID.to_string(), build_pipeline("effects-chromatic-aberration-pipeline", &chromatic_aberration_shader_module));
+        pipelines.insert(CHROMA_KEY_SHADER_ID.to_string(), build_pipeline("effects-chroma-key-pipeline", &chroma_key_shader_module));
+        pipelines.insert(POSTERIZE_SHADER_ID.to_string(), build_pipeline("effects-posterize-pipeline", &posterize_shader_module));
+        pipelines.insert(EDGE_DETECT_SHADER_ID.to_string(), build_pipeline("effects-edge-detect-pipeline", &edge_detect_shader_module));
+        pipelines.insert(HALFTONE_SHADER_ID.to_string(), build_pipeline("effects-halftone-pipeline", &halftone_shader_module));
+        pipelines.insert(MIRROR_SHADER_ID.to_string(), build_pipeline("effects-mirror-pipeline", &mirror_shader_module));
+        pipelines.insert(SWIRL_SHADER_ID.to_string(), build_pipeline("effects-swirl-pipeline", &swirl_shader_module));
+        pipelines.insert(BULGE_SHADER_ID.to_string(), build_pipeline("effects-bulge-pipeline", &bulge_shader_module));
+        pipelines.insert(TWIST_SHADER_ID.to_string(), build_pipeline("effects-twist-pipeline", &twist_shader_module));
+        pipelines.insert(THERMAL_SHADER_ID.to_string(), build_pipeline("effects-thermal-pipeline", &thermal_shader_module));
         pipelines.insert(MOTION_BLUR_SHADER_ID.to_string(), build_pipeline("effects-motion-blur-pipeline", &motion_blur_shader_module));
         pipelines.insert(WAVE_SHADER_ID.to_string(), build_pipeline("effects-wave-pipeline", &wave_shader_module));
         pipelines.insert(RIPPLE_SHADER_ID.to_string(), build_pipeline("effects-ripple-pipeline", &ripple_shader_module));
@@ -672,7 +771,18 @@ fn pack_effect_uniforms(
                 });
             }
         }
-        CHROMATIC_ABERRATION_SHADER_ID | RIPPLE_SHADER_ID | GLOW_SHADER_ID | EMBOSS_SHADER_ID => {
+        CHROMATIC_ABERRATION_SHADER_ID
+        | RIPPLE_SHADER_ID
+        | GLOW_SHADER_ID
+        | EMBOSS_SHADER_ID
+        | POSTERIZE_SHADER_ID
+        | EDGE_DETECT_SHADER_ID
+        | HALFTONE_SHADER_ID
+        | MIRROR_SHADER_ID
+        | SWIRL_SHADER_ID
+        | BULGE_SHADER_ID
+        | TWIST_SHADER_ID
+        | THERMAL_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -693,6 +803,33 @@ fn pack_effect_uniforms(
 
             for uniform in pass.uniforms.keys() {
                 if uniform == "u_amount" || uniform == "u_direction" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        CHROMA_KEY_SHADER_ID => {
+            // Key colour RGB is split across the two free vec slots: R/G in
+            // `direction`, B in scalars[0]. The keying knobs fill the rest.
+            let key_color = read_vec3_uniform(pass, "u_key_color")?;
+            let similarity = read_number_uniform(pass, "u_similarity")?;
+            let smoothness = read_number_uniform(pass, "u_smoothness")?;
+            let spill = read_number_uniform(pass, "u_spill")?;
+            direction = [key_color[0], key_color[1]];
+            scalars[0] = key_color[2];
+            scalars[1] = similarity;
+            scalars[2] = smoothness;
+            scalars[3] = spill;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_key_color"
+                    || uniform == "u_similarity"
+                    || uniform == "u_smoothness"
+                    || uniform == "u_spill"
+                {
                     continue;
                 }
                 return Err(EffectsError::UnsupportedUniform {
@@ -916,4 +1053,82 @@ fn read_vec3_uniform(pass: &EffectPass, uniform: &str) -> Result<[f32; 3], Effec
         });
     }
     Ok([values[0], values[1], values[2]])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every fragment shader registered in the pipeline, paired with its id.
+    /// Keep this in sync with the `pipelines.insert(...)` calls above so the
+    /// validation test below covers the full set.
+    const ALL_SHADERS: &[(&str, &str)] = &[
+        (GAUSSIAN_BLUR_SHADER_ID, GAUSSIAN_BLUR_SHADER_SOURCE),
+        (BRIGHTNESS_SHADER_ID, BRIGHTNESS_SHADER_SOURCE),
+        (CONTRAST_SHADER_ID, CONTRAST_SHADER_SOURCE),
+        (SATURATION_SHADER_ID, SATURATION_SHADER_SOURCE),
+        (HUE_ROTATE_SHADER_ID, HUE_ROTATE_SHADER_SOURCE),
+        (TEMPERATURE_SHADER_ID, TEMPERATURE_SHADER_SOURCE),
+        (SEPIA_SHADER_ID, SEPIA_SHADER_SOURCE),
+        (GRAYSCALE_SHADER_ID, GRAYSCALE_SHADER_SOURCE),
+        (INVERT_SHADER_ID, INVERT_SHADER_SOURCE),
+        (HIGHLIGHTS_SHADER_ID, HIGHLIGHTS_SHADER_SOURCE),
+        (SHADOWS_SHADER_ID, SHADOWS_SHADER_SOURCE),
+        (SHARPEN_SHADER_ID, SHARPEN_SHADER_SOURCE),
+        (CHROMATIC_ABERRATION_SHADER_ID, CHROMATIC_ABERRATION_SHADER_SOURCE),
+        (CHROMA_KEY_SHADER_ID, CHROMA_KEY_SHADER_SOURCE),
+        (POSTERIZE_SHADER_ID, POSTERIZE_SHADER_SOURCE),
+        (EDGE_DETECT_SHADER_ID, EDGE_DETECT_SHADER_SOURCE),
+        (HALFTONE_SHADER_ID, HALFTONE_SHADER_SOURCE),
+        (MIRROR_SHADER_ID, MIRROR_SHADER_SOURCE),
+        (SWIRL_SHADER_ID, SWIRL_SHADER_SOURCE),
+        (BULGE_SHADER_ID, BULGE_SHADER_SOURCE),
+        (TWIST_SHADER_ID, TWIST_SHADER_SOURCE),
+        (THERMAL_SHADER_ID, THERMAL_SHADER_SOURCE),
+        (MOTION_BLUR_SHADER_ID, MOTION_BLUR_SHADER_SOURCE),
+        (WAVE_SHADER_ID, WAVE_SHADER_SOURCE),
+        (RIPPLE_SHADER_ID, RIPPLE_SHADER_SOURCE),
+        (PIXELATE_SHADER_ID, PIXELATE_SHADER_SOURCE),
+        (FISHEYE_SHADER_ID, FISHEYE_SHADER_SOURCE),
+        (SCANLINES_SHADER_ID, SCANLINES_SHADER_SOURCE),
+        (EMBOSS_SHADER_ID, EMBOSS_SHADER_SOURCE),
+        (GLOW_SHADER_ID, GLOW_SHADER_SOURCE),
+        (VIBRANCE_SHADER_ID, VIBRANCE_SHADER_SOURCE),
+        (VIGNETTE_SHADER_ID, VIGNETTE_SHADER_SOURCE),
+        (GRAIN_SHADER_ID, GRAIN_SHADER_SOURCE),
+        (DEHAZE_SHADER_ID, DEHAZE_SHADER_SOURCE),
+        (CLARITY_SHADER_ID, CLARITY_SHADER_SOURCE),
+        (FADE_SHADER_ID, FADE_SHADER_SOURCE),
+        (WHITES_SHADER_ID, WHITES_SHADER_SOURCE),
+        (BLACKS_SHADER_ID, BLACKS_SHADER_SOURCE),
+        (COLOR_WHEELS_SHADER_ID, COLOR_WHEELS_SHADER_SOURCE),
+        (VELOCITY_BLUR_SHADER_ID, VELOCITY_BLUR_SHADER_SOURCE),
+        (STROKE_SHADER_ID, STROKE_SHADER_SOURCE),
+        (DROP_SHADOW_SHADER_ID, DROP_SHADOW_SHADER_SOURCE),
+        (OUTER_GLOW_SHADER_ID, OUTER_GLOW_SHADER_SOURCE),
+    ];
+
+    /// Parse every WGSL fragment shader through naga's front-end. wgpu only
+    /// compiles shader modules lazily at runtime, so without this a malformed
+    /// shader would slip through `cargo check`/`build` and only blow up in the
+    /// browser. The front-end performs lexing, parsing, name resolution and
+    /// type inference, so this catches the realistic authoring bugs: syntax
+    /// errors, undeclared identifiers, wrong argument counts, and type
+    /// mismatches.
+    ///
+    /// We intentionally stop at `parse_str` and do not run the full
+    /// `Validator`: each effect shader carries a vestigial `vertex_main` (it
+    /// returns a bare `vec4` without `@builtin(position)`), which standalone
+    /// validation rejects. That entry point is dead code — the real pipeline
+    /// always pairs the effect's `fragment_main` with the shared
+    /// `fullscreen.wgsl` vertex stage, so wgpu never validates it.
+    #[test]
+    fn all_shaders_parse_as_wgsl() {
+        use wgpu::naga::front::wgsl;
+
+        for (id, source) in ALL_SHADERS {
+            wgsl::parse_str(source)
+                .unwrap_or_else(|err| panic!("WGSL parse error in shader '{id}': {err}"));
+        }
+    }
 }

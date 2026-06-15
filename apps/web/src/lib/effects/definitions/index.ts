@@ -26,6 +26,7 @@ import {
 	lutAdjustmentDefinition,
 } from "./adjustments/color-grading";
 import { chromaticAberrationEffectDefinition } from "./video/chromatic-aberration";
+import { chromaKeyEffectDefinition } from "./video/chroma-key";
 import { motionBlurEffectDefinition } from "./video/motion-blur";
 import { waveEffectDefinition } from "./video/wave";
 import { rippleEffectDefinition } from "./video/ripple";
@@ -41,6 +42,16 @@ import {
 	dreamyBloomEffectDefinition,
 	retroCrtEffectDefinition,
 } from "./video/stylized-presets";
+import {
+	posterizeEffectDefinition,
+	edgeDetectEffectDefinition,
+	halftoneEffectDefinition,
+	mirrorEffectDefinition,
+	swirlEffectDefinition,
+	bulgeEffectDefinition,
+	twistEffectDefinition,
+	thermalEffectDefinition,
+} from "./video/stylize-distort";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -68,6 +79,7 @@ const defaultEffects = [
 	curvesAdjustmentDefinition,
 	lutAdjustmentDefinition,
 	chromaticAberrationEffectDefinition,
+	chromaKeyEffectDefinition,
 	motionBlurEffectDefinition,
 	waveEffectDefinition,
 	rippleEffectDefinition,
@@ -81,6 +93,14 @@ const defaultEffects = [
 	neonBoostEffectDefinition,
 	dreamyBloomEffectDefinition,
 	retroCrtEffectDefinition,
+	posterizeEffectDefinition,
+	edgeDetectEffectDefinition,
+	halftoneEffectDefinition,
+	mirrorEffectDefinition,
+	swirlEffectDefinition,
+	bulgeEffectDefinition,
+	twistEffectDefinition,
+	thermalEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
