@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import {
 	StarIcon,
 } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
+import { getElementDisplayName } from "@/lib/timeline";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import {
 	usePropertiesStore,
@@ -172,7 +173,11 @@ function InspectorView() {
 				</div>
 			</div>
 
-			<SelectedElementSummary element={element} mediaAssets={mediaAssets} />
+			<SelectedElementSummary
+				element={element}
+				trackId={track.id}
+				mediaAssets={mediaAssets}
+			/>
 
 			{/* Hide the secondary tab bar when the active tab is one of the
 			   "focus" categories (Effects / Animation). The reasoning: when
@@ -242,15 +247,15 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			   panel to work with. */}
 			{!disabled && (
 				<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
-				{PRIMARY_INSPECTOR_TABS.map((tab) => (
-					<span
-						key={tab.label}
-						className="relative rounded-md px-1.5 py-1.5 text-center font-medium text-white/30"
-					>
-						{tab.label}
-					</span>
-				))}
-			</div>
+					{PRIMARY_INSPECTOR_TABS.map((tab) => (
+						<span
+							key={tab.label}
+							className="relative rounded-md px-1.5 py-1.5 text-center font-medium text-white/30"
+						>
+							{tab.label}
+						</span>
+					))}
+				</div>
 			)}
 		</div>
 	);
@@ -302,9 +307,11 @@ function buildPrimaryInspectorTabs({
 
 function SelectedElementSummary({
 	element,
+	trackId,
 	mediaAssets,
 }: {
 	element: TimelineElement;
+	trackId: string;
 	mediaAssets: MediaAsset[];
 }) {
 	const mediaId = "mediaId" in element ? element.mediaId : undefined;
@@ -316,13 +323,20 @@ function SelectedElementSummary({
 	const toggleMediaFavorite = usePropertiesStore((s) => s.toggleMediaFavorite);
 	const isFavorited = mediaId ? favoriteMediaIds.has(mediaId) : false;
 	const canFavorite = Boolean(mediaId);
+	const displayName = getElementDisplayName({
+		element,
+		mediaName: media?.name,
+	});
 
 	if (mediaSummarySize === "hidden") {
 		return (
 			<div className="mx-3.5 mt-3 flex shrink-0 items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
-				<div className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-white/[0.9]">
-					{media?.name ?? element.name}
-				</div>
+				<EditableElementName
+					element={element}
+					trackId={trackId}
+					displayName={displayName}
+					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/[0.9]"
+				/>
 				<MediaSummaryMenu
 					size={mediaSummarySize}
 					onSizeChange={setMediaSummarySize}
@@ -350,9 +364,12 @@ function SelectedElementSummary({
 						</span>
 					)}
 				</div>
-				<div className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-white/[0.9]">
-					{media?.name ?? element.name}
-				</div>
+				<EditableElementName
+					element={element}
+					trackId={trackId}
+					displayName={displayName}
+					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/[0.9]"
+				/>
 				<StarButton
 					isFavorited={isFavorited}
 					disabled={!canFavorite}
@@ -387,9 +404,12 @@ function SelectedElementSummary({
 				)}
 			</div>
 			<div className="min-w-0 flex-1">
-				<div className="truncate text-sm font-medium text-white/[0.92]">
-					{media?.name ?? element.name}
-				</div>
+				<EditableElementName
+					element={element}
+					trackId={trackId}
+					displayName={displayName}
+					className="text-sm font-medium text-white/[0.92]"
+				/>
 				<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[0.65rem] text-white/42">
 					<span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 uppercase tracking-[0.12em]">
 						{element.type}
@@ -411,6 +431,100 @@ function SelectedElementSummary({
 				onSizeChange={setMediaSummarySize}
 			/>
 		</div>
+	);
+}
+
+/**
+ * Inline-editable element label. Renders as a static (double-click-to-edit)
+ * name normally; on double-click it swaps to a text input. Saving writes
+ * `customName` via the standard updateElements command, so it participates in
+ * undo/redo. Clearing the field resets to the auto-derived name (customName is
+ * removed). Mirrors the timeline track-rename UX so the interaction is
+ * consistent across the app.
+ */
+function EditableElementName({
+	element,
+	trackId,
+	displayName,
+	className,
+}: {
+	element: TimelineElement;
+	trackId: string;
+	displayName: string;
+	className?: string;
+}) {
+	const editor = useEditor();
+	const [isEditing, setIsEditing] = useState(false);
+	const [value, setValue] = useState(element.customName ?? "");
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	// Keep the draft in sync when the selection changes or an external rename
+	// lands while we're not actively editing. The draft derives entirely from
+	// customName, so keying on it (plus isEditing) covers element switches too.
+	useEffect(() => {
+		if (!isEditing) {
+			setValue(element.customName ?? "");
+		}
+	}, [element.customName, isEditing]);
+
+	const save = () => {
+		setIsEditing(false);
+		const trimmed = value.trim();
+		const nextCustomName = trimmed.length > 0 ? trimmed : undefined;
+		if (nextCustomName === (element.customName ?? undefined)) {
+			return;
+		}
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId: element.id,
+					patch: { customName: nextCustomName },
+				},
+			],
+		});
+	};
+
+	if (!isEditing) {
+		return (
+			<button
+				type="button"
+				className={cn("cursor-text truncate text-left", className)}
+				title={`${displayName} — double-click to rename`}
+				onDoubleClick={() => {
+					setValue(element.customName ?? "");
+					setIsEditing(true);
+					setTimeout(() => inputRef.current?.select(), 0);
+				}}
+			>
+				{displayName}
+			</button>
+		);
+	}
+
+	return (
+		<input
+			ref={inputRef}
+			className={cn(
+				"w-full min-w-0 rounded bg-black/30 px-1 outline-none ring-1 ring-white/20",
+				className,
+			)}
+			value={value}
+			placeholder={displayName}
+			autoComplete="off"
+			onChange={(e) => setValue(e.target.value)}
+			onBlur={save}
+			onKeyDown={(e) => {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					save();
+				}
+				if (e.key === "Escape") {
+					setValue(element.customName ?? "");
+					setIsEditing(false);
+				}
+			}}
+		/>
 	);
 }
 

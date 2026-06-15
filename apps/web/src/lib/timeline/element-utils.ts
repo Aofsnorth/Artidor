@@ -74,6 +74,40 @@ export function hasMediaId(
 	return "mediaId" in element;
 }
 
+/**
+ * Resolve the label shown for an element on the timeline / inspector.
+ *
+ * Precedence:
+ *   1. `customName` — an explicit user rename always wins.
+ *   2. `mediaName` — the underlying media asset's filename, for media-backed
+ *      clips (video / image / uploaded audio). Passed in by the caller since
+ *      element-utils has no access to the media store.
+ *   3. The element's natural label — text content for text elements, else the
+ *      element's own `name` (effect type, sticker / graphic name, etc.).
+ *
+ * Keeping this in one place means a rename shows up identically everywhere and
+ * the media-name-vs-element-name precedence can't drift between call sites.
+ */
+export function getElementDisplayName({
+	element,
+	mediaName,
+}: {
+	element: TimelineElement;
+	mediaName?: string | null;
+}): string {
+	const custom = element.customName?.trim();
+	if (custom) {
+		return custom;
+	}
+	if (mediaName) {
+		return mediaName;
+	}
+	if (element.type === "text") {
+		return element.content.trim() || element.name;
+	}
+	return element.name;
+}
+
 export function requiresMediaId({
 	element,
 }: {

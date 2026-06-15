@@ -145,6 +145,16 @@ export type AudioElement = UploadAudioElement | LibraryAudioElement;
 interface BaseTimelineElement {
 	id: string;
 	name: string;
+	/**
+	 * User-assigned label for this clip on the timeline. When set, it overrides
+	 * the auto-derived display name (media filename, text content, effect type,
+	 * etc.) everywhere the element is shown — the timeline clip, the inspector
+	 * summary, layer lists. This mirrors how Premiere keeps a "clip name"
+	 * distinct from the underlying source name, so renaming a clip never
+	 * mutates the source media's name (other clips of the same media keep
+	 * their own labels). Absent / empty means "use the derived name".
+	 */
+	customName?: string;
 	duration: number;
 	startTime: number;
 	trimStart: number;

@@ -28,7 +28,7 @@ fn fragment_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<
     let hasAlpha = color.a > 0.01;
 
     // Sample alpha at small offsets for the outline
-    let mut maxEdge = 0.0;
+    var maxEdge = 0.0;
     for (var i: i32 = 0; i < 4; i = i + 1) {
         let angle = f32(i) * 1.5707963; // π/2
         let offset = vec2<f32>(cos(angle), sin(angle)) * texel * outlineThickness;

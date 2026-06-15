@@ -2,8 +2,9 @@
 
 import { useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ReplaceMediaDialog } from "@/components/editor/dialogs/replace-media-dialog";
+import { RenameElementDialog } from "@/components/editor/dialogs/rename-element-dialog";
 import { AudioWaveform } from "./audio-waveform";
 import { useElementPreview } from "@/hooks/use-element-preview";
 import {
@@ -22,6 +23,8 @@ import {
 	canElementBeHidden,
 	hasElementEffects,
 	hasMediaId,
+	getElementDisplayName,
+	getTimelinePixelsPerSecond,
 	timelineTimeToPixels,
 	timelineTimeToSnappedPixels,
 } from "@/lib/timeline";
@@ -64,7 +67,8 @@ import {
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { resolveStickerId } from "@/lib/stickers";
 import { buildGraphicPreviewUrl } from "@/lib/graphics";
-import { Input, ALL_FORMATS, BlobSource, CanvasSink } from "mediabunny";
+import { getFilmstripFrame, subscribeFilmstrip } from "./filmstrip-cache";
+import { findScrollParent } from "@/utils/browser";
 import Image from "next/image";
 import {
 	ScissorIcon,
@@ -81,6 +85,7 @@ import {
 	KeyframeIcon,
 	MagicWand05Icon,
 	Layers01Icon,
+	TextFontIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { uppercase } from "@/utils/string";
@@ -441,6 +446,7 @@ export function TimelineElement({
 		});
 
 	const [replaceMediaOpen, setReplaceMediaOpen] = useState(false);
+	const [renameOpen, setRenameOpen] = useState(false);
 
 	let mediaAsset: MediaAsset | null = null;
 
@@ -749,6 +755,17 @@ export function TimelineElement({
 					>
 						Split
 					</ActionMenuItem>
+					{selectedElements.length <= 1 && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={TextFontIcon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								setRenameOpen(true);
+							}}
+						>
+							Rename
+						</ContextMenuItem>
+					)}
 					<CopyMenuItem />
 					{selectedElements.length === 1 && (
 						<ActionMenuItem
@@ -859,6 +876,19 @@ export function TimelineElement({
 				onOpenChange={setReplaceMediaOpen}
 				trackId={track.id}
 				elementId={element.id}
+			/>
+			<RenameElementDialog
+				open={renameOpen}
+				onOpenChange={setRenameOpen}
+				trackId={track.id}
+				elementId={element.id}
+				currentCustomName={element.customName ?? ""}
+				derivedName={getElementDisplayName({
+					// Placeholder should reflect what the label falls back to when
+					// no custom name is set, so strip customName before deriving.
+					element: { ...element, customName: undefined },
+					mediaName: mediaAsset?.name,
+				})}
 			/>
 		</>
 	);
@@ -993,7 +1023,11 @@ function ElementInner({
 							style={{ height: `${baseTrackHeight}px` }}
 						>
 							<div className="flex h-full flex-1 min-h-0 items-center overflow-hidden">
-								<ElementContent element={element} track={track} zoomLevel={zoomLevel} />
+								<ElementContent
+									element={element}
+									track={track}
+									zoomLevel={zoomLevel}
+								/>
 							</div>
 						</div>
 						{expandedContent}
@@ -1363,7 +1397,9 @@ function TextElementContent({
 }) {
 	return (
 		<div className="flex size-full items-center justify-start pl-2">
-			<span className="truncate text-xs text-white">{element.content}</span>
+			<span className="truncate text-xs text-white">
+				{getElementDisplayName({ element })}
+			</span>
 		</div>
 	);
 }
@@ -1379,7 +1415,9 @@ function EffectElementContent({
 				icon={MagicWand05Icon}
 				className="size-4 shrink-0 text-white"
 			/>
-			<span className="truncate text-xs text-white">{element.name}</span>
+			<span className="truncate text-xs text-white">
+				{getElementDisplayName({ element })}
+			</span>
 		</div>
 	);
 }
@@ -1402,7 +1440,9 @@ function StickerElementContent({
 				height={20}
 				unoptimized
 			/>
-			<span className="truncate text-xs text-white">{element.name}</span>
+			<span className="truncate text-xs text-white">
+				{getElementDisplayName({ element })}
+			</span>
 		</div>
 	);
 }
@@ -1426,7 +1466,9 @@ function GraphicElementContent({
 				height={20}
 				unoptimized
 			/>
-			<span className="truncate text-xs text-white">{element.name}</span>
+			<span className="truncate text-xs text-white">
+				{getElementDisplayName({ element })}
+			</span>
 		</div>
 	);
 }
@@ -1454,7 +1496,10 @@ function AudioElementContent({
 	const audioMediaFile =
 		element.sourceType === "library" ? undefined : mediaAsset?.file;
 	const hasAudioSource = !!(audioBuffer || audioUrl || audioMediaFile);
-	const mediaLabel = mediaAsset?.name ?? element.name;
+	const mediaLabel = getElementDisplayName({
+		element,
+		mediaName: mediaAsset?.name,
+	});
 
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
 	const trackIndex = scene
@@ -1481,7 +1526,7 @@ function AudioElementContent({
 					color={themeVariant.waveformColor}
 					beatColor={themeVariant.beatColor}
 					variant="beats"
-					symmetric
+					symmetric={false}
 					trimStartTicks={element.trimStart}
 					trimEndTicks={element.trimEnd}
 					sourceDurationTicks={
@@ -1499,7 +1544,7 @@ function AudioElementContent({
 	}
 
 	return (
-		<span className="text-foreground/80 truncate text-xs">{element.name}</span>
+		<span className="text-foreground/80 truncate text-xs">{mediaLabel}</span>
 	);
 }
 
@@ -1547,109 +1592,83 @@ function VideoFilmstrip({
 	zoomLevel: number;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const scrollParentRef = useRef<HTMLElement | null>(null);
 
-	useEffect(() => {
-		if (!mediaFile || !canvasRef.current) return;
+	// Virtualized filmstrip: only the tiles inside the timeline's scroll
+	// viewport are drawn, and frames come from a shared per-file cache that
+	// decodes each frame once (independent of zoom/scroll). This replaces the
+	// previous full-clip canvas, which exceeded the browser's max canvas size
+	// on long clips (so most tiles silently never drew) and re-decoded the
+	// whole clip on every zoom/scroll.
+	const draw = useCallback(() => {
+		const container = containerRef.current;
 		const canvas = canvasRef.current;
+		if (!container || !canvas) return;
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
-		const elementWidth = (element.duration / TICKS_PER_SECOND) * zoomLevel;
-		const numTiles = Math.max(1, Math.ceil(elementWidth / tileWidth));
+		// Pixels-per-second must match the timeline's real scale
+		// (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel), NOT zoomLevel alone —
+		// otherwise the strip is 50x too narrow (only the clip's first sliver
+		// draws, the rest shows the repeating CSS poster) and source-time maps
+		// 50x too fast (wrong frames). This was the long-standing thumbnail bug.
+		const pxPerSecond = getTimelinePixelsPerSecond({ zoomLevel });
+		const elementWidth = (element.duration / TICKS_PER_SECOND) * pxPerSecond;
+		if (elementWidth <= 0) return;
+
+		// Clip the drawn region to the visible window of the scroll parent so
+		// the canvas stays small no matter how long the clip is.
+		const containerRect = container.getBoundingClientRect();
+		const scrollParent = scrollParentRef.current;
+		let clipLeft: number;
+		let clipRight: number;
+		if (scrollParent) {
+			const parentRect = scrollParent.getBoundingClientRect();
+			clipLeft = Math.max(0, parentRect.left - containerRect.left);
+			clipRight = Math.min(elementWidth, parentRect.right - containerRect.left);
+		} else {
+			clipLeft = Math.max(0, -containerRect.left);
+			clipRight = Math.min(
+				elementWidth,
+				window.innerWidth - containerRect.left,
+			);
+		}
+		const visibleWidth = clipRight - clipLeft;
+		if (visibleWidth <= 0) return;
 
 		const dpr = window.devicePixelRatio || 1;
-		canvas.width = numTiles * tileWidth * dpr;
-		canvas.height = topHeight * dpr;
-		canvas.style.width = `${numTiles * tileWidth}px`;
+		canvas.width = Math.round(visibleWidth * dpr);
+		canvas.height = Math.round(topHeight * dpr);
+		canvas.style.width = `${visibleWidth}px`;
 		canvas.style.height = `${topHeight}px`;
-		ctx.scale(dpr, dpr);
+		canvas.style.left = `${clipLeft}px`;
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		ctx.clearRect(0, 0, visibleWidth, topHeight);
 
-		// Leave the canvas transparent: the parent paints the
-		// pre-rendered poster as a repeating background behind it, so
-		// during decode the user sees the poster and each tile is
-		// replaced by its real frame as it arrives (progressive,
-		// left-to-right) instead of flashing black.
+		const trimStartSeconds = element.trimStart / TICKS_PER_SECOND;
+		// First tile boundary at or before the visible left edge, so tiles tile
+		// seamlessly with the poster background regardless of scroll offset.
+		const firstTile = Math.floor(clipLeft / tileWidth);
+		const lastTile = Math.ceil(clipRight / tileWidth);
 
-		let isCancelled = false;
-		let input: Input | null = null;
-
-		// Decode the filmstrip with mediabunny instead of an HTML
-		// <video> element. HTML video seeking snaps to the nearest
-		// keyframe (so tiles didn't match the actual frame) and the
-		// old timeout-based `drawImage` could fire before the decode
-		// completed, copying uninitialized GPU memory — which is what
-		// produced the magenta/garbage tiles. `CanvasSink` decodes the
-		// exact frame for each timestamp in a single forward pass.
-		const run = async () => {
-			input = new Input({
-				source: new BlobSource(mediaFile),
-				formats: ALL_FORMATS,
-			});
-
-			const videoTrack = await input.getPrimaryVideoTrack();
-			if (!videoTrack || !(await videoTrack.canDecode())) {
-				// Parent already paints the pre-rendered `thumbnailUrl`
-				// behind this canvas, so the user still sees a poster.
-				return;
-			}
-			if (isCancelled) return;
-
-			const duration = await videoTrack.computeDuration();
-			const trimStartSeconds = element.trimStart / TICKS_PER_SECOND;
-
-			// One timestamp per tile, clamped to the source duration and
-			// kept monotonically increasing so `canvasesAtTimestamps` can
-			// use its optimized single-decode-per-packet pipeline.
-			const timestamps: number[] = [];
-			for (let tile = 0; tile < numTiles; tile++) {
-				const timeInClip = (tile * tileWidth) / zoomLevel;
-				timestamps.push(
-					Math.max(0, Math.min(duration, trimStartSeconds + timeInClip)),
-				);
-			}
-
-			// Render each tile at device resolution with a cover-fit crop
-			// so the strip stays crisp on HiDPI displays. `poolSize` keeps
-			// VRAM constant by reusing canvases in a ring buffer.
-			const sink = new CanvasSink(videoTrack, {
-				width: Math.max(1, Math.round(tileWidth * dpr)),
-				height: Math.max(1, Math.round(topHeight * dpr)),
-				fit: "cover",
-				poolSize: 2,
-			});
-
-			let tile = 0;
-			for await (const wrapped of sink.canvasesAtTimestamps(timestamps)) {
-				if (isCancelled) return;
-				if (wrapped) {
-					// Draw in logical pixels — the context is already scaled
-					// by `dpr`, and the source canvas is `tileWidth*dpr` wide.
-					ctx.drawImage(
-						wrapped.canvas,
-						0,
-						0,
-						wrapped.canvas.width,
-						wrapped.canvas.height,
-						tile * tileWidth,
-						0,
-						tileWidth,
-						topHeight,
-					);
-				}
-				tile++;
-			}
-		};
-
-		run().catch((error) => {
-			if (!isCancelled) {
-				console.warn("[VideoFilmstrip] decode failed", error);
-			}
-		});
-
-		return () => {
-			isCancelled = true;
-			input?.dispose();
-		};
+		for (let tile = firstTile; tile < lastTile; tile++) {
+			const tileLeft = tile * tileWidth;
+			const sourceTime = trimStartSeconds + tileLeft / pxPerSecond;
+			const frame = getFilmstripFrame(mediaFile, sourceTime);
+			if (!frame) continue; // poster background shows through until decoded
+			ctx.drawImage(
+				frame,
+				0,
+				0,
+				frame.width,
+				frame.height,
+				tileLeft - clipLeft,
+				0,
+				tileWidth,
+				topHeight,
+			);
+		}
 	}, [
 		mediaFile,
 		element.duration,
@@ -1659,12 +1678,39 @@ function VideoFilmstrip({
 		topHeight,
 	]);
 
+	const drawRef = useRef(draw);
+	drawRef.current = draw;
+
+	// Redraw when decoded frames land in the cache.
+	useEffect(() => {
+		const unsubscribe = subscribeFilmstrip(mediaFile, () => drawRef.current());
+		drawRef.current();
+		return unsubscribe;
+	}, [mediaFile]);
+
+	// Redraw on param/zoom changes.
+	useEffect(() => {
+		draw();
+	}, [draw]);
+
+	// Redraw while scrolling the (virtualized) timeline.
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+		scrollParentRef.current = findScrollParent({ element: container });
+		const scrollParent = scrollParentRef.current;
+		if (!scrollParent) return;
+		const handler = () => drawRef.current();
+		scrollParent.addEventListener("scroll", handler, { passive: true });
+		return () => scrollParent.removeEventListener("scroll", handler);
+	}, []);
+
 	return (
-		<div className="absolute inset-0 overflow-hidden pointer-events-none">
-			<canvas
-				ref={canvasRef}
-				className="absolute top-0 left-0 h-full w-full"
-			/>
+		<div
+			ref={containerRef}
+			className="absolute inset-0 overflow-hidden pointer-events-none"
+		>
+			<canvas ref={canvasRef} className="absolute top-0" />
 		</div>
 	);
 }
@@ -1689,7 +1735,7 @@ function TiledMediaContent({
 	if (!imageUrl && !mediaAsset?.url) {
 		return (
 			<span className="text-foreground/80 truncate text-xs">
-				{element.name}
+				{getElementDisplayName({ element, mediaName: mediaAsset?.name })}
 			</span>
 		);
 	}
@@ -1765,7 +1811,10 @@ function TiledMediaContent({
 			{isVideo && mediaAsset?.url && hasAudio && (
 				<div
 					className="absolute bottom-0 left-0 right-0 overflow-hidden rounded-b-xl"
-					style={{ height: `${trackHeight - filmstripHeight}px`, isolation: "isolate" }}
+					style={{
+						height: `${trackHeight - filmstripHeight}px`,
+						isolation: "isolate",
+					}}
 				>
 					<AudioWaveform
 						audioUrl={mediaAsset.url}
@@ -1773,14 +1822,14 @@ function TiledMediaContent({
 						color="rgba(255, 255, 255, 0.5)"
 						beatColor="rgba(255, 255, 255, 1)"
 						variant="beats"
-						symmetric={true}
+						symmetric={false}
 						scale={effectiveVolume}
 					/>
 				</div>
 			)}
 
 			<MediaElementHeader
-				name={mediaAsset?.name}
+				name={getElementDisplayName({ element, mediaName: mediaAsset?.name })}
 				leading={
 					hasElementEffects({ element }) ? (
 						<EffectsButton element={element} track={track} />
@@ -1836,7 +1885,13 @@ function ElementContent({ element, track, zoomLevel }: ElementContentProps) {
 			return <AudioElementContent element={element} track={track} />;
 		case "video":
 		case "image":
-			return <TiledMediaContent element={element} track={track} zoomLevel={zoomLevel} />;
+			return (
+				<TiledMediaContent
+					element={element}
+					track={track}
+					zoomLevel={zoomLevel}
+				/>
+			);
 	}
 }
 
