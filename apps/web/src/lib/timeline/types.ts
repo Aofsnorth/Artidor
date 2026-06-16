@@ -255,12 +255,36 @@ export interface TextElement extends BaseTimelineElement {
 	/** Alight Motion-style text effects. */
 	stroke?: TextStroke;
 	shadow?: TextShadow;
+	/** After-Effects-style per-character/word entrance animator. */
+	textAnimator?: TextAnimator;
 	hidden?: boolean;
 	transform: Transform;
 	transform3d?: Transform3D;
 	opacity: number;
 	blendMode?: BlendMode;
 	effects?: Effect[];
+}
+
+/** Built-in per-unit text animation presets. */
+export type TextAnimatorPreset =
+	| "fade"
+	| "rise"
+	| "drop"
+	| "zoom"
+	| "pop"
+	| "typewriter"
+	| "wave";
+
+/** Granularity the animator staggers over. */
+export type TextAnimatorUnit = "character" | "word";
+
+export interface TextAnimator {
+	preset: TextAnimatorPreset;
+	unit: TextAnimatorUnit;
+	/** Seconds each unit takes to complete its entrance (or one wave cycle). */
+	duration: number;
+	/** Seconds of delay added per successive unit (the stagger amount). */
+	stagger: number;
 }
 
 export interface TextStroke {
