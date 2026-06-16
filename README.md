@@ -1,7 +1,7 @@
 <div align="center">
 
-<a href="https://artidor.app">
-<img src="apps/web/public/logos/artidor/logo.svg" alt="Artidor" width="180" />
+<a href="https://artidor.vercel.app/">
+<img src="apps/web/public/logos/artidor/logo-particles.png" alt="Artidor" width="180" />
 </a>
 
 ### The video editor that respects your machine.
