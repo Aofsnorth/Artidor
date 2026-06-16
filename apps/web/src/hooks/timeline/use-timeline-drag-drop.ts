@@ -1,7 +1,6 @@
-import { useState, useCallback, type RefObject } from "react";
+import { useState, useCallback, useEffect, type RefObject } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { processMediaAssets } from "@/lib/media/processing";
-import { toast } from "sonner";
 import { showMediaUploadToast } from "@/lib/media/upload-toast";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -631,6 +630,29 @@ export function useTimelineDragDrop({
 			tracksScrollRef,
 		],
 	);
+
+	// Safety net: alt-tabbing / switching windows mid-drag may skip the
+	// dragleave/drop events, leaving the drop indicator stuck. Reset the
+	// drag-over state on window blur, tab hide, and any global dragend.
+	useEffect(() => {
+		if (!isDragOver) return;
+		const reset = () => {
+			setIsDragOver(false);
+			setDropTarget(null);
+			setElementType(null);
+		};
+		const onVisibility = () => {
+			if (document.hidden) reset();
+		};
+		window.addEventListener("blur", reset);
+		document.addEventListener("dragend", reset);
+		document.addEventListener("visibilitychange", onVisibility);
+		return () => {
+			window.removeEventListener("blur", reset);
+			document.removeEventListener("dragend", reset);
+			document.removeEventListener("visibilitychange", onVisibility);
+		};
+	}, [isDragOver]);
 
 	return {
 		isDragOver,

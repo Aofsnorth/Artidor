@@ -1,7 +1,13 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
@@ -59,6 +65,11 @@ export function DraggableItem({
 	emptyImg.src =
 		"data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
 
+	const resetDrag = useCallback(() => {
+		setIsDragging(false);
+		clearDragData();
+	}, []);
+
 	useEffect(() => {
 		if (!isDragging) return;
 
@@ -66,12 +77,30 @@ export function DraggableItem({
 			setDragPosition({ x: e.clientX, y: e.clientY });
 		};
 
+		// Safety nets: HTML5 drag-and-drop does NOT reliably fire `dragend`
+		// when the user alt-tabs / switches windows mid-drag, which would
+		// otherwise leave the floating preview and global drag data stuck on
+		// screen. Reset the drag when the window loses focus, the tab is
+		// hidden, or any global drop/dragend fires.
+		const handleAbort = () => resetDrag();
+		const handleVisibility = () => {
+			if (document.hidden) resetDrag();
+		};
+
 		document.addEventListener("dragover", handleDragOver);
+		window.addEventListener("blur", handleAbort);
+		document.addEventListener("drop", handleAbort);
+		document.addEventListener("dragend", handleAbort);
+		document.addEventListener("visibilitychange", handleVisibility);
 
 		return () => {
 			document.removeEventListener("dragover", handleDragOver);
+			window.removeEventListener("blur", handleAbort);
+			document.removeEventListener("drop", handleAbort);
+			document.removeEventListener("dragend", handleAbort);
+			document.removeEventListener("visibilitychange", handleVisibility);
 		};
-	}, [isDragging]);
+	}, [isDragging, resetDrag]);
 
 	const handleDragStart = (e: React.DragEvent) => {
 		e.dataTransfer.setDragImage(emptyImg, 0, 0);
@@ -86,8 +115,7 @@ export function DraggableItem({
 	};
 
 	const handleDragEnd = () => {
-		setIsDragging(false);
-		clearDragData();
+		resetDrag();
 	};
 
 	return (

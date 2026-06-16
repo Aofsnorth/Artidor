@@ -1,4 +1,3 @@
-import { PitchShifter } from "soundtouchjs";
 import { clampRetimeRate, shouldMaintainPitch } from "@/lib/retime/rate";
 import type { RetimeConfig } from "@/lib/timeline";
 import { getSourceTimeAtClipTime } from "./resolve";
@@ -210,6 +209,10 @@ async function buildPitchPreservedBuffer({
 		outputSamples,
 		targetSampleRate,
 	);
+	// Lazy-load soundtouchjs (~1.9MB) only when a pitch-preserving stretch
+	// actually runs — it's a rare audio op, so it shouldn't sit in the
+	// initial editor bundle.
+	const { PitchShifter } = await import("soundtouchjs");
 	const shifter = new PitchShifter(stretchCtx, resampledBuffer, 4096);
 	shifter.tempo = rate;
 	shifter.pitch = 1;
