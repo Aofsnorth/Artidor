@@ -18,6 +18,7 @@ import { VerticalAudioMeter } from "@/components/editor/vertical-audio-meter";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { usePanelStore } from "@/stores/panel-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
+import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { usePasteMedia } from "@/hooks/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
@@ -77,11 +78,11 @@ export default function Editor() {
 						{/* Main App Content */}
 						<div className="z-10 flex flex-col h-full w-full relative">
 							<DegradedRendererBanner />
-							<EditorHeader />
+							<EditorChrome />
 							<div className="min-h-0 min-w-0 flex-1 z-10 pb-1">
 								<EditorLayout />
 							</div>
-							<EditorFooter />
+							<EditorFooterChrome />
 							{/* Lazy overlays — Suspense keeps a render-time safety net
 							   in case the dynamic chunks fail to load. The fallback
 							   is null because each dialog manages its own visibility
@@ -120,6 +121,21 @@ function DegradedRendererBanner() {
 			</Button>
 		</div>
 	);
+}
+
+// Focus mode collapses the editor chrome (header + footer) for a
+// distraction-free, keyboard-first editing surface. Shift+F (or the command
+// palette) toggles it; the preference persists in the editor-ui store.
+function EditorChrome() {
+	const focusMode = useEditorUIStore((s) => s.focusMode);
+	if (focusMode) return null;
+	return <EditorHeader />;
+}
+
+function EditorFooterChrome() {
+	const focusMode = useEditorUIStore((s) => s.focusMode);
+	if (focusMode) return null;
+	return <EditorFooter />;
 }
 
 function EditorLayout() {

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
+import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { useActionHandler } from "@/hooks/actions/use-action-handler";
 import { useEditor } from "../use-editor";
 import { useElementSelection } from "../timeline/element/use-element-selection";
@@ -565,8 +566,129 @@ export function useEditorActions() {
 		undefined,
 	);
 
+	// In/Out trim: clamp the selected clip's near edge to the playhead.
+	// set-in moves the start to the playhead (shortening the head); set-out
+	// moves the end to the playhead (shortening the tail). Both keep the clip
+	// non-empty (at least one frame) and are single undoable updates.
 	useActionHandler(
-		"link-parent",
+		"set-in",
+		() => {
+			if (selectedElements.length === 0) return;
+			const playhead = editor.playback.getCurrentTime();
+			const fps = editor.project.getActive().settings.fps;
+			const ticksPerFrame = Math.round(
+				(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+			);
+			const updates: Array<{
+				trackId: string;
+				elementId: string;
+				patch: Record<string, number>;
+			}> = [];
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const el = track?.elements.find((e) => e.id === ref.elementId);
+				if (!el) continue;
+				const end = el.startTime + el.duration;
+				const newStart = Math.max(
+					el.startTime,
+					Math.min(playhead, end - ticksPerFrame),
+				);
+				const delta = newStart - el.startTime;
+				if (delta === 0) continue;
+				updates.push({
+					trackId: ref.trackId,
+					elementId: ref.elementId,
+					patch: {
+						startTime: newStart,
+						duration: el.duration - delta,
+						trimStart: el.trimStart + delta,
+					},
+				});
+			}
+			if (updates.length > 0) {
+				editor.timeline.updateElements({ updates, pushHistory: true });
+			}
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"set-out",
+		() => {
+			if (selectedElements.length === 0) return;
+			const playhead = editor.playback.getCurrentTime();
+			const fps = editor.project.getActive().settings.fps;
+			const ticksPerFrame = Math.round(
+				(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+			);
+			const updates: Array<{
+				trackId: string;
+				elementId: string;
+				patch: Record<string, number>;
+			}> = [];
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const el = track?.elements.find((e) => e.id === ref.elementId);
+				if (!el) continue;
+				const newEnd = Math.max(
+					el.startTime + ticksPerFrame,
+					Math.min(playhead, el.startTime + el.duration),
+				);
+				const newDuration = newEnd - el.startTime;
+				if (newDuration === el.duration) continue;
+				updates.push({
+					trackId: ref.trackId,
+					elementId: ref.elementId,
+					patch: {
+						duration: newDuration,
+						trimEnd: el.trimEnd + (el.duration - newDuration),
+					},
+				});
+			}
+			if (updates.length > 0) {
+				editor.timeline.updateElements({ updates, pushHistory: true });
+			}
+		},
+		undefined,
+	);
+
+	// Nudge: move the selected clip(s) by one frame, as a single command.
+	const nudge = (direction: -1 | 1) => {
+		if (selectedElements.length === 0) return;
+		const fps = editor.project.getActive().settings.fps;
+		const ticksPerFrame = Math.round(
+			(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+		);
+		for (const ref of selectedElements) {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const el = track?.elements.find((e) => e.id === ref.elementId);
+			if (!el) continue;
+			const newStart = Math.max(0, el.startTime + direction * ticksPerFrame);
+			editor.timeline.moveElement({
+				sourceTrackId: ref.trackId,
+				targetTrackId: ref.trackId,
+				elementId: ref.elementId,
+				newStartTime: newStart,
+			});
+		}
+	};
+	useActionHandler("nudge-left", () => nudge(-1), undefined);
+	useActionHandler("nudge-right", () => nudge(1), undefined);
+
+	// Command palette + focus mode — UI chrome toggles.
+	const setCommandPaletteOpen = useEditorUIStore(
+		(s) => s.setCommandPaletteOpen,
+	);
+	const toggleFocusMode = useEditorUIStore((s) => s.toggleFocusMode);
+	useActionHandler(
+		"open-command-palette",
+		() => setCommandPaletteOpen(true),
+		undefined,
+	);
+	useActionHandler("toggle-focus-mode", () => toggleFocusMode(), undefined);
+
+	useActionHandler(
+		"link-selected-elements",
 		() => {
 			if (selectedElements.length !== 2) return;
 			// Default linking: first selected = child, second = parent.
@@ -686,7 +808,8 @@ export function useEditorActions() {
 
 						// Only add if it's within the trimmed bounds
 						const trimmedEnd =
-							element.sourceDuration ?? element.duration + element.trimStart + element.trimEnd;
+							element.sourceDuration ??
+							element.duration + element.trimStart + element.trimEnd;
 						if (
 							timeInTicks >= element.trimStart &&
 							timeInTicks <= trimmedEnd - element.trimEnd
