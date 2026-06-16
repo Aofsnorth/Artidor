@@ -333,6 +333,7 @@ function resolveTextNode({
 	});
 
 	return {
+		localTime,
 		transform: resolveTransformAtTime({
 			baseTransform: node.params.transform,
 			animations: node.params.animations,

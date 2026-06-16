@@ -47,6 +47,11 @@ import {
 } from "@hugeicons/core-free-icons";
 import { OcTextHeightIcon, OcTextWidthIcon } from "@/components/icons";
 import { DEFAULTS } from "@/lib/timeline/defaults";
+import {
+	DEFAULT_TEXT_ANIMATOR,
+	TEXT_ANIMATOR_PRESETS,
+	TEXT_ANIMATOR_UNITS,
+} from "@/lib/text/animator";
 import { cn } from "@/utils/ui";
 
 export function TextTab({
@@ -60,6 +65,7 @@ export function TextTab({
 		<div className="flex flex-col">
 			<ContentSection element={element} trackId={trackId} />
 			<StyleSection element={element} trackId={trackId} />
+			<AnimateSection element={element} trackId={trackId} />
 			<TypographySection element={element} trackId={trackId} />
 			<SpacingSection element={element} trackId={trackId} />
 			<BackgroundSection element={element} trackId={trackId} />
@@ -207,6 +213,131 @@ function StyleSection({
 							</SelectContent>
 						</Select>
 					</SectionField>
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+function AnimateSection({
+	element,
+	trackId,
+}: {
+	element: TextElement;
+	trackId: string;
+}) {
+	const editor = useEditor();
+	const animator = element.textAnimator;
+	const preset = animator?.preset ?? "none";
+
+	const update = (patch: Partial<TextElement>) => {
+		editor.timeline.updateElements({
+			updates: [{ trackId, elementId: element.id, patch }],
+		});
+	};
+
+	const onPresetChange = (value: string) => {
+		if (value === "none") {
+			update({ textAnimator: undefined });
+			return;
+		}
+		const match = TEXT_ANIMATOR_PRESETS.find(
+			(option) => option.value === value,
+		);
+		if (!match) return;
+		update({
+			textAnimator: {
+				...(animator ?? DEFAULT_TEXT_ANIMATOR),
+				preset: match.value,
+			},
+		});
+	};
+
+	const onUnitChange = (value: string) => {
+		if (!animator || (value !== "character" && value !== "word")) return;
+		update({ textAnimator: { ...animator, unit: value } });
+	};
+
+	const onNumberChange = (key: "duration" | "stagger", min: number) => {
+		return (event: React.ChangeEvent<HTMLInputElement>) => {
+			if (!animator) return;
+			const parsed = parseFloat(event.currentTarget.value);
+			if (Number.isNaN(parsed)) return;
+			update({ textAnimator: { ...animator, [key]: Math.max(min, parsed) } });
+		};
+	};
+
+	return (
+		<Section collapsible sectionKey={`${element.id}:animate`}>
+			<SectionHeader>
+				<SectionTitle>Animate</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					<SectionField label="Preset">
+						<Select value={preset} onValueChange={onPresetChange}>
+							<SelectTrigger className="h-7 w-full text-xs">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="none">None</SelectItem>
+								{TEXT_ANIMATOR_PRESETS.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</SectionField>
+					{animator && (
+						<>
+							<SectionField label="Unit">
+								<Select value={animator.unit} onValueChange={onUnitChange}>
+									<SelectTrigger className="h-7 w-full text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{TEXT_ANIMATOR_UNITS.map((option) => (
+											<SelectItem key={option.value} value={option.value}>
+												{option.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</SectionField>
+							<div className="flex items-start gap-2">
+								<SectionField
+									label={animator.preset === "wave" ? "Cycle" : "Speed"}
+									className="w-1/2"
+								>
+									<NumberField
+										value={formatNumberForDisplay({
+											value: animator.duration,
+											fractionDigits: 2,
+										})}
+										min={0.05}
+										max={10}
+										step={0.05}
+										suffix="s"
+										onChange={onNumberChange("duration", 0.05)}
+									/>
+								</SectionField>
+								<SectionField label="Stagger" className="w-1/2">
+									<NumberField
+										value={formatNumberForDisplay({
+											value: animator.stagger,
+											fractionDigits: 2,
+										})}
+										min={0}
+										max={2}
+										step={0.01}
+										suffix="s"
+										onChange={onNumberChange("stagger", 0)}
+									/>
+								</SectionField>
+							</div>
+						</>
+					)}
 				</SectionFields>
 			</SectionContent>
 		</Section>
