@@ -1,4 +1,4 @@
-export const SITE_URL = "https://artidor.app";
+export const SITE_URL = "https://artidor.vercel.app";
 
 export const SITE_INFO = {
 	title: "Artidor",

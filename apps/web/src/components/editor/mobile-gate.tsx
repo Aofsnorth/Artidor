@@ -80,8 +80,10 @@ export function MobileGate({ children }: MobileGateProps) {
 						Artidor is a full timeline video editor — built around a pointer, a
 						keyboard, and a little room to breathe. A phone screen can't quite
 						hold all of that yet. Open{" "}
-						<span className="font-medium text-white/90">artidor.app</span> on
-						your computer for the real thing.
+						<span className="font-medium text-white/90">
+							artidor.vercel.app
+						</span>{" "}
+						on your computer for the real thing.
 					</p>
 					<div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
 						<Button

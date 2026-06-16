@@ -11,7 +11,7 @@
  * is therefore self-contained inline styles.
  *
  * No error message or stack is shown to the visitor — only the opaque
- * `digest` hash — so nothing internal leaks on artidor.app.
+ * `digest` hash — so nothing internal leaks on artidor.vercel.app.
  */
 
 import { useEffect } from "react";
