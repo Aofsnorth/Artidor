@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
@@ -8,6 +8,12 @@ import { useEditor } from "@/hooks/use-editor";
 import { buildEffectElement } from "@/lib/timeline/element-utils";
 import type { EffectDefinition } from "@/lib/effects/types";
 import { isAdjustmentEffect } from "@/lib/effects/css-filter";
+import { ADJUST_CATEGORIES, getAdjustCategory } from "@/lib/effects/categories";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function AdjustmentsView() {
@@ -15,10 +21,28 @@ export function AdjustmentsView() {
 	const adjustments = all.filter((def) =>
 		isAdjustmentEffect({ effectType: def.type }),
 	);
+	const [category, setCategory] = useState(ALL_CATEGORY);
+
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: adjustments,
+				category,
+				getCategory: (def) => getAdjustCategory(def.type),
+			}),
+		[adjustments, category],
+	);
 
 	return (
 		<PanelView title="Adjustments">
-			<AdjustmentsGrid adjustments={adjustments} />
+			<div className="flex flex-col gap-3 pb-3">
+				<CategoryBar
+					categories={ADJUST_CATEGORIES}
+					value={category}
+					onChange={setCategory}
+				/>
+				<AdjustmentsGrid adjustments={filtered} />
+			</div>
 		</PanelView>
 	);
 }
