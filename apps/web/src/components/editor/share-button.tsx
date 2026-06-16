@@ -16,14 +16,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Link01Icon, UserAddIcon } from "@hugeicons/core-free-icons";
+import {
+	GoogleIcon,
+	Link01Icon,
+	UserAddIcon,
+} from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
+import {
+	getGoogleAccessToken,
+	getGoogleClientId,
+	initiateGoogleOAuth,
+} from "@/lib/drive/api";
 
 export function ShareButton() {
 	const [open, setOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const [driveConnected, setDriveConnected] = useState(false);
+	const [connecting, setConnecting] = useState(false);
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const hasProject = !!activeProject;
 
@@ -40,6 +51,18 @@ export function ShareButton() {
 		if (!open) setCopied(false);
 	}, [open]);
 
+	// Sharing is Drive-backed, so the dialog reflects the live Drive connection.
+	useEffect(() => {
+		const refresh = () => setDriveConnected(Boolean(getGoogleAccessToken()));
+		refresh();
+		window.addEventListener("drive-auth-changed", refresh);
+		window.addEventListener("focus", refresh);
+		return () => {
+			window.removeEventListener("drive-auth-changed", refresh);
+			window.removeEventListener("focus", refresh);
+		};
+	}, []);
+
 	const handleCopy = async () => {
 		if (!inviteLink) return;
 		try {
@@ -53,6 +76,24 @@ export function ShareButton() {
 			toast.error("Could not copy link", {
 				description: "Select the link and copy it manually.",
 			});
+		}
+	};
+
+	const handleConnect = async () => {
+		if (!getGoogleClientId()) {
+			toast.error("Google Drive isn't set up yet", {
+				description: "Add your Google Client ID via Import, then sign in.",
+			});
+			return;
+		}
+		setConnecting(true);
+		try {
+			await initiateGoogleOAuth();
+			toast.success("Connected to Google Drive");
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Google sign-in failed");
+		} finally {
+			setConnecting(false);
 		}
 	};
 
@@ -82,13 +123,13 @@ export function ShareButton() {
 							icon={Link01Icon}
 							className="mr-2 size-3.5 text-white/60"
 						/>
-						Copy invite link
+						Invite collaborators
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogContent className="relative overflow-hidden border-white/[0.08] bg-[#09090b]/95 text-white backdrop-blur-md sm:max-w-md">
+				<DialogContent className="overflow-hidden border-white/[0.08] bg-[#09090b]/95 text-white backdrop-blur-md sm:max-w-md">
 					<div
 						aria-hidden
 						className="pointer-events-none absolute inset-0 opacity-70"
@@ -115,61 +156,81 @@ export function ShareButton() {
 							</div>
 						</div>
 						<DialogDescription className="pt-1 text-[0.8rem] leading-relaxed text-white/55">
-							Real-time collaboration is coming soon. Your project lives
-							entirely on this device for now — this link is a placeholder for
-							when sharing ships.
+							Read-only sharing is Drive-backed: a viewer loads the project and
+							its media straight from{" "}
+							<em className="not-italic text-white/75">your</em> Google Drive
+							(folder shared read-only) — nothing is uploaded to our servers. So
+							you connect Drive first.
 						</DialogDescription>
 					</DialogHeader>
 
-					<div className="relative mt-1 flex flex-col gap-2.5">
-						<label
-							htmlFor="invite-link"
-							className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45"
-						>
-							Project link
-						</label>
-						<div className="flex items-center gap-2">
-							<div className="relative flex-1">
-								<HugeiconsIcon
-									icon={Link01Icon}
-									className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-white/35"
-									aria-hidden="true"
-								/>
-								<input
-									id="invite-link"
-									type="text"
-									readOnly
-									value={inviteLink}
-									className="h-9 w-full truncate rounded-md border border-white/[0.1] bg-white/[0.04] pr-2.5 pl-8 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
-									onFocus={(event) => event.currentTarget.select()}
-								/>
+					{driveConnected ? (
+						<div className="relative flex flex-col gap-2.5 px-6 pb-6">
+							<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
+								Project link
+							</span>
+							<div className="flex items-center gap-2">
+								<div className="relative flex-1">
+									<HugeiconsIcon
+										icon={Link01Icon}
+										className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-white/35"
+										aria-hidden="true"
+									/>
+									<input
+										id="invite-link"
+										type="text"
+										readOnly
+										value={inviteLink}
+										className="h-9 w-full truncate rounded-md border border-white/[0.1] bg-white/[0.04] pr-2.5 pl-8 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
+										onFocus={(event) => event.currentTarget.select()}
+									/>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleCopy}
+									disabled={!inviteLink}
+									className="h-9 shrink-0 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
+								>
+									{copied ? (
+										<>
+											<Check className="size-3.5" />
+											Copied
+										</>
+									) : (
+										<>
+											<Copy className="size-3.5" />
+											Copy
+										</>
+									)}
+								</Button>
 							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="sm"
-								onClick={handleCopy}
-								disabled={!inviteLink}
-								className="h-9 shrink-0 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
-							>
-								{copied ? (
-									<>
-										<Check className="size-3.5" />
-										Copied
-									</>
-								) : (
-									<>
-										<Copy className="size-3.5" />
-										Copy
-									</>
-								)}
-							</Button>
+							<p className="text-[0.66rem] leading-relaxed text-white/40">
+								The viewer experience ships soon. Until then this is the link
+								format; rotate the project ID from the projects page to revoke.
+							</p>
 						</div>
-						<p className="text-[0.66rem] leading-relaxed text-white/40">
-							Tip: once sharing goes live, rotate the project ID from the
-							projects page to revoke a link.
-						</p>
-					</div>
+					) : (
+						<div className="relative px-6 pb-6">
+							<div className="flex flex-col gap-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3.5">
+								<p className="text-[0.78rem] leading-relaxed text-white/60">
+									Connect Google Drive to enable sharing. The link won't work
+									until your project is on Drive — that's where viewers read the
+									media from.
+								</p>
+								<Button
+									type="button"
+									onClick={handleConnect}
+									disabled={connecting}
+									className="h-9 gap-1.5 self-start bg-white px-3.5 text-[0.78rem] font-medium text-black hover:bg-white/90"
+								>
+									<HugeiconsIcon icon={GoogleIcon} className="size-3.5" />
+									{connecting ? "Connecting…" : "Connect Google Drive"}
+								</Button>
+							</div>
+						</div>
+					)}
 				</DialogContent>
 			</Dialog>
 		</>
