@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EditorCore } from "@/core";
+import { startEditorBridge } from "@/lib/api/bridge";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsListener } from "@/hooks/use-keybindings";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
@@ -140,6 +141,10 @@ function EditorRuntimeBindings() {
 		window.addEventListener("beforeunload", handleBeforeUnload);
 		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
 	}, [editor]);
+
+	// Inbound automation bridge: lets same-origin scripts / other tabs / the
+	// MCP relay drive the editor via editor.api. Torn down on unmount.
+	useEffect(() => startEditorBridge(editor), [editor]);
 
 	useEditorActions();
 	useKeybindingsListener();
