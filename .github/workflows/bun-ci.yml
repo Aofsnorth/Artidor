@@ -53,8 +53,14 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
 
-      - name: Build WASM
-        run: wasm-pack build rust/wasm --target bundler --out-dir pkg
+      - name: Build WASM (verify compile — skips wasm-opt)
+        # `--dev` skips the wasm-opt pass. wasm-pack downloads its own wasm-opt
+        # whose version varies per runner; the macOS runner's is too old for
+        # `--enable-multivalue` (a feature the Rust toolchain now emits), so the
+        # release wasm-opt step fails there. CI only needs to confirm the crates
+        # compile and wasm-bindgen runs — the optimized binary that actually
+        # ships is built locally (release) and committed at rust/wasm/pkg.
+        run: wasm-pack build rust/wasm --target bundler --out-dir pkg --dev
 
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
