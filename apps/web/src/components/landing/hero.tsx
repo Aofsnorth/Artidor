@@ -52,10 +52,22 @@ export function Hero() {
 					<span className="text-white/55">Try the editor</span>
 				</div>
 
-				<h1 className="text-balance bg-gradient-to-b from-white to-white/80 bg-clip-text font-serif text-5xl font-medium italic leading-[1.02] tracking-[-0.02em] text-transparent md:text-7xl lg:text-[5.5rem]">
-					The video editor
-					<br />
-					that respects your machine.
+				{/* leading-[1.15] + pb give the italic serif descenders (y, p, g)
+				   room so bg-clip-text doesn't shear them off. "respects" gets a
+				   metallic-gold gradient; the rest stays the soft white gradient. */}
+				<h1 className="text-balance pb-[0.12em] font-serif text-5xl font-medium italic leading-[1.15] tracking-[-0.02em] md:text-7xl lg:text-[5.5rem]">
+					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
+						The video editor
+						<br />
+						that{" "}
+					</span>
+					<span className="bg-gradient-to-b from-[#FBE9A6] via-[#E8B923] to-[#B8860B] bg-clip-text text-transparent">
+						respects
+					</span>
+					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
+						{" "}
+						your machine.
+					</span>
 				</h1>
 
 				<p className="text-pretty mx-auto mt-7 max-w-2xl text-base font-light leading-relaxed tracking-wide text-white/65 md:text-lg">
