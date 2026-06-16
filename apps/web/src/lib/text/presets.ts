@@ -2,11 +2,16 @@ import type { TextElement } from "@/lib/timeline";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 
 export type TextPresetCategory =
+	| "basic"
 	| "title"
 	| "subtitle"
 	| "lower-third"
 	| "callout"
-	| "quote";
+	| "quote"
+	| "social"
+	| "bold"
+	| "handwritten"
+	| "neon";
 
 export interface TextPreset {
 	id: string;
@@ -36,6 +41,30 @@ const baseDefaults = {
 	},
 	opacity: 1,
 };
+
+/** No background box (the common case). */
+const NO_BG = {
+	enabled: false,
+	color: "#000000",
+	cornerRadius: 0,
+	paddingX: 0,
+	paddingY: 0,
+	offsetX: 0,
+	offsetY: 0,
+};
+
+/** A filled, padded background box (for pills, captions, stickers). */
+function box(color: string, cornerRadius: number) {
+	return {
+		enabled: true,
+		color,
+		cornerRadius,
+		paddingX: 16,
+		paddingY: 8,
+		offsetX: 0,
+		offsetY: 0,
+	};
+}
 
 export const textPresets: TextPreset[] = [
 	{
@@ -517,6 +546,254 @@ export const textPresets: TextPreset[] = [
 				offsetX: 0,
 				offsetY: 0,
 			},
+		}),
+	},
+
+	/* --------------------------------- basic --------------------------------- */
+	{
+		id: "basic-plain",
+		type: "basic-plain",
+		name: "Plain",
+		keywords: ["plain", "basic", "simple", "body"],
+		category: "basic",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Plain",
+			content: "Text",
+			fontSize: 18,
+			fontFamily: "Helvetica",
+			fontWeight: "normal",
+			color: "#ffffff",
+			background: NO_BG,
+		}),
+	},
+	{
+		id: "basic-caption",
+		type: "basic-caption",
+		name: "Caption",
+		keywords: ["caption", "basic", "small", "label"],
+		category: "basic",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Caption",
+			content: "Caption text",
+			fontSize: 13,
+			fontFamily: "Arial",
+			fontWeight: "normal",
+			color: "#e5e7eb",
+			background: NO_BG,
+		}),
+	},
+	{
+		id: "basic-highlight",
+		type: "basic-highlight",
+		name: "Highlight",
+		keywords: ["highlight", "marker", "bar", "basic"],
+		category: "basic",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Highlight",
+			content: "Highlight",
+			fontSize: 18,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#0a0a0a",
+			background: box("#facc15", 2),
+		}),
+	},
+
+	/* --------------------------------- social -------------------------------- */
+	{
+		id: "social-caption",
+		type: "social-caption",
+		name: "Auto Caption",
+		keywords: ["tiktok", "caption", "social", "subtitle"],
+		category: "social",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Auto Caption",
+			content: "auto caption",
+			fontSize: 18,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#ffffff",
+			background: box("rgba(0,0,0,0.85)", 6),
+		}),
+	},
+	{
+		id: "social-hashtag",
+		type: "social-hashtag",
+		name: "Hashtag",
+		keywords: ["hashtag", "tag", "social", "pill"],
+		category: "social",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Hashtag",
+			content: "#trending",
+			fontSize: 16,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#22d3ee",
+			background: box("rgba(8,47,73,0.9)", 999),
+		}),
+	},
+	{
+		id: "social-subscribe",
+		type: "social-subscribe",
+		name: "Subscribe",
+		keywords: ["subscribe", "cta", "social", "youtube"],
+		category: "social",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Subscribe",
+			content: "SUBSCRIBE",
+			fontSize: 18,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#ffffff",
+			background: box("#dc2626", 6),
+		}),
+	},
+	{
+		id: "social-meme",
+		type: "social-meme",
+		name: "Meme",
+		keywords: ["meme", "impact", "social", "caption"],
+		category: "social",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Meme",
+			content: "TOP TEXT",
+			fontSize: 26,
+			fontFamily: "Impact",
+			fontWeight: "bold",
+			color: "#ffffff",
+			letterSpacing: 1,
+			background: NO_BG,
+		}),
+	},
+
+	/* ---------------------------------- bold --------------------------------- */
+	{
+		id: "bold-impact",
+		type: "bold-impact",
+		name: "Impact",
+		keywords: ["impact", "bold", "heavy", "all-caps"],
+		category: "bold",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Impact",
+			content: "IMPACT",
+			fontSize: 30,
+			fontFamily: "Impact",
+			fontWeight: "bold",
+			color: "#ffffff",
+			letterSpacing: 2,
+			background: NO_BG,
+		}),
+	},
+	{
+		id: "bold-sticker",
+		type: "bold-sticker",
+		name: "Sticker",
+		keywords: ["sticker", "bold", "rounded", "badge"],
+		category: "bold",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Sticker",
+			content: "Sticker",
+			fontSize: 20,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#0a0a0a",
+			background: box("#ffffff", 14),
+		}),
+	},
+
+	/* ------------------------------ handwritten ------------------------------ */
+	{
+		id: "handwritten-script",
+		type: "handwritten-script",
+		name: "Script",
+		keywords: ["script", "cursive", "handwritten", "signature"],
+		category: "handwritten",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Script",
+			content: "Beautiful",
+			fontSize: 28,
+			fontFamily: "Brush Script MT",
+			fontStyle: "italic",
+			color: "#ffffff",
+			background: NO_BG,
+		}),
+	},
+	{
+		id: "handwritten-marker",
+		type: "handwritten-marker",
+		name: "Marker",
+		keywords: ["marker", "felt", "handwritten", "casual"],
+		category: "handwritten",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Marker",
+			content: "Marker",
+			fontSize: 22,
+			fontFamily: "Comic Sans MS",
+			fontWeight: "bold",
+			color: "#fde68a",
+			background: NO_BG,
+		}),
+	},
+
+	/* ---------------------------------- neon --------------------------------- */
+	{
+		id: "neon-pink",
+		type: "neon-pink",
+		name: "Neon Pink",
+		keywords: ["neon", "pink", "glow", "night"],
+		category: "neon",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Neon Pink",
+			content: "NEON",
+			fontSize: 26,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#ff4dd2",
+			letterSpacing: 2,
+			background: NO_BG,
+		}),
+	},
+	{
+		id: "neon-cyan",
+		type: "neon-cyan",
+		name: "Neon Cyan",
+		keywords: ["neon", "cyan", "glow", "electric"],
+		category: "neon",
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: "Neon Cyan",
+			content: "GLOW",
+			fontSize: 26,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#34fff0",
+			letterSpacing: 2,
+			background: NO_BG,
 		}),
 	},
 ];

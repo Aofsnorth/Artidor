@@ -24,11 +24,16 @@ import { cn } from "@/utils/ui";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 const TEXT_CATEGORIES: { key: TextPresetCategory; label: string }[] = [
+	{ key: "basic", label: "Basic" },
 	{ key: "title", label: "Titles" },
 	{ key: "subtitle", label: "Subtitles" },
 	{ key: "lower-third", label: "Lower Thirds" },
 	{ key: "callout", label: "Callouts" },
 	{ key: "quote", label: "Quotes" },
+	{ key: "social", label: "Social" },
+	{ key: "bold", label: "Bold" },
+	{ key: "handwritten", label: "Handwritten" },
+	{ key: "neon", label: "Neon" },
 ];
 const TEXT_LABELS = TEXT_CATEGORIES.map((c) => c.label);
 const TEXT_KEY_TO_LABEL = new Map(TEXT_CATEGORIES.map((c) => [c.key, c.label]));
