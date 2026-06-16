@@ -4,7 +4,12 @@ import type {
 	AnimationValue,
 } from "@/lib/animation/types";
 
-export type AnimationPresetCategory = "entrance" | "exit" | "combo";
+export type AnimationPresetCategory =
+	| "entrance"
+	| "emphasis"
+	| "exit"
+	| "combo"
+	| "loop";
 
 export interface AnimationPresetKeyframe {
 	propertyPath: AnimationPath;
