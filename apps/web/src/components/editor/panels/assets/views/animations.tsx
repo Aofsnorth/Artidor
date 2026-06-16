@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	PlayIcon,
@@ -19,15 +18,24 @@ import type {
 	AnimationPreset,
 	AnimationPresetCategory,
 } from "@/lib/animation/presets";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
-const CATEGORIES: { key: AnimationPresetCategory | "all"; label: string }[] = [
-	{ key: "all", label: "All" },
-	{ key: "entrance", label: "Entrance" },
-	{ key: "exit", label: "Exit" },
-	{ key: "combo", label: "Combo" },
-];
+const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
+	[
+		{ key: "entrance", label: "Entrance" },
+		{ key: "exit", label: "Exit" },
+		{ key: "combo", label: "Combo" },
+	];
+const ANIMATION_LABELS = ANIMATION_CATEGORIES.map((c) => c.label);
+const ANIMATION_KEY_TO_LABEL = new Map(
+	ANIMATION_CATEGORIES.map((c) => [c.key, c.label]),
+);
 
 const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 	entrance: <HugeiconsIcon icon={ArrowDown01Icon} className="size-3" />,
@@ -37,13 +45,18 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 
 export function AnimationsView() {
 	const all = useAnimationPresets();
-	const [filter, setFilter] = useState<AnimationPresetCategory | "all">("all");
+	const [category, setCategory] = useState(ALL_CATEGORY);
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
-	const filtered = useMemo(() => {
-		if (filter === "all") return all;
-		return all.filter((p) => p.category === filter);
-	}, [all, filter]);
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: all,
+				category,
+				getCategory: (p) => ANIMATION_KEY_TO_LABEL.get(p.category),
+			}),
+		[all, category],
+	);
 
 	return (
 		<PanelView title="Animations">
@@ -51,19 +64,11 @@ export function AnimationsView() {
 				<p className="text-muted-foreground text-xs">
 					Select an element on the timeline, then choose an animation to apply.
 				</p>
-				<div className="flex flex-wrap gap-1">
-					{CATEGORIES.map((cat) => (
-						<Button
-							key={cat.key}
-							variant={filter === cat.key ? "secondary" : "ghost"}
-							size="sm"
-							onClick={() => setFilter(cat.key)}
-							className="h-7 px-2 text-xs"
-						>
-							{cat.label}
-						</Button>
-					))}
-				</div>
+				<CategoryBar
+					categories={ANIMATION_LABELS}
+					value={category}
+					onChange={setCategory}
+				/>
 				<div
 					className="grid gap-2"
 					style={{

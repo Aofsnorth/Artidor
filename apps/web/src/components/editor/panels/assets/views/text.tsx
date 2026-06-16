@@ -15,43 +15,46 @@ import {
 	type TextPreset,
 	type TextPresetCategory,
 } from "@/lib/text/presets";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
-const CATEGORIES: { key: TextPresetCategory | "all"; label: string }[] = [
-	{ key: "all", label: "All" },
+const TEXT_CATEGORIES: { key: TextPresetCategory; label: string }[] = [
 	{ key: "title", label: "Titles" },
 	{ key: "subtitle", label: "Subtitles" },
 	{ key: "lower-third", label: "Lower Thirds" },
 	{ key: "callout", label: "Callouts" },
 	{ key: "quote", label: "Quotes" },
 ];
+const TEXT_LABELS = TEXT_CATEGORIES.map((c) => c.label);
+const TEXT_KEY_TO_LABEL = new Map(TEXT_CATEGORIES.map((c) => [c.key, c.label]));
 
 export function TextView() {
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
-	const [filter, setFilter] = useState<TextPresetCategory | "all">("all");
+	const [category, setCategory] = useState(ALL_CATEGORY);
 
-	const filtered = useMemo(() => {
-		if (filter === "all") return textPresets;
-		return textPresets.filter((p) => p.category === filter);
-	}, [filter]);
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: textPresets,
+				category,
+				getCategory: (p) => TEXT_KEY_TO_LABEL.get(p.category),
+			}),
+		[category],
+	);
 
 	return (
 		<PanelView title="Text">
 			<div className="flex flex-col gap-3 pb-3">
-				<div className="flex flex-wrap gap-1">
-					{CATEGORIES.map((cat) => (
-						<Button
-							key={cat.key}
-							variant={filter === cat.key ? "secondary" : "ghost"}
-							size="sm"
-							onClick={() => setFilter(cat.key)}
-							className="h-7 px-2 text-xs"
-						>
-							{cat.label}
-						</Button>
-					))}
-				</div>
+				<CategoryBar
+					categories={TEXT_LABELS}
+					value={category}
+					onChange={setCategory}
+				/>
 				<div
 					className="grid gap-2"
 					style={{

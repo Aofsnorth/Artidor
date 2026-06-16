@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -11,21 +10,36 @@ import {
 	FILTER_PRESETS,
 	type FilterPreset,
 } from "@/lib/filters";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { useEditor } from "@/hooks/use-editor";
 import type { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
 import { cn } from "@/utils/ui";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
+const FILTER_LABELS = FILTER_CATEGORIES.map((c) => c.label);
+const FILTER_ID_TO_LABEL = new Map(
+	FILTER_CATEGORIES.map((c) => [c.id, c.label]),
+);
+
 export function FiltersView() {
-	const [category, setCategory] = useState<string>("all");
+	const [category, setCategory] = useState(ALL_CATEGORY);
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const editor = useEditor();
 
-	const filtered =
-		category === "all"
-			? FILTER_PRESETS
-			: FILTER_PRESETS.filter((p) => p.category === category);
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: FILTER_PRESETS,
+				category,
+				getCategory: (p) => FILTER_ID_TO_LABEL.get(p.category),
+			}),
+		[category],
+	);
 
 	return (
 		<PanelView title="Filters">
@@ -34,23 +48,11 @@ export function FiltersView() {
 					One-click color grading. Select a video clip first, then tap a filter
 					to apply.
 				</p>
-				<div className="flex flex-wrap gap-1">
-					<FilterCategoryChip
-						id="all"
-						label="All"
-						active={category === "all"}
-						onClick={setCategory}
-					/>
-					{FILTER_CATEGORIES.map((cat) => (
-						<FilterCategoryChip
-							key={cat.id}
-							id={cat.id}
-							label={cat.label}
-							active={category === cat.id}
-							onClick={setCategory}
-						/>
-					))}
-				</div>
+				<CategoryBar
+					categories={FILTER_LABELS}
+					value={category}
+					onChange={setCategory}
+				/>
 				<div
 					className="grid gap-3"
 					style={{
@@ -125,29 +127,6 @@ function applyFilter({
 		],
 	});
 	toast.success(`Filter "${preset.name}" applied`);
-}
-
-function FilterCategoryChip({
-	id,
-	label,
-	active,
-	onClick,
-}: {
-	id: string;
-	label: string;
-	active: boolean;
-	onClick: (id: string) => void;
-}) {
-	return (
-		<Button
-			size="sm"
-			variant={active ? "secondary" : "ghost"}
-			className="h-7 px-2 text-xs"
-			onClick={() => onClick(id)}
-		>
-			{label}
-		</Button>
-	);
 }
 
 function FilterItem({
