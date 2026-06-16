@@ -40,14 +40,26 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 		const loadProject = async () => {
 			try {
 				setIsLoading(true);
-				await initializeGpuRenderer();
-				editor.renderer.setDegraded(!isGpuAvailable());
+				// Load the project first so the editor shell appears immediately.
+				// Do NOT block the loading screen on GPU init — WebGPU pipeline
+				// compilation can take several seconds on some drivers/GPUs (e.g.
+				// laptop RTX cards on a cold driver), which made "New project" feel
+				// stuck. The preview render loop now retries each frame instead of
+				// sticking, so it renders as soon as the GPU is ready.
 				await editor.project.loadProject({ id: projectId });
 
 				if (cancelled) return;
 
 				setIsLoading(false);
 				loadFontAtlas();
+
+				// Warm up the GPU renderer in the background; flip the degraded
+				// flag once it resolves (or fails).
+				void initializeGpuRenderer().then(() => {
+					if (!cancelled) {
+						editor.renderer.setDegraded(!isGpuAvailable());
+					}
+				});
 			} catch (err) {
 				if (cancelled) return;
 
