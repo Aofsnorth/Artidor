@@ -21,6 +21,7 @@ import {
 } from "@/lib/text/measure-element";
 import { videoCache } from "@/services/video-cache/service";
 import type { CanvasRenderer } from "./canvas-renderer";
+import { resolveParentedTransform } from "./parenting-resolve";
 import type { AnyBaseNode } from "./nodes/base-node";
 import {
 	BlurBackgroundNode,
@@ -148,10 +149,14 @@ function resolveVisualState({
 		elementStartTime: params.timeOffset,
 		elementDuration: params.duration,
 	});
-	const transform = resolveTransformAtTime({
-		baseTransform: params.transform,
-		animations: params.animations,
-		localTime,
+	const transform = resolveParentedTransform({
+		localTransform: resolveTransformAtTime({
+			baseTransform: params.transform,
+			animations: params.animations,
+			localTime,
+		}),
+		parentChain: params.parentChain,
+		time: context.time,
 	});
 	const opacity = resolveOpacityAtTime({
 		baseOpacity: params.opacity,
@@ -334,10 +339,14 @@ function resolveTextNode({
 
 	return {
 		localTime,
-		transform: resolveTransformAtTime({
-			baseTransform: node.params.transform,
-			animations: node.params.animations,
-			localTime,
+		transform: resolveParentedTransform({
+			localTransform: resolveTransformAtTime({
+				baseTransform: node.params.transform,
+				animations: node.params.animations,
+				localTime,
+			}),
+			parentChain: node.params.parentChain,
+			time: context.time,
 		}),
 		opacity: resolveOpacityAtTime({
 			baseOpacity: node.params.opacity,

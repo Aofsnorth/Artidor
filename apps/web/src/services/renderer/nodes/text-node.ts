@@ -14,12 +14,15 @@ import {
 	splitTextLineUnits,
 } from "@/lib/text/animator";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import type { ParentChainEntry } from "../parenting-resolve";
 import { clamp } from "@/utils/math";
 
 export type TextNodeParams = TextElement & {
 	canvasCenter: { x: number; y: number };
 	canvasHeight: number;
 	textBaseline?: CanvasTextBaseline;
+	/** Ancestor transform chain (closest-first) for layer parenting. */
+	parentChain?: ParentChainEntry[];
 };
 
 export interface ResolvedTextNodeState {

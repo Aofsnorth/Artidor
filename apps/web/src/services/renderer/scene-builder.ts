@@ -1,5 +1,11 @@
-import type { SceneTracks, TimelineTrack } from "@/lib/timeline";
+import type {
+	SceneTracks,
+	TimelineElement,
+	TimelineTrack,
+	VisualElement,
+} from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
+import type { ParentChainEntry } from "./parenting-resolve";
 import { RootNode } from "./nodes/root-node";
 import { VideoNode } from "./nodes/video-node";
 import { ImageNode } from "./nodes/image-node";
@@ -14,6 +20,65 @@ import type { TBackground, TCanvasSize } from "@/lib/project/types";
 import { DEFAULT_BACKGROUND_BLUR_INTENSITY } from "@/lib/background/blur";
 
 const PREVIEW_MAX_IMAGE_SIZE = 2048;
+
+function hasTransform(element: TimelineElement): element is VisualElement {
+	return "transform" in element;
+}
+
+/** Index every element by id (across all tracks, including hidden ones) so the
+ * parent chain of any layer can be resolved even when an ancestor is not itself
+ * rendered. */
+function buildElementsById({
+	tracks,
+}: {
+	tracks: SceneTracks;
+}): Map<string, TimelineElement> {
+	const map = new Map<string, TimelineElement>();
+	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+		for (const element of track.elements) {
+			map.set(element.id, element);
+		}
+	}
+	return map;
+}
+
+/** Walk an element's `parentId` chain (closest-first), collecting each
+ * ancestor's transform sources. Stops at a disabled link, a missing/cycle node,
+ * or a non-transformable ancestor. Returns an empty chain when this element's
+ * own parent link is disabled. */
+function buildParentChain({
+	element,
+	elementsById,
+}: {
+	element: TimelineElement;
+	elementsById: Map<string, TimelineElement>;
+}): ParentChainEntry[] {
+	if (!hasTransform(element) || element.parentEnabled === false) {
+		return [];
+	}
+
+	const chain: ParentChainEntry[] = [];
+	const seen = new Set<string>([element.id]);
+	let cursor = element.parentId;
+	while (cursor && !seen.has(cursor)) {
+		seen.add(cursor);
+		const parent = elementsById.get(cursor);
+		if (!parent || !hasTransform(parent)) {
+			break;
+		}
+		chain.push({
+			transform: parent.transform,
+			animations: parent.animations,
+			timeOffset: parent.startTime,
+			duration: parent.duration,
+		});
+		if (parent.parentEnabled === false) {
+			break;
+		}
+		cursor = parent.parentId;
+	}
+	return chain;
+}
 
 function getVisibleSortedElements({ track }: { track: TimelineTrack }) {
 	return track.elements
@@ -30,11 +95,13 @@ function buildTrackNodes({
 	mediaMap,
 	canvasSize,
 	isPreview,
+	elementsById,
 }: {
 	tracks: TimelineTrack[];
 	mediaMap: Map<string, MediaAsset>;
 	canvasSize: TCanvasSize;
 	isPreview?: boolean;
+	elementsById: Map<string, TimelineElement>;
 }): AnyBaseNode[] {
 	const nodes: AnyBaseNode[] = [];
 
@@ -42,6 +109,8 @@ function buildTrackNodes({
 		const elements = getVisibleSortedElements({ track });
 
 		for (const element of elements) {
+			const parentChain = buildParentChain({ element, elementsById });
+
 			if (element.type === "effect") {
 				nodes.push(
 					new EffectLayerNode({
@@ -77,6 +146,7 @@ function buildTrackNodes({
 							blendMode: element.blendMode,
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
+							parentChain,
 						}),
 					);
 				}
@@ -94,6 +164,7 @@ function buildTrackNodes({
 							blendMode: element.blendMode,
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
+							parentChain,
 							...(isPreview && {
 								maxSourceSize: PREVIEW_MAX_IMAGE_SIZE,
 							}),
@@ -110,6 +181,7 @@ function buildTrackNodes({
 						canvasHeight: canvasSize.height,
 						textBaseline: "middle",
 						effects: element.effects ?? [],
+						parentChain,
 					}),
 				);
 			}
@@ -129,6 +201,7 @@ function buildTrackNodes({
 						opacity: element.opacity,
 						blendMode: element.blendMode,
 						effects: element.effects ?? [],
+						parentChain,
 					}),
 				);
 			}
@@ -148,6 +221,7 @@ function buildTrackNodes({
 						blendMode: element.blendMode,
 						effects: element.effects ?? [],
 						masks: element.masks ?? [],
+						parentChain,
 					}),
 				);
 			}
@@ -225,6 +299,7 @@ export function buildScene({
 }: BuildSceneParams) {
 	const rootNode = new RootNode({ duration });
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
+	const elementsById = buildElementsById({ tracks });
 
 	const visibleTracks = [
 		...tracks.overlay.filter((track) => !("hidden" in track && track.hidden)),
@@ -238,6 +313,7 @@ export function buildScene({
 		mediaMap,
 		canvasSize,
 		isPreview,
+		elementsById,
 	});
 
 	if (background.type === "blur") {
