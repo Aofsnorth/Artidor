@@ -54,14 +54,15 @@ export function Hero() {
 
 				{/* leading-[1.15] + pb give the italic serif descenders (y, p, g)
 				   room so bg-clip-text doesn't shear them off. "respects" gets a
-				   metallic-gold gradient; the rest stays the soft white gradient. */}
+				   bright silver gradient + a soft dreamy glow; it starts near-white
+				   so it blends seamlessly with the white text on either side. */}
 				<h1 className="text-balance pb-[0.12em] font-serif text-5xl font-medium italic leading-[1.15] tracking-[-0.02em] md:text-7xl lg:text-[5.5rem]">
 					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
 						The video editor
 						<br />
 						that{" "}
 					</span>
-					<span className="bg-gradient-to-b from-[#FBE9A6] via-[#E8B923] to-[#B8860B] bg-clip-text text-transparent">
+					<span className="bg-gradient-to-b from-[#ffffff] via-[#d7dee9] to-[#9aa7ba] bg-clip-text text-transparent [filter:drop-shadow(0_0_24px_rgba(214,224,240,0.55))_drop-shadow(0_0_9px_rgba(255,255,255,0.5))]">
 						respects
 					</span>
 					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
