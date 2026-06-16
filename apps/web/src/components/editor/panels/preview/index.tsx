@@ -174,6 +174,12 @@ function PreviewCanvas({
 					})
 					.then(() => {
 						renderingRef.current = false;
+					})
+					.catch(() => {
+						// Release the lock on failure (e.g. the GPU is still warming
+						// up, or a transient frame/device error) so the next frame
+						// retries instead of leaving the preview permanently stuck.
+						renderingRef.current = false;
 					});
 			}
 		}

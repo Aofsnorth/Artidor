@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -10,6 +11,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+
+const CONFIRM_WORD = "DELETE";
 
 export function DeleteProjectDialog({
 	isOpen,
@@ -25,6 +28,20 @@ export function DeleteProjectDialog({
 	const count = projectNames.length;
 	const isSingle = count === 1;
 	const singleName = isSingle ? projectNames[0] : null;
+
+	const [confirmText, setConfirmText] = useState("");
+	const canDelete = confirmText.trim().toUpperCase() === CONFIRM_WORD;
+
+	// Clear the field whenever the dialog opens/closes so a stale "DELETE"
+	// can't carry over into the next confirmation.
+	useEffect(() => {
+		if (!isOpen) setConfirmText("");
+	}, [isOpen]);
+
+	const handleConfirm = () => {
+		if (!canDelete) return;
+		onConfirm();
+	};
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -67,6 +84,15 @@ export function DeleteProjectDialog({
 							placeholder="DELETE"
 							size="lg"
 							variant="destructive"
+							value={confirmText}
+							onChange={(event) => setConfirmText(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter") {
+									event.preventDefault();
+									handleConfirm();
+								}
+							}}
+							autoFocus
 						/>
 					</div>
 				</DialogBody>
@@ -74,8 +100,12 @@ export function DeleteProjectDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel
 					</Button>
-					<Button variant="destructive" onClick={onConfirm}>
-						Delete project
+					<Button
+						variant="destructive"
+						onClick={handleConfirm}
+						disabled={!canDelete}
+					>
+						Delete {isSingle ? "project" : `${count} projects`}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
