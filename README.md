@@ -8,7 +8,7 @@
 
 **Local-first · MIT-licensed · No uploads · No paywalls · AI-native**
 
-<a href="https://artidor.app">Website</a> · <a href="#quick-start">Quick start</a> · <a href="#features">Features</a> · <a href="#ai-co-pilot">AI Co-Pilot</a> · <a href="https://github.com/Aofsnorth/Artidor/issues">Issues</a> · <a href="https://discord.com/invite/Mu3acKZvCp">Discord</a>
+<a href="https://artidor.vercel.app/">Website</a> · <a href="#quick-start">Quick start</a> · <a href="#features">Features</a> · <a href="#ai-co-pilot">AI Co-Pilot</a> · <a href="https://github.com/Aofsnorth/Artidor/issues">Issues</a> · <a href="https://discord.com/invite/Mu3acKZvCp">Discord</a>
 
 [![MIT License](https://img.shields.io/badge/license-MIT-white?style=flat-square)](./LICENSE)
 [![Built on OpenCut](https://img.shields.io/badge/fork-OpenCut-2a2a2a?style=flat-square)](https://github.com/OpenCut-app/OpenCut)
