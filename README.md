@@ -272,8 +272,8 @@ For larger changes, open an issue first so we can agree on direction. See [`.git
 
 ## Community
 
-- **Discord** — <https://discord.com/invite/Mu3acKZvCp>
-- **X / Twitter** — <https://x.com/artidorapp>
+- **Discord** — 
+- **X / Twitter** — 
 - **GitHub Discussions** — <https://github.com/Aofsnorth/Artidor/discussions>
 - **Sponsors** — <https://artidor.vercel.app/sponsors> (if you want to throw a few bucks at the project)
 
