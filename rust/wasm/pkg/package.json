@@ -1,0 +1,23 @@
+{
+  "name": "artidor-wasm",
+  "type": "module",
+  "description": "Shared video editor logic compiled to WebAssembly",
+  "version": "0.2.5",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Aofsnorth/Artidor"
+  },
+  "files": [
+    "artidor_wasm_bg.wasm",
+    "artidor_wasm.js",
+    "artidor_wasm_bg.js",
+    "artidor_wasm.d.ts"
+  ],
+  "main": "artidor_wasm.js",
+  "types": "artidor_wasm.d.ts",
+  "sideEffects": [
+    "./artidor_wasm.js",
+    "./snippets/*"
+  ]
+}

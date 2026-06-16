@@ -7,7 +7,7 @@
     "rust/wasm/pkg"
   ],
   "scripts": {
-    "build:wasm": "wasm-pack build rust/wasm --target bundler --out-dir pkg",
+    "build:wasm": "wasm-pack build rust/wasm --target bundler --out-dir pkg && rm -f rust/wasm/pkg/.gitignore",
     "build:web": "turbo run build --filter=@artidor/web",
     "deploy:web": "turbo run deploy --filter=@artidor/web",
     "dev:wasm": "cargo watch -w rust/crates -w rust/wasm/src -s 'wasm-pack build rust/wasm --target bundler --out-dir pkg'",
