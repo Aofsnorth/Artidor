@@ -32,7 +32,7 @@ import { formatNumberForDisplay } from "@/utils/math";
 import { OcSquarePlusIcon } from "@/components/icons";
 import type { TCanvasSize } from "@/lib/project/types";
 
-type SettingsView = "project-info" | "background";
+type SettingsView = "project-info" | "background" | "features";
 
 const PRESET_LABELS: Record<string, string> = {
 	"1:1": "1:1",
@@ -217,6 +217,7 @@ export function SettingsView() {
 					<TabsList>
 						<TabsTrigger value="project-info">Project info</TabsTrigger>
 						<TabsTrigger value="background">Background</TabsTrigger>
+						<TabsTrigger value="features">Features</TabsTrigger>
 					</TabsList>
 				</Tabs>
 			}

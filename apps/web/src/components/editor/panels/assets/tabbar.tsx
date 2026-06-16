@@ -18,10 +18,19 @@ import {
 } from "@/hooks/use-storage-estimate";
 import { useAIStore } from "@/stores/ai-store";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
+import {
+	isFeatureDisabled,
+	useFeatureFlagsStore,
+} from "@/stores/feature-flags-store";
 
 export function TabBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
 	const aiStatus = useAIStore((s) => s.status);
+	const enabledFlags = useFeatureFlagsStore((s) => s.enabled);
+	// Hide tabs the user has disabled via the feature-flags (modularity).
+	const visibleTabKeys = VISIBLE_TAB_KEYS.filter(
+		(tabKey) => !isFeatureDisabled(tabKey, enabledFlags),
+	);
 
 	return (
 		<div className="panel glass-strong relative flex h-full w-[4.5rem] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
@@ -37,7 +46,7 @@ export function TabBar() {
 		   ~25.4rem of vertical space and leave the rest for the
 		   storage card and any padding. */}
 			<div className="relative grid min-h-0 flex-1 auto-rows-fr content-start gap-[2px] overflow-y-auto scrollbar-hidden px-1.5 py-2 z-20">
-				{VISIBLE_TAB_KEYS.map((tabKey) => {
+				{visibleTabKeys.map((tabKey) => {
 					const tab = tabs[tabKey];
 					const isAI = tabKey === "ai";
 					// AI is feature-flagged off: keep the tab visible (so the tool

@@ -52,6 +52,12 @@ import {
 	twistEffectDefinition,
 	thermalEffectDefinition,
 } from "./video/stylize-distort";
+import {
+	velocityBlurEffectDefinition,
+	strokeEffectDefinition,
+	dropShadowEffectDefinition,
+	outerGlowEffectDefinition,
+} from "./video/stroke-shadow-glow";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -101,6 +107,10 @@ const defaultEffects = [
 	bulgeEffectDefinition,
 	twistEffectDefinition,
 	thermalEffectDefinition,
+	velocityBlurEffectDefinition,
+	strokeEffectDefinition,
+	dropShadowEffectDefinition,
+	outerGlowEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
