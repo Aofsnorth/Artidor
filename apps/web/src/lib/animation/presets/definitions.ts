@@ -1036,6 +1036,245 @@ const presets: AnimationPreset[] = [
 			},
 		],
 	},
+
+	/* ------------------------------- emphasis ------------------------------ */
+	{
+		id: "pulse",
+		type: "pulse",
+		name: "Pulse",
+		keywords: ["pulse", "scale", "emphasis", "beat"],
+		category: "emphasis",
+		duration: SECOND * 0.6,
+		keyframes: () => [
+			{
+				propertyPath: "transform.scaleX",
+				time: 0,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: 0,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.3,
+				value: 1.15,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.3,
+				value: 1.15,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.6,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.6,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "shake",
+		type: "shake",
+		name: "Shake",
+		keywords: ["shake", "wiggle", "emphasis", "horizontal"],
+		category: "emphasis",
+		duration: SECOND * 0.5,
+		keyframes: () => [
+			{
+				propertyPath: "transform.positionX",
+				time: 0,
+				value: 0,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionX",
+				time: SECOND * 0.12,
+				value: -10,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionX",
+				time: SECOND * 0.25,
+				value: 10,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionX",
+				time: SECOND * 0.38,
+				value: -6,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionX",
+				time: SECOND * 0.5,
+				value: 0,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "flash",
+		type: "flash",
+		name: "Flash",
+		keywords: ["flash", "blink", "emphasis", "opacity"],
+		category: "emphasis",
+		duration: SECOND * 0.6,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 1, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.2,
+				value: 0.2,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.4,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.5,
+				value: 0.2,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.6,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "wobble",
+		type: "wobble",
+		name: "Wobble",
+		keywords: ["wobble", "rotate", "emphasis", "tilt"],
+		category: "emphasis",
+		duration: SECOND * 0.7,
+		keyframes: () => [
+			{
+				propertyPath: "transform.rotate",
+				time: 0,
+				value: 0,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.18,
+				value: -8,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.36,
+				value: 8,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.54,
+				value: -4,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.7,
+				value: 0,
+				interpolation: linear,
+			},
+		],
+	},
+
+	/* --------------------------------- loop -------------------------------- */
+	{
+		id: "breathe",
+		type: "breathe",
+		name: "Breathe",
+		keywords: ["breathe", "loop", "scale", "idle"],
+		category: "loop",
+		duration: SECOND * 2,
+		keyframes: () => [
+			{
+				propertyPath: "transform.scaleX",
+				time: 0,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: 0,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND,
+				value: 1.06,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND,
+				value: 1.06,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 2,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 2,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "float",
+		type: "float",
+		name: "Float",
+		keywords: ["float", "loop", "bob", "hover"],
+		category: "loop",
+		duration: SECOND * 2,
+		keyframes: () => [
+			{
+				propertyPath: "transform.positionY",
+				time: 0,
+				value: 0,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND,
+				value: -12,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND * 2,
+				value: 0,
+				interpolation: linear,
+			},
+		],
+	},
 ];
 
 export function registerDefaultAnimationPresets(): void {

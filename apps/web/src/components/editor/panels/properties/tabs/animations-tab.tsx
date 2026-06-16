@@ -10,6 +10,8 @@ import {
 	ArrowDown01Icon,
 	ArrowUp01Icon,
 	RefreshIcon,
+	SparklesIcon,
+	MotionIcon,
 } from "@hugeicons/core-free-icons";
 import {
 	useAnimationPresets,
@@ -25,14 +27,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 const CATEGORIES: { key: AnimationPresetCategory | "all"; label: string }[] = [
 	{ key: "all", label: "All" },
 	{ key: "entrance", label: "In" },
+	{ key: "emphasis", label: "Emphasis" },
 	{ key: "exit", label: "Out" },
 	{ key: "combo", label: "Combo" },
+	{ key: "loop", label: "Loop" },
 ];
 
 const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 	entrance: <HugeiconsIcon icon={ArrowDown01Icon} className="size-3" />,
+	emphasis: <HugeiconsIcon icon={SparklesIcon} className="size-3" />,
 	exit: <HugeiconsIcon icon={ArrowUp01Icon} className="size-3" />,
 	combo: <HugeiconsIcon icon={RefreshIcon} className="size-3" />,
+	loop: <HugeiconsIcon icon={MotionIcon} className="size-3" />,
 };
 
 export function AnimationsTab() {
@@ -174,6 +180,18 @@ function presetStyleKeyframes(preset: AnimationPreset): string {
 			return `@keyframes combo-pop-and-zoom-out { 0% { opacity: 0; transform: scale(0.6); } 30% { opacity: 1; transform: scale(1); } 60% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); } }`;
 		case "type-writer":
 			return `@keyframes type-writer { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }`;
+		case "pulse":
+			return `@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }`;
+		case "shake":
+			return `@keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-6px); } 100% { transform: translateX(0); } }`;
+		case "flash":
+			return `@keyframes flash { 0% { opacity: 1; } 33% { opacity: 0.2; } 66% { opacity: 1; } 100% { opacity: 0.2; } }`;
+		case "wobble":
+			return `@keyframes wobble { 0% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } 75% { transform: rotate(-4deg); } 100% { transform: rotate(0); } }`;
+		case "breathe":
+			return `@keyframes breathe { 0% { transform: scale(1); } 50% { transform: scale(1.06); } 100% { transform: scale(1); } }`;
+		case "float":
+			return `@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-12px); } 100% { transform: translateY(0); } }`;
 		default:
 			return "";
 	}
