@@ -26,7 +26,8 @@ import {
 	getElementLocalTime,
 	resolveAnimationTarget,
 	resolveAnimationPathValueAtTime,
-	buildEasyEasePatchesForElement,
+	buildKeyframeEasingPatchesForElement,
+	type KeyframeEasingMode,
 } from "@/lib/animation";
 import { lastFrameTime } from "artidor-wasm";
 import { BatchCommand } from "@/lib/commands";
@@ -764,10 +765,8 @@ export class TimelineManager {
 	}
 
 	/**
-	 * Applies an After-Effects-style "Easy Ease" to the given selected keyframes,
-	 * producing smooth flat-tangent ease-in/ease-out on their adjacent segments.
-	 * Resolves each keyframe's component channels and dispatches a single batched,
-	 * undoable curve update. No-op when no keyframe yields an editable segment.
+	 * Applies the full After-Effects-style "Easy Ease" (smooth in and out) to the
+	 * given selected keyframes. Thin wrapper over {@link applyKeyframeEasing}.
 	 */
 	applyEasyEase({
 		keyframes,
@@ -778,6 +777,27 @@ export class TimelineManager {
 			propertyPath: AnimationPath;
 			keyframeId: string;
 		}>;
+	}): void {
+		this.applyKeyframeEasing({ keyframes, mode: "ease" });
+	}
+
+	/**
+	 * Applies an After-Effects-style easing/interpolation preset to the given
+	 * selected keyframes, adjusting the curve of their adjacent segments.
+	 * Resolves each keyframe's component channels and dispatches a single batched,
+	 * undoable curve update. No-op when no keyframe yields an editable segment.
+	 */
+	applyKeyframeEasing({
+		keyframes,
+		mode,
+	}: {
+		keyframes: Array<{
+			trackId: string;
+			elementId: string;
+			propertyPath: AnimationPath;
+			keyframeId: string;
+		}>;
+		mode: KeyframeEasingMode;
 	}): void {
 		if (keyframes.length === 0) {
 			return;
@@ -820,9 +840,10 @@ export class TimelineManager {
 			if (!element) {
 				continue;
 			}
-			const patches = buildEasyEasePatchesForElement({
+			const patches = buildKeyframeEasingPatchesForElement({
 				element,
 				keyframes: refs,
+				mode,
 			});
 			for (const { propertyPath, componentKey, keyframeId, patch } of patches) {
 				curveUpdates.push({

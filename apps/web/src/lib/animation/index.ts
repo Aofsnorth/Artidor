@@ -62,8 +62,10 @@ export {
 
 export {
 	buildEasyEasePatchesForElement,
+	buildKeyframeEasingPatchesForElement,
 	type EasyEaseKeyframeRef,
 	type EasyEasePatchEntry,
+	type KeyframeEasingMode,
 } from "./easy-ease";
 
 export {
