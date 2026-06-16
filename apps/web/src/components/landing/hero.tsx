@@ -83,7 +83,12 @@ export function Hero() {
 						>
 							<Github className="mr-1.5 size-4" />
 							Star on GitHub
-							<Star className="ml-1 size-3.5 text-amber-300" />
+							<Star className="ml-1.5 size-3.5 text-amber-300" />
+							{repoStats?.stars ? (
+								<span className="ml-0.5 tabular-nums text-white/85">
+									{repoStats.stars}
+								</span>
+							) : null}
 						</Button>
 					</Link>
 				</div>
