@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
@@ -13,9 +18,28 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import type { TransitionDefinition } from "@/lib/transitions";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
+const TRANSITION_CATEGORIES = [
+	"Fade",
+	"Slide",
+	"Zoom",
+	"Wipe",
+	"Glitch",
+] as const;
+
 export function TransitionsView() {
 	const transitions = transitionsRegistry.getAll();
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
+	const [category, setCategory] = useState(ALL_CATEGORY);
+
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: transitions,
+				category,
+				getCategory: (def) => def.category,
+			}),
+		[transitions, category],
+	);
 
 	return (
 		<PanelView title="Transitions">
@@ -24,13 +48,18 @@ export function TransitionsView() {
 					Add a transition between two adjacent clips. Select two clips on the
 					same track, then choose a transition.
 				</p>
+				<CategoryBar
+					categories={TRANSITION_CATEGORIES}
+					value={category}
+					onChange={setCategory}
+				/>
 				<div
 					className="grid gap-2"
 					style={{
 						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
 					}}
 				>
-					{transitions.map((def) => (
+					{filtered.map((def) => (
 						<TransitionItem key={def.type} definition={def} />
 					))}
 				</div>

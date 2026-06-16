@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
@@ -9,6 +9,12 @@ import { useEditor } from "@/hooks/use-editor";
 import { buildEffectElement } from "@/lib/timeline/element-utils";
 import type { EffectDefinition } from "@/lib/effects/types";
 import { isAdjustmentEffect } from "@/lib/effects/css-filter";
+import { EFFECT_CATEGORIES, getEffectCategory } from "@/lib/effects/categories";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 export function EffectsView() {
@@ -17,6 +23,17 @@ export function EffectsView() {
 		.filter(
 			(definition) => !isAdjustmentEffect({ effectType: definition.type }),
 		);
+	const [category, setCategory] = useState(ALL_CATEGORY);
+
+	const filtered = useMemo(
+		() =>
+			filterByCategory({
+				items: effects,
+				category,
+				getCategory: (def) => getEffectCategory(def.type),
+			}),
+		[effects, category],
+	);
 
 	return (
 		<PanelView title="Effects">
@@ -26,7 +43,12 @@ export function EffectsView() {
 					controls live in Adjustments; visible tint/frame layers live in
 					Overlays.
 				</p>
-				<EffectsGrid effects={effects} />
+				<CategoryBar
+					categories={EFFECT_CATEGORIES}
+					value={category}
+					onChange={setCategory}
+				/>
+				<EffectsGrid effects={filtered} />
 			</div>
 		</PanelView>
 	);
