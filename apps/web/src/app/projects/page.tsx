@@ -336,12 +336,12 @@ function ProjectsHeader() {
 			   itself, which is what produces the gradient blur. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10 bg-background/40 backdrop-blur-lg"
+				className="pointer-events-none absolute inset-0 -z-10 bg-background/80 backdrop-blur-lg"
 				style={{
 					WebkitMaskImage:
-						"linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+						"linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
 					maskImage:
-						"linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+						"linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
 				}}
 			/>
 			<div className="flex items-center justify-between h-16 pt-2">
