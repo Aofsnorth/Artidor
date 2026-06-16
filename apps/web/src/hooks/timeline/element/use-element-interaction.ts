@@ -508,12 +508,38 @@ export function useElementInteraction({
 			} else {
 				const targetTrack = tracks[dropTarget.trackIndex];
 				if (targetTrack) {
+					// Move the dragged element. If it has grouped siblings in the
+					// selection, shift each of them by the SAME time delta so the
+					// whole group moves together, preserving relative offsets.
+					const timeDelta = movingElement
+						? snappedTime - movingElement.startTime
+						: 0;
 					editor.timeline.moveElement({
 						sourceTrackId: dragState.trackId,
 						targetTrackId: targetTrack.id,
 						elementId: dragState.elementId,
 						newStartTime: snappedTime,
 					});
+					if (timeDelta !== 0 && targetTrack.id === dragState.trackId) {
+						for (const ref of selectedElements) {
+							if (
+								ref.elementId === dragState.elementId &&
+								ref.trackId === dragState.trackId
+							) {
+								continue;
+							}
+							const sib = editor.timeline
+								.getTrackById({ trackId: ref.trackId })
+								?.elements.find((e) => e.id === ref.elementId);
+							if (!sib) continue;
+							editor.timeline.moveElement({
+								sourceTrackId: ref.trackId,
+								targetTrackId: ref.trackId,
+								elementId: ref.elementId,
+								newStartTime: Math.max(0, sib.startTime + timeDelta),
+							});
+						}
+					}
 					if (targetTrack.id !== dragState.trackId) {
 						selectElement({
 							trackId: targetTrack.id,
@@ -545,6 +571,7 @@ export function useElementInteraction({
 		headerRef,
 		selectElement,
 		sceneTracks,
+		selectedElements,
 	]);
 
 	useEffect(() => {

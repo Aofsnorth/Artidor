@@ -17,8 +17,12 @@ export function useElementSelection() {
 
 	const selectElement = useCallback(
 		({ trackId, elementId }: ElementRef) => {
+			// Selecting one member of a group selects the whole group, so it
+			// moves / transforms / deletes as a unit.
 			editor.selection.setSelectedElements({
-				elements: [{ trackId, elementId }],
+				elements: editor.timeline.expandSelectionByGroup({
+					refs: [{ trackId, elementId }],
+				}),
 			});
 		},
 		[editor],
@@ -33,7 +37,9 @@ export function useElementSelection() {
 			if (alreadySelected) return;
 
 			editor.selection.setSelectedElements({
-				elements: [...selectedElements, { trackId, elementId }],
+				elements: editor.timeline.expandSelectionByGroup({
+					refs: [...selectedElements, { trackId, elementId }],
+				}),
 			});
 		},
 		[selectedElements, editor],
