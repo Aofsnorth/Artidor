@@ -118,6 +118,42 @@ const CURATED_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 			depth: 28,
 		},
 	},
+	{
+		shapeKey: "pentagon",
+		name: "Pentagon",
+		definitionId: "polygon",
+		params: { sides: 5, fill: "#60a5fa" },
+	},
+	{
+		shapeKey: "octagon",
+		name: "Octagon",
+		definitionId: "polygon",
+		params: { sides: 8, fill: "#f472b6", cornerRadius: 6 },
+	},
+	{
+		shapeKey: "pill",
+		name: "Pill",
+		definitionId: "rectangle",
+		params: { fill: "#ffffff", cornerRadius: 999 },
+	},
+	{
+		shapeKey: "soft-square",
+		name: "Soft Square",
+		definitionId: "rectangle",
+		params: { fill: "#34d399", cornerRadius: 10 },
+	},
+	{
+		shapeKey: "bar",
+		name: "Bar",
+		definitionId: "rectangle",
+		params: { fill: "#facc15", cornerRadius: 4 },
+	},
+	{
+		shapeKey: "dot",
+		name: "Dot",
+		definitionId: "ellipse",
+		params: { fill: "#f87171" },
+	},
 ];
 
 function getShapePresets(): ShapeGraphicPreset[] {
