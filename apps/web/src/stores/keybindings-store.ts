@@ -217,6 +217,9 @@ function getPressedKey(ev: KeyboardEvent): string | null {
 	if (key === "delete") return "delete";
 	if (key === "backspace") return "backspace";
 
+	// Function keys (F1–F12)
+	if (/^f([1-9]|1[0-2])$/.test(key)) return key;
+
 	if (code.startsWith("Key")) {
 		const letter = code.slice(3).toLowerCase();
 		if (letter.length === 1 && letter >= "a" && letter <= "z") return letter;

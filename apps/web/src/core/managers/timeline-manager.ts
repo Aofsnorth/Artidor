@@ -26,6 +26,7 @@ import {
 	getElementLocalTime,
 	resolveAnimationTarget,
 	resolveAnimationPathValueAtTime,
+	buildEasyEasePatchesForElement,
 } from "@/lib/animation";
 import { lastFrameTime } from "artidor-wasm";
 import { BatchCommand } from "@/lib/commands";
@@ -391,11 +392,7 @@ export class TimelineManager {
 	 * of any group those refs belong to. Idempotent and dedup'd, so it's safe
 	 * to run on every selection change.
 	 */
-	expandSelectionByGroup({
-		refs,
-	}: {
-		refs: ElementRef[];
-	}): ElementRef[] {
+	expandSelectionByGroup({ refs }: { refs: ElementRef[] }): ElementRef[] {
 		if (refs.length === 0) return refs;
 		const seen = new Set(refs.map((r) => `${r.trackId}:${r.elementId}`));
 		const result = [...refs];
@@ -764,6 +761,82 @@ export class TimelineManager {
 		const command =
 			commands.length === 1 ? commands[0] : new BatchCommand(commands);
 		this.editor.command.execute({ command });
+	}
+
+	/**
+	 * Applies an After-Effects-style "Easy Ease" to the given selected keyframes,
+	 * producing smooth flat-tangent ease-in/ease-out on their adjacent segments.
+	 * Resolves each keyframe's component channels and dispatches a single batched,
+	 * undoable curve update. No-op when no keyframe yields an editable segment.
+	 */
+	applyEasyEase({
+		keyframes,
+	}: {
+		keyframes: Array<{
+			trackId: string;
+			elementId: string;
+			propertyPath: AnimationPath;
+			keyframeId: string;
+		}>;
+	}): void {
+		if (keyframes.length === 0) {
+			return;
+		}
+
+		// Group selected keyframes by element so we resolve each element's
+		// animation channels once.
+		const byElement = new Map<
+			string,
+			{
+				trackId: string;
+				elementId: string;
+				refs: Array<{ propertyPath: AnimationPath; keyframeId: string }>;
+			}
+		>();
+		for (const { trackId, elementId, propertyPath, keyframeId } of keyframes) {
+			const key = `${trackId}:${elementId}`;
+			const existing = byElement.get(key);
+			if (existing) {
+				existing.refs.push({ propertyPath, keyframeId });
+				continue;
+			}
+			byElement.set(key, {
+				trackId,
+				elementId,
+				refs: [{ propertyPath, keyframeId }],
+			});
+		}
+
+		const curveUpdates: Array<{
+			trackId: string;
+			elementId: string;
+			propertyPath: AnimationPath;
+			componentKey: string;
+			keyframeId: string;
+			patch: ScalarCurveKeyframePatch;
+		}> = [];
+		for (const { trackId, elementId, refs } of byElement.values()) {
+			const element = this.getElementByRef({ trackId, elementId });
+			if (!element) {
+				continue;
+			}
+			const patches = buildEasyEasePatchesForElement({
+				element,
+				keyframes: refs,
+			});
+			for (const { propertyPath, componentKey, keyframeId, patch } of patches) {
+				curveUpdates.push({
+					trackId,
+					elementId,
+					propertyPath,
+					componentKey,
+					keyframeId,
+					patch,
+				});
+			}
+		}
+
+		this.updateKeyframeCurves({ keyframes: curveUpdates });
 	}
 
 	upsertEffectParamKeyframe({
