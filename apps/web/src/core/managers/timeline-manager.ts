@@ -366,6 +366,58 @@ export class TimelineManager {
 		return result;
 	}
 
+	/**
+	 * Returns every element that shares the given groupId, as ElementRefs.
+	 * Single scan over all tracks (overlay + main + audio). Used to expand a
+	 * selection so that grouped clips move/transform/delete together.
+	 */
+	getGroupMembers({ groupId }: { groupId: string }): ElementRef[] {
+		const activeScene = this.editor.scenes.getActiveSceneOrNull();
+		if (!activeScene) return [];
+		const { overlay, main, audio } = activeScene.tracks;
+		const members: ElementRef[] = [];
+		for (const track of [...overlay, main, ...audio]) {
+			for (const element of track.elements) {
+				if ((element as { groupId?: string }).groupId === groupId) {
+					members.push({ trackId: track.id, elementId: element.id });
+				}
+			}
+		}
+		return members;
+	}
+
+	/**
+	 * Given a set of selected refs, expands it to include every other member
+	 * of any group those refs belong to. Idempotent and dedup'd, so it's safe
+	 * to run on every selection change.
+	 */
+	expandSelectionByGroup({
+		refs,
+	}: {
+		refs: ElementRef[];
+	}): ElementRef[] {
+		if (refs.length === 0) return refs;
+		const seen = new Set(refs.map((r) => `${r.trackId}:${r.elementId}`));
+		const result = [...refs];
+		const groupIds = new Set<string>();
+		for (const ref of refs) {
+			const track = this.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((e) => e.id === ref.elementId);
+			const gid = (element as { groupId?: string } | undefined)?.groupId;
+			if (gid) groupIds.add(gid);
+		}
+		for (const gid of groupIds) {
+			for (const member of this.getGroupMembers({ groupId: gid })) {
+				const key = `${member.trackId}:${member.elementId}`;
+				if (!seen.has(key)) {
+					seen.add(key);
+					result.push(member);
+				}
+			}
+		}
+		return result;
+	}
+
 	deleteElements({
 		elements,
 	}: {
