@@ -23,17 +23,17 @@
 
 ## Preview
 
-<div align="center">
-  <img src="docs/progress/image-1.png" width="80%" />
-  <br/><br/>
-  <img src="docs/progress/image-2.png" width="80%" />
-  <br/><br/>
-  <img src="docs/progress/image-3.png" width="80%" />
-  <br/><br/>
-  <img src="docs/progress/image-4.png" width="80%" />
-  <br/><br/>
-  <img src="docs/progress/image-5.png" width="80%" />
-</div>
+<p align="center">
+  <img src="docs/progress/image-1.png" alt="Artidor Main Workspace" width="100%" />
+</p>
+<p align="center" style="display: flex; justify-content: space-between; gap: 2%;">
+  <img src="docs/progress/image-2.png" alt="Artidor Detail" width="49%" />
+  <img src="docs/progress/image-3.png" alt="Artidor Detail" width="49%" />
+</p>
+<p align="center" style="display: flex; justify-content: space-between; gap: 2%;">
+  <img src="docs/progress/image-4.png" alt="Artidor Detail" width="49%" />
+  <img src="docs/progress/image-5.png" alt="Artidor Detail" width="49%" />
+</p>
 
 ---
 
