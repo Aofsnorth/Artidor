@@ -1300,7 +1300,7 @@ function EmptyState({
 			{/* Primary CTA — single, prominent. */}
 			<Button
 				size="lg"
-				className="h-10 gap-2 rounded-full bg-white px-5 text-[13px] font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
+				className="mt-3 h-10 gap-2 rounded-full bg-white px-5 text-[13px] font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
 				onClick={() => void onCreateNew()}
 			>
 				<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
