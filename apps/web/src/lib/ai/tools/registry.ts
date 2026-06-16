@@ -36,7 +36,27 @@ export type ToolCategory =
 	| "playback"
 	| "asset"
 	| "style"
-	| "export";
+	| "export"
+	| "history"
+	| "selection"
+	| "clipboard";
+
+/** Reusable schema for an array of {trackId, elementId} element refs. */
+function elementRefArraySchema(minItems: number): unknown {
+	return {
+		type: "array",
+		items: {
+			type: "object",
+			properties: {
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+			},
+			required: ["trackId", "elementId"],
+			additionalProperties: false,
+		},
+		minItems,
+	};
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              Helper builders                              */
@@ -537,6 +557,107 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				includeAudio: { type: "boolean" },
 			},
 			["format", "quality"],
+		),
+	),
+
+	/* -------------------------------- History -------------------------------- */
+	tool(
+		"history",
+		"undo",
+		"undo",
+		"Undo the last editor action.",
+		objectSchema({}),
+	),
+	tool(
+		"history",
+		"redo",
+		"redo",
+		"Redo the last undone editor action.",
+		objectSchema({}),
+	),
+
+	/* ------------------------------- Selection ------------------------------- */
+	tool(
+		"selection",
+		"select_elements",
+		"select_elements",
+		"Set the current selection to the given elements (each a {trackId, elementId} pair).",
+		objectSchema({ elements: elementRefArraySchema(1) }, ["elements"]),
+	),
+	tool(
+		"selection",
+		"clear_selection",
+		"clear_selection",
+		"Clear the current selection.",
+		objectSchema({}),
+	),
+
+	/* ------------------------------- Clipboard ------------------------------- */
+	tool(
+		"clipboard",
+		"copy",
+		"copy",
+		"Copy the currently selected elements to the clipboard.",
+		objectSchema({}),
+	),
+	tool(
+		"clipboard",
+		"paste",
+		"paste",
+		"Paste the clipboard contents. Optional time (ticks) sets where to paste; defaults to the playhead.",
+		objectSchema({ time: numberSchema(0) }),
+	),
+
+	/* ---------------------------- Scene (additional) ------------------------- */
+	tool(
+		"scene",
+		"delete_scene",
+		"delete_scene",
+		"Delete a scene by its id.",
+		objectSchema({ sceneId: { type: "string" } }, ["sceneId"]),
+	),
+	tool(
+		"scene",
+		"switch_scene",
+		"switch_scene",
+		"Switch the active scene to the one with the given id.",
+		objectSchema({ sceneId: { type: "string" } }, ["sceneId"]),
+	),
+
+	/* --------------------------- Element grouping ---------------------------- */
+	tool(
+		"element",
+		"group_elements",
+		"group_elements",
+		"Group two or more elements so they move and transform together. Returns the new groupId.",
+		objectSchema({ elements: elementRefArraySchema(2) }, ["elements"]),
+	),
+	tool(
+		"element",
+		"ungroup_elements",
+		"ungroup_elements",
+		"Ungroup a previously grouped set of elements by its groupId.",
+		objectSchema({ groupId: { type: "string" } }, ["groupId"]),
+	),
+
+	/* ----------------------------- Asset folders ----------------------------- */
+	tool(
+		"asset",
+		"create_folder",
+		"create_folder",
+		"Create a media-library folder. Returns its id.",
+		objectSchema({ name: { type: "string", minLength: 1, maxLength: 80 } }, [
+			"name",
+		]),
+	),
+	tool(
+		"asset",
+		"move_asset_to_folder",
+		"move_asset_to_folder",
+		"Move an asset into a folder. Omit folderId to move it back to the library root.",
+		objectSchema(
+			{ assetId: { type: "string" }, folderId: { type: "string" } },
+			["assetId"],
 		),
 	),
 ];
