@@ -25,7 +25,36 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSoundSearch } from "@/hooks/use-sound-search";
 import { useSoundsStore } from "@/stores/sounds-store";
 import type { SavedSound, SoundEffect } from "@/lib/sounds/types";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
+
+/**
+ * Genre / mood / SFX quick-filters. Each chip just drives the Freesound
+ * search query (content is remote), and the active chip is derived from the
+ * current query so typing a custom search clears the selection.
+ */
+const SOUND_CATEGORIES: { label: string; query: string }[] = [
+	{ label: "Whoosh", query: "whoosh" },
+	{ label: "Impact", query: "impact" },
+	{ label: "Click", query: "click" },
+	{ label: "Riser", query: "riser" },
+	{ label: "Pop", query: "pop" },
+	{ label: "Cinematic", query: "cinematic" },
+	{ label: "Ambient", query: "ambient" },
+	{ label: "Lofi", query: "lofi" },
+	{ label: "Nature", query: "nature" },
+	{ label: "Beep", query: "beep" },
+];
+const SOUND_LABELS = SOUND_CATEGORIES.map((c) => c.label);
+const SOUND_LABEL_TO_QUERY = new Map(
+	SOUND_CATEGORIES.map((c) => [c.label, c.query]),
+);
+const SOUND_QUERY_TO_LABEL = new Map(
+	SOUND_CATEGORIES.map((c) => [c.query, c.label]),
+);
 import {
 	FavouriteIcon,
 	FilterMailIcon,
@@ -262,6 +291,19 @@ function SoundEffectsView() {
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</div>
+
+			<CategoryBar
+				categories={SOUND_LABELS}
+				value={SOUND_QUERY_TO_LABEL.get(searchQuery) ?? ALL_CATEGORY}
+				onChange={(label) =>
+					setSearchQuery({
+						query:
+							label === ALL_CATEGORY
+								? ""
+								: (SOUND_LABEL_TO_QUERY.get(label) ?? ""),
+					})
+				}
+			/>
 
 			<div className="relative h-full overflow-hidden">
 				<ScrollArea
