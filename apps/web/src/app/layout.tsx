@@ -8,6 +8,7 @@ import { BotIdClient } from "botid/client";
 import { webEnv } from "@/lib/env/web";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const siteFont = Inter({
 	subsets: ["latin"],
@@ -69,6 +70,7 @@ export default function RootLayout({
 						/>
 						{children}
 						<Analytics />
+						<SpeedInsights />
 					</TooltipProvider>
 				</ThemeProvider>
 			</body>
