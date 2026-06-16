@@ -19,6 +19,12 @@ import {
 	SectionTitle,
 } from "@/components/section";
 import { BackgroundContent } from "./background";
+import {
+	FEATURE_LABELS,
+	TOGGLEABLE_FEATURES,
+	useFeatureFlagsStore,
+} from "@/stores/feature-flags-store";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/ui/number-field";
@@ -313,6 +319,7 @@ export function SettingsView() {
 				</div>
 			)}
 			{view === "background" && <BackgroundContent />}
+			{view === "features" && <FeaturesContent />}
 		</PanelView>
 	);
 }
@@ -370,5 +377,42 @@ function AspectRatioPreview({ ratio }: { ratio?: string }) {
 			style={{ width, height, borderWidth: 1.5 }}
 			className="rounded-xs border-current opacity-60"
 		/>
+	);
+}
+
+/**
+ * Features tab — turn built-in tools on/off (modularity v1). Disabled tools
+ * disappear from the tab bar and persist across reloads.
+ */
+function FeaturesContent() {
+	const enabled = useFeatureFlagsStore((s) => s.enabled);
+	const setEnabled = useFeatureFlagsStore((s) => s.setEnabled);
+
+	return (
+		<div className="flex flex-col">
+			<Section showTopBorder={false}>
+				<SectionHeader>
+					<SectionTitle className="flex-1">Built-in features</SectionTitle>
+				</SectionHeader>
+				<SectionContent className="flex flex-col gap-1 px-2 pb-2">
+					<p className="px-1 pb-1 text-xs text-muted-foreground">
+						Turn off tools you don't use — they're removed from the tab bar.
+					</p>
+					{TOGGLEABLE_FEATURES.map((feature) => (
+						<div
+							key={feature}
+							className="flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-muted/40"
+						>
+							<span className="text-sm">{FEATURE_LABELS[feature]}</span>
+							<Switch
+								aria-label={FEATURE_LABELS[feature]}
+								checked={enabled[feature] !== false}
+								onCheckedChange={(value) => setEnabled(feature, value)}
+							/>
+						</div>
+					))}
+				</SectionContent>
+			</Section>
+		</div>
 	);
 }

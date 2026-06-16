@@ -3,6 +3,7 @@ import { masksRegistry } from "@/lib/masks";
 import type { AnyBaseNode } from "../nodes/base-node";
 import type { CanvasRenderer } from "../canvas-renderer";
 import { createOffscreenCanvas } from "../canvas-utils";
+import { getCachedRaster } from "./raster-cache";
 import { BlurBackgroundNode } from "../nodes/blur-background-node";
 import { ColorNode } from "../nodes/color-node";
 import { EffectLayerNode } from "../nodes/effect-layer-node";
@@ -94,26 +95,29 @@ async function collectNode({
 
 	if (node instanceof ColorNode) {
 		const textureId = `${path}:color`;
-		const canvas = createOffscreenCanvas({
+		// A solid colour / gradient fill is fully determined by the colour
+		// string + canvas dimensions, so cache the rasterised canvas by that
+		// content key. Reusing the same canvas object across frames lets the
+		// compositor's identity-based upload dedupe skip re-uploading it.
+		const canvas = getCachedRaster({
+			key: `color:${renderer.width}x${renderer.height}:${node.params.color}`,
 			width: renderer.width,
 			height: renderer.height,
+			draw: (ctx) => {
+				if (/gradient\(/i.test(node.params.color)) {
+					drawCssBackground({
+						ctx,
+						width: renderer.width,
+						height: renderer.height,
+						css: node.params.color,
+					});
+				} else {
+					ctx.fillStyle = node.params.color;
+					ctx.fillRect(0, 0, renderer.width, renderer.height);
+				}
+			},
 		});
-		const ctx = canvas.getContext("2d") as
-			| CanvasRenderingContext2D
-			| OffscreenCanvasRenderingContext2D
-			| null;
-		if (!ctx) return;
-		if (/gradient\(/i.test(node.params.color)) {
-			drawCssBackground({
-				ctx,
-				width: renderer.width,
-				height: renderer.height,
-				css: node.params.color,
-			});
-		} else {
-			ctx.fillStyle = node.params.color;
-			ctx.fillRect(0, 0, renderer.width, renderer.height);
-		}
+		if (!canvas) return;
 		textures.set(textureId, {
 			id: textureId,
 			source: canvas,
