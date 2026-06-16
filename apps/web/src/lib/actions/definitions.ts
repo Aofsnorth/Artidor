@@ -264,6 +264,10 @@ export const ACTIONS = {
 		description: "Nudge selected clip one frame right",
 		category: "editing",
 	},
+	"ease-keyframes": {
+		description: "Easy Ease selected keyframes (smooth in/out)",
+		category: "editing",
+	},
 } as const satisfies Record<string, TActionBaseDefinition>;
 
 export type TAction = keyof typeof ACTIONS;
@@ -304,6 +308,7 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	"set-out": ["o"],
 	"nudge-left": ["alt+left"],
 	"nudge-right": ["alt+right"],
+	"ease-keyframes": ["f9"],
 } as const satisfies Partial<
 	Record<TActionWithOptionalArgs, readonly ShortcutKey[]>
 >;

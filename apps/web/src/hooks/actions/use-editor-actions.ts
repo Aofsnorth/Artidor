@@ -445,7 +445,7 @@ export function useEditorActions() {
 				(b) => Math.abs(b.time - relativeTime) < threshold,
 			);
 
-			let newBookmarks;
+			let newBookmarks: typeof existingBookmarks;
 			if (existingIndex !== -1) {
 				newBookmarks = existingBookmarks.filter((_, i) => i !== existingIndex);
 			} else {
@@ -674,6 +674,18 @@ export function useEditorActions() {
 	};
 	useActionHandler("nudge-left", () => nudge(-1), undefined);
 	useActionHandler("nudge-right", () => nudge(1), undefined);
+
+	useActionHandler(
+		"ease-keyframes",
+		() => {
+			if (selectedKeyframes.length === 0) {
+				toast.info("Select keyframes to apply Easy Ease.");
+				return;
+			}
+			editor.timeline.applyEasyEase({ keyframes: selectedKeyframes });
+		},
+		undefined,
+	);
 
 	// Command palette + focus mode — UI chrome toggles.
 	const setCommandPaletteOpen = useEditorUIStore(

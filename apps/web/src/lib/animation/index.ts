@@ -61,6 +61,12 @@ export {
 } from "./curve-bridge";
 
 export {
+	buildEasyEasePatchesForElement,
+	type EasyEaseKeyframeRef,
+	type EasyEasePatchEntry,
+} from "./easy-ease";
+
+export {
 	buildGraphicParamPath,
 	isGraphicParamPath,
 	parseGraphicParamPath,
