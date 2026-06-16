@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import {
@@ -12,21 +11,36 @@ import {
 	applyTemplateToProject,
 	type ProjectTemplate,
 } from "@/lib/templates";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+	filterByCategory,
+} from "@/components/editor/panels/assets/views/category-bar";
 import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { cn } from "@/utils/ui";
 import type { EditorCore } from "@/core";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
+const TEMPLATE_LABELS = TEMPLATE_CATEGORIES.map((c) => c.label);
+const TEMPLATE_ID_TO_LABEL = new Map(
+	TEMPLATE_CATEGORIES.map((c) => [c.id, c.label]),
+);
+
 export function TemplatesView() {
-	const [category, setCategory] = useState<string>("all");
+	const [category, setCategory] = useState(ALL_CATEGORY);
 	const editor = useEditor();
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
-	const filteredTemplates =
-		category === "all"
-			? PROJECT_TEMPLATES
-			: PROJECT_TEMPLATES.filter((t) => t.category === category);
+	const filteredTemplates = useMemo(
+		() =>
+			filterByCategory({
+				items: PROJECT_TEMPLATES,
+				category,
+				getCategory: (t) => TEMPLATE_ID_TO_LABEL.get(t.category),
+			}),
+		[category],
+	);
 
 	return (
 		<PanelView title="Templates">
@@ -35,23 +49,11 @@ export function TemplatesView() {
 					Start with a pre-built template and replace the placeholder media with
 					your own.
 				</p>
-				<div className="flex flex-wrap gap-1">
-					<TemplateCategoryChip
-						id="all"
-						label="All"
-						active={category === "all"}
-						onClick={setCategory}
-					/>
-					{TEMPLATE_CATEGORIES.map((cat) => (
-						<TemplateCategoryChip
-							key={cat.id}
-							id={cat.id}
-							label={cat.label}
-							active={category === cat.id}
-							onClick={setCategory}
-						/>
-					))}
-				</div>
+				<CategoryBar
+					categories={TEMPLATE_LABELS}
+					value={category}
+					onChange={setCategory}
+				/>
 				<div
 					className="grid gap-3"
 					style={{
@@ -94,29 +96,6 @@ function applyTemplate({
 		console.error("Failed to apply template:", err);
 		toast.error("Failed to apply template");
 	}
-}
-
-function TemplateCategoryChip({
-	id,
-	label,
-	active,
-	onClick,
-}: {
-	id: string;
-	label: string;
-	active: boolean;
-	onClick: (id: string) => void;
-}) {
-	return (
-		<Button
-			size="sm"
-			variant={active ? "secondary" : "ghost"}
-			className="h-7 px-2 text-xs"
-			onClick={() => onClick(id)}
-		>
-			{label}
-		</Button>
-	);
 }
 
 function TemplateItem({
