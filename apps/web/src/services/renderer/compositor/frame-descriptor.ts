@@ -292,6 +292,49 @@ async function collectVisualSourceNode({
 	}
 }
 
+/**
+ * Content key for a text layer's rasterised canvas. Captures every input
+ * `renderTextToContext` bakes into the bitmap (style, resolved colours, resolved
+ * background metrics, and the resolved — possibly animated/parented — transform),
+ * so a cache hit means the pixels are guaranteed identical. Returns `null` for
+ * text with an active per-character animator: that raster legitimately changes
+ * every frame, so caching would only churn the LRU.
+ */
+function buildTextRasterKey({
+	node,
+	renderer,
+}: {
+	node: TextNode;
+	renderer: CanvasRenderer;
+}): string | null {
+	const resolved = node.resolved;
+	if (!resolved || node.params.textAnimator) {
+		return null;
+	}
+
+	const m = resolved.measuredText;
+	const t = resolved.transform;
+	const bg = m.resolvedBackground;
+	const background = node.params.background.enabled
+		? `bg:${resolved.backgroundColor}:${bg.paddingX},${bg.paddingY},${bg.offsetX},${bg.offsetY},${bg.cornerRadius}`
+		: "nobg";
+
+	return [
+		"text",
+		`${renderer.width}x${renderer.height}`,
+		node.params.textBaseline ?? "middle",
+		node.params.textAlign,
+		node.params.textDecoration ?? "none",
+		`${node.params.canvasCenter.x},${node.params.canvasCenter.y}`,
+		m.fontString,
+		`${m.letterSpacing},${m.lineHeightPx}`,
+		resolved.textColor,
+		background,
+		`tf:${t.position.x},${t.position.y},${t.scaleX},${t.scaleY},${t.rotate},${t.positionZ ?? 0}`,
+		node.params.content,
+	].join("|");
+}
+
 function collectTextNode({
 	node,
 	renderer,
@@ -310,22 +353,41 @@ function collectTextNode({
 	}
 
 	const textureId = `${path}:text`;
-	const canvas = createOffscreenCanvas({
-		width: renderer.width,
-		height: renderer.height,
-	});
-	const ctx = canvas.getContext("2d") as
-		| CanvasRenderingContext2D
-		| OffscreenCanvasRenderingContext2D
-		| null;
-	if (!ctx) {
+	// Static (non-animated) text re-rasterises to identical pixels every frame;
+	// caching by content key lets the compositor's identity-based upload dedupe
+	// skip both the re-raster and the GPU re-upload while the playhead moves.
+	const cacheKey = buildTextRasterKey({ node, renderer });
+	const draw = (
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+	) => {
+		renderTextToContext({ node, ctx });
+	};
+
+	let canvas: ReturnType<typeof createOffscreenCanvas> | null;
+	if (cacheKey) {
+		canvas = getCachedRaster({
+			key: cacheKey,
+			width: renderer.width,
+			height: renderer.height,
+			draw,
+		});
+	} else {
+		canvas = createOffscreenCanvas({
+			width: renderer.width,
+			height: renderer.height,
+		});
+		const ctx = canvas.getContext("2d") as
+			| CanvasRenderingContext2D
+			| OffscreenCanvasRenderingContext2D
+			| null;
+		if (!ctx) {
+			return;
+		}
+		draw(ctx);
+	}
+	if (!canvas) {
 		return;
 	}
-
-	renderTextToContext({
-		node,
-		ctx,
-	});
 
 	textures.set(textureId, {
 		id: textureId,
