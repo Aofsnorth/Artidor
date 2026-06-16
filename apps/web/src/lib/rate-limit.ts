@@ -14,8 +14,21 @@ export const baseRateLimit = new Ratelimit({
 	prefix: "rate-limit",
 });
 
+// Resolve the real client IP for rate-limiting. Prefer headers the client
+// cannot forge through the platform's proxy: Cloudflare's `cf-connecting-ip`,
+// then Vercel's `x-real-ip`, then the *first* `x-forwarded-for` hop. Keying on
+// the raw (whole) `x-forwarded-for` string let a caller mint unlimited buckets
+// by spoofing the header, which defeated the limit entirely.
+export function clientIpOf(request: Request): string {
+	return (
+		request.headers.get("cf-connecting-ip") ??
+		request.headers.get("x-real-ip") ??
+		request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+		"anonymous"
+	);
+}
+
 export async function checkRateLimit({ request }: { request: Request }) {
-	const ip = request.headers.get("x-forwarded-for") ?? "anonymous";
-	const { success } = await baseRateLimit.limit(ip);
+	const { success } = await baseRateLimit.limit(clientIpOf(request));
 	return { success, limited: !success };
 }

@@ -88,38 +88,69 @@ export function ShareButton() {
 			</DropdownMenu>
 
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogContent className="border-white/[0.08] bg-[#09090b]/95 text-white backdrop-blur-md sm:max-w-md">
-					<DialogHeader>
-						<DialogTitle>Invite collaborators</DialogTitle>
-						<DialogDescription className="text-white/60">
-							Share this link to let others open the project as viewers.
-							Real-time editing is not enabled yet &mdash; viewers can only
-							watch the playback.
+				<DialogContent className="relative overflow-hidden border-white/[0.08] bg-[#09090b]/95 text-white backdrop-blur-md sm:max-w-md">
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 opacity-70"
+						style={{
+							background:
+								"radial-gradient(circle at 18% 0%, rgba(99,102,241,0.12), transparent 45%)",
+						}}
+					/>
+					<DialogHeader className="relative">
+						<div className="flex items-center gap-3">
+							<span className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.05] shadow-inner shadow-white/[0.03]">
+								<HugeiconsIcon
+									icon={UserAddIcon}
+									className="size-4 text-white/85"
+								/>
+							</span>
+							<div className="flex items-center gap-2">
+								<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
+									Invite collaborators
+								</DialogTitle>
+								<span className="rounded-full border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/55">
+									Soon
+								</span>
+							</div>
+						</div>
+						<DialogDescription className="pt-1 text-[0.8rem] leading-relaxed text-white/55">
+							Real-time collaboration is coming soon. Your project lives
+							entirely on this device for now — this link is a placeholder for
+							when sharing ships.
 						</DialogDescription>
 					</DialogHeader>
-					<div className="flex flex-col gap-3">
+
+					<div className="relative mt-1 flex flex-col gap-2.5">
 						<label
 							htmlFor="invite-link"
-							className="text-[0.66rem] font-semibold uppercase tracking-[0.16em] text-white/45"
+							className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45"
 						>
 							Project link
 						</label>
 						<div className="flex items-center gap-2">
-							<input
-								id="invite-link"
-								type="text"
-								readOnly
-								value={inviteLink}
-								className="h-9 flex-1 truncate rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
-								onFocus={(event) => event.currentTarget.select()}
-							/>
+							<div className="relative flex-1">
+								<HugeiconsIcon
+									icon={Link01Icon}
+									className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-white/35"
+									aria-hidden="true"
+								/>
+								<input
+									id="invite-link"
+									type="text"
+									readOnly
+									value={inviteLink}
+									className="h-9 w-full truncate rounded-md border border-white/[0.1] bg-white/[0.04] pr-2.5 pl-8 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
+									onFocus={(event) => event.currentTarget.select()}
+								/>
+							</div>
 							<Button
 								type="button"
 								variant="outline"
 								size="sm"
 								onClick={handleCopy}
 								disabled={!inviteLink}
-								className="h-9 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
+								className="h-9 shrink-0 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
 							>
 								{copied ? (
 									<>
@@ -134,9 +165,9 @@ export function ShareButton() {
 								)}
 							</Button>
 						</div>
-						<p className="text-[0.66rem] text-white/40">
-							Tip: revoke by rotating the project ID from the projects page.
-							Real-time editing is coming soon.
+						<p className="text-[0.66rem] leading-relaxed text-white/40">
+							Tip: once sharing goes live, rotate the project ID from the
+							projects page to revoke a link.
 						</p>
 					</div>
 				</DialogContent>
