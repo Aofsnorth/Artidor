@@ -784,6 +784,258 @@ const presets: AnimationPreset[] = [
 			},
 		],
 	},
+	/* ---------------------------------------------------------------------- */
+	/*  AE-style logo reveals — overshoot / anticipation keyframes give the    */
+	/*  professional "pop" (scale past target, then settle) without needing    */
+	/*  baked bezier handles. Tuned for logo intros.                           */
+	/* ---------------------------------------------------------------------- */
+	{
+		id: "logo-pop",
+		type: "logo-pop",
+		name: "Logo Pop",
+		keywords: ["logo", "pop", "scale", "overshoot", "entrance"],
+		category: "entrance",
+		duration: SECOND * 0.5,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 0, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.22,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: 0,
+				value: 0.3,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.32,
+				value: 1.15,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.5,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: 0,
+				value: 0.3,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.32,
+				value: 1.15,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.5,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "logo-drop",
+		type: "logo-drop",
+		name: "Logo Drop",
+		keywords: ["logo", "drop", "fall", "bounce", "entrance"],
+		category: "entrance",
+		duration: SECOND * 0.7,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 0, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.18,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: 0,
+				value: -140,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND * 0.45,
+				value: 14,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND * 0.7,
+				value: 0,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "spin-reveal",
+		type: "spin-reveal",
+		name: "Spin Reveal",
+		keywords: ["logo", "spin", "rotate", "reveal", "entrance"],
+		category: "entrance",
+		duration: SECOND * 0.8,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 0, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.25,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: 0,
+				value: -200,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.6,
+				value: 10,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.rotate",
+				time: SECOND * 0.8,
+				value: 0,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: 0,
+				value: 0.4,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.6,
+				value: 1.06,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.8,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: 0,
+				value: 0.4,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.6,
+				value: 1.06,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.8,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "zoom-punch",
+		type: "zoom-punch",
+		name: "Zoom Punch",
+		keywords: ["logo", "zoom", "punch", "impact", "entrance"],
+		category: "entrance",
+		duration: SECOND * 0.5,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 0, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.16,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: 0,
+				value: 1.7,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.34,
+				value: 0.94,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleX",
+				time: SECOND * 0.5,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: 0,
+				value: 1.7,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.34,
+				value: 0.94,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.scaleY",
+				time: SECOND * 0.5,
+				value: 1,
+				interpolation: linear,
+			},
+		],
+	},
+	{
+		id: "rise-settle",
+		type: "rise-settle",
+		name: "Rise + Settle",
+		keywords: ["logo", "rise", "settle", "overshoot", "entrance"],
+		category: "entrance",
+		duration: SECOND * 0.7,
+		keyframes: () => [
+			{ propertyPath: "opacity", time: 0, value: 0, interpolation: linear },
+			{
+				propertyPath: "opacity",
+				time: SECOND * 0.3,
+				value: 1,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: 0,
+				value: 70,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND * 0.5,
+				value: -10,
+				interpolation: linear,
+			},
+			{
+				propertyPath: "transform.positionY",
+				time: SECOND * 0.7,
+				value: 0,
+				interpolation: linear,
+			},
+		],
+	},
 ];
 
 export function registerDefaultAnimationPresets(): void {
