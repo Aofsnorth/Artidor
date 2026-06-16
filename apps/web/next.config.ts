@@ -8,8 +8,22 @@ const nextConfig: NextConfig = {
 	},
 	reactStrictMode: true,
 	devIndicators: false,
-	productionBrowserSourceMaps: true,
+	// Source maps for the (large) client bundle are shipped weight with no
+	// end-user benefit; keep them off in production builds.
+	productionBrowserSourceMaps: false,
 	output: "standalone",
+	experimental: {
+		// Trim barrel imports to per-symbol so only the icons/utilities actually
+		// used get bundled. @hugeicons/* is imported across ~79 files and is the
+		// biggest win here (Next doesn't auto-optimize it like lucide-react).
+		optimizePackageImports: [
+			"@hugeicons/core-free-icons",
+			"@hugeicons/react",
+			"lucide-react",
+			"culori",
+			"radix-ui",
+		],
+	},
 	images: {
 		remotePatterns: [
 			{

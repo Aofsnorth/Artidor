@@ -402,11 +402,15 @@ function ImportDriveDialog({
 
 						{showConfig && (
 							<div className="mt-2 flex flex-col gap-2 border-t border-white/[0.04] pt-2">
-								<label className="text-[0.62rem] uppercase tracking-wider text-white/45">
+								<label
+									htmlFor="drive-client-id"
+									className="text-[0.62rem] uppercase tracking-wider text-white/45"
+								>
 									Google OAuth Client ID
 								</label>
 								<div className="flex gap-2">
 									<Input
+										id="drive-client-id"
 										placeholder="Paste Client ID..."
 										value={clientId}
 										disabled={busy}

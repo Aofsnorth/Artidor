@@ -220,7 +220,7 @@ export default function ProjectsPage() {
 					aria-hidden
 					className="pointer-events-none absolute inset-0 -z-20"
 					style={{
-						backgroundImage: "url(/wallpaper/projects-covenant.jpg)",
+						backgroundImage: "url(/wallpaper/projects-covenant.webp)",
 						backgroundRepeat: "no-repeat",
 						backgroundSize: "cover",
 						backgroundPosition: "center",

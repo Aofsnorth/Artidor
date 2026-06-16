@@ -14,7 +14,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -63,10 +62,12 @@ export function DriveAccountButton() {
 	};
 
 	const handleConnect = async () => {
+		// The account button is purely the sign-in entry point — it goes straight
+		// to the Google login popup. The Client ID is configured once via the
+		// separate Import button, so if it's missing we just point there.
 		if (!getGoogleClientId()) {
 			toast.error("Google Drive isn't set up yet", {
-				description:
-					"Open Import (top right) and add your Google Client ID first.",
+				description: "Add your Google Client ID via Import, then sign in here.",
 			});
 			return;
 		}
@@ -82,20 +83,22 @@ export function DriveAccountButton() {
 	};
 
 	if (!connected) {
+		// Circular icon button — same round footprint as the connected avatar.
 		return (
-			<Button
+			<button
 				type="button"
-				size="lg"
-				variant="outline"
+				aria-label="Connect Google Drive"
+				title="Connect Google Drive"
 				disabled={busy}
 				onClick={handleConnect}
-				className="flex items-center gap-1.5 px-3 md:px-4"
+				className="relative grid size-9 shrink-0 place-items-center rounded-full border border-white/15 bg-white/[0.04] text-white/70 outline-none ring-offset-2 ring-offset-black transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-50"
 			>
-				<HugeiconsIcon icon={GoogleIcon} className="size-4" />
-				<span className="hidden text-sm font-medium md:inline">
-					{busy ? "Connecting…" : "Connect Drive"}
-				</span>
-			</Button>
+				{busy ? (
+					<span className="size-3.5 animate-spin rounded-full border-2 border-white/25 border-t-white/80" />
+				) : (
+					<HugeiconsIcon icon={GoogleIcon} className="size-4" />
+				)}
+			</button>
 		);
 	}
 
