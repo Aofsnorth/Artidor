@@ -1,0 +1,23 @@
+{
+	"name": "@artidor/mcp-server",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "MCP server that exposes the Artidor editor's command API to MCP clients (Cursor, Claude Desktop, ...). Relays tool calls into a running editor tab over a localhost WebSocket.",
+	"bin": {
+		"artidor-mcp": "dist/index.js"
+	},
+	"files": ["dist", "README.md"],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"start": "node dist/index.js"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"ws": "^8.21.0"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.3",
+		"@types/ws": "^8.18.1"
+	}
+}

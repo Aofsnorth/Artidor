@@ -81,9 +81,46 @@ export function startEditorBridge(editor: EditorCore): () => void {
 	channel?.addEventListener("message", onChannelMessage);
 	window.addEventListener("message", onWindowMessage);
 
+	// Optional outbound transport: connect to a local MCP relay so an external
+	// MCP server (Cursor / Claude Desktop) can drive this tab. Opt-in — only
+	// runs when NEXT_PUBLIC_MCP_RELAY_URL is set (e.g. ws://127.0.0.1:8765).
+	const relayUrl = process.env.NEXT_PUBLIC_MCP_RELAY_URL;
+	let relay: WebSocket | null = null;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	let stopped = false;
+
+	const connectRelay = () => {
+		if (!relayUrl || stopped) return;
+		try {
+			relay = new WebSocket(relayUrl);
+		} catch {
+			return;
+		}
+		relay.onmessage = (event) => {
+			let data: unknown;
+			try {
+				data = JSON.parse(typeof event.data === "string" ? event.data : "null");
+			} catch {
+				return;
+			}
+			if (!isBridgeRequest(data)) return;
+			void handle(data, (msg) => relay?.send(JSON.stringify(msg)));
+		};
+		relay.onclose = () => {
+			relay = null;
+			// Retry while the bridge is alive — the relay may start after the tab.
+			if (!stopped) reconnectTimer = setTimeout(connectRelay, 2000);
+		};
+		relay.onerror = () => relay?.close();
+	};
+	connectRelay();
+
 	return () => {
+		stopped = true;
 		channel?.removeEventListener("message", onChannelMessage);
 		channel?.close();
 		window.removeEventListener("message", onWindowMessage);
+		if (reconnectTimer) clearTimeout(reconnectTimer);
+		relay?.close();
 	};
 }
