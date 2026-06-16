@@ -7,6 +7,28 @@
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-animate";
 
+/* Hide scrollbar globally while keeping scrolling functional.
+   We strip the visible scrollbar on EVERY element (not just
+   html/body) — Firefox via `scrollbar-width: none`, WebKit via
+   `::-webkit-scrollbar { display: none }`. The user can still
+   scroll with mouse wheel / trackpad / keyboard; they just don't
+   see a chrome bar taking 16px on the side. Specific components
+   that *want* a visible scrollbar (timeline, AI chat, code
+   blocks) opt back in with `.scrollbar-thin`. */
+html,
+body,
+* {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none;
+}
+
 /* Glassmorphism color system: pure grayscale from white to black. No blues,
    no pinks, no cyans. Light mode is white-on-gray; dark mode is
    near-black with subtle white-on-gray glass surfaces. */

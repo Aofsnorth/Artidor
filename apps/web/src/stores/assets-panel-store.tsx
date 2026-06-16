@@ -18,11 +18,13 @@ import {
 	Plug01Icon,
 	HeadphonesIcon,
 	FilterIcon,
+	AiBrain01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 export const TAB_KEYS = [
 	"assets",
+	"ai",
 	"media",
 	"text",
 	"elements",
@@ -45,6 +47,7 @@ export const TAB_KEYS = [
 
 export const VISIBLE_TAB_KEYS = [
 	"assets",
+	"ai",
 	"text",
 	"elements",
 	"transitions",
@@ -67,6 +70,10 @@ const createHugeiconsIcon =
 	);
 
 export const tabs = {
+	ai: {
+		icon: createHugeiconsIcon({ icon: AiBrain01Icon }),
+		label: "AI Edit",
+	},
 	assets: {
 		icon: createHugeiconsIcon({ icon: Folder03Icon }),
 		label: "Assets",

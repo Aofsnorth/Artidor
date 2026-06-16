@@ -90,17 +90,9 @@ export function MediaDragOverlay({
 				)}
 			/>
 
-			{/* Sonar pings emanating from the centre */}
-			{phase === "visible" && (
-				<div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-					<div className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/25 drop-ring-sonar" />
-					<div className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15 drop-ring-sonar-delay-1" />
-					<div className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 drop-ring-sonar-delay-2" />
-				</div>
-			)}
-
-			{/* Hero icon: pulsing container with two counter-rotating dashed rings */}
-			<div className="relative grid size-24 place-items-center">
+			{/* Hero icon: pulsing container with two counter-rotating dashed rings.
+			   Nudged up slightly so the rings clear the heading below. */}
+			<div className="relative grid size-24 -translate-y-2 place-items-center">
 				<div className="absolute size-40 rounded-full border border-dashed border-white/15 drop-ring-rotate-slow" />
 				<div className="absolute size-28 rounded-full border border-dashed border-white/20 drop-ring-rotate-fast" />
 				<div

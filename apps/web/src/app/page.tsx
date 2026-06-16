@@ -1,9 +1,14 @@
 import { Hero } from "@/components/landing/hero";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { AIShowcaseSection } from "@/components/landing/ai-showcase";
+import { FeaturesSection } from "@/components/landing/features-section";
+import { HowItWorksSection } from "@/components/landing/how-it-works-section";
+import { PledgeSection } from "@/components/landing/pledge-section";
+import { CtaSection } from "@/components/landing/cta-section";
+import { PageShell } from "@/components/landing/page-shell";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site/brand";
-import { PageTransition } from "@/components/page-transition";
 
 export const metadata: Metadata = {
 	alternates: {
@@ -13,10 +18,17 @@ export const metadata: Metadata = {
 
 export default async function Home() {
 	return (
-		<PageTransition className="flex flex-col min-h-screen">
+		<PageShell variant="marketing">
 			<Header />
-			<Hero />
+			<main className="flex flex-col">
+				<Hero />
+				<AIShowcaseSection />
+				<FeaturesSection />
+				<HowItWorksSection />
+				<PledgeSection />
+				<CtaSection />
+			</main>
 			<Footer />
-		</PageTransition>
+		</PageShell>
 	);
 }

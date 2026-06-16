@@ -18,6 +18,10 @@ export function useFileUpload({
 }: UseFileUploadOptions = {}) {
 	const [isDragOver, setIsDragOver] = useState(false);
 	const dragCounterRef = useRef(0);
+	// Flipped true the instant a real drop fires. A drop and a cancel both reset
+	// `isDragOver` to false, so consumers that want to show "drop cancelled"
+	// feedback need this to tell the two apart. Consumers read it, then reset it.
+	const justDroppedRef = useRef(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	function openFilePicker() {
@@ -67,6 +71,9 @@ export function useFileUpload({
 
 	function handleDrop(e: React.DragEvent) {
 		e.preventDefault();
+		// Mark this as a real drop so the cancel-hint logic doesn't treat the
+		// resulting isDragOver=false transition as a cancellation.
+		justDroppedRef.current = true;
 		setIsDragOver(false);
 		dragCounterRef.current = 0;
 
@@ -84,6 +91,7 @@ export function useFileUpload({
 
 	return {
 		isDragOver,
+		justDroppedRef,
 		openFilePicker,
 		fileInputProps: {
 			ref: inputRef,

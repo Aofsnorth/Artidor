@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/components/editor/dialogs/migration-dialog";
@@ -17,6 +17,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEditor } from "@/hooks/use-editor";
 import { ImportDriveButton } from "@/components/import-drive-button";
 import { useProjectsStore } from "./store";
+import { GeneratedThumbnail } from "./generated-thumbnail";
+import { ShortcutHint } from "./shortcut-hint";
+import { StatsOverview } from "./stats-overview";
+import { TemplatesRow, type ProjectTemplate } from "./templates-row";
+import { useProjectsKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import type {
 	TProjectMetadata,
 	TProjectSortKey,
@@ -48,8 +53,8 @@ import {
 	Edit03Icon,
 	ArrowDown02Icon,
 	InformationCircleIcon,
+	LayoutGridIcon,
 } from "@hugeicons/core-free-icons";
-import { OcVideoIcon } from "@/components/icons";
 import { Label } from "@/components/ui/label";
 import {
 	ContextMenu,
@@ -101,6 +106,7 @@ export default function ProjectsPage() {
 	const projectsToDisplay = useEditor((e) =>
 		e.project.getFilteredAndSortedProjects({ searchQuery, sortOption }),
 	);
+	const allProjects = useEditor((e) => e.project.getSavedProjects());
 	const syncState = useEditor((e) => e.project.getDriveSyncState());
 
 	useEffect(() => {
@@ -108,6 +114,44 @@ export default function ProjectsPage() {
 			editor.project.loadAllProjects();
 		}
 	}, [editor.project]);
+
+	// Stable callback handlers for the keyboard-shortcuts layer.
+	// Wrapped in useCallback so the listener below doesn't tear
+	// down on every render.
+	const createNewProject = useCallback(async () => {
+		const projectId = await editor.project.createNewProject({
+			name: "New project",
+		});
+		router.push(`/editor/${projectId}`);
+	}, [editor.project, router]);
+	const openProject = useCallback(
+		(id: string) => {
+			router.push(`/editor/${id}`);
+		},
+		[router],
+	);
+	const focusProject = useCallback((id: string) => {
+		// Scroll the matching card into view so the user can see
+		// which project their arrow keys just landed on.
+		const el = document.querySelector<HTMLElement>(
+			`[data-project-card-id="${id}"]`,
+		);
+		if (el) {
+			el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+			el.focus({ preventScroll: true });
+		}
+	}, []);
+
+	useProjectsKeyboardShortcuts({
+		projectIds: projectsToDisplay.map((p) => p.id),
+		handlers: {
+			onCreateNew: () => {
+				void createNewProject();
+			},
+			onFocusProject: focusProject,
+			onOpenProject: openProject,
+		},
+	});
 
 	// Listen for URL query parameters to auto-load drive folder links
 	useEffect(() => {
@@ -153,7 +197,55 @@ export default function ProjectsPage() {
 
 	return (
 		<PageTransition>
-			<div className="bg-transparent min-h-screen relative">
+			{/* `h-screen overflow-hidden` pins the page to a single
+			   viewport so the header + toolbar + content always
+			   fit. The content area is `flex-1 min-h-0` so it can
+			   shrink and own the remaining height without pushing
+			   the document taller. If a sub-region (the project
+			   grid) needs its own scroll, it gets its own
+			   `overflow-auto` — the page chrome itself never
+			   scrolls. The Covenant artwork (gothic cathedral +
+			   figure) sits in its own absolutely-positioned layer
+			   behind everything, scaled up slightly + blurred so
+			   the dark detail shows through but doesn't compete
+			   with the foreground cards. A dark gradient overlay
+			   layers on top to keep the chrome (white text on
+			   glass cards) legible. */}
+			<div className="relative flex h-screen flex-col overflow-hidden">
+				{/* Background layer — rendered sharp at native quality (no blur,
+				   no upscale) so the artwork stays crisp. Negative z-index so
+				   the page chrome renders on top. */}
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0 -z-20"
+					style={{
+						backgroundImage: "url(/wallpaper/projects-covenant.jpg)",
+						backgroundRepeat: "no-repeat",
+						backgroundSize: "cover",
+						backgroundPosition: "center",
+					}}
+				/>
+				{/* Dreamy atmospheric overlay — three soft radial
+				   glows (cool indigo, warm amber, soft pink) that
+				   bloom across the artwork, evoking the "liminal
+				   dream" aesthetic. Plus a vignette at the edges
+				   so the centre pops. */}
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0 -z-10"
+					style={{
+						background: [
+							// Soft colour blooms
+							"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
+							"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
+							"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
+							// Edge vignette for cinematic depth
+							"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
+							// Top-to-bottom legibility wash
+							"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
+						].join(", "),
+					}}
+				/>
 				{/* Full-screen asset sync progress overlay */}
 				{syncState.status === "syncing-assets" && (
 					<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
@@ -182,27 +274,50 @@ export default function ProjectsPage() {
 				<ChangelogNotification />
 				<ProjectsHeader />
 				<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
-				<main className="mx-auto px-4 pt-2 pb-6 flex flex-col gap-4">
+				<main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
 					{isLoading || !isInitialized ? (
 						<ProjectsSkeleton />
 					) : projectsToDisplay.length === 0 ? (
-						<EmptyState />
-					) : (
-						<div
-							className={
-								viewMode === "grid"
-									? "xs:grid-cols-2 grid grid-cols-1 gap-6 sm:grid-cols-3 lg:grid-cols-4 px-4"
-									: "flex flex-col"
-							}
-						>
-							{projectsToDisplay.map((project) => (
-								<ProjectItem
-									key={project.id}
-									project={project}
-									allProjectIds={projectsToDisplay.map((p) => p.id)}
-								/>
-							))}
+						/* The empty state is centered in the available area.
+						   `flex-1` spacers above and below split the leftover
+						   vertical space so the card sits exactly in the
+						   visual centre of the viewport, regardless of
+						   viewport height. `overflow-auto` is a safety net. */
+						<div className="flex flex-1 min-h-0 flex-col items-center overflow-auto pb-2">
+							<div className="flex-1" />
+							<EmptyState onCreateNew={createNewProject} />
+							<div className="flex-1" />
 						</div>
+					) : (
+						<>
+							{/* Workspace overview — only when there are projects
+							   to summarise. The empty state owns the screen
+							   otherwise, no need for stats on a blank page. */}
+							<StatsOverview projects={allProjects} />
+							{/* `flex-1 min-h-0 overflow-auto` lets the grid take
+							   whatever vertical space is left and scroll
+							   internally if a project count overflows the
+							   viewport. The page chrome (header, toolbar,
+							   stats) stays locked at the top; only the cards
+							   themselves scroll when there are too many to
+							   fit. */}
+							<div
+								className={
+									"flex-1 min-h-0 overflow-auto " +
+									(viewMode === "grid"
+										? "xs:grid-cols-2 grid grid-cols-1 gap-4 content-start sm:grid-cols-3 lg:grid-cols-4 px-4"
+										: "flex flex-col gap-2")
+								}
+							>
+								{projectsToDisplay.map((project) => (
+									<ProjectItem
+										key={project.id}
+										project={project}
+										allProjectIds={projectsToDisplay.map((p) => p.id)}
+									/>
+								))}
+							</div>
+						</>
 					)}
 				</main>
 			</div>
@@ -214,7 +329,21 @@ function ProjectsHeader() {
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
 	return (
-		<header className="sticky top-0 z-20 px-8 bg-background/50 backdrop-blur-lg border-b border-border/10 flex flex-col gap-2 transition-all">
+		<header className="sticky top-0 z-20 flex flex-col gap-2 px-8 transition-all">
+			{/* Progressive fade-blur backdrop: full blur at the very top, fading
+			   to clear toward the bottom edge so the header melts into the page
+			   instead of ending on a hard line. The mask clips the backdrop-blur
+			   itself, which is what produces the gradient blur. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 -z-10 bg-background/40 backdrop-blur-lg"
+				style={{
+					WebkitMaskImage:
+						"linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+					maskImage:
+						"linear-gradient(to bottom, black 0%, black 35%, transparent 100%)",
+				}}
+			/>
 			<div className="flex items-center justify-between h-16 pt-2">
 				<div className="flex items-center gap-5">
 					<Breadcrumb>
@@ -257,8 +386,11 @@ function ProjectsHeader() {
 
 				<div className="flex items-center gap-3 md:gap-4">
 					<SearchBar className="hidden md:block" />
-					<NewProjectButton />
+					<ShortcutHint label="Search" keys={["/"]} />
+					<ShortcutHint label="New" keys={["N"]} />
+					<TemplatesButton />
 					<ImportDriveButton />
+					<NewProjectButton />
 				</div>
 			</div>
 			<SearchBar className="block md:hidden mb-4" />
@@ -405,6 +537,7 @@ function SearchBar({
 						aria-hidden="true"
 					/>
 					<Input
+						id="projects-search-input"
 						placeholder="Search..."
 						value={searchQuery}
 						onChange={(event) => setSearchQuery({ query: event.target.value })}
@@ -592,11 +725,34 @@ function NewProjectButton() {
 	return (
 		<Button
 			size="lg"
-			className="flex px-5 md:px-6"
+			className="h-9 gap-1.5 rounded-full bg-white px-4 text-[12.5px] font-medium text-[#0a0a0c] shadow-[0_4px_16px_rgba(255,255,255,0.18)] hover:bg-white/90"
 			onClick={handleCreateProject}
 		>
-			<span className="text-sm font-medium hidden md:block">New project</span>
-			<span className="text-sm font-medium block md:hidden">New</span>
+			<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+			<span className="hidden sm:inline">New project</span>
+			<span className="sm:hidden">New</span>
+		</Button>
+	);
+}
+
+function TemplatesButton() {
+	// Online templates aren't shipped yet. We surface the entry point so the
+	// feature is discoverable, but keep it locked: non-interactive, dimmed, and
+	// badged "Soon". Wire up navigation here once the template gallery exists.
+	return (
+		<Button
+			type="button"
+			size="lg"
+			variant="outline"
+			aria-disabled
+			title="Online templates — coming soon"
+			className="relative flex cursor-not-allowed items-center gap-1.5 px-4 opacity-60 md:px-5"
+		>
+			<HugeiconsIcon icon={LayoutGridIcon} className="size-4" />
+			<span className="hidden text-sm font-medium md:block">Templates</span>
+			<span className="rounded-full border border-white/15 bg-white/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/60">
+				Soon
+			</span>
 		</Button>
 	);
 }
@@ -652,7 +808,11 @@ function ProjectItem({
 	};
 
 	const gridContent = (
-		<Card className="bg-card/40 hover:bg-card/65 border border-border/10 rounded-xl backdrop-blur-md transition-all duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 overflow-hidden p-0">
+		<Card
+			data-project-card-id={project.id}
+			tabIndex={-1}
+			className="bg-card/40 hover:bg-card/65 border border-border/10 rounded-xl backdrop-blur-md transition-all duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 overflow-hidden p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+		>
 			<div className="bg-muted/30 relative aspect-video border-b border-border/5">
 				<div className="absolute inset-0">
 					{project.thumbnail ? (
@@ -663,9 +823,7 @@ function ProjectItem({
 							className="object-cover"
 						/>
 					) : (
-						<div className="flex size-full items-center justify-center">
-							<OcVideoIcon className="text-muted-foreground/60 size-12 shrink-0" />
-						</div>
+						<GeneratedThumbnail seed={project.id} />
 					)}
 				</div>
 
@@ -689,7 +847,11 @@ function ProjectItem({
 	);
 
 	const listRowContent = (
-		<div className="flex items-center gap-3 flex-1 min-w-0">
+		<div
+			data-project-card-id={project.id}
+			tabIndex={-1}
+			className="flex items-center gap-3 flex-1 min-w-0 focus:outline-none"
+		>
 			<div className="bg-muted relative size-10 rounded overflow-hidden shrink-0">
 				{project.thumbnail ? (
 					<Image
@@ -699,9 +861,10 @@ function ProjectItem({
 						className="object-cover"
 					/>
 				) : (
-					<div className="flex size-full items-center justify-center">
-						<OcVideoIcon className="text-muted-foreground size-5 shrink-0" />
-					</div>
+					<GeneratedThumbnail
+						seed={project.id}
+						className="[&>div]:text-[10px]"
+					/>
 				)}
 			</div>
 
@@ -1021,16 +1184,23 @@ function ProjectsSkeleton() {
 	);
 }
 
-function EmptyState() {
+function EmptyState({
+	onCreateNew,
+}: {
+	onCreateNew: () => Promise<void> | void;
+}) {
 	const { searchQuery, setSearchQuery } = useProjectsStore();
-	const router = useRouter();
 	const editor = useEditor();
+	const router = useRouter();
 	const savedProjects = editor.project.getSavedProjects();
 
-	const handleCreateProject = async () => {
+	const handleSelectTemplate = async (template: ProjectTemplate) => {
+		// Use the template's title as the project name; the
+		// createNewProject call will land us in the editor where
+		// the user can immediately start filling it in.
 		try {
 			const projectId = await editor.project.createNewProject({
-				name: "New project",
+				name: template.title,
 			});
 			router.push(`/editor/${projectId}`);
 		} catch (error) {
@@ -1041,25 +1211,31 @@ function EmptyState() {
 		}
 	};
 
+	// The "no search results" empty state — saved projects exist but
+	// the current query matches none of them. Inverts the page's
+	// surface treatment so it feels like a contextual nudge, not a
+	// generic placeholder.
 	if (savedProjects.length > 0) {
 		return (
-			<div className="flex flex-col items-center justify-center gap-5 py-16 text-center">
-				<div className="flex flex-col items-center gap-8">
-					<HugeiconsIcon
-						icon={Search01Icon}
-						className="text-muted-foreground size-16 bg-accent/35 border rounded-md p-4"
-					/>
-					<div className="flex flex-col items-center gap-3">
-						<h3 className="text-lg font-medium">No results found</h3>
-						<p className="text-muted-foreground max-w-md">
-							Your search for "{searchQuery}" did not return any results.
-						</p>
-					</div>
+			<div className="panel glass-strong mx-auto mt-12 flex w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-white/[0.08] p-10 text-center">
+				<div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70">
+					<HugeiconsIcon icon={Search01Icon} className="size-6" />
+				</div>
+				<div className="flex flex-col gap-2">
+					<h3 className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white">
+						Nothing matched.
+					</h3>
+					<p className="text-muted-foreground max-w-sm text-[13.5px] font-light leading-relaxed">
+						Your search for <span className="text-white">"{searchQuery}"</span>{" "}
+						didn't match any project names. Try a different keyword or clear the
+						filter.
+					</p>
 				</div>
 				<Button
 					onClick={() => setSearchQuery({ query: "" })}
 					variant="outline"
-					size="lg"
+					size="sm"
+					className="h-9 rounded-full border-white/15 bg-white/[0.04] px-4 text-[12.5px] text-white/85 hover:bg-white/[0.08]"
 				>
 					Clear search
 				</Button>
@@ -1067,28 +1243,79 @@ function EmptyState() {
 		);
 	}
 
+	// The "no projects at all" empty state. The marquee of the
+	// page — needs to look like a pitch, not a placeholder. The
+	// glassmorphic surface matches the rest of the dark luxury
+	// marketing chrome; the pulsing dot says "live"; the three
+	// quick-tip rows teach the visitor what Artidor can do for
+	// them in their first session.
 	return (
-		<div className="mx-auto max-w-lg w-full mt-12 p-8 md:p-12 rounded-2xl border border-border/10 bg-card/25 backdrop-blur-md shadow-lg flex flex-col items-center justify-center gap-6 text-center transition-all hover:border-border/20">
-			<div className="flex flex-col items-center gap-3">
-				<div className="bg-primary/10 border border-primary/20 flex size-16 items-center justify-center rounded-2xl shadow-inner transition-transform duration-300 hover:scale-105">
-					<HugeiconsIcon icon={Video01Icon} className="text-primary size-8" />
+		<div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-3xl border border-white/[0.08] bg-black/35 p-7 text-center shadow-[0_40px_120px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl md:p-9">
+			{/* Status pill — single line, anchored at the top. */}
+			<div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10.5px] font-medium tracking-wide text-white/65 backdrop-blur">
+				<span className="relative flex size-1.5">
+					<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+					<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
+				</span>
+				Empty workspace
+			</div>
+
+			{/* Hero block — icon + headline + sub. Three lines max. */}
+			<div className="flex flex-col items-center gap-2">
+				<div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/85 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+					<HugeiconsIcon icon={Video01Icon} className="size-5" />
 				</div>
-				<h3 className="text-xl font-semibold tracking-tight text-foreground mt-2">
-					Create your first project
-				</h3>
-				<p className="text-muted-foreground text-sm max-w-sm leading-relaxed">
-					Start creating your first project. Import media, edit, and export your
-					videos. All privately.
+				<h2 className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white md:text-[1.7rem]">
+					Your first project, one click away.
+				</h2>
+				<p className="text-muted-foreground max-w-md text-[12.5px] font-light leading-relaxed">
+					Drop in some media, trim on the timeline, export — that's the whole
+					loop. Everything stays on your device; nothing uploads anywhere.
 				</p>
 			</div>
+
+			{/* Three-up feature strip — quick "what you can do" hints. */}
+			<div className="grid w-full grid-cols-1 gap-1.5 text-left sm:grid-cols-3">
+				{[
+					{
+						title: "Drop media in",
+						body: "Video, audio, images — your project holds whatever you throw at it.",
+					},
+					{
+						title: "Edit on the timeline",
+						body: "Trim, split, keyframe. The same primitives as a $500 editor.",
+					},
+					{
+						title: "Export in MP4 / WebM",
+						body: "Or ask the AI co-pilot to do the whole thing for you.",
+					},
+				].map((tip) => (
+					<div
+						key={tip.title}
+						className="rounded-lg border border-white/[0.06] bg-white/[0.025] p-2"
+					>
+						<div className="text-[11.5px] font-semibold text-white/90">
+							{tip.title}
+						</div>
+						<div className="mt-0.5 text-[10.5px] font-light leading-snug text-white/55">
+							{tip.body}
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Primary CTA — single, prominent. */}
 			<Button
 				size="lg"
-				className="gap-2 px-6 h-11 text-sm font-medium transition-all hover:shadow-[0_4px_20px_rgba(59,130,246,0.3)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-				onClick={handleCreateProject}
+				className="h-10 gap-2 rounded-full bg-white px-5 text-[13px] font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
+				onClick={() => void onCreateNew()}
 			>
-				<HugeiconsIcon icon={PlusSignIcon} className="size-4" />
-				Create new project
+				<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+				Create your first project
 			</Button>
+
+			{/* Templates — 4-up row of compact pills, equally spaced. */}
+			<TemplatesRow onSelect={handleSelectTemplate} />
 		</div>
 	);
 }

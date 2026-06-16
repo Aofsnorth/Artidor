@@ -33,64 +33,73 @@ const links: CategoryLinks = {
 
 export function Footer() {
 	return (
-		<footer className="bg-background border-t">
-			<div className="mx-auto max-w-5xl px-8 py-10">
-				<div className="mb-8 grid grid-cols-1 gap-12 md:grid-cols-2">
-					{/* Brand Section */}
-					<div className="max-w-sm md:col-span-1">
-						<div className="mb-4 flex items-center justify-start gap-2">
+		<footer className="relative mx-auto mt-12 w-full max-w-6xl px-6 pb-12">
+			<div className="panel glass-strong relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur md:p-10">
+				<div
+					aria-hidden
+					className="pointer-events-none absolute -top-20 right-0 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] blur-3xl"
+				/>
+				<div className="grid grid-cols-1 gap-10 md:grid-cols-[1.2fr_2fr]">
+					<div>
+						<div className="mb-4 flex items-center gap-2.5">
 							<Image
 								src={DEFAULT_LOGO_URL}
 								alt="Artidor"
-								width={28}
-								height={28}
-								className="invert dark:invert-0"
+								width={32}
+								height={32}
+								className="size-8 rounded-md"
 							/>
-							<span className="text-lg font-bold">OpenCut</span>
+							<span className="text-lg font-semibold tracking-[-0.01em] text-white">
+								Artidor
+							</span>
 						</div>
-						<p className="text-muted-foreground mb-5 text-sm md:text-left">
-							The privacy-first video editor that feels simple to use.
+						<p className="max-w-xs text-[13.5px] font-light leading-relaxed text-white/55">
+							The privacy-first video editor that respects your machine. Free,
+							open-source, runs in your browser or on your desktop.
 						</p>
-						<div className="flex justify-start gap-3">
+						<div className="mt-5 flex gap-2">
 							<Link
 								href={SOCIAL_LINKS.github}
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
+								aria-label="GitHub"
 							>
-								<FaGithub className="size-5" />
+								<FaGithub className="size-4" />
 							</Link>
 							<Link
 								href={SOCIAL_LINKS.x}
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
+								aria-label="X (Twitter)"
 							>
-								<RiTwitterXLine className="size-5" />
+								<RiTwitterXLine className="size-4" />
 							</Link>
 							<Link
 								href={SOCIAL_LINKS.discord}
-								className="text-muted-foreground hover:text-foreground transition-colors"
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
+								aria-label="Discord"
 							>
-								<RiDiscordFill className="size-5" />
+								<RiDiscordFill className="size-4" />
 							</Link>
 						</div>
 					</div>
 
-					<div className="flex items-start justify-start gap-12 py-2">
+					<div className="grid grid-cols-2 gap-6">
 						{(Object.keys(links) as Category[]).map((category) => (
-							<div key={category} className="flex flex-col gap-2">
-								<h3 className="text-foreground font-semibold">
+							<div key={category} className="flex flex-col gap-3">
+								<h3 className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">
 									{capitalizeFirstLetter({ string: category })}
 								</h3>
-								<ul className="space-y-2 text-sm">
+								<ul className="flex flex-col gap-2 text-[13.5px]">
 									{links[category].map((link) => (
 										<li key={link.href}>
 											<Link
 												href={link.href}
-												className="text-muted-foreground hover:text-foreground transition-colors"
+												className="text-white/65 transition-colors hover:text-white"
 												target={
 													link.href.startsWith("http") ? "_blank" : undefined
 												}
@@ -110,13 +119,14 @@ export function Footer() {
 					</div>
 				</div>
 
-				{/* Bottom Section */}
-				<div className="flex flex-col items-start justify-between gap-4 pt-2 md:flex-row">
-					<div className="text-muted-foreground flex items-center gap-4 text-sm">
-						<span>
-							© {new Date().getFullYear()} OpenCut, All Rights Reserved
-						</span>
-					</div>
+				<div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-[12px] text-white/45 md:flex-row md:items-center">
+					<span>
+						© {new Date().getFullYear()} Artidor. MIT-licensed. Built in public.
+					</span>
+					<span className="flex items-center gap-2 text-white/40">
+						<span className="size-1.5 rounded-full bg-emerald-400" />
+						All systems normal
+					</span>
 				</div>
 			</div>
 		</footer>

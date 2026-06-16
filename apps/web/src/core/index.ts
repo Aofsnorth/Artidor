@@ -11,11 +11,13 @@ import { SelectionManager } from "./managers/selection-manager";
 import { ClipboardManager } from "./managers/clipboard-manager";
 import { DiagnosticsManager } from "./managers/diagnostics-manager";
 import { TeleprompterManager } from "./managers/teleprompter-manager";
+import { AIManager } from "./managers/ai-manager";
 import { registerDefaultEffects } from "@/lib/effects";
 import { registerDefaultMasks } from "@/lib/masks";
 import { registerDefaultTransitions } from "@/lib/transitions";
 import { registerDefaultAnimationPresets } from "@/lib/animation/presets";
 import { registerTranscriptionDiagnostics } from "@/lib/transcription/diagnostics";
+import { attachTelemetryToCommands } from "@/lib/ai/telemetry/store";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -32,6 +34,7 @@ export class EditorCore {
 	public readonly clipboard: ClipboardManager;
 	public readonly diagnostics: DiagnosticsManager;
 	public readonly teleprompter: TeleprompterManager;
+	public readonly ai: AIManager;
 
 	private constructor() {
 		registerDefaultEffects();
@@ -51,6 +54,7 @@ export class EditorCore {
 		this.clipboard = new ClipboardManager(this);
 		this.diagnostics = new DiagnosticsManager(this);
 		this.teleprompter = new TeleprompterManager(this);
+		this.ai = new AIManager(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
 		// Tracks that have held at least one element at some point. An empty
@@ -91,6 +95,12 @@ export class EditorCore {
 			}
 		});
 		this.save.start();
+		// Self-improvement: route every command execution through the
+		// telemetry store. This runs in the browser (no network) and is
+		// what powers the AI's "match the user's recent style" prompt.
+		if (typeof window !== "undefined") {
+			attachTelemetryToCommands();
+		}
 	}
 
 	static getInstance(): EditorCore {
