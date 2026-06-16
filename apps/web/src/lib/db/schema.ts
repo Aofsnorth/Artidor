@@ -86,3 +86,21 @@ export const verifications = pgTable("verifications", {
 		() => /* @__PURE__ */ new Date(),
 	),
 }).enableRLS();
+
+// Read-only project shares (the "invite collaborators" feature). Capability
+// based: the random `id` is the share link, the `manageToken` (only its hash
+// is stored) lets the creator revoke. `payload` is opaque JSON written by the
+// owner's browser — it carries where the read-only viewer loads the project
+// from (the public Google Drive folder id, the project file id, and a media
+// manifest). The server only stores it and hands it back once the optional
+// `passwordHash` (scrypt) is satisfied; it never inspects the payload.
+export const shares = pgTable("shares", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	payload: text("payload").notNull(),
+	passwordHash: text("password_hash"),
+	manageTokenHash: text("manage_token_hash").notNull(),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => /* @__PURE__ */ new Date())
+		.notNull(),
+}).enableRLS();

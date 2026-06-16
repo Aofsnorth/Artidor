@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEditor } from "@/hooks/use-editor";
 import { ImportDriveButton } from "@/components/import-drive-button";
+import { DriveAccountButton } from "@/components/drive-account-button";
 import { useProjectsStore } from "./store";
 import { GeneratedThumbnail } from "./generated-thumbnail";
 import { ShortcutHint } from "./shortcut-hint";
@@ -391,6 +392,7 @@ function ProjectsHeader() {
 					<TemplatesButton />
 					<ImportDriveButton />
 					<NewProjectButton />
+					<DriveAccountButton />
 				</div>
 			</div>
 			<SearchBar className="block md:hidden mb-4" />
