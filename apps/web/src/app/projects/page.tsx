@@ -331,19 +331,10 @@ function ProjectsHeader() {
 
 	return (
 		<header className="sticky top-0 z-20 flex flex-col gap-2 px-8 transition-all">
-			{/* Progressive fade-blur backdrop: full blur at the very top, fading
-			   to clear toward the bottom edge so the header melts into the page
-			   instead of ending on a hard line. The mask clips the backdrop-blur
-			   itself, which is what produces the gradient blur. */}
+			{/* Glassmorphism backdrop for the header. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10 bg-background/80 backdrop-blur-lg"
-				style={{
-					WebkitMaskImage:
-						"linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
-					maskImage:
-						"linear-gradient(to bottom, black 0%, black 55%, transparent 100%)",
-				}}
+				className="pointer-events-none absolute inset-0 -z-10 bg-background/30 backdrop-blur-xl border-b border-white/5 shadow-sm"
 			/>
 			<div className="flex items-center justify-between h-16 pt-2">
 				<div className="flex items-center gap-5">
@@ -434,8 +425,8 @@ function ProjectsToolbar({ projectIds }: { projectIds: string[] }) {
 	};
 
 	return (
-		<div className="sticky top-16 z-10 flex items-center justify-between px-6 h-14 pt-2 bg-background/40 backdrop-blur-md border-b border-border/10 transition-all">
-			<div className="flex items-center gap-2">
+		<div className="sticky top-16 z-10 flex items-center justify-between px-6 h-14 pt-2 transition-all">
+			<div className="flex items-center gap-2 bg-background/30 backdrop-blur-xl border border-white/5 rounded-full px-2 py-1 shadow-sm">
 				<Label
 					className="flex items-center gap-3 cursor-pointer px-2"
 					htmlFor="select-all-projects"
@@ -631,7 +622,7 @@ function ProjectActions() {
 
 	return (
 		<>
-			<div className="flex items-center gap-2.5 px-3">
+			<div className="flex items-center gap-2.5 px-3 bg-background/30 backdrop-blur-xl border border-white/5 rounded-full py-1 shadow-sm">
 				<div className="hidden sm:flex items-center gap-2.5">
 					{PROJECT_ACTIONS.map((action) => (
 						<Button
