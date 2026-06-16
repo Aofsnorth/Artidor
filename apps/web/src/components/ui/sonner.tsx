@@ -1,16 +1,17 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+// Theme is pinned to dark across the whole app — the marketing
+// site, the editor, and the projects dashboard all use the same
+// glassmorphism surface. Sonner inherits the page's CSS variables
+// so a single dark palette covers the toast as well.
 const Toaster = ({ ...props }: ToasterProps) => {
-	const { theme = "system" } = useTheme();
-
 	return (
 		<Sonner
-			theme={theme as ToasterProps["theme"]}
+			theme="dark"
 			className="toaster group"
 			position="bottom-right"
 			offset={20}

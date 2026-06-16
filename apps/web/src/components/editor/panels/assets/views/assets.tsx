@@ -132,12 +132,17 @@ export function MediaView() {
 		}
 	};
 
-	const { isDragOver, dragProps, openFilePicker, fileInputProps } =
-		useFileUpload({
-			accept: "image/*,video/*,audio/*",
-			multiple: true,
-			onFilesSelected: (files) => processFiles({ files }),
-		});
+	const {
+		isDragOver,
+		justDroppedRef,
+		dragProps,
+		openFilePicker,
+		fileInputProps,
+	} = useFileUpload({
+		accept: "image/*,video/*,audio/*",
+		multiple: true,
+		onFilesSelected: (files) => processFiles({ files }),
+	});
 
 	// Detect "user dragged in then dragged out without dropping" so the
 	// overlay can briefly show a "drop cancelled" hint before unmounting.
@@ -150,9 +155,14 @@ export function MediaView() {
 		const isOver = isDragOver;
 		prevIsDragOverRef.current = isOver;
 
-		// true → false without a drop in between: surface the cancel hint.
-		// (The drop handler resets isDragOver synchronously, so the cancel
-		// branch only fires when the user actually left the drop zone.)
+		// A real drop also flips isDragOver false — skip the cancel hint then
+		// (the drop is handled by the file-processing path instead).
+		if (justDroppedRef.current) {
+			justDroppedRef.current = false;
+			return;
+		}
+
+		// true → false without a drag-out in between: surface the cancel hint.
 		if (wasOver && !isOver) {
 			setShowCancelHint(true);
 			if (cancelHintTimerRef.current) {
@@ -177,7 +187,7 @@ export function MediaView() {
 				cancelHintTimerRef.current = null;
 			}
 		};
-	}, [isDragOver]);
+	}, [isDragOver, justDroppedRef]);
 
 	const handleRemove = ({
 		event,
@@ -337,6 +347,15 @@ export function MediaView() {
 					/>
 				}
 				contentClassName="px-3 pb-3"
+				// The empty state and the drag overlay are full-height "fill" designs
+				// that should never produce a scrollbar — only the populated media grid
+				// scrolls. Override the panel's default overflow-y-auto in those states.
+				scrollClassName={cn(
+					(isDragOver ||
+						showCancelHint ||
+						(assetSource === "library" && filteredMediaItems.length === 0)) &&
+						"overflow-y-hidden",
+				)}
 				className={cn(isDragOver && "bg-accent/30")}
 				{...dragProps}
 			>
@@ -356,7 +375,7 @@ export function MediaView() {
 						/>
 						<QuickAccessGrid stats={mediaStats} />
 						{assetSource === "library" ? (
-							<div className="flex min-w-0 flex-1 flex-col gap-2 overflow-hidden">
+							<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
 								{currentFolderId === null && folders.length > 0 && (
 									<FolderGrid
 										folders={folders}
@@ -543,28 +562,32 @@ function EmptyLibraryState({ onImport }: { onImport: () => void }) {
 		<button
 			type="button"
 			onClick={onImport}
-			className="glass relative flex h-full min-h-[20rem] w-full flex-1 flex-col items-center justify-center gap-[3cqi] overflow-hidden rounded-xl p-[4cqi] text-center transition hover:bg-white/[0.08] @xs:gap-[4cqi] @xs:p-[5cqi] @sm:gap-[5cqi] @sm:p-[6cqi] @lg:gap-[6cqi] @lg:p-[7cqi]"
+			className="glass relative flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-hidden rounded-xl p-8 text-center transition-colors hover:bg-white/[0.08]"
 		>
-			<div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_58%_22%,rgba(255,255,255,0.16),transparent_24%),radial-gradient(circle_at_50%_36%,rgba(255,255,255,0.06),transparent_36%)]" />
-			<div className="relative grid size-[15cqi] min-size-16 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10 @xs:size-[18cqi] @sm:size-[20cqi] @lg:size-[22cqi]">
-				<div className="absolute size-[25cqi] rounded-full border border-dashed border-white/10 @xs:size-[30cqi] @sm:size-[32cqi] @lg:size-[36cqi]" />
-				<div className="absolute size-[19cqi] rounded-full border border-dashed border-white/15 @xs:size-[22cqi] @sm:size-[24cqi] @lg:size-[26cqi]" />
-				<HugeiconsIcon
-					icon={UploadIcon}
-					className="size-[6cqi] min-size-6 text-white/80 @xs:size-[7cqi] @sm:size-[8cqi] @lg:size-[9cqi]"
-				/>
+			{/* Background glow — mirrors the drag-to-import overlay so the
+			   resting state and the drop state read as one design. */}
+			<div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.14),transparent_55%)]" />
+
+			{/* Hero icon: a single dashed ring around the core icon. The resting
+			   state keeps just the inner ring; the drag overlay adds the outer
+			   one for extra emphasis. */}
+			<div className="relative grid size-24 place-items-center">
+				<div className="absolute size-28 rounded-full border border-dashed border-white/20 drop-ring-rotate-fast" />
+				<div className="relative grid size-24 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10">
+					<HugeiconsIcon icon={UploadIcon} className="size-8 text-white/85" />
+				</div>
 			</div>
 
-			<div className="relative space-y-[1cqi] @xs:space-y-[1.5cqi] @sm:space-y-[2cqi]">
-				<h3 className="font-serif text-[4.5cqi] min-text-sm text-white @xs:text-[5cqi] @sm:text-[5.5cqi] @lg:text-[6cqi]">
+			<div className="relative max-w-md space-y-2">
+				<h3 className="font-serif text-lg text-white">
 					Your creative journey begins here
 				</h3>
-				<p className="text-muted-foreground mx-auto max-w-sm text-[2.8cqi] min-text-[0.6rem] leading-relaxed @xs:text-[3cqi] @sm:text-[3.2cqi] @lg:text-[3.5cqi]">
+				<p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
 					Import media or drag and drop to get started.
 				</p>
 			</div>
 
-			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-[3cqi] py-[1.5cqi] text-[2.8cqi] min-text-[0.6rem] text-white/85 @xs:px-[3.5cqi] @xs:text-[3cqi] @sm:px-[4cqi] @sm:py-[2cqi] @sm:text-[3.2cqi]">
+			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2 text-xs text-white/85">
 				Import media
 			</span>
 		</button>
@@ -727,11 +750,9 @@ function MediaItemList({
 	return (
 		<div
 			className={cn(
-				isGrid
-					? "grid gap-2.5"
-					: "flex min-w-0 flex-col gap-1.5", // `min-w-0` lets the
-					  //   compact list shrink inside the parent flex
-					  //   column without forcing the panel wider.
+				isGrid ? "grid gap-2.5" : "flex min-w-0 flex-col gap-1.5", // `min-w-0` lets the
+				//   compact list shrink inside the parent flex
+				//   column without forcing the panel wider.
 			)}
 			style={{
 				gridTemplateColumns: isGrid

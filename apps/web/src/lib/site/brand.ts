@@ -3,7 +3,7 @@ export const SITE_URL = "https://artidor.app";
 export const SITE_INFO = {
 	title: "Artidor",
 	description:
-		"A simple but powerful video editor that gets the job done. In your browser.",
+		"Artidor is a free, open-source video editor that runs in your browser or on your desktop. Local-first, AI-native, MIT-licensed. Now with an AI Co-Pilot that learns how you edit.",
 	url: SITE_URL,
 	openGraphImage: "/open-graph/default.jpg",
 	twitterImage: "/open-graph/default.jpg",
