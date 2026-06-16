@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EditorCore } from "@/core";
 import { startEditorBridge } from "@/lib/api/bridge";
+import { CommandPalette } from "@/components/editor/command-palette";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsListener } from "@/hooks/use-keybindings";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
@@ -148,5 +149,5 @@ function EditorRuntimeBindings() {
 
 	useEditorActions();
 	useKeybindingsListener();
-	return null;
+	return <CommandPalette />;
 }

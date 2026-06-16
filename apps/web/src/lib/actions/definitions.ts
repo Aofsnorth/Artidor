@@ -168,6 +168,10 @@ export const ACTIONS = {
 		description: "Unlink selected element from its parent",
 		category: "editing",
 	},
+	"link-selected-elements": {
+		description: "Link selected elements (child to parent)",
+		category: "editing",
+	},
 	"add-bookmark": {
 		description: "Add bookmark at playhead",
 		category: "timeline",
@@ -236,6 +240,30 @@ export const ACTIONS = {
 		description: "Open templates browser",
 		category: "controls",
 	},
+	"open-command-palette": {
+		description: "Open command palette",
+		category: "controls",
+	},
+	"toggle-focus-mode": {
+		description: "Toggle focus mode (hide editor chrome)",
+		category: "controls",
+	},
+	"set-in": {
+		description: "Trim selected clip in-point to playhead",
+		category: "editing",
+	},
+	"set-out": {
+		description: "Trim selected clip out-point to playhead",
+		category: "editing",
+	},
+	"nudge-left": {
+		description: "Nudge selected clip one frame left",
+		category: "editing",
+	},
+	"nudge-right": {
+		description: "Nudge selected clip one frame right",
+		category: "editing",
+	},
 } as const satisfies Record<string, TActionBaseDefinition>;
 
 export type TAction = keyof typeof ACTIONS;
@@ -270,6 +298,12 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	"reverse-clip": ["ctrl+r"],
 	"open-teleprompter": ["ctrl+t"],
 	"fit-to-screen": ["f"],
+	"open-command-palette": ["ctrl+k"],
+	"toggle-focus-mode": ["shift+f"],
+	"set-in": ["i"],
+	"set-out": ["o"],
+	"nudge-left": ["alt+left"],
+	"nudge-right": ["alt+right"],
 } as const satisfies Partial<
 	Record<TActionWithOptionalArgs, readonly ShortcutKey[]>
 >;
