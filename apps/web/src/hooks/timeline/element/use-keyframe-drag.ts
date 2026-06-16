@@ -211,6 +211,12 @@ export function useKeyframeDrag({
 			event: ReactMouseEvent;
 			keyframes: SelectedKeyframeRef[];
 		}) => {
+			// Let right/middle clicks through so the keyframe context menu can open
+			// without starting a drag.
+			if (event.button !== 0) {
+				return;
+			}
+
 			event.preventDefault();
 			event.stopPropagation();
 

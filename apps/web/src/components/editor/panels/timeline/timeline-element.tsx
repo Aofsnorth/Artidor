@@ -13,6 +13,7 @@ import {
 } from "@/hooks/timeline/element/use-keyframe-drag";
 import { useKeyframeSelection } from "@/hooks/timeline/element/use-keyframe-selection";
 import { useKeyframeBoxSelect } from "@/hooks/timeline/element/use-keyframe-box-select";
+import { KeyframeContextMenu } from "./keyframe-context-menu";
 import { useTimelineElementResize } from "@/hooks/timeline/element/use-element-resize";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { dBToLinear } from "@/lib/timeline/audio-state";
@@ -258,32 +259,33 @@ function ElementEnvelope({
 					const { kf, keyframeRef } = p;
 					const isSelected = isKeyframeSelected({ keyframe: keyframeRef });
 					return (
-						<button
-							key={kf.id}
-							type="button"
-							className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
-							style={{ left: p.x, top: p.y }}
-							onMouseDown={(event) =>
-								onKeyframeMouseDown({ event, keyframes: [keyframeRef] })
-							}
-							onClick={(event) =>
-								onKeyframeClick({
-									event,
-									keyframes: [keyframeRef],
-									orderedKeyframes: [keyframeRef],
-									indicatorTime: kf.time,
-								})
-							}
-						>
-							<HugeiconsIcon
-								icon={KeyframeIcon}
-								className={cn(
-									"size-3.5 text-black",
-									isSelected ? "fill-primary" : "fill-white",
-								)}
-								strokeWidth={1.5}
-							/>
-						</button>
+						<KeyframeContextMenu key={kf.id} keyframe={keyframeRef}>
+							<button
+								type="button"
+								className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
+								style={{ left: p.x, top: p.y }}
+								onMouseDown={(event) =>
+									onKeyframeMouseDown({ event, keyframes: [keyframeRef] })
+								}
+								onClick={(event) =>
+									onKeyframeClick({
+										event,
+										keyframes: [keyframeRef],
+										orderedKeyframes: [keyframeRef],
+										indicatorTime: kf.time,
+									})
+								}
+							>
+								<HugeiconsIcon
+									icon={KeyframeIcon}
+									className={cn(
+										"size-3.5 text-black",
+										isSelected ? "fill-primary" : "fill-white",
+									)}
+									strokeWidth={1.5}
+								/>
+							</button>
+						</KeyframeContextMenu>
 					);
 				})}
 		</div>
@@ -1332,41 +1334,42 @@ function ExpandedKeyframeLanes({
 							});
 
 							return (
-								<button
-									key={kf.id}
-									type="button"
-									className={cn(
-										"pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab",
-										isBoxSelecting && "pointer-events-none",
-									)}
-									style={{ left: visualOffset }}
-									onMouseDown={(event) => {
-										event.stopPropagation();
-										onKeyframeMouseDown({
-											event,
-											keyframes: [keyframeRef],
-										});
-									}}
-									onClick={(event) => {
-										event.stopPropagation();
-										onKeyframeClick({
-											event,
-											keyframes: [keyframeRef],
-											orderedKeyframes,
-											indicatorTime: kf.time,
-										});
-									}}
-									aria-label="Select keyframe"
-								>
-									<HugeiconsIcon
-										icon={KeyframeIcon}
+								<KeyframeContextMenu key={kf.id} keyframe={keyframeRef}>
+									<button
+										type="button"
 										className={cn(
-											"size-3.5 text-black mr-1",
-											isSelected ? "fill-primary" : "fill-white",
+											"pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab",
+											isBoxSelecting && "pointer-events-none",
 										)}
-										strokeWidth={1.5}
-									/>
-								</button>
+										style={{ left: visualOffset }}
+										onMouseDown={(event) => {
+											event.stopPropagation();
+											onKeyframeMouseDown({
+												event,
+												keyframes: [keyframeRef],
+											});
+										}}
+										onClick={(event) => {
+											event.stopPropagation();
+											onKeyframeClick({
+												event,
+												keyframes: [keyframeRef],
+												orderedKeyframes,
+												indicatorTime: kf.time,
+											});
+										}}
+										aria-label="Select keyframe"
+									>
+										<HugeiconsIcon
+											icon={KeyframeIcon}
+											className={cn(
+												"size-3.5 text-black mr-1",
+												isSelected ? "fill-primary" : "fill-white",
+											)}
+											strokeWidth={1.5}
+										/>
+									</button>
+								</KeyframeContextMenu>
 							);
 						})}
 					</div>
