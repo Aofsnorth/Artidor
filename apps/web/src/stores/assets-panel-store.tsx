@@ -19,6 +19,7 @@ import {
 	HeadphonesIcon,
 	FilterIcon,
 	AiBrain01Icon,
+	SourceCodeIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -42,6 +43,7 @@ export const TAB_KEYS = [
 	"quicktools",
 	"filters",
 	"captions",
+	"scripting",
 	"settings",
 ] as const;
 
@@ -58,6 +60,7 @@ export const VISIBLE_TAB_KEYS = [
 	"adjustment",
 	"templates",
 	"plugins",
+	"scripting",
 	"settings",
 ] as const satisfies readonly (typeof TAB_KEYS)[number][];
 
@@ -145,6 +148,10 @@ export const tabs = {
 	stickers: {
 		icon: createHugeiconsIcon({ icon: Happy01Icon }),
 		label: "Stickers",
+	},
+	scripting: {
+		icon: createHugeiconsIcon({ icon: SourceCodeIcon }),
+		label: "Scripting",
 	},
 	settings: {
 		icon: createHugeiconsIcon({ icon: Settings01Icon }),
