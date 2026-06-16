@@ -3,7 +3,10 @@ import {
 	type AutomaticSpeechRecognitionPipeline,
 	type AutomaticSpeechRecognitionOutput,
 } from "@huggingface/transformers";
-import type { TranscriptionSegment } from "@/lib/transcription/types";
+import type {
+	TranscriptionSegment,
+	TranscriptionWord,
+} from "@/lib/transcription/types";
 import {
 	DEFAULT_CHUNK_LENGTH_SECONDS,
 	DEFAULT_STRIDE_SECONDS,
@@ -134,11 +137,13 @@ async function handleTranscribe({
 	cancelled = false;
 
 	try {
+		// Ask for WORD-level timestamps so captions can be cut on real word
+		// boundaries instead of linear interpolation (the old drift source).
 		const rawResult = await transcriber(audio, {
 			chunk_length_s: DEFAULT_CHUNK_LENGTH_SECONDS,
 			stride_length_s: DEFAULT_STRIDE_SECONDS,
 			language: language === "auto" ? undefined : language,
-			return_timestamps: true,
+			return_timestamps: "word",
 		});
 
 		if (cancelled) return;
@@ -147,18 +152,38 @@ async function handleTranscribe({
 			? rawResult[0]
 			: rawResult;
 
-		const segments: TranscriptionSegment[] = [];
-
+		// With word timestamps, `chunks` is one entry per word. Collect the
+		// words (guarding null/!finite timestamps that Whisper emits on the
+		// final token), then fold them into a single segment carrying the
+		// per-word timing. buildCaptionChunks slices on these real boundaries.
+		const words: TranscriptionWord[] = [];
 		if (result.chunks) {
 			for (const chunk of result.chunks) {
-				if (chunk.timestamp && chunk.timestamp.length >= 2) {
-					segments.push({
-						text: chunk.text,
-						start: chunk.timestamp[0] ?? 0,
-						end: chunk.timestamp[1] ?? chunk.timestamp[0] ?? 0,
-					});
+				const ts = chunk.timestamp;
+				const start = ts?.[0];
+				let end = ts?.[1];
+				if (typeof start !== "number" || !Number.isFinite(start)) continue;
+				// Whisper leaves the last word's end null — fall back to its start
+				// so the word still has a non-negative, finite duration.
+				if (typeof end !== "number" || !Number.isFinite(end) || end < start) {
+					end = start;
 				}
+				const text = chunk.text?.trim();
+				if (!text) continue;
+				words.push({ word: text, start, end });
 			}
+		}
+
+		const segments: TranscriptionSegment[] = [];
+		if (words.length > 0) {
+			const firstWord = words[0];
+			const lastWord = words[words.length - 1];
+			segments.push({
+				text: words.map((w) => w.word).join(" "),
+				start: firstWord?.start ?? 0,
+				end: lastWord?.end ?? firstWord?.start ?? 0,
+				words,
+			});
 		}
 
 		self.postMessage({

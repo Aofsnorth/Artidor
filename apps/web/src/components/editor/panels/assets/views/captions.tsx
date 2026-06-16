@@ -17,12 +17,25 @@ import { TRANSCRIPTION_LANGUAGES } from "@/lib/transcription/supported-languages
 import type {
 	CaptionChunk,
 	TranscriptionLanguage,
+	TranscriptionModelId,
 	TranscriptionProgress,
 } from "@/lib/transcription/types";
 import { transcriptionService } from "@/services/transcription/service";
+import {
+	DEFAULT_TRANSCRIPTION_MODEL,
+	TRANSCRIPTION_MODELS,
+} from "@/lib/transcription/models";
 import { decodeAudioToFloat32 } from "@/lib/media/audio";
 import { buildCaptionChunks } from "@/lib/transcription/caption";
-import { insertCaptionChunksAsTextTrack } from "@/lib/subtitles/insert";
+import {
+	CAPTION_TRACK_NAME,
+	insertCaptionChunksAsTextTrack,
+} from "@/lib/subtitles/insert";
+import {
+	downloadSubtitleFile,
+	exportCuesToAss,
+	exportCuesToSrt,
+} from "@/lib/subtitles/export";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { parseSubtitleFile } from "@/lib/subtitles/parse";
 import { Spinner } from "@/components/ui/spinner";
@@ -66,6 +79,14 @@ const IDLE_STATE: ProcessingState = {
 	warnings: [],
 };
 
+/** seconds -> "M:SS" for the compact cue timestamp button. */
+function formatCueTime(seconds: number): string {
+	const total = Math.max(0, Math.floor(seconds));
+	const minutes = Math.floor(total / 60);
+	const secs = total % 60;
+	return `${minutes}:${secs.toString().padStart(2, "0")}`;
+}
+
 function processingReducer(
 	state: ProcessingState,
 	action: ProcessingAction,
@@ -86,6 +107,9 @@ function processingReducer(
 export function Captions() {
 	const [selectedLanguage, setSelectedLanguage] =
 		useState<TranscriptionLanguage>("auto");
+	const [selectedModel, setSelectedModel] = useState<TranscriptionModelId>(
+		DEFAULT_TRANSCRIPTION_MODEL,
+	);
 	const [processing, dispatch] = useReducer(processingReducer, IDLE_STATE);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +159,7 @@ export function Captions() {
 			const result = await transcriptionService.transcribe({
 				audioData: samples,
 				language: selectedLanguage === "auto" ? undefined : selectedLanguage,
+				modelId: selectedModel,
 				onProgress: handleProgress,
 			});
 
@@ -194,6 +219,7 @@ export function Captions() {
 			const result = await transcriptionService.transcribe({
 				audioData: samples,
 				language: selectedLanguage === "auto" ? undefined : selectedLanguage,
+				modelId: selectedModel,
 				onProgress: handleProgress,
 			});
 
@@ -299,6 +325,62 @@ export function Captions() {
 		setSelectedLanguage(matchedLanguage.code);
 	};
 
+	const handleCancel = () => {
+		transcriptionService.cancel();
+		dispatch({ type: "fail", error: "Transcription cancelled" });
+	};
+
+	// Live cue list from the caption track (tracked by name). Each cue maps to
+	// a TextElement; editing text/timing updates that element via undoable
+	// commands, and export serialises these cues to .srt/.ass.
+	const captionCues = useEditor((e) => {
+		const overlay = e.scenes.getActiveSceneOrNull()?.tracks.overlay ?? [];
+		const track = overlay.find(
+			(t) => t.type === "text" && t.name === CAPTION_TRACK_NAME,
+		);
+		if (!track) return [];
+		return track.elements
+			.map((el) => ({
+				trackId: track.id,
+				elementId: el.id,
+				text: "content" in el ? (el.content ?? "") : "",
+				startTime: el.startTime / TICKS_PER_SECOND,
+				duration: el.duration / TICKS_PER_SECOND,
+			}))
+			.sort((a, b) => a.startTime - b.startTime);
+	});
+
+	const updateCueText = ({
+		trackId,
+		elementId,
+		text,
+	}: {
+		trackId: string;
+		elementId: string;
+		text: string;
+	}) => {
+		editor.timeline.updateElements({
+			updates: [{ trackId, elementId, patch: { content: text } }],
+			pushHistory: true,
+		});
+	};
+
+	const exportCaptions = ({ format }: { format: "srt" | "ass" }) => {
+		const cues = captionCues.map((cue) => ({
+			text: cue.text,
+			startTime: cue.startTime,
+			duration: cue.duration,
+		}));
+		if (cues.length === 0) {
+			toast.error("No captions to export");
+			return;
+		}
+		const content =
+			format === "srt" ? exportCuesToSrt({ cues }) : exportCuesToAss({ cues });
+		downloadSubtitleFile({ content, fileName: `captions.${format}` });
+		toast.success(`Exported captions.${format}`);
+	};
+
 	const error = processing.status === "idle" ? processing.error : null;
 	const warnings = processing.status === "idle" ? processing.warnings : [];
 
@@ -372,6 +454,25 @@ export function Captions() {
 								</SelectContent>
 							</Select>
 						</SectionField>
+						<SectionField label="Model">
+							<Select
+								value={selectedModel}
+								onValueChange={(value) =>
+									setSelectedModel(value as TranscriptionModelId)
+								}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder="Select a model" />
+								</SelectTrigger>
+								<SelectContent>
+									{TRANSCRIPTION_MODELS.map((model) => (
+										<SelectItem key={model.id} value={model.id}>
+											{model.name} — {model.description}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</SectionField>
 					</SectionFields>
 
 					<Button
@@ -395,6 +496,16 @@ export function Captions() {
 					>
 						{isProcessing ? processing.step : "Transcribe selected clip"}
 					</Button>
+					{isProcessing && (
+						<Button
+							type="button"
+							variant="destructive-foreground"
+							className="w-full"
+							onClick={handleCancel}
+						>
+							Cancel
+						</Button>
+					)}
 					{error && (
 						<div className="bg-destructive/10 border-destructive/20 rounded-md border p-3">
 							<p className="text-destructive text-sm">{error}</p>
@@ -407,6 +518,67 @@ export function Captions() {
 									<li key={warning}>{warning}</li>
 								))}
 							</ul>
+						</div>
+					)}
+
+					{captionCues.length > 0 && (
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center justify-between">
+								<span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
+									{captionCues.length} cues
+								</span>
+								<div className="flex items-center gap-1.5">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => exportCaptions({ format: "srt" })}
+									>
+										Export SRT
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => exportCaptions({ format: "ass" })}
+									>
+										Export ASS
+									</Button>
+								</div>
+							</div>
+							<div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
+								{captionCues.map((cue) => (
+									<div
+										key={cue.elementId}
+										className="flex items-start gap-2 rounded-md border border-border/50 bg-muted/30 p-2"
+									>
+										<button
+											type="button"
+											className="mt-1 shrink-0 font-mono text-[0.62rem] text-muted-foreground hover:text-foreground"
+											onClick={() =>
+												editor.playback.seek({
+													time: Math.round(cue.startTime * TICKS_PER_SECOND),
+												})
+											}
+											title="Jump to cue"
+										>
+											{formatCueTime(cue.startTime)}
+										</button>
+										<textarea
+											value={cue.text}
+											onChange={(event) =>
+												updateCueText({
+													trackId: cue.trackId,
+													elementId: cue.elementId,
+													text: event.target.value,
+												})
+											}
+											rows={1}
+											className="min-h-7 flex-1 resize-none rounded border border-transparent bg-transparent px-1.5 py-1 text-xs text-foreground outline-none focus:border-border focus:bg-background"
+										/>
+									</div>
+								))}
+							</div>
 						</div>
 					)}
 				</SectionContent>
