@@ -53,6 +53,7 @@ export interface ProjectTemplate {
 export type TemplateCategory =
 	| "intro"
 	| "outro"
+	| "lower-third"
 	| "social"
 	| "vlog"
 	| "promo"
@@ -563,6 +564,200 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
 			makePlaceholder("swipe", "Swipe text", "text", false),
 		],
 	},
+
+	/* ------------------------------ lower-third ------------------------------ */
+	{
+		id: "lowerthird-name",
+		name: "Name Lower Third",
+		description: "Name + role tag for the lower-left corner",
+		category: "lower-third",
+		durationTicks: 5 * TICKS_PER_SECOND,
+		elements: [
+			textElement({
+				id: "name",
+				name: "Name",
+				trackId: "tpl-t1",
+				startTick: 0,
+				durationTicks: 5 * TICKS_PER_SECOND,
+				content: "Jane Doe",
+				fontSize: 16,
+				color: "#ffffff",
+				backgroundColor: "rgba(0,0,0,0.6)",
+				transform: {
+					position: { x: -260, y: 300 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+			textElement({
+				id: "role",
+				name: "Role",
+				trackId: "tpl-t2",
+				startTick: 0,
+				durationTicks: 5 * TICKS_PER_SECOND,
+				content: "Creative Director",
+				fontSize: 10,
+				color: "#22d3ee",
+				transform: {
+					position: { x: -260, y: 340 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+		],
+		placeholders: [
+			makePlaceholder("name", "Name", "text", false),
+			makePlaceholder("role", "Role / title", "text", false),
+		],
+	},
+	{
+		id: "lowerthird-banner",
+		name: "Banner Lower Third",
+		description: "Full-width banner strip near the bottom",
+		category: "lower-third",
+		durationTicks: 5 * TICKS_PER_SECOND,
+		elements: [
+			textElement({
+				id: "banner",
+				name: "Banner",
+				trackId: "tpl-t1",
+				startTick: 0,
+				durationTicks: 5 * TICKS_PER_SECOND,
+				content: "BREAKING NEWS",
+				fontSize: 15,
+				color: "#ffffff",
+				backgroundColor: "#dc2626",
+				transform: {
+					position: { x: 0, y: 360 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+		],
+		placeholders: [makePlaceholder("banner", "Banner text", "text", false)],
+	},
+
+	/* ------------------------- extra intro / outro / promo ------------------- */
+	{
+		id: "intro-title-slide",
+		name: "Title Slide",
+		description: "Centered title with a subtitle line",
+		category: "intro",
+		durationTicks: 3 * TICKS_PER_SECOND,
+		elements: [
+			textElement({
+				id: "title",
+				name: "Title",
+				trackId: "tpl-t1",
+				startTick: 0,
+				durationTicks: 3 * TICKS_PER_SECOND,
+				content: "Your Title",
+				fontSize: 24,
+				color: "#ffffff",
+				transform: {
+					position: { x: 0, y: -30 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+			textElement({
+				id: "subtitle",
+				name: "Subtitle",
+				trackId: "tpl-t2",
+				startTick: 0,
+				durationTicks: 3 * TICKS_PER_SECOND,
+				content: "A short subtitle",
+				fontSize: 12,
+				color: "#cbd5e1",
+				transform: {
+					position: { x: 0, y: 30 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+		],
+		placeholders: [
+			makePlaceholder("title", "Title", "text", false),
+			makePlaceholder("subtitle", "Subtitle", "text", false),
+		],
+	},
+	{
+		id: "outro-subscribe",
+		name: "Subscribe Outro",
+		description: "Subscribe call-to-action end card",
+		category: "outro",
+		durationTicks: 4 * TICKS_PER_SECOND,
+		elements: [
+			textElement({
+				id: "cta",
+				name: "Subscribe",
+				trackId: "tpl-t1",
+				startTick: 0,
+				durationTicks: 4 * TICKS_PER_SECOND,
+				content: "SUBSCRIBE",
+				fontSize: 20,
+				color: "#ffffff",
+				backgroundColor: "#dc2626",
+				transform: {
+					position: { x: 0, y: 0 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+		],
+		placeholders: [makePlaceholder("cta", "CTA text", "text", false)],
+	},
+	{
+		id: "promo-sale",
+		name: "Sale Promo",
+		description: "Bold discount headline for promos",
+		category: "promo",
+		durationTicks: 4 * TICKS_PER_SECOND,
+		elements: [
+			textElement({
+				id: "headline",
+				name: "Headline",
+				trackId: "tpl-t1",
+				startTick: 0,
+				durationTicks: 4 * TICKS_PER_SECOND,
+				content: "50% OFF",
+				fontSize: 28,
+				color: "#facc15",
+				transform: {
+					position: { x: 0, y: -20 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+			textElement({
+				id: "sub",
+				name: "Subtext",
+				trackId: "tpl-t2",
+				startTick: 0,
+				durationTicks: 4 * TICKS_PER_SECOND,
+				content: "Limited time only",
+				fontSize: 12,
+				color: "#ffffff",
+				transform: {
+					position: { x: 0, y: 40 },
+					scaleX: 1,
+					scaleY: 1,
+					rotate: 0,
+				},
+			}),
+		],
+		placeholders: [
+			makePlaceholder("headline", "Headline", "text", false),
+			makePlaceholder("sub", "Subtext", "text", false),
+		],
+	},
 ];
 
 export function getTemplateById(id: string): ProjectTemplate | undefined {
@@ -740,6 +935,7 @@ function buildElementFromSpec({
 export const TEMPLATE_CATEGORIES: { id: TemplateCategory; label: string }[] = [
 	{ id: "intro", label: "Intro" },
 	{ id: "outro", label: "Outro" },
+	{ id: "lower-third", label: "Lower Third" },
 	{ id: "social", label: "Social" },
 	{ id: "vlog", label: "Vlog" },
 	{ id: "promo", label: "Promo" },
