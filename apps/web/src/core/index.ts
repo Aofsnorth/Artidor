@@ -18,6 +18,7 @@ import { registerDefaultTransitions } from "@/lib/transitions";
 import { registerDefaultAnimationPresets } from "@/lib/animation/presets";
 import { registerTranscriptionDiagnostics } from "@/lib/transcription/diagnostics";
 import { attachTelemetryToCommands } from "@/lib/ai/telemetry/store";
+import { createEditorApi, type EditorApi } from "@/lib/api/editor-api";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -35,6 +36,8 @@ export class EditorCore {
 	public readonly diagnostics: DiagnosticsManager;
 	public readonly teleprompter: TeleprompterManager;
 	public readonly ai: AIManager;
+	/** Public, framework-free command API (Scripting tab / bridge / MCP). */
+	public readonly api: EditorApi;
 
 	private constructor() {
 		registerDefaultEffects();
@@ -55,6 +58,7 @@ export class EditorCore {
 		this.diagnostics = new DiagnosticsManager(this);
 		this.teleprompter = new TeleprompterManager(this);
 		this.ai = new AIManager(this);
+		this.api = createEditorApi(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
 		// Tracks that have held at least one element at some point. An empty
@@ -100,6 +104,9 @@ export class EditorCore {
 		// what powers the AI's "match the user's recent style" prompt.
 		if (typeof window !== "undefined") {
 			attachTelemetryToCommands();
+			// Expose the public command API on the live editor tab so scripts,
+			// other same-origin tabs, and the MCP relay can drive the editor.
+			window.__ARTIDOR_API__ = this.api;
 		}
 	}
 
