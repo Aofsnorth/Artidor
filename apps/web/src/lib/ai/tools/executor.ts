@@ -680,4 +680,91 @@ const HANDLERS: Record<string, Handler> = {
 			};
 		}
 	},
+
+	/* ------------------------------ history ----------------------------- */
+	undo: async (editor) => {
+		editor.command.undo();
+		return { ok: true, message: "Undid last action" };
+	},
+	redo: async (editor) => {
+		editor.command.redo();
+		return { ok: true, message: "Redid last action" };
+	},
+
+	/* ----------------------------- selection ---------------------------- */
+	select_elements: async (editor, args) => {
+		const elements = asArray<ElementRef>(args.elements);
+		if (elements.length === 0) return { ok: false, message: "No elements" };
+		editor.selection.setSelectedElements({ elements });
+		return { ok: true, message: `Selected ${elements.length} element(s)` };
+	},
+	clear_selection: async (editor) => {
+		editor.selection.clearSelection();
+		return { ok: true, message: "Selection cleared" };
+	},
+
+	/* ----------------------------- clipboard ---------------------------- */
+	copy: async (editor) => {
+		const ok = editor.clipboard.copy();
+		return { ok, message: ok ? "Copied" : "Nothing to copy" };
+	},
+	paste: async (editor, args) => {
+		const ok =
+			typeof args.time === "number"
+				? editor.clipboard.paste({ time: asNumber(args.time) })
+				: editor.clipboard.paste();
+		return { ok, message: ok ? "Pasted" : "Nothing to paste" };
+	},
+
+	/* -------------------------- scene (additional) ---------------------- */
+	delete_scene: async (editor, args) => {
+		await editor.scenes.deleteScene({ sceneId: asString(args.sceneId) });
+		return { ok: true, message: "Scene deleted" };
+	},
+	switch_scene: async (editor, args) => {
+		await editor.scenes.switchToScene({ sceneId: asString(args.sceneId) });
+		return { ok: true, message: "Switched scene" };
+	},
+
+	/* ------------------------- element (grouping) ----------------------- */
+	group_elements: async (editor, args) => {
+		const elementRefs = asArray<ElementRef>(args.elements);
+		if (elementRefs.length < 2) {
+			return { ok: false, message: "Need at least 2 elements to group" };
+		}
+		const groupId = editor.timeline.groupElements({ elementRefs });
+		return groupId
+			? { ok: true, message: "Grouped elements", data: { groupId } }
+			: { ok: false, message: "Could not group elements" };
+	},
+	ungroup_elements: async (editor, args) => {
+		editor.timeline.ungroupElements({ groupId: asString(args.groupId) });
+		return { ok: true, message: "Ungrouped" };
+	},
+
+	/* -------------------------- asset (folders) ------------------------- */
+	create_folder: async (editor, args) => {
+		const project = editor.project.getActive();
+		if (!project) return { ok: false, message: "No active project" };
+		const folder = await editor.media.createFolder({
+			projectId: project.metadata.id,
+			name: asString(args.name, "Untitled folder"),
+		});
+		return {
+			ok: true,
+			message: `Created folder "${folder.name}"`,
+			data: { id: folder.id },
+		};
+	},
+	move_asset_to_folder: async (editor, args) => {
+		const folderId = args.folderId ? asString(args.folderId) : null;
+		await editor.media.moveAssetToFolder({
+			assetId: asString(args.assetId),
+			folderId,
+		});
+		return {
+			ok: true,
+			message: folderId ? "Moved to folder" : "Moved to root",
+		};
+	},
 };
