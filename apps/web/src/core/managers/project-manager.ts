@@ -27,6 +27,10 @@ import { buildDefaultScene, getProjectDurationFromScenes } from "@/lib/scenes";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import {
+	initializeGpuRenderer,
+	isGpuAvailable,
+} from "@/services/renderer/gpu-renderer";
+import {
 	CURRENT_PROJECT_VERSION,
 	migrations,
 	runStorageMigrations,
@@ -186,10 +190,23 @@ export class ProjectManager {
 			});
 
 			if (!project.metadata.thumbnail) {
-				const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-				if (didUpdateThumbnail) {
-					await this.saveCurrentProject();
-				}
+				// Generate the first thumbnail in the background once the GPU is
+				// ready. Never block (or fail) project load on it — a brand-new
+				// project has no thumbnail and the GPU init is deferred.
+				const thumbnailProjectId = project.metadata.id;
+				void (async () => {
+					try {
+						const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
+						if (
+							didUpdateThumbnail &&
+							this.active?.metadata.id === thumbnailProjectId
+						) {
+							await this.saveCurrentProject();
+						}
+					} catch (error) {
+						console.error("Failed to generate project thumbnail:", error);
+					}
+				})();
 			}
 		} catch (error) {
 			console.error("Failed to load project:", error);
@@ -702,6 +719,17 @@ export class ProjectManager {
 
 	private async updateThumbnailFromTimeline(): Promise<boolean> {
 		if (!this.active) return false;
+		const projectId = this.active.metadata.id;
+
+		// Thumbnail rendering goes through the GPU compositor. GPU init is
+		// deferred off the project-load critical path, so ensure it's ready (and
+		// bail gracefully if WebGPU is unavailable) rather than throwing.
+		await initializeGpuRenderer();
+		if (!isGpuAvailable()) return false;
+		// Awaiting GPU init can take a while on cold drivers; if the user switched
+		// projects in the meantime, don't render the old timeline into the new
+		// project's thumbnail.
+		if (this.active?.metadata.id !== projectId) return false;
 
 		const tracks = this.editor.scenes.getActiveScene().tracks;
 		const mediaAssets = this.editor.media.getAssets();
@@ -733,6 +761,10 @@ export class ProjectManager {
 		});
 
 		const thumbnailDataUrl = tempCanvas.toDataURL("image/png");
+
+		// The render is async; re-check the active project before writing so a
+		// late finish can't overwrite a different project's thumbnail.
+		if (this.active?.metadata.id !== projectId) return false;
 
 		await this.updateThumbnail({ thumbnail: thumbnailDataUrl });
 		return true;
