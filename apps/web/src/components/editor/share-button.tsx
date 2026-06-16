@@ -165,7 +165,7 @@ export function ShareButton() {
 					</DialogHeader>
 
 					{driveConnected ? (
-						<div className="relative flex flex-col gap-2.5 px-6 pb-6">
+						<div className="relative flex flex-col gap-2.5 px-6 pt-5 pb-6">
 							<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
 								Project link
 							</span>
@@ -212,8 +212,8 @@ export function ShareButton() {
 							</p>
 						</div>
 					) : (
-						<div className="relative px-6 pb-6">
-							<div className="flex flex-col gap-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3.5">
+						<div className="relative px-6 pt-5 pb-6">
+							<div className="flex flex-col gap-3.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
 								<p className="text-[0.78rem] leading-relaxed text-white/60">
 									Connect Google Drive to enable sharing. The link won't work
 									until your project is on Drive — that's where viewers read the
