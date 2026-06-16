@@ -21,6 +21,20 @@
 
 </div>
 
+## Preview
+
+<div align="center">
+  <img src="docs/progress/image-1.png" width="80%" />
+  <br/><br/>
+  <img src="docs/progress/image-2.png" width="80%" />
+  <br/><br/>
+  <img src="docs/progress/image-3.png" width="80%" />
+  <br/><br/>
+  <img src="docs/progress/image-4.png" width="80%" />
+  <br/><br/>
+  <img src="docs/progress/image-5.png" width="80%" />
+</div>
+
 ---
 
 ## Why
