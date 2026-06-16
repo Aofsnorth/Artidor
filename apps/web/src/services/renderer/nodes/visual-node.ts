@@ -3,6 +3,7 @@ import type { Effect, EffectPass } from "@/lib/effects/types";
 import type { Mask } from "@/lib/masks/types";
 import type { BlendMode, Transform } from "@/lib/rendering";
 import type { RetimeConfig, VisualElement } from "@/lib/timeline";
+import type { ParentChainEntry } from "../parenting-resolve";
 
 export interface VisualNodeParams {
 	duration: number;
@@ -16,6 +17,8 @@ export interface VisualNodeParams {
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];
+	/** Ancestor transform chain (closest-first) for layer parenting. */
+	parentChain?: ParentChainEntry[];
 }
 
 export interface ResolvedVisualNodeState {
