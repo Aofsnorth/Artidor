@@ -42,7 +42,7 @@ export function ShareButton() {
 	const origin =
 		typeof window !== "undefined"
 			? window.location.origin
-			: "https://artidor.app";
+			: "https://artidor.vercel.app";
 	const inviteLink = projectId
 		? `${origin}/editor/${projectId}?invite=viewer`
 		: "";
