@@ -26,22 +26,15 @@ import { useGitHubRepo } from "@/hooks/use-github-repo";
 
 export function Hero() {
 	const reducedMotion = useReducedMotion();
-	const { data: repoData, formatted: repoStats } = useGitHubRepo();
+	const { formatted: repoStats } = useGitHubRepo();
 	// When the user prefers reduced motion, we skip the entrance
 	// animations entirely — the page is just there.
 	const enter = reducedMotion
 		? { initial: false, animate: { opacity: 1, y: 0 } }
 		: { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 } };
-	// Live star count from GitHub, falls back to the original
+	// Live star count from GitHub for the stats strip below; falls back to the
 	// "40k+" placeholder until the first fetch resolves.
 	const starsLabel = repoStats?.stars ?? "40k+";
-	// Friendly variants for repos that haven't collected stars yet —
-	// showing "0 on GitHub" looks broken, so we promote them to
-	// "Star on GitHub" which still reads as a CTA rather than a stat.
-	const hasStars = (repoData?.stars ?? 0) > 0;
-	const githubCtaLabel = hasStars
-		? `${starsLabel} on GitHub`
-		: "Star on GitHub";
 	return (
 		<section className="relative flex min-h-[calc(100svh-4.5rem)] flex-col items-center justify-center px-6 pt-12 pb-16 text-center md:pt-20">
 			<motion.div
@@ -59,13 +52,10 @@ export function Hero() {
 					<span className="text-white/55">Try the editor</span>
 				</div>
 
-				<h1 className="text-balance font-serif text-5xl font-medium italic leading-[1.02] tracking-[-0.02em] md:text-7xl lg:text-[5.5rem]">
+				<h1 className="text-balance bg-gradient-to-b from-white to-white/80 bg-clip-text font-serif text-5xl font-medium italic leading-[1.02] tracking-[-0.02em] text-transparent md:text-7xl lg:text-[5.5rem]">
 					The video editor
 					<br />
-					<span className="bg-gradient-to-br from-white via-white/85 to-white/40 bg-clip-text text-transparent">
-						that respects
-					</span>{" "}
-					your machine.
+					that respects your machine.
 				</h1>
 
 				<p className="text-pretty mx-auto mt-7 max-w-2xl text-base font-light leading-relaxed tracking-wide text-white/65 md:text-lg">
@@ -92,7 +82,7 @@ export function Hero() {
 							className="h-11 rounded-full border-white/15 bg-white/[0.04] px-5 text-sm font-medium text-white/90 backdrop-blur hover:bg-white/[0.08]"
 						>
 							<Github className="mr-1.5 size-4" />
-							{githubCtaLabel}
+							Star on GitHub
 							<Star className="ml-1 size-3.5 text-amber-300" />
 						</Button>
 					</Link>
