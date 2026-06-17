@@ -26,6 +26,7 @@ import {
 	SparklesIcon,
 	Link01Icon,
 	Camera01Icon,
+	InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { TransformTab } from "./tabs/transform-tab";
 import { BlendingTab } from "./tabs/blending-tab";
@@ -42,10 +43,13 @@ import { ColorGradingTab } from "./tabs/color-grading-tab";
 import { AnimationsTab } from "./tabs/animations-tab";
 import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
+import { ElementTab } from "./tabs/element-tab";
 import { OcShapesIcon } from "@/components/icons";
 
 export type TabContentProps = {
 	trackId: string;
+	/** Display name of the track the selected element sits on. */
+	trackName: string;
 };
 
 export type PropertiesTabDef = {
@@ -302,14 +306,47 @@ function buildCameraTab(): PropertiesTabDef {
 	};
 }
 
+/**
+ * Element-level summary tab — shows the element's identity, source media,
+ * timeline position and structural relationships. Surfaces only when a
+ * single element is selected (the inspector itself hides all tabs at
+ * other times). Always rendered as a secondary tab below the primary
+ * "Element" quick-switch button, so it benefits from the same dispatch
+ * as the other categories.
+ */
+function buildElementTab({
+	element,
+	mediaAssets,
+}: {
+	element: TimelineElement;
+	mediaAssets: MediaAsset[];
+}): PropertiesTabDef {
+	return {
+		id: "element-info",
+		label: "Info",
+		icon: <HugeiconsIcon icon={InformationCircleIcon} size={16} />,
+		content: ({ trackId, trackName }) => (
+			<ElementTab
+				element={element}
+				trackId={trackId}
+				trackName={trackName}
+				mediaAssets={mediaAssets}
+			/>
+		),
+	};
+}
+
 function getTextConfig({
 	element,
+	mediaAssets,
 }: {
 	element: TextElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "text",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTextTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
@@ -322,9 +359,11 @@ function getTextConfig({
 function getVideoConfig({
 	element,
 	mediaAsset,
+	mediaAssets,
 }: {
 	element: VideoElement;
 	mediaAsset: MediaAsset | undefined;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	// Show the Audio tab whenever the underlying media *might* have an
 	// audio track. We treat `undefined` and `true` as "show" — only an
@@ -338,6 +377,7 @@ function getVideoConfig({
 	return {
 		defaultTab: "transform",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
@@ -355,12 +395,15 @@ function getVideoConfig({
 
 function getImageConfig({
 	element,
+	mediaAssets,
 }: {
 	element: ImageElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "transform",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
@@ -375,12 +418,15 @@ function getImageConfig({
 
 function getStickerConfig({
 	element,
+	mediaAssets,
 }: {
 	element: StickerElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "transform",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -392,12 +438,15 @@ function getStickerConfig({
 
 function getGraphicConfig({
 	element,
+	mediaAssets,
 }: {
 	element: GraphicElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "graphic",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildGraphicTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
@@ -410,12 +459,15 @@ function getGraphicConfig({
 
 function getAudioConfig({
 	element,
+	mediaAssets,
 }: {
 	element: AudioElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "audio-element",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildAudioElementTab({ element }),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
@@ -426,12 +478,17 @@ function getAudioConfig({
 
 function getEffectConfig({
 	element,
+	mediaAssets,
 }: {
 	element: EffectElement;
+	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "effects",
-		tabs: [buildStandaloneEffectTab({ element })],
+		tabs: [
+			buildElementTab({ element, mediaAssets }),
+			buildStandaloneEffectTab({ element }),
+		],
 	};
 }
 
@@ -444,20 +501,20 @@ export function getPropertiesConfig({
 }): ElementPropertiesConfig {
 	switch (element.type) {
 		case "text":
-			return getTextConfig({ element });
+			return getTextConfig({ element, mediaAssets });
 		case "video": {
 			const mediaAsset = mediaAssets.find((a) => a.id === element.mediaId);
-			return getVideoConfig({ element, mediaAsset });
+			return getVideoConfig({ element, mediaAsset, mediaAssets });
 		}
 		case "image":
-			return getImageConfig({ element });
+			return getImageConfig({ element, mediaAssets });
 		case "sticker":
-			return getStickerConfig({ element });
+			return getStickerConfig({ element, mediaAssets });
 		case "graphic":
-			return getGraphicConfig({ element });
+			return getGraphicConfig({ element, mediaAssets });
 		case "audio":
-			return getAudioConfig({ element });
+			return getAudioConfig({ element, mediaAssets });
 		case "effect":
-			return getEffectConfig({ element });
+			return getEffectConfig({ element, mediaAssets });
 	}
 }

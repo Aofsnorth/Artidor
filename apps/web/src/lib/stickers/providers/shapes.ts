@@ -101,8 +101,8 @@ const CURATED_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 		params: { sides: 6, fill: "#84cc16", cornerRadius: 6 },
 	},
 	{
-		shapeKey: "burst",
-		name: "Burst",
+		shapeKey: "star-burst",
+		name: "Star Burst",
 		definitionId: "star",
 		params: { fill: "#facc15", points: 12, depth: 58 },
 	},
