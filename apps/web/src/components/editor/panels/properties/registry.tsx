@@ -37,6 +37,7 @@ import { ClipEffectsTab, StandaloneEffectTab } from "./tabs/effects-tab";
 import { MasksTab } from "./tabs/masks-tab";
 import { SpeedTab } from "./tabs/speed-tab";
 import { SpeedRampTab } from "./tabs/speed-ramp-tab";
+import { FrameInterpolationTab } from "./tabs/frame-interpolation-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
 import { AdjustmentsTab } from "./tabs/adjustments-tab";
 import { ColorGradingTab } from "./tabs/color-grading-tab";
@@ -45,6 +46,7 @@ import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
 import { ElementTab } from "./tabs/element-tab";
 import { OcShapesIcon } from "@/components/icons";
+import { Atom01Icon } from "@hugeicons/core-free-icons";
 
 export type TabContentProps = {
 	trackId: string;
@@ -157,6 +159,21 @@ function buildSpeedRampTab({
 		icon: <HugeiconsIcon icon={DashboardSpeed02Icon} size={16} />,
 		content: ({ trackId }) => (
 			<SpeedRampTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+function buildFrameInterpolationTab({
+	element,
+}: {
+	element: RetimableElement;
+}): PropertiesTabDef {
+	return {
+		id: "frame-interpolation",
+		label: "Interpolation",
+		icon: <HugeiconsIcon icon={Atom01Icon} size={16} />,
+		content: ({ trackId }) => (
+			<FrameInterpolationTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -382,6 +399,7 @@ function getVideoConfig({
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
+			buildFrameInterpolationTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -471,6 +489,7 @@ function getAudioConfig({
 			buildAudioElementTab({ element }),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
+			buildFrameInterpolationTab({ element }),
 			buildAudioEffectsTab({ element }),
 		],
 	};
