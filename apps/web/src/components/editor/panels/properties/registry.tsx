@@ -418,14 +418,14 @@ function getVideoConfig({
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
-			buildBasicAdjustTab({ element }),
-			buildDavinciAdjustTab({ element }),
-			buildColorWheelsTab({ element }),
-			buildColorGradingTab({ element }),
+			// Colour-correction sub-tabs (Basic / Manual / Wheels / Color /
+			// Adjustments) moved to the left bar's new `color` tab —
+			// see `views/color.tsx`. They operate on the same effect
+			// params (`davinci-adjust`) so users don't lose any tools,
+			// only the location changes.
 			buildParentingTab({ element }),
 			buildCameraTab(),
 			buildAnimationsTab(),
-			buildAdjustmentsTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],
