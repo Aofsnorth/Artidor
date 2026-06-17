@@ -38,14 +38,13 @@ const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map((effect) => ({
 	},
 }));
 
-const EFFECT_PANEL_CATEGORIES = [
-	...EFFECT_CATEGORIES,
-	"Distortion",
-	"Particles",
-	"Texture",
-	"Artistic",
-	"Generator",
-] as const;
+/**
+ * Categories shown in the Effects panel filter chips. EFFECT_CATEGORIES
+ * already covers every preset category after Color grading was moved
+ * to the Adjustments panel and the preset-only categories (Distortion /
+ * Particles / Texture / Artistic / Generator) were folded in.
+ */
+const EFFECT_PANEL_CATEGORIES = EFFECT_CATEGORIES;
 
 export function EffectsView() {
 	const effects = useMemo(() => {
@@ -112,31 +111,15 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
 	);
 }
 
-function getEffectBackgroundPosition(effectType: string): string {
-	const h = hashString(effectType);
-	const positions = [
-		"0% 0%",
-		"100% 0%",
-		"0% 100%",
-		"100% 100%",
-		"50% 50%",
-		"0% 50%",
-		"100% 50%",
-		"50% 0%",
-		"50% 100%",
-		"25% 25%",
-		"75% 25%",
-		"25% 75%",
-		"75% 75%",
-		"33% 33%",
-		"66% 66%",
-	];
-	return positions[h % positions.length];
-}
-
+/**
+ * Effect preview tile. Renders the effect against a procedural test
+ * source (chosen per-effect-type by effectPreviewService so each card
+ * shows something different) and overlays a subtle shine that pops
+ * in on hover. The bg-black/35 sits behind the canvas so an empty or
+ * mid-render frame is still visually distinct from the panel bg.
+ */
 function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const bgPosition = getEffectBackgroundPosition(effectType);
 
 	useEffect(() => {
 		const render = () => {
@@ -154,14 +137,7 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	}, [effectType]);
 
 	return (
-		<div
-			className="relative size-full overflow-hidden rounded-sm"
-			style={{
-				background: `url('/effects/preview.jpg')`,
-				backgroundSize: "200% 200%",
-				backgroundPosition: bgPosition,
-			}}
-		>
+		<div className="relative size-full overflow-hidden rounded-sm bg-black/35">
 			<canvas ref={canvasRef} className="relative z-10 size-full" />
 			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 		</div>
@@ -204,13 +180,4 @@ function EffectItem({ effect }: { effect: EffectDefinition }) {
 			containerClassName="w-full"
 		/>
 	);
-}
-
-function hashString(str: string): number {
-	let hash = 0;
-	for (let i = 0; i < str.length; i++) {
-		hash = (hash << 5) - hash + str.charCodeAt(i);
-		hash |= 0;
-	}
-	return Math.abs(hash);
 }
