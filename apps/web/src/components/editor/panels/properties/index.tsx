@@ -69,7 +69,7 @@ function InspectorView() {
 				<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
 					<div className="flex items-center justify-between">
 						<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
-							Inspector
+							Drawing
 						</div>
 					</div>
 					<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
@@ -172,7 +172,7 @@ function InspectorView() {
 										type="button"
 										disabled={!tab.target}
 										className={cn(
-											"relative shrink-0 flex items-center justify-center gap-1.5 rounded-md px-1.5 py-1 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+											"relative flex-1 min-w-[4.5rem] flex items-center justify-center gap-1 rounded-md px-0.5 py-1 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
 											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
 											!tab.target &&
 												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
@@ -230,16 +230,14 @@ function InspectorView() {
 											onClick={() => setActiveTab(element.type, tab.id)}
 											aria-label={tab.label}
 											className={cn(
-												"h-7 shrink-0 rounded-md border px-2 text-[0.68rem]",
+												"h-7 flex-1 min-w-[4.5rem] rounded-md border px-1.5 text-[0.68rem] flex items-center justify-center gap-1.5",
 												tab.id === activeTab.id
 													? "border-white/20 bg-white text-black hover:bg-white/90"
 													: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
 											)}
 										>
-											<span className="mr-1.5 opacity-70">{tab.icon}</span>
-											<MarqueeText className="max-w-[90px]" pxPerSecond={28}>
-												{tab.label}
-											</MarqueeText>
+											<span className="opacity-70 shrink-0">{tab.icon}</span>
+											<span className="truncate">{tab.label}</span>
 										</Button>
 									</TooltipTrigger>
 									<TooltipContent side="bottom">{tab.label}</TooltipContent>

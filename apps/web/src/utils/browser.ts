@@ -29,6 +29,21 @@ export function findScrollParent({
 	return null;
 }
 
+const TYPABLE_INPUT_TYPES = [
+	"text",
+	"password",
+	"email",
+	"search",
+	"url",
+	"tel",
+	"number",
+	"date",
+	"time",
+	"datetime-local",
+	"month",
+	"week",
+];
+
 export function isTypableDOMElement({
 	element,
 }: {
@@ -37,7 +52,10 @@ export function isTypableDOMElement({
 	if (element.isContentEditable) return true;
 
 	if (element.tagName === "INPUT") {
-		return !(element as HTMLInputElement).disabled;
+		const input = element as HTMLInputElement;
+		if (input.disabled) return false;
+		const type = (input.type || "text").toLowerCase();
+		return TYPABLE_INPUT_TYPES.includes(type);
 	}
 
 	if (element.tagName === "TEXTAREA") {
