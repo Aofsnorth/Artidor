@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-color-wheels-audio-fixes",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Color Wheels + Audio Effects + inspector cleanup",
+		items: [
+			"Adjust → Wheels tab is now interactive (was a static placeholder): 4 colour wheels (Lift / Gamma / Gain / Offset) with drag-to-bias puck, luma slider per wheel, double-click to reset, and a 2×2 grid layout. Wheels write to the same `davinci-adjust` effect as the Manual tab so the grade stays in sync.",
+			"Audio Effects → Noise Reduction Strength field is now wired to state (was hardcoded `50` with no-op onChange/onFocus/onBlur/onScrub handlers). Scrubbing the slider, typing a number, and pressing the reset button all update the actual noise reduction state and the engine that consumes it.",
+			"Removed dead `_buildBlendingTab` builder + unused `BlendingTab` / `RainDropIcon` imports from the properties registry (Blending is still available inside the Transform tab).",
+		],
+	},
+	{
 		id: "2026-06-18-unsplash-fade-header",
 		date: "2026-06-18",
 		tag: "fix",

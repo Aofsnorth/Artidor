@@ -89,6 +89,7 @@ export function AudioEffectsTab({
 			<div className="flex flex-col gap-4 p-4 overflow-y-auto">
 				<NoiseReductionSection
 					enabled={chain.noiseReduction.enabled}
+					strength={chain.noiseReduction.strength ?? 0.5}
 					onChange={setNoiseReduction}
 				/>
 				<EqSection
@@ -131,9 +132,11 @@ export function AudioEffectsTab({
 
 function NoiseReductionSection({
 	enabled,
+	strength,
 	onChange,
 }: {
 	enabled: boolean;
+	strength: number;
 	onChange: (p: { enabled?: boolean; strength?: number }) => void;
 }) {
 	return (
@@ -160,16 +163,20 @@ function NoiseReductionSection({
 				<SectionFields>
 					<SectionField label="Strength">
 						<NumberField
-							value="50"
+							value={(strength * 100).toFixed(0)}
 							suffix="%"
 							min={0}
 							max={100}
 							step={1}
-							onChange={() => {}}
-							onFocus={() => {}}
-							onBlur={() => {}}
-							onScrub={() => {}}
-							onScrubEnd={() => {}}
+							onChange={(e) => {
+								const raw = Number.parseFloat(e.target.value);
+								if (Number.isFinite(raw)) {
+									onChange({ strength: Math.max(0, Math.min(1, raw / 100)) });
+								}
+							}}
+							onScrub={(v) =>
+								onChange({ strength: Math.max(0, Math.min(1, v / 100)) })
+							}
 							onReset={() => onChange({ enabled, strength: 0.5 })}
 						/>
 					</SectionField>
