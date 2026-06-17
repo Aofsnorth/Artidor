@@ -31,6 +31,26 @@ import { pushZoomTransition } from "./definitions/push-zoom";
 import { splitSlideTransition } from "./definitions/split-slide";
 import { colorSweepTransition } from "./definitions/color-sweep";
 import { chromaPopTransition } from "./definitions/chroma-pop";
+import { morphCutTransition } from "./definitions/morph-cut";
+import { whipPanTransition } from "./definitions/whip-pan";
+import { shutterTransition } from "./definitions/shutter";
+import { lightLeakTransition } from "./definitions/light-leak";
+import { rotateTransition } from "./definitions/rotate";
+import { skewTransition } from "./definitions/skew";
+import { diagonalWipeTransition } from "./definitions/diagonal-wipe";
+import { venetianBlindsTransition } from "./definitions/venetian-blinds";
+import { rgbSplitTransition } from "./definitions/rgb-split";
+import { pixelateTransition } from "./definitions/pixelate";
+import { stretchTransition } from "./definitions/stretch";
+import { zoomBlurTransition } from "./definitions/zoom-blur";
+import { radialWipeTransition } from "./definitions/radial-wipe";
+import { curtainTransition } from "./definitions/curtain";
+import { bounceTransition } from "./definitions/bounce";
+import { apertureTransition } from "./definitions/aperture";
+import { flipVerticalTransition } from "./definitions/flip-vertical";
+import { noiseFadeTransition } from "./definitions/noise-fade";
+import { rippleTransition } from "./definitions/ripple";
+import { kaleidoscopeTransition } from "./definitions/kaleidoscope";
 
 const defaultTransitions = [
 	fadeTransition,
@@ -65,6 +85,26 @@ const defaultTransitions = [
 	splitSlideTransition,
 	colorSweepTransition,
 	chromaPopTransition,
+	morphCutTransition,
+	whipPanTransition,
+	shutterTransition,
+	lightLeakTransition,
+	rotateTransition,
+	skewTransition,
+	diagonalWipeTransition,
+	venetianBlindsTransition,
+	rgbSplitTransition,
+	pixelateTransition,
+	stretchTransition,
+	zoomBlurTransition,
+	radialWipeTransition,
+	curtainTransition,
+	bounceTransition,
+	apertureTransition,
+	flipVerticalTransition,
+	noiseFadeTransition,
+	rippleTransition,
+	kaleidoscopeTransition,
 ];
 
 export function registerDefaultTransitions(): void {
