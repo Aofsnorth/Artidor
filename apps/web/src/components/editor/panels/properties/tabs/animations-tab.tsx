@@ -57,14 +57,14 @@ export function AnimationsTab() {
 			</div>
 
 			<div className="flex flex-col gap-3 p-3 h-full">
-				<div className="flex flex-wrap gap-1">
+				<div className="flex flex-wrap items-center justify-start gap-1.5">
 					{CATEGORIES.map((cat) => (
 						<Button
 							key={cat.key}
 							variant={filter === cat.key ? "secondary" : "ghost"}
 							size="sm"
 							onClick={() => setFilter(cat.key)}
-							className="h-7 px-2 text-xs"
+							className="h-7 px-2.5 text-xs"
 						>
 							{cat.label}
 						</Button>
@@ -113,23 +113,23 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 			onClick={handleApply}
 			disabled={busy}
 			className={cn(
-				"group bg-accent hover:bg-accent/70 relative flex aspect-square w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-sm p-2 text-center transition-colors disabled:opacity-50",
+				"group bg-accent hover:bg-accent/70 relative flex aspect-square w-full flex-col items-stretch justify-start gap-1 overflow-hidden rounded-sm p-1.5 text-left transition-colors disabled:opacity-50",
 			)}
 		>
-			<div className="bg-muted-foreground/30 relative size-full overflow-hidden rounded-sm">
+			<div className="bg-muted-foreground/30 relative aspect-square w-full overflow-hidden rounded-sm">
 				<div
 					className="absolute inset-0 flex items-center justify-center"
 					style={previewStyle}
 				>
 					<PresetIcon preset={preset} />
 				</div>
+				<div className="text-muted-foreground absolute left-1 top-1 flex items-center gap-0.5 rounded bg-black/50 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
+					{CATEGORY_ICONS[preset.category]}
+				</div>
 			</div>
-			<span className="text-muted-foreground w-full truncate text-[0.7rem]">
+			<span className="text-muted-foreground w-full break-words text-[0.7rem] leading-tight">
 				{preset.name}
 			</span>
-			<div className="text-muted-foreground absolute left-1.5 top-1.5 flex items-center gap-0.5 rounded bg-black/40 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
-				{CATEGORY_ICONS[preset.category]}
-			</div>
 		</button>
 	);
 }

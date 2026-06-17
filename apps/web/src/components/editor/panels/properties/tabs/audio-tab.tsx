@@ -217,13 +217,12 @@ export function AudioTab({
 		variant === "video" &&
 		element.type === "video" &&
 		isSourceAudioSeparated({ element });
-	const sectionTitle = variant === "audio-element" ? "Audio Track" : "Audio";
 
 	return (
-		<>
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			{isSeparated && (
-				<div className="mx-4 mt-4 rounded-md border bg-muted/30 p-3">
-					<p className="text-sm">Audio has been separated.</p>
+				<div className="rounded-md border border-white/[0.08] bg-white/[0.03] p-3">
+					<p className="text-xs text-white/80">Audio has been separated.</p>
 					<Button
 						className="mt-3"
 						size="sm"
@@ -240,19 +239,24 @@ export function AudioTab({
 				</div>
 			)}
 			{variant === "audio-element" && (
-				<div className="mx-4 mt-4 rounded-md border border-dashed border-white/10 bg-white/[0.02] px-3 py-2 text-[0.7rem] leading-relaxed text-white/55">
-					This is the audio track that plays back in the timeline. Volume, pan,
-					and fade are local to this clip; it has no underlying video source to
-					detach from.
+				<div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[0.7rem] leading-relaxed text-white/60">
+					Audio for this clip. Volume, pan, and fade are local; the source video
+					(if any) is unchanged.
 				</div>
 			)}
-			<div className="pt-2" />
-			<Section collapsible sectionKey={`${element.id}:audio:${variant}`}>
-				<SectionHeader>
-					<SectionTitle>{sectionTitle}</SectionTitle>
+			<Section
+				collapsible
+				defaultOpen
+				sectionKey={`${element.id}:audio:${variant}`}
+				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
+			>
+				<SectionHeader className="h-10 px-3">
+					<SectionTitle className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+						{variant === "audio-element" ? "Audio Track" : "Audio"}
+					</SectionTitle>
 				</SectionHeader>
-				<SectionContent>
-					<SectionFields>
+				<SectionContent className="px-3 pb-3 pt-0">
+					<SectionFields className="gap-4">
 						<SectionField
 							label="Volume"
 							beforeLabel={
@@ -284,6 +288,8 @@ export function AudioTab({
 							/>
 						</SectionField>
 
+						<div className="h-px bg-white/[0.06]" />
+
 						<SectionField
 							label="Stereo Pan"
 							beforeLabel={
@@ -313,6 +319,8 @@ export function AudioTab({
 								isDefault={isPanDefault}
 							/>
 						</SectionField>
+
+						<div className="h-px bg-white/[0.06]" />
 
 						{/* Stack the fade pair vertically on narrow panels so the
 						    trailing field doesn't get its number clipped. The
@@ -379,6 +387,6 @@ export function AudioTab({
 					</SectionFields>
 				</SectionContent>
 			</Section>
-		</>
+		</div>
 	);
 }

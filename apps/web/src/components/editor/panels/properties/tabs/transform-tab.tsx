@@ -409,6 +409,7 @@ export function TransformTab({
 		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<Section
 				collapsible
+				defaultOpen
 				sectionKey={`${element.id}:transform`}
 				showBottomBorder={false}
 				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
@@ -433,8 +434,8 @@ export function TransformTab({
 				</SectionHeader>
 				<SectionContent className="px-3 pb-3 pt-0">
 					<SectionFields className="gap-4">
-						<div className="rounded-lg border border-white/[0.06] bg-black/20 p-3">
-							<div className="mb-2 flex items-center justify-between gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/35">
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center justify-between gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
 								<span>Position</span>
 								<KeyframeToggle
 									isActive={hasPositionKeyframe}
@@ -519,8 +520,10 @@ export function TransformTab({
 							</div>
 						</div>
 
-						<div className="rounded-lg border border-white/[0.06] bg-black/20 p-3">
-							<div className="mb-2 flex items-center justify-between gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/35">
+						<div className="h-px bg-white/[0.06]" />
+
+						<div className="flex flex-col gap-2">
+							<div className="flex items-center justify-between gap-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
 								<span>Scale</span>
 								{scaleLockButton}
 							</div>
@@ -585,9 +588,11 @@ export function TransformTab({
 							)}
 						</div>
 
-						<div className="rounded-lg border border-white/[0.06] bg-black/20 p-3">
-							<div className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/35">
-								Rotation & Flip
+						<div className="h-px bg-white/[0.06]" />
+
+						<div className="flex flex-col gap-2">
+							<div className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
+								Rotation &amp; Flip
 							</div>
 							<div className="flex items-end gap-2">
 								<SectionField label="Rotation" className="min-w-0 flex-1">
@@ -686,6 +691,8 @@ export function TransformTab({
 							</div>
 						</div>
 
+						<div className="h-px bg-white/[0.06]" />
+
 						<PivotSection
 							element={element}
 							toggleGroupId={trackId}
@@ -717,66 +724,64 @@ function PivotSection({
 		Math.max(0, Math.min(1, value));
 
 	return (
-		<div className="rounded-lg border border-white/[0.06] bg-black/20 p-3">
-			<div className="mb-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/35">
+		<div className="flex flex-col gap-2">
+			<div className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
 				Pivot
 			</div>
-			<div className="flex flex-col gap-2">
-				<div className="grid grid-cols-[1fr_1fr_auto] items-center gap-1.5">
-					<NumberField
-						className="h-8 bg-white/[0.045]"
-						icon="X"
-						suffix="%"
-						value={(pivot.x * 100).toFixed(0)}
-						onChange={(event) => {
-							const parsed = Number.parseFloat(event.currentTarget.value);
-							if (Number.isNaN(parsed)) return;
-							onCommit({ x: clamp01({ value: parsed / 100 }), y: pivot.y });
-						}}
-					/>
-					<NumberField
-						className="h-8 bg-white/[0.045]"
-						icon="Y"
-						suffix="%"
-						value={(pivot.y * 100).toFixed(0)}
-						onChange={(event) => {
-							const parsed = Number.parseFloat(event.currentTarget.value);
-							if (Number.isNaN(parsed)) return;
-							onCommit({ x: pivot.x, y: clamp01({ value: parsed / 100 }) });
-						}}
-					/>
-					<div className="flex items-center gap-0.5">
-						<button
-							type="button"
-							onClick={() => onCommit({ x: 0, y: 0 })}
-							className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
-							title="Top-left"
-						>
-							↖
-						</button>
-						<button
-							type="button"
-							onClick={() => onCommit({ x: 0.5, y: 0.5 })}
-							className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
-							title="Center"
-						>
-							⊕
-						</button>
-						<button
-							type="button"
-							onClick={() => onCommit({ x: 1, y: 1 })}
-							className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
-							title="Bottom-right"
-						>
-							↘
-						</button>
-					</div>
+			<div className="grid grid-cols-[1fr_1fr_auto] items-center gap-1.5">
+				<NumberField
+					className="h-8 bg-white/[0.045]"
+					icon="X"
+					suffix="%"
+					value={(pivot.x * 100).toFixed(0)}
+					onChange={(event) => {
+						const parsed = Number.parseFloat(event.currentTarget.value);
+						if (Number.isNaN(parsed)) return;
+						onCommit({ x: clamp01({ value: parsed / 100 }), y: pivot.y });
+					}}
+				/>
+				<NumberField
+					className="h-8 bg-white/[0.045]"
+					icon="Y"
+					suffix="%"
+					value={(pivot.y * 100).toFixed(0)}
+					onChange={(event) => {
+						const parsed = Number.parseFloat(event.currentTarget.value);
+						if (Number.isNaN(parsed)) return;
+						onCommit({ x: pivot.x, y: clamp01({ value: parsed / 100 }) });
+					}}
+				/>
+				<div className="flex items-center gap-0.5">
+					<button
+						type="button"
+						onClick={() => onCommit({ x: 0, y: 0 })}
+						className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
+						title="Top-left"
+					>
+						↖
+					</button>
+					<button
+						type="button"
+						onClick={() => onCommit({ x: 0.5, y: 0.5 })}
+						className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
+						title="Center"
+					>
+						⊕
+					</button>
+					<button
+						type="button"
+						onClick={() => onCommit({ x: 1, y: 1 })}
+						className="grid h-8 w-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[0.72rem] text-white/55 hover:bg-white/[0.08] hover:text-white"
+						title="Bottom-right"
+					>
+						↘
+					</button>
 				</div>
-				<p className="text-[0.6rem] text-white/35">
-					Rotation &amp; scale pivot ({formatPct({ value: pivot.x })},{" "}
-					{formatPct({ value: pivot.y })}).
-				</p>
 			</div>
+			<p className="text-[0.6rem] text-white/40">
+				Rotation &amp; scale pivot ({formatPct({ value: pivot.x })},{" "}
+				{formatPct({ value: pivot.y })}).
+			</p>
 		</div>
 	);
 }

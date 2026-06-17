@@ -361,7 +361,31 @@ function buildPrimaryInspectorTabs({
 	if (elementType === "audio") fallbackPrimaryLabel = "Audio";
 	if (elementType === "effect") fallbackPrimaryLabel = "Effects";
 
-	return PRIMARY_INSPECTOR_TABS.map((primaryTab) => {
+	// Context-aware hiding: when the user is inside one of the
+	// "focus" categories (Effects, Animation, Adjust*), only show
+	// the primary tabs that are actually reachable. Otherwise the
+	// "Video" / "Element" / "Text" primaries stay in the bar but
+	// the secondary tab row is suppressed, so the user can never
+	// see what's behind them. Hiding them up here keeps the header
+	// honest about what's reachable from the current context.
+	const focusCategoryIds = new Set([
+		"effects",
+		"animations",
+		"davinci-adjust",
+		"basic-adjust",
+		"color-wheels",
+		"color",
+		"adjustments",
+		"masks",
+	]);
+	const inFocusContext = focusCategoryIds.has(activeTabId);
+
+	return PRIMARY_INSPECTOR_TABS.filter((primaryTab) => {
+		if (!inFocusContext) return true;
+		// Inside a focus category, only keep primaries that own at
+		// least one of the focus ids.
+		return primaryTab.ids.some((id) => focusCategoryIds.has(id));
+	}).map((primaryTab) => {
 		const target = primaryTab.ids
 			.map((id) => visibleTabs.find((tab) => tab.id === id))
 			.find((tab): tab is PropertiesTabDef => Boolean(tab));

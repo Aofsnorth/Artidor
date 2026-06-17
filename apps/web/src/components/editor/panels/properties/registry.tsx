@@ -370,7 +370,7 @@ function buildElementTab({
 
 function getTextConfig({
 	element,
-	mediaAssets,
+	mediaAssets: _mediaAssets,
 }: {
 	element: TextElement;
 	mediaAssets: MediaAsset[];
@@ -378,7 +378,11 @@ function getTextConfig({
 	return {
 		defaultTab: "text",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
+			// Text elements have their own dedicated tab. The generic
+			// "Element" tab (identity, source, relationships) is skipped
+			// because Text already carries its own identity (the content
+			// string, font, size, etc.) and we don't want to mix generic
+			// metadata into a text-focused inspector.
 			buildTextTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
