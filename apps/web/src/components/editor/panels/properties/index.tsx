@@ -274,6 +274,7 @@ const PRIMARY_INSPECTOR_TABS = [
 			"audio",
 			"speed",
 			"speed-ramp",
+			"frame-interpolation",
 			"text",
 			"graphic",
 			"blending",
@@ -502,9 +503,7 @@ function EditableElementName({
 					setTimeout(() => inputRef.current?.select(), 0);
 				}}
 			>
-				<MarqueeText className="text-left">
-					{displayName}
-				</MarqueeText>
+				<MarqueeText className="text-left">{displayName}</MarqueeText>
 			</button>
 		);
 	}

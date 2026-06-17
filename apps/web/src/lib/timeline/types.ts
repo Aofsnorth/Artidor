@@ -117,6 +117,31 @@ export interface RetimeConfig {
 	 */
 	mode?: "constant" | "curve";
 	keyframes?: RetimeCurveKeyframe[];
+	/**
+	 * Frame interpolation method used to synthesize in-between frames when
+	 * the source rate doesn't align with the retimed rate (e.g. 24→60 fps
+	 * slow-motion).
+	 *
+	 * - "blend"        — cross-dissolve neighbouring frames. Free, every device.
+	 * - "optical-flow" — block-matching motion vectors, then warp. CPU/GPU.
+	 * - "ai"           — RIFE v4.9 ONNX, neural network. Needs ~20MB model +
+	 *                    WebGPU/WASM runtime. Best quality, slowest.
+	 */
+	interpolation?: "blend" | "optical-flow" | "ai";
+}
+
+/**
+ * Hardware capability snapshot used by the frame-interpolation picker to
+ * decide which methods are actually usable on the current device.
+ */
+export type FrameInterpolationHardware = "webgpu" | "webgl2" | "wasm";
+
+export interface FrameInterpolationCapabilities {
+	blend: boolean;
+	opticalFlow: boolean;
+	ai: boolean;
+	hardware: FrameInterpolationHardware;
+}
 }
 
 interface BaseAudioElement extends BaseTimelineElement {
