@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-adjust-tab",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Dedicated Adjust tab in the inspector",
+		items: [
+			"Color grading and adjustment effects now have their own 'Adjust' quick-switch tab, separate from Effects — matching Alight Motion's layout.",
+			"Inspector tabs now show 6 primary categories (Element, Video, Audio, Effects, Adjust, Animation).",
+		],
+	},
+	{
 		id: "2026-06-17-copy-paste-effect",
 		date: "2026-06-17",
 		tag: "feature",

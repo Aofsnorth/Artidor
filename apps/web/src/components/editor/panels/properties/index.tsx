@@ -133,7 +133,7 @@ function InspectorView() {
 						Reset all
 					</button>
 				</div>
-				<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
+				<div className="mt-3 grid grid-cols-6 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
 					{primaryTabs.map((tab) => (
 						<TooltipProvider key={tab.label} delayDuration={0}>
 							<Tooltip>
@@ -247,7 +247,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			   widths. Hiding them gives the details card the full
 			   panel to work with. */}
 			{!disabled && (
-				<div className="mt-3 grid grid-cols-5 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
+				<div className="mt-3 grid grid-cols-6 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
 					{PRIMARY_INSPECTOR_TABS.map((tab) => (
 						<span
 							key={tab.label}
@@ -285,7 +285,8 @@ const PRIMARY_INSPECTOR_TABS = [
 		label: "Audio",
 		ids: ["audio-element", "audio-effects"],
 	},
-	{ label: "Effects", ids: ["effects", "color", "adjustments", "masks"] },
+	{ label: "Effects", ids: ["effects", "masks"] },
+	{ label: "Adjust", ids: ["color", "adjustments"] },
 	{ label: "Animation", ids: ["animations"] },
 ] as const;
 
