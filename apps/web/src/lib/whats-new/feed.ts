@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-popout-browser-windows",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Popout panels open in separate browser windows",
+		items: [
+			"Detached panels now pop out into their own browser window via window.open() — fully independent from the editor tab.",
+			"Popout buttons are disabled by default to avoid clutter — enable them in Settings → General → 'Enable popout panels'.",
+			"New Settings button on the Projects page (bottom-right corner) so you can adjust preferences before opening a project.",
+		],
+	},
+	{
 		id: "2026-06-17-settings-dialog",
 		date: "2026-06-17",
 		tag: "feature",

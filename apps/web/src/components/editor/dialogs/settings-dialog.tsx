@@ -79,6 +79,12 @@ function GeneralSettings() {
 	);
 	const defaultFps = useSettingsStore((s) => s.defaultFps);
 	const setDefaultFps = useSettingsStore((s) => s.setDefaultFps);
+	const enablePopoutPanels = useSettingsStore(
+		(s) => s.enablePopoutPanels,
+	);
+	const setEnablePopoutPanels = useSettingsStore(
+		(s) => s.setEnablePopoutPanels,
+	);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -96,6 +102,16 @@ function GeneralSettings() {
 				<Switch
 					checked={skipDeleteConfirm}
 					onCheckedChange={setSkipDeleteConfirm}
+				/>
+			</SettingRow>
+
+			<SettingRow
+				title="Enable popout panels"
+				description="Show hover-revealed popout buttons on editor panels (assets, preview, properties, timeline) to pop them out into separate browser windows. Disabled by default."
+			>
+				<Switch
+					checked={enablePopoutPanels}
+					onCheckedChange={setEnablePopoutPanels}
 				/>
 			</SettingRow>
 
