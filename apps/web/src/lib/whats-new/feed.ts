@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-asset-preview-polish",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Richer previews for asset tabs",
+		items: [
+			"Template cards now show layered mini-layout previews instead of plain initials.",
+			"Animation cards use scrolling labels so long preset names no longer clip.",
+			"Effect cards have a richer fallback plate and hover sheen while keeping the same grid layout.",
+			"New effects now appear in the correct category filters, and Color Wheels, HSL, Curves, and LUT are surfaced in Adjustments.",
+		],
+	},
+	{
 		id: "2026-06-17-inspector-text-assets-polish",
 		date: "2026-06-17",
 		tag: "improvement",
