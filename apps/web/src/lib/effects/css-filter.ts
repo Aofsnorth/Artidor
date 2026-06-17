@@ -21,6 +21,10 @@ const ADJUSTMENT_TYPES = new Set([
 	"fade",
 	"whites",
 	"blacks",
+	"color-wheels",
+	"hsl",
+	"curves",
+	"lut",
 ]);
 
 export function isAdjustmentEffect({

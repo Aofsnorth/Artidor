@@ -19,6 +19,7 @@ import {
 import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { cn } from "@/utils/ui";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import type { EditorCore } from "@/core";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
@@ -114,17 +115,24 @@ function TemplateItem({
 				"group bg-accent hover:bg-accent/70 relative flex flex-col items-center gap-1.5 overflow-hidden rounded-sm p-2 text-center transition-colors aspect-[3/4]",
 			)}
 		>
-			<div className="bg-muted-foreground/30 relative w-full flex-1 overflow-hidden rounded-sm flex items-center justify-center">
-				<div className="text-2xl font-bold opacity-30">
+			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#111827,#020617)]">
+				<div className="absolute inset-2 rounded border border-white/[0.08] bg-white/[0.03]" />
+				<div className="absolute left-3 top-4 h-3 w-11 rounded bg-white/18" />
+				<div className="absolute bottom-7 left-3 h-2 w-16 rounded bg-cyan-300/35" />
+				<div className="absolute bottom-4 left-3 h-2 w-10 rounded bg-white/16" />
+				<div className="absolute right-3 top-4 grid size-10 place-items-center rounded bg-gradient-to-br from-cyan-400/45 to-fuchsia-500/40 text-[0.62rem] font-bold text-white/70">
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
-				<div className="absolute bottom-1 right-1 text-[0.6rem] text-muted-foreground bg-background/70 px-1 rounded">
+				<div className="absolute bottom-1 right-1 rounded bg-black/65 px-1 text-[0.6rem] text-white/60">
 					{durationSec}s
 				</div>
 			</div>
-			<span className="text-muted-foreground w-full truncate text-[0.7rem]">
+			<MarqueeText
+				className="text-muted-foreground w-full text-[0.7rem]"
+				pxPerSecond={30}
+			>
 				{template.name}
-			</span>
+			</MarqueeText>
 			<HugeiconsIcon
 				icon={PlusSignIcon}
 				className="absolute right-1 top-1 size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
