@@ -3,12 +3,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { useEditor } from "@/hooks/use-editor";
 import { useApplyAnimationPreset } from "@/hooks/use-animation-presets";
 import { animationPresetsRegistry } from "@/lib/animation/presets";
 import { buildTextElement } from "@/lib/timeline/element-utils";
+import type { TimelineDragData } from "@/lib/timeline/drag";
 import {
 	textPresets,
 	type TextPreset,
@@ -124,7 +124,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const previewData = preset.build();
 	const previewStyle: React.CSSProperties = {
 		fontFamily: previewData.fontFamily ?? "var(--font-sans)",
-		fontSize: Math.min(previewData.fontSize ?? 32, 18),
+		fontSize: Math.min(previewData.fontSize ?? 32, 22),
 		color: previewData.color ?? "#ffffff",
 		fontWeight: previewData.fontWeight === "bold" ? 700 : 400,
 		fontStyle: previewData.fontStyle ?? "normal",
@@ -139,30 +139,34 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 			: 0,
 	};
 
-	return (
-		<button
-			type="button"
-			onClick={handleAdd}
-			className={cn(
-				`asset-preview-container group ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`,
-			)}
-		>
-			<div className="asset-preview-overlay" />
+	const dragData: TimelineDragData = {
+		id: preset.id,
+		type: "text",
+		name: preset.name,
+		content: previewData.content ?? "",
+		presetId: preset.id,
+	};
 
-			<div
-				className="line-clamp-2 text-balance break-words z-10 mx-auto mt-4"
-				style={previewStyle}
-			>
-				{preset.build().content}
-			</div>
-			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">
-				{preset.name}
-			</span>
-			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
-				<span className="flex size-5 items-center justify-center rounded-md bg-black/50 border border-white/10">
-					<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-cyan-400" />
-				</span>
-			</div>
-		</button>
+	return (
+		<div className={cn("relative", busy && "pointer-events-none opacity-50")}>
+			<DraggableItem
+				name={preset.name}
+				preview={
+					<div
+						className="line-clamp-2 text-balance break-words flex h-full w-full items-center justify-center px-3"
+						style={previewStyle}
+					>
+						{previewData.content}
+					</div>
+				}
+				dragData={dragData}
+				onAddToTimeline={handleAdd}
+				aspectRatio={16 / 10}
+				shouldShowLabel
+				isRounded
+				variant="card"
+				containerClassName="w-full"
+			/>
+		</div>
 	);
 }

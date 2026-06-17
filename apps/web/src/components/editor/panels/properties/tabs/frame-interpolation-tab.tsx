@@ -18,12 +18,7 @@ import {
 	type FrameInterpolationCapabilities,
 } from "@/lib/frame-interpolation";
 import type { RetimableElement } from "@/lib/timeline";
-import {
-	Section,
-	SectionContent,
-	SectionHeader,
-	SectionTitle,
-} from "@/components/section";
+import { Section, SectionHeader, SectionTitle, SectionContent } from "@/components/section";
 import { cn } from "@/utils/ui";
 
 const METHODS = [
@@ -55,7 +50,12 @@ const METHODS = [
 
 type MethodId = (typeof METHODS)[number]["id"];
 
-export function FrameInterpolationTab({
+/**
+ * Reusable block of frame-interpolation controls. Rendered as a
+ * collapsible sub-section inside the Speed tab (replacing the
+ * standalone tab) so all retime-related controls live in one place.
+ */
+export function FrameInterpolationSection({
 	element,
 	trackId,
 }: {
@@ -208,6 +208,11 @@ export function FrameInterpolationTab({
 		</Section>
 	);
 }
+
+/** Backwards-compat alias — older call sites still reference the
+ *  `FrameInterpolationTab` name. New code should use
+ *  `FrameInterpolationSection`. */
+export const FrameInterpolationTab = FrameInterpolationSection;
 
 function QualityBar({
 	value,

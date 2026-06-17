@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { invokeAction } from "@/lib/actions";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { isTypableDOMElement } from "@/utils/browser";
+import { useTimelineStore } from "@/stores/timeline-store";
 
 /**
  * a composable that hooks to the caller component's
@@ -18,6 +19,13 @@ export function useKeybindingsListener() {
 		isLoadingProject,
 		isRecording,
 	} = useKeybindingsStore();
+	const toggleAutoScroll = useTimelineStore((s) => s.toggleAutoScroll);
+
+	// Track the most recent space press for the double-space shortcut.
+	// Two presses within 350ms toggle the timeline's auto-scroll-to-playhead
+	// feature, mirroring the convention used in most NLEs.
+	const lastSpaceAtRef = useRef<number>(0);
+	const doubleSpaceAnnouncedRef = useRef<boolean>(false);
 
 	useEffect(() => {
 		const eventOptions: AddEventListenerOptions = { capture: true };
@@ -63,6 +71,45 @@ export function useKeybindingsListener() {
 						].includes(activeElement.type)));
 
 			if (isGenuineTextEntry) return;
+
+			// Double-space toggles the timeline's auto-scroll-to-playhead
+			// (mirrors the convention in most NLEs and editing
+			// extensions). We only fire it when the first space would
+			// have toggled play, so the user doesn't get surprising
+			// scroll toggles when typing or hitting space inside a menu.
+			if (normalizedKey === "space" && boundAction === "toggle-play") {
+				const now = ev.timeStamp;
+				const delta = now - lastSpaceAtRef.current;
+				lastSpaceAtRef.current = now;
+				if (delta > 0 && delta < 350 && !doubleSpaceAnnouncedRef.current) {
+					doubleSpaceAnnouncedRef.current = true;
+					// Reset the gate after the short window so a third
+					// press re-arms the next double.
+					setTimeout(() => {
+						doubleSpaceAnnouncedRef.current = false;
+					}, 400);
+					toggleAutoScroll();
+					ev.preventDefault();
+					return;
+				}
+			}
+
+			// Space and K are special: if focus is on a generic button (track
+			// header, track-add, sidebar controls, etc.) the browser will
+			// synthesise a click event before our handler runs, which means
+			// the user's "play" intent gets hijacked into toggling whatever
+			// button is focused (e.g. renaming the track). We blur the
+			// button first so the keybinding takes over, then re-prevent
+			// default to stop the synthesized click.
+			const isPlayShortcut = boundAction === "toggle-play";
+			const isFocusOnButton =
+				activeElement instanceof HTMLButtonElement ||
+				(activeElement instanceof HTMLElement &&
+					activeElement.getAttribute("role") === "button");
+			if (isPlayShortcut && isFocusOnButton && document.activeElement) {
+				(document.activeElement as HTMLElement).blur();
+			}
+
 			if (boundAction === "paste-copied") {
 				if (!editor.clipboard.hasEntry()) return;
 				ev.preventDefault();
@@ -109,5 +156,6 @@ export function useKeybindingsListener() {
 		isLoadingProject,
 		isRecording,
 		editor,
+		toggleAutoScroll,
 	]);
 }

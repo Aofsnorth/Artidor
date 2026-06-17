@@ -8,6 +8,17 @@ import type { Point } from "@/lib/graphics/path-utils";
 
 export interface FreehandDrawOverlayProps {
 	points: Point[];
+	/**
+	 * Stroke colour the user has picked for this stroke. Mirrors the
+	 * freehand-graphic element's `stroke` param so the live preview
+	 * matches the shape that will be committed on pointer up.
+	 */
+	stroke?: string;
+	/**
+	 * Stroke width the user has picked (in source coords). Mirrors the
+	 * `strokeWidth` param on the freehand graphic.
+	 */
+	strokeWidth?: number;
 }
 
 /**
@@ -16,22 +27,31 @@ export interface FreehandDrawOverlayProps {
  * back to screen coordinates using the same viewport math as the main
  * canvas — so the live preview aligns pixel-perfect with the eventual
  * committed graphic.
+ *
+ * Also renders a small anchor dot at the most recent pointer position
+ * so the user gets immediate visual feedback the moment they touch the
+ * canvas (before they've even dragged far enough to commit a stroke).
+ * Without this, single-clicks and slow drags look like a black flicker
+ * because the canvas-underneath is briefly exposed through the empty
+ * overlay.
  */
-export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
+export function FreehandDrawOverlay({
+	points,
+	stroke = "#ffffff",
+	strokeWidth = 4,
+}: FreehandDrawOverlayProps) {
 	const viewport = usePreviewViewport();
 
-	const path = useMemo(() => {
-		if (points.length < 1) {
-			return "";
-		}
-
+	const { path, cursor } = useMemo(() => {
+		if (points.length < 1) return { path: "", cursor: null };
 		// Simplify + smooth the same way the committed path will be, so
 		// the live preview matches the final shape 1:1.
 		const simplified = points.length > 4 ? simplifyPath(points, 2) : points;
-		return pointsToSvgPath(simplified);
+		const d = pointsToSvgPath(simplified);
+		return { path: d, cursor: points[points.length - 1] };
 	}, [points]);
 
-	if (!path) return null;
+	if (points.length < 1) return null;
 
 	// Position the SVG over the canvas, sized to match the canvas in screen
 	// pixels so the 512x512 source coords map to the visible area.
@@ -43,6 +63,7 @@ export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
 
 	return (
 		<svg
+			aria-hidden="true"
 			className="pointer-events-none absolute"
 			style={{
 				left,
@@ -55,15 +76,26 @@ export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
 			preserveAspectRatio="none"
 		>
 			<title>Freehand stroke preview</title>
-			<path
-				d={path}
-				fill="none"
-				stroke="#ffffff"
-				strokeWidth={4}
-				strokeLinecap="round"
-				strokeLinejoin="round"
-				opacity={0.9}
-			/>
+			{path && (
+				<path
+					d={path}
+					fill="none"
+					stroke={stroke}
+					strokeWidth={strokeWidth}
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					opacity={0.9}
+				/>
+			)}
+			{cursor && (
+				<circle
+					cx={cursor.x}
+					cy={cursor.y}
+					r={Math.max(2, strokeWidth / 2)}
+					fill={stroke}
+					opacity={0.9}
+				/>
+			)}
 		</svg>
 	);
 }

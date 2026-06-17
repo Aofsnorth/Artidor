@@ -2,7 +2,13 @@
 
 import { cn } from "@/utils/ui";
 import { clamp } from "@/utils/math";
-import { useRef, useState, useLayoutEffect, type ComponentProps } from "react";
+import {
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+	type ComponentProps,
+} from "react";
 import { useFocusLock } from "@/hooks/use-focus-lock";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -137,13 +143,27 @@ function NumberField({
 	const iconRef = useRef<HTMLButtonElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const ghostRef = useRef<HTMLSpanElement>(null);
+	const bubbleRef = useRef<HTMLDivElement>(null);
 	const startValueRef = useRef(0);
+	const startXRef = useRef(0);
 	const cumulativeDeltaRef = useRef(0);
+	const lastPointerXRef = useRef(0);
 	const [isInputFocused, setIsInputFocused] = useState(false);
 	const [suffixLeft, setSuffixLeft] = useState(0);
+	const [scrubPreview, setScrubPreview] = useState<{
+		value: number;
+		x: number;
+		y: number;
+	} | null>(null);
 	const ghostValue = Array.isArray(value)
 		? value.join(", ")
 		: String(value ?? "");
+
+	useEffect(() => {
+		return () => {
+			setScrubPreview(null);
+		};
+	}, []);
 
 	useLayoutEffect(() => {
 		if (!suffix) {
@@ -170,17 +190,15 @@ function NumberField({
 		if (!onScrub || disabled || event.button !== 0) return;
 		const parsed = parseFloat(String(value ?? "0"));
 		startValueRef.current = Number.isNaN(parsed) ? 0 : parsed;
+		startXRef.current = event.clientX;
+		lastPointerXRef.current = event.clientX;
 		cumulativeDeltaRef.current = 0;
-		let hasReceivedFirstMove = false;
-		iconRef.current?.requestPointerLock();
+		document.body.style.cursor = "ew-resize";
+		document.body.style.userSelect = "none";
 
 		const handlePointerMove = (moveEvent: PointerEvent) => {
-			// first movementX after pointer lock often contains a bogus warp delta
-			if (!hasReceivedFirstMove) {
-				hasReceivedFirstMove = true;
-				return;
-			}
-			cumulativeDeltaRef.current += moveEvent.movementX;
+			lastPointerXRef.current = moveEvent.clientX;
+			cumulativeDeltaRef.current = moveEvent.clientX - startXRef.current;
 			const newValue = scrubRanges
 				? scrubAcrossRanges({
 						startValue: startValueRef.current,
@@ -191,13 +209,20 @@ function NumberField({
 					})
 				: startValueRef.current +
 					cumulativeDeltaRef.current * DRAG_SENSITIVITIES[dragSensitivity];
+			setScrubPreview({
+				value: newValue,
+				x: moveEvent.clientX,
+				y: moveEvent.clientY,
+			});
 			onScrub(newValue);
 		};
 
 		const handlePointerUp = () => {
 			document.removeEventListener("pointermove", handlePointerMove);
 			document.removeEventListener("pointerup", handlePointerUp);
-			document.exitPointerLock();
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+			setScrubPreview(null);
 			onScrubEnd?.();
 		};
 
@@ -245,76 +270,120 @@ function NumberField({
 	);
 
 	return (
-		<div
-			ref={wrapperRef}
-			className={cn(
-				"border-border bg-accent flex h-7 w-full min-w-0 items-center rounded-md border text-sm outline-none cursor-text disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-within:border-primary focus-within:ring-0 focus-within:ring-primary/10 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
-				disabled && "pointer-events-none cursor-not-allowed opacity-50",
-				className,
-			)}
-		>
-			{icon &&
-				(canScrub ? (
-					<button
-						ref={iconRef}
-						type="button"
-						aria-label="Drag to adjust value"
-						disabled={disabled}
-						className="text-muted-foreground [&_svg]:size-3.5! shrink-0 select-none pl-2.5 text-sm leading-none cursor-ew-resize"
-						onMouseDown={(event) => event.preventDefault()}
-						onPointerDown={handleIconPointerDown}
-					>
-						{icon}
-					</button>
-				) : (
-					<span className="text-muted-foreground [&_svg]:size-3.5! shrink-0 select-none pl-2.5 text-sm leading-none">
-						{icon}
-					</span>
-				))}
-			<span
+		<>
+			<div
+				ref={wrapperRef}
 				className={cn(
-					"relative flex flex-1 min-w-0 items-center",
-					icon ? "px-1.5" : "pl-2.5",
-					onReset ? "pr-0" : "pr-2.5",
+					"border-border bg-accent flex h-7 w-full min-w-0 items-center rounded-md border text-sm outline-none cursor-text disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 focus-within:border-primary focus-within:ring-0 focus-within:ring-primary/10 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40",
+					disabled && "pointer-events-none cursor-not-allowed opacity-50",
+					className,
 				)}
 			>
-				{inputNode}
-				{suffix && (
-					<>
-						{/* Ghost mirrors value text to measure width for suffix positioning */}
-						<span
-							ref={ghostRef}
-							className="invisible absolute text-sm leading-none whitespace-pre pointer-events-none"
-							aria-hidden="true"
+				{icon &&
+					(canScrub ? (
+						<button
+							ref={iconRef}
+							type="button"
+							aria-label="Drag to adjust value"
+							disabled={disabled}
+							className="text-muted-foreground [&_svg]:size-3.5! shrink-0 select-none pl-2.5 text-sm leading-none cursor-ew-resize"
+							onMouseDown={(event) => event.preventDefault()}
+							onPointerDown={handleIconPointerDown}
 						>
-							{ghostValue}
+							{icon}
+						</button>
+					) : (
+						<span className="text-muted-foreground [&_svg]:size-3.5! shrink-0 select-none pl-2.5 text-sm leading-none">
+							{icon}
 						</span>
-						<span
-							className={cn(
-								"absolute top-1/2 -translate-y-1/2 select-none pointer-events-none text-sm leading-none",
-								suffixClassName,
-							)}
-							style={{ left: suffixLeft + SUFFIX_GAP_PX }}
+					))}
+				<span
+					className={cn(
+						"relative flex flex-1 min-w-0 items-center",
+						icon ? "px-1.5" : "pl-2.5",
+						onReset ? "pr-0" : "pr-2.5",
+					)}
+				>
+					{inputNode}
+					{suffix && (
+						<>
+							{/* Ghost mirrors value text to measure width for suffix positioning */}
+							<span
+								ref={ghostRef}
+								className="invisible absolute text-sm leading-none whitespace-pre pointer-events-none"
+								aria-hidden="true"
+							>
+								{ghostValue}
+							</span>
+							<span
+								className={cn(
+									"absolute top-1/2 -translate-y-1/2 select-none pointer-events-none text-sm leading-none",
+									suffixClassName,
+								)}
+								style={{ left: suffixLeft + SUFFIX_GAP_PX }}
+							>
+								{suffix}
+							</span>
+						</>
+					)}
+				</span>
+				{onReset && !isDefault && (
+					<div className="shrink-0 pr-2 flex items-center">
+						<Button
+							variant="text"
+							size="text"
+							aria-label="Reset to default"
+							onClick={onReset}
 						>
-							{suffix}
-						</span>
-					</>
+							<HugeiconsIcon
+								icon={ArrowTurnBackwardIcon}
+								className="size-3.5!"
+							/>
+						</Button>
+					</div>
 				)}
-			</span>
-			{onReset && !isDefault && (
-				<div className="shrink-0 pr-2 flex items-center">
-					<Button
-						variant="text"
-						size="text"
-						aria-label="Reset to default"
-						onClick={onReset}
+			</div>
+			{/* Floating value bubble that follows the cursor while the user drags
+		    the scrub icon. Replaces the old pointer-locked drag (which hid
+		    the cursor entirely) with a more discoverable on-screen affordance. */}
+			{scrubPreview &&
+				(typeof window === "undefined" ? null : (
+					<div
+						ref={bubbleRef}
+						role="status"
+						aria-live="polite"
+						className="pointer-events-none fixed z-10000 -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-md border border-white/[0.12] bg-[#09090b]/95 px-2.5 py-1 text-[0.74rem] font-mono text-white shadow-[0_8px_32px_rgba(0,0,0,0.45)] backdrop-blur"
+						style={{
+							left: scrubPreview.x,
+							top: scrubPreview.y,
+						}}
 					>
-						<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3.5!" />
-					</Button>
-				</div>
-			)}
-		</div>
+						{Number.isFinite(scrubPreview.value)
+							? scrubPreview.value.toFixed(
+									getFractionDigits({ value: scrubPreview.value }),
+								)
+							: "—"}
+						{suffix ? (
+							<span className="ml-1 text-white/50">{suffix}</span>
+						) : null}
+					</div>
+				))}
+		</>
 	);
+}
+
+/**
+ * Pick a sane fraction-digit count for the drag bubble based on the
+ * current value's magnitude. Integers like 60 show no decimals; finer
+ * values like 1.25 keep two. Mirrors the `formatNumberForDisplay`
+ * helper used elsewhere so the bubble matches the input field.
+ */
+function getFractionDigits({ value }: { value: number }): number {
+	const abs = Math.abs(value);
+	if (abs >= 100) return 0;
+	if (abs >= 10) return 1;
+	if (abs >= 1) return 2;
+	return 3;
 }
 
 export { NumberField };
