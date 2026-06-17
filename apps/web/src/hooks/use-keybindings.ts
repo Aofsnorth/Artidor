@@ -43,7 +43,20 @@ export function useKeybindingsListener() {
 			if (!binding) return;
 			if (!boundAction) return;
 
-			if (isTextInput) return;
+			// Space (toggle-play) and K should work even when focus is on
+			// non-text elements like buttons, selects, or Radix UI triggers.
+			// Only block on genuine text entry fields (contentEditable, text
+			// inputs, textareas) where space would insert a character.
+			const isGenuineTextEntry =
+				isTextInput &&
+				(activeElement instanceof HTMLTextAreaElement ||
+					activeElement.isContentEditable ||
+					(activeElement instanceof HTMLInputElement &&
+						["text", "password", "email", "search", "url", "tel", "number"].includes(
+							activeElement.type,
+						)));
+
+			if (isGenuineTextEntry) return;
 			if (boundAction === "paste-copied") {
 				if (!editor.clipboard.hasEntry()) return;
 				ev.preventDefault();
