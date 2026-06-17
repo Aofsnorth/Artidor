@@ -99,6 +99,15 @@ function applyTemplate({
 	}
 }
 
+function hashString(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = (hash << 5) - hash + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
+}
+
 function TemplateItem({
 	template,
 	onApply,
@@ -107,6 +116,11 @@ function TemplateItem({
 	onApply: () => void;
 }) {
 	const durationSec = Math.round(template.durationTicks / TICKS_PER_SECOND);
+	const h = hashString(template.id);
+	const hue1 = h % 360;
+	const hue2 = (h * 13) % 360;
+	const layoutType = h % 3;
+
 	return (
 		<button
 			type="button"
@@ -115,12 +129,45 @@ function TemplateItem({
 				"group bg-accent hover:bg-accent/70 relative flex flex-col items-center gap-1.5 overflow-hidden rounded-sm p-2 text-center transition-colors aspect-[3/4]",
 			)}
 		>
-			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#111827,#020617)]">
-				<div className="absolute inset-2 rounded border border-white/[0.08] bg-white/[0.03]" />
-				<div className="absolute left-3 top-4 h-3 w-11 rounded bg-white/18" />
-				<div className="absolute bottom-7 left-3 h-2 w-16 rounded bg-cyan-300/35" />
-				<div className="absolute bottom-4 left-3 h-2 w-10 rounded bg-white/16" />
-				<div className="absolute right-3 top-4 grid size-10 place-items-center rounded bg-gradient-to-br from-cyan-400/45 to-fuchsia-500/40 text-[0.62rem] font-bold text-white/70">
+			<div
+				className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10"
+				style={{
+					background: `linear-gradient(135deg, hsl(${hue1}, 50%, 15%), hsl(${hue2}, 60%, 8%))`,
+				}}
+			>
+				{layoutType === 0 && (
+					<>
+						<div className="absolute inset-2 rounded border border-white/[0.08] bg-white/[0.03]" />
+						<div className="absolute left-3 top-4 h-3 w-11 rounded bg-white/18" />
+						<div className="absolute bottom-7 left-3 h-2 w-16 rounded bg-cyan-300/35" />
+						<div className="absolute bottom-4 left-3 h-2 w-10 rounded bg-white/16" />
+					</>
+				)}
+				{layoutType === 1 && (
+					<>
+						<div className="absolute inset-x-2 top-2 bottom-10 rounded border border-white/[0.08] bg-white/[0.03]" />
+						<div className="absolute inset-x-2 bottom-2 h-6 rounded bg-white/[0.06] flex gap-1 p-1">
+							<div className="flex-1 rounded bg-cyan-400/40" />
+							<div className="flex-1 rounded bg-fuchsia-400/40" />
+							<div className="flex-1 rounded bg-amber-400/40" />
+						</div>
+					</>
+				)}
+				{layoutType === 2 && (
+					<>
+						<div className="absolute left-2 top-2 bottom-2 w-1/3 rounded border border-white/[0.08] bg-white/[0.03]" />
+						<div className="absolute right-2 top-2 bottom-2 w-[58%] rounded border border-white/[0.08] bg-white/[0.03]" />
+						<div className="absolute right-4 top-4 h-3 w-10 rounded bg-white/18" />
+						<div className="absolute right-4 top-9 h-2 w-14 rounded bg-white/12" />
+					</>
+				)}
+
+				<div
+					className="absolute right-3 top-4 grid size-10 place-items-center rounded text-[0.62rem] font-bold text-white/85"
+					style={{
+						background: `linear-gradient(135deg, hsl(${hue1}, 80%, 55%), hsl(${hue2}, 80%, 45%))`,
+					}}
+				>
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
 				<div className="absolute bottom-1 right-1 rounded bg-black/65 px-1 text-[0.6rem] text-white/60">

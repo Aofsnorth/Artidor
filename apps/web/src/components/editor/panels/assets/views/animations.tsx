@@ -212,6 +212,17 @@ function presetStyleKeyframes(preset: AnimationPreset): string {
 		case "float":
 			return `@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-12px); } 100% { transform: translateY(0); } }`;
 		default:
+			if (preset.type.startsWith("gen-animation-")) {
+				const i = parseInt(preset.type.split("-")[2] || "0", 10);
+				const dir = i % 4;
+				if (dir === 0)
+					return `@keyframes ${preset.type} { from { opacity: 0; transform: translateY(20px) rotate(${i % 30}deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }`;
+				if (dir === 1)
+					return `@keyframes ${preset.type} { from { opacity: 0; transform: scale(0.5) rotate(-${i % 30}deg); } to { opacity: 1; transform: scale(1) rotate(0); } }`;
+				if (dir === 2)
+					return `@keyframes ${preset.type} { from { opacity: 0; transform: translateX(${i % 2 === 0 ? "-" : ""}30px); } to { opacity: 1; transform: translateX(0); } }`;
+				return `@keyframes ${preset.type} { from { opacity: 0; transform: translateY(-20px) scale(1.2); } to { opacity: 1; transform: translateY(0) scale(1); } }`;
+			}
 			return "";
 	}
 }

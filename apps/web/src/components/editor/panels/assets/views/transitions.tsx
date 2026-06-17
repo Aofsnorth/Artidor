@@ -199,16 +199,25 @@ function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
+	const h = hashString(definition.type);
+	const hue1 = h % 360;
+	const hue2 = (h * 13) % 360;
+	const hue3 = (h * 23) % 360;
+	const hue4 = (h * 37) % 360;
+
+	const plateA = `linear-gradient(135deg, hsla(${hue1}, 85%, 65%, 0.85), hsla(${hue2}, 80%, 55%, 0.85))`;
+	const plateB = `radial-gradient(circle at 70% 35%, hsla(${hue3}, 90%, 70%, 0.9), hsla(${hue4}, 85%, 50%, 0.88))`;
+
 	return (
 		<div
 			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-black/35"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<div className="absolute inset-0 bg-gradient-to-br from-indigo-500/80 via-purple-500/70 to-pink-500/70" />
-			<div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.45),transparent_26%),linear-gradient(135deg,rgba(99,102,241,0.85),rgba(168,85,247,0.85))]" />
+			<div className="absolute inset-0" style={{ background: plateA }} />
 			<div
-				className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_70%_35%,rgba(255,255,255,0.42),transparent_24%),linear-gradient(135deg,rgba(34,211,238,0.9),rgba(59,130,246,0.88))] opacity-0 group-hover:opacity-100"
+				className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				style={{
+					background: plateB,
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
 				}}
 			/>
@@ -216,6 +225,15 @@ function TransitionPreview({
 			<style>{scopedCss}</style>
 		</div>
 	);
+}
+
+function hashString(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = (hash << 5) - hash + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
 }
 
 function extractKeyframeName(css: string): string | null {
