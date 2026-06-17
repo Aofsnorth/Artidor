@@ -177,8 +177,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "feature",
 		title: "Copy & paste style (Alight Motion-style)",
 		items: [
-			"Right-click an element → \"Copy style\" to grab its transform, effects, animations, text formatting, and more.",
-			"Then \"Paste style\" onto any other element(s) to apply the same look — incompatible properties are silently skipped.",
+			'Right-click an element → "Copy style" to grab its transform, effects, animations, text formatting, and more.',
+			'Then "Paste style" onto any other element(s) to apply the same look — incompatible properties are silently skipped.',
 			"Keyboard shortcuts: Ctrl+Shift+C (copy style) and Ctrl+Shift+V (paste style).",
 		],
 	},
@@ -188,7 +188,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "feature",
 		title: "Inspector Element tab",
 		items: [
-			"New \"Element\" quick-switch tab surfaces identity, source media, timeline position, relationships and state toggles for the selected element.",
+			'New "Element" quick-switch tab surfaces identity, source media, timeline position, relationships and state toggles for the selected element.',
 			"Copy element/media IDs to clipboard, toggle visibility and mute directly from the inspector.",
 		],
 	},
