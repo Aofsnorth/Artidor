@@ -78,9 +78,9 @@ async function loadRuntime(): Promise<RifeRuntime> {
 					run: () => Promise<Record<string, RifeTensor>>;
 				};
 				return {
-					input: (name, tensor) => session.input(name, tensor),
+					input: (name: string, tensor: RifeTensor) => session.input(name, tensor),
 					run: () => session.run(),
-					output: (name) => {
+					output: (name: string) => {
 						void name;
 						return undefined;
 					},
