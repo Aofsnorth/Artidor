@@ -284,7 +284,11 @@ function DrawToolButton() {
 					? "Drawing on canvas — click again to exit"
 					: "Draw on the canvas (freehand vector)"
 			}
-			className={isActive ? "text-black" : "text-white/60 hover:text-white"}
+			className={
+				isActive
+					? "bg-white text-black hover:bg-white/90"
+					: "text-white/60 hover:text-white"
+			}
 			onClick={() => setToolMode(isActive ? "select" : "draw")}
 		>
 			<HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
@@ -315,7 +319,11 @@ function VectorDrawButton() {
 					? "Building a vector path — click again to exit"
 					: "Vector path (pen tool)"
 			}
-			className={isActive ? "text-black" : "text-white/60 hover:text-white"}
+			className={
+				isActive
+					? "bg-white text-black hover:bg-white/90"
+					: "text-white/60 hover:text-white"
+			}
 			onClick={() => setToolMode(isActive ? "select" : "vector")}
 		>
 			<HugeiconsIcon icon={PenTool01Icon} className="size-4" />

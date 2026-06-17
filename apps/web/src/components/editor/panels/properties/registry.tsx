@@ -37,7 +37,6 @@ import { ClipEffectsTab, StandaloneEffectTab } from "./tabs/effects-tab";
 import { MasksTab } from "./tabs/masks-tab";
 import { SpeedTab } from "./tabs/speed-tab";
 import { SpeedRampTab } from "./tabs/speed-ramp-tab";
-import { FrameInterpolationTab } from "./tabs/frame-interpolation-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
 import { AdjustmentsTab } from "./tabs/adjustments-tab";
 import { ColorGradingTab } from "./tabs/color-grading-tab";
@@ -46,7 +45,6 @@ import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
 import { ElementTab } from "./tabs/element-tab";
 import { OcShapesIcon } from "@/components/icons";
-import { Atom01Icon } from "@hugeicons/core-free-icons";
 
 export type TabContentProps = {
 	trackId: string;
@@ -163,27 +161,6 @@ function buildSpeedRampTab({
 	};
 }
 
-function buildFrameInterpolationTab({
-	element,
-}: {
-	element: RetimableElement;
-}): PropertiesTabDef {
-	return {
-		id: "frame-interpolation",
-		label: "Interpolation",
-		icon: <HugeiconsIcon icon={Atom01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<FrameInterpolationTab element={element} trackId={trackId} />
-		),
-	};
-}
-// Frame-interpolation tab is no longer registered as a primary tab — its
-// controls live inside the Speed tab as a collapsible sub-section. The
-// helper is kept here so future surfaces (export, batch ops) can re-use
-// it without re-implementing.
-// biome-ignore lint/correctness/noUnusedVariables: kept for future re-export/batch-op surface
-export const _frameInterpolationTabHelper = buildFrameInterpolationTab;
-
 function buildAudioEffectsTab({
 	element,
 }: {
@@ -195,6 +172,39 @@ function buildAudioEffectsTab({
 		icon: <HugeiconsIcon icon={SparklesIcon} size={16} />,
 		content: ({ trackId }) => (
 			<AudioEffectsTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+import { BasicAdjustTab } from "./tabs/basic-adjust-tab";
+import { ColorWheelsTab } from "./tabs/color-wheels-tab";
+
+function buildBasicAdjustTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: "basic-adjust",
+		label: "Basic",
+		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
+		content: ({ trackId }) => (
+			<BasicAdjustTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+function buildColorWheelsTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: "color-wheels",
+		label: "Wheels",
+		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
+		content: ({ trackId }) => (
+			<ColorWheelsTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -405,6 +415,8 @@ function getVideoConfig({
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
+			buildBasicAdjustTab({ element }),
+			buildColorWheelsTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -488,6 +500,8 @@ function getImageConfig({
 		tabs: [
 			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
+			buildBasicAdjustTab({ element }),
+			buildColorWheelsTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),

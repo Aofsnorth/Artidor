@@ -797,3 +797,90 @@ export const textPresets: TextPreset[] = [
 		}),
 	},
 ];
+
+const fonts = [
+	"Inter",
+	"Roboto",
+	"Playfair Display",
+	"Montserrat",
+	"Oswald",
+	"Raleway",
+	"Poppins",
+];
+
+// Modern, high-quality color palettes
+const palettes = [
+	{ text: "#ffffff", bg: "transparent" },
+	{ text: "#000000", bg: "#ffffff" },
+	{ text: "#ffffff", bg: "#000000" },
+	{ text: "#f8fafc", bg: "#0ea5e9" }, // cyan
+	{ text: "#fff1f2", bg: "#e11d48" }, // rose
+	{ text: "#fdf4ff", bg: "#c026d3" }, // fuchsia
+	{ text: "#f0fdf4", bg: "#16a34a" }, // green
+	{ text: "#fffbeb", bg: "#d97706" }, // amber
+	{ text: "#fafafa", bg: "#4f46e5" }, // indigo
+	{ text: "#18181b", bg: "#fcd34d" }, // dark text on yellow
+	{ text: "#ffffff", bg: "#111827" }, // zinc
+	{ text: "#ecfdf5", bg: "#15803d" }, // emerald
+	{ text: "#fef2f2", bg: "#be123c" }, // red
+];
+
+for (let i = 0; i < 150; i++) {
+	const palette = palettes[i % palettes.length];
+	const isSerif = i % 3 === 0;
+	const isMono = i % 7 === 0;
+	let font = fonts[i % fonts.length];
+	if (isSerif) font = "Playfair Display";
+	if (isMono) font = "monospace";
+
+	const isBold = i % 2 === 0;
+	const isItalic = i % 5 === 0;
+	const isUppercase = i % 4 === 0;
+	const hasBg = palette.bg !== "transparent";
+
+	// Vary sizes and spacing for distinct looks
+	const sizeType = i % 3;
+	let fontSize = 48;
+	let letterSpacing = 0;
+	let cornerRadius = 0;
+	let category: TextPresetCategory = "basic";
+
+	if (sizeType === 0) {
+		fontSize = 72; // Big title
+		letterSpacing = isUppercase ? 4 : -1;
+		category = "title";
+	} else if (sizeType === 1) {
+		fontSize = 36; // Subtitle / Lower third
+		letterSpacing = isUppercase ? 8 : 1;
+		category = "subtitle";
+		cornerRadius = hasBg ? 8 : 0;
+	} else {
+		fontSize = 24; // Caption / pill
+		letterSpacing = 0;
+		category = "callout";
+		cornerRadius = hasBg ? 999 : 0; // fully rounded pill
+	}
+
+	const contentText = isUppercase ? `STYLE ${i + 1}` : `Style ${i + 1}`;
+
+	textPresets.push({
+		id: `gen-text-${i}`,
+		type: `gen-text-${i}`,
+		name: `Premium ${i + 1}`,
+		keywords: ["premium", "text", "style", "generated"],
+		category,
+		build: () => ({
+			...baseDefaults,
+			type: "text",
+			name: `Premium ${i + 1}`,
+			content: contentText,
+			fontFamily: font,
+			fontSize,
+			color: palette.text,
+			fontWeight: isBold ? "bold" : "normal",
+			fontStyle: isItalic ? "italic" : "normal",
+			letterSpacing,
+			background: hasBg ? box(palette.bg, cornerRadius) : NO_BG,
+		}),
+	});
+}

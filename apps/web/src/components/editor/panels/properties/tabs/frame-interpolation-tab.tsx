@@ -18,7 +18,12 @@ import {
 	type FrameInterpolationCapabilities,
 } from "@/lib/frame-interpolation";
 import type { RetimableElement } from "@/lib/timeline";
-import { Section, SectionHeader, SectionTitle, SectionContent } from "@/components/section";
+import {
+	Section,
+	SectionHeader,
+	SectionTitle,
+	SectionContent,
+} from "@/components/section";
 import { cn } from "@/utils/ui";
 
 const METHODS = [

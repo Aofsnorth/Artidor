@@ -709,6 +709,18 @@ const EXTRA_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 	},
 ];
 
+const GEN_SHAPE_PRESETS = Array.from({ length: 150 }).map((_, i) => ({
+	shapeKey: `gen-shape-${i}`,
+	name: `Shape ${i + 1}`,
+	definitionId: "rectangle",
+	params: {
+		fill: `hsla(${(i * 10) % 360}, 60%, 50%, 1)`,
+		stroke: "#ffffff",
+		strokeWidth: (i % 5) * 2,
+		cornerRadius: (i * 2) % 30,
+	},
+}));
+
 function getShapePresets(): ShapeGraphicPreset[] {
 	registerDefaultGraphics();
 	const registryPresets = graphicsRegistry.getAll().map((definition) => ({
@@ -717,14 +729,18 @@ function getShapePresets(): ShapeGraphicPreset[] {
 		definitionId: definition.id,
 	}));
 	const curatedKeys = new Set(
-		[...CURATED_SHAPE_PRESETS, ...EXTRA_SHAPE_PRESETS].map(
-			(preset) => preset.shapeKey,
-		),
+		[
+			...CURATED_SHAPE_PRESETS,
+			...EXTRA_SHAPE_PRESETS,
+			...GEN_SHAPE_PRESETS,
+		].map((preset) => preset.shapeKey),
 	);
+	const uncurated = registryPresets.filter((p) => !curatedKeys.has(p.shapeKey));
 	return [
 		...CURATED_SHAPE_PRESETS,
 		...EXTRA_SHAPE_PRESETS,
-		...registryPresets.filter((preset) => !curatedKeys.has(preset.shapeKey)),
+		...GEN_SHAPE_PRESETS,
+		...uncurated,
 	];
 }
 

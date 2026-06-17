@@ -27,6 +27,7 @@ import {
 	getFractionDigitsForStep,
 	snapToStep,
 } from "@/utils/math";
+import { FrameInterpolationSection } from "./frame-interpolation-tab";
 
 const SPEED_STEP = 0.01;
 const SPEED_FRACTION_DIGITS = getFractionDigitsForStep({ step: SPEED_STEP });
@@ -109,53 +110,53 @@ export function SpeedTab({
 	});
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:speed`}>
-			<SectionHeader>
-				<SectionTitle>Speed</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					<SectionField label="Speed">
-						<NumberField
-							icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
-							value={speedDraft.displayValue}
-							suffix="x"
-							scrubRanges={[
-								{ from: 0.01, to: 1, pixelsPerUnit: 160 },
-								{ from: 1, to: 5, pixelsPerUnit: 48 },
-							]}
-							scrubClamp={{ min: MIN_RETIME_RATE, max: MAX_RETIME_RATE }}
-							onFocus={() => {
-								pendingRateRef.current = rate;
-								speedDraft.onFocus();
-							}}
-							onChange={speedDraft.onChange}
-							onBlur={speedDraft.onBlur}
-							onScrub={speedDraft.scrubTo}
-							onScrubEnd={speedDraft.commitScrub}
-							onReset={() =>
-								commitRetime({ rate: DEFAULT_RETIME_RATE, maintainPitch })
-							}
-							isDefault={rate === DEFAULT_RETIME_RATE}
-						/>
-					</SectionField>
-					<div className="flex items-center justify-between">
-						<span className="text-sm">Change pitch</span>
-						<Switch
-							checked={!maintainPitch}
-							disabled={!isPitchPreserveAvailable}
-							onCheckedChange={(checked) =>
-								commitRetime({ rate, maintainPitch: !checked })
-							}
-						/>
-					</div>
-					<div className="rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-3 py-2 text-[0.68rem] leading-relaxed text-cyan-100/65">
-						Need smoother slow motion? Open the adjacent{" "}
-						<span className="font-semibold text-cyan-100">Interpolation</span>{" "}
-						tab to choose Frame Blending, Optical Flow, or AI (RIFE/WebGPU).
-					</div>
-				</SectionFields>
-			</SectionContent>
-		</Section>
+		<div className="flex flex-col">
+			<Section collapsible sectionKey={`${element.id}:speed`}>
+				<SectionHeader>
+					<SectionTitle>Speed</SectionTitle>
+				</SectionHeader>
+				<SectionContent>
+					<SectionFields>
+						<SectionField label="Speed">
+							<NumberField
+								icon={<HugeiconsIcon icon={DashboardSpeed02Icon} />}
+								value={speedDraft.displayValue}
+								suffix="x"
+								scrubRanges={[
+									{ from: 0.01, to: 1, pixelsPerUnit: 160 },
+									{ from: 1, to: 5, pixelsPerUnit: 48 },
+								]}
+								scrubClamp={{ min: MIN_RETIME_RATE, max: MAX_RETIME_RATE }}
+								onFocus={() => {
+									pendingRateRef.current = rate;
+									speedDraft.onFocus();
+								}}
+								onChange={speedDraft.onChange}
+								onBlur={speedDraft.onBlur}
+								onScrub={speedDraft.scrubTo}
+								onScrubEnd={speedDraft.commitScrub}
+								onReset={() =>
+									commitRetime({ rate: DEFAULT_RETIME_RATE, maintainPitch })
+								}
+								isDefault={rate === DEFAULT_RETIME_RATE}
+							/>
+						</SectionField>
+						<div className="flex items-center justify-between">
+							<span className="text-sm">Change pitch</span>
+							<Switch
+								checked={!maintainPitch}
+								disabled={!isPitchPreserveAvailable}
+								onCheckedChange={(checked) =>
+									commitRetime({ rate, maintainPitch: !checked })
+								}
+							/>
+						</div>
+					</SectionFields>
+				</SectionContent>
+			</Section>
+			{element.type === "video" && (
+				<FrameInterpolationSection element={element} trackId={trackId} />
+			)}
+		</div>
 	);
 }

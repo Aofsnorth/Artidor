@@ -38,6 +38,9 @@ import type { TimelineElement } from "@/lib/timeline";
 import Image from "next/image";
 import { MarqueeText } from "@/components/ui/marquee-text";
 
+import { useToolModeStore } from "@/stores/tool-mode-store";
+import { DrawToolConfigPanel } from "../preview/draw-tool-config-panel";
+
 // Wrap the panel in React.memo so re-renders of the editor page
 // (which happen on every playhead tick via useElementPlayhead) don't
 // cascade down through this entire tree when nothing the panel
@@ -58,6 +61,32 @@ function InspectorView() {
 	useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
 	const { activeTabPerType, setActiveTab } = usePropertiesStore();
+	const toolMode = useToolModeStore((s) => s.toolMode);
+
+	if (toolMode === "draw" || toolMode === "vector") {
+		return (
+			<>
+				<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
+					<div className="flex items-center justify-between">
+						<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+							Inspector
+						</div>
+					</div>
+					<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
+						<button
+							type="button"
+							className="relative shrink-0 flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-center font-medium text-white bg-white/[0.12] shadow-sm focus:outline-none"
+						>
+							<span className="min-w-0 truncate">Drawing</span>
+						</button>
+					</div>
+				</div>
+				<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
+					<DrawToolConfigPanel />
+				</ScrollArea>
+			</>
+		);
+	}
 
 	if (selectedElements.length === 0) {
 		return <ProjectDetailsView />;
@@ -116,6 +145,7 @@ function InspectorView() {
 	const primaryTabs = buildPrimaryInspectorTabs({
 		visibleTabs,
 		activeTabId: activeTab.id,
+		elementType: element.type,
 	});
 
 	return (
@@ -133,7 +163,7 @@ function InspectorView() {
 						Reset all
 					</button>
 				</div>
-				<div className="mt-3 grid grid-cols-7 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
+				<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
 					{primaryTabs.map((tab) => (
 						<TooltipProvider key={tab.label} delayDuration={0}>
 							<Tooltip>
@@ -142,7 +172,7 @@ function InspectorView() {
 										type="button"
 										disabled={!tab.target}
 										className={cn(
-											"relative flex items-center justify-center gap-1 rounded-md px-1.5 py-1.5 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+											"relative shrink-0 flex items-center justify-center gap-1.5 rounded-md px-1.5 py-1 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
 											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
 											!tab.target &&
 												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
@@ -249,11 +279,11 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			   widths. Hiding them gives the details card the full
 			   panel to work with. */}
 			{!disabled && (
-				<div className="mt-3 grid grid-cols-7 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
+				<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
 					{PRIMARY_INSPECTOR_TABS.map((tab) => (
 						<span
 							key={tab.label}
-							className="relative rounded-md px-1.5 py-1.5 text-center font-medium text-white/30"
+							className="relative shrink-0 rounded-md px-2 py-1.5 text-center font-medium text-white/30"
 						>
 							{tab.label}
 						</span>
@@ -267,7 +297,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 const PRIMARY_INSPECTOR_TABS = [
 	{
 		label: "Element",
-		ids: ["element-info", "graphic"],
+		ids: ["graphic"],
 	},
 	{
 		label: "Text",
@@ -280,8 +310,6 @@ const PRIMARY_INSPECTOR_TABS = [
 			"audio",
 			"speed",
 			"speed-ramp",
-			"frame-interpolation",
-			"graphic",
 			"blending",
 			"parenting",
 			"camera",
@@ -292,26 +320,47 @@ const PRIMARY_INSPECTOR_TABS = [
 		ids: ["audio-element", "audio-effects"],
 	},
 	{ label: "Effects", ids: ["effects", "masks"] },
-	{ label: "Adjust", ids: ["color", "adjustments"] },
+	{
+		label: "Adjust",
+		ids: ["basic-adjust", "color-wheels", "color", "adjustments"],
+	},
 	{ label: "Animation", ids: ["animations"] },
 ] as const;
 
 function buildPrimaryInspectorTabs({
 	visibleTabs,
 	activeTabId,
+	elementType,
 }: {
 	visibleTabs: PropertiesTabDef[];
 	activeTabId: string;
+	elementType: string;
 }) {
+	// Which primary tab should remain highlighted if we are on a "global" secondary tab like element-info?
+	let fallbackPrimaryLabel = "Element";
+	if (elementType === "video" || elementType === "image")
+		fallbackPrimaryLabel = "Video";
+	if (elementType === "text") fallbackPrimaryLabel = "Text";
+	if (elementType === "audio") fallbackPrimaryLabel = "Audio";
+	if (elementType === "effect") fallbackPrimaryLabel = "Effects";
+
 	return PRIMARY_INSPECTOR_TABS.map((primaryTab) => {
 		const target = primaryTab.ids
 			.map((id) => visibleTabs.find((tab) => tab.id === id))
 			.find((tab): tab is PropertiesTabDef => Boolean(tab));
 
+		let isActive = primaryTab.ids.some((id) => id === activeTabId);
+		if (
+			activeTabId === "element-info" &&
+			primaryTab.label === fallbackPrimaryLabel
+		) {
+			isActive = true;
+		}
+
 		return {
 			label: primaryTab.label,
 			target,
-			isActive: primaryTab.ids.some((id) => id === activeTabId),
+			isActive,
 		};
 	});
 }
