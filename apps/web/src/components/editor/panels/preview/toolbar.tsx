@@ -16,6 +16,8 @@ import {
 	PreviousIcon,
 	NextIcon,
 	RepeatIcon,
+	PencilEdit01Icon,
+	PenToolIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getGuideById } from "@/lib/guides";
@@ -25,6 +27,8 @@ import {
 	getNextBookmarkTimeWithin,
 	getPreviousBookmarkTimeWithin,
 } from "@/lib/timeline";
+import { useToolModeStore } from "@/stores/tool-mode-store";
+import { cn } from "@/utils/ui";
 
 /**
  * The Rust `formatTimecode` API only accepts integer ticks (MediaTime is i64).
@@ -77,6 +81,7 @@ export function PreviewToolbar({
 					</Button>
 				</GridPopover> */}
 				<LoopButton />
+				<DrawToolButtons />
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
@@ -124,6 +129,49 @@ function TimecodeDisplay() {
 					rate: fps,
 				})}
 			</span>
+		</div>
+	);
+}
+
+function DrawToolButtons() {
+	const toolMode = useToolModeStore((s) => s.toolMode);
+	const setToolMode = useToolModeStore((s) => s.setToolMode);
+
+	const tools = [
+		{
+			mode: "draw" as const,
+			label: "Freehand draw",
+			icon: PencilEdit01Icon,
+		},
+		{
+			mode: "vector" as const,
+			label: "Vector draw",
+			icon: PenToolIcon,
+		},
+	];
+
+	return (
+		<div className="mx-1 flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.025] p-0.5">
+			{tools.map((tool) => {
+				const active = toolMode === tool.mode;
+				return (
+					<Button
+						key={tool.mode}
+						variant="text"
+						size="icon"
+						aria-label={tool.label}
+						aria-pressed={active}
+						title={tool.label}
+						onClick={() => setToolMode(active ? "select" : tool.mode)}
+						className={cn(
+							"size-7 rounded-full text-white/55 hover:bg-white/[0.08] hover:text-white",
+							active && "bg-white/[0.14] text-white ring-1 ring-white/30",
+						)}
+					>
+						<HugeiconsIcon icon={tool.icon} className="size-3.5" />
+					</Button>
+				);
+			})}
 		</div>
 	);
 }

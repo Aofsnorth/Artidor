@@ -11,14 +11,16 @@
  *
  * All numbers are computed locally from the projects array — no
  * network, no tracking. The system cell is read from the browser
- * (navigator) on the client. Storage is estimated at `0.18 MB per
- * minute of timeline` plus `1.2 MB per project overhead`; close
- * enough for an honest display, never consulted by the app.
+ * (navigator) on the client. Storage comes from the browser Storage
+ * Estimate API — no hardcoded quota or fake MB-per-project math.
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { TProjectMetadata } from "@/lib/project/types";
-import { mediaTimeToSeconds } from "artidor-wasm";
+import {
+	formatStorageSize,
+	useStorageEstimate,
+} from "@/hooks/use-storage-estimate";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Folder01Icon,
@@ -26,15 +28,6 @@ import {
 	HardDriveIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
-
-const STORAGE_MB_PER_MIN = 0.18;
-const STORAGE_MB_PER_PROJECT = 1.2;
-
-function formatBytes(mb: number): string {
-	if (mb < 1) return `${(mb * 1024).toFixed(0)} KB`;
-	if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`;
-	return `${(mb / 1024).toFixed(2)} GB`;
-}
 
 /**
  * Best-effort OS label from the browser. Order matters: Android and
@@ -97,9 +90,9 @@ export function StatsOverview({
 		setOs(detectOS());
 	}, []);
 
+	const storage = useStorageEstimate();
 	const stats = useMemo(() => {
 		let recent = 0;
-		let storageMb = 0;
 		const now = Date.now();
 		for (const p of projects) {
 			const updated =
@@ -107,17 +100,10 @@ export function StatsOverview({
 					? p.updatedAt.getTime()
 					: new Date(p.updatedAt).getTime();
 			if (now - updated < RECENT_WINDOW_MS) recent += 1;
-			const projectSeconds =
-				typeof p.duration === "number"
-					? mediaTimeToSeconds({ time: Math.round(p.duration) })
-					: 0;
-			storageMb +=
-				(projectSeconds / 60) * STORAGE_MB_PER_MIN + STORAGE_MB_PER_PROJECT;
 		}
 		return {
 			total: projects.length,
 			recent,
-			storageMb,
 		};
 	}, [projects]);
 
@@ -165,7 +151,7 @@ export function StatsOverview({
 			/>
 			<StatCell
 				icon={<HugeiconsIcon icon={HardDriveIcon} className="size-3" />}
-				value={formatBytes(stats.storageMb)}
+				value={storage ? formatStorageSize(storage.usedBytes) : "—"}
 				label="Local storage"
 			/>
 		</section>

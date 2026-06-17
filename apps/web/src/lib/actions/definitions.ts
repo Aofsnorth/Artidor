@@ -98,6 +98,10 @@ export const ACTIONS = {
 		description: "Paste style onto selected elements",
 		category: "editing",
 	},
+	"paste-effect": {
+		description: "Paste copied effect onto selected elements",
+		category: "editing",
+	},
 	"toggle-snapping": {
 		description: "Toggle snapping",
 		category: "editing",

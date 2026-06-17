@@ -63,13 +63,13 @@ export function ImportDriveButton() {
 	return (
 		<>
 			<Button
-				size="lg"
+				size="sm"
 				variant="outline"
-				className="flex items-center gap-1.5 px-4 md:px-5"
+				className="hidden h-9 items-center gap-1.5 rounded-full border-white/[0.08] bg-white/[0.03] px-3 text-[12px] hover:bg-white/[0.07] lg:flex"
 				onClick={() => setOpen(true)}
 			>
-				<HugeiconsIcon icon={CloudIcon} className="size-4" />
-				<span className="text-sm font-medium hidden md:block">Import</span>
+				<HugeiconsIcon icon={CloudIcon} className="size-3.5" />
+				<span className="hidden font-medium xl:block">Drive</span>
 			</Button>
 			<ImportDriveDialog open={open} onOpenChange={setOpen} />
 		</>

@@ -1,15 +1,19 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { templates as presetTemplates } from "@/lib/presets/templates";
+import type { TemplateCategory as PresetTemplateCategory } from "@/lib/presets/types";
 import {
 	PROJECT_TEMPLATES,
 	TEMPLATE_CATEGORIES,
 	applyTemplateToProject,
 	type ProjectTemplate,
+	type TemplateCategory,
 } from "@/lib/templates";
 import {
 	ALL_CATEGORY,
@@ -28,19 +32,68 @@ const TEMPLATE_ID_TO_LABEL = new Map(
 	TEMPLATE_CATEGORIES.map((c) => [c.id, c.label]),
 );
 
+const PRESET_TEMPLATE_CATEGORY_MAP: Record<
+	PresetTemplateCategory,
+	TemplateCategory
+> = {
+	Intro: "intro",
+	Outro: "outro",
+	LowerThird: "lower-third",
+	Title: "intro",
+	Slideshow: "slideshow",
+	Promo: "promo",
+	Social: "social",
+	Story: "social",
+	Wedding: "slideshow",
+	Travel: "vlog",
+	Sports: "promo",
+	Music: "lyric",
+	Business: "promo",
+	Tutorial: "tutorial",
+	Sale: "promo",
+};
+
+const presetProjectTemplates: ProjectTemplate[] = presetTemplates.map(
+	(template) => ({
+		id: template.id,
+		name: template.name,
+		description: template.description,
+		category: PRESET_TEMPLATE_CATEGORY_MAP[template.category],
+		durationTicks: template.durationSec * TICKS_PER_SECOND,
+		elements: [],
+		placeholders: [],
+	}),
+);
+
+const PRESET_TEMPLATE_IDS = new Set(
+	presetTemplates.map((template) => template.id),
+);
+
 export function TemplatesView() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const editor = useEditor();
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
+	const allTemplates = useMemo(() => {
+		const existingIds = new Set(
+			PROJECT_TEMPLATES.map((template) => template.id),
+		);
+		return [
+			...PROJECT_TEMPLATES,
+			...presetProjectTemplates.filter(
+				(template) => !existingIds.has(template.id),
+			),
+		];
+	}, []);
+
 	const filteredTemplates = useMemo(
 		() =>
 			filterByCategory({
-				items: PROJECT_TEMPLATES,
+				items: allTemplates,
 				category,
 				getCategory: (t) => TEMPLATE_ID_TO_LABEL.get(t.category),
 			}),
-		[category],
+		[allTemplates, category],
 	);
 
 	return (
@@ -81,6 +134,11 @@ function applyTemplate({
 	editor: EditorCore;
 	template: ProjectTemplate;
 }) {
+	if (PRESET_TEMPLATE_IDS.has(template.id)) {
+		toast.info("Template preset not yet wired");
+		return;
+	}
+
 	try {
 		const project = applyTemplateToProject({
 			template,
@@ -97,6 +155,22 @@ function applyTemplate({
 		console.error("Failed to apply template:", err);
 		toast.error("Failed to apply template");
 	}
+}
+
+function getTemplatePhotoUrl(templateId: string): string {
+	const h = hashString(templateId);
+	const categories = [
+		"nature",
+		"architecture",
+		"people",
+		"technology",
+		"abstract",
+		"food",
+		"travel",
+		"business",
+	];
+	const category = categories[h % categories.length];
+	return `https://source.unsplash.com/400x300/?${category}&sig=${h}`;
 }
 
 function hashString(str: string): number {
@@ -117,9 +191,8 @@ function TemplateItem({
 }) {
 	const durationSec = Math.round(template.durationTicks / TICKS_PER_SECOND);
 	const h = hashString(template.id);
-	const hue1 = h % 360;
-	const hue2 = (h * 13) % 360;
 	const layoutType = h % 3;
+	const photoUrl = getTemplatePhotoUrl(template.id);
 
 	return (
 		<button
@@ -129,48 +202,47 @@ function TemplateItem({
 				"group bg-accent hover:bg-accent/70 relative flex flex-col items-center gap-1.5 overflow-hidden rounded-sm p-2 text-center transition-colors aspect-[3/4]",
 			)}
 		>
-			<div
-				className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10"
-				style={{
-					background: `linear-gradient(135deg, hsl(${hue1}, 50%, 15%), hsl(${hue2}, 60%, 8%))`,
-				}}
-			>
+			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10">
+				<Image
+					src={photoUrl}
+					alt=""
+					fill
+					className="object-cover"
+					sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+					loading="lazy"
+				/>
+				<div className="absolute inset-0 bg-black/40" />
+
 				{layoutType === 0 && (
 					<>
-						<div className="absolute inset-2 rounded border border-white/[0.08] bg-white/[0.03]" />
-						<div className="absolute left-3 top-4 h-3 w-11 rounded bg-white/18" />
-						<div className="absolute bottom-7 left-3 h-2 w-16 rounded bg-cyan-300/35" />
-						<div className="absolute bottom-4 left-3 h-2 w-10 rounded bg-white/16" />
+						<div className="absolute left-3 top-4 h-3 w-11 rounded bg-white/30 backdrop-blur-sm" />
+						<div className="absolute bottom-7 left-3 h-2 w-16 rounded bg-white/25 backdrop-blur-sm" />
+						<div className="absolute bottom-4 left-3 h-2 w-10 rounded bg-white/20 backdrop-blur-sm" />
 					</>
 				)}
 				{layoutType === 1 && (
 					<>
-						<div className="absolute inset-x-2 top-2 bottom-10 rounded border border-white/[0.08] bg-white/[0.03]" />
-						<div className="absolute inset-x-2 bottom-2 h-6 rounded bg-white/[0.06] flex gap-1 p-1">
-							<div className="flex-1 rounded bg-cyan-400/40" />
-							<div className="flex-1 rounded bg-fuchsia-400/40" />
-							<div className="flex-1 rounded bg-amber-400/40" />
+						<div className="absolute inset-x-2 top-2 bottom-10 rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute inset-x-2 bottom-2 h-6 rounded bg-white/15 backdrop-blur-sm flex gap-1 p-1">
+							<div className="flex-1 rounded bg-white/25" />
+							<div className="flex-1 rounded bg-white/25" />
+							<div className="flex-1 rounded bg-white/25" />
 						</div>
 					</>
 				)}
 				{layoutType === 2 && (
 					<>
-						<div className="absolute left-2 top-2 bottom-2 w-1/3 rounded border border-white/[0.08] bg-white/[0.03]" />
-						<div className="absolute right-2 top-2 bottom-2 w-[58%] rounded border border-white/[0.08] bg-white/[0.03]" />
-						<div className="absolute right-4 top-4 h-3 w-10 rounded bg-white/18" />
-						<div className="absolute right-4 top-9 h-2 w-14 rounded bg-white/12" />
+						<div className="absolute left-2 top-2 bottom-2 w-1/3 rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute right-2 top-2 bottom-2 w-[58%] rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute right-4 top-4 h-3 w-10 rounded bg-white/30 backdrop-blur-sm" />
+						<div className="absolute right-4 top-9 h-2 w-14 rounded bg-white/25 backdrop-blur-sm" />
 					</>
 				)}
 
-				<div
-					className="absolute right-3 top-4 grid size-10 place-items-center rounded text-[0.62rem] font-bold text-white/85"
-					style={{
-						background: `linear-gradient(135deg, hsl(${hue1}, 80%, 55%), hsl(${hue2}, 80%, 45%))`,
-					}}
-				>
+				<div className="absolute right-3 top-4 grid size-10 place-items-center rounded bg-white/90 text-[0.62rem] font-bold text-black">
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
-				<div className="absolute bottom-1 right-1 rounded bg-black/65 px-1 text-[0.6rem] text-white/60">
+				<div className="absolute bottom-1 right-1 rounded bg-black/75 px-1 text-[0.6rem] text-white">
 					{durationSec}s
 				</div>
 			</div>

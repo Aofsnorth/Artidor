@@ -129,6 +129,11 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			if (!rawPath || rawPath.length < 2) return;
 
 			const simplified = simplifyPath(rawPath, 2);
+			// Keep the path in the user's drawn coordinates so the committed
+			// graphic lands where the user actually drew. The vector tool
+			// (useVectorDraw) follows the same convention; centralising here
+			// used to "snap" strokes to the middle of the 512x512 source
+			// box, which felt like the shape teleported on release.
 			const svgPath = pointsToSvgPath(simplified, 0, drawConfig.closed);
 			if (!svgPath) return;
 

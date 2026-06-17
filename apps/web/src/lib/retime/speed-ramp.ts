@@ -97,6 +97,69 @@ export const SPEED_RAMP_PRESETS: Array<{
 			{ time: 1, speed: 0.3 },
 		],
 	},
+	// CapCut-style "velocity" presets — sharp ramps with an ease curve so
+	// the speed change feels intentional rather than mechanical. Mirrors
+	// the "Flash In" / "Flash Out" / "Smooth In-Out" presets CapCut ships
+	// in the speed panel.
+	{
+		id: "velocity-flash-in",
+		name: "Flash In",
+		keyframes: [
+			{ time: 0, speed: 3 },
+			{ time: 0.15, speed: 3 },
+			{ time: 0.3, speed: 1 },
+			{ time: 1, speed: 1 },
+		],
+	},
+	{
+		id: "velocity-flash-out",
+		name: "Flash Out",
+		keyframes: [
+			{ time: 0, speed: 1 },
+			{ time: 0.7, speed: 1 },
+			{ time: 0.85, speed: 3 },
+			{ time: 1, speed: 3 },
+		],
+	},
+	{
+		id: "velocity-smooth-in-out",
+		name: "Smooth In-Out",
+		keyframes: [
+			{ time: 0, speed: 0.5 },
+			{ time: 0.25, speed: 1.4 },
+			{ time: 0.75, speed: 1.4 },
+			{ time: 1, speed: 0.5 },
+		],
+	},
+	{
+		id: "velocity-quick-pulse",
+		name: "Quick Pulse",
+		keyframes: [
+			{ time: 0, speed: 1 },
+			{ time: 0.4, speed: 1 },
+			{ time: 0.5, speed: 0.25 },
+			{ time: 0.6, speed: 1 },
+			{ time: 1, speed: 1 },
+		],
+	},
+	{
+		id: "velocity-glide-in",
+		name: "Glide In",
+		keyframes: [
+			{ time: 0, speed: 4 },
+			{ time: 0.5, speed: 1.5 },
+			{ time: 1, speed: 1 },
+		],
+	},
+	{
+		id: "velocity-glide-out",
+		name: "Glide Out",
+		keyframes: [
+			{ time: 0, speed: 1 },
+			{ time: 0.5, speed: 1.5 },
+			{ time: 1, speed: 4 },
+		],
+	},
 ];
 
 /**

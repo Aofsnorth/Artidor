@@ -314,8 +314,14 @@ export function AudioTab({
 							/>
 						</SectionField>
 
-						<div className="flex gap-2">
-							<SectionField label="Fade In" className="flex-1 min-w-0">
+						{/* Stack the fade pair vertically on narrow panels so the
+						    trailing field doesn't get its number clipped. The
+						    parent inspector scrolls vertically; the previous
+						    `flex gap-2` here forced both fields into a single
+						    row, which pushed the second field's `NumberField`
+						    out of the visible width and truncated the digit. */}
+						<div className="grid grid-cols-2 gap-2 min-[420px]:flex min-[420px]:gap-2">
+							<SectionField label="Fade In" className="min-w-0 flex-1">
 								<NumberField
 									icon={<span className="text-[10px]">In</span>}
 									value={fadeIn.displayValue}
@@ -342,7 +348,7 @@ export function AudioTab({
 									className="px-1"
 								/>
 							</SectionField>
-							<SectionField label="Fade Out" className="flex-1 min-w-0">
+							<SectionField label="Fade Out" className="min-w-0 flex-1">
 								<NumberField
 									icon={<span className="text-[10px]">Out</span>}
 									value={fadeOut.displayValue}

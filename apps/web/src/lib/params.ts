@@ -1,6 +1,6 @@
 export type ParamValues = Record<string, number | string | boolean>;
 
-export type ParamGroup = "stroke";
+export type ParamGroup = "stroke" | "drawing-progress";
 
 interface BaseParamDefinition<TKey extends string = string> {
 	key: TKey;

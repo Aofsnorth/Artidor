@@ -6,8 +6,10 @@ import {
 	ColorPickerIcon,
 	PencilEdit01Icon,
 	PenToolIcon,
+	ArrowTurnBackwardIcon,
 } from "@hugeicons/core-free-icons";
 import { useToolModeStore } from "@/stores/tool-mode-store";
+import { useVectorDraw } from "@/hooks/use-vector-draw";
 import { cn } from "@/utils/ui";
 
 const PRESET_COLORS = [
@@ -44,6 +46,12 @@ export function DrawToolConfigPanel() {
 	void fillOpen;
 	const colorInputRef = useRef<HTMLInputElement>(null);
 	const fillInputRef = useRef<HTMLInputElement>(null);
+
+	// We only need the vector interaction state when the vector tool
+	// is active, but hooks must run unconditionally. The hook itself
+	// is a no-op when the tool mode isn't `vector`.
+	const vectorInteraction = useVectorDraw();
+	const { isOpen: vectorIsOpen, anchors: vectorAnchors } = vectorInteraction;
 
 	// Auto-collapse the panel when the user leaves the draw tools.
 	useEffect(() => {
@@ -214,6 +222,50 @@ export function DrawToolConfigPanel() {
 					onChange={(e) => setDrawConfig({ fill: e.target.value })}
 				/>
 			</button>
+
+			{/* Alight Motion-style vector action row — only visible when
+			    there are enough anchors to do something. Mirrors the
+			    "Close Contour" / "Delete Point" affordances in AM's
+			    vector tool. */}
+			{isVector && vectorIsOpen && vectorAnchors.length >= 2 && (
+				<div className="flex items-center gap-1.5">
+					<button
+						type="button"
+						className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.025] px-2 text-[0.68rem] font-medium text-white/85 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
+						onClick={() =>
+							vectorInteraction.handleKeyDown(
+								new KeyboardEvent("keydown", { key: "Enter" }),
+							)
+						}
+						title="Finish open path (Enter)"
+					>
+						Close path
+					</button>
+					<button
+						type="button"
+						className="grid h-7 w-7 place-items-center rounded-md border border-white/[0.08] bg-white/[0.025] text-white/70 transition hover:border-rose-300/40 hover:bg-rose-400/10 hover:text-rose-200 disabled:opacity-40"
+						onClick={() =>
+							vectorInteraction.handleKeyDown(
+								new KeyboardEvent("keydown", { key: "Backspace" }),
+							)
+						}
+						disabled={vectorAnchors.length === 0}
+						title="Delete last point (Backspace)"
+						aria-label="Delete last vector anchor"
+					>
+						<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3.5" />
+					</button>
+					<button
+						type="button"
+						className="grid h-7 w-7 place-items-center rounded-md border border-white/[0.08] bg-white/[0.025] text-white/55 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+						onClick={() => vectorInteraction.reset()}
+						title="Cancel (Esc)"
+						aria-label="Cancel vector drawing"
+					>
+						×
+					</button>
+				</div>
+			)}
 
 			{isVector && (
 				<p className="rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-2 py-1 text-[0.62rem] leading-snug text-cyan-100/65">
