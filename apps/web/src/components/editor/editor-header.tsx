@@ -24,12 +24,14 @@ import {
 	CommandIcon,
 	Logout05Icon,
 	ArrowDown01Icon,
+	Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
 import { SavePresetDialog } from "./dialogs/save-preset-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
+import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
 
 import { CloudStatusIndicator } from "./cloud-status-indicator";
 
@@ -94,6 +96,7 @@ export function EditorHeader() {
 			   flush against the panel boundary. */}
 			<nav className="relative ml-auto flex items-center gap-2.5 pr-1">
 				<CloudStatusIndicator />
+				<SettingsButton />
 				{/* Theme toggle removed — the editor is pinned to dark, so a
 					light/dark switch did nothing visible here. */}
 
@@ -381,5 +384,20 @@ function EditableProjectName() {
 					"ring-1 ring-white/20 cursor-text hover:bg-transparent bg-black/20",
 			)}
 		/>
+	);
+}
+
+function SettingsButton() {
+	const setOpen = useOpenDialogsStore((s) => s.setOpen);
+	return (
+		<button
+			type="button"
+			className="grid size-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+			onClick={() => setOpen("settings", true)}
+			title="Settings"
+			aria-label="Open settings"
+		>
+			<HugeiconsIcon icon={Settings01Icon} className="size-4" />
+		</button>
 	);
 }

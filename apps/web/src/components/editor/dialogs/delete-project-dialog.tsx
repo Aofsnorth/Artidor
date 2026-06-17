@@ -11,6 +11,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const CONFIRM_WORD = "DELETE";
 
@@ -29,8 +30,9 @@ export function DeleteProjectDialog({
 	const isSingle = count === 1;
 	const singleName = isSingle ? projectNames[0] : null;
 
+	const skipDeleteConfirm = useSettingsStore((s) => s.skipDeleteConfirm);
 	const [confirmText, setConfirmText] = useState("");
-	const canDelete = confirmText.trim().toUpperCase() === CONFIRM_WORD;
+	const canDelete = skipDeleteConfirm || confirmText.trim().toUpperCase() === CONFIRM_WORD;
 
 	// Clear the field whenever the dialog opens/closes so a stale "DELETE"
 	// can't carry over into the next confirmation.
@@ -76,24 +78,34 @@ export function DeleteProjectDialog({
 						</AlertDescription>
 					</Alert>
 					<div className="flex flex-col gap-3">
-						<Label className="text-xs font-semibold text-slate-500">
-							Type "DELETE" to confirm
-						</Label>
-						<Input
-							type="text"
-							placeholder="DELETE"
-							size="lg"
-							variant="destructive"
-							value={confirmText}
-							onChange={(event) => setConfirmText(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter") {
-									event.preventDefault();
-									handleConfirm();
-								}
-							}}
-							autoFocus
-						/>
+						{skipDeleteConfirm ? (
+							<p className="text-xs text-slate-400">
+								Click <span className="font-semibold text-slate-200">Delete</span>{" "}
+								to permanently remove{" "}
+								{singleName ? `"${singleName}"` : `${count} projects`}.
+							</p>
+						) : (
+							<>
+								<Label className="text-xs font-semibold text-slate-500">
+									Type "DELETE" to confirm
+								</Label>
+								<Input
+									type="text"
+									placeholder="DELETE"
+									size="lg"
+									variant="destructive"
+									value={confirmText}
+									onChange={(event) => setConfirmText(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") {
+											event.preventDefault();
+											handleConfirm();
+										}
+									}}
+									autoFocus
+								/>
+							</>
+						)}
 					</div>
 				</DialogBody>
 				<DialogFooter>
