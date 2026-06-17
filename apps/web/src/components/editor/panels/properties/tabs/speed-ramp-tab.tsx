@@ -219,7 +219,21 @@ export function SpeedRampTab({
 						</Select>
 					</SectionField>
 
-					<CurvePreview curve={localCurve} />
+					<CurvePreview
+						curve={localCurve}
+						onPointMove={(index, time, speed) => {
+							updatePoint(index, { time, speed });
+						}}
+						onPointAdd={(time, speed) => {
+							const nextCurve = normalizeCurve([
+								...localCurve,
+								{ time, speed },
+							]);
+							setLocalCurve(nextCurve);
+							updateRetime(nextCurve, true);
+						}}
+						onPointRemove={(index) => removePoint(index)}
+					/>
 
 					<div className="space-y-2">
 						{localCurve.map((point, i) => (
@@ -295,23 +309,40 @@ export function SpeedRampTab({
 	);
 }
 
-function CurvePreview({ curve }: { curve: SpeedCurve }) {
+function CurvePreview({
+	curve,
+	onPointMove,
+	onPointAdd,
+	onPointRemove,
+}: {
+	curve: SpeedCurve;
+	onPointMove?: (index: number, time: number, speed: number) => void;
+	onPointAdd?: (time: number, speed: number) => void;
+	onPointRemove?: (index: number) => void;
+}) {
 	const width = 280;
-	const height = 80;
-	const padding = 4;
+	const height = 120;
+	const padding = 8;
+	const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+	const yMin = 0;
+	const yMax = 5;
+
+	const toSvgX = (time: number) => padding + time * (width - padding * 2);
+	const toSvgY = (speed: number) =>
+		height - padding - ((speed - yMin) / (yMax - yMin)) * (height - padding * 2);
+	const fromSvgX = (x: number) =>
+		clamp((x - padding) / (width - padding * 2), 0, 1);
+	const fromSvgY = (y: number) =>
+		clamp(
+			yMin + ((height - padding - y) / (height - padding * 2)) * (yMax - yMin),
+			0.05,
+			5,
+		);
 
 	const points = useMemo(() => {
 		if (curve.length === 0) return [];
-		return curve.map((k) => {
-			const x = padding + k.time * (width - padding * 2);
-			const yMin = 0;
-			const yMax = 5;
-			const y =
-				height -
-				padding -
-				((k.speed - yMin) / (yMax - yMin)) * (height - padding * 2);
-			return { x, y };
-		});
+		return curve.map((k) => ({ x: toSvgX(k.time), y: toSvgY(k.speed) }));
 	}, [curve]);
 
 	const path =
@@ -319,18 +350,96 @@ function CurvePreview({ curve }: { curve: SpeedCurve }) {
 			? `M ${points.map((p) => `${p.x},${p.y}`).join(" L ")}`
 			: "";
 
+	const getSvgPoint = (e: React.MouseEvent | React.PointerEvent) => {
+		const svg = (e.target as SVGElement).closest("svg");
+		if (!svg) return { x: 0, y: 0 };
+		const rect = svg.getBoundingClientRect();
+		const x = ((e.clientX - rect.left) / rect.width) * width;
+		const y = ((e.clientY - rect.top) / rect.height) * height;
+		return { x, y };
+	};
+
+	const handleBackgroundClick = (e: React.MouseEvent) => {
+		if (!onPointAdd || draggingIndex !== null) return;
+		const { x, y } = getSvgPoint(e);
+		const time = fromSvgX(x);
+		const speed = fromSvgY(y);
+		onPointAdd(time, speed);
+	};
+
+	const handlePointerDown = (e: React.PointerEvent, index: number) => {
+		if (!onPointMove) return;
+		e.stopPropagation();
+		e.preventDefault();
+		setDraggingIndex(index);
+		(e.target as SVGElement).setPointerCapture(e.pointerId);
+	};
+
+	const handlePointerMove = (e: React.PointerEvent) => {
+		if (draggingIndex === null || !onPointMove) return;
+		const { x, y } = getSvgPoint(e);
+		const time = fromSvgX(x);
+		const speed = fromSvgY(y);
+		onPointMove(draggingIndex, time, speed);
+	};
+
+	const handlePointerUp = (e: React.PointerEvent) => {
+		if (draggingIndex !== null) {
+			(e.target as SVGElement).releasePointerCapture(e.pointerId);
+			setDraggingIndex(null);
+		}
+	};
+
+	const handleDoubleClick = (e: React.MouseEvent, index: number) => {
+		e.stopPropagation();
+		if (onPointRemove && curve.length > 2) {
+			onPointRemove(index);
+		}
+	};
+
 	return (
 		<div className="rounded-md bg-muted/30 p-2">
-			<svg width={width} height={height} className="w-full">
-				<line
-					x1={padding}
-					x2={width - padding}
-					y1={height - padding - ((1 - 0) / 5) * (height - padding * 2)}
-					y2={height - padding - ((1 - 0) / 5) * (height - padding * 2)}
-					stroke="currentColor"
-					strokeOpacity="0.15"
-					strokeDasharray="2 2"
-				/>
+			<svg
+				width={width}
+				height={height}
+				className="w-full cursor-crosshair select-none"
+				viewBox={`0 0 ${width} ${height}`}
+				onClick={handleBackgroundClick}
+				onPointerMove={handlePointerMove}
+				onPointerUp={handlePointerUp}
+			>
+				{/* Background grid */}
+				{[0.25, 0.5, 0.75].map((t) => (
+					<line
+						key={`v-${t}`}
+						x1={toSvgX(t)}
+						x2={toSvgX(t)}
+						y1={padding}
+						y2={height - padding}
+						stroke="currentColor"
+						strokeOpacity="0.06"
+						strokeDasharray="2 2"
+					/>
+				))}
+				{[0.5, 1, 2, 3, 4].map((s) => (
+					<line
+						key={`h-${s}`}
+						x1={padding}
+						x2={width - padding}
+						y1={toSvgY(s)}
+						y2={toSvgY(s)}
+						stroke="currentColor"
+						strokeOpacity={s === 1 ? 0.2 : 0.06}
+						strokeDasharray={s === 1 ? "4 2" : "2 2"}
+					/>
+				))}
+
+				{/* Speed labels */}
+				<text x={padding - 2} y={toSvgY(1) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.4">1x</text>
+				<text x={padding - 2} y={toSvgY(3) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.3">3x</text>
+				<text x={padding - 2} y={toSvgY(5) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.3">5x</text>
+
+				{/* Curve path */}
 				<path
 					d={path}
 					fill="none"
@@ -338,11 +447,57 @@ function CurvePreview({ curve }: { curve: SpeedCurve }) {
 					strokeWidth="2"
 					strokeLinecap="round"
 					strokeLinejoin="round"
+					className="text-white/80"
 				/>
-				{points.map((p, i) => (
-					<circle key={i} cx={p.x} cy={p.y} r={4} fill="currentColor" />
-				))}
+
+				{/* Draggable keyframe points */}
+				{points.map((p, i) => {
+					const isEndpoint = i === 0 || i === curve.length - 1;
+					return (
+						<g key={i}>
+							{/* Larger hit area */}
+							<circle
+								cx={p.x}
+								cy={p.y}
+								r={12}
+								fill="transparent"
+								className="cursor-grab active:cursor-grabbing"
+								onPointerDown={(e) => handlePointerDown(e, i)}
+								onDoubleClick={(e) => handleDoubleClick(e, i)}
+							/>
+							{/* Visible point */}
+							<circle
+								cx={p.x}
+								cy={p.y}
+								r={draggingIndex === i ? 6 : 5}
+								fill={draggingIndex === i ? "#60a5fa" : "currentColor"}
+								stroke={isEndpoint ? "currentColor" : "transparent"}
+								strokeWidth={1.5}
+								className={cn(
+									"transition-[r] pointer-events-none",
+									draggingIndex === i && "text-blue-400",
+								)}
+							/>
+							{/* Speed label on drag */}
+							{draggingIndex === i && (
+								<text
+									x={p.x}
+									y={p.y - 10}
+									textAnchor="middle"
+									fontSize="8"
+									fill="#60a5fa"
+									fontWeight="bold"
+								>
+									{curve[i]?.speed.toFixed(2)}x
+								</text>
+							)}
+						</g>
+					);
+				})}
 			</svg>
+			<p className="mt-1 text-center text-[0.6rem] text-muted-foreground">
+				Click to add · Drag to move · Double-click to remove
+			</p>
 		</div>
 	);
 }
