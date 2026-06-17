@@ -8,6 +8,9 @@ export interface DrawToolConfig {
 	/** Stroke width in source coords (the same unit the freehand
 	 *  graphic uses internally — 0..64). */
 	strokeWidth: number;
+	/** Brush opacity, 0..1. Applied as the stroke alpha on commit and
+	 *  on the live preview overlay. */
+	opacity: number;
 	/** Whether new paths should be closed (loop back to the start). */
 	closed: boolean;
 	/** Optional fill colour for closed paths. "transparent" means no fill. */
@@ -17,6 +20,7 @@ export interface DrawToolConfig {
 const DEFAULT_DRAW_CONFIG: DrawToolConfig = {
 	stroke: "#ffffff",
 	strokeWidth: 4,
+	opacity: 1,
 	closed: false,
 	fill: "transparent",
 };

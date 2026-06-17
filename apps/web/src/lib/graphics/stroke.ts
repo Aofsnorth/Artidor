@@ -26,14 +26,23 @@ function applyStroke({
 	path,
 	strokeWidth,
 	strokeColor,
+	strokeOpacity,
 }: {
 	ctx: GraphicRenderContext;
 	path: Path2D;
 	strokeWidth: number;
 	strokeColor: string;
+	strokeOpacity?: number;
 }) {
 	ctx.strokeStyle = strokeColor;
 	ctx.lineWidth = strokeWidth;
+	if (strokeOpacity !== undefined && strokeOpacity < 1) {
+		ctx.save();
+		ctx.globalAlpha = Math.max(0, Math.min(1, strokeOpacity));
+		ctx.stroke(path);
+		ctx.restore();
+		return;
+	}
 	ctx.stroke(path);
 }
 
@@ -43,12 +52,14 @@ export function applyAlignedStroke({
 	strokeWidth,
 	strokeAlign,
 	strokeColor,
+	strokeOpacity,
 }: {
 	ctx: GraphicRenderContext;
 	path: Path2D;
 	strokeWidth: number;
 	strokeAlign: GraphicStrokeAlign;
 	strokeColor: string;
+	strokeOpacity?: number;
 }): void {
 	if (strokeWidth <= 0) {
 		return;
@@ -62,6 +73,7 @@ export function applyAlignedStroke({
 			path,
 			strokeWidth: strokeWidth * 2,
 			strokeColor,
+			strokeOpacity,
 		});
 		ctx.restore();
 		return;
@@ -84,6 +96,7 @@ export function applyAlignedStroke({
 			path,
 			strokeWidth: strokeWidth * 2,
 			strokeColor,
+			strokeOpacity,
 		});
 
 		// Keep only the outer half of the doubled stroke so alpha fills do not
@@ -100,5 +113,6 @@ export function applyAlignedStroke({
 		path,
 		strokeWidth,
 		strokeColor,
+		strokeOpacity,
 	});
 }

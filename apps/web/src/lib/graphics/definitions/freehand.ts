@@ -59,6 +59,7 @@ export const freehandDefinition: GraphicDefinition = {
 
 		const { fill, stroke, strokeWidth, strokeAlign } =
 			readShapeBaseStyle(params);
+		const strokeOpacity = clamp01(Number(params.strokeOpacity ?? 1));
 
 		const path = new Path2D(pathData);
 
@@ -92,6 +93,7 @@ export const freehandDefinition: GraphicDefinition = {
 				strokeColor: stroke,
 				strokeWidth,
 				strokeAlign,
+				strokeOpacity,
 			});
 			ctx.restore();
 		}
@@ -101,6 +103,11 @@ export const freehandDefinition: GraphicDefinition = {
 function clampPct(value: number): number {
 	if (!Number.isFinite(value)) return 0;
 	return Math.max(0, Math.min(100, value));
+}
+
+function clamp01(value: number): number {
+	if (!Number.isFinite(value)) return 1;
+	return Math.max(0, Math.min(1, value));
 }
 
 /**

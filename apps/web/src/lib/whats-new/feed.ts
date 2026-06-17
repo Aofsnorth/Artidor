@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-freedraw-vector-opacity-undo",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "FreeDraw + Vector: brush opacity and one-tap undo",
+		items: [
+			"Freehand and Vector draw panels now expose a full Opacity control — a 0–100% slider plus 25/50/75/100% preset chips. Opacity is committed as a `strokeOpacity` param on the inserted graphic and applied live to the in-progress preview, so what you see while dragging matches what gets rendered on the canvas.",
+			"One-tap Undo button in the draw panel header: pops the most recent stroke out of the timeline without leaving the tool. Mirrors Cmd/Ctrl+Z and is safe to spam — empty history is a no-op.",
+			"FreeDraw button (Pencil icon) and Vector button (Pen icon) are always present in the preview toolbar's right cluster regardless of selection or editor mode, and also in the Quick Tools tab on the left panel — pick whichever side of the screen you reach for first.",
+		],
+	},
+	{
 		id: "2026-06-18-projects-header-align-fade",
 		date: "2026-06-18",
 		tag: "improvement",
