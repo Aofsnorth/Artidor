@@ -11,10 +11,8 @@ import type {
 	StyleClipboardEntry,
 } from "@/lib/clipboard/types";
 import { PasteStyleCommand } from "@/lib/commands/timeline/clipboard";
-import type { TimelineElement, VisualElement } from "@/lib/timeline";
-import type { Effect } from "@/lib/effects/types";
+import type { TimelineElement } from "@/lib/timeline";
 import type { ParamValues } from "@/lib/params";
-import { generateUUID } from "@/utils/id";
 
 /** What gets stored when a user copies a single effect. */
 export interface EffectClipboardEntry {
@@ -109,6 +107,71 @@ export class ClipboardManager {
 		});
 
 		this.editor.command.execute({ command });
+		return true;
+	}
+
+	// ---- Effect clipboard ----
+
+	getEffectEntry(): EffectClipboardEntry | null {
+		return this.effectEntry;
+	}
+
+	hasEffectEntry(): boolean {
+		return this.effectEntry !== null;
+	}
+
+	/**
+	 * Store a single effect in the effect clipboard slot. Called from the
+	 * effects tab when the user clicks "Copy effect" on an effect card.
+	 */
+	copyEffect(effect: { type: string; params: ParamValues; enabled: boolean }): boolean {
+		this.effectEntry = {
+			type: effect.type,
+			params: { ...effect.params },
+			enabled: effect.enabled,
+		};
+		this.notify();
+		return true;
+	}
+
+	/**
+	 * Paste the copied effect onto all currently selected visual elements.
+	 * Creates a new effect instance via addClipEffect, then overwrites the
+	 * params with the copied values (without creating a second history entry).
+	 */
+	pasteEffect(): boolean {
+		if (!this.effectEntry) return false;
+
+		const selectedElements = this.editor.selection.getSelectedElements();
+		if (selectedElements.length === 0) return false;
+
+		const results = this.editor.timeline.getElementsWithTracks({
+			elements: selectedElements,
+		});
+
+		for (const { track, element } of results) {
+			if (!("effects" in element)) continue;
+
+			// Step 1: Add the effect (creates with default params, pushes history)
+			const effectId = this.editor.timeline.addClipEffect({
+				trackId: track.id,
+				elementId: element.id,
+				effectType: this.effectEntry.type,
+			});
+
+			if (!effectId) continue;
+
+			// Step 2: Overwrite params with the copied values (no history push
+			// so the add+update is a single undoable action)
+			this.editor.timeline.updateClipEffectParams({
+				trackId: track.id,
+				elementId: element.id,
+				effectId,
+				params: { ...this.effectEntry.params },
+				pushHistory: false,
+			});
+		}
+
 		return true;
 	}
 

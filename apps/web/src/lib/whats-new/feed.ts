@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-copy-paste-effect",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Copy & paste effects (Alight Motion-style)",
+		items: [
+			"Each effect card now has a copy button — click it to grab the effect with all its current parameter values.",
+			"A paste button appears in the Effects tab header when you have a copied effect, letting you apply it to any selected element.",
+			"The copied effect slot is independent from the layer/style clipboard — copy a layer and an effect without overwriting each other.",
+		],
+	},
+	{
 		id: "2026-06-17-popout-browser-windows",
 		date: "2026-06-17",
 		tag: "feature",
