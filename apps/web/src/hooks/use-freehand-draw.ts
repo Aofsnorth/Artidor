@@ -148,6 +148,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 							: "rgba(0,0,0,0)",
 					stroke: drawConfig.stroke,
 					strokeWidth: drawConfig.strokeWidth,
+					strokeOpacity: drawConfig.opacity,
 					strokeAlign: "center",
 					pathData: svgPath,
 					closed: drawConfig.closed,

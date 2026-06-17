@@ -7,9 +7,11 @@ import {
 	PencilEdit01Icon,
 	PenToolIcon,
 	ArrowTurnBackwardIcon,
+	Undo02Icon,
 } from "@hugeicons/core-free-icons";
 import { useToolModeStore } from "@/stores/tool-mode-store";
 import { useVectorDraw } from "@/hooks/use-vector-draw";
+import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 
 const PRESET_COLORS = [
@@ -26,6 +28,8 @@ const PRESET_COLORS = [
 ];
 
 const PRESET_STROKE_WIDTHS = [1, 2, 4, 6, 10, 16, 24];
+
+const PRESET_OPACITIES = [0.25, 0.5, 0.75, 1];
 
 /**
  * Floating config panel that appears next to the canvas whenever the
@@ -46,6 +50,7 @@ export function DrawToolConfigPanel() {
 	void fillOpen;
 	const colorInputRef = useRef<HTMLInputElement>(null);
 	const fillInputRef = useRef<HTMLInputElement>(null);
+	const editor = useEditor();
 
 	// We only need the vector interaction state when the vector tool
 	// is active, but hooks must run unconditionally. The hook itself
@@ -65,6 +70,18 @@ export function DrawToolConfigPanel() {
 
 	const isVector = toolMode === "vector";
 
+	// Undo the most recent freehand / vector commit. Wrapped in a
+	// defensive try/catch — CommandManager.undo() can throw if the
+	// history stack is empty or the last entry wasn't a draw commit,
+	// in which case we silently no-op rather than crashing the panel.
+	const handleUndo = () => {
+		try {
+			editor.command.undo();
+		} catch {
+			// Nothing to undo — fall through.
+		}
+	};
+
 	return (
 		<div
 			className="flex w-full flex-col gap-2 p-3.5 text-white"
@@ -79,15 +96,26 @@ export function DrawToolConfigPanel() {
 					/>
 					{isVector ? "Vector" : "Freehand"}
 				</div>
-				<button
-					type="button"
-					className="grid size-6 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
-					onClick={() => setToolMode("select")}
-					aria-label="Exit tool"
-					title="Exit tool (Esc)"
-				>
-					×
-				</button>
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						onClick={handleUndo}
+						className="grid size-6 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+						aria-label="Undo last stroke"
+						title="Undo last stroke (Ctrl/Cmd+Z)"
+					>
+						<HugeiconsIcon icon={Undo02Icon} className="size-3" />
+					</button>
+					<button
+						type="button"
+						className="grid size-6 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+						onClick={() => setToolMode("select")}
+						aria-label="Exit tool"
+						title="Exit tool (Esc)"
+					>
+						×
+					</button>
+				</div>
 			</header>
 
 			{/* Stroke colour + swatches */}
@@ -157,6 +185,49 @@ export function DrawToolConfigPanel() {
 								className="block rounded-full bg-current"
 								style={{ width: Math.min(w, 10), height: Math.min(w, 10) }}
 							/>
+						</button>
+					))}
+				</div>
+			</div>
+
+			{/* Opacity presets + slider. Brush opacity multiplies the
+			   committed `strokeOpacity` param so the live preview matches
+			   the final rendered element. */}
+			<div className="flex flex-col gap-1.5">
+				<div className="flex items-center justify-between text-[0.62rem] uppercase tracking-[0.16em] text-white/45">
+					<span>Opacity</span>
+					<span className="font-mono text-white/70">
+						{Math.round(drawConfig.opacity * 100)}%
+					</span>
+				</div>
+				<input
+					type="range"
+					min={0}
+					max={1}
+					step={0.05}
+					value={drawConfig.opacity}
+					onChange={(e) => setDrawConfig({ opacity: Number(e.target.value) })}
+					aria-label="Brush opacity"
+					className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-cyan-400"
+					style={{
+						background: `linear-gradient(to right, rgb(34,211,238) 0%, rgb(34,211,238) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) 100%)`,
+					}}
+				/>
+				<div className="grid grid-cols-4 gap-1">
+					{PRESET_OPACITIES.map((o) => (
+						<button
+							key={o}
+							type="button"
+							className={cn(
+								"flex h-6 items-center justify-center rounded-md border text-[0.62rem] font-medium transition",
+								Math.abs(drawConfig.opacity - o) < 0.01
+									? "border-cyan-300/55 bg-cyan-400/15 text-cyan-100"
+									: "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/25 hover:text-white",
+							)}
+							onClick={() => setDrawConfig({ opacity: o })}
+							aria-label={`Set opacity to ${Math.round(o * 100)}%`}
+						>
+							{Math.round(o * 100)}%
 						</button>
 					))}
 				</div>

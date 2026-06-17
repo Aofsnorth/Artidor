@@ -12,6 +12,7 @@ export interface VectorDrawOverlayProps {
 	cursor: Point | null;
 	stroke: string;
 	strokeWidth: number;
+	opacity?: number;
 }
 
 /**
@@ -28,6 +29,7 @@ export function VectorDrawOverlay({
 	cursor,
 	stroke,
 	strokeWidth,
+	opacity = 1,
 }: VectorDrawOverlayProps) {
 	const viewport = usePreviewViewport();
 
@@ -42,6 +44,7 @@ export function VectorDrawOverlay({
 	const height = viewport.sceneHeight * scale.y;
 	const left = viewport.sceneLeft;
 	const top = viewport.sceneTop;
+	const clampedOpacity = Math.max(0, Math.min(1, opacity));
 
 	if (anchors.length === 0 && !cursor) return null;
 
@@ -68,7 +71,7 @@ export function VectorDrawOverlay({
 					strokeWidth={strokeWidth}
 					strokeLinecap="round"
 					strokeLinejoin="round"
-					opacity={cursor ? 0.55 : 0.9}
+					opacity={cursor ? clampedOpacity * 0.6 : clampedOpacity}
 				/>
 			)}
 			{anchors.map((anchor, index) => {
@@ -84,13 +87,19 @@ export function VectorDrawOverlay({
 							fill={isFirst ? stroke : "rgba(0,0,0,0)"}
 							stroke={stroke}
 							strokeWidth={1.5}
-							opacity={0.9}
+							opacity={clampedOpacity}
 						/>
 					</g>
 				);
 			})}
 			{cursor && (
-				<circle cx={cursor.x} cy={cursor.y} r={2} fill={stroke} opacity={0.7} />
+				<circle
+					cx={cursor.x}
+					cy={cursor.y}
+					r={2}
+					fill={stroke}
+					opacity={clampedOpacity * 0.7}
+				/>
 			)}
 		</svg>
 	);

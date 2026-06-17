@@ -19,6 +19,12 @@ export interface FreehandDrawOverlayProps {
 	 * `strokeWidth` param on the freehand graphic.
 	 */
 	strokeWidth?: number;
+	/**
+	 * Brush opacity (0..1). Mirrors the `strokeOpacity` param committed
+	 * to the element so the in-progress preview matches what gets
+	 * inserted on release.
+	 */
+	opacity?: number;
 }
 
 /**
@@ -39,6 +45,7 @@ export function FreehandDrawOverlay({
 	points,
 	stroke = "#ffffff",
 	strokeWidth = 4,
+	opacity = 1,
 }: FreehandDrawOverlayProps) {
 	const viewport = usePreviewViewport();
 
@@ -60,6 +67,7 @@ export function FreehandDrawOverlay({
 	const height = viewport.sceneHeight * scale.y;
 	const left = viewport.sceneLeft;
 	const top = viewport.sceneTop;
+	const clampedOpacity = Math.max(0, Math.min(1, opacity));
 
 	return (
 		<svg
@@ -84,7 +92,7 @@ export function FreehandDrawOverlay({
 					strokeWidth={strokeWidth}
 					strokeLinecap="round"
 					strokeLinejoin="round"
-					opacity={0.9}
+					opacity={clampedOpacity}
 				/>
 			)}
 			{cursor && (
@@ -93,7 +101,7 @@ export function FreehandDrawOverlay({
 					cy={cursor.y}
 					r={Math.max(2, strokeWidth / 2)}
 					fill={stroke}
-					opacity={0.9}
+					opacity={clampedOpacity}
 				/>
 			)}
 		</svg>

@@ -156,6 +156,7 @@ export function PreviewInteractionOverlay() {
 						points={drawInteraction.currentPath}
 						stroke={drawConfig.stroke}
 						strokeWidth={drawConfig.strokeWidth}
+						opacity={drawConfig.opacity}
 					/>
 				)
 			) : isVectorMode ? (
@@ -164,6 +165,7 @@ export function PreviewInteractionOverlay() {
 					cursor={vectorCursor}
 					stroke={drawConfig.stroke}
 					strokeWidth={drawConfig.strokeWidth}
+					opacity={drawConfig.opacity}
 				/>
 			) : isMaskMode ? (
 				<MaskHandles onSnapLinesChange={setSnapLines} />
