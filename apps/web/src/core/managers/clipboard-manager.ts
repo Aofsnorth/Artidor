@@ -92,7 +92,7 @@ export class ClipboardManager {
 	 * that don't apply to the target element type are silently skipped (handled
 	 * by PasteStyleCommand).
 	 */
-	pasteStyle({ time }: { time?: number } = {}): boolean {
+	pasteStyle({ time: _time }: { time?: number } = {}): boolean {
 		if (!this.styleEntry) return false;
 
 		const selectedElements = this.editor.selection.getSelectedElements();

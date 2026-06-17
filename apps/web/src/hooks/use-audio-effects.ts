@@ -52,7 +52,9 @@ const DEFAULT_CHAIN: AudioEffectsChain = {
 };
 
 export function useAudioEffects({
+	// biome-ignore lint/correctness/noUnusedFunctionParameters: trackId kept for future per-track routing
 	trackId,
+	// biome-ignore lint/correctness/noUnusedFunctionParameters: element kept for API parity
 	element,
 }: {
 	trackId: string;

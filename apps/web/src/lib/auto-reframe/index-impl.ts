@@ -81,7 +81,10 @@ export function computeReframeFrames({
 	const halfH = cropHeight / 2 / options.sourceSize.height;
 
 	return frames.map((frame, i) => {
-		const smoothed = smoothedCenters[i]!;
+		const smoothed = smoothedCenters[i] ?? {
+			x: frame.centerX,
+			y: frame.centerY,
+		};
 		const centerX = Math.max(halfW, Math.min(1 - halfW, smoothed.x));
 		const centerY = Math.max(halfH, Math.min(1 - halfH, smoothed.y));
 		return {

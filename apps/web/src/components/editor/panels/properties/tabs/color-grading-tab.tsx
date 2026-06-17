@@ -411,6 +411,7 @@ function CurveChannelControl({
 				{label}
 			</div>
 			<svg
+				aria-hidden="true"
 				ref={svgRef}
 				width={width}
 				height={height}
@@ -461,10 +462,18 @@ function CurveChannelControl({
 					strokeDasharray="2 2"
 				/>
 				<path d={path} fill="none" stroke="currentColor" strokeWidth={2} />
-				{sorted.map((p, i) => {
+				{sorted.map((p) => {
 					const x = padding + (p.x / 255) * (width - padding * 2);
 					const y = height - padding - (p.y / 255) * (height - padding * 2);
-					return <circle key={i} cx={x} cy={y} r={4} fill="currentColor" />;
+					return (
+						<circle
+							key={`${p.x}-${p.y}`}
+							cx={x}
+							cy={y}
+							r={4}
+							fill="currentColor"
+						/>
+					);
 				})}
 			</svg>
 			<div className="flex items-center gap-2 mt-1.5">

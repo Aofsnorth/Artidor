@@ -129,8 +129,8 @@ export async function trackObject({
 		);
 		for (let k = 0; k < template.length; k++) {
 			template[k] =
-				template[k]! * (1 - opts.learningRate) +
-				newTemplate[k]! * opts.learningRate;
+				(template[k] ?? 0) * (1 - opts.learningRate) +
+				(newTemplate[k] ?? 0) * opts.learningRate;
 		}
 	}
 

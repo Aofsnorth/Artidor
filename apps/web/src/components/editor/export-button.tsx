@@ -51,6 +51,7 @@ const CustomEmblem = () => (
 		<div className="absolute inset-0 bg-white/5 rounded-full blur-md" />
 
 		<svg
+			aria-hidden="true"
 			className="size-6 text-stone-300 z-10"
 			viewBox="0 0 100 100"
 			fill="none"

@@ -82,6 +82,7 @@ export function TimelineBookmarksRow({
 			className="relative flex-1 overflow-hidden"
 			style={{ height: TIMELINE_BOOKMARK_ROW_HEIGHT_PX }}
 		>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: ruler needs custom click/wheel to drive timeline */}
 			<div
 				className="relative w-full cursor-default select-none border-0 bg-transparent p-0"
 				style={{

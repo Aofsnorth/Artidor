@@ -57,7 +57,6 @@ export function AudioEffectsTab({
 		DELAY_PRESETS,
 		MODULATION_PRESETS,
 		DISTORTION_PRESETS,
-		COMPRESSOR_PRESETS,
 		VOICE_CHANGER_PRESETS,
 	} = useAudioEffects({ trackId, element });
 

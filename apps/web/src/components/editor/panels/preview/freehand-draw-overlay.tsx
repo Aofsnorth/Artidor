@@ -20,34 +20,15 @@ export interface FreehandDrawOverlayProps {
 export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
 	const viewport = usePreviewViewport();
 
-	const { path, viewBox } = useMemo(() => {
+	const path = useMemo(() => {
 		if (points.length < 1) {
-			return { path: "", viewBox: "0 0 1 1" };
+			return "";
 		}
 
 		// Simplify + smooth the same way the committed path will be, so
 		// the live preview matches the final shape 1:1.
 		const simplified = points.length > 4 ? simplifyPath(points, 2) : points;
-		const d = pointsToSvgPath(simplified);
-
-		// Compute the path's bounding box for a tight viewBox
-		let minX = simplified[0].x;
-		let minY = simplified[0].y;
-		let maxX = simplified[0].x;
-		let maxY = simplified[0].y;
-		for (const p of simplified) {
-			if (p.x < minX) minX = p.x;
-			if (p.y < minY) minY = p.y;
-			if (p.x > maxX) maxX = p.x;
-			if (p.y > maxY) maxY = p.y;
-		}
-		const padding = 8;
-		return {
-			path: d,
-			viewBox: `${minX - padding} ${minY - padding} ${
-				Math.max(maxX - minX, 1) + padding * 2
-			} ${Math.max(maxY - minY, 1) + padding * 2}`,
-		};
+		return pointsToSvgPath(simplified);
 	}, [points]);
 
 	if (!path) return null;
@@ -73,6 +54,7 @@ export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
 			viewBox={`0 0 ${DEFAULT_GRAPHIC_SOURCE_SIZE} ${DEFAULT_GRAPHIC_SOURCE_SIZE}`}
 			preserveAspectRatio="none"
 		>
+			<title>Freehand stroke preview</title>
 			<path
 				d={path}
 				fill="none"

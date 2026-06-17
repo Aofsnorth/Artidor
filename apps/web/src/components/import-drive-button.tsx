@@ -202,9 +202,7 @@ function ImportDriveDialog({
 		if (token) {
 			// Direct client-side streaming over OAuth
 			try {
-				const { fetchFolderFiles, downloadFileBlob } = await import(
-					"@/lib/drive/api"
-				);
+				const { downloadFileBlob } = await import("@/lib/drive/api");
 				toast.info("Downloading file from Google Drive...");
 
 				const blob = await downloadFileBlob(parsed.id);

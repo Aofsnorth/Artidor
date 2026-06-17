@@ -708,7 +708,6 @@ export class AudioManager {
 				trimStart: clip.trimStart,
 				clipDuration: clip.duration,
 				retime: clip.retime,
-				maintainPitch: clip.retime?.maintainPitch === true,
 			});
 		})();
 

@@ -55,6 +55,7 @@ interface LegacyVectorValue {
 	y: number;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: reserved for future vector keyframe migrations
 interface LegacyVectorKeyframe {
 	id: string;
 	time: number;

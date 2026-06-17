@@ -116,10 +116,14 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 			<div className="flex flex-1 overflow-hidden">
 				<div className="w-72 border-r overflow-y-auto p-4 space-y-4">
 					<div>
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							className="text-xs font-medium text-muted-foreground"
+							htmlFor="teleprompter-script"
+						>
 							Script
 						</label>
 						<Textarea
+							id="teleprompter-script"
 							value={script}
 							onChange={(e) => setScript(e.target.value)}
 							placeholder="Paste or type your script here..."
@@ -128,7 +132,10 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="space-y-2">
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							className="text-xs font-medium text-muted-foreground"
+							htmlFor="teleprompter-scroll-speed"
+						>
 							Scroll speed
 						</label>
 						<Select
@@ -167,7 +174,10 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="space-y-2">
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							className="text-xs font-medium text-muted-foreground"
+							htmlFor="teleprompter-font-size"
+						>
 							Font size
 						</label>
 						<Slider
@@ -185,10 +195,14 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="space-y-2">
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							className="text-xs font-medium text-muted-foreground"
+							htmlFor="teleprompter-color"
+						>
 							Color
 						</label>
 						<input
+							id="teleprompter-color"
 							type="color"
 							value={settings.textColor}
 							onChange={(e) =>
@@ -199,10 +213,14 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="space-y-2">
-						<label className="text-xs font-medium text-muted-foreground">
+						<label
+							className="text-xs font-medium text-muted-foreground"
+							htmlFor="teleprompter-background"
+						>
 							Background
 						</label>
 						<input
+							id="teleprompter-background"
 							type="color"
 							value={settings.backgroundColor}
 							onChange={(e) =>
@@ -213,8 +231,11 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="flex items-center justify-between">
-						<label className="text-xs">Mirror text</label>
+						<label className="text-xs" htmlFor="teleprompter-mirror">
+							Mirror text
+						</label>
 						<Switch
+							id="teleprompter-mirror"
 							checked={settings.mirrored}
 							onCheckedChange={(c) =>
 								setSettings((s) => ({ ...s, mirrored: c }))
@@ -223,8 +244,11 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 					</div>
 
 					<div className="flex items-center justify-between">
-						<label className="text-xs">Highlight line</label>
+						<label className="text-xs" htmlFor="teleprompter-highlight">
+							Highlight line
+						</label>
 						<Switch
+							id="teleprompter-highlight"
 							checked={settings.highlightLine}
 							onCheckedChange={(c) =>
 								setSettings((s) => ({ ...s, highlightLine: c }))
