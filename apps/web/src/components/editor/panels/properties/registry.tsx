@@ -17,7 +17,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	TextFontIcon,
 	ArrowExpandIcon,
-	RainDropIcon,
 	MusicNote03Icon,
 	MagicWand05Icon,
 	DashboardSpeed02Icon,
@@ -29,7 +28,6 @@ import {
 	InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { TransformTab } from "./tabs/transform-tab";
-import { BlendingTab } from "./tabs/blending-tab";
 import { AudioTab } from "./tabs/audio-tab";
 import { AudioEffectsTab } from "./tabs/audio-effects-tab";
 import { TextTab } from "./tabs/text-tab";
@@ -75,21 +73,6 @@ function buildTransformTab({
 		icon: <HugeiconsIcon icon={ArrowExpandIcon} size={16} />,
 		content: ({ trackId }) => (
 			<TransformTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-function _buildBlendingTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "blending",
-		label: "Blending",
-		icon: <HugeiconsIcon icon={RainDropIcon} size={16} />,
-		content: ({ trackId }) => (
-			<BlendingTab element={element} trackId={trackId} />
 		),
 	};
 }
