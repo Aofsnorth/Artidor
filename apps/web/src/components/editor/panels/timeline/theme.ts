@@ -32,6 +32,7 @@ export const TIMELINE_TRACK_THEME: Record<
 	},
 	graphic: { elementClassName: "bg-[#053b4a]/90 border border-[#52d8ff]/35" },
 	effect: { elementClassName: "bg-[#3a2867]/90 border border-[#b28cff]/35" },
+	image: { elementClassName: "bg-[#0b3a36]/90 border border-[#5fe6c4]/35" },
 } as const;
 
 export const SELECTED_TRACK_ROW_CLASS =
@@ -130,6 +131,12 @@ export const TRACK_TYPE_PALETTE: Record<
 		accentSoft: "rgba(178, 140, 255, 0.18)",
 		badgeBg: "rgba(178, 140, 255, 0.18)",
 		badgeText: "rgba(221, 214, 254, 1)",
+	},
+	image: {
+		accent: "rgba(95, 230, 196, 0.95)",
+		accentSoft: "rgba(95, 230, 196, 0.18)",
+		badgeBg: "rgba(95, 230, 196, 0.18)",
+		badgeText: "rgba(204, 251, 241, 1)",
 	},
 };
 

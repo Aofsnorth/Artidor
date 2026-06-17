@@ -8,11 +8,6 @@ struct EffectUniforms {
 @group(0) @binding(1) var u_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: EffectUniforms;
 
-@vertex
-fn vertex_main(@location(0) position: vec2<f32>) -> vec4<f32> {
-    return vec4<f32>(position, 0.0, 1.0);
-}
-
 /**
  * Glow / outer-glow effect: detect bright regions of an alpha mask and
  * add a colored glow around them.

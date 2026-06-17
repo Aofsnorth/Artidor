@@ -19,7 +19,6 @@ import { OverlaysView } from "./views/overlays";
 import { ScriptingView } from "./views/scripting";
 import { PresetsView } from "./views/presets";
 import { PluginsView } from "./views/plugins";
-import { ColorView } from "./views/color";
 import { DockPlaceholder } from "@/components/editor/floating-window";
 import { useEditorUIStore } from "@/stores/editor-ui-store";
 import type { FloatablePanelId } from "@/stores/editor-ui-store";
@@ -90,7 +89,6 @@ export function AssetsPanel() {
 		adjustment: maybePlaceholder("adjust", "Adjustments", <AdjustmentsView />),
 		scripting: <ScriptingView />,
 		settings: <SettingsView />,
-		color: <ColorView />,
 	};
 
 	return (

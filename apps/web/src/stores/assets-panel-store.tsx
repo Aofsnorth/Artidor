@@ -46,7 +46,6 @@ export const TAB_KEYS = [
 	"filters",
 	"captions",
 	"scripting",
-	"color",
 	"settings",
 ] as const;
 
@@ -64,7 +63,6 @@ export const VISIBLE_TAB_KEYS = [
 	"templates",
 	"presets",
 	"quicktools",
-	"color",
 	"plugins",
 	"scripting",
 	"settings",
@@ -137,7 +135,7 @@ export const tabs = {
 	},
 	presets: {
 		icon: createHugeiconsIcon({ icon: BookmarkAdd02Icon }),
-		label: "Preset Tools",
+		label: "Preset",
 	},
 	quicktools: {
 		icon: createHugeiconsIcon({ icon: SparklesIcon }),
@@ -162,10 +160,6 @@ export const tabs = {
 	scripting: {
 		icon: createHugeiconsIcon({ icon: SourceCodeIcon }),
 		label: "Scripting",
-	},
-	color: {
-		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),
-		label: "Color",
 	},
 	settings: {
 		icon: createHugeiconsIcon({ icon: Settings01Icon }),

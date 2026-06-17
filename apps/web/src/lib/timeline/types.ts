@@ -47,7 +47,13 @@ export interface TScene {
 	updatedAt: Date;
 }
 
-export type TrackType = "video" | "text" | "audio" | "graphic" | "effect";
+export type TrackType =
+	| "video"
+	| "text"
+	| "audio"
+	| "graphic"
+	| "effect"
+	| "image";
 
 interface BaseTrack {
 	id: string;
@@ -87,14 +93,26 @@ export interface EffectTrack extends BaseTrack {
 	hidden: boolean;
 }
 
+export interface ImageTrack extends BaseTrack {
+	type: "image";
+	elements: ImageElement[];
+	hidden: boolean;
+}
+
 export type TimelineTrack =
 	| VideoTrack
 	| TextTrack
 	| AudioTrack
 	| GraphicTrack
-	| EffectTrack;
+	| EffectTrack
+	| ImageTrack;
 
-export type OverlayTrack = VideoTrack | TextTrack | GraphicTrack | EffectTrack;
+export type OverlayTrack =
+	| VideoTrack
+	| TextTrack
+	| GraphicTrack
+	| EffectTrack
+	| ImageTrack;
 
 export interface SceneTracks {
 	overlay: OverlayTrack[];

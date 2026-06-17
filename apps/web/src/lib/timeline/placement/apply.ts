@@ -2,6 +2,7 @@ import type {
 	AudioTrack,
 	EffectTrack,
 	GraphicTrack,
+	ImageElement,
 	OverlayTrack,
 	SceneTracks,
 	TextTrack,
@@ -152,6 +153,11 @@ function buildPlacedOverlayTrack({
 			return {
 				...buildEmptyTrack({ id, type: "effect" }),
 				elements: elements as EffectTrack["elements"],
+			};
+		case "image":
+			return {
+				...buildEmptyTrack({ id, type: "image" }),
+				elements: elements as ImageElement[],
 			};
 	}
 }

@@ -111,6 +111,7 @@ function AddTrackDropdown() {
 	const options = [
 		{ label: "Video track", type: "video" as const },
 		{ label: "Text track", type: "text" as const },
+		{ label: "Image track", type: "image" as const },
 		{ label: "Effect track", type: "effect" as const },
 	];
 

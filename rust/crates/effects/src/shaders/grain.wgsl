@@ -8,11 +8,6 @@ struct EffectUniforms {
 @group(0) @binding(1) var u_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: EffectUniforms;
 
-@vertex
-fn vertex_main(@location(0) position: vec2<f32>) -> vec4<f32> {
-    return vec4<f32>(position, 0.0, 1.0);
-}
-
 // Simple hash for pseudo-random per-pixel grain
 fn hash21(p: vec2<f32>) -> f32 {
     let h = dot(p, vec2<f32>(127.1, 311.7));
