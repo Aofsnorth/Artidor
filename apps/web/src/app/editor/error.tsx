@@ -45,8 +45,8 @@ export default function EditorError({
 					Editor hit a snag.
 				</h1>
 				<p className="mt-2 text-[13.5px] font-light leading-relaxed text-white/65">
-					Your project is still saved. Reloading usually fixes transient
-					state glitches.
+					Your project is still saved. Reloading usually fixes transient state
+					glitches.
 				</p>
 				{error.digest && (
 					<p className="mt-3 font-mono text-[10.5px] text-white/35">

@@ -52,9 +52,15 @@ export function useKeybindingsListener() {
 				(activeElement instanceof HTMLTextAreaElement ||
 					activeElement.isContentEditable ||
 					(activeElement instanceof HTMLInputElement &&
-						["text", "password", "email", "search", "url", "tel", "number"].includes(
-							activeElement.type,
-						)));
+						[
+							"text",
+							"password",
+							"email",
+							"search",
+							"url",
+							"tel",
+							"number",
+						].includes(activeElement.type)));
 
 			if (isGenuineTextEntry) return;
 			if (boundAction === "paste-copied") {

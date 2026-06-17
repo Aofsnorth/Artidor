@@ -132,8 +132,8 @@ export function TemplatesDialog({
 				<DialogHeader>
 					<DialogTitle className="text-white">Templates</DialogTitle>
 					<DialogDescription className="text-white/55">
-						Pick a starting point for your project. You can
-						customise anything afterwards.
+						Pick a starting point for your project. You can customise anything
+						afterwards.
 					</DialogDescription>
 				</DialogHeader>
 

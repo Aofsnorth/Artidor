@@ -99,8 +99,8 @@ export function AudioMetersCard() {
 				}
 
 				// Convert to dB
-				const dbL = maxValL > 0 ? 20 * Math.log10(maxValL) : -100;
-				const dbR = maxValR > 0 ? 20 * Math.log10(maxValR) : -100;
+				const _dbL = maxValL > 0 ? 20 * Math.log10(maxValL) : -100;
+				const _dbR = maxValR > 0 ? 20 * Math.log10(maxValR) : -100;
 
 				// Map amplitude to percentage using a more dynamic perceived-loudness curve (square root)
 				const targetL = maxValL ** 0.5 * 100;

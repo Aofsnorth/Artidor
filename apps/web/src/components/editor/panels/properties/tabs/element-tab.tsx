@@ -114,9 +114,7 @@ export function ElementTab({
 		{
 			icon: Link01Icon,
 			label: "Parent",
-			value: "parentId" in element && element.parentId
-				? "Linked"
-				: "None",
+			value: "parentId" in element && element.parentId ? "Linked" : "None",
 		},
 		{
 			icon: Layers01Icon,
@@ -242,8 +240,8 @@ export function ElementTab({
 				</dl>
 				{(parentCount > 0 || bookmarkCount > 0) && (
 					<p className="mt-3 text-[0.66rem] leading-relaxed text-white/40">
-						Use the Link tab to manage parenting, or jump to Animation to
-						edit bookmarks.
+						Use the Link tab to manage parenting, or jump to Animation to edit
+						bookmarks.
 					</p>
 				)}
 			</section>

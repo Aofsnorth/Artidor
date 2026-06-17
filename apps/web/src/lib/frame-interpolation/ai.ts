@@ -45,10 +45,7 @@ type OrtModule = {
 			options?: { executionProviders?: string[] },
 		): Promise<unknown>;
 	};
-	Tensor: new (
-		data: Float32Array,
-		dims: readonly number[],
-	) => RifeTensor;
+	Tensor: new (data: Float32Array, dims: readonly number[]) => RifeTensor;
 };
 
 let runtimePromise: Promise<RifeRuntime> | null = null;
@@ -77,7 +74,8 @@ async function loadRuntime(): Promise<RifeRuntime> {
 					run: () => Promise<Record<string, RifeTensor>>;
 				};
 				return {
-					input: (name: string, tensor: RifeTensor) => session.input(name, tensor),
+					input: (name: string, tensor: RifeTensor) =>
+						session.input(name, tensor),
 					run: () => session.run(),
 					output: (name: string) => {
 						void name;

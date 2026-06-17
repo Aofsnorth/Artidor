@@ -330,7 +330,9 @@ function CurvePreview({
 
 	const toSvgX = (time: number) => padding + time * (width - padding * 2);
 	const toSvgY = (speed: number) =>
-		height - padding - ((speed - yMin) / (yMax - yMin)) * (height - padding * 2);
+		height -
+		padding -
+		((speed - yMin) / (yMax - yMin)) * (height - padding * 2);
 	const fromSvgX = (x: number) =>
 		clamp((x - padding) / (width - padding * 2), 0, 1);
 	const fromSvgY = (y: number) =>
@@ -343,7 +345,7 @@ function CurvePreview({
 	const points = useMemo(() => {
 		if (curve.length === 0) return [];
 		return curve.map((k) => ({ x: toSvgX(k.time), y: toSvgY(k.speed) }));
-	}, [curve]);
+	}, [curve, toSvgX, toSvgY]);
 
 	const path =
 		points.length > 0
@@ -435,9 +437,36 @@ function CurvePreview({
 				))}
 
 				{/* Speed labels */}
-				<text x={padding - 2} y={toSvgY(1) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.4">1x</text>
-				<text x={padding - 2} y={toSvgY(3) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.3">3x</text>
-				<text x={padding - 2} y={toSvgY(5) + 3} textAnchor="end" fontSize="7" fill="currentColor" opacity="0.3">5x</text>
+				<text
+					x={padding - 2}
+					y={toSvgY(1) + 3}
+					textAnchor="end"
+					fontSize="7"
+					fill="currentColor"
+					opacity="0.4"
+				>
+					1x
+				</text>
+				<text
+					x={padding - 2}
+					y={toSvgY(3) + 3}
+					textAnchor="end"
+					fontSize="7"
+					fill="currentColor"
+					opacity="0.3"
+				>
+					3x
+				</text>
+				<text
+					x={padding - 2}
+					y={toSvgY(5) + 3}
+					textAnchor="end"
+					fontSize="7"
+					fill="currentColor"
+					opacity="0.3"
+				>
+					5x
+				</text>
 
 				{/* Curve path */}
 				<path

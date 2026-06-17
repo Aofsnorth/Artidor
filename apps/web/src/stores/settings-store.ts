@@ -35,8 +35,7 @@ export const useSettingsStore = create<SettingsState>()(
 			setDefaultFps: (fps) => set({ defaultFps: fps }),
 
 			enablePopoutPanels: false,
-			setEnablePopoutPanels: (value) =>
-				set({ enablePopoutPanels: value }),
+			setEnablePopoutPanels: (value) => set({ enablePopoutPanels: value }),
 		}),
 		{
 			name: "app-settings",

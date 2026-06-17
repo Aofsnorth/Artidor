@@ -32,7 +32,8 @@ export function DeleteProjectDialog({
 
 	const skipDeleteConfirm = useSettingsStore((s) => s.skipDeleteConfirm);
 	const [confirmText, setConfirmText] = useState("");
-	const canDelete = skipDeleteConfirm || confirmText.trim().toUpperCase() === CONFIRM_WORD;
+	const canDelete =
+		skipDeleteConfirm || confirmText.trim().toUpperCase() === CONFIRM_WORD;
 
 	// Clear the field whenever the dialog opens/closes so a stale "DELETE"
 	// can't carry over into the next confirmation.
@@ -80,8 +81,9 @@ export function DeleteProjectDialog({
 					<div className="flex flex-col gap-3">
 						{skipDeleteConfirm ? (
 							<p className="text-xs text-slate-400">
-								Click <span className="font-semibold text-slate-200">Delete</span>{" "}
-								to permanently remove{" "}
+								Click{" "}
+								<span className="font-semibold text-slate-200">Delete</span> to
+								permanently remove{" "}
 								{singleName ? `"${singleName}"` : `${count} projects`}.
 							</p>
 						) : (

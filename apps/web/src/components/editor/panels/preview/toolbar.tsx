@@ -282,11 +282,7 @@ function DrawToolButton() {
 					? "Drawing on canvas — click again to exit"
 					: "Draw on the canvas (freehand vector)"
 			}
-			className={
-				isActive
-					? "text-black"
-					: "text-white/60 hover:text-white"
-			}
+			className={isActive ? "text-black" : "text-white/60 hover:text-white"}
 			onClick={() => setToolMode(isActive ? "select" : "draw")}
 		>
 			<HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { MaximizeIcon as WindowMaximizeIcon } from "@hugeicons/core-free-icons";
@@ -70,7 +70,9 @@ export function FloatingWindow({
 }: FloatingWindowProps) {
 	const dockPanel = useEditorUIStore((s) => s.dockPanel);
 	const childWindowRef = useRef<Window | null>(null);
-	const [childContainer, setChildContainer] = useState<HTMLElement | null>(null);
+	const [childContainer, setChildContainer] = useState<HTMLElement | null>(
+		null,
+	);
 
 	// Open a new browser window on mount, close it on unmount
 	useEffect(() => {
@@ -206,9 +208,7 @@ export function PopOutButton({
 	className?: string;
 }) {
 	const popOutPanel = useEditorUIStore((s) => s.popOutPanel);
-	const enablePopoutPanels = useSettingsStore(
-		(s) => s.enablePopoutPanels,
-	);
+	const enablePopoutPanels = useSettingsStore((s) => s.enablePopoutPanels);
 
 	// When disabled in settings, hide the button entirely so it doesn't
 	// interfere with the workflow.

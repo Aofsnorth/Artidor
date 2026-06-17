@@ -129,8 +129,9 @@ export function PluginsView() {
 						All ({plugins.length})
 					</CategoryChip>
 					{PLUGIN_CATEGORIES.map((cat) => {
-						const count = plugins.filter((p) => p.manifest.category === cat)
-							.length;
+						const count = plugins.filter(
+							(p) => p.manifest.category === cat,
+						).length;
 						if (count === 0) return null;
 						return (
 							<CategoryChip

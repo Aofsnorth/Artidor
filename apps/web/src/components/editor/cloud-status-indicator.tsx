@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -8,10 +7,9 @@ import {
 	CloudIcon,
 	CheckmarkCircle02Icon,
 } from "@hugeicons/core-free-icons";
-import { cn } from "@/utils/ui";
 
 export function CloudStatusIndicator() {
-	const editor = useEditor();
+	const _editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const syncState = useEditor((e) => e.project.getDriveSyncState());
 
@@ -70,7 +68,6 @@ export function CloudStatusIndicator() {
 						</span>
 					</div>
 				);
-			case "idle":
 			default:
 				return (
 					<div

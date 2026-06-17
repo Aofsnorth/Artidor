@@ -7,7 +7,6 @@
  * the perceived load time is much shorter than the real one.
  */
 
-import { HugeiconsIcon } from "@hugeicons/react";
 import { Sparkles } from "lucide-react";
 
 export default function EditorLoading() {

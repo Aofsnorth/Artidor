@@ -4,11 +4,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useEditor } from "../use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
-import {
-	findNearestClipEdge,
-	findSnapPoints,
-	snapToNearestPoint,
-} from "@/lib/timeline/snap-utils";
+import { findSnapPoints, snapToNearestPoint } from "@/lib/timeline/snap-utils";
 import {
 	getCenteredLineLeft,
 	timelineTimeToPixels,
@@ -294,7 +290,10 @@ export function useTimelinePlayhead({
 			if (isAutoScrollOn) {
 				const desiredScroll = Math.max(
 					scrollMinimum,
-					Math.min(scrollMaximum, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
+					Math.min(
+						scrollMaximum,
+						playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR,
+					),
 				);
 				rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
 			} else {
@@ -306,7 +305,10 @@ export function useTimelinePlayhead({
 				if (needsScroll) {
 					const desiredScroll = Math.max(
 						scrollMinimum,
-						Math.min(scrollMaximum, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
+						Math.min(
+							scrollMaximum,
+							playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR,
+						),
 					);
 					rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
 				}
@@ -324,16 +326,16 @@ export function useTimelinePlayhead({
 			window.removeEventListener("playback-update", handlePlaybackUpdate);
 			window.removeEventListener("playback-seek", handlePlaybackUpdate);
 		};
-		}, [editor.playback, rulerScrollRef, tracksScrollRef, updatePlayheadLeft]);
+	}, [editor.playback, rulerScrollRef, tracksScrollRef, updatePlayheadLeft]);
 
-		// rAF-driven autoscroll follower. `handlePlaybackUpdate` only fires
-		// on `playback-update` / `playback-seek` events, which can be
-		// throttled or arrive in irregular bursts depending on the playback
-		// source. To guarantee the playhead always stays centred while
-		// autoscroll is on, this effect kicks in a rAF loop that re-centres
-		// the viewport every frame. The Math.abs(>0.5) guard stops the loop
-		// from fighting the user's own scroll wheel input.
-		useEffect(() => {
+	// rAF-driven autoscroll follower. `handlePlaybackUpdate` only fires
+	// on `playback-update` / `playback-seek` events, which can be
+	// throttled or arrive in irregular bursts depending on the playback
+	// source. To guarantee the playhead always stays centred while
+	// autoscroll is on, this effect kicks in a rAF loop that re-centres
+	// the viewport every frame. The Math.abs(>0.5) guard stops the loop
+	// from fighting the user's own scroll wheel input.
+	useEffect(() => {
 		if (!autoScrollEnabled) return;
 		const rulerViewport = rulerScrollRef.current;
 		const tracksViewport = tracksScrollRef.current;
@@ -347,13 +349,13 @@ export function useTimelinePlayhead({
 				zoomLevel: zoomLevelRef.current,
 			});
 			const viewportWidth = rulerViewport.clientWidth;
-			const scrollMax = Math.max(
-				0,
-				rulerViewport.scrollWidth - viewportWidth,
-			);
+			const scrollMax = Math.max(0, rulerViewport.scrollWidth - viewportWidth);
 			const desiredScroll = Math.max(
 				0,
-				Math.min(scrollMax, playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR),
+				Math.min(
+					scrollMax,
+					playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR,
+				),
 			);
 			if (Math.abs(rulerViewport.scrollLeft - desiredScroll) > 0.5) {
 				rulerViewport.scrollLeft = desiredScroll;
@@ -363,9 +365,9 @@ export function useTimelinePlayhead({
 		};
 		rafId = requestAnimationFrame(tick);
 		return () => cancelAnimationFrame(rafId);
-		}, [autoScrollEnabled, editor.playback, rulerScrollRef, tracksScrollRef]);
+	}, [autoScrollEnabled, editor.playback, rulerScrollRef, tracksScrollRef]);
 
-		return {
+	return {
 		handlePlayheadMouseDown: handlePlayheadMouseDownEvent,
 		handleRulerMouseDown: handleRulerMouseDownEvent,
 	};

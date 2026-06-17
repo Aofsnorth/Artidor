@@ -251,7 +251,7 @@ class EffectPreviewService {
 		if (canvas instanceof HTMLCanvasElement) {
 			if (canvas.width === 0 || canvas.height === 0) return false;
 			const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-			if (gl && gl.isContextLost()) return false;
+			if (gl?.isContextLost()) return false;
 		} else if (canvas instanceof OffscreenCanvas) {
 			if (canvas.width === 0 || canvas.height === 0) return false;
 		}

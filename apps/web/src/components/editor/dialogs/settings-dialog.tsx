@@ -22,11 +22,12 @@ import { cn } from "@/utils/ui";
 
 type SettingsTab = "general" | "ai" | "shortcuts";
 
-const TABS: { id: SettingsTab; label: string; icon: typeof Settings01Icon }[] = [
-	{ id: "general", label: "General", icon: Settings01Icon },
-	{ id: "ai", label: "AI", icon: SparklesIcon },
-	{ id: "shortcuts", label: "Shortcuts", icon: KeyboardIcon },
-];
+const TABS: { id: SettingsTab; label: string; icon: typeof Settings01Icon }[] =
+	[
+		{ id: "general", label: "General", icon: Settings01Icon },
+		{ id: "ai", label: "AI", icon: SparklesIcon },
+		{ id: "shortcuts", label: "Shortcuts", icon: KeyboardIcon },
+	];
 
 export function SettingsDialog({
 	isOpen,
@@ -74,14 +75,10 @@ export function SettingsDialog({
 
 function GeneralSettings() {
 	const skipDeleteConfirm = useSettingsStore((s) => s.skipDeleteConfirm);
-	const setSkipDeleteConfirm = useSettingsStore(
-		(s) => s.setSkipDeleteConfirm,
-	);
+	const setSkipDeleteConfirm = useSettingsStore((s) => s.setSkipDeleteConfirm);
 	const defaultFps = useSettingsStore((s) => s.defaultFps);
 	const setDefaultFps = useSettingsStore((s) => s.setDefaultFps);
-	const enablePopoutPanels = useSettingsStore(
-		(s) => s.enablePopoutPanels,
-	);
+	const enablePopoutPanels = useSettingsStore((s) => s.enablePopoutPanels);
 	const setEnablePopoutPanels = useSettingsStore(
 		(s) => s.setEnablePopoutPanels,
 	);
@@ -168,18 +165,12 @@ function AISettings() {
 					<>
 						Set these environment variables before starting the app:
 						<br />
-						<code className="text-[10.5px] text-white/70">
-							OPENAI_API_KEY
-						</code>
-						, <br />
-						<code className="text-[10.5px] text-white/70">
-							OPENAI_BASE_URL
-						</code>{" "}
+						<code className="text-[10.5px] text-white/70">OPENAI_API_KEY</code>,{" "}
+						<br />
+						<code className="text-[10.5px] text-white/70">OPENAI_BASE_URL</code>{" "}
 						(optional, for self-hosted endpoints)
 						<br />
-						<code className="text-[10.5px] text-white/70">
-							OPENAI_MODEL
-						</code>{" "}
+						<code className="text-[10.5px] text-white/70">OPENAI_MODEL</code>{" "}
 						(optional, default: gpt-4o-mini)
 					</>
 				}
@@ -196,9 +187,7 @@ function AISettings() {
 							AI_PROVIDER=ollama
 						</code>{" "}
 						to use a local Ollama instance. Optionally set{" "}
-						<code className="text-[10.5px] text-white/70">
-							OLLAMA_BASE_URL
-						</code>{" "}
+						<code className="text-[10.5px] text-white/70">OLLAMA_BASE_URL</code>{" "}
 						(default: http://127.0.0.1:11434) and{" "}
 						<code className="text-[10.5px] text-white/70">OLLAMA_MODEL</code>.
 					</>
@@ -215,8 +204,8 @@ function AISettings() {
 						<code className="text-[10.5px] text-white/70">
 							ANTHROPIC_API_KEY
 						</code>{" "}
-						to use Claude models. The provider auto-activates when the key
-						is present.
+						to use Claude models. The provider auto-activates when the key is
+						present.
 					</>
 				}
 			>
@@ -224,17 +213,15 @@ function AISettings() {
 			</SettingRow>
 
 			<div className="rounded-md border border-white/[0.06] bg-white/[0.02] p-3 text-[11.5px] leading-relaxed text-white/45">
-				<p className="font-medium text-white/65">
-					Force a specific provider
-				</p>
+				<p className="font-medium text-white/65">Force a specific provider</p>
 				<p className="mt-1">
 					Set{" "}
-					<code className="text-[10.5px] text-white/70">AI_PROVIDER=openai</code>
-					,{" "}
-					<code className="text-[10.5px] text-white/70">anthropic</code>
-					, or{" "}
-					<code className="text-[10.5px] text-white/70">ollama</code> to
-					bypass auto-detection.
+					<code className="text-[10.5px] text-white/70">
+						AI_PROVIDER=openai
+					</code>
+					, <code className="text-[10.5px] text-white/70">anthropic</code>, or{" "}
+					<code className="text-[10.5px] text-white/70">ollama</code> to bypass
+					auto-detection.
 				</p>
 			</div>
 		</div>
@@ -245,10 +232,12 @@ function ShortcutsSettings() {
 	return (
 		<div className="flex flex-col gap-4">
 			<header>
-				<h2 className="text-sm font-semibold text-white/85">Keyboard shortcuts</h2>
+				<h2 className="text-sm font-semibold text-white/85">
+					Keyboard shortcuts
+				</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
-					Common editing shortcuts. Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd> to
-					open the command palette and search every action.
+					Common editing shortcuts. Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd> to open
+					the command palette and search every action.
 				</p>
 			</header>
 			<ul className="flex flex-col divide-y divide-white/[0.05] rounded-md border border-white/[0.06] bg-white/[0.02]">
@@ -278,9 +267,7 @@ function SettingRow({
 	return (
 		<div className="flex items-start justify-between gap-3 rounded-md border border-white/[0.05] bg-white/[0.02] p-3">
 			<div className="min-w-0">
-				<Label className="text-[13px] font-medium text-white/85">
-					{title}
-				</Label>
+				<Label className="text-[13px] font-medium text-white/85">{title}</Label>
 				{description && (
 					<p className="mt-0.5 text-[11.5px] leading-snug text-white/50">
 						{description}

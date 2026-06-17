@@ -4,8 +4,6 @@ import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { snappedSeekTime } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEditor } from "../use-editor";
-import { useTimelineStore } from "@/stores/timeline-store";
-import { findNearestClipEdge } from "@/lib/timeline/snap-utils";
 
 interface UseTimelineSeekProps {
 	playheadRef: RefObject<HTMLDivElement | null>;
@@ -155,7 +153,15 @@ export function useTimelineSeek({
 				},
 			});
 		},
-		[duration, zoomLevel, rulerScrollRef, tracksScrollRef, seek, editor],
+		[
+			duration,
+			zoomLevel,
+			rulerScrollRef,
+			tracksScrollRef,
+			seek,
+			editor,
+			activeProject?.settings.fps,
+		],
 	);
 
 	const handleTracksClick = useCallback(
