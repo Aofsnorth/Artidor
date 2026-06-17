@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AudioWave01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
+import { AudioWave01Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import { cn } from "@/utils/ui";
@@ -18,6 +18,10 @@ const AUDIO_METER_WIDTH_DEFAULT_PX = 48;
 
 const VIS_BAR_COUNT = 24;
 const VIS_HEIGHT_PX = 96;
+
+const CLIP_THRESHOLD_PCT = 98;
+const CLIP_HOLD_MS = 1500;
+const CLIP_DECAY_PER_FRAME = 2;
 
 export function VerticalAudioMeter() {
 	const editor = useEditor();
@@ -48,6 +52,8 @@ export function VerticalAudioMeter() {
 	const rightBarRef = useRef<HTMLDivElement>(null);
 	const leftPeakRef = useRef<HTMLDivElement>(null);
 	const rightPeakRef = useRef<HTMLDivElement>(null);
+	const leftClipRef = useRef<HTMLDivElement>(null);
+	const rightClipRef = useRef<HTMLDivElement>(null);
 
 	// Visualizer card refs (only updated when isVisualizerOpen is true).
 	const visBarRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -60,6 +66,10 @@ export function VerticalAudioMeter() {
 		right: 0,
 		peakLeft: 0,
 		peakRight: 0,
+		clipLeft: 0,
+		clipLeftAt: 0,
+		clipRight: 0,
+		clipRightAt: 0,
 		visLevels: new Array<number>(VIS_BAR_COUNT).fill(0),
 		isPlaying: false,
 	});
@@ -112,6 +122,20 @@ export function VerticalAudioMeter() {
 			state.peakLeft = Math.max(state.left, state.peakLeft - 0.55);
 			state.peakRight = Math.max(state.right, state.peakRight - 0.55);
 
+			const now = performance.now();
+			if (state.left >= CLIP_THRESHOLD_PCT) {
+				state.clipLeft = 100;
+				state.clipLeftAt = now;
+			} else if (now - state.clipLeftAt > CLIP_HOLD_MS) {
+				state.clipLeft = Math.max(0, state.clipLeft - CLIP_DECAY_PER_FRAME);
+			}
+			if (state.right >= CLIP_THRESHOLD_PCT) {
+				state.clipRight = 100;
+				state.clipRightAt = now;
+			} else if (now - state.clipRightAt > CLIP_HOLD_MS) {
+				state.clipRight = Math.max(0, state.clipRight - CLIP_DECAY_PER_FRAME);
+			}
+
 			// 2. Visualizer bars: split frequency bins into N chunks.
 			if (data) {
 				const chunkSize = Math.max(1, Math.floor(bins / VIS_BAR_COUNT));
@@ -144,6 +168,12 @@ export function VerticalAudioMeter() {
 			}
 			if (rightPeakRef.current) {
 				rightPeakRef.current.style.transform = `translateY(-${state.peakRight}%)`;
+			}
+			if (leftClipRef.current) {
+				leftClipRef.current.style.opacity = (state.clipLeft / 100).toString();
+			}
+			if (rightClipRef.current) {
+				rightClipRef.current.style.opacity = (state.clipRight / 100).toString();
 			}
 			for (let i = 0; i < VIS_BAR_COUNT; i++) {
 				const ref = visBarRefs.current[i];
@@ -184,6 +214,8 @@ export function VerticalAudioMeter() {
 					rightBarRef={rightBarRef}
 					leftPeakRef={leftPeakRef}
 					rightPeakRef={rightPeakRef}
+					leftClipRef={leftClipRef}
+					rightClipRef={rightClipRef}
 					dimmed={dimmed}
 					onToggleDim={() => setDimmed((value) => !value)}
 					onOpenVisualizer={() =>
@@ -204,6 +236,8 @@ function MeterView({
 	rightBarRef,
 	leftPeakRef,
 	rightPeakRef,
+	leftClipRef,
+	rightClipRef,
 	dimmed,
 	onToggleDim,
 	onOpenVisualizer,
@@ -212,6 +246,8 @@ function MeterView({
 	rightBarRef: React.RefObject<HTMLDivElement | null>;
 	leftPeakRef: React.RefObject<HTMLDivElement | null>;
 	rightPeakRef: React.RefObject<HTMLDivElement | null>;
+	leftClipRef: React.RefObject<HTMLDivElement | null>;
+	rightClipRef: React.RefObject<HTMLDivElement | null>;
 	dimmed: boolean;
 	onToggleDim: () => void;
 	onOpenVisualizer: () => void;
@@ -219,8 +255,18 @@ function MeterView({
 	return (
 		<>
 			<div className="flex flex-1 items-stretch gap-1">
-				<ChannelBar barRef={leftBarRef} peakRef={leftPeakRef} label="L" />
-				<ChannelBar barRef={rightBarRef} peakRef={rightPeakRef} label="R" />
+				<ChannelBar
+					barRef={leftBarRef}
+					peakRef={leftPeakRef}
+					clipRef={leftClipRef}
+					label="L"
+				/>
+				<ChannelBar
+					barRef={rightBarRef}
+					peakRef={rightPeakRef}
+					clipRef={rightClipRef}
+					label="R"
+				/>
 			</div>
 
 			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.16em] text-white/35">
@@ -250,10 +296,7 @@ function MeterView({
 					title="Open audio visualizer (also: visualizer pill in the preview toolbar)"
 					className="grid h-4 w-4 shrink-0 place-items-center rounded bg-white/[0.04] text-white/45 transition-colors hover:bg-white/[0.1] hover:text-white"
 				>
-					<HugeiconsIcon
-						icon={AudioWave01Icon}
-						className="size-2.5"
-					/>
+					<HugeiconsIcon icon={AudioWave01Icon} className="size-2.5" />
 				</button>
 			</div>
 		</>
@@ -322,10 +365,12 @@ function VisualizerCard({
 function ChannelBar({
 	barRef,
 	peakRef,
+	clipRef,
 	label: _label,
 }: {
 	barRef: React.RefObject<HTMLDivElement | null>;
 	peakRef: React.RefObject<HTMLDivElement | null>;
+	clipRef: React.RefObject<HTMLDivElement | null>;
 	label: string;
 }) {
 	return (
@@ -339,6 +384,13 @@ function ChannelBar({
 					background:
 						"linear-gradient(to top, #22c55e 0%, #22c55e 55%, #eab308 78%, #ef4444 100%)",
 				}}
+			/>
+
+			{/* Clip indicator: latches red at 0dB for ~1.5s, then decays. */}
+			<div
+				ref={clipRef}
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1.5 bg-red-500 opacity-0 transition-opacity duration-75 shadow-[0_0_6px_2px_rgba(239,68,68,0.7)]"
 			/>
 
 			{/* Peak tick: latches at the highest recent value. */}
@@ -421,10 +473,9 @@ function AudioMeterResizeHandle({
 	}, [isResizing, onResize]);
 
 	return (
-		<div
-			role="separator"
+		<button
+			type="button"
 			aria-label="Resize audio meter"
-			aria-orientation="vertical"
 			title={
 				currentWidth
 					? `Drag to resize (currently ${Math.round(currentWidth)}px)`
