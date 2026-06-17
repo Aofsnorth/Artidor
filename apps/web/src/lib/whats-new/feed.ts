@@ -18,6 +18,25 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-element-tab",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Inspector Element tab",
+		items: [
+			"New \"Element\" quick-switch tab surfaces identity, source media, timeline position, relationships and state toggles for the selected element.",
+			"Copy element/media IDs to clipboard, toggle visibility and mute directly from the inspector.",
+		],
+	},
+	{
+		id: "2026-06-17-marquee-name",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Scrolling element name",
+		items: [
+			"Long element names now scroll horizontally in the inspector summary instead of being clipped — no more guessing what you renamed that layer to.",
+		],
+	},
+	{
 		id: "2026-06-17-timeline-anchors",
 		date: "2026-06-17",
 		tag: "fix",
