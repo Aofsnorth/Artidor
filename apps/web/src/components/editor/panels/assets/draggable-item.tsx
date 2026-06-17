@@ -22,6 +22,22 @@ import { clearDragData, setDragData } from "@/lib/drag-data";
 import type { TimelineDragData } from "@/lib/timeline/drag";
 import { cn } from "@/utils/ui";
 
+/**
+ * 1×1 transparent GIF, used as a drag ghost for the asset cards. Setting
+ * `setDragImage` to this hides the browser's default drag preview
+ * (which would otherwise show the raw card) so the cursor stays clean
+ * while the timeline shows the drop position. Created once at module
+ * load instead of per-component-render — before, 165 effect cards
+ * created 165 `new Image()` instances on every parent re-render.
+ */
+const EMPTY_DRAG_GHOST = (() => {
+	if (typeof window === "undefined") return null;
+	const img = new window.Image();
+	img.src =
+		"data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+	return img;
+})();
+
 export interface DraggableItemProps {
 	name: string;
 	preview: ReactNode;
@@ -67,15 +83,12 @@ export function DraggableItem({
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
 	const dragRef = useRef<HTMLDivElement>(null);
+
 	const editor = useEditor();
 
 	const handleAddToTimeline = () => {
 		onAddToTimeline?.({ currentTime: editor.playback.getCurrentTime() });
 	};
-
-	const emptyImg = new window.Image();
-	emptyImg.src =
-		"data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
 
 	const resetDrag = useCallback(() => {
 		setIsDragging(false);
@@ -115,7 +128,9 @@ export function DraggableItem({
 	}, [isDragging, resetDrag]);
 
 	const handleDragStart = (e: React.DragEvent) => {
-		e.dataTransfer.setDragImage(emptyImg, 0, 0);
+		if (EMPTY_DRAG_GHOST) {
+			e.dataTransfer.setDragImage(EMPTY_DRAG_GHOST, 0, 0);
+		}
 
 		setDragData({ dataTransfer: e.dataTransfer, dragData });
 		e.dataTransfer.effectAllowed = "copy";

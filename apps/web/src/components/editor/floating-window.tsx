@@ -120,20 +120,32 @@ export function FloatingWindow({
 
 		setChildContainer(container);
 
-		// Listen for the child window being closed by the user
-		const checkWindowClosed = () => {
+		// Listen for the child window being closed by the user. There's
+		// no reliable cross-origin "close" event from window.open(), so we
+		// poll — but at 500ms instead of 60Hz. Polling the .closed flag
+		// is cheap; doing it 60×/sec just churned the main thread for no
+		// information gain.
+		const POLL_INTERVAL_MS = 500;
+		let cancelled = false;
+		const intervalId = window.setInterval(() => {
+			if (cancelled) return;
 			if (childWin.closed) {
 				dockPanel(id);
-				return;
 			}
-			// Poll periodically — there's no reliable "close" event on a
-			// window opened via window.open() from the opener's perspective.
-			requestAnimationFrame(checkWindowClosed);
+		}, POLL_INTERVAL_MS);
+
+		// `pagehide` fires when the user navigates/closes the OPENER tab —
+		// a better signal than polling for our case (we'd want to dock
+		// the panel back before tearing down).
+		const handlePageHide = () => {
+			if (childWin && !childWin.closed) childWin.close();
 		};
-		const rafId = requestAnimationFrame(checkWindowClosed);
+		window.addEventListener("pagehide", handlePageHide);
 
 		return () => {
-			cancelAnimationFrame(rafId);
+			cancelled = true;
+			window.clearInterval(intervalId);
+			window.removeEventListener("pagehide", handlePageHide);
 			if (childWindowRef.current && !childWindowRef.current.closed) {
 				childWindowRef.current.close();
 			}

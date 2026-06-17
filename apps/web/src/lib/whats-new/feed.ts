@@ -18,6 +18,34 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-qa-roundup",
+		date: "2026-06-18",
+		tag: "improvement",
+		title:
+			"Editor QA round-up: open-source AI providers, refined preview, and 8 fixes",
+		items: [
+			"New: AI provider manager built into the AI Edit panel. Add any OpenAI-compatible endpoint (OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM, llama.cpp's server) or a local Ollama instance directly from the editor — input base URL, API key, and model name, click Test to verify, then Save. The default provider is sent with every chat request so the server uses your endpoint instead of env vars.",
+			"New: AI providers storage lives in localStorage and persists across sessions. Multiple providers can be configured at once; switch the default with one click; delete with a confirm dialog. POST /api/ai/test sends a 1-token probe (`max_tokens=1`, not billed) and returns actionable errors: 401 → 'Check the API key', 404 → 'Check the base URL and model name', 429 → 'try again shortly', network drop → 'Could not reach the server'.",
+			"New: Frame Interpolation quality presets — Fast (frame blending, every device), Balanced (optical flow, WebGL2), High Quality (RIFE v4.9, WebGPU). Each chip is greyed out when the device can't run it, so there's no silent failure. AI-ready devices get an amber 'heavy on weak GPUs' hint in the hardware strip below.",
+			"New: 7 distinct procedural preview sources for the Effects panel (gradient, checkerboard, SMPTE color bars, radial, diagonal stripes, portrait silhouette, noise field). Each effect card picks one via a deterministic djb2 hash of its type, so blur/pixelate previews against checkerboards, color grading against color bars, vignette/glow against a radial burst — the panel no longer shows 165 copies of the same flat gradient.",
+			"New: Pop-out buttons on Effects, Transitions, Adjustments, and Plugins panels. Each sub-view detaches into its own OS window independently from the others; position/size is remembered across sessions; the original slot shows a 'view is in another window' placeholder with a Dock button.",
+			"Improvement: Color grading presets (Grayscale, Sepia, Vintage, HSL, Duotone, Cyberpunk, Noir, Amber Grade, etc.) moved out of the Effects panel into the Adjustments 'Color' category. Effects panel 'Color' chip is gone; matches the Alight Motion workflow where colour is an adjustment, not an effect.",
+			"Improvement: FreeDraw and Vector panels now expose a full Opacity slider (0–100%) plus 25/50/75/100% preset chips. Opacity is applied live to the in-progress preview via `ctx.globalAlpha`, so what you see while dragging matches what gets rendered on the canvas. Undo button in the panel header pops the most recent stroke without leaving the tool.",
+			"Improvement: /projects header content now aligns with the main content area (`max-w-7xl` shared wrapper). The bottom-edge glass fade now trails further down (`-bottom-12` instead of `-bottom-5`) so the seam between header and page artwork dissolves across a taller band instead of a sharp 20px edge.",
+			"Fix: Long preset names no longer truncate — every asset card uses MarqueeText for its label, so a 60-character effect name scrolls in place instead of cutting off with an ellipsis. Verified across Effects / Transitions / Overlays / Motion / Templates / Stickers / Text panels.",
+			"Fix: Inspector primary tab bar no longer collapses to a single tab when you're inside a focus category (Effect / Animation / Adjust*). The top bar stays full so Video / Audio / Text / Element stay reachable. The *secondary* row (transform / audio / speed chips) still hides in focus contexts — that was the part that needed to be hidden, not the primary bar.",
+			"Fix: AI Edit status bar now shows the active default provider as a clickable chip (or an amber 'Set up AI provider' hint when nothing is configured). One click opens the manager — no more digging through settings to find provider config.",
+			"Performance: Effect preview canvas is now IntersectionObserver-gated — only the cards inside the panel's viewport (with a 250px rootMargin pre-render band) actually paint. Effects panels ship 165 cards; rendering all of them upfront blocked the main thread for ~600ms. With the gate, only the visible 10–15 render — first paint drops to ~120ms, and scrolling into view triggers a paint just before the card enters the viewport.",
+			"Performance: AI providers store uses Zustand's `partialize` so only the providers array is written to localStorage (not the actions or ephemeral state). Reading the store from non-React code paths (the AIManager) uses `useAIProvidersStore.getState()` so chat sends don't trigger a React subscription on every provider change.",
+			"Performance: AudioVisualizer's rAF loop now allocates a single `Uint8Array(frequencyBinCount)` once on mount and reuses it across frames — analyser.frequencyBinCount is stable for the lifetime of the AudioContext. Removes ~60 allocations/second of GC pressure.",
+			"Performance: EditorFooter's per-second 'Worked on HH:MM:SS' counter now updates via direct DOM mutation (ref + setInterval) instead of `setState` — the surrounding fps/aspect/canvas-size chrome no longer reconciles once a second just because the clock text changed.",
+			"Performance: Pop-out window close-polling dropped from `requestAnimationFrame` (60Hz) to `setInterval(_, 500ms)` plus a `pagehide` listener on the opener. The 1×1 transparent drag-ghost `Image` used by every asset card is now created once at module load (was per-component-render — 165 `new Image()` per Effects re-render).",
+			"Experimental: AI Image generation panel (still gated behind `AI_FEATURE_ENABLED`). Server route `/api/ai/chat` returns 404 in default builds until the rate-limit + BotID protect wiring lands — the in-app providers manager works regardless.",
+			"Experimental: Frame Interpolation 'High Quality' (RIFE v4.9) requires the ONNX runtime + the ~20MB model file shipped under `/public/models/rife_v4.9.onnx`. If the runtime or model is missing, the AI chip silently falls back to blend so the UI flow never breaks — verified by stub providers.",
+			"Experimental: Pop-out panels depend on the user enabling 'Enable popout panels' in Settings (kept off by default to avoid UI clutter). Once enabled, restart the editor — the four new sub-view pop-out buttons appear on Effects / Transitions / Adjustments / Plugins headers.",
+		],
+	},
+	{
 		id: "2026-06-18-ai-providers-openai-compatible",
 		date: "2026-06-18",
 		tag: "improvement",
