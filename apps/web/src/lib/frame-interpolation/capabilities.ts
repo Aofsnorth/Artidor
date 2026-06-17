@@ -2,7 +2,8 @@
 
 import type { FrameInterpolationCapabilities } from "@/lib/timeline";
 
-let cached: FrameInterpolationCapabilities | null = null;
+let cachedValue: FrameInterpolationCapabilities | null = null;
+let cachedAt = 0;
 let detectionPromise: Promise<FrameInterpolationCapabilities> | null = null;
 
 const CACHE_DURATION_MS = 30_000;
@@ -41,19 +42,21 @@ async function detectHardware(): Promise<FrameInterpolationCapabilities> {
 }
 
 export async function getFrameInterpolationCapabilities(): Promise<FrameInterpolationCapabilities> {
-	if (cached && Date.now() - cached.cachedAt < CACHE_DURATION_MS) {
-		return cached.value;
+	if (cachedValue && Date.now() - cachedAt < CACHE_DURATION_MS) {
+		return cachedValue;
 	}
 	if (!detectionPromise) {
 		detectionPromise = detectHardware();
 	}
 	const value = await detectionPromise;
 	detectionPromise = null;
-	cached = { value, cachedAt: Date.now() };
+	cachedValue = value;
+	cachedAt = Date.now();
 	return value;
 }
 
 export function resetFrameInterpolationCache(): void {
-	cached = null;
+	cachedValue = null;
+	cachedAt = 0;
 	detectionPromise = null;
 }
