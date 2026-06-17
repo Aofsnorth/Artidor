@@ -6,6 +6,8 @@ import { createAudioContext, collectAudioClips } from "@/lib/media/audio";
 import {
 	buildAudioGainAutomation,
 	hasAnimatedVolume,
+	resolveEffectiveAudioGain,
+	type AudioCapableElement,
 } from "@/lib/timeline/audio-state";
 import { createAudioMasteringChain } from "@/lib/media/audio-mastering";
 import {
@@ -47,6 +49,7 @@ export class AudioManager {
 	private unsubscribers: Array<() => void> = [];
 	private analyserLeft: AnalyserNode | null = null;
 	private analyserRight: AnalyserNode | null = null;
+	private activeClipGains = new Map<string, Set<GainNode>>();
 
 	getAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
 		return { left: this.analyserLeft, right: this.analyserRight };
@@ -77,6 +80,7 @@ export class AudioManager {
 		this.disposeSinks();
 		this.preparedClipBuffers.clear();
 		this.decodedBuffers.clear();
+		this.activeClipGains.clear();
 		if (this.audioContext) {
 			void this.audioContext.close();
 			this.audioContext = null;
@@ -125,16 +129,112 @@ export class AudioManager {
 	};
 
 	private handleTimelineChange = (): void => {
+		if (!this.editor.playback.getIsPlaying()) {
+			this.disposeSinks();
+			this.preparedClipBuffers.clear();
+			this.decodedBuffers.clear();
+			return;
+		}
+
+		if (this.applyLiveAudioUpdates()) return;
+
+		this.restartPlayback();
+	};
+
+	private applyLiveAudioUpdates(): boolean {
+		const activeScene = this.editor.scenes.getActiveSceneOrNull();
+		if (!activeScene) return false;
+
+		const tracks = activeScene.tracks;
+		const currentElements = new Map<string, AudioCapableElement>();
+		for (const track of [tracks.main, ...tracks.overlay, ...tracks.audio]) {
+			for (const element of track.elements) {
+				if (element.type === "audio" || element.type === "video") {
+					currentElements.set(element.id, element);
+				}
+			}
+		}
+
+		if (currentElements.size !== this.clips.length) return false;
+
+		const TICK = TICKS_PER_SECOND;
+		for (const oldClip of this.clips) {
+			const next = currentElements.get(oldClip.id);
+			if (!next) return false;
+			if (oldClip.startTime !== next.startTime / TICK) return false;
+			if (oldClip.duration !== next.duration / TICK) return false;
+			if (oldClip.trimStart !== next.trimStart / TICK) return false;
+			if (oldClip.trimEnd !== next.trimEnd / TICK) return false;
+			const oldRetimeKey = oldClip.retime
+				? `${oldClip.retime.rate}|${oldClip.retime.mode ?? ""}|${oldClip.retime.maintainPitch ? 1 : 0}|${oldClip.retime.keyframes?.length ?? 0}`
+				: "";
+			const newRetimeKey = next.retime
+				? `${next.retime.rate}|${next.retime.mode ?? ""}|${next.retime.maintainPitch ? 1 : 0}|${next.retime.keyframes?.length ?? 0}`
+				: "";
+			if (oldRetimeKey !== newRetimeKey) return false;
+		}
+
+		const playbackTime =
+			this.editor.playback.getCurrentTime() / TICKS_PER_SECOND;
+		for (const oldClip of this.clips) {
+			const next = currentElements.get(oldClip.id);
+			if (!next) continue;
+			const newGain = resolveEffectiveAudioGain({
+				element: next,
+				localTime: Math.max(0, playbackTime - oldClip.startTime),
+			});
+			const newMuted = next.muted === true;
+			if (oldClip.volume === newGain && oldClip.muted === newMuted) continue;
+			oldClip.volume = newGain;
+			oldClip.muted = newMuted;
+			const gains = this.activeClipGains.get(oldClip.id);
+			if (!gains) continue;
+			for (const gain of gains) {
+				try {
+					gain.gain.cancelScheduledValues(0);
+					gain.gain.setValueAtTime(newMuted ? 0 : newGain, 0);
+				} catch {}
+			}
+		}
+		return true;
+	}
+
+	private restartPlayback(): void {
 		this.disposeSinks();
 		this.preparedClipBuffers.clear();
 		this.decodedBuffers.clear();
-
-		if (!this.editor.playback.getIsPlaying()) return;
-
 		void this.startPlayback({
 			time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
 		});
-	};
+	}
+
+	private registerClipGain({
+		clipId,
+		gain,
+	}: {
+		clipId: string;
+		gain: GainNode;
+	}): void {
+		let set = this.activeClipGains.get(clipId);
+		if (!set) {
+			set = new Set();
+			this.activeClipGains.set(clipId, set);
+		}
+		set.add(gain);
+	}
+
+	private unregisterClipGain({
+		clipId,
+		gain,
+	}: {
+		clipId: string;
+		gain: GainNode;
+	}): void {
+		const set = this.activeClipGains.get(clipId);
+		if (!set) return;
+		set.delete(gain);
+		if (set.size === 0) this.activeClipGains.delete(clipId);
+	}
 
 	private ensureAudioContext(): AudioContext | null {
 		if (this.audioContext) return this.audioContext;
@@ -259,6 +359,7 @@ export class AudioManager {
 			source.disconnect();
 		}
 		this.queuedSources.clear();
+		this.activeClipGains.clear();
 	}
 
 	private async runClipIterator({
@@ -323,6 +424,7 @@ export class AudioManager {
 				clipGain.gain.value = clip.volume;
 				node.connect(clipGain);
 				clipGain.connect(this.masterGain ?? audioContext.destination);
+				this.registerClipGain({ clipId: clip.id, gain: clipGain });
 
 				const startTimestamp =
 					this.playbackStartContextTime +
@@ -369,6 +471,7 @@ export class AudioManager {
 					node.disconnect();
 					clipGain.disconnect();
 					this.queuedSources.delete(node);
+					this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
 				});
 
 				const aheadTime = timelineTime - this.getPlaybackTime();
@@ -425,6 +528,7 @@ export class AudioManager {
 		const clipGain = audioContext.createGain();
 		node.connect(clipGain);
 		clipGain.connect(this.masterGain ?? audioContext.destination);
+		this.registerClipGain({ clipId: clip.id, gain: clipGain });
 
 		const startTimestamp =
 			this.playbackStartContextTime +
