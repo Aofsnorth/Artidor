@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import {
@@ -144,6 +144,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	}, [definition, editor, addTransition]);
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: card contains nested add button, so outer button would be invalid HTML
 		<div
 			role="button"
 			tabIndex={0}
@@ -185,22 +186,38 @@ function TransitionPreview({
 }: {
 	definition: TransitionDefinition;
 }) {
+	const id = useId().replaceAll(":", "");
+	const keyframeCss = definition.previewStyle({
+		duration: 1000,
+		direction: "cross",
+	});
+	const keyframeName = extractKeyframeName(keyframeCss);
+	const scopedName = keyframeName
+		? `${keyframeName}-${id}`
+		: `transition-preview-${id}`;
+	const scopedCss = keyframeName
+		? keyframeCss.replaceAll(keyframeName, scopedName)
+		: keyframeCss;
+
 	return (
 		<div
-			className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
+			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-black/35"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<div className="absolute inset-y-0 left-0 w-1/2 bg-gradient-to-br from-indigo-500/80 to-purple-500/80" />
-			<div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-tl from-cyan-400/80 to-blue-500/80" />
+			<div className="absolute inset-0 bg-gradient-to-br from-indigo-500/80 via-purple-500/70 to-pink-500/70" />
+			<div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.45),transparent_26%),linear-gradient(135deg,rgba(99,102,241,0.85),rgba(168,85,247,0.85))]" />
 			<div
-				className="absolute inset-0 z-10"
+				className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_70%_35%,rgba(255,255,255,0.42),transparent_24%),linear-gradient(135deg,rgba(34,211,238,0.9),rgba(59,130,246,0.88))] opacity-0 group-hover:opacity-100"
 				style={{
-					animation: `preview-${definition.type} 2s ease-in-out infinite alternate`,
+					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
 				}}
 			/>
-			<style>
-				{definition.previewStyle({ duration: 1000, direction: "cross" })}
-			</style>
+			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+			<style>{scopedCss}</style>
 		</div>
 	);
+}
+
+function extractKeyframeName(css: string): string | null {
+	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
 }
