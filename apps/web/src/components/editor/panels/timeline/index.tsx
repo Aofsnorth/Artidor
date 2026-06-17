@@ -19,15 +19,8 @@ import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
-	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useTimelineZoom } from "@/hooks/timeline/use-timeline-zoom";
 import {
 	useCallback,
@@ -353,7 +346,7 @@ export function Timeline() {
 		// time the duration changes, which is fine for correctness but
 		// adds churn. The handler reads the live ref value instead.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [timeline, setZoomLevel]);
+	}, [timeline, setZoomLevel, minZoomLevel]);
 
 	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
 
@@ -449,7 +442,7 @@ export function Timeline() {
 			container.removeEventListener("wheel", onWheel, { capture: true });
 			if (zoomRafId !== null) cancelAnimationFrame(zoomRafId);
 		};
-	}, [syncFollowers]);
+	}, [syncFollowers, saveScrollPosition, setZoomLevel]);
 
 	useInitialScrollBottom({
 		tracksScrollRef,
@@ -771,7 +764,7 @@ export function Timeline() {
 	);
 }
 
-function TimelineStatusFooter() {
+function _TimelineStatusFooter() {
 	const project = useEditor((e) => e.project.getActive());
 	const duration = useEditor((e) => e.timeline.getTotalDuration());
 	const seconds = Math.max(0, Math.round(duration / TICKS_PER_SECOND));
@@ -816,7 +809,7 @@ function formatCanvasAspect({
 	return `${width / divisor}:${height / divisor}`;
 }
 
-const ADD_TRACK_OPTIONS: Array<{
+const _ADD_TRACK_OPTIONS: Array<{
 	label: string;
 	type: TimelineTrack["type"];
 }> = [
@@ -881,7 +874,7 @@ function TrackLabelsPanel({
 	// column (rendered separately) can match the height of the actual
 	// track row when the user has dragged it taller or shorter.
 	const trackHeights = useTimelineStore((s) => s.trackHeights);
-	const resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
+	const _resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
 
 	const trackPrefixes = useMemo(() => {
 		if (!scene) return new Map<string, string>();
@@ -952,7 +945,7 @@ function TrackLabelsPanel({
 									overrideHeight: trackHeights[track.id],
 								});
 								const isLocked = lockedTrackIds.has(track.id);
-								const sliderValue = trackSliders[track.id] ?? 100;
+								const _sliderValue = trackSliders[track.id] ?? 100;
 
 								const isHidden =
 									track.type === "audio" ? track.muted : track.hidden;

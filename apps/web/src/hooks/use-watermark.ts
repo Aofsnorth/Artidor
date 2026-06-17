@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { toast } from "sonner";
 import type { TextElement, TimelineElement } from "@/lib/timeline";
-import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 
 /**
@@ -66,9 +65,7 @@ export function useWatermark() {
 					const track = editor.timeline.getTrackById({
 						trackId: ref.trackId,
 					});
-					const target = track?.elements.find(
-						(el) => el.id === ref.elementId,
-					);
+					const target = track?.elements.find((el) => el.id === ref.elementId);
 					if (!target) continue;
 					if (target.type !== "video" && target.type !== "image") {
 						// Watermarks can only be baked into visible media.
@@ -103,8 +100,7 @@ export function useWatermark() {
 			} catch (error) {
 				toast.error("Failed to apply watermark", {
 					id: "watermark-apply",
-					description:
-						error instanceof Error ? error.message : undefined,
+					description: error instanceof Error ? error.message : undefined,
 				});
 			} finally {
 				setIsProcessing(false);
@@ -140,12 +136,8 @@ function buildWatermarkElement({
 
 	// Anchor the watermark so its drawn corner sits at `anchor`
 	// (right-aligned for *-right, left-aligned for *-left).
-	const textAlign = config.position.endsWith("right")
-		? "right"
-		: "left";
-	const verticalAlign = config.position.startsWith("top")
-		? "top"
-		: "bottom";
+	const textAlign = config.position.endsWith("right") ? "right" : "left";
+	const _verticalAlign = config.position.startsWith("top") ? "top" : "bottom";
 
 	return {
 		id: crypto.randomUUID(),

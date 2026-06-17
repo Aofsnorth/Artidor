@@ -80,7 +80,7 @@ export function MarqueeText({
 		// array below handles re-runs on `children`, but RO catches
 		// font-load-driven reflows that don't change `children`).
 		return () => ro.disconnect();
-	}, [children, pxPerSecond, pauseRatio]);
+	}, [pxPerSecond, pauseRatio]);
 
 	const animationStyle: CSSProperties | undefined =
 		shouldScroll && duration > 0

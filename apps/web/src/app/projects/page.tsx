@@ -223,132 +223,130 @@ export default function ProjectsPage() {
 			   with the foreground cards. A dark gradient overlay
 			   layers on top to keep the chrome (white text on
 			   glass cards) legible. */}
-			<div className="relative flex h-screen flex-col overflow-hidden">
-				{/* Background layer — rendered sharp at native quality (no blur,
+				<div className="relative flex h-screen flex-col overflow-hidden">
+					{/* Background layer — rendered sharp at native quality (no blur,
 				   no upscale) so the artwork stays crisp. Negative z-index so
 				   the page chrome renders on top. */}
-				<div
-					aria-hidden
-					className="pointer-events-none absolute inset-0 -z-20"
-					style={{
-						backgroundImage: "url(/wallpaper/projects-covenant.webp)",
-						backgroundRepeat: "no-repeat",
-						backgroundSize: "cover",
-						backgroundPosition: "center",
-					}}
-				/>
-				{/* Dreamy atmospheric overlay — three soft radial
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 -z-20"
+						style={{
+							backgroundImage: "url(/wallpaper/projects-covenant.webp)",
+							backgroundRepeat: "no-repeat",
+							backgroundSize: "cover",
+							backgroundPosition: "center",
+						}}
+					/>
+					{/* Dreamy atmospheric overlay — three soft radial
 				   glows (cool indigo, warm amber, soft pink) that
 				   bloom across the artwork, evoking the "liminal
 				   dream" aesthetic. Plus a vignette at the edges
 				   so the centre pops. */}
-				<div
-					aria-hidden
-					className="pointer-events-none absolute inset-0 -z-10"
-					style={{
-						background: [
-							// Soft colour blooms
-							"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
-							"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
-							"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
-							// Edge vignette for cinematic depth
-							"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
-							// Top-to-bottom legibility wash
-							"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
-						].join(", "),
-					}}
-				/>
-				{/* Full-screen asset sync progress overlay */}
-				{syncState.status === "syncing-assets" && (
-					<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
-						<div className="flex flex-col items-center gap-4 max-w-sm w-full px-6 text-center">
-							<div className="size-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-							<h2 className="text-lg font-semibold text-white tracking-wide">
-								Syncing Google Drive Folder
-							</h2>
-							<p className="text-xs text-white/55 min-h-8 truncate w-full">
-								{syncState.message}
-							</p>
-							<div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-2 relative">
-								<div
-									className="bg-white h-full transition-all duration-300 rounded-full"
-									style={{ width: `${syncState.progress}%` }}
-								/>
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 -z-10"
+						style={{
+							background: [
+								// Soft colour blooms
+								"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
+								"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
+								"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
+								// Edge vignette for cinematic depth
+								"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
+								// Top-to-bottom legibility wash
+								"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
+							].join(", "),
+						}}
+					/>
+					{/* Full-screen asset sync progress overlay */}
+					{syncState.status === "syncing-assets" && (
+						<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
+							<div className="flex flex-col items-center gap-4 max-w-sm w-full px-6 text-center">
+								<div className="size-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+								<h2 className="text-lg font-semibold text-white tracking-wide">
+									Syncing Google Drive Folder
+								</h2>
+								<p className="text-xs text-white/55 min-h-8 truncate w-full">
+									{syncState.message}
+								</p>
+								<div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mt-2 relative">
+									<div
+										className="bg-white h-full transition-all duration-300 rounded-full"
+										style={{ width: `${syncState.progress}%` }}
+									/>
+								</div>
+								<span className="text-xs font-mono text-white/40">
+									{syncState.progress}% complete
+								</span>
 							</div>
-							<span className="text-xs font-mono text-white/40">
-								{syncState.progress}% complete
-							</span>
 						</div>
-					</div>
-				)}
-				<MigrationDialog />
-				<StoragePersistenceDialog />
-				<ChangelogNotification />
-				<ProjectsHeader />
-				<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
-				<main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
-					{isLoading || !isInitialized ? (
-						<ProjectsSkeleton />
-					) : projectsToDisplay.length === 0 ? (
-						/* The empty state is centered in the available area.
+					)}
+					<MigrationDialog />
+					<StoragePersistenceDialog />
+					<ChangelogNotification />
+					<ProjectsHeader />
+					<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
+					<main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
+						{isLoading || !isInitialized ? (
+							<ProjectsSkeleton />
+						) : projectsToDisplay.length === 0 ? (
+							/* The empty state is centered in the available area.
 						   `flex-1` spacers above and below split the leftover
 						   vertical space so the card sits exactly in the
 						   visual centre of the viewport, regardless of
 						   viewport height. `overflow-auto` is a safety net. */
-						<div className="flex flex-1 min-h-0 flex-col items-center overflow-auto pb-2">
-							<div className="flex-1" />
-							<EmptyState onCreateNew={createNewProject} />
-							<div className="flex-1" />
-						</div>
-					) : (
-						<>
-							{/* Workspace overview — only when there are projects
+							<div className="flex flex-1 min-h-0 flex-col items-center overflow-auto pb-2">
+								<div className="flex-1" />
+								<EmptyState onCreateNew={createNewProject} />
+								<div className="flex-1" />
+							</div>
+						) : (
+							<>
+								{/* Workspace overview — only when there are projects
 							   to summarise. The empty state owns the screen
 							   otherwise, no need for stats on a blank page. */}
-							<StatsOverview projects={allProjects} />
-							{/* `flex-1 min-h-0 overflow-auto` lets the grid take
+								<StatsOverview projects={allProjects} />
+								{/* `flex-1 min-h-0 overflow-auto` lets the grid take
 							   whatever vertical space is left and scroll
 							   internally if a project count overflows the
 							   viewport. The page chrome (header, toolbar,
 							   stats) stays locked at the top; only the cards
 							   themselves scroll when there are too many to
 							   fit. */}
-							<div
-								className={
-									"flex-1 min-h-0 overflow-auto " +
-									(viewMode === "grid"
-										? "xs:grid-cols-2 grid grid-cols-1 gap-4 content-start sm:grid-cols-3 lg:grid-cols-4 px-4"
-										: "flex flex-col gap-2")
-								}
-							>
-								{projectsToDisplay.map((project) => (
-									<ProjectItem
-										key={project.id}
-										project={project}
-										allProjectIds={projectsToDisplay.map((p) => p.id)}
-									/>
-								))}
-							</div>
-						</>
-					)}
-				</main>
-			</div>
+								<div
+									className={
+										"flex-1 min-h-0 overflow-auto " +
+										(viewMode === "grid"
+											? "xs:grid-cols-2 grid grid-cols-1 gap-4 content-start sm:grid-cols-3 lg:grid-cols-4 px-4"
+											: "flex flex-col gap-2")
+									}
+								>
+									{projectsToDisplay.map((project) => (
+										<ProjectItem
+											key={project.id}
+											project={project}
+											allProjectIds={projectsToDisplay.map((p) => p.id)}
+										/>
+									))}
+								</div>
+							</>
+						)}
+					</main>
+				</div>
 
-			{/* Settings button — fixed bottom-right corner */}
-			<ProjectsSettingsButton />
+				{/* Settings button — fixed bottom-right corner */}
+				<ProjectsSettingsButton />
 
-			<Suspense fallback={null}>
-				<ProjectsSettingsDialog />
-			</Suspense>
-		</PageTransition>
+				<Suspense fallback={null}>
+					<ProjectsSettingsDialog />
+				</Suspense>
+			</PageTransition>
 		</MobileGate>
 	);
 }
 
 function ProjectsSettingsDialog() {
-	const isSettingsOpen = useOpenDialogsStore(
-		(s) => s.open.settings ?? false,
-	);
+	const isSettingsOpen = useOpenDialogsStore((s) => s.open.settings ?? false);
 	const setOpen = useOpenDialogsStore((s) => s.setOpen);
 
 	return (

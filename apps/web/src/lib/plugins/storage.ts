@@ -18,10 +18,7 @@ function openDb(): Promise<IDBDatabase> {
 	});
 }
 
-function tx(
-	db: IDBDatabase,
-	mode: IDBTransactionMode,
-): IDBObjectStore {
+function tx(db: IDBDatabase, mode: IDBTransactionMode): IDBObjectStore {
 	return db.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
 }
 

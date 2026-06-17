@@ -10,7 +10,9 @@ export function useElementPlayhead({
 	duration: number;
 }) {
 	const editor = useEditor();
-	const [playheadTime, setPlayheadTime] = useState(() => editor.playback.getCurrentTime());
+	const [playheadTime, setPlayheadTime] = useState(() =>
+		editor.playback.getCurrentTime(),
+	);
 
 	useEffect(() => {
 		const handlePlaybackUpdate = (e: Event) => {

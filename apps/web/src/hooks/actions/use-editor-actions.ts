@@ -808,7 +808,7 @@ export function useEditorActions() {
 				const logBase = Math.log1p(1);
 
 				const newBookmarks = [...(element.bookmarks ?? [])];
-				const blockDurationTicks = (TICKS_PER_SECOND * 256) / 44100; // rough approximation, PEAK_BLOCK_SIZE=256 and ~44100 sampleRate
+				const _blockDurationTicks = (TICKS_PER_SECOND * 256) / 44100; // rough approximation, PEAK_BLOCK_SIZE=256 and ~44100 sampleRate
 
 				// Scan for beats using the same heuristic as the visualizer
 				for (let i = 1; i < peaks.length - 1; i++) {

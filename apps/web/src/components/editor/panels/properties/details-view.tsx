@@ -28,7 +28,6 @@ import {
 	Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
 import { usePropertiesStore } from "./stores/properties-store";
 import { formatDate } from "@/utils/date";

@@ -46,8 +46,7 @@ export function PageShell({
 				aria-hidden
 				className="pointer-events-none absolute inset-0 -z-20 min-h-screen"
 				style={{
-					backgroundImage:
-						"url(/wallpaper/hero-fantasy-2x.webp)",
+					backgroundImage: "url(/wallpaper/hero-fantasy-2x.webp)",
 					backgroundRepeat: "no-repeat",
 					backgroundSize: "cover",
 					backgroundPosition: "center 30%",

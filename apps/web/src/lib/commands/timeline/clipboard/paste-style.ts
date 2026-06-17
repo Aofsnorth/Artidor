@@ -47,7 +47,8 @@ export class PasteStyleCommand extends Command {
 				tracks: updatedTracks,
 				trackId: target.trackId,
 				elementId: target.elementId,
-				update: (element) => applyStyleToElement({ element, style: this.style }),
+				update: (element) =>
+					applyStyleToElement({ element, style: this.style }),
 			});
 		}
 

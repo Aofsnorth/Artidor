@@ -14,11 +14,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type FloatablePanelId =
-	| "assets"
-	| "preview"
-	| "properties"
-	| "timeline";
+export type FloatablePanelId = "assets" | "preview" | "properties" | "timeline";
 
 export interface FloatingPanelState {
 	x: number;
@@ -29,10 +25,7 @@ export interface FloatingPanelState {
 
 const FLOATING_PANEL_MIN_SIZE = { width: 280, height: 220 };
 
-const DEFAULT_FLOATING_PANELS: Record<
-	FloatablePanelId,
-	FloatingPanelState
-> = {
+const DEFAULT_FLOATING_PANELS: Record<FloatablePanelId, FloatingPanelState> = {
 	assets: { x: 80, y: 80, width: 360, height: 600 },
 	preview: { x: 200, y: 100, width: 720, height: 480 },
 	properties: { x: 360, y: 120, width: 320, height: 600 },
@@ -145,4 +138,3 @@ export const useEditorUIStore = create<EditorUIStore>()(
 		},
 	),
 );
-

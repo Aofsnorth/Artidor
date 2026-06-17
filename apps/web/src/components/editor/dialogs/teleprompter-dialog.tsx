@@ -61,8 +61,7 @@ export function TeleprompterDialog({
 				const dtMs = now - last;
 				const container = scrollRef.current;
 				if (container) {
-					container.scrollTop +=
-						(scrollSpeedPxPerSec * dtMs) / 1000;
+					container.scrollTop += (scrollSpeedPxPerSec * dtMs) / 1000;
 					// Loop back to the top when we reach the bottom so
 					// the user can keep recording without restarting.
 					if (
@@ -101,8 +100,8 @@ export function TeleprompterDialog({
 						Teleprompter
 					</DialogTitle>
 					<DialogDescription className="text-white/55">
-						Read your script while recording. The text scrolls
-						automatically when you press play.
+						Read your script while recording. The text scrolls automatically
+						when you press play.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -124,9 +123,7 @@ export function TeleprompterDialog({
 								min={20}
 								max={80}
 								value={fontSizePx}
-								onChange={(event) =>
-									setFontSizePx(Number(event.target.value))
-								}
+								onChange={(event) => setFontSizePx(Number(event.target.value))}
 								className="w-28 accent-white"
 							/>
 							<span className="tabular-nums">{fontSizePx}px</span>
@@ -146,9 +143,7 @@ export function TeleprompterDialog({
 								}
 								className="w-28 accent-white"
 							/>
-							<span className="tabular-nums">
-								{scrollSpeedPxPerSec}px/s
-							</span>
+							<span className="tabular-nums">{scrollSpeedPxPerSec}px/s</span>
 						</label>
 
 						<Button
@@ -188,11 +183,7 @@ export function TeleprompterDialog({
 						>
 							Cancel
 						</Button>
-						<Button
-							variant="default"
-							size="sm"
-							onClick={handleSave}
-						>
+						<Button variant="default" size="sm" onClick={handleSave}>
 							Save script
 						</Button>
 					</div>

@@ -27,8 +27,7 @@ export function FreehandDrawOverlay({ points }: FreehandDrawOverlayProps) {
 
 		// Simplify + smooth the same way the committed path will be, so
 		// the live preview matches the final shape 1:1.
-		const simplified =
-			points.length > 4 ? simplifyPath(points, 2) : points;
+		const simplified = points.length > 4 ? simplifyPath(points, 2) : points;
 		const d = pointsToSvgPath(simplified);
 
 		// Compute the path's bounding box for a tight viewBox

@@ -107,8 +107,8 @@ export function buildDistortionCurve({
 	type: DistortionType;
 	amount: number;
 	samples?: number;
-}): Float32Array {
-	const curve = new Float32Array(samples);
+}): Float32Array<ArrayBuffer> {
+	const curve = new Float32Array(new ArrayBuffer(samples * 4));
 	const k = amount * 100;
 
 	for (let i = 0; i < samples; i++) {

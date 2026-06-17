@@ -10,11 +10,7 @@ import type {
 import type { Command } from "@/lib/commands/base-command";
 import type { Effect } from "@/lib/effects/types";
 import type { Mask } from "@/lib/masks/types";
-import type {
-	BlendMode,
-	Transform,
-	Transform3D,
-} from "@/lib/rendering";
+import type { BlendMode, Transform, Transform3D } from "@/lib/rendering";
 import type {
 	CreateTimelineElement,
 	ElementRef,

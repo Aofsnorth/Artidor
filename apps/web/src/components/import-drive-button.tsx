@@ -123,7 +123,7 @@ function ImportDriveDialog({
 		setError(null);
 
 		try {
-			const token = await initiateGoogleOAuth();
+			const _token = await initiateGoogleOAuth();
 			setHasToken(true);
 			toast.success("Signed in with Google successfully!");
 		} catch (err) {

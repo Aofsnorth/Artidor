@@ -20,7 +20,11 @@ export interface Point {
 // Ramer-Douglas-Peucker simplification
 // ---------------------------------------------------------------------------
 
-function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): number {
+function perpendicularDistance(
+	point: Point,
+	lineStart: Point,
+	lineEnd: Point,
+): number {
 	const dx = lineEnd.x - lineStart.x;
 	const dy = lineEnd.y - lineStart.y;
 	const lengthSq = dx * dx + dy * dy;
@@ -32,7 +36,8 @@ function perpendicularDistance(point: Point, lineStart: Point, lineEnd: Point): 
 		return Math.sqrt(ex * ex + ey * ey);
 	}
 
-	const t = ((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / lengthSq;
+	const t =
+		((point.x - lineStart.x) * dx + (point.y - lineStart.y) * dy) / lengthSq;
 	const clampedT = Math.max(0, Math.min(1, t));
 	const projX = lineStart.x + clampedT * dx;
 	const projY = lineStart.y + clampedT * dy;
@@ -114,12 +119,12 @@ export function pointsToSvgPath(
 		const p3 = points[Math.min(n - 1, i + 2)];
 
 		// Control point 1: tangent at p1
-		const cp1x = p1.x + (p2.x - p0.x) * alpha / 6;
-		const cp1y = p1.y + (p2.y - p0.y) * alpha / 6;
+		const cp1x = p1.x + ((p2.x - p0.x) * alpha) / 6;
+		const cp1y = p1.y + ((p2.y - p0.y) * alpha) / 6;
 
 		// Control point 2: tangent at p2
-		const cp2x = p2.x - (p3.x - p1.x) * alpha / 6;
-		const cp2y = p2.y - (p3.y - p1.y) * alpha / 6;
+		const cp2x = p2.x - ((p3.x - p1.x) * alpha) / 6;
+		const cp2y = p2.y - ((p3.y - p1.y) * alpha) / 6;
 
 		parts.push(
 			`C ${fmt(cp1x)} ${fmt(cp1y)}, ${fmt(cp2x)} ${fmt(cp2y)}, ${fmt(p2.x)} ${fmt(p2.y)}`,

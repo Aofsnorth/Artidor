@@ -318,17 +318,29 @@ function EditorPanels() {
 
 			{/* Floating window overlays for any detached panels */}
 			{floatingPanels.assets && (
-				<FloatingWindow id="assets" title="Assets" state={floatingPanels.assets}>
+				<FloatingWindow
+					id="assets"
+					title="Assets"
+					state={floatingPanels.assets}
+				>
 					<AssetsPanel />
 				</FloatingWindow>
 			)}
 			{floatingPanels.preview && (
-				<FloatingWindow id="preview" title="Preview" state={floatingPanels.preview}>
+				<FloatingWindow
+					id="preview"
+					title="Preview"
+					state={floatingPanels.preview}
+				>
 					<PreviewPanel />
 				</FloatingWindow>
 			)}
 			{floatingPanels.properties && (
-				<FloatingWindow id="properties" title="Properties" state={floatingPanels.properties}>
+				<FloatingWindow
+					id="properties"
+					title="Properties"
+					state={floatingPanels.properties}
+				>
 					<div className="flex h-full min-h-0 items-stretch gap-2 p-1">
 						<div className="flex-1 min-w-0">
 							<PropertiesPanel />
@@ -338,7 +350,11 @@ function EditorPanels() {
 				</FloatingWindow>
 			)}
 			{floatingPanels.timeline && (
-				<FloatingWindow id="timeline" title="Timeline" state={floatingPanels.timeline}>
+				<FloatingWindow
+					id="timeline"
+					title="Timeline"
+					state={floatingPanels.timeline}
+				>
 					<Timeline />
 				</FloatingWindow>
 			)}

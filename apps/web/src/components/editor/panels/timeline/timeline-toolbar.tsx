@@ -21,7 +21,6 @@ import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
-	ArrowShrinkIcon,
 	Bookmark01Icon,
 	Bookmark02Icon,
 	Camera01Icon,
@@ -37,8 +36,6 @@ import {
 	Maximize01Icon,
 	MagnetIcon,
 	MusicNote03Icon,
-	RefreshIcon,
-	RepeatIcon,
 	ScissorIcon,
 	SnowIcon,
 	Square01Icon,

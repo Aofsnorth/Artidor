@@ -6,10 +6,7 @@ import {
 	type CopyContext,
 	type PasteContext,
 } from "@/lib/clipboard";
-import type {
-	ElementStyle,
-	StyleClipboardEntry,
-} from "@/lib/clipboard/types";
+import type { ElementStyle, StyleClipboardEntry } from "@/lib/clipboard/types";
 import { PasteStyleCommand } from "@/lib/commands/timeline/clipboard";
 import type { TimelineElement } from "@/lib/timeline";
 import type { ParamValues } from "@/lib/params";
@@ -124,7 +121,11 @@ export class ClipboardManager {
 	 * Store a single effect in the effect clipboard slot. Called from the
 	 * effects tab when the user clicks "Copy effect" on an effect card.
 	 */
-	copyEffect(effect: { type: string; params: ParamValues; enabled: boolean }): boolean {
+	copyEffect(effect: {
+		type: string;
+		params: ParamValues;
+		enabled: boolean;
+	}): boolean {
 		this.effectEntry = {
 			type: effect.type,
 			params: { ...effect.params },
