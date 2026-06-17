@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/components/editor/dialogs/migration-dialog";
 import { StoragePersistenceDialog } from "@/components/editor/dialogs/storage-persistence-dialog";
+import { storageService } from "@/services/storage/service";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +58,8 @@ import {
 	InformationCircleIcon,
 	LayoutGridIcon,
 	Settings01Icon,
+	FileExportIcon,
+	StarIcon,
 } from "@hugeicons/core-free-icons";
 import { Label } from "@/components/ui/label";
 import {
@@ -762,16 +765,89 @@ function NewProjectButton() {
 		router.push(`/editor/${projectId}`);
 	};
 
+	const handleCreatePreset = async () => {
+		const projectId = await editor.project.createNewProject({
+			name: "Preset",
+		});
+		router.push(`/editor/${projectId}`);
+	};
+
+	const handleImportProject = async () => {
+		const input = document.createElement("input");
+		input.type = "file";
+		input.accept = ".artidor,.json";
+		input.onchange = async (e) => {
+			const file = (e.target as HTMLInputElement).files?.[0];
+			if (!file) return;
+			try {
+				const text = await file.text();
+				const data = JSON.parse(text);
+				if (data?.metadata && data.scenes) {
+					const projectId = await editor.project.createNewProject({
+						name: data.metadata.name || file.name.replace(/\.[^/.]+$/, ""),
+					});
+					// Overwrite the new project's data with the imported data
+					const existingMeta = editor.project
+						.getSavedProjects()
+						.find((p) => p.id === projectId);
+					if (existingMeta) {
+						const fullProject = await storageService.loadProject({
+							id: existingMeta.id,
+						});
+						if (fullProject?.project) {
+							fullProject.project.scenes = data.scenes;
+							fullProject.project.settings =
+								data.settings || fullProject.project.settings;
+							fullProject.project.metadata.name =
+								data.metadata.name || fullProject.project.metadata.name;
+							await storageService.saveProject({
+								project: fullProject.project,
+							});
+							editor.project.loadAllProjects();
+							toast.success("Project imported");
+							router.push(`/editor/${fullProject.project.metadata.id}`);
+						}
+					}
+				} else {
+					toast.error("Invalid project file");
+				}
+			} catch (_err) {
+				toast.error("Failed to import project");
+			}
+		};
+		input.click();
+	};
+
 	return (
-		<Button
-			size="lg"
-			className="h-9 gap-1.5 rounded-full bg-white px-4 text-[12.5px] font-medium text-[#0a0a0c] shadow-[0_4px_16px_rgba(255,255,255,0.18)] hover:bg-white/90"
-			onClick={handleCreateProject}
-		>
-			<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-			<span className="hidden sm:inline">New project</span>
-			<span className="sm:hidden">New</span>
-		</Button>
+		<div className="flex items-center gap-2">
+			<Button
+				size="lg"
+				variant="outline"
+				className="h-9 gap-1.5 rounded-full px-4 text-[12.5px] font-medium"
+				onClick={handleImportProject}
+			>
+				<span className="hidden sm:inline">Import</span>
+				<span className="sm:hidden">In</span>
+			</Button>
+			<Button
+				size="lg"
+				variant="outline"
+				className="h-9 gap-1.5 rounded-full px-4 text-[12.5px] font-medium"
+				onClick={handleCreatePreset}
+			>
+				<span className="hidden sm:inline">New Preset</span>
+				<span className="sm:hidden">Preset</span>
+			</Button>
+			<Button
+				size="lg"
+				className="h-9 gap-1.5 rounded-full bg-white px-4 text-[12.5px] font-medium text-[#0a0a0c] shadow-[0_4px_16px_rgba(255,255,255,0.18)] hover:bg-white/90"
+				onClick={handleCreateProject}
+			>
+				<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
+				<span className="hidden sm:inline">New project</span>
+				<span className="sm:hidden">New</span>
+			</Button>
+		</div>
 	);
 }
 
@@ -1004,6 +1080,7 @@ function ProjectItem({
 					</div>
 				</ContextMenuTrigger>
 				<ProjectContextMenuContent
+					projectId={project.id}
 					onRenameClick={handleRename}
 					onDuplicateClick={handleDuplicate}
 					onDeleteClick={handleDeleteClick}
@@ -1042,12 +1119,55 @@ function ProjectContextMenuContent({
 	onDuplicateClick,
 	onDeleteClick,
 	onInfoClick,
+	projectId,
 }: {
 	onRenameClick: () => void;
 	onDuplicateClick: () => void;
 	onDeleteClick: () => void;
 	onInfoClick: () => void;
+	projectId: string;
 }) {
+	const editor = useEditor();
+	const handleExportProject = async () => {
+		try {
+			const fullProject = await storageService.loadProject({ id: projectId });
+			if (!fullProject?.project) {
+				toast.error("Failed to load project for export");
+				return;
+			}
+			const json = JSON.stringify(fullProject.project, null, 2);
+			const blob = new Blob([json], { type: "application/json" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `${fullProject.project.metadata.name || "project"}.artidor`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+			toast.success("Project exported");
+		} catch (_err) {
+			toast.error("Failed to export project");
+		}
+	};
+
+	const handleConvertToPreset = async () => {
+		try {
+			const fullProject = await storageService.loadProject({ id: projectId });
+			if (!fullProject?.project) {
+				toast.error("Failed to load project for preset");
+				return;
+			}
+			// Save as a template (using a custom flag since TProjectMetadata is strict)
+			fullProject.project.metadata.name = `Preset: ${fullProject.project.metadata.name}`;
+			await storageService.saveProject({ project: fullProject.project });
+			editor.project.loadAllProjects();
+			toast.success("Project converted to preset");
+		} catch (_err) {
+			toast.error("Failed to convert project to preset");
+		}
+	};
+
 	return (
 		<ContextMenuContent>
 			<ContextMenuItem
@@ -1061,6 +1181,18 @@ function ProjectContextMenuContent({
 				onClick={onDuplicateClick}
 			>
 				Duplicate
+			</ContextMenuItem>
+			<ContextMenuItem
+				icon={<HugeiconsIcon icon={FileExportIcon} />}
+				onClick={handleExportProject}
+			>
+				Export
+			</ContextMenuItem>
+			<ContextMenuItem
+				icon={<HugeiconsIcon icon={StarIcon} />}
+				onClick={handleConvertToPreset}
+			>
+				Convert to Preset
 			</ContextMenuItem>
 			<ContextMenuItem
 				icon={<HugeiconsIcon icon={InformationCircleIcon} />}
