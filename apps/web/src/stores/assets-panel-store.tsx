@@ -20,6 +20,7 @@ import {
 	FilterIcon,
 	AiBrain01Icon,
 	SourceCodeIcon,
+	BookmarkAdd02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -37,6 +38,7 @@ export const TAB_KEYS = [
 	"adjustment",
 	"animations",
 	"templates",
+	"presets",
 	"plugins",
 	"sounds",
 	"stickers",
@@ -59,6 +61,7 @@ export const VISIBLE_TAB_KEYS = [
 	"motion",
 	"adjustment",
 	"templates",
+	"presets",
 	"plugins",
 	"scripting",
 	"settings",
@@ -128,6 +131,10 @@ export const tabs = {
 	templates: {
 		icon: createHugeiconsIcon({ icon: LayoutGridIcon }),
 		label: "Templates",
+	},
+	presets: {
+		icon: createHugeiconsIcon({ icon: BookmarkAdd02Icon }),
+		label: "Presets",
 	},
 	quicktools: {
 		icon: createHugeiconsIcon({ icon: SparklesIcon }),

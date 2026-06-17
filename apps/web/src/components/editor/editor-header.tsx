@@ -27,6 +27,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
+import { SavePresetDialog } from "./dialogs/save-preset-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
 
@@ -300,6 +301,7 @@ function ProjectDropdown() {
 				isOpen={openDialog === "shortcuts"}
 				onOpenChange={(isOpen) => setOpenDialog(isOpen ? "shortcuts" : null)}
 			/>
+			<SavePresetDialog />
 		</>
 	);
 }
