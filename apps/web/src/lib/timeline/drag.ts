@@ -37,9 +37,23 @@ export interface EffectDragData extends BaseDragData {
 	targetElementTypes: VisualElement["type"][];
 }
 
+/**
+ * Drag payload for user-saved presets (a single layer, a group, or an
+ * animated layer captured via "Save to preset" on a timeline element).
+ * The drop handler reads the preset from IndexedDB by id and inserts
+ * the layer(s) at the drop time using the existing `PasteCommand`
+ * pipeline — so style / transform / animation / effect / timing all
+ * round-trip without re-encoding.
+ */
+export interface PresetDragData extends BaseDragData {
+	type: "preset";
+	presetId: string;
+}
+
 export type TimelineDragData =
 	| MediaDragData
 	| TextDragData
 	| StickerDragData
 	| GraphicDragData
-	| EffectDragData;
+	| EffectDragData
+	| PresetDragData;

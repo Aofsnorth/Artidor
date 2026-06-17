@@ -13,7 +13,11 @@ import {
 	buildElementFromMedia,
 	buildEffectElement,
 } from "@/lib/timeline/element-utils";
-import { AddTrackCommand, InsertElementCommand } from "@/lib/commands/timeline";
+import {
+	AddTrackCommand,
+	InsertElementCommand,
+	PasteCommand,
+} from "@/lib/commands/timeline";
 import { BatchCommand } from "@/lib/commands";
 import { computeDropTarget } from "@/components/editor/panels/timeline/drop-target";
 import { getDragData, hasDragData } from "@/lib/drag-data";
@@ -23,10 +27,13 @@ import type {
 	GraphicDragData,
 	StickerDragData,
 	EffectDragData,
+	PresetDragData,
 	TextDragData,
 } from "@/lib/timeline/drag";
 import { textPresets } from "@/lib/text/presets";
 import { DEFAULTS } from "@/lib/timeline/defaults";
+import { usePresetsStore } from "@/stores/presets-store";
+import { presetToClipboardItems } from "@/lib/presets";
 
 /**
  * Sensible defaults applied when a text drag carries only `name`/`content`
@@ -502,6 +509,37 @@ export function useTimelineDragDrop({
 		[editor],
 	);
 
+	/**
+	 * Drop handler for user-saved presets. Pulls the preset out of the
+	 * presets store by id, hands the layer(s) to `presetToClipboardItems`
+	 * to mint fresh element + track ids, and runs the existing
+	 * `PasteCommand` at the drop time. Style, transform, animation,
+	 * effect, and timing all round-trip because the preset already
+	 * stores the full element minus its id.
+	 */
+	const executePresetDrop = useCallback(
+		({
+			target,
+			dragData,
+		}: {
+			target: DropTarget;
+			dragData: PresetDragData;
+		}) => {
+			const preset = usePresetsStore
+				.getState()
+				.presets.find((p) => p.id === dragData.presetId);
+			if (!preset) return;
+
+			const clipboardItems = presetToClipboardItems({ preset });
+			const insertCmd = new PasteCommand({
+				time: target.xPosition,
+				clipboardItems,
+			});
+			editor.command.execute({ command: insertCmd });
+		},
+		[editor],
+	);
+
 	const executeFileDrop = useCallback(
 		async ({
 			files,
@@ -644,6 +682,11 @@ export function useTimelineDragDrop({
 							target: currentTarget,
 							dragData: dragData as EffectDragData,
 						});
+					} else if (dragData.type === "preset") {
+						executePresetDrop({
+							target: currentTarget,
+							dragData: dragData as PresetDragData,
+						});
 					} else {
 						executeMediaDrop({ target: currentTarget, dragData });
 					}
@@ -677,6 +720,7 @@ export function useTimelineDragDrop({
 			executeStickerDrop,
 			executeMediaDrop,
 			executeEffectDrop,
+			executePresetDrop,
 			executeFileDrop,
 			containerRef,
 			headerRef,

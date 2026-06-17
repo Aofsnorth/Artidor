@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-preset-tools-rewrite",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Preset Tools: drag-and-drop, context menu, inline rename",
+		items: [
+			"Preset Tools panel: cards now respond to drag-and-drop in addition to click-insert. Drag a preset onto the timeline to drop it at the exact cursor time, or click to insert it at the playhead.",
+			"Right-click any preset card to get a context menu with Apply preset, Rename, and Delete — matches the rest of the asset library.",
+			"Inline rename: click the preset name (or the pencil button) to edit it in place. Enter commits, Escape cancels, blur auto-saves.",
+			"Kind badge (Element / Group / Animation) sits in the top-left of every card so you can see what the preset contains at a glance.",
+			"Save-to-preset flow already supported single element, group, and animated layers via the timeline right-click → Save as preset. The drop handler now mirrors that — preset dragged onto the timeline reuses the same `PasteCommand` pipeline so style, transform, animation, effect, and timing all round-trip without re-encoding.",
+		],
+	},
+	{
 		id: "2026-06-18-inspector-layout-polish",
 		date: "2026-06-18",
 		tag: "improvement",
