@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-ai-providers-openai-compatible",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "AI: manage OpenAI-compatible providers from the editor",
+		items: [
+			"AI Edit panel now has a built-in providers manager — open it from the provider chip in the status bar. Add, edit, delete, enable/disable, and 'Set as default' any provider. Configs persist to localStorage so the next session opens with the same setup.",
+			"Two provider kinds: 'OpenAI-compatible' (covers OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM, llama.cpp server — anything that speaks `/v1/chat/completions`) and 'Ollama' (local, no API key required, defaults to `http://127.0.0.1:11434/v1`). Add custom base URLs and pick your own model name on the fly.",
+			"One-tap Test button on every provider card: POSTs a 1-token probe (`max_tokens=1`, no LLM billing beyond that) to the configured endpoint. The response carries back latency + a clear, actionable error string — 'Check the API key' for 401, 'Check the base URL and model name' for 404, 'try again shortly' for 429, 'connection timed out after 15s' for network drops. The card shows a green check or red dot per the last result.",
+			"The chat route now accepts an optional `provider` field in the request body. When the user has a default provider configured, every chat request sends that provider's baseUrl / apiKey / model so the server can use the client-managed endpoint instead of the server's env-var resolution. The env-var path still works for no-config deploys.",
+			"AI Edit status bar now shows the active default provider as a chip (or an amber 'Set up AI provider' hint when nothing is configured). One click opens the manager.",
+		],
+	},
+	{
 		id: "2026-06-18-speed-frame-quality-presets",
 		date: "2026-06-18",
 		tag: "improvement",

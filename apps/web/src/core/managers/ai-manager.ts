@@ -26,6 +26,7 @@ import {
 	useAIStore,
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
+import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import type { FrameRate } from "artidor-wasm";
 
@@ -34,6 +35,30 @@ export interface SendOptions {
 	text: string;
 	/** Optional override of the assistant id (mostly for tests). */
 	assistantMessageId?: string;
+}
+
+/**
+ * Read the user's currently-active AI provider from the
+ * `useAIProvidersStore` (a plain Zustand store, not React-bound) so
+ * the chat request can include its baseUrl/apiKey/model. Returns
+ * `null` when the user has no providers configured — in which case
+ * the server falls back to its env-var provider.
+ */
+function getDefaultProvider(): {
+	baseUrl: string;
+	apiKey: string;
+	model: string;
+	kind: "openai-compatible" | "ollama";
+} | null {
+	const state = useAIProvidersStore.getState();
+	const provider = state.getDefault();
+	if (!provider) return null;
+	return {
+		baseUrl: provider.baseUrl,
+		apiKey: provider.apiKey,
+		model: provider.model,
+		kind: provider.kind,
+	};
 }
 
 export class AIManager {
@@ -121,7 +146,9 @@ export class AIManager {
 				return { role: m.role, content: m.content };
 			});
 
-		// Make the request.
+		// Make the request. Include the user's selected provider config so
+		// the server uses the client-managed endpoint rather than env vars.
+		const providerConfig = getDefaultProvider();
 		let res: Response;
 		try {
 			res = await fetch("/api/ai/chat", {
@@ -132,6 +159,16 @@ export class AIManager {
 					context: this.snapshotContext(),
 					recentEvents: recent,
 					styleProfile: ai.styleProfile,
+					// Pass the provider config only when there is one — when
+					// absent the server falls back to env-var resolution.
+					provider: providerConfig
+						? {
+								baseUrl: providerConfig.baseUrl,
+								apiKey: providerConfig.apiKey,
+								model: providerConfig.model,
+								kind: providerConfig.kind,
+							}
+						: undefined,
 				}),
 			});
 		} catch (err) {
@@ -148,6 +185,11 @@ export class AIManager {
 				if (data?.message) message = data.message;
 			} catch {
 				/* noop */
+			}
+			// Distinguish "no provider" (status 501) with a clearer hint —
+			// the user might just need to add one via the providers manager.
+			if (res.status === 501) {
+				message = `${message} — open the AI providers manager to add one.`;
 			}
 			ai.setStatus("error");
 			ai.setError(message);

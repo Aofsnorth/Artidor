@@ -38,12 +38,24 @@ import {
 	StopIcon,
 	Upload01Icon,
 	Video01Icon,
+	PlugIcon,
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage } from "@/stores/ai-store";
+import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogBody,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { AIProvidersManager } from "./ai-providers-manager";
 
 const QUICK_ACTIONS: {
 	label: string;
@@ -80,8 +92,10 @@ export function AIEditView() {
 	const editor = useEditor();
 	const ai = useAIStore();
 	const telemetry = useTelemetryStore();
+	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isExtracting, setIsExtracting] = useState(false);
+	const [providersOpen, setProvidersOpen] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const composerRef = useRef<HTMLTextAreaElement>(null);
 	const [draft, setDraft] = useState("");
@@ -140,120 +154,126 @@ export function AIEditView() {
 	};
 
 	return (
-		<div className="flex h-full min-h-0 flex-col gap-3 px-1.5 pb-1.5 pt-1.5">
-			<StatusBar
-				referenceVideoName={ai.referenceVideoName}
-				styleProfile={ai.styleProfile}
-				recentCount={recentCount}
-				isStreaming={isStreaming}
-				onClearReference={() => editor.ai.clearReference()}
-				onClearConversation={() => ai.clearConversation()}
-			/>
-
-			<div className="flex flex-wrap gap-1.5">
-				<Button
-					variant="outline"
-					size="sm"
-					className="h-7 gap-1 rounded-full border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-white/85 hover:bg-white/[0.08]"
-					onClick={() => fileInputRef.current?.click()}
-					disabled={isExtracting}
-				>
-					<HugeiconsIcon icon={Upload01Icon} className="size-3.5" />
-					{isExtracting ? "Analysing…" : "Reference video"}
-				</Button>
-				<input
-					ref={fileInputRef}
-					type="file"
-					accept="video/*"
-					className="hidden"
-					onChange={(e) => {
-						const f = e.target.files?.[0];
-						if (f) void handleFile(f);
-						e.target.value = "";
-					}}
+		<>
+			<div className="flex h-full min-h-0 flex-col gap-3 px-1.5 pb-1.5 pt-1.5">
+				<StatusBar
+					referenceVideoName={ai.referenceVideoName}
+					styleProfile={ai.styleProfile}
+					recentCount={recentCount}
+					isStreaming={isStreaming}
+					defaultProvider={defaultProvider}
+					onOpenProviders={() => setProvidersOpen(true)}
+					onClearReference={() => editor.ai.clearReference()}
+					onClearConversation={() => ai.clearConversation()}
 				/>
-				{QUICK_ACTIONS.map((qa) => (
+
+				<div className="flex flex-wrap gap-1.5">
 					<Button
-						key={qa.label}
 						variant="outline"
 						size="sm"
 						className="h-7 gap-1 rounded-full border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-white/85 hover:bg-white/[0.08]"
-						onClick={() => handleQuickAction(qa.prompt)}
-						disabled={isStreaming}
+						onClick={() => fileInputRef.current?.click()}
+						disabled={isExtracting}
 					>
-						<HugeiconsIcon icon={qa.icon} className="size-3.5" />
-						{qa.label}
+						<HugeiconsIcon icon={Upload01Icon} className="size-3.5" />
+						{isExtracting ? "Analysing…" : "Reference video"}
 					</Button>
-				))}
-			</div>
-
-			<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
-				{ai.messages.length === 0 ? (
-					<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
-				) : (
-					ai.messages.map((m) => <MessageBubble key={m.id} message={m} />)
-				)}
-				{isStreaming && (
-					<div className="flex items-center gap-2 self-start rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-white/65">
-						<Spinner />
-						{ai.status === "awaiting-tools"
-							? "Executing tool calls…"
-							: "Thinking…"}
-					</div>
-				)}
-				{ai.error && (
-					<div className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-						{ai.error}
-					</div>
-				)}
-				<div ref={messagesEndRef} />
-			</div>
-
-			<form
-				onSubmit={handleSubmit}
-				className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2 backdrop-blur"
-			>
-				<textarea
-					ref={composerRef}
-					value={draft}
-					onChange={(e) => setDraft(e.target.value)}
-					onKeyDown={handleKeyDown}
-					placeholder="Ask the AI to edit, plan a motion graphic, or describe what you want…"
-					rows={2}
-					className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/35"
-				/>
-				<div className="flex items-center justify-between text-[10.5px] text-white/40">
-					<span className="flex items-center gap-1">
-						<HugeiconsIcon icon={AttachmentIcon} className="size-3" />
-						Enter to send · Shift+Enter for newline
-					</span>
-					{isStreaming ? (
-						<button
-							type="button"
-							onClick={handleCancel}
-							className="flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/80 hover:bg-white/[0.08]"
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept="video/*"
+						className="hidden"
+						onChange={(e) => {
+							const f = e.target.files?.[0];
+							if (f) void handleFile(f);
+							e.target.value = "";
+						}}
+					/>
+					{QUICK_ACTIONS.map((qa) => (
+						<Button
+							key={qa.label}
+							variant="outline"
+							size="sm"
+							className="h-7 gap-1 rounded-full border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-white/85 hover:bg-white/[0.08]"
+							onClick={() => handleQuickAction(qa.prompt)}
+							disabled={isStreaming}
 						>
-							<HugeiconsIcon icon={StopIcon} className="size-3" />
-							Stop
-						</button>
-					) : (
-						<button
-							type="submit"
-							disabled={!draft.trim()}
-							className={cn(
-								"flex items-center gap-1 rounded-md px-2 py-1 transition-colors",
-								draft.trim()
-									? "bg-white text-[#0a0a0c] hover:bg-white/90"
-									: "bg-white/10 text-white/30",
-							)}
-						>
-							Send
-							<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
-						</button>
-					)}
+							<HugeiconsIcon icon={qa.icon} className="size-3.5" />
+							{qa.label}
+						</Button>
+					))}
 				</div>
-			</form>
-		</div>
+
+				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+					{ai.messages.length === 0 ? (
+						<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
+					) : (
+						ai.messages.map((m) => <MessageBubble key={m.id} message={m} />)
+					)}
+					{isStreaming && (
+						<div className="flex items-center gap-2 self-start rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[11px] text-white/65">
+							<Spinner />
+							{ai.status === "awaiting-tools"
+								? "Executing tool calls…"
+								: "Thinking…"}
+						</div>
+					)}
+					{ai.error && (
+						<div className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
+							{ai.error}
+						</div>
+					)}
+					<div ref={messagesEndRef} />
+				</div>
+
+				<form
+					onSubmit={handleSubmit}
+					className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2 backdrop-blur"
+				>
+					<textarea
+						ref={composerRef}
+						value={draft}
+						onChange={(e) => setDraft(e.target.value)}
+						onKeyDown={handleKeyDown}
+						placeholder="Ask the AI to edit, plan a motion graphic, or describe what you want…"
+						rows={2}
+						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/35"
+					/>
+					<div className="flex items-center justify-between text-[10.5px] text-white/40">
+						<span className="flex items-center gap-1">
+							<HugeiconsIcon icon={AttachmentIcon} className="size-3" />
+							Enter to send · Shift+Enter for newline
+						</span>
+						{isStreaming ? (
+							<button
+								type="button"
+								onClick={handleCancel}
+								className="flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/80 hover:bg-white/[0.08]"
+							>
+								<HugeiconsIcon icon={StopIcon} className="size-3" />
+								Stop
+							</button>
+						) : (
+							<button
+								type="submit"
+								disabled={!draft.trim()}
+								className={cn(
+									"flex items-center gap-1 rounded-md px-2 py-1 transition-colors",
+									draft.trim()
+										? "bg-white text-[#0a0a0c] hover:bg-white/90"
+										: "bg-white/10 text-white/30",
+								)}
+							>
+								Send
+								<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
+							</button>
+						)}
+					</div>
+				</form>
+			</div>
+
+			<ProvidersDialog open={providersOpen} onOpenChange={setProvidersOpen} />
+		</>
 	);
 }
 
@@ -261,11 +281,55 @@ export function AIEditView() {
 /*                                Sub-components                              */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Modal that hosts the AIProvidersManager inside a glass dialog so the
+ * AI Edit tab stays focused on the chat. Opening this is the entry point
+ * for adding / editing / removing / testing providers.
+ */
+function ProvidersDialog({
+	open,
+	onOpenChange,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-h-[85vh] max-w-xl overflow-hidden p-0">
+				<DialogHeader className="border-b-0 p-0">
+					<div className="sr-only">
+						<DialogTitle>AI providers</DialogTitle>
+						<DialogDescription>
+							Configure the AI endpoint used by the AI Edit panel.
+						</DialogDescription>
+					</div>
+				</DialogHeader>
+				<DialogBody className="max-h-[75vh] gap-0 overflow-y-auto p-0">
+					<AIProvidersManager variant="panel" />
+				</DialogBody>
+				<DialogFooter className="border-t border-white/[0.06] bg-black/20 p-0">
+					<div className="flex w-full items-center justify-end px-4 py-3">
+						<Button
+							size="sm"
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+						>
+							Done
+						</Button>
+					</div>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
 function StatusBar({
 	referenceVideoName,
 	styleProfile,
 	recentCount,
 	isStreaming,
+	defaultProvider,
+	onOpenProviders,
 	onClearReference,
 	onClearConversation,
 }: {
@@ -275,6 +339,8 @@ function StatusBar({
 		: ReturnType<typeof useAIStore.getState>["styleProfile"];
 	recentCount: number;
 	isStreaming: boolean;
+	defaultProvider: { name: string; model: string; kind: string } | undefined;
+	onOpenProviders: () => void;
 	onClearReference: () => void;
 	onClearConversation: () => void;
 }) {
@@ -306,6 +372,48 @@ function StatusBar({
 					</button>
 				</div>
 			</div>
+
+			{/* Provider chip — click to open the providers manager. Shows
+			   the active default provider; if none is configured, surfaces
+			   a one-tap "Set up AI provider" hint instead of a silent empty
+			   state. */}
+			<button
+				type="button"
+				onClick={onOpenProviders}
+				className={cn(
+					"group flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-left transition",
+					defaultProvider
+						? "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]"
+						: "border-amber-300/30 bg-amber-400/[0.06] hover:border-amber-300/45 hover:bg-amber-400/[0.1]",
+				)}
+				title="Manage AI providers"
+			>
+				<span className="flex min-w-0 items-center gap-1.5">
+					<HugeiconsIcon
+						icon={PlugIcon}
+						className={cn(
+							"size-3 shrink-0",
+							defaultProvider ? "text-white/55" : "text-amber-200",
+						)}
+					/>
+					{defaultProvider ? (
+						<>
+							<span className="truncate text-white/80">
+								{defaultProvider.name}
+							</span>
+							<span className="shrink-0 font-mono text-[10px] text-white/40">
+								{defaultProvider.model}
+							</span>
+						</>
+					) : (
+						<span className="text-amber-100">Set up AI provider</span>
+					)}
+				</span>
+				<span className="shrink-0 text-[10px] text-white/45 group-hover:text-white/70">
+					Manage
+				</span>
+			</button>
+
 			<div className="flex items-center gap-1.5 text-white/55">
 				<HugeiconsIcon icon={SparklesIcon} className="size-3" />
 				<span>Learned from {recentCount} of your edits</span>
