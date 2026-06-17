@@ -110,14 +110,38 @@ export function applyHslToHsl(
 }
 
 export const HSL_COLOR_BANDS = [
-	{ id: "red", name: "Red", hueCenter: 0, range: 30 },
-	{ id: "orange", name: "Orange", hueCenter: 30, range: 30 },
-	{ id: "yellow", name: "Yellow", hueCenter: 60, range: 30 },
-	{ id: "green", name: "Green", hueCenter: 120, range: 60 },
-	{ id: "aqua", name: "Aqua", hueCenter: 180, range: 30 },
-	{ id: "blue", name: "Blue", hueCenter: 240, range: 60 },
-	{ id: "purple", name: "Purple", hueCenter: 280, range: 30 },
-	{ id: "magenta", name: "Magenta", hueCenter: 320, range: 30 },
+	{ id: "red", name: "Red", hueCenter: 0, range: 30, color: "#ef4444" },
+	{
+		id: "orange",
+		name: "Orange",
+		hueCenter: 30,
+		range: 30,
+		color: "#f97316",
+	},
+	{
+		id: "yellow",
+		name: "Yellow",
+		hueCenter: 60,
+		range: 30,
+		color: "#eab308",
+	},
+	{ id: "green", name: "Green", hueCenter: 120, range: 60, color: "#22c55e" },
+	{ id: "aqua", name: "Aqua", hueCenter: 180, range: 30, color: "#06b6d4" },
+	{ id: "blue", name: "Blue", hueCenter: 240, range: 60, color: "#3b82f6" },
+	{
+		id: "purple",
+		name: "Purple",
+		hueCenter: 280,
+		range: 30,
+		color: "#8b5cf6",
+	},
+	{
+		id: "magenta",
+		name: "Magenta",
+		hueCenter: 320,
+		range: 30,
+		color: "#ec4899",
+	},
 ] as const;
 
 export type HslBandId = (typeof HSL_COLOR_BANDS)[number]["id"];

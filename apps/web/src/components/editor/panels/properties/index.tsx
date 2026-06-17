@@ -153,13 +153,7 @@ function InspectorView() {
 						Reset all
 					</button>
 				</div>
-				<div
-					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
-					style={{
-						maskImage:
-							"linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)",
-					}}
-				>
+				<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
 					{primaryTabs.map((tab) => (
 						<TooltipProvider key={tab.label} delayDuration={0}>
 							<Tooltip>
@@ -168,7 +162,7 @@ function InspectorView() {
 										type="button"
 										disabled={!tab.target}
 										className={cn(
-											"relative shrink-0 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+											"relative flex-1 min-w-0 flex items-center justify-center gap-1 rounded-md px-2 py-1 text-center font-medium text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
 											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
 											!tab.target &&
 												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
@@ -183,7 +177,7 @@ function InspectorView() {
 												className="size-2.5 opacity-70"
 											/>
 										)}
-										<span className="whitespace-nowrap">{tab.label}</span>
+										<span className="truncate">{tab.label}</span>
 									</button>
 								</TooltipTrigger>
 								{!tab.target && (
@@ -320,29 +314,31 @@ const PRIMARY_INSPECTOR_TABS = [
 			"blending",
 			"parenting",
 			"camera",
-			// Effects, Animations, and the new Advanced tab are
-			// folded into the Video/Image primary tabs as secondary
-			// chips so the user never loses access to them, but
-			// the primary bar stays a quick A→B "category" switch
-			// instead of a long horizontal scroll of feature names.
 			"effects",
 			"masks",
 			"animations",
-			"advanced",
 		],
+		/** Element type this primary "owns" the secondary tab ids for.
+		   Shared ids (transform, effects, masks, animations, …) only
+		   count as active for this primary when the selected element
+		   is of this type. Without this gate, an image element on
+		   `transform` would light up both Video *and* Image primaries
+		   because both primary tabs declare `transform` as one of
+		   their ids. */
+		ownedBy: ["video"] as const,
 	},
 	{
 		label: "Image",
 		ids: [
 			"image",
 			"transform",
-			"advanced",
 			"parenting",
 			"camera",
 			"effects",
 			"masks",
 			"animations",
 		],
+		ownedBy: ["image"] as const,
 	},
 	{
 		label: "Audio",
@@ -379,11 +375,27 @@ function buildPrimaryInspectorTabs({
 	// categories existed). The focus category owns the *secondary*
 	// row only.
 	return PRIMARY_INSPECTOR_TABS.map((primaryTab) => {
-		const target = primaryTab.ids
+		// Does this primary "own" its ids for the current element
+		// type? Both Video and Image declare `transform` as a
+		// secondary id, so without this gate the same active
+		// secondary tab would light up two primaries at once.
+		const isOwnedByType =
+			!("ownedBy" in primaryTab) ||
+			// biome-ignore lint/suspicious/noExplicitAny: readonly tuple
+			(primaryTab as any).ownedBy?.includes(elementType);
+
+		// When the element type doesn't match the primary's
+		// `ownedBy`, drop the target so the button renders in the
+		// "locked / not available" state — preventing the user
+		// from clicking into the wrong primary and landing on a
+		// generic Transform tab.
+		const rawTarget = primaryTab.ids
 			.map((id) => visibleTabs.find((tab) => tab.id === id))
 			.find((tab): tab is PropertiesTabDef => Boolean(tab));
+		const target = isOwnedByType ? rawTarget : undefined;
 
-		let isActive = primaryTab.ids.some((id) => id === activeTabId);
+		let isActive =
+			isOwnedByType && primaryTab.ids.some((id) => id === activeTabId);
 		if (
 			activeTabId === "element-info" &&
 			primaryTab.label === fallbackPrimaryLabel

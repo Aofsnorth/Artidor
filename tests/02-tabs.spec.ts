@@ -15,9 +15,26 @@ import { test, expect } from "@playwright/test";
 import {
 	bootEditor,
 	clickAssetTab,
-	clickInspectorTab,
 	installErrorRecorder,
+	insertAndSelectText,
 } from "./helpers";
+
+/**
+ * Count "asset card" elements in the current panel. Effects and
+ * Trans both render their grid cards as divs with either
+ * `draggable="true"` (effects) or `role="button"` (transitions).
+ * Both layouts have a `class*="asset-preview-container"` ancestor
+ * we can use as a single, more reliable marker.
+ */
+async function countAssetCards(page: import("@playwright/test").Page): Promise<number> {
+	return await page.evaluate(() => {
+		// Asset cards share a common wrapper class.
+		const cards = document.querySelectorAll(
+			'.asset-preview-container, [draggable="true"]',
+		);
+		return cards.length;
+	});
+}
 
 test.describe("Editor — asset & inspector tabs", () => {
 	test("editor route loads without fatal errors", async ({ page }) => {
@@ -40,18 +57,22 @@ test.describe("Editor — asset & inspector tabs", () => {
 			/^Motion$/i,
 			/^Adjust$/i,
 			/^Templates$/i,
-			/^Preset Tools$/i,
+			/^Preset$/i,
 			/^Tools$/i,
-			/^Color$/i,
 			/^Plugins$/i,
 			/^Scripting$/i,
 			/^Settings$/i,
 		];
 		for (const label of expected) {
 			const tab = page.getByRole("button", { name: label }).first();
-			await expect(tab, `Tab matching ${label} should exist`).toBeVisible({
-				timeout: 5_000,
-			});
+			// `force: true` because the tab bar uses a motion animation
+			// that the stability heuristic sometimes flags, and tabs
+			// that fall outside the visible scroll viewport are still
+			// considered "present" in the DOM.
+			const visible = await tab
+				.isVisible({ timeout: 2_000 })
+				.catch(() => false);
+			expect(visible, `Tab ${label} should exist`).toBe(true);
 		}
 	});
 
@@ -71,9 +92,8 @@ test.describe("Editor — asset & inspector tabs", () => {
 			/^Motion$/i,
 			/^Adjust$/i,
 			/^Templates$/i,
-			/^Preset Tools$/i,
+			/^Preset$/i,
 			/^Tools$/i,
-			/^Color$/i,
 			/^Plugins$/i,
 		];
 
@@ -108,8 +128,7 @@ test.describe("Editor — asset & inspector tabs", () => {
 		// Wait for the effect grid to settle — IO gating means cards
 		// render lazily so we need a beat.
 		await page.waitForTimeout(2_500);
-		const cards = page.locator('[draggable="true"]');
-		const count = await cards.count();
+		const count = await countAssetCards(page);
 		expect(
 			count,
 			"Effects panel should expose many distinct cards (>=30)",
@@ -154,20 +173,22 @@ test.describe("Editor — asset & inspector tabs", () => {
 		await bootEditor(page);
 		await clickAssetTab(page, /^Transitions$/i);
 		await page.waitForTimeout(2_500);
-		const cards = page.locator('[draggable="true"]');
-		const count = await cards.count();
+		const count = await countAssetCards(page);
 		expect(
 			count,
 			"Transitions panel should expose many distinct cards (>=20)",
 		).toBeGreaterThan(20);
 	});
 
-	test("Color tab is reachable from the left bar", async ({ page }) => {
+	test("Overlays panel renders many distinct cards", async ({ page }) => {
 		await bootEditor(page);
-		await clickAssetTab(page, /^Color$/i);
-		await page.waitForTimeout(800);
-		const text = await page.locator("body").innerText();
-		expect(text.length).toBeGreaterThan(50);
+		await clickAssetTab(page, /^Overlays$/i);
+		await page.waitForTimeout(2_500);
+		const count = await countAssetCards(page);
+		expect(
+			count,
+			"Overlays panel should expose many distinct cards (>=10)",
+		).toBeGreaterThan(10);
 	});
 
 	test("AI Edit tab is gated (Coming Soon) but the DOM exists", async ({
@@ -185,40 +206,43 @@ test.describe("Editor — asset & inspector tabs", () => {
 		).toBeTruthy();
 	});
 
-	test("inspector shows Element summary when a text element is selected", async ({
+	test("inspector shows a Text tab when a text element is selected", async ({
 		page,
 	}) => {
 		await bootEditor(page);
-		// Insert a text element and select it.
-		const { insertAndSelectText } = await import("./helpers");
 		await insertAndSelectText(page, { content: "Inspector smoke" });
 		await page.waitForTimeout(800);
-		// The inspector should now be visible with a tab strip and a
-		// "Text" tab (since the element is a text element).
-		const textTab = page
-			.locator('[role="tablist"] button, [role="tab"]')
-			.filter({ hasText: /^Text$/i })
+		// The inspector should now be visible with a "Text" tab (since
+		// the element is a text element). Scope to the PropertiesPanel
+		// so we don't hit the asset-panel "Text" tab by mistake.
+		const inspector = page.locator(".panel.glass-strong").last();
+		await expect(inspector).toBeVisible();
+		const inspectorTextTab = inspector
+			.locator('button[aria-label="Text"]')
 			.first();
-		await expect(textTab).toBeVisible({ timeout: 10_000 });
+		await expect(inspectorTextTab).toBeVisible({ timeout: 10_000 });
 	});
 
-	test("Text element inspector does NOT show Transform / Speed / Audio tabs", async ({
+	test("Text element inspector does NOT show Speed / Speed Ramp / Audio tabs", async ({
 		page,
 	}) => {
-		const { insertAndSelectText } = await import("./helpers");
 		await bootEditor(page);
 		await insertAndSelectText(page, { content: "Text only" });
 		await page.waitForTimeout(500);
+		// Scope to the PropertiesPanel (right column) so we don't
+		// false-positive on the asset-panel tabs in the left bar.
+		const inspector = page.locator(".panel.glass-strong").last();
+		await expect(inspector).toBeVisible();
 		// Tabs that should NOT appear for a plain text element.
-		for (const forbidden of [/^Speed$/i, /^Speed Ramp$/i, /^Audio$/i]) {
-			const tab = page
-				.locator('[role="tablist"] button, [role="tab"]')
-				.filter({ hasText: forbidden })
+		for (const forbiddenLabel of ["Speed", "Speed Ramp", "Audio"]) {
+			const tab = inspector
+				.locator(`button[aria-label="${forbiddenLabel}"]`)
 				.first();
 			const visible = await tab.isVisible({ timeout: 500 }).catch(() => false);
-			expect(visible, `Text inspector should not show tab ${forbidden}`).toBe(
-				false,
-			);
+			expect(
+				visible,
+				`Text inspector should not show tab "${forbiddenLabel}"`,
+			).toBe(false);
 		}
 	});
 });

@@ -20,7 +20,6 @@ import {
 	MusicNote03Icon,
 	MagicWand05Icon,
 	DashboardSpeed02Icon,
-	Sun01Icon,
 	PlayIcon,
 	SparklesIcon,
 	Link01Icon,
@@ -37,7 +36,6 @@ import { MasksTab } from "./tabs/masks-tab";
 import { SpeedTab } from "./tabs/speed-tab";
 import { SpeedRampTab } from "./tabs/speed-ramp-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
-import { ColorGradingTab } from "./tabs/color-grading-tab";
 import { AnimationsTab } from "./tabs/animations-tab";
 import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
@@ -164,29 +162,6 @@ function buildAudioEffectsTab({
 		icon: <HugeiconsIcon icon={SparklesIcon} size={16} />,
 		content: ({ trackId }) => (
 			<AudioEffectsTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-/**
- * "Advanced" colour tab. Wraps the same HSL / Curves / LUT controls
- * as the legacy `color` tab, but with an id that doesn't collide with
- * the left-bar Color tab and a label that better reflects the
- * slider-based UX after the v1.5 inspector reshuffle. Replaces the
- * old Basic / Manual / Wheels / Color / Adjustments five-pack with
- * a single, fully-fleshed-out slider surface.
- */
-function buildAdvancedTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "advanced",
-		label: "Advanced",
-		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<ColorGradingTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -392,11 +367,10 @@ function getVideoConfig({
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
-			// The "Advanced" colour tab (HSL / Curves / LUT) replaces the
-			// old Basic / Manual / Wheels / Color / Adjustments five-pack
-			// for video elements too. The left-bar "Color" tab still
-			// exposes the same five-pack for quick global correction.
-			buildAdvancedTab({ element }),
+			// Colour correction now lives in its own dedicated card in
+			// the left-bar "Advanced" tab (with wheels, HSL, curves,
+			// LUT). The inspector stays focused on the per-element
+			// tools you reach for while keyframing.
 			buildParentingTab({ element }),
 			buildCameraTab(),
 			buildAnimationsTab(),
@@ -479,7 +453,6 @@ function getImageConfig({
 			buildElementTab({ element, mediaAssets }),
 			buildImageTab({ element }),
 			buildTransformTab({ element }),
-			buildAdvancedTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
 			buildAnimationsTab(),

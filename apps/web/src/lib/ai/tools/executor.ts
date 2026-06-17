@@ -288,7 +288,6 @@ const HANDLERS: Record<string, Handler> = {
 	insert_text_element: async (editor, args) => {
 		const { generateUUID } = await import("@/utils/id");
 		const tracks = editor.scenes.getActiveScene().tracks;
-		const overlayTrack = tracks.overlay[0] ?? tracks.main;
 		const playhead = editor.playback.getCurrentTime();
 		const duration = secondsToTicks(args.durationSeconds, 5 * TICKS_PER_SECOND);
 		const element = {
@@ -327,17 +326,44 @@ const HANDLERS: Record<string, Handler> = {
 			},
 			opacity: 1,
 		};
+		// Use the caller's trackId if it is compatible with a text
+		// element; otherwise fall back to "auto" placement, which
+		// resolves to the first compatible text track (creating one
+		// if none exists) — mirroring how the UI's text preset drag
+		// works (apps/web/src/components/editor/panels/assets/views/text.tsx).
+		const requestedTrackId = asString(args.trackId, "");
+		const targetTrack = requestedTrackId
+			? [tracks.main, ...tracks.overlay, ...tracks.audio].find(
+					(track) => track.id === requestedTrackId,
+				)
+			: undefined;
+		const isCompatible = targetTrack?.type === "text";
 		editor.timeline.insertElement({
 			element,
-			placement: {
-				mode: "explicit",
-				trackId: asString(args.trackId, overlayTrack.id),
-			},
+			placement: isCompatible
+				? { mode: "explicit", trackId: requestedTrackId }
+				: { mode: "auto" },
 		});
+		// After insertion, find the element the command actually placed
+		// (the command may regenerate `id` to avoid collisions, and
+		// "auto" mode may have inserted onto a different track than
+		// the caller asked for). Return the real, on-timeline id so
+		// downstream callers can address it.
+		const afterTracks = editor.scenes.getActiveScene().tracks;
+		const placed = [
+			afterTracks.main,
+			...afterTracks.overlay,
+			...afterTracks.audio,
+		]
+			.flatMap((track) => track.elements as readonly TimelineElement[])
+			.find(
+				(candidate): candidate is TextElement =>
+					candidate.type === "text" && candidate.id !== element.id,
+			);
 		return {
 			ok: true,
 			message: `Inserted text "${element.name}"`,
-			data: { id: element.id },
+			data: { id: placed?.id ?? element.id },
 		};
 	},
 
