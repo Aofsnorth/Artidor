@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-color-tab-left-bar",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Color tab in the left bar + frame interpolation polish",
+		items: [
+			"New `Color` tab in the left sidebar: all 5 colour-correction sub-tabs (Basic / Manual / Wheels / Color / Adjustments) moved here from the right-side inspector. The right inspector's Adjust category is gone — same effects, same params, just one less thing to chase across the screen.",
+			"Empty-state copy on the Color tab: 'Select a video or image…' when nothing is selected, 'Multiple layers selected…' when more than one, 'Pick a video or image…' for audio/text. The colour tools silently no-op for non-colourable layers.",
+			"Inspector primary tab bar no longer collapses to just one tab when you're inside a focus category (Effect / Animation / Adjust*). The top bar stays full so you can always see and click Video / Audio / Text / Element to jump back. The *secondary* row (transform / audio / speed chips) is still hidden in focus contexts — that was the part you wanted gone, not the primary bar.",
+			"Frame Interpolation method picker: selected method now uses white instead of cyan-300 (border-white/35 + white icon tile + white checkmark) so it matches the rest of the inspector's 'active = white' treatment.",
+		],
+	},
+	{
 		id: "2026-06-18-preset-tools-rewrite",
 		date: "2026-06-18",
 		tag: "improvement",

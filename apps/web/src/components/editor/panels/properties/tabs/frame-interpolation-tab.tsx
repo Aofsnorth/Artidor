@@ -143,7 +143,7 @@ export function FrameInterpolationSection({
 									className={cn(
 										"group relative flex items-center gap-3 rounded-md border px-3 py-2.5 text-left transition-all",
 										isCurrent
-											? "border-cyan-400/40 bg-cyan-400/[0.06]"
+											? "border-white/35 bg-white/[0.08]"
 											: "border-white/[0.08] bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]",
 										!usable && "cursor-not-allowed opacity-40",
 									)}
@@ -152,7 +152,7 @@ export function FrameInterpolationSection({
 										className={cn(
 											"grid size-7 place-items-center rounded-md",
 											isCurrent
-												? "bg-cyan-400/15 text-cyan-300"
+												? "bg-white/95 text-[#09090b]"
 												: "bg-white/[0.05] text-white/60",
 										)}
 									>
@@ -166,7 +166,7 @@ export function FrameInterpolationSection({
 											{isCurrent && (
 												<HugeiconsIcon
 													icon={CheckmarkCircle02Icon}
-													className="size-3 text-cyan-300"
+													className="size-3 text-white"
 												/>
 											)}
 											{isPending && (

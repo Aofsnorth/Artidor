@@ -331,16 +331,6 @@ const PRIMARY_INSPECTOR_TABS = [
 		ids: ["audio-element", "audio-effects"],
 	},
 	{ label: "Effects", ids: ["effects", "masks"] },
-	{
-		label: "Adjust",
-		ids: [
-			"basic-adjust",
-			"davinci-adjust",
-			"color-wheels",
-			"color",
-			"adjustments",
-		],
-	},
 	{ label: "Animation", ids: ["animations"] },
 ] as const;
 
@@ -362,30 +352,17 @@ function buildPrimaryInspectorTabs({
 	if (elementType === "effect") fallbackPrimaryLabel = "Effects";
 
 	// Context-aware hiding: when the user is inside one of the
-	// "focus" categories (Effects, Animation, Adjust*), only show
-	// the primary tabs that are actually reachable. Otherwise the
-	// "Video" / "Element" / "Text" primaries stay in the bar but
-	// the secondary tab row is suppressed, so the user can never
-	// see what's behind them. Hiding them up here keeps the header
-	// honest about what's reachable from the current context.
-	const focusCategoryIds = new Set([
-		"effects",
-		"animations",
-		"davinci-adjust",
-		"basic-adjust",
-		"color-wheels",
-		"color",
-		"adjustments",
-		"masks",
-	]);
-	const inFocusContext = focusCategoryIds.has(activeTabId);
-
-	return PRIMARY_INSPECTOR_TABS.filter((primaryTab) => {
-		if (!inFocusContext) return true;
-		// Inside a focus category, only keep primaries that own at
-		// least one of the focus ids.
-		return primaryTab.ids.some((id) => focusCategoryIds.has(id));
-	}).map((primaryTab) => {
+	// "focus" categories (Effects, Animation, Adjust*), we only
+	// hide the *secondary* tab row underneath (the "transform /
+	// audio / speed" chips) — the primary tab bar at the top stays
+	// fully visible so the user can still see and click "Video" or
+	// "Audio" to jump back. Hiding the primary tabs here was a
+	// regression: the top bar would suddenly drop to just "Effects"
+	// whenever the user was in a focus sub-tab, which made the
+	// inspector feel broken (the user couldn't tell what other
+	// categories existed). The focus category owns the *secondary*
+	// row only.
+	return PRIMARY_INSPECTOR_TABS.map((primaryTab) => {
 		const target = primaryTab.ids
 			.map((id) => visibleTabs.find((tab) => tab.id === id))
 			.find((tab): tab is PropertiesTabDef => Boolean(tab));

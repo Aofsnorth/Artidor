@@ -19,6 +19,7 @@ import { OverlaysView } from "./views/overlays";
 import { ScriptingView } from "./views/scripting";
 import { PresetsView } from "./views/presets";
 import { PluginsView } from "./views/plugins";
+import { ColorView } from "./views/color";
 
 // The AI Edit view pulls in `motion/react` (~80KB) plus the heavy
 // chat UI tree. Lazy-load it so the editor's initial mount doesn't
@@ -70,6 +71,7 @@ export function AssetsPanel() {
 		adjustment: <AdjustmentsView />,
 		scripting: <ScriptingView />,
 		settings: <SettingsView />,
+		color: <ColorView />,
 	};
 
 	return (
