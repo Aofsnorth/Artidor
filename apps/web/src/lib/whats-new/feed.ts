@@ -18,6 +18,62 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-frame-interpolation",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Frame interpolation with 3 methods",
+		items: [
+			"New Interpolation tab in the Speed inspector — choose how slow-motion frames are synthesized.",
+			"Frame Blending: cross-dissolve neighbouring frames, sub-millisecond, runs on every device.",
+			"Optical Flow: block-matching motion vectors + warp, ~250ms/1080p, CPU-only.",
+			"AI Interpolation: RIFE v4.9 neural net via onnxruntime-web with WebGPU (or WASM fallback). Best quality, needs ~20MB model.",
+			"Hardware auto-detected: WebGPU > WebGL2 > WASM. A small badge shows what's available on your device.",
+		],
+	},
+	{
+		id: "2026-06-17-library-50plus",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "50+ effects & 52 transitions",
+		items: [
+			"Added 8 new video effects: Duotone, Comic, ASCII, Datamosh, Lens Flare, Bokeh, VHS.",
+			"Added 20 new transitions: Morph Cut, Whip Pan, Shutter, Light Leak, Rotate, Skew, Diagonal Wipe, Venetian Blinds, RGB Split, Pixelate, Stretch, Zoom Blur, Radial Wipe, Curtain, Bounce, Aperture, Flip Vertical, Noise Fade, Ripple, Kaleidoscope.",
+			"New effects compose existing shaders so they ship with the same quality and performance as the rest of the library.",
+			"Total library now: 50+ effects and 52 transitions across Fade, Slide, Zoom, Wipe, and Glitch categories.",
+		],
+	},
+	{
+		id: "2026-06-17-animated-transition-previews",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Animated transition previews",
+		items: [
+			"Transition cards in the assets panel now play their actual keyframe animation on hover instead of showing a static image.",
+			"Each preview scopes its CSS keyframes per-card so multiple transitions in the same panel can animate at once without colliding.",
+			"Card backgrounds use layered gradient plates so the motion is clearly visible even at small card sizes.",
+		],
+	},
+	{
+		id: "2026-06-17-audio-clip-indicator",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "DAW-style audio clip indicator",
+		items: [
+			"The vertical audio meter now flashes a red overlay at the top of each channel bar when the signal hits 0dB — latches for 1.5 seconds then decays, exactly like a hardware meter.",
+			"Updated the resize handle to a focusable <button> for proper keyboard accessibility.",
+		],
+	},
+	{
+		id: "2026-06-17-realtime-volume",
+		date: "2026-06-17",
+		tag: "fix",
+		title: "Real-time volume & pan changes",
+		items: [
+			"Volume and pan sliders now update the live audio mix immediately — no more silent gaps or playback restarts when scrubbing the dB/pan controls.",
+			"The audio manager skips a full restart when only volume/pan/muted change so a single drag can fire hundreds of updates per second without glitches.",
+		],
+	},
+	{
 		id: "2026-06-17-bugfixes-waveform-shortcuts",
 		date: "2026-06-17",
 		tag: "fix",
