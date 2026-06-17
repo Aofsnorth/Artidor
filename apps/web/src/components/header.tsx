@@ -14,6 +14,7 @@ const NAV_LINKS = [
 	{ label: "Features", href: "/#features" },
 	{ label: "AI Co-Pilot", href: "/#ai-copilot" },
 	{ label: "Roadmap", href: "/roadmap" },
+	{ label: "Changelog", href: "/changelog" },
 	{ label: "Contributors", href: "/contributors" },
 	{ label: "Blog", href: "/blog" },
 ];
@@ -30,18 +31,18 @@ export function Header() {
 
 	return (
 		<header
-		className="sticky top-0 z-30 w-full border-b border-white/[0.06] bg-black/35 backdrop-blur-xl"
-		style={{
-			// Smooth fade at the bottom edge so the glassmorphism
-			// blends into the page content instead of having a
-			// hard 1px border line. The gradient mask makes the
-			// bottom 30% of the header gradually transparent.
-			maskImage:
-				"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-			WebkitMaskImage:
-				"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-		}}
-	>
+			className="sticky top-0 z-30 w-full border-b border-white/[0.06] bg-black/35 backdrop-blur-xl"
+			style={{
+				// Smooth fade at the bottom edge so the glassmorphism
+				// blends into the page content instead of having a
+				// hard 1px border line. The gradient mask makes the
+				// bottom 30% of the header gradually transparent.
+				maskImage:
+					"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+				WebkitMaskImage:
+					"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
+			}}
+		>
 			{/* Inner container — full-bleed bar, content centred inside.
 			   `max-w-7xl` lines the header up with the rest of the page
 			   content (hero, features, footer all use the same width). */}
