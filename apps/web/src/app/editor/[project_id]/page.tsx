@@ -66,6 +66,11 @@ const TemplatesDialog = lazy(() =>
 		default: m.TemplatesDialog,
 	})),
 );
+const SettingsDialog = lazy(() =>
+	import("@/components/editor/dialogs/settings-dialog").then((m) => ({
+		default: m.SettingsDialog,
+	})),
+);
 
 export default function Editor() {
 	const params = useParams();
@@ -354,6 +359,9 @@ function LazyOverlays() {
 	const isTemplatesOpen = useOpenDialogsStore(
 		(state) => state.open.templates ?? false,
 	);
+	const isSettingsOpen = useOpenDialogsStore(
+		(state) => state.open.settings ?? false,
+	);
 	const setOpen = useOpenDialogsStore((state) => state.setOpen);
 
 	return (
@@ -365,6 +373,10 @@ function LazyOverlays() {
 			<TemplatesDialog
 				open={isTemplatesOpen}
 				onOpenChange={(open) => setOpen("templates", open)}
+			/>
+			<SettingsDialog
+				isOpen={isSettingsOpen}
+				onOpenChange={(open) => setOpen("settings", open)}
 			/>
 		</>
 	);

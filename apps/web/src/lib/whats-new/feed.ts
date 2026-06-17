@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-settings-dialog",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Settings dialog + don't-remind-delete",
+		items: [
+			"New Settings dialog (gear icon in header) with General, AI, and Shortcuts tabs.",
+			"Toggle 'Don't ask before deleting projects' to skip the type-DELETE-to-confirm gate.",
+			"AI tab documents all supported providers (OpenAI, Anthropic, Ollama, and any OpenAI-compatible endpoint).",
+		],
+	},
+	{
 		id: "2026-06-17-detachable-panels",
 		date: "2026-06-17",
 		tag: "feature",

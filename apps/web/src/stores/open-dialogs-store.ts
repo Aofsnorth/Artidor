@@ -16,7 +16,7 @@ import { create } from "zustand";
  *    just call `closeAll()` here instead of reaching into a dozen
  *    component-local states.
  */
-type DialogKey = "teleprompter" | "templates";
+type DialogKey = "teleprompter" | "templates" | "settings";
 
 interface OpenDialogsState {
 	open: Partial<Record<DialogKey, boolean>>;
