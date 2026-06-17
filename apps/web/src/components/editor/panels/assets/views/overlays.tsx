@@ -273,6 +273,173 @@ const OVERLAY_PRESETS: OverlayPreset[] = [
 				"radial-gradient(circle at 50% 45%, rgba(56,189,248,0.9), rgba(59,130,246,0.2) 58%, transparent 72%)",
 		},
 	},
+	...[
+		[
+			"rose-wash",
+			"Rose Wash",
+			"Color Wash",
+			"linear-gradient(135deg,rgba(244,63,94,0.58),rgba(168,85,247,0.26))",
+		],
+		[
+			"violet-wash",
+			"Violet Wash",
+			"Color Wash",
+			"linear-gradient(135deg,rgba(139,92,246,0.58),rgba(14,165,233,0.26))",
+		],
+		[
+			"lime-wash",
+			"Lime Wash",
+			"Color Wash",
+			"linear-gradient(135deg,rgba(132,204,22,0.52),rgba(20,184,166,0.26))",
+		],
+		[
+			"midnight-wash",
+			"Midnight Wash",
+			"Color Wash",
+			"linear-gradient(135deg,rgba(15,23,42,0.72),rgba(30,41,59,0.38))",
+		],
+		[
+			"sunset-wash",
+			"Sunset Wash",
+			"Color Wash",
+			"linear-gradient(135deg,rgba(251,113,133,0.5),rgba(251,191,36,0.3))",
+		],
+		[
+			"thin-white-frame",
+			"Thin White Frame",
+			"Frames",
+			"linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#fff,rgba(255,255,255,0.15)) border-box",
+		],
+		[
+			"cyan-frame",
+			"Cyan Frame",
+			"Frames",
+			"linear-gradient(135deg,rgba(34,211,238,0.9),rgba(34,211,238,0.15))",
+		],
+		[
+			"gold-frame",
+			"Gold Frame",
+			"Frames",
+			"linear-gradient(135deg,rgba(251,191,36,0.9),rgba(180,83,9,0.24))",
+		],
+		[
+			"film-frame",
+			"Film Frame",
+			"Frames",
+			"repeating-linear-gradient(90deg,rgba(0,0,0,0.8) 0 8px,transparent 8px 18px),linear-gradient(rgba(255,255,255,0.08),rgba(255,255,255,0.02))",
+		],
+		[
+			"safe-frame",
+			"Safe Frame",
+			"Frames",
+			"linear-gradient(90deg,transparent 49%,rgba(255,255,255,0.5) 49% 51%,transparent 51%),linear-gradient(0deg,transparent 49%,rgba(255,255,255,0.5) 49% 51%,transparent 51%)",
+		],
+		[
+			"soft-vignette",
+			"Soft Vignette",
+			"Vignette",
+			"radial-gradient(circle,transparent 34%,rgba(0,0,0,0.55) 100%)",
+		],
+		[
+			"hard-vignette",
+			"Hard Vignette",
+			"Vignette",
+			"radial-gradient(circle,transparent 22%,rgba(0,0,0,0.78) 100%)",
+		],
+		[
+			"white-vignette",
+			"White Vignette",
+			"Vignette",
+			"radial-gradient(circle,transparent 34%,rgba(255,255,255,0.5) 100%)",
+		],
+		[
+			"blue-vignette",
+			"Blue Vignette",
+			"Vignette",
+			"radial-gradient(circle,transparent 28%,rgba(37,99,235,0.55) 100%)",
+		],
+		[
+			"heart-vignette",
+			"Heart Vignette",
+			"Vignette",
+			"radial-gradient(circle,transparent 30%,rgba(244,63,94,0.52) 100%)",
+		],
+		[
+			"anamorphic-streak",
+			"Anamorphic",
+			"Light",
+			"linear-gradient(90deg,transparent 0%,rgba(56,189,248,0.0) 30%,rgba(56,189,248,0.82) 50%,rgba(56,189,248,0.0) 70%,transparent 100%)",
+		],
+		[
+			"prism-leak",
+			"Prism Leak",
+			"Light",
+			"linear-gradient(120deg,transparent 10%,rgba(34,211,238,0.5),rgba(236,72,153,0.42),transparent 85%)",
+		],
+		[
+			"gold-leak",
+			"Gold Leak",
+			"Light",
+			"radial-gradient(circle at 12% 20%,rgba(251,191,36,0.9),transparent 45%),linear-gradient(135deg,transparent,rgba(245,158,11,0.25))",
+		],
+		[
+			"moon-glow",
+			"Moon Glow",
+			"Light",
+			"radial-gradient(circle at 64% 28%,rgba(226,232,240,0.85),rgba(148,163,184,0.22) 38%,transparent 58%)",
+		],
+		[
+			"laser-sweep",
+			"Laser Sweep",
+			"Light",
+			"linear-gradient(100deg,transparent 42%,rgba(34,197,94,0.75) 50%,transparent 58%)",
+		],
+		[
+			"red-flash",
+			"Red Flash",
+			"Flash",
+			"linear-gradient(135deg,rgba(239,68,68,0.75),rgba(127,29,29,0.18))",
+		],
+		[
+			"blue-flash",
+			"Blue Flash",
+			"Flash",
+			"linear-gradient(135deg,rgba(59,130,246,0.75),rgba(30,64,175,0.18))",
+		],
+		[
+			"green-flash",
+			"Green Flash",
+			"Flash",
+			"linear-gradient(135deg,rgba(34,197,94,0.75),rgba(20,83,45,0.18))",
+		],
+		[
+			"strobe",
+			"Strobe",
+			"Flash",
+			"repeating-linear-gradient(45deg,rgba(255,255,255,0.8) 0 8px,transparent 8px 16px)",
+		],
+		[
+			"camera-bloom",
+			"Camera Bloom",
+			"Flash",
+			"radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0.15) 58%,transparent 76%)",
+		],
+	].map(
+		([id, name, category, background]) =>
+			({
+				id,
+				name,
+				description: `${name} overlay preset.`,
+				category,
+				definitionId: "rectangle",
+				params: {
+					fill: "rgba(255,255,255,0.18)",
+					strokeWidth: 0,
+					cornerRadius: 0,
+				},
+				previewStyle: { background },
+			}) satisfies OverlayPreset,
+	),
 ];
 
 export function OverlaysView() {

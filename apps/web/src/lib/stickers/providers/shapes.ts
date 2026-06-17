@@ -518,6 +518,197 @@ const CURATED_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 	},
 ];
 
+const EXTRA_SHAPE_PRESETS: ShapeGraphicPreset[] = [
+	{
+		shapeKey: "thin-line",
+		name: "Thin Line",
+		definitionId: "line",
+		params: { fill: "#ffffff", thickness: 8, rounded: true },
+	},
+	{
+		shapeKey: "thick-line",
+		name: "Thick Line",
+		definitionId: "line",
+		params: { fill: "#f8fafc", thickness: 60, rounded: true },
+	},
+	{
+		shapeKey: "neon-line",
+		name: "Neon Line",
+		definitionId: "line",
+		params: { fill: "#22d3ee", thickness: 24, rounded: true },
+	},
+	{
+		shapeKey: "outline-pill",
+		name: "Outline Pill",
+		definitionId: "rectangle",
+		params: {
+			fill: "rgba(255,255,255,0)",
+			stroke: "#ffffff",
+			strokeWidth: 12,
+			strokeAlign: "inside",
+			cornerRadius: 999,
+		},
+	},
+	{
+		shapeKey: "soft-frame",
+		name: "Soft Frame",
+		definitionId: "rectangle",
+		params: {
+			fill: "rgba(255,255,255,0)",
+			stroke: "#a78bfa",
+			strokeWidth: 10,
+			strokeAlign: "inside",
+			cornerRadius: 28,
+		},
+	},
+	{
+		shapeKey: "chat-tail-left",
+		name: "Chat Tail Left",
+		definitionId: "speech-bubble",
+		params: { fill: "#38bdf8", tail: "left" },
+	},
+	{
+		shapeKey: "chat-tail-right",
+		name: "Chat Tail Right",
+		definitionId: "speech-bubble",
+		params: { fill: "#f472b6", tail: "right" },
+	},
+	{
+		shapeKey: "quote-bubble",
+		name: "Quote Bubble",
+		definitionId: "speech-bubble",
+		params: {
+			fill: "#111827",
+			stroke: "#ffffff",
+			strokeWidth: 8,
+			strokeAlign: "inside",
+		},
+	},
+	{
+		shapeKey: "sunburst-24",
+		name: "Sunburst 24",
+		definitionId: "burst",
+		params: { fill: "#facc15", points: 24, depth: 48 },
+	},
+	{
+		shapeKey: "seal-badge",
+		name: "Seal Badge",
+		definitionId: "burst",
+		params: { fill: "#ef4444", points: 18, depth: 18 },
+	},
+	{
+		shapeKey: "spark-star",
+		name: "Spark Star",
+		definitionId: "star",
+		params: { fill: "#ffffff", points: 8, depth: 36 },
+	},
+	{
+		shapeKey: "compass-star",
+		name: "Compass Star",
+		definitionId: "star",
+		params: { fill: "#60a5fa", points: 4, depth: 65 },
+	},
+	{
+		shapeKey: "gear-12",
+		name: "Gear 12",
+		definitionId: "gear",
+		params: { fill: "#94a3b8", teeth: 12, holeSize: 34 },
+	},
+	{
+		shapeKey: "gear-16",
+		name: "Gear 16",
+		definitionId: "gear",
+		params: { fill: "#64748b", teeth: 16, holeSize: 26 },
+	},
+	{
+		shapeKey: "pie-quarter",
+		name: "Pie Quarter",
+		definitionId: "pie",
+		params: { fill: "#22c55e", endAngle: 90 },
+	},
+	{
+		shapeKey: "pie-three-quarter",
+		name: "Pie 3/4",
+		definitionId: "pie",
+		params: { fill: "#06b6d4", endAngle: 270 },
+	},
+	{
+		shapeKey: "arc-thin",
+		name: "Arc Thin",
+		definitionId: "arc",
+		params: { fill: "#ffffff", thickness: 10, endAngle: 270 },
+	},
+	{
+		shapeKey: "arc-bold",
+		name: "Arc Bold",
+		definitionId: "arc",
+		params: { fill: "#f97316", thickness: 32, endAngle: 220 },
+	},
+	{
+		shapeKey: "map-pin-outline",
+		name: "Pin Outline",
+		definitionId: "pin",
+		params: {
+			fill: "rgba(255,255,255,0)",
+			stroke: "#ef4444",
+			strokeWidth: 12,
+			strokeAlign: "inside",
+		},
+	},
+	{
+		shapeKey: "cloud-outline",
+		name: "Cloud Outline",
+		definitionId: "cloud",
+		params: {
+			fill: "rgba(255,255,255,0)",
+			stroke: "#93c5fd",
+			strokeWidth: 10,
+			strokeAlign: "inside",
+		},
+	},
+	{
+		shapeKey: "shield-solid",
+		name: "Shield Solid",
+		definitionId: "shield",
+		params: { fill: "#0ea5e9" },
+	},
+	{
+		shapeKey: "house-outline",
+		name: "House Outline",
+		definitionId: "house",
+		params: {
+			fill: "rgba(255,255,255,0)",
+			stroke: "#fbbf24",
+			strokeWidth: 10,
+			strokeAlign: "inside",
+		},
+	},
+	{
+		shapeKey: "flower-8",
+		name: "Flower 8",
+		definitionId: "flower",
+		params: { fill: "#fb7185", petals: 8 },
+	},
+	{
+		shapeKey: "flower-12",
+		name: "Flower 12",
+		definitionId: "flower",
+		params: { fill: "#c084fc", petals: 12 },
+	},
+	{
+		shapeKey: "slanted-card",
+		name: "Slanted Card",
+		definitionId: "parallelogram",
+		params: { fill: "#14b8a6", skew: 24 },
+	},
+	{
+		shapeKey: "price-tag",
+		name: "Price Tag",
+		definitionId: "trapezoid",
+		params: { fill: "#f97316", topWidth: 72 },
+	},
+];
+
 function getShapePresets(): ShapeGraphicPreset[] {
 	registerDefaultGraphics();
 	const registryPresets = graphicsRegistry.getAll().map((definition) => ({
@@ -526,10 +717,13 @@ function getShapePresets(): ShapeGraphicPreset[] {
 		definitionId: definition.id,
 	}));
 	const curatedKeys = new Set(
-		CURATED_SHAPE_PRESETS.map((preset) => preset.shapeKey),
+		[...CURATED_SHAPE_PRESETS, ...EXTRA_SHAPE_PRESETS].map(
+			(preset) => preset.shapeKey,
+		),
 	);
 	return [
 		...CURATED_SHAPE_PRESETS,
+		...EXTRA_SHAPE_PRESETS,
 		...registryPresets.filter((preset) => !curatedKeys.has(preset.shapeKey)),
 	];
 }
