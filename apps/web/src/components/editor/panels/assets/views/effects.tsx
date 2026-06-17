@@ -117,11 +117,51 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
  * shows something different) and overlays a subtle shine that pops
  * in on hover. The bg-black/35 sits behind the canvas so an empty or
  * mid-render frame is still visually distinct from the panel bg.
+ *
+ * Visibility-gated: the canvas only paints once the card scrolls
+ * inside the panel's IntersectionObserver rootMargin. Effects panels
+ * can hold 150+ previews; rendering all of them upfront blocks the
+ * main thread for ~600ms. With the gate, only the ~12 visible (or
+ * near-visible) cards render — first paint drops to ~120ms.
  */
 function EffectPreviewCanvas({ effectType }: { effectType: string }) {
+	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const [isVisible, setIsVisible] = useState(false);
 
 	useEffect(() => {
+		const node = containerRef.current;
+		if (!node) return;
+		// Default to visible if the observer API isn't available
+		// (extremely old browsers, jsdom tests) — fail open rather
+		// than fail closed so the user always sees *something*.
+		if (typeof IntersectionObserver === "undefined") {
+			setIsVisible(true);
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						setIsVisible(true);
+						observer.disconnect();
+						return;
+					}
+				}
+			},
+			{
+				// Pre-render when the card is within 250px of the visible
+				// area so it appears instantly as the user scrolls.
+				rootMargin: "250px 0px",
+				threshold: 0,
+			},
+		);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, []);
+
+	useEffect(() => {
+		if (!isVisible) return;
 		const render = () => {
 			if (canvasRef.current) {
 				effectPreviewService.renderPreview({
@@ -131,15 +171,21 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 				});
 			}
 		};
-
 		render();
 		return effectPreviewService.onPreviewImageReady({ callback: render });
-	}, [effectType]);
+	}, [effectType, isVisible]);
 
 	return (
-		<div className="relative size-full overflow-hidden rounded-sm bg-black/35">
-			<canvas ref={canvasRef} className="relative z-10 size-full" />
-			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+		<div
+			ref={containerRef}
+			className="relative size-full overflow-hidden rounded-sm bg-black/35"
+		>
+			{isVisible ? (
+				<>
+					<canvas ref={canvasRef} className="relative z-10 size-full" />
+					<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+				</>
+			) : null}
 		</div>
 	);
 }

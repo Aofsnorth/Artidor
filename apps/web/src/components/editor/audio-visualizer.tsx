@@ -46,14 +46,15 @@ function useAudioBars(barCount: number) {
 
 	useEffect(() => {
 		let frameId: number;
+		// Re-use a single Uint8Array across frames — analyser.frequencyBinCount
+		// is stable for the lifetime of the AudioContext, so allocating once
+		// here is correct and removes ~60 allocations/second of GC pressure.
+		const { left, right } = editor.audio.getAnalysers();
+		const analyser = left ?? right ?? null;
+		const bins = analyser ? analyser.frequencyBinCount : 0;
+		const data = bins > 0 ? new Uint8Array(bins) : null;
+
 		const tick = () => {
-			const { left, right } = editor.audio.getAnalysers();
-			// Prefer the left channel for the visual but fall back to the
-			// right if left isn't wired up. If neither is present, the bars
-			// just decay toward 0 — we don't want to crash on a fresh load.
-			const analyser = left ?? right ?? null;
-			const bins = analyser ? analyser.frequencyBinCount : 0;
-			const data = analyser ? new Uint8Array(bins) : null;
 			if (data && analyser) {
 				analyser.getByteFrequencyData(data);
 			}

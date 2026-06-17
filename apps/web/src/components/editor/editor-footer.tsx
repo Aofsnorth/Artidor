@@ -2,7 +2,7 @@
 
 import { useEditor } from "@/hooks/use-editor";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 function formatElapsed({ seconds }: { seconds: number }): string {
 	const total = Math.max(0, Math.floor(seconds));
@@ -13,6 +13,13 @@ function formatElapsed({ seconds }: { seconds: number }): string {
 	return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
 }
 
+/**
+ * Footer strip with project metadata. The "Worked on HH:MM:SS" counter
+ * updates every second via direct DOM mutation (not React state) so the
+ * surrounding footer chrome — fps / canvas size / aspect / stereo — never
+ * re-renders. State-based ticker would force the whole tree to reconcile
+ * once per second even though only one text node changed.
+ */
 export function EditorFooter() {
 	const project = useEditor((e) => e.project.getActive());
 	const fps = project?.settings.fps
@@ -24,20 +31,26 @@ export function EditorFooter() {
 	const aspect = canvas ? formatCanvasAspect(canvas) : "16:9";
 
 	const createdAtMs = project?.metadata.createdAt?.getTime() ?? 0;
-	const [now, setNow] = useState(() => Date.now());
+	const counterRef = useRef<HTMLSpanElement>(null);
 
 	useEffect(() => {
-		if (!createdAtMs) return;
-		// Tick once per second so the work-duration counter stays fresh without
-		// burning a requestAnimationFrame loop.
-		const interval = setInterval(() => setNow(Date.now()), 1000);
-		return () => clearInterval(interval);
+		const node = counterRef.current;
+		if (!node) return;
+		// No createdAt yet — show dashes and bail until the project loads.
+		if (!createdAtMs) {
+			node.textContent = "--:--:--";
+			return;
+		}
+		const tick = () => {
+			if (!node.isConnected) return;
+			node.textContent = formatElapsed({
+				seconds: Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000)),
+			});
+		};
+		tick();
+		const interval = window.setInterval(tick, 1000);
+		return () => window.clearInterval(interval);
 	}, [createdAtMs]);
-
-	const elapsedSeconds = createdAtMs
-		? Math.max(0, Math.floor((now - createdAtMs) / 1000))
-		: 0;
-	const workLabel = formatElapsed({ seconds: elapsedSeconds });
 
 	return (
 		<div className="z-50 flex h-9 w-full shrink-0 items-center justify-between border-t border-white/[0.08] bg-[linear-gradient(180deg,#111114_0%,#08080a_100%)] px-4 text-[0.62rem] text-white/[0.48] shadow-[0_-8px_28px_rgba(0,0,0,0.55)]">
@@ -49,7 +62,13 @@ export function EditorFooter() {
 					<span className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-white/[0.32]">
 						Worked on
 					</span>
-					<span className="font-mono text-white/[0.82]">{workLabel}</span>
+					<span
+						ref={counterRef}
+						className="font-mono text-white/[0.82]"
+						suppressHydrationWarning
+					>
+						--:--:--
+					</span>
 				</div>
 			</div>
 
