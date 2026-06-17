@@ -87,6 +87,23 @@ const bodySchema = z.object({
 			}),
 		)
 		.optional(),
+	/**
+	 * Optional client-provided provider config. When present, the
+	 * server uses it for this request (and validates it); when absent,
+	 * the server falls back to its env-var provider. Lets the
+	 * AI Edit panel send a user-managed provider from
+	 * `useAIProvidersStore` without round-tripping through env.
+	 */
+	provider: z
+		.object({
+			baseUrl: z.string().min(1),
+			apiKey: z.string().optional().default(""),
+			model: z.string().min(1),
+			kind: z
+				.enum(["openai-compatible", "ollama"])
+				.default("openai-compatible"),
+		})
+		.optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -100,18 +117,6 @@ export async function POST(request: Request) {
 		return new Response("Not Found", { status: 404 });
 	}
 
-	const config = resolveProvider();
-	if (!config) {
-		return new Response(
-			JSON.stringify({
-				error: "no_provider",
-				message:
-					"AI provider is not configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL.",
-			}),
-			{ status: 501, headers: { "content-type": "application/json" } },
-		);
-	}
-
 	let body: z.infer<typeof bodySchema>;
 	try {
 		const json = (await request.json()) as unknown;
@@ -123,6 +128,39 @@ export async function POST(request: Request) {
 				message: err instanceof Error ? err.message : "Invalid JSON",
 			}),
 			{ status: 400, headers: { "content-type": "application/json" } },
+		);
+	}
+
+	// Resolve the provider for this request. The client can supply
+	// its own config via `body.provider` (preferred — that's how
+	// `useAIProvidersStore` plugs in). If absent, fall back to the
+	// server's env-var resolution so a no-config deploy still works.
+	let config: ReturnType<typeof resolveProvider>;
+	if (body.provider) {
+		// Map the client provider kind onto the server-side provider
+		// names the LLMProvider classes know about. "openai-compatible"
+		// and "ollama" both reuse the OpenAI code path because Ollama
+		// ships the same /v1/chat/completions schema.
+		const providerName: "openai" | "ollama" =
+			body.provider.kind === "ollama" ? "ollama" : "openai";
+		config = {
+			provider: providerName,
+			model: body.provider.model,
+			apiKey: body.provider.apiKey,
+			baseUrl: body.provider.baseUrl,
+		};
+	} else {
+		config = resolveProvider();
+	}
+
+	if (!config) {
+		return new Response(
+			JSON.stringify({
+				error: "no_provider",
+				message:
+					"AI provider is not configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL, or attach a provider in the AI Edit panel.",
+			}),
+			{ status: 501, headers: { "content-type": "application/json" } },
 		);
 	}
 
