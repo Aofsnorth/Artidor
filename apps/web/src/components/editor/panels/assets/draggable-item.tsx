@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { Button } from "@/components/ui/button";
 import {
 	Tooltip,
@@ -168,17 +169,12 @@ export function DraggableItem({
 					</div>
 					{shouldShowLabel && (
 						<div className="mt-1 flex w-full justify-center">
-							<span
-								className="text-foreground z-10 w-full truncate text-[0.7rem] font-medium text-center drop-shadow-md"
-								title={name}
+							<MarqueeText
+								className="text-foreground z-10 w-full text-center text-[0.7rem] font-medium drop-shadow-md"
+								pxPerSecond={30}
 							>
-								<span className="sr-only">{name}</span>
-								<span aria-hidden="true">
-									{name.length > 8
-										? `${name.slice(0, 16)}...${name.slice(-3)}`
-										: name}
-								</span>
-							</span>
+								{name}
+							</MarqueeText>
 						</div>
 					)}
 				</div>

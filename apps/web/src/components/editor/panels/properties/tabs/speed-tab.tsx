@@ -149,6 +149,11 @@ export function SpeedTab({
 							}
 						/>
 					</div>
+					<div className="rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-3 py-2 text-[0.68rem] leading-relaxed text-cyan-100/65">
+						Need smoother slow motion? Open the adjacent{" "}
+						<span className="font-semibold text-cyan-100">Interpolation</span>{" "}
+						tab to choose Frame Blending, Optical Flow, or AI (RIFE/WebGPU).
+					</div>
 				</SectionFields>
 			</SectionContent>
 		</Section>

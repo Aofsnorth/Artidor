@@ -360,10 +360,10 @@ function getTextConfig({
 	element: TextElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	return {
 		defaultTab: "text",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
 			buildTextTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
@@ -382,6 +382,7 @@ function getVideoConfig({
 	mediaAsset: MediaAsset | undefined;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	// Show the Audio tab whenever the underlying media *might* have an
 	// audio track. We treat `undefined` and `true` as "show" — only an
 	// explicit `hasAudio === false` hides the tab. This is more
@@ -394,7 +395,6 @@ function getVideoConfig({
 	return {
 		defaultTab: "transform",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
@@ -418,10 +418,10 @@ function getImageConfig({
 	element: ImageElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	return {
 		defaultTab: "transform",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
@@ -441,10 +441,10 @@ function getStickerConfig({
 	element: StickerElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	return {
 		defaultTab: "transform",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -482,10 +482,10 @@ function getAudioConfig({
 	element: AudioElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	return {
 		defaultTab: "audio-element",
 		tabs: [
-			buildElementTab({ element, mediaAssets }),
 			buildAudioElementTab({ element }),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
@@ -502,12 +502,10 @@ function getEffectConfig({
 	element: EffectElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
+	void mediaAssets;
 	return {
 		defaultTab: "effects",
-		tabs: [
-			buildElementTab({ element, mediaAssets }),
-			buildStandaloneEffectTab({ element }),
-		],
+		tabs: [buildStandaloneEffectTab({ element })],
 	};
 }
 

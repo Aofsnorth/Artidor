@@ -133,7 +133,7 @@ function InspectorView() {
 						Reset all
 					</button>
 				</div>
-				<div className="mt-3 grid grid-cols-6 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
+				<div className="mt-3 grid grid-cols-7 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
 					{primaryTabs.map((tab) => (
 						<TooltipProvider key={tab.label} delayDuration={0}>
 							<Tooltip>
@@ -157,7 +157,7 @@ function InspectorView() {
 												className="size-2.5 opacity-70"
 											/>
 										)}
-										<span>{tab.label}</span>
+										<span className="min-w-0 truncate">{tab.label}</span>
 									</button>
 								</TooltipTrigger>
 								{!tab.target && (
@@ -207,7 +207,9 @@ function InspectorView() {
 											)}
 										>
 											<span className="mr-1.5 opacity-70">{tab.icon}</span>
-											{tab.label}
+											<MarqueeText className="max-w-[90px]" pxPerSecond={28}>
+												{tab.label}
+											</MarqueeText>
 										</Button>
 									</TooltipTrigger>
 									<TooltipContent side="bottom">{tab.label}</TooltipContent>
@@ -247,7 +249,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			   widths. Hiding them gives the details card the full
 			   panel to work with. */}
 			{!disabled && (
-				<div className="mt-3 grid grid-cols-6 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.68rem]">
+				<div className="mt-3 grid grid-cols-7 gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
 					{PRIMARY_INSPECTOR_TABS.map((tab) => (
 						<span
 							key={tab.label}
@@ -265,7 +267,11 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 const PRIMARY_INSPECTOR_TABS = [
 	{
 		label: "Element",
-		ids: ["element-info"],
+		ids: ["element-info", "graphic"],
+	},
+	{
+		label: "Text",
+		ids: ["text"],
 	},
 	{
 		label: "Video",
@@ -275,7 +281,6 @@ const PRIMARY_INSPECTOR_TABS = [
 			"speed",
 			"speed-ramp",
 			"frame-interpolation",
-			"text",
 			"graphic",
 			"blending",
 			"parenting",

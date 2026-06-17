@@ -246,6 +246,7 @@ export function AudioTab({
 					detach from.
 				</div>
 			)}
+			<div className="pt-2" />
 			<Section collapsible sectionKey={`${element.id}:audio:${variant}`}>
 				<SectionHeader>
 					<SectionTitle>{sectionTitle}</SectionTitle>
