@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ReactMarkdownWrapper } from "@/components/ui/react-markdown-wrapper";
 import { cn } from "@/utils/ui";
 
-const LAST_UPDATED = "February 25, 2026";
+const LAST_UPDATED = "June 17, 2026";
 
 type StatusType = "complete" | "pending" | "default" | "info";
 
@@ -42,10 +42,37 @@ const roadmapItems: RoadmapItem[] = [
 	{
 		title: "Essential functionality",
 		description:
-			"Everything that makes a video editor **useful**. Timeline interactivity, storage, effects, transitions, etc.",
+			"Everything that makes a video editor **useful**. Timeline interactivity, storage, effects, transitions, etc.\n\n**Recently shipped:** 75+ customizable Alight Motion-style shapes, reusable layer/group presets with right-click save, GPU-rendered text raster cache, per-character text animators (Fade, Rise, Drop, Zoom, Pop, Typewriter, Wave), Easy Ease (F9) and the Keyframe Assistant menu, and several timeline polish fixes (clip-trim anchors, ruler flicker).",
 		status: {
 			text: "In progress",
 			type: "pending",
+		},
+	},
+	{
+		title: "Pro editor tooling",
+		description:
+			"Alight Motion / CapCut parity: copy layer + paste style, freehand vector draw tool, full plugin system with categories and importable plugins, detachable / pop-out panels, and richer effect & transition previews.",
+		status: {
+			text: "Not started",
+			type: "default",
+		},
+	},
+	{
+		title: "Effects, transitions & speed",
+		description:
+			"50+ effects and transitions, color grading moved to the Adjust tab, Border & Shadow, Color & Fill, CapCut-style velocity retiming, Alight Motion manual speed graph, and copy/paste effect.",
+		status: {
+			text: "Not started",
+			type: "default",
+		},
+	},
+	{
+		title: "AI & provider flexibility",
+		description:
+			"OpenAI-compatible provider for the AI Co-Pilot so users can point the assistant at any local or self-hosted endpoint.",
+		status: {
+			text: "Not started",
+			type: "default",
 		},
 	},
 	{

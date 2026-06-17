@@ -440,14 +440,20 @@ export function TimelineElement({
 		elementId: element.id,
 		fallback: element,
 	});
-	const { currentDuration, currentStartTime, handleResizeStart, isResizing } =
-		useTimelineElementResize({
-			element,
-			track,
-			zoomLevel,
-			onSnapPointChange,
-			onResizeStateChange,
-		});
+	const {
+		currentTrimStart,
+		currentTrimEnd,
+		currentDuration,
+		currentStartTime,
+		handleResizeStart,
+		isResizing,
+	} = useTimelineElementResize({
+		element,
+		track,
+		zoomLevel,
+		onSnapPointChange,
+		onResizeStateChange,
+	});
 
 	const [replaceMediaOpen, setReplaceMediaOpen] = useState(false);
 	const [renameOpen, setRenameOpen] = useState(false);
@@ -633,6 +639,16 @@ export function TimelineElement({
 							onElementMouseDown={onElementMouseDown}
 							onResizeStart={handleElementResizeStart}
 							isDropTarget={isDropTarget}
+							contentElement={
+								isResizing
+									? ({
+											...element,
+											trimStart: currentTrimStart,
+											trimEnd: currentTrimEnd,
+											duration: currentDuration,
+										} as TimelineElementType)
+									: undefined
+							}
 						/>
 						{track.type === "video" && (
 							<>
@@ -928,6 +944,7 @@ function ElementInner({
 	onElementMouseDown,
 	onResizeStart,
 	isDropTarget = false,
+	contentElement,
 }: {
 	element: TimelineElementType;
 	track: TimelineTrack;
@@ -951,6 +968,10 @@ function ElementInner({
 		side: "left" | "right";
 	}) => void;
 	isDropTarget?: boolean;
+	/** Element carrying live (in-progress) trim/duration during a resize drag so
+	 * the filmstrip + waveform stay source-anchored instead of sliding. Falls
+	 * back to `element` when not provided. */
+	contentElement?: TimelineElementType;
 }) {
 	const isReducedOpacity =
 		(canElementBeHidden(element) && element.hidden) || isDropTarget;
@@ -1046,7 +1067,7 @@ function ElementInner({
 						>
 							<div className="flex h-full flex-1 min-h-0 items-center overflow-hidden">
 								<ElementContent
-									element={element}
+									element={contentElement ?? element}
 									track={track}
 									zoomLevel={zoomLevel}
 								/>

@@ -18,6 +18,25 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-timeline-anchors",
+		date: "2026-06-17",
+		tag: "fix",
+		title: "Timeline trim/crop stays anchored",
+		items: [
+			"Dragging a clip's edge no longer slides its thumbnail or waveform — the source media stays put while you trim.",
+			"The ruler's seconds labels no longer flicker as you widen or zoom the timeline.",
+		],
+	},
+	{
+		id: "2026-06-17-changelog-tab",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Changelog tab in the header",
+		items: [
+			"A direct link to the full changelog now sits in the landing-page header nav.",
+		],
+	},
+	{
 		id: "2026-06-17-shapes-75",
 		date: "2026-06-17",
 		tag: "feature",

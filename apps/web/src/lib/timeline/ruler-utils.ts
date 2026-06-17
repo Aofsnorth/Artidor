@@ -176,17 +176,32 @@ function findOptimalInterval({
 
 /**
  * checks if a time should have a label based on the label interval.
+ *
+ * Uses integer-frame comparison instead of float modulo: floating-point
+ * division of `time / labelIntervalSeconds` accumulates error as the
+ * timeline widens, and labels near a tick boundary would flicker between
+ * "show" and "hide" across re-renders. Comparing the rounded frame index
+ * against an expected frame step is exact.
  */
 export function shouldShowLabel({
 	time,
 	labelIntervalSeconds,
+	fps,
 }: {
 	time: number;
 	labelIntervalSeconds: number;
+	fps: number;
 }): boolean {
-	const epsilon = 0.0001;
-	const remainder = time % labelIntervalSeconds;
-	return remainder < epsilon || remainder > labelIntervalSeconds - epsilon;
+	const labelIntervalFrames = labelIntervalSeconds * fps;
+	if (!Number.isFinite(labelIntervalFrames) || labelIntervalFrames <= 0) {
+		return false;
+	}
+	const timeFrames = time * fps;
+	const rounded = Math.round(timeFrames);
+	const remainder = rounded % Math.round(labelIntervalFrames);
+	// account for wrap-around: 0 and N are the same tick
+	const step = Math.round(labelIntervalFrames);
+	return remainder === 0 || remainder === step;
 }
 
 /**
@@ -202,13 +217,14 @@ export function formatRulerLabel({
 	timeInSeconds: number;
 	fps: FrameRate;
 }): string {
-	if (isSecondBoundary({ timeInSeconds })) {
+	const fpsFloat = frameRateToFloat(fps);
+	if (isSecondBoundary({ timeInSeconds, fps: fpsFloat })) {
 		return `${formatTimestamp({ timeInSeconds })}:00`;
 	}
 
 	const frameWithinSecond = getFrameWithinSecond({
 		timeInSeconds,
-		fps: frameRateToFloat(fps),
+		fps: fpsFloat,
 	});
 	return `${formatTimestamp({ timeInSeconds })}:${frameWithinSecond
 		.toString()
@@ -217,15 +233,20 @@ export function formatRulerLabel({
 
 /**
  * checks if a time falls exactly on a second boundary.
+ *
+ * Integer-frame based — a second is `fps` frames, so we check whether
+ * the rounded total frame count is divisible by the rounded fps.
  */
 function isSecondBoundary({
 	timeInSeconds,
+	fps,
 }: {
 	timeInSeconds: number;
+	fps: number;
 }): boolean {
-	const epsilon = 0.0001;
-	const remainder = timeInSeconds % 1;
-	return remainder < epsilon || remainder > 1 - epsilon;
+	const totalFrames = Math.round(timeInSeconds * fps);
+	const fpsRounded = Math.round(fps);
+	return totalFrames % fpsRounded === 0;
 }
 
 /**
@@ -238,8 +259,9 @@ function getFrameWithinSecond({
 	timeInSeconds: number;
 	fps: number;
 }): number {
-	const fractionalPart = timeInSeconds % 1;
-	return Math.round(fractionalPart * fps);
+	const totalFrames = Math.round(timeInSeconds * fps);
+	const fpsRounded = Math.round(fps);
+	return totalFrames % fpsRounded;
 }
 
 /**
