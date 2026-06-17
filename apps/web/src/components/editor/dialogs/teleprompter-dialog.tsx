@@ -167,8 +167,8 @@ export function TeleprompterDialog({
 						)}
 						style={{ fontSize: `${fontSizePx}px` }}
 					>
-						{script.split("\n").map((line, index) => (
-							<p key={index} className="my-6">
+						{script.split("\n").map((line) => (
+							<p key={line} className="my-6">
 								{line || " "}
 							</p>
 						))}

@@ -238,7 +238,7 @@ export function SpeedRampTab({
 					<div className="space-y-2">
 						{localCurve.map((point, i) => (
 							<div
-								key={`${point.time}-${i}`}
+								key={`${point.time}-${point.speed}`}
 								className="rounded-lg border border-white/10 bg-white/[0.03] p-2"
 							>
 								<div className="mb-2 flex items-center justify-between gap-2">
@@ -261,10 +261,14 @@ export function SpeedRampTab({
 										</Button>
 									</div>
 								</div>
-								<label className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">
+								<label
+									className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
+									htmlFor={`speed-point-${i}-position`}
+								>
 									Position
 								</label>
 								<input
+									id={`speed-point-${i}-position`}
 									type="range"
 									min={0}
 									max={1}
@@ -276,10 +280,14 @@ export function SpeedRampTab({
 									}
 									className="mb-2 w-full"
 								/>
-								<label className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground">
+								<label
+									className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
+									htmlFor={`speed-point-${i}-speed`}
+								>
 									Speed
 								</label>
 								<input
+									id={`speed-point-${i}-speed`}
 									type="range"
 									min={0.05}
 									max={5}
@@ -328,11 +336,17 @@ function CurvePreview({
 	const yMin = 0;
 	const yMax = 5;
 
-	const toSvgX = (time: number) => padding + time * (width - padding * 2);
-	const toSvgY = (speed: number) =>
-		height -
-		padding -
-		((speed - yMin) / (yMax - yMin)) * (height - padding * 2);
+	const toSvgX = useCallback(
+		(time: number) => padding + time * (width - padding * 2),
+		[],
+	);
+	const toSvgY = useCallback(
+		(speed: number) =>
+			height -
+			padding -
+			((speed - yMin) / (yMax - yMin)) * (height - padding * 2),
+		[],
+	);
 	const fromSvgX = (x: number) =>
 		clamp((x - padding) / (width - padding * 2), 0, 1);
 	const fromSvgY = (y: number) =>
@@ -402,11 +416,19 @@ function CurvePreview({
 	return (
 		<div className="rounded-md bg-muted/30 p-2">
 			<svg
+				aria-label="Speed curve editor"
 				width={width}
 				height={height}
 				className="w-full cursor-crosshair select-none"
 				viewBox={`0 0 ${width} ${height}`}
 				onClick={handleBackgroundClick}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						handleBackgroundClick(
+							e as unknown as React.MouseEvent<SVGSVGElement>,
+						);
+					}
+				}}
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}
 			>
@@ -483,9 +505,11 @@ function CurvePreview({
 				{points.map((p, i) => {
 					const isEndpoint = i === 0 || i === curve.length - 1;
 					return (
-						<g key={i}>
+						<g key={`${p.x}-${p.y}`}>
 							{/* Larger hit area */}
+							{/* biome-ignore lint/a11y/noStaticElementInteractions: SVG keyframe handle uses pointer events to drive drag/remove */}
 							<circle
+								aria-label={`Speed point ${i + 1}`}
 								cx={p.x}
 								cy={p.y}
 								r={12}

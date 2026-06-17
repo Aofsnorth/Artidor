@@ -43,8 +43,9 @@ function computeSourceSpanForRetime({
 		let weighted = 0;
 		let totalWeight = 0;
 		for (let i = 0; i < curve.length - 1; i++) {
-			const p0 = curve[i]!;
-			const p1 = curve[i + 1]!;
+			const p0 = curve[i];
+			const p1 = curve[i + 1];
+			if (!p0 || !p1) continue;
 			const segLen = Math.max(0, p1.time - p0.time);
 			const avg = (p0.speed + p1.speed) / 2;
 			weighted += avg * segLen;
@@ -226,14 +227,12 @@ export async function renderRetimedBuffer({
 	trimStart,
 	clipDuration,
 	retime,
-	maintainPitch = false,
 }: {
 	audioContext: BaseAudioContext;
 	sourceBuffer: AudioBuffer;
 	trimStart: number;
 	clipDuration: number;
 	retime?: RetimeConfig;
-	maintainPitch?: boolean;
 }): Promise<AudioBuffer> {
 	const targetSampleRate = audioContext.sampleRate;
 	// For curve mode we always resample (no pitch preservation).

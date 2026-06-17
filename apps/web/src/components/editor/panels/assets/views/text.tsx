@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
@@ -141,16 +140,9 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 	};
 
 	return (
-		<div
-			role="button"
-			tabIndex={0}
+		<button
+			type="button"
 			onClick={handleAdd}
-			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
-					e.preventDefault();
-					handleAdd();
-				}
-			}}
 			className={cn(
 				`asset-preview-container group ${busy ? "opacity-50 pointer-events-none" : "cursor-pointer"}`,
 			)}
@@ -167,19 +159,10 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				{preset.name}
 			</span>
 			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
-				<Button
-					size="icon"
-					variant="secondary"
-					className="size-5 bg-black/50 hover:bg-black/80 border border-white/10"
-					aria-label={`Add ${preset.name}`}
-					onClick={(e) => {
-						e.stopPropagation();
-						handleAdd();
-					}}
-				>
+				<span className="flex size-5 items-center justify-center rounded-md bg-black/50 border border-white/10">
 					<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-cyan-400" />
-				</Button>
+				</span>
 			</div>
-		</div>
+		</button>
 	);
 }

@@ -62,12 +62,13 @@ export function validateManifest(
 		throw new Error("Manifest must declare at least one extension");
 	}
 	for (const ext of m.extensions) {
+		const record = ext as Record<string, unknown> | null;
 		if (
-			!ext ||
-			typeof ext !== "object" ||
-			typeof (ext as any).type !== "string" ||
-			typeof (ext as any).id !== "string" ||
-			typeof (ext as any).name !== "string"
+			!record ||
+			typeof record !== "object" ||
+			typeof record.type !== "string" ||
+			typeof record.id !== "string" ||
+			typeof record.name !== "string"
 		) {
 			throw new Error("Invalid extension entry in manifest");
 		}

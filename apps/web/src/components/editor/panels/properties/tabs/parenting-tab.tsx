@@ -77,8 +77,14 @@ export function ParentingTab({
 					scale will drive the child layer, like Alight Motion's parent-child
 					rigging.
 				</p>
-				<label className="mt-3 block text-xs font-medium">Parent</label>
+				<label
+					className="mt-3 block text-xs font-medium"
+					htmlFor="parent-layer-select"
+				>
+					Parent
+				</label>
 				<select
+					id="parent-layer-select"
 					className="bg-secondary border-secondary-border text-foreground mt-1 w-full rounded-md border px-2 py-2 text-sm"
 					value={element.parentId ?? ""}
 					onChange={(event) => setParent(event.target.value || undefined)}

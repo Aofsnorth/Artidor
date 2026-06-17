@@ -764,7 +764,7 @@ export function Timeline() {
 	);
 }
 
-function _TimelineStatusFooter() {
+export function TimelineStatusFooter() {
 	const project = useEditor((e) => e.project.getActive());
 	const duration = useEditor((e) => e.timeline.getTotalDuration());
 	const seconds = Math.max(0, Math.round(duration / TICKS_PER_SECOND));
@@ -1515,10 +1515,9 @@ function TrackLabelsResizeHandle({
 	}, [isResizing, onResize]);
 
 	return (
-		<div
-			role="separator"
+		<button
+			type="button"
 			aria-label="Resize track labels column"
-			aria-orientation="vertical"
 			title={
 				currentWidth
 					? `Drag to resize (currently ${Math.round(currentWidth)}px — double-click to reset)`
@@ -1576,7 +1575,7 @@ function TrackLabelsResizeHandle({
 					<path d="M9 6l6 6-6 6" />
 				</svg>
 			</div>
-		</div>
+		</button>
 	);
 }
 
@@ -1680,10 +1679,9 @@ function TrackHeightHandle({
 	}, [isResizing, trackId, setTrackHeight]);
 
 	return (
-		<div
-			role="separator"
+		<button
+			type="button"
 			aria-label="Resize track height"
-			aria-orientation="horizontal"
 			title={
 				currentHeight
 					? `Drag to resize (currently ${Math.round(currentHeight)}px — double-click to reset)`

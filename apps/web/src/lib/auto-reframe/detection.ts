@@ -157,6 +157,7 @@ export async function detectSubjectCenter({
 
 export function subjectFramesToKeyframeTimes({
 	frames,
+	// biome-ignore lint/correctness/noUnusedFunctionParameters: fps reserved for future frame-time conversion
 	fps,
 }: {
 	frames: SubjectFrame[];

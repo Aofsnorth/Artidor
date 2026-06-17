@@ -136,7 +136,7 @@ export async function stabilizeVideo({
 	// The compensation is the negative of the smoothed offset
 	const frames: StabilizationFrame[] = [];
 	for (let i = 0; i < smoothed.length; i++) {
-		const off = smoothed[i]!;
+		const off = smoothed[i] ?? { x: 0, y: 0 };
 		frames.push({
 			timeSeconds: (i * duration) / Math.max(1, samples - 1),
 			offsetX: -off.x,

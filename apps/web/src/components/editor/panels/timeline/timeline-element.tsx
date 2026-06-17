@@ -725,14 +725,14 @@ export function TimelineElement({
 								getVisualOffsetPx={getVisualOffsetPx}
 							/>
 						)}
-						{element.bookmarks?.map((bookmark, index) => {
+						{element.bookmarks?.map((bookmark) => {
 							const bookmarkLeftPx = timelineTimeToPixels({
 								time: bookmark.time - element.trimStart,
 								zoomLevel,
 							});
 							return (
 								<div
-									key={`bookmark-${index}`}
+									key={`bookmark-${bookmark.time}`}
 									className="pointer-events-none absolute top-0 bottom-0 w-px bg-blue-400 z-30"
 									style={{
 										left: `${bookmarkLeftPx}px`,
@@ -830,7 +830,9 @@ export function TimelineElement({
 							icon={<HugeiconsIcon icon={Layers01Icon} />}
 							onClick={(event: React.MouseEvent) => {
 								event.stopPropagation();
-								editor.timeline.ungroupElements({ groupId: element.groupId! });
+								editor.timeline.ungroupElements({
+									groupId: element.groupId as string,
+								});
 							}}
 						>
 							Ungroup elements
@@ -1791,7 +1793,8 @@ function TiledMediaContent({
 	zoomLevel: number;
 }) {
 	const mediaAssets = useEditor((e) => e.media.getAssets());
-
+	const trackVolume =
+		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
 	const imageUrl =
 		element.type === "video"
@@ -1808,6 +1811,13 @@ function TiledMediaContent({
 
 	const trackHeight = getTrackHeight({ type: track.type });
 	const isVideo = element.type === "video";
+	const elementVolume = dBToLinear((element as VideoElement).volume ?? 0);
+	const effectiveVolume = trackVolume * elementVolume;
+	// Use perceptual (sqrt) scaling for waveform display so the visual
+	// height better matches perceived loudness. -16 dB (0.16 linear)
+	// displays as ~40% height instead of 16%, which feels proportional
+	// to how loud the audio still sounds.
+	const waveformScale = Math.sqrt(effectiveVolume);
 
 	// The track-row is split vertically: top 60% is the thumbnail
 	// strip, bottom 40% is the audio waveform. Both halves are
@@ -1816,16 +1826,6 @@ function TiledMediaContent({
 	const filmstripHeight = isVideo ? Math.round(trackHeight * 0.6) : trackHeight;
 	const tileWidth = filmstripHeight * THUMBNAIL_ASPECT_RATIO;
 	const hasAudio = isVideo && (element.isSourceAudioEnabled ?? true);
-
-	const trackVolume =
-		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
-	const elementVolume = dBToLinear((element as VideoElement).volume ?? 0);
-	const effectiveVolume = trackVolume * elementVolume;
-	// Use perceptual (sqrt) scaling for waveform display so the visual
-	// height better matches perceived loudness. -16 dB (0.16 linear)
-	// displays as ~40% height instead of 16%, which feels proportional
-	// to how loud the audio still sounds.
-	const waveformScale = Math.sqrt(effectiveVolume);
 
 	return (
 		<>

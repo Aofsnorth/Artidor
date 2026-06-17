@@ -53,18 +53,18 @@ export function createPluginSandbox({
 		log: (...args: unknown[]) => {
 			console.log(`[plugin:${plugin.id}]`, ...args);
 		},
-		registerEffect: (def: any) => {
+		registerEffect: (def: Record<string, unknown>) => {
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(`[plugin:${plugin.id}] Invalid effect definition`, def);
 				return;
 			}
 			registrations.effects.push({
-				id: `${plugin.id}.${def.id}`,
-				name: def.name,
+				id: `${plugin.id}.${String(def.id)}`,
+				name: def.name as string,
 				definition: def,
 			});
 		},
-		registerTransition: (def: any) => {
+		registerTransition: (def: Record<string, unknown>) => {
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(
 					`[plugin:${plugin.id}] Invalid transition definition`,
@@ -73,30 +73,30 @@ export function createPluginSandbox({
 				return;
 			}
 			registrations.transitions.push({
-				id: `${plugin.id}.${def.id}`,
-				name: def.name,
+				id: `${plugin.id}.${String(def.id)}`,
+				name: def.name as string,
 				definition: def,
 			});
 		},
-		registerShape: (def: any) => {
+		registerShape: (def: Record<string, unknown>) => {
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(`[plugin:${plugin.id}] Invalid shape definition`, def);
 				return;
 			}
 			registrations.shapes.push({
-				id: `${plugin.id}.${def.id}`,
-				name: def.name,
+				id: `${plugin.id}.${String(def.id)}`,
+				name: def.name as string,
 				definition: def,
 			});
 		},
-		registerPreset: (def: any) => {
+		registerPreset: (def: Record<string, unknown>) => {
 			if (!def?.id || !def?.name || !def?.data) {
 				console.warn(`[plugin:${plugin.id}] Invalid preset definition`, def);
 				return;
 			}
 			registrations.presets.push({
-				id: `${plugin.id}.${def.id}`,
-				name: def.name,
+				id: `${plugin.id}.${String(def.id)}`,
+				name: def.name as string,
 				data: def.data,
 			});
 		},

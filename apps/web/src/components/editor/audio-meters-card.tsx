@@ -220,6 +220,7 @@ export function AudioMetersCard() {
 				<div className="flex items-center justify-between mb-3 shrink-0">
 					<div className="flex items-center gap-1.5">
 						<svg
+							aria-hidden="true"
 							className="size-3 text-white/40"
 							viewBox="0 0 24 24"
 							fill="none"
@@ -239,6 +240,7 @@ export function AudioMetersCard() {
 					>
 						<span>Full</span>
 						<svg
+							aria-hidden="true"
 							className="size-2 text-white/40"
 							viewBox="0 0 24 24"
 							fill="none"

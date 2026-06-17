@@ -414,7 +414,7 @@ export function useEditorActions() {
 				toast.info("Please select a single element to add a bookmark.");
 				return;
 			}
-			const selectedRef = selectedElements[0]!;
+			const [selectedRef] = selectedElements;
 			const track = editor.timeline.getTrackById({
 				trackId: selectedRef.trackId,
 			});
@@ -720,8 +720,7 @@ export function useEditorActions() {
 		() => {
 			if (selectedElements.length !== 2) return;
 			// Default linking: first selected = child, second = parent.
-			const child = selectedElements[0]!;
-			const parent = selectedElements[1]!;
+			const [child, parent] = selectedElements;
 			editor.timeline.setParent({
 				ref: child,
 				parentId: parent.elementId,
@@ -756,7 +755,7 @@ export function useEditorActions() {
 				toast.info("Please select a single audio or video element.");
 				return;
 			}
-			const selectedRef = selectedElements[0]!;
+			const [selectedRef] = selectedElements;
 			const track = editor.timeline.getTrackById({
 				trackId: selectedRef.trackId,
 			});

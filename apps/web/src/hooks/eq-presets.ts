@@ -5,9 +5,11 @@ import { EQ_BANDS, type EqGains } from "@/lib/audio/equalizer";
 
 export function buildEqPresets(): Record<string, EqGains> {
 	const out: Record<string, EqGains> = {};
+	const flat = {} as EqGains;
 	for (const band of EQ_BANDS) {
-		(out.flat ??= {} as EqGains)[band.id] = 0;
+		flat[band.id] = 0;
 	}
+	out.flat = flat;
 	return out;
 }
 

@@ -687,7 +687,6 @@ export async function createTimelineAudioBuffer({
 					trimStart: element.trimStart,
 					clipDuration: element.duration,
 					retime: element.retime,
-					maintainPitch: true,
 				})
 			: undefined;
 

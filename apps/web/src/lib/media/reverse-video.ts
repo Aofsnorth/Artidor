@@ -37,7 +37,8 @@ export async function generateReversedVideo({
 		// Use MediaRecorder + Canvas to encode the reversed video.
 		// Simpler approach: use captureStream from a canvas and playback frames in reverse.
 		const reversed = [...frames].reverse();
-		const first = frames[0]!;
+		const first = frames.at(0);
+		if (!first) return null;
 		const width = "width" in first.canvas ? first.canvas.width : 1280;
 		const height = "height" in first.canvas ? first.canvas.height : 720;
 
@@ -61,8 +62,7 @@ export async function generateReversedVideo({
 
 		recorder.start();
 		const frameDuration = 1000 / 30;
-		for (let i = 0; i < reversed.length; i++) {
-			const frame = reversed[i]!;
+		for (const [i, frame] of reversed.entries()) {
 			ctx.clearRect(0, 0, width, height);
 			ctx.drawImage(frame.canvas as CanvasImageSource, 0, 0, width, height);
 			onProgress?.({ progress: i / reversed.length });
