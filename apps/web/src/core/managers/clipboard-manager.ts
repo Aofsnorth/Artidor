@@ -11,7 +11,17 @@ import type {
 	StyleClipboardEntry,
 } from "@/lib/clipboard/types";
 import { PasteStyleCommand } from "@/lib/commands/timeline/clipboard";
-import type { TimelineElement } from "@/lib/timeline";
+import type { TimelineElement, VisualElement } from "@/lib/timeline";
+import type { Effect } from "@/lib/effects/types";
+import type { ParamValues } from "@/lib/params";
+import { generateUUID } from "@/utils/id";
+
+/** What gets stored when a user copies a single effect. */
+export interface EffectClipboardEntry {
+	type: string;
+	params: ParamValues;
+	enabled: boolean;
+}
 
 export class ClipboardManager {
 	private entry: ClipboardEntry | null = null;
@@ -21,6 +31,11 @@ export class ClipboardManager {
 	 * style and vice versa (mirrors Alight Motion's dual-clipboard model).
 	 */
 	private styleEntry: StyleClipboardEntry | null = null;
+	/**
+	 * Separate slot for "Copy Effect" — a single effect that can be pasted
+	 * onto other elements' effect stacks.
+	 */
+	private effectEntry: EffectClipboardEntry | null = null;
 	private listeners = new Set<() => void>();
 
 	constructor(private editor: EditorCore) {}
