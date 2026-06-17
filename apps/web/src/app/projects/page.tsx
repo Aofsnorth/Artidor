@@ -394,13 +394,13 @@ function ProjectsHeader() {
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
 	return (
-		<header className="sticky top-0 z-20 flex flex-col gap-2 px-4 transition-all sm:px-6 lg:px-8">
+		<header className="sticky top-0 z-20 relative">
 			{/* Glassmorphism backdrop for the header. The bottom edge fades
-			   into transparent so the header feels weightless against the
-			   artwork underneath, instead of leaving a hard seam. */}
+					   into transparent so the header feels weightless against the
+					   artwork underneath, instead of leaving a hard seam. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -bottom-5 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+				className="pointer-events-none absolute inset-x-0 top-0 -bottom-12 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
 				style={{
 					maskImage:
 						"linear-gradient(to bottom, black 0%, black 55%, rgba(0,0,0,0.85) 78%, transparent 100%)",
@@ -414,62 +414,64 @@ function ProjectsHeader() {
 				aria-hidden
 				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-white/[0.045] via-white/[0.02] to-transparent"
 			/>
-			<div className="flex min-h-16 items-center justify-between gap-3 py-3">
-				<div className="flex min-w-0 flex-1 items-center justify-start gap-3 lg:gap-5">
-					<Breadcrumb>
-						<BreadcrumbList>
-							<BreadcrumbItem>
-								<BreadcrumbLink asChild>
-									<Link href="/" className="text-sm sm:text-base">
-										Home
-									</Link>
-								</BreadcrumbLink>
-							</BreadcrumbItem>
-							<BreadcrumbSeparator />
-							<BreadcrumbItem>
-								<BreadcrumbPage className="text-sm sm:text-base font-medium text-foreground">
-									Projects
-								</BreadcrumbPage>
-							</BreadcrumbItem>
-						</BreadcrumbList>
-					</Breadcrumb>
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 sm:px-6 lg:px-8">
+				<div className="flex min-h-16 items-center justify-between gap-3 py-3">
+					<div className="flex min-w-0 flex-1 items-center justify-start gap-3 lg:gap-5">
+						<Breadcrumb>
+							<BreadcrumbList>
+								<BreadcrumbItem>
+									<BreadcrumbLink asChild>
+										<Link href="/" className="text-sm sm:text-base">
+											Home
+										</Link>
+									</BreadcrumbLink>
+								</BreadcrumbItem>
+								<BreadcrumbSeparator />
+								<BreadcrumbItem>
+									<BreadcrumbPage className="text-sm sm:text-base font-medium text-foreground">
+										Projects
+									</BreadcrumbPage>
+								</BreadcrumbItem>
+							</BreadcrumbList>
+						</Breadcrumb>
 
-					<div className="hidden h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur-sm md:flex">
-						{VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => (
-							<Button
-								key={mode}
-								variant="ghost"
-								size="icon"
-								className={cn(
-									"size-7 rounded-full text-white/50 hover:bg-white/[0.08] hover:text-white",
-									isHydrated &&
-										viewMode === mode &&
-										"!bg-white !text-black shadow-sm",
-								)}
-								onClick={() => setViewMode({ viewMode: mode })}
-								aria-label={label}
-								aria-pressed={isHydrated && viewMode === mode}
-							>
-								<HugeiconsIcon icon={icon} className="size-4" />
-							</Button>
-						))}
+						<div className="hidden h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur-sm md:flex">
+							{VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => (
+								<Button
+									key={mode}
+									variant="ghost"
+									size="icon"
+									className={cn(
+										"size-7 rounded-full text-white/50 hover:bg-white/[0.08] hover:text-white",
+										isHydrated &&
+											viewMode === mode &&
+											"!bg-white !text-black shadow-sm",
+									)}
+									onClick={() => setViewMode({ viewMode: mode })}
+									aria-label={label}
+									aria-pressed={isHydrated && viewMode === mode}
+								>
+									<HugeiconsIcon icon={icon} className="size-4" />
+								</Button>
+							))}
+						</div>
+					</div>
+
+					<div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-2.5">
+						<SearchBar className="hidden w-[220px] xl:block" />
+						<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
+							<ShortcutHint label="Search" keys={["/"]} />
+							<ShortcutHint label="New" keys={["N"]} />
+						</div>
+						<div className="hidden h-5 w-px bg-white/[0.08] xl:block" />
+						<TemplatesButton />
+						<ImportDriveButton />
+						<NewProjectButton />
+						<DriveAccountButton />
 					</div>
 				</div>
-
-				<div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-2.5">
-					<SearchBar className="hidden w-[220px] xl:block" />
-					<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
-						<ShortcutHint label="Search" keys={["/"]} />
-						<ShortcutHint label="New" keys={["N"]} />
-					</div>
-					<div className="hidden h-5 w-px bg-white/[0.08] xl:block" />
-					<TemplatesButton />
-					<ImportDriveButton />
-					<NewProjectButton />
-					<DriveAccountButton />
-				</div>
+				<SearchBar className="block md:hidden mb-4" />
 			</div>
-			<SearchBar className="block md:hidden mb-4" />
 		</header>
 	);
 }

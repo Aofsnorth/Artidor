@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-projects-header-align-fade",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Projects header alignment + deeper fade",
+		items: [
+			"Projects header content now aligns with the main content area (max-w-7xl). The breadcrumb sits at the left corner of the content area on wide screens instead of floating at the viewport edge, and the right action cluster sits at the matching right corner — header and grid now share the same horizontal rhythm.",
+			"The glass fade/blur under the header now trails noticeably further down (-bottom-12 instead of -bottom-5), so the seam between header and page artwork dissolves across a taller band instead of a sharp 20px edge.",
+		],
+	},
+	{
 		id: "2026-06-18-color-tab-left-bar",
 		date: "2026-06-18",
 		tag: "improvement",
