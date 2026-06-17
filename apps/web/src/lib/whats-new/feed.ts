@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-color-picker-fix",
+		date: "2026-06-17",
+		tag: "fix",
+		title: "Color picker no longer crashes",
+		items: [
+			"Dragging the saturation/value square to change a shape's colour no longer throws an error.",
+		],
+	},
+	{
 		id: "2026-06-17-presets",
 		date: "2026-06-17",
 		tag: "feature",

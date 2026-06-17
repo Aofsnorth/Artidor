@@ -7,6 +7,7 @@ import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { PledgeSection } from "@/components/landing/pledge-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { PageShell } from "@/components/landing/page-shell";
+import { WhatsNewCard } from "@/components/whats-new/whats-new-card";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site/brand";
 
@@ -29,6 +30,7 @@ export default async function Home() {
 				<CtaSection />
 			</main>
 			<Footer />
+			<WhatsNewCard />
 		</PageShell>
 	);
 }
