@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/components/editor/dialogs/migration-dialog";
 import { StoragePersistenceDialog } from "@/components/editor/dialogs/storage-persistence-dialog";
+import { MobileGate } from "@/components/editor/mobile-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -206,8 +207,9 @@ export default function ProjectsPage() {
 	}, [editor.project, isInitialized, router]);
 
 	return (
-		<PageTransition>
-			{/* `h-screen overflow-hidden` pins the page to a single
+		<MobileGate>
+			<PageTransition>
+				{/* `h-screen overflow-hidden` pins the page to a single
 			   viewport so the header + toolbar + content always
 			   fit. The content area is `flex-1 min-h-0` so it can
 			   shrink and own the remaining height without pushing
@@ -339,6 +341,7 @@ export default function ProjectsPage() {
 				<ProjectsSettingsDialog />
 			</Suspense>
 		</PageTransition>
+		</MobileGate>
 	);
 }
 

@@ -1575,6 +1575,11 @@ function AudioElementContent({
 		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
 	const elementVolume = dBToLinear(element.volume ?? 0);
 	const effectiveVolume = trackVolume * elementVolume;
+	// Use perceptual (sqrt) scaling for waveform display so the visual
+	// height better matches perceived loudness. -16 dB (0.16 linear)
+	// displays as ~40% height instead of 16%, which feels proportional
+	// to how loud the audio still sounds.
+	const waveformScale = Math.sqrt(effectiveVolume);
 
 	if (hasAudioSource) {
 		return (
@@ -1594,7 +1599,7 @@ function AudioElementContent({
 						element.sourceDuration ||
 						element.duration + element.trimStart + element.trimEnd
 					}
-					scale={effectiveVolume}
+					scale={waveformScale}
 				/>
 				<div className="pointer-events-none absolute right-1.5 bottom-1 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.18em] text-white/42">
 					Beat
@@ -1816,6 +1821,11 @@ function TiledMediaContent({
 		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
 	const elementVolume = dBToLinear((element as VideoElement).volume ?? 0);
 	const effectiveVolume = trackVolume * elementVolume;
+	// Use perceptual (sqrt) scaling for waveform display so the visual
+	// height better matches perceived loudness. -16 dB (0.16 linear)
+	// displays as ~40% height instead of 16%, which feels proportional
+	// to how loud the audio still sounds.
+	const waveformScale = Math.sqrt(effectiveVolume);
 
 	return (
 		<>
@@ -1884,7 +1894,7 @@ function TiledMediaContent({
 						beatColor="rgba(255, 255, 255, 1)"
 						variant="beats"
 						symmetric={false}
-						scale={effectiveVolume}
+						scale={waveformScale}
 					/>
 				</div>
 			)}

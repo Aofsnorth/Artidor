@@ -223,7 +223,6 @@ export function AudioWaveform({
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
-		// Do not normalize to globalPeak so the waveform size reflects absolute volume
 		const safePeak = 1.0;
 		const logBase = Math.log1p(1);
 

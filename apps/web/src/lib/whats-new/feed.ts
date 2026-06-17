@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-bugfixes-waveform-shortcuts",
+		date: "2026-06-17",
+		tag: "fix",
+		title: "Waveform, shortcuts, and mobile improvements",
+		items: [
+			"Waveform height now uses perceptual scaling (sqrt) so it better matches perceived loudness — reducing volume to -16dB shows ~40% height instead of 16%.",
+			"Space bar shortcut now works more reliably — no longer blocked when focus is on non-text UI elements like buttons and dropdowns.",
+			"Projects page now shows mobile gate warning on small screens, matching the editor page behavior.",
+		],
+	},
+	{
 		id: "2026-06-17-interactive-speed-graph",
 		date: "2026-06-17",
 		tag: "improvement",
