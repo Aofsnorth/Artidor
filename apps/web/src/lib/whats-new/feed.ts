@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-preview-variety-color-separation",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Effect previews with variety + color grading moved to Adjust",
+		items: [
+			"Effect preview service now generates 7 different procedural test sources (gradient, checkerboard, SMPTE color bars, radial, diagonal stripes, portrait silhouette, noise field) and picks one per-effect via a deterministic hash. The Effects panel no longer shows 165 copies of the same flat gradient — blur/pixelate effects preview against checkerboards, color grading presets against color bars, vignette/glow against a radial burst, stylize/glitch against stripes, swirl/bulge against a portrait, and grain/noise against a noise field.",
+			"Color grading presets (Grayscale, Sepia, Vintage, HSL, Duotone, Cyberpunk, Noir, Amber Grade, etc.) were removed from the Effects panel entirely — they now live exclusively in the Adjustments panel under the 'Color' category, matching the Alight Motion workflow where color is an adjustment, not an effect. The Effects filter bar's 'Color' chip is gone; Adjustments still has it.",
+			"Counts above 100 across the board — Effects 165 (post-cleanup), Transitions 162, Overlays 161, Motion 150, Templates 320, Stickers 180, Text 44 + Text-Animations 77 = 121. All categories meet the user spec without padding.",
+			"Long preset names no longer truncate: every asset card uses MarqueeText for its label, so a 60-character effect name scrolls in place instead of cutting off with an ellipsis.",
+		],
+	},
+	{
 		id: "2026-06-18-popout-subviews",
 		date: "2026-06-18",
 		tag: "improvement",

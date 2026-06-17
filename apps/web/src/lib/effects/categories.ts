@@ -15,10 +15,20 @@ export const EFFECT_CATEGORIES = [
 	"Retro",
 	"Cinematic",
 	"Stylize",
-	"Color",
+	"Distortion",
+	"Particles",
+	"Texture",
+	"Artistic",
+	"Generator",
 ] as const;
 
-/** Category labels for the Adjustments panel bar, in display order. */
+/**
+ * Category labels for the Adjustments panel bar, in display order.
+ * The "Color" category here is the home for Alight Motion-style color
+ * grading (Grayscale / Sepia / Vintage / Cinematic / Duotone / HSL /
+ * etc.) — color grading presets were moved out of the Effects panel
+ * entirely so the two panels don't overlap.
+ */
 export const ADJUST_CATEGORIES = ["Basic", "Color", "Effects"] as const;
 
 const EFFECT_CATEGORY_MAP: Record<string, string> = {
