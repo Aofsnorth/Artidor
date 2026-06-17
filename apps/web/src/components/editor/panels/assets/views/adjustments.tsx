@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
+import { PopOutAction } from "@/components/editor/floating-window";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
 import { useEditor } from "@/hooks/use-editor";
@@ -34,7 +35,10 @@ export function AdjustmentsView() {
 	);
 
 	return (
-		<PanelView title="Adjustments">
+		<PanelView
+			title="Adjustments"
+			actions={<PopOutAction id="adjust" title="Adjustments" />}
+		>
 			<div className="flex flex-col gap-3 pb-3">
 				<CategoryBar
 					categories={ADJUST_CATEGORIES}

@@ -231,3 +231,35 @@ export function PopOutButton({
 		</button>
 	);
 }
+
+/**
+ * In-header variant of PopOutButton designed for the `actions` slot of
+ * `PanelView`. Always visible (not hover-gated) so users know the
+ * affordance exists on sub-views like Effects / Transitions / Adjust /
+ * Plugins where the absolute-corner popout would overlap the search
+ * input or category chips.
+ */
+export function PopOutAction({
+	id,
+	title,
+}: {
+	id: FloatablePanelId;
+	title: string;
+}) {
+	const popOutPanel = useEditorUIStore((s) => s.popOutPanel);
+	const enablePopoutPanels = useSettingsStore((s) => s.enablePopoutPanels);
+
+	if (!enablePopoutPanels) return null;
+
+	return (
+		<button
+			type="button"
+			className="grid size-6 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-white/45 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+			onClick={() => popOutPanel(id)}
+			title={`Pop out ${title} to new window`}
+			aria-label={`Pop out ${title}`}
+		>
+			<HugeiconsIcon icon={WindowMaximizeIcon} className="size-3" />
+		</button>
+	);
+}

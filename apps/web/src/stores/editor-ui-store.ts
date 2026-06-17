@@ -14,7 +14,19 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type FloatablePanelId = "assets" | "preview" | "properties" | "timeline";
+export type FloatablePanelId =
+	| "assets"
+	| "preview"
+	| "properties"
+	| "timeline"
+	// Sub-views of the Assets panel — each can be popped out
+	// independently of the others so a power user can e.g. keep the
+	// Effects browser on a second monitor while still using the main
+	// asset panel on the primary.
+	| "effects"
+	| "transitions"
+	| "adjust"
+	| "plugins";
 
 export interface FloatingPanelState {
 	x: number;
@@ -30,6 +42,12 @@ const DEFAULT_FLOATING_PANELS: Record<FloatablePanelId, FloatingPanelState> = {
 	preview: { x: 200, y: 100, width: 720, height: 480 },
 	properties: { x: 360, y: 120, width: 320, height: 600 },
 	timeline: { x: 100, y: 320, width: 980, height: 320 },
+	// Sub-view defaults — offset so multiple popouts don't stack on
+	// top of each other on first open.
+	effects: { x: 120, y: 140, width: 480, height: 560 },
+	transitions: { x: 160, y: 180, width: 480, height: 560 },
+	adjust: { x: 200, y: 220, width: 480, height: 560 },
+	plugins: { x: 240, y: 260, width: 480, height: 560 },
 };
 
 interface EditorUIStore {
@@ -96,6 +114,10 @@ export const useEditorUIStore = create<EditorUIStore>()(
 				preview: null,
 				properties: null,
 				timeline: null,
+				effects: null,
+				transitions: null,
+				adjust: null,
+				plugins: null,
 			},
 			popOutPanel: (id) => {
 				const current = get().floatingPanels[id];

@@ -28,6 +28,7 @@ import {
 	PLUGIN_CATEGORIES,
 } from "@/lib/plugins/types";
 import { PanelView } from "./base-panel";
+import { PopOutAction } from "@/components/editor/floating-window";
 import { PluginDetailDialog } from "./plugin-detail-dialog";
 import { cn } from "@/utils/ui";
 
@@ -111,7 +112,10 @@ export function PluginsView() {
 			: plugins.filter((p) => p.manifest.category === filter);
 
 	return (
-		<PanelView title="Plugins">
+		<PanelView
+			title="Plugins"
+			actions={<PopOutAction id="plugins" title="Plugins" />}
+		>
 			<div className="flex h-full flex-col gap-2 p-2">
 				{/* Import + Sample actions */}
 				<div className="flex shrink-0 items-center gap-2">
