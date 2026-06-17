@@ -88,7 +88,12 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 		return effectPreviewService.onPreviewImageReady({ callback: render });
 	}, [effectType]);
 
-	return <canvas ref={canvasRef} className="size-full" />;
+	return (
+		<div className="relative size-full overflow-hidden rounded-sm bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.24),transparent_32%),linear-gradient(135deg,#111827,#020617)]">
+			<canvas ref={canvasRef} className="relative z-10 size-full" />
+			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+		</div>
+	);
 }
 
 function EffectItem({ effect }: { effect: EffectDefinition }) {

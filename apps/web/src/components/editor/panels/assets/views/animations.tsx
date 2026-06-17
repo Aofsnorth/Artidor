@@ -26,6 +26,7 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
 const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
@@ -111,6 +112,7 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 	const previewStyle = presetPreviewStyle(preset);
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
 		<div
 			role="button"
 			tabIndex={0}
@@ -138,9 +140,12 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 					<PresetIcon preset={preset} />
 				</div>
 			</div>
-			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">
+			<MarqueeText
+				className="text-foreground z-10 w-full px-2 text-[0.7rem] font-medium drop-shadow-md"
+				pxPerSecond={30}
+			>
 				{preset.name}
-			</span>
+			</MarqueeText>
 			<div className="text-white/70 absolute left-1.5 top-1.5 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
 				{CATEGORY_ICONS[preset.category]}
 			</div>
