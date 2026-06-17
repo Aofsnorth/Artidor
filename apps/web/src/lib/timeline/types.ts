@@ -142,7 +142,6 @@ export interface FrameInterpolationCapabilities {
 	ai: boolean;
 	hardware: FrameInterpolationHardware;
 }
-}
 
 interface BaseAudioElement extends BaseTimelineElement {
 	type: "audio";
