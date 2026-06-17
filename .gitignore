@@ -24,3 +24,5 @@ bun.lockb
 target/
 
 .cargo-tools/
+
+PROGRESS_SUMMARY.md
