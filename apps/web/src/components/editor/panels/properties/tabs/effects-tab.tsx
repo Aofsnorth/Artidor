@@ -22,6 +22,8 @@ import {
 	ViewIcon,
 	ViewOffSlashIcon,
 	MagicWand05Icon,
+	Copy01Icon,
+	ClipboardIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
 import { Separator } from "@/components/ui/separator";
@@ -140,10 +142,36 @@ export function ClipEffectsTab({
 		setDropIndex(null);
 	};
 
+	const handleCopyEffect = (effect: Effect) => {
+		editor.clipboard.copyEffect({
+			type: effect.type,
+			params: effect.params,
+			enabled: effect.enabled,
+		});
+	};
+
+	const handlePasteEffect = () => {
+		editor.clipboard.pasteEffect();
+	};
+
+	const hasCopiedEffect = editor.clipboard.hasEffectEntry();
+
 	return (
 		<div className="flex flex-col h-full">
-			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
+			<div className="border-b px-3.5 h-11 shrink-0 flex items-center justify-between">
 				<SectionTitle>Effects</SectionTitle>
+				{hasCopiedEffect && (
+					<Button
+						variant="ghost"
+						size="icon"
+						className="size-7"
+						onClick={handlePasteEffect}
+						title="Paste effect"
+						aria-label="Paste effect"
+					>
+						<HugeiconsIcon icon={ClipboardIcon} className="size-3.5" />
+					</Button>
+				)}
 			</div>
 			{effects.length === 0 ? (
 				<EmptyView />
@@ -179,6 +207,7 @@ export function ClipEffectsTab({
 									renderParams={getRenderParams({ effectId: effect.id })}
 									previewParam={buildPreviewParam(effect.id)}
 									onCommit={commit}
+									onCopy={() => handleCopyEffect(effect)}
 									onToggle={() =>
 										editor.timeline.toggleClipEffect({
 											trackId,
@@ -237,6 +266,7 @@ function EffectSection({
 	onCommit,
 	onToggle,
 	onRemove,
+	onCopy,
 }: {
 	effect: Effect;
 	renderParams: ParamValues;
@@ -244,6 +274,7 @@ function EffectSection({
 	onCommit: () => void;
 	onToggle?: () => void;
 	onRemove?: () => void;
+	onCopy?: () => void;
 }) {
 	const definition = effectsRegistry.get(effect.type);
 
@@ -257,6 +288,17 @@ function EffectSection({
 				trailing={
 					onToggle && (
 						<div className="flex items-center gap-1">
+							{onCopy && (
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label={`Copy ${definition.name}`}
+									onClick={onCopy}
+									title="Copy effect"
+								>
+									<HugeiconsIcon icon={Copy01Icon} />
+								</Button>
+							)}
 							<Button
 								variant={effect.enabled ? "secondary" : "ghost"}
 								size="icon"
