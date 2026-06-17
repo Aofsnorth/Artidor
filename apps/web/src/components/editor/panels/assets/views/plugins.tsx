@@ -10,6 +10,8 @@ import {
 	ToggleOffIcon,
 	Download04Icon,
 	AlertCircleIcon,
+	InformationCircleIcon,
+	ArrowDown01Icon,
 } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { usePluginsStore } from "@/lib/plugins/store";
@@ -19,21 +21,35 @@ import {
 	buildSamplePluginPackage,
 } from "@/lib/plugins/importer";
 import type { InstalledPlugin, PluginCategory } from "@/lib/plugins/types";
-import { PLUGIN_CATEGORIES } from "@/lib/plugins/types";
+import {
+	CATEGORY_DESCRIPTIONS,
+	CATEGORY_LABELS,
+	DANGEROUS_PERMISSIONS,
+	PLUGIN_CATEGORIES,
+} from "@/lib/plugins/types";
 import { PanelView } from "./base-panel";
+import { PluginDetailDialog } from "./plugin-detail-dialog";
+import { cn } from "@/utils/ui";
 
-const CATEGORY_LABELS: Record<PluginCategory, string> = {
-	effects: "Effects",
-	transitions: "Transitions",
-	shapes: "Shapes",
-	presets: "Presets",
-	tools: "Tools",
-	themes: "Themes",
-};
-
+/**
+ * Plugin Manager panel. Lives in the left assets panel under the
+ * "Plugins" tab. Surfaces:
+ *   - Import button (file picker) + "Sample" download so first-time
+ *     users can see what a plugin package looks like before writing one.
+ *   - Category filter chips (with count + description tooltip on hover).
+ *   - The full list of installed plugins as PluginCards.
+ *   - A detail dialog that opens when the user clicks "Details".
+ *
+ * All destructive actions (uninstall) and toggles (enable/disable) go
+ * through the zustand store so the UI stays in sync with IndexedDB.
+ */
 export function PluginsView() {
 	const { plugins, loaded, loadPlugins } = usePluginsStore();
 	const [filter, setFilter] = useState<PluginCategory | "all">("all");
+	const [detailPlugin, setDetailPlugin] = useState<InstalledPlugin | null>(
+		null,
+	);
+	const [detailOpen, setDetailOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -84,6 +100,11 @@ export function PluginsView() {
 		}
 	}, []);
 
+	const openDetail = useCallback((plugin: InstalledPlugin) => {
+		setDetailPlugin(plugin);
+		setDetailOpen(true);
+	}, []);
+
 	const filteredPlugins =
 		filter === "all"
 			? plugins
@@ -120,26 +141,31 @@ export function PluginsView() {
 					/>
 				</div>
 
-				{/* Category filter */}
+				{/* Category filter — every known category shows up as a
+				   chip, even when there are zero plugins in it, so the
+				   user can see what kinds exist. Hover for the one-line
+				   category description. */}
 				<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto border-b border-white/[0.06] pb-1.5">
 					<CategoryChip
 						active={filter === "all"}
 						onClick={() => setFilter("all")}
+						count={plugins.length}
 					>
-						All ({plugins.length})
+						All
 					</CategoryChip>
 					{PLUGIN_CATEGORIES.map((cat) => {
 						const count = plugins.filter(
 							(p) => p.manifest.category === cat,
 						).length;
-						if (count === 0) return null;
 						return (
 							<CategoryChip
 								key={cat}
 								active={filter === cat}
 								onClick={() => setFilter(cat)}
+								count={count}
+								tooltip={CATEGORY_DESCRIPTIONS[cat]}
 							>
-								{CATEGORY_LABELS[cat]} ({count})
+								{CATEGORY_LABELS[cat]}
 							</CategoryChip>
 						);
 					})}
@@ -161,6 +187,7 @@ export function PluginsView() {
 							<PluginCard
 								key={plugin.id}
 								plugin={plugin}
+								onOpenDetail={() => openDetail(plugin)}
 								onToggle={() =>
 									void setPluginEnabled({
 										id: plugin.id,
@@ -173,6 +200,12 @@ export function PluginsView() {
 					)}
 				</div>
 			</div>
+
+			<PluginDetailDialog
+				plugin={detailPlugin}
+				open={detailOpen}
+				onOpenChange={setDetailOpen}
+			/>
 		</PanelView>
 	);
 }
@@ -181,32 +214,51 @@ function CategoryChip({
 	active,
 	onClick,
 	children,
+	count,
+	tooltip,
 }: {
 	active: boolean;
 	onClick: () => void;
 	children: React.ReactNode;
+	count: number;
+	tooltip?: string;
 }) {
 	return (
 		<button
 			type="button"
-			className={`shrink-0 rounded-md px-2 py-1 text-[10.5px] font-medium transition ${
+			title={tooltip}
+			className={cn(
+				"flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-medium transition",
 				active
 					? "bg-white/15 text-white"
-					: "bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white/85"
-			}`}
+					: "bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white/85",
+				count === 0 && !active && "opacity-60",
+			)}
 			onClick={onClick}
 		>
 			{children}
+			<span
+				className={cn(
+					"rounded px-1 text-[9.5px] tabular-nums",
+					active
+						? "bg-white/15 text-white/80"
+						: "bg-white/[0.06] text-white/45",
+				)}
+			>
+				{count}
+			</span>
 		</button>
 	);
 }
 
 function PluginCard({
 	plugin,
+	onOpenDetail,
 	onToggle,
 	onUninstall,
 }: {
 	plugin: InstalledPlugin;
+	onOpenDetail: () => void;
 	onToggle: () => void;
 	onUninstall: () => void;
 }) {
@@ -216,37 +268,53 @@ function PluginCard({
 		extensions.length === 1
 			? `1 ${extensions[0].type}`
 			: `${extensions.length} extensions`;
+	const permissions = manifest.permissions ?? [];
+	const visiblePermissions = permissions.slice(0, 3);
+	const overflowPermissions = permissions.length - visiblePermissions.length;
+	const hasDangerous = permissions.some((p) => DANGEROUS_PERMISSIONS.has(p));
 
 	return (
 		<div
-			className={`rounded-lg border p-2.5 transition ${
+			className={cn(
+				"rounded-lg border p-2.5 transition",
 				enabled
 					? "border-white/[0.12] bg-white/[0.03]"
-					: "border-white/[0.06] bg-white/[0.015] opacity-60"
-			}`}
+					: "border-white/[0.06] bg-white/[0.015] opacity-60",
+			)}
 		>
 			<div className="flex items-start gap-2">
 				<div
-					className={`grid size-8 shrink-0 place-items-center rounded-md border ${
+					className={cn(
+						"grid size-8 shrink-0 place-items-center rounded-md border",
 						enabled
 							? "border-white/15 bg-white/[0.06] text-white/80"
-							: "border-white/[0.06] bg-white/[0.02] text-white/40"
-					}`}
+							: "border-white/[0.06] bg-white/[0.02] text-white/40",
+					)}
 				>
 					<HugeiconsIcon icon={Plug01Icon} className="size-4" />
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-1.5">
 						<span
-							className={`truncate text-[12px] font-semibold ${
-								enabled ? "text-white" : "text-white/70"
-							}`}
+							className={cn(
+								"truncate text-[12px] font-semibold",
+								enabled ? "text-white" : "text-white/70",
+							)}
 						>
 							{manifest.name}
 						</span>
 						<span className="shrink-0 text-[10px] text-white/40">
 							v{manifest.version}
 						</span>
+						{hasDangerous && (
+							<span
+								title="Requests network or persistent-storage access"
+								className="ml-auto flex shrink-0 items-center gap-0.5 rounded border border-amber-300/30 bg-amber-400/10 px-1 py-px text-[9px] font-medium text-amber-200"
+							>
+								<HugeiconsIcon icon={AlertCircleIcon} className="size-2.5" />
+								SENSITIVE
+							</span>
+						)}
 					</div>
 					{manifest.description && (
 						<p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-white/55">
@@ -260,37 +328,87 @@ function PluginCard({
 						{manifest.author && <span>by {manifest.author}</span>}
 						<span>·</span>
 						<span>{extensionSummary}</span>
+						{visiblePermissions.length > 0 && (
+							<>
+								<span>·</span>
+								<span className="flex items-center gap-1">
+									{visiblePermissions.map((perm) => (
+										<span
+											key={perm}
+											className={cn(
+												"rounded px-1 py-px text-[9px] font-mono uppercase tracking-wider",
+												DANGEROUS_PERMISSIONS.has(perm)
+													? "bg-amber-400/10 text-amber-200/80"
+													: "bg-white/[0.04] text-white/45",
+											)}
+										>
+											{perm}
+										</span>
+									))}
+									{overflowPermissions > 0 && (
+										<span className="text-[9px] text-white/40">
+											+{overflowPermissions}
+										</span>
+									)}
+								</span>
+							</>
+						)}
 					</div>
 				</div>
 			</div>
 
-			{/* Actions */}
-			<div className="mt-2 flex items-center justify-end gap-1">
+			{/* Actions row — each button stops propagation so a click
+			   here doesn't also bubble to a future full-card handler. */}
+			<div className="mt-2 flex items-center justify-between gap-2">
 				<button
 					type="button"
-					className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-medium transition ${
-						enabled
-							? "bg-white/[0.06] text-white/80 hover:bg-white/[0.12] hover:text-white"
-							: "bg-white/[0.03] text-white/50 hover:bg-white/[0.08] hover:text-white/80"
-					}`}
-					onClick={onToggle}
-					title={enabled ? "Disable plugin" : "Enable plugin"}
+					className="flex items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+					onClick={(e) => {
+						e.stopPropagation();
+						onOpenDetail();
+					}}
 				>
+					<HugeiconsIcon icon={InformationCircleIcon} className="size-3" />
+					Details
 					<HugeiconsIcon
-						icon={enabled ? ToggleOnIcon : ToggleOffIcon}
-						className="size-3.5"
+						icon={ArrowDown01Icon}
+						className="size-2.5 -rotate-90"
 					/>
-					{enabled ? "Enabled" : "Disabled"}
 				</button>
-				<button
-					type="button"
-					className="flex items-center gap-1 rounded-md bg-white/[0.03] px-2 py-1 text-[10.5px] font-medium text-red-300/80 transition hover:bg-red-500/10 hover:text-red-200"
-					onClick={onUninstall}
-					title="Uninstall plugin"
-				>
-					<HugeiconsIcon icon={Trash04Icon} className="size-3.5" />
-					Uninstall
-				</button>
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						className={cn(
+							"flex items-center gap-1 rounded-md px-2 py-1 text-[10.5px] font-medium transition",
+							enabled
+								? "bg-white/[0.06] text-white/80 hover:bg-white/[0.12] hover:text-white"
+								: "bg-white/[0.03] text-white/50 hover:bg-white/[0.08] hover:text-white/80",
+						)}
+						onClick={(e) => {
+							e.stopPropagation();
+							onToggle();
+						}}
+						title={enabled ? "Disable plugin" : "Enable plugin"}
+					>
+						<HugeiconsIcon
+							icon={enabled ? ToggleOnIcon : ToggleOffIcon}
+							className="size-3.5"
+						/>
+						{enabled ? "Enabled" : "Disabled"}
+					</button>
+					<button
+						type="button"
+						className="flex items-center gap-1 rounded-md bg-white/[0.03] px-2 py-1 text-[10.5px] font-medium text-red-300/80 transition hover:bg-red-500/10 hover:text-red-200"
+						onClick={(e) => {
+							e.stopPropagation();
+							onUninstall();
+						}}
+						title="Uninstall plugin"
+					>
+						<HugeiconsIcon icon={Trash04Icon} className="size-3.5" />
+						Uninstall
+					</button>
+				</div>
 			</div>
 		</div>
 	);

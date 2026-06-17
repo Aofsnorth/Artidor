@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-plugin-system-harden",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Plugin system: full categories, permission gates, detail dialog",
+		items: [
+			"Plugin Manager now exposes the full category set: Effect, Transition, Shape, Preset, Text, Export, AI, Utility, Tool, Theme. Category chips show the count and a one-line description on hover, even when empty — so you can see what kinds of plugins exist before installing any.",
+			"Permissions are no longer cosmetic. The sandbox refuses any registerEffect/Transition/Shape/Preset call (and storage.set/delete) when the plugin's manifest doesn't declare the matching permission — silent no-op + a console warning naming the missing gate. Manifest validation also rejects unknown category/permission values at install time, so a typo gets caught before anything ships.",
+			"New Plugin Details dialog (click 'Details' on any installed plugin). Shows name, version, author, category with description, the full permissions list (with a 'Sensitive' warning strip when the plugin requests storage or network), the extensions it contributes, install/update timestamps, the homepage link, and an opt-in source-code preview so you can audit what the plugin actually runs.",
+			"Updated sample plugin (now in the 'Utility' category) registers both a custom shape AND a custom effect, and asks for the matching 'shapes' + 'effects' permissions — install it from the Plugins tab to see the full API surface working end-to-end.",
+		],
+	},
+	{
 		id: "2026-06-18-freedraw-vector-opacity-undo",
 		date: "2026-06-18",
 		tag: "improvement",

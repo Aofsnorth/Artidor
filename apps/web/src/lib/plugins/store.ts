@@ -8,6 +8,7 @@ import {
 	updatePluginState,
 } from "./storage";
 import type { InstalledPlugin, PluginInstance, PluginManifest } from "./types";
+import { PLUGIN_CATEGORIES, PLUGIN_PERMISSIONS } from "./types";
 import { effectsRegistry } from "@/lib/effects/registry";
 import type { EffectDefinition } from "@/lib/effects/types";
 import { transitionsRegistry } from "@/lib/transitions/registry";
@@ -35,6 +36,12 @@ interface PluginsState {
 
 /**
  * Validates that a manifest is well-formed. Throws on invalid input.
+ *
+ * Also enforces that any declared `permissions` and `category` are
+ * values the host actually recognises — unknown permissions or
+ * categories are rejected at install time so the UI's lookup tables
+ * (`CATEGORY_LABELS`, `PERMISSION_LABELS`) never have to deal with a
+ * "ghost" value that would render as undefined.
  */
 export function validateManifest(
 	manifest: unknown,
@@ -55,6 +62,15 @@ export function validateManifest(
 	if (typeof m.category !== "string") {
 		throw new Error("Manifest missing or invalid `category`");
 	}
+	// Category must be one the host recognises — otherwise the user sees
+	// an empty chip in the UI. Unknown categories are rejected so the
+	// plugin can't pretend to be a different kind of plugin at install
+	// time (and so a typo in the manifest gets caught early).
+	if (!(PLUGIN_CATEGORIES as readonly string[]).includes(m.category)) {
+		throw new Error(
+			`Unknown category "${String(m.category)}". Expected one of: ${PLUGIN_CATEGORIES.join(", ")}`,
+		);
+	}
 	if (typeof m.entry !== "string" || m.entry.length === 0) {
 		throw new Error("Manifest missing or invalid `entry`");
 	}
@@ -71,6 +87,19 @@ export function validateManifest(
 			typeof record.name !== "string"
 		) {
 			throw new Error("Invalid extension entry in manifest");
+		}
+	}
+	// Permissions are optional but if present must all be in the known set.
+	if (m.permissions !== undefined) {
+		if (!Array.isArray(m.permissions)) {
+			throw new Error("Manifest `permissions` must be an array");
+		}
+		for (const perm of m.permissions) {
+			if (!(PLUGIN_PERMISSIONS as readonly string[]).includes(String(perm))) {
+				throw new Error(
+					`Unknown permission "${String(perm)}". Expected one of: ${PLUGIN_PERMISSIONS.join(", ")}`,
+				);
+			}
 		}
 	}
 }
