@@ -154,6 +154,83 @@ const CURATED_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 		definitionId: "ellipse",
 		params: { fill: "#f87171" },
 	},
+	{
+		shapeKey: "line",
+		name: "Line",
+		definitionId: "line",
+		params: { fill: "#ffffff", thickness: 36, rounded: true },
+	},
+	{
+		shapeKey: "divider",
+		name: "Divider",
+		definitionId: "line",
+		params: { fill: "#94a3b8", thickness: 14, rounded: false },
+	},
+	{
+		shapeKey: "arrow",
+		name: "Arrow",
+		definitionId: "arrow",
+		params: { fill: "#38bdf8", thickness: 70, headSize: 38 },
+	},
+	{
+		shapeKey: "double-arrow",
+		name: "Double Arrow",
+		definitionId: "arrow",
+		params: {
+			fill: "#f472b6",
+			thickness: 64,
+			headSize: 30,
+			doubleHeaded: true,
+		},
+	},
+	{
+		shapeKey: "chevron",
+		name: "Chevron",
+		definitionId: "chevron",
+		params: { fill: "#a78bfa", thickness: 32 },
+	},
+	{
+		shapeKey: "ring",
+		name: "Ring",
+		definitionId: "ring",
+		params: { fill: "#22d3ee", thickness: 26 },
+	},
+	{
+		shapeKey: "cross",
+		name: "Plus",
+		definitionId: "cross",
+		params: { fill: "#34d399", thickness: 36, cornerRadius: 6 },
+	},
+	{
+		shapeKey: "right-triangle",
+		name: "Right Triangle",
+		definitionId: "right-triangle",
+		params: { fill: "#fb923c" },
+	},
+	{
+		shapeKey: "heart",
+		name: "Heart",
+		definitionId: "heart",
+		params: { fill: "#f43f5e" },
+	},
+	{
+		shapeKey: "lightning",
+		name: "Lightning",
+		definitionId: "lightning",
+		params: { fill: "#facc15" },
+	},
+	{
+		shapeKey: "crescent",
+		name: "Moon",
+		definitionId: "crescent",
+		params: { fill: "#fcd34d", phase: 55 },
+	},
+	{
+		shapeKey: "speech-bubble",
+		name: "Speech Bubble",
+		definitionId: "speech-bubble",
+		params: { fill: "#ffffff", cornerRadius: 28, tailSize: 40 },
+	},
 ];
 
 function getShapePresets(): ShapeGraphicPreset[] {
