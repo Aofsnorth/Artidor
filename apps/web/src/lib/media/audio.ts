@@ -370,6 +370,7 @@ interface AudioMixSource {
 export interface AudioClipSource {
 	timelineElement: AudioCapableElement;
 	id: string;
+	trackId: string;
 	sourceKey: string;
 	file: File;
 	startTime: number;
@@ -378,6 +379,7 @@ export interface AudioClipSource {
 	trimEnd: number;
 	volume: number;
 	muted: boolean;
+	lastAppliedGain?: number;
 	retime?: RetimeConfig;
 }
 
@@ -419,10 +421,12 @@ async function fetchLibraryAudioClip({
 	element,
 	muted,
 	volume,
+	trackId,
 }: {
 	element: LibraryAudioElement;
 	muted: boolean;
 	volume: number;
+	trackId: string;
 }): Promise<AudioClipSource | null> {
 	try {
 		const response = await fetch(element.sourceUrl);
@@ -438,6 +442,7 @@ async function fetchLibraryAudioClip({
 		return {
 			timelineElement: element,
 			id: element.id,
+			trackId,
 			sourceKey: element.id,
 			file,
 			startTime: element.startTime,
@@ -489,6 +494,7 @@ function collectMediaAudioClip({
 	return {
 		timelineElement: element,
 		id: element.id,
+		trackId: "", // populated by caller
 		sourceKey: mediaAsset.id,
 		file: mediaAsset.file,
 		startTime: element.startTime / TICKS_PER_SECOND,
@@ -603,17 +609,23 @@ export async function collectAudioClips({
 					const mediaAsset = mediaMap.get(element.mediaId);
 					if (!mediaAsset) continue;
 
-					clips.push(
-						collectMediaAudioClip({
+					clips.push({
+						...collectMediaAudioClip({
 							element,
 							mediaAsset,
 							muted,
 							volume,
 						}),
-					);
+						trackId: track.id,
+					});
 				} else {
 					pendingLibraryClips.push(
-						fetchLibraryAudioClip({ element, muted, volume }),
+						fetchLibraryAudioClip({
+							element,
+							muted,
+							volume,
+							trackId: track.id,
+						}),
 					);
 				}
 				continue;
@@ -621,14 +633,29 @@ export async function collectAudioClips({
 
 			if (element.type === "video") {
 				if (mediaAsset && mediaSupportsAudio({ media: mediaAsset })) {
-					clips.push(
-						collectMediaAudioClip({
+					clips.push({
+						...collectMediaAudioClip({
 							element,
 							mediaAsset,
 							muted,
 							volume,
 						}),
-					);
+						trackId: track.id,
+					});
+				}
+			}
+
+			if (element.type === "video") {
+				if (mediaAsset && mediaSupportsAudio({ media: mediaAsset })) {
+					clips.push({
+						...collectMediaAudioClip({
+							element,
+							mediaAsset,
+							muted,
+							volume,
+						}),
+						trackId: track.id,
+					});
 				}
 			}
 		}

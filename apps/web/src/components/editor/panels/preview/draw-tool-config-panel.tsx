@@ -59,7 +59,7 @@ export function DrawToolConfigPanel() {
 
 	return (
 		<div
-			className="pointer-events-auto absolute right-3 top-3 z-30 flex w-[212px] flex-col gap-2 rounded-xl border border-white/[0.1] bg-[#09090b]/95 p-2.5 text-white shadow-[0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur"
+			className="flex w-full flex-col gap-2 p-3.5 text-white"
 			role="dialog"
 			aria-label={`${isVector ? "Vector" : "Freehand"} tool settings`}
 		>
@@ -73,7 +73,7 @@ export function DrawToolConfigPanel() {
 				</div>
 				<button
 					type="button"
-					className="grid size-5 place-items-center rounded-md text-white/55 transition hover:bg-white/[0.08] hover:text-white"
+					className="grid size-6 place-items-center rounded-md border border-white/[0.08] bg-white/[0.04] text-white/55 transition hover:bg-white/[0.08] hover:text-white"
 					onClick={() => setToolMode("select")}
 					aria-label="Exit tool"
 					title="Exit tool (Esc)"

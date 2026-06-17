@@ -150,7 +150,7 @@ export function SectionHeader({
 
 	return (
 		<div
-			className={cn("flex h-11 w-full items-center gap-2 px-3.5", className)}
+			className={cn("flex h-11 w-full items-center gap-2 px-2.5", className)}
 		>
 			{innerContent}
 			{trailingArea}
@@ -238,7 +238,9 @@ export function SectionContent({
 	const isCollapsible = ctx?.collapsible ?? false;
 	const isOpen = ctx?.isOpen ?? true;
 
-	const content = <div className={cn("p-4 pt-0", className)}>{children}</div>;
+	const content = (
+		<div className={cn("px-2.5 pb-4 pt-0", className)}>{children}</div>
+	);
 
 	if (isCollapsible) {
 		return (

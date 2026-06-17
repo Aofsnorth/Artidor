@@ -23,6 +23,8 @@ import {
 	type WrappedAudioBuffer,
 } from "mediabunny";
 
+import { useTimelineStore } from "@/stores/timeline-store";
+
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
 	private masterGain: GainNode | null = null;
@@ -62,6 +64,14 @@ export class AudioManager {
 			this.editor.playback.subscribe(this.handlePlaybackChange),
 			this.editor.timeline.subscribe(this.handleTimelineChange),
 			this.editor.media.subscribe(this.handleTimelineChange),
+		);
+
+		this.unsubscribers.push(
+			useTimelineStore.subscribe((state, prevState) => {
+				if (state.trackSliders !== prevState.trackSliders) {
+					this.handleTimelineChange();
+				}
+			}),
 		);
 		if (typeof window !== "undefined") {
 			window.addEventListener("playback-seek", this.handleSeek);
@@ -146,11 +156,14 @@ export class AudioManager {
 		if (!activeScene) return false;
 
 		const tracks = activeScene.tracks;
-		const currentElements = new Map<string, AudioCapableElement>();
+		const currentElements = new Map<
+			string,
+			{ element: AudioCapableElement; trackId: string }
+		>();
 		for (const track of [tracks.main, ...tracks.overlay, ...tracks.audio]) {
 			for (const element of track.elements) {
 				if (element.type === "audio" || element.type === "video") {
-					currentElements.set(element.id, element);
+					currentElements.set(element.id, { element, trackId: track.id });
 				}
 			}
 		}
@@ -159,8 +172,9 @@ export class AudioManager {
 
 		const TICK = TICKS_PER_SECOND;
 		for (const oldClip of this.clips) {
-			const next = currentElements.get(oldClip.id);
-			if (!next) return false;
+			const nextWrapper = currentElements.get(oldClip.id);
+			if (!nextWrapper) return false;
+			const next = nextWrapper.element;
 			if (oldClip.startTime !== next.startTime / TICK) return false;
 			if (oldClip.duration !== next.duration / TICK) return false;
 			if (oldClip.trimStart !== next.trimStart / TICK) return false;
@@ -177,15 +191,22 @@ export class AudioManager {
 		const playbackTime =
 			this.editor.playback.getCurrentTime() / TICKS_PER_SECOND;
 		for (const oldClip of this.clips) {
-			const next = currentElements.get(oldClip.id);
-			if (!next) continue;
-			const newGain = resolveEffectiveAudioGain({
+			const nextWrapper = currentElements.get(oldClip.id);
+			if (!nextWrapper) continue;
+			const next = nextWrapper.element;
+			const trackSlider =
+				useTimelineStore.getState().trackSliders[nextWrapper.trackId] ?? 100;
+			const elementGain = resolveEffectiveAudioGain({
 				element: next,
 				localTime: Math.max(0, playbackTime - oldClip.startTime),
 			});
+			const newGain = elementGain * (trackSlider / 100);
 			const newMuted = next.muted === true;
-			if (oldClip.volume === newGain && oldClip.muted === newMuted) continue;
-			oldClip.volume = newGain;
+
+			if (oldClip.lastAppliedGain === newGain && oldClip.muted === newMuted)
+				continue;
+			oldClip.lastAppliedGain = newGain;
+			oldClip.volume = elementGain;
 			oldClip.muted = newMuted;
 			const gains = this.activeClipGains.get(oldClip.id);
 			if (!gains) continue;
@@ -421,7 +442,9 @@ export class AudioManager {
 					node.playbackRate.value = clampRetimeRate({ rate: clip.retime.rate });
 				}
 				const clipGain = audioContext.createGain();
-				clipGain.gain.value = clip.volume;
+				const trackSlider =
+					useTimelineStore.getState().trackSliders[clip.trackId] ?? 100;
+				clipGain.gain.value = clip.volume * (trackSlider / 100);
 				node.connect(clipGain);
 				clipGain.connect(this.masterGain ?? audioContext.destination);
 				this.registerClipGain({ clipId: clip.id, gain: clipGain });

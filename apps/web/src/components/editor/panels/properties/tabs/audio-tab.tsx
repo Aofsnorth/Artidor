@@ -314,10 +314,10 @@ export function AudioTab({
 							/>
 						</SectionField>
 
-						<div className="flex flex-col gap-2">
-							<SectionField label="Fade In">
+						<div className="flex gap-2">
+							<SectionField label="Fade In" className="flex-1 min-w-0">
 								<NumberField
-									icon="In"
+									icon={<span className="text-[10px]">In</span>}
 									value={fadeIn.displayValue}
 									onFocus={fadeIn.onFocus}
 									onChange={fadeIn.onChange}
@@ -339,11 +339,12 @@ export function AudioTab({
 									}}
 									isDefault={resolvedFadeIn === 0}
 									suffix="s"
+									className="px-1"
 								/>
 							</SectionField>
-							<SectionField label="Fade Out">
+							<SectionField label="Fade Out" className="flex-1 min-w-0">
 								<NumberField
-									icon="Out"
+									icon={<span className="text-[10px]">Out</span>}
 									value={fadeOut.displayValue}
 									onFocus={fadeOut.onFocus}
 									onChange={fadeOut.onChange}
@@ -365,6 +366,7 @@ export function AudioTab({
 									}}
 									isDefault={resolvedFadeOut === 0}
 									suffix="s"
+									className="px-1"
 								/>
 							</SectionField>
 						</div>
