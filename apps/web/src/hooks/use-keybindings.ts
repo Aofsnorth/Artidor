@@ -51,6 +51,13 @@ export function useKeybindingsListener() {
 				return;
 			}
 
+			if (boundAction === "paste-style") {
+				if (!editor.clipboard.hasStyleEntry()) return;
+				ev.preventDefault();
+				invokeAction("paste-style", undefined, "keypress");
+				return;
+			}
+
 			ev.preventDefault();
 
 			switch (boundAction) {

@@ -88,6 +88,7 @@ import {
 	Layers01Icon,
 	TextFontIcon,
 	BookmarkAdd02Icon,
+	PaintBrushIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
@@ -793,6 +794,22 @@ export function TimelineElement({
 							icon={<HugeiconsIcon icon={Copy02Icon} />}
 						>
 							Duplicate
+						</ActionMenuItem>
+					)}
+					{selectedElements.length === 1 && (
+						<ActionMenuItem
+							action="copy-style"
+							icon={<HugeiconsIcon icon={PaintBrushIcon} />}
+						>
+							Copy style
+						</ActionMenuItem>
+					)}
+					{editor.clipboard.hasStyleEntry() && (
+						<ActionMenuItem
+							action="paste-style"
+							icon={<HugeiconsIcon icon={PaintBrushIcon} />}
+						>
+							Paste style
 						</ActionMenuItem>
 					)}
 					{selectedElements.length > 1 && (
