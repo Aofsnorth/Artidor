@@ -271,15 +271,15 @@ export function ElementTab({
 
 function SummaryRow({ item }: { item: SummaryItem }) {
 	return (
-		<div className="flex items-center justify-between gap-2 text-xs">
-			<dt className="flex shrink-0 items-center gap-1.5 text-white/45">
+		<div className="flex items-start justify-between gap-2 text-xs">
+			<dt className="flex shrink-0 items-center gap-1.5 pt-0.5 text-white/45">
 				<HugeiconsIcon icon={item.icon} size={11} className="opacity-70" />
 				<span>{item.label}</span>
 			</dt>
-			<dd className="flex min-w-0 items-center gap-1.5">
+			<dd className="flex min-w-0 flex-1 items-start justify-end gap-1.5 text-right">
 				<span
 					className={cn(
-						"truncate text-right text-white/85",
+						"min-w-0 max-w-full whitespace-pre-wrap break-all text-white/85",
 						item.mono && "font-mono text-[0.7rem]",
 					)}
 					title={item.value}

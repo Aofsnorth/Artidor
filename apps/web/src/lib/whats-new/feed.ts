@@ -18,6 +18,20 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-inspector-layout-polish",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Inspector layout, text overflow, and tab scoping",
+		items: [
+			"Transform tab: dropped the 4 nested boxed sub-sections (Position / Scale / Rotation & Flip / Pivot) and replaced them with hairline dividers + inline labels. Same controls, less chrome crowding the panel — easier to scan.",
+			"Audio tab: pulled the Volume / Pan / Fade groups out of the cramped card, gave them proper top/bottom padding, and added a divider between them. The redundant `This is the audio track…` info banner is now a single sentence and the Section is `defaultOpen` so the controls never start collapsed.",
+			"Animations tab: fixed the preset card layout — the preview was rendering as `size-full` (eating 100% of the card) so the preset name was clipped. Preview is now a square with `aspect-square w-full`, name wraps to multiple lines, category badge lives inside the preview (top-left), and the filter chip row uses `items-center justify-start gap-1.5` so it stops drifting off-axis.",
+			"Text element inspector: no longer shows the generic Element tab. Text now goes straight to the Text tab (Content / Style / Animate / Typography / Spacing / Background / Effects) with the customizer the user wanted, no mixed metadata.",
+			"Context-aware primary tab bar: when you're inside a focus category (Effects / Animation / Adjust* / Masks), only the relevant primary tabs stay visible. No more 'Video' / 'Transform' showing on top of an Adjust sub-tab where they'd be unreachable anyway.",
+			"Element tab `SummaryRow`: long values like `ID` / `Track` / `Group` now wrap to multiple lines instead of being silently truncated. The card grows with the text; SelectedElementSummary's display name already used MarqueeText as a one-line fallback for very long names.",
+		],
+	},
+	{
 		id: "2026-06-18-color-wheels-audio-fixes",
 		date: "2026-06-18",
 		tag: "fix",
