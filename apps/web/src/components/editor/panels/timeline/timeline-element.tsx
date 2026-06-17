@@ -87,8 +87,10 @@ import {
 	MagicWand05Icon,
 	Layers01Icon,
 	TextFontIcon,
+	BookmarkAdd02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
 import { uppercase } from "@/utils/string";
 import { useMemo, type ComponentProps, type ReactNode } from "react";
 import type {
@@ -801,6 +803,24 @@ export function TimelineElement({
 							Ungroup elements
 						</ContextMenuItem>
 					)}
+					<ContextMenuItem
+						icon={<HugeiconsIcon icon={BookmarkAdd02Icon} />}
+						onClick={(event: React.MouseEvent) => {
+							event.stopPropagation();
+							const selfRef = { trackId: track.id, elementId: element.id };
+							const elementsToSave =
+								selectedElements.length > 1 &&
+								selectedElements.some((ref) => ref.elementId === element.id)
+									? selectedElements
+									: [selfRef];
+							useSavePresetDialogStore.getState().openDialog({
+								elements: elementsToSave,
+								defaultName: getElementDisplayName({ element }),
+							});
+						}}
+					>
+						Save to preset
+					</ContextMenuItem>
 					{canElementHaveAudio(element) && hasAudio && (
 						<MuteMenuItem
 							isMultipleSelected={selectedElements.length > 1}
