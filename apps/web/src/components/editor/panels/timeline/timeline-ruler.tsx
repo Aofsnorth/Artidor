@@ -1,4 +1,4 @@
-import { type JSX, useLayoutEffect, useRef } from "react";
+import { type JSX, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { mediaTimeToSeconds } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -6,6 +6,7 @@ import { TIMELINE_RULER_HEIGHT_PX } from "./layout";
 import { DEFAULT_FPS } from "@/lib/fps/defaults";
 import { useEditor } from "@/hooks/use-editor";
 import { getRulerConfig, shouldShowLabel } from "@/lib/timeline/ruler-utils";
+import { frameRateToFloat } from "@/lib/fps/utils";
 import { useScrollPosition } from "@/hooks/timeline/use-scroll-position";
 import { TimelineTick } from "./timeline-tick";
 
@@ -77,10 +78,29 @@ export function TimelineRuler({
 		0,
 		Math.floor(visibleStartTimeSeconds / tickIntervalSeconds),
 	);
-	const endTickIndex = Math.min(
+	const rawEndTickIndex = Math.min(
 		tickCount - 1,
 		Math.ceil(visibleEndTimeSeconds / tickIntervalSeconds),
 	);
+
+	// Stabilize the rendered end-tick against sub-pixel viewport oscillation.
+	// While the user drags the panel resize handle, the inner scroll element's
+	// `clientWidth` flickers by 1-2px per frame. Without this stabilization
+	// the right-edge tick label would appear/disappear on alternating frames,
+	// which reads as the seconds value flickering.
+	const [stableEndTickIndex, setStableEndTickIndex] = useState(rawEndTickIndex);
+	const lastRawEndTickIndexRef = useRef(rawEndTickIndex);
+	useEffect(() => {
+		const prev = lastRawEndTickIndexRef.current;
+		const diff = Math.abs(rawEndTickIndex - prev);
+		// Catch up immediately on large viewport changes (zoom, scroll jump),
+		// but absorb 1-tick oscillations caused by sub-pixel resize.
+		if (diff > 1) {
+			lastRawEndTickIndexRef.current = rawEndTickIndex;
+			setStableEndTickIndex(rawEndTickIndex);
+		}
+	}, [rawEndTickIndex]);
+	const endTickIndex = stableEndTickIndex;
 
 	const timelineTicks: Array<JSX.Element> = [];
 	for (
@@ -95,6 +115,7 @@ export function TimelineRuler({
 		const showLabel = shouldShowLabel({
 			time: timeSeconds,
 			labelIntervalSeconds,
+			fps: frameRateToFloat(fps),
 		});
 		timelineTicks.push(
 			<TimelineTick
