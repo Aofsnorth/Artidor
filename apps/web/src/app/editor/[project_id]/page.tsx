@@ -25,6 +25,11 @@ import { useEditor } from "@/hooks/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
+import {
+	FloatingWindow,
+	DockPlaceholder,
+	PopOutButton,
+} from "@/components/editor/floating-window";
 
 import { PageTransition } from "@/components/page-transition";
 
@@ -153,6 +158,7 @@ function EditorLayout() {
 
 function EditorPanels() {
 	const { panels, setPanel } = usePanelStore();
+	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
 	// Pin the top row (which holds the preview) to a fixed pixel height
 	// when the editor viewport changes size — e.g. when the window enters
 	// or exits fullscreen. The vertical split is otherwise purely
@@ -230,7 +236,14 @@ function EditorPanels() {
 							maxSize={40}
 							className="min-w-0"
 						>
-							<AssetsPanel />
+							{floatingPanels.assets ? (
+								<DockPlaceholder id="assets" title="Assets" />
+							) : (
+								<div className="group/panel-slot relative size-full">
+									<AssetsPanel />
+									<PopOutButton id="assets" title="Assets" />
+								</div>
+							)}
 						</ResizablePanel>
 
 						<ResizableHandle withHandle />
@@ -240,7 +253,14 @@ function EditorPanels() {
 							minSize={30}
 							className="min-h-0 min-w-0 flex-1"
 						>
-							<PreviewPanel />
+							{floatingPanels.preview ? (
+								<DockPlaceholder id="preview" title="Preview" />
+							) : (
+								<div className="group/panel-slot relative size-full">
+									<PreviewPanel />
+									<PopOutButton id="preview" title="Preview" />
+								</div>
+							)}
 						</ResizablePanel>
 
 						<ResizableHandle withHandle />
@@ -251,12 +271,19 @@ function EditorPanels() {
 							maxSize={40}
 							className="min-w-0"
 						>
-							<div className="flex h-full min-h-0 items-stretch gap-2">
-								<div className="flex-1 min-w-0">
-									<PropertiesPanel />
+							{floatingPanels.properties ? (
+								<DockPlaceholder id="properties" title="Properties" />
+							) : (
+								<div className="group/panel-slot relative size-full">
+									<div className="flex h-full min-h-0 items-stretch gap-2">
+										<div className="flex-1 min-w-0">
+											<PropertiesPanel />
+										</div>
+										<VerticalAudioMeter />
+									</div>
+									<PopOutButton id="properties" title="Properties" />
 								</div>
-								<VerticalAudioMeter />
-							</div>
+							)}
 						</ResizablePanel>
 					</ResizablePanelGroup>
 				</ResizablePanel>
@@ -269,13 +296,47 @@ function EditorPanels() {
 					maxSize={70}
 					className="min-h-0"
 				>
-					<div className="flex h-full min-w-0 items-stretch">
-						<div className="flex-1 min-w-0">
-							<Timeline />
+					{floatingPanels.timeline ? (
+						<DockPlaceholder id="timeline" title="Timeline" />
+					) : (
+						<div className="group/panel-slot relative size-full">
+							<div className="flex h-full min-w-0 items-stretch">
+								<div className="flex-1 min-w-0">
+									<Timeline />
+								</div>
+							</div>
+							<PopOutButton id="timeline" title="Timeline" />
 						</div>
-					</div>
+					)}
 				</ResizablePanel>
 			</ResizablePanelGroup>
+
+			{/* Floating window overlays for any detached panels */}
+			{floatingPanels.assets && (
+				<FloatingWindow id="assets" title="Assets" state={floatingPanels.assets}>
+					<AssetsPanel />
+				</FloatingWindow>
+			)}
+			{floatingPanels.preview && (
+				<FloatingWindow id="preview" title="Preview" state={floatingPanels.preview}>
+					<PreviewPanel />
+				</FloatingWindow>
+			)}
+			{floatingPanels.properties && (
+				<FloatingWindow id="properties" title="Properties" state={floatingPanels.properties}>
+					<div className="flex h-full min-h-0 items-stretch gap-2 p-1">
+						<div className="flex-1 min-w-0">
+							<PropertiesPanel />
+						</div>
+						<VerticalAudioMeter />
+					</div>
+				</FloatingWindow>
+			)}
+			{floatingPanels.timeline && (
+				<FloatingWindow id="timeline" title="Timeline" state={floatingPanels.timeline}>
+					<Timeline />
+				</FloatingWindow>
+			)}
 		</div>
 	);
 }

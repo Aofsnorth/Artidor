@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-detachable-panels",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Detachable editor panels",
+		items: [
+			"Assets, Preview, Properties, and Timeline can now pop out into draggable floating windows.",
+			"Floating panels can be resized, docked back from their header, and remember their position across reloads.",
+			"Docked panel slots show a placeholder when the panel is floating so you always know where it belongs.",
+		],
+	},
+	{
 		id: "2026-06-17-plugin-system",
 		date: "2026-06-17",
 		tag: "feature",
