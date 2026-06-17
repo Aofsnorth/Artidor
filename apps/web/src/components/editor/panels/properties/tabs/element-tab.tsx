@@ -18,6 +18,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEditor } from "@/hooks/use-editor";
+import type { EditorCore } from "@/core";
 import { getElementDisplayName } from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
 import type {
@@ -207,7 +208,7 @@ export function ElementTab({
 							item={{
 								icon: InformationCircleIcon,
 								label: "Kind",
-								value: media.kind,
+								value: media.type,
 							}}
 						/>
 						<SummaryRow
@@ -404,7 +405,7 @@ function toggleHidden({
 	element,
 	trackId,
 }: {
-	editor: ReturnType<typeof useEditor>;
+	editor: EditorCore;
 	element: TimelineElement;
 	trackId: string;
 }) {
@@ -425,7 +426,7 @@ function toggleMuted({
 	element,
 	trackId,
 }: {
-	editor: ReturnType<typeof useEditor>;
+	editor: EditorCore;
 	element: AudioElement | VideoElement;
 	trackId: string;
 }) {
