@@ -22,6 +22,10 @@ export class DefinitionRegistry<TKey extends string, TDefinition> {
 		this.definitions.set(key, definition);
 	}
 
+	unregister(key: TKey): void {
+		this.definitions.delete(key);
+	}
+
 	has(key: TKey): boolean {
 		return this.definitions.has(key);
 	}
