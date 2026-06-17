@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
+import { PopOutAction } from "@/components/editor/floating-window";
 import {
 	ALL_CATEGORY,
 	CategoryBar,
@@ -72,7 +73,10 @@ export function TransitionsView() {
 	);
 
 	return (
-		<PanelView title="Transitions">
+		<PanelView
+			title="Transitions"
+			actions={<PopOutAction id="transitions" title="Transitions" />}
+		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
 					Add a transition between two adjacent clips. Select two clips on the

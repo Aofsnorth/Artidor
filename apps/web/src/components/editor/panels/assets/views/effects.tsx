@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
+import { PopOutAction } from "@/components/editor/floating-window";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { effects as presetEffects } from "@/lib/presets/effects";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
@@ -74,7 +75,10 @@ export function EffectsView() {
 	);
 
 	return (
-		<PanelView title="Effects">
+		<PanelView
+			title="Effects"
+			actions={<PopOutAction id="effects" title="Effects" />}
+		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
 					Effects process the selected clip or an effect track. Color correction

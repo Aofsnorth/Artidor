@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-popout-subviews",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Popout: every sub-view is now independently detachable",
+		items: [
+			"Effects, Transitions, Adjustments, and Plugins panels each get their own Pop Out button (small icon in the panel header). Clicking it pops just that view into its own OS window — no need to detach the whole Assets panel first.",
+			"While a sub-view is popped out, the original tab inside Assets shows a 'view is in another window' placeholder with a 'Dock panel' button. The tab stays active so you can dock back from the original slot without losing your place in the panel.",
+			"Popout window position, size, and which panels are floating are all persisted in localStorage (per-tab store `editor-ui`). Reopen the editor tomorrow and your detached Effects browser is exactly where you left it.",
+			"Still gated behind Settings → 'Enable popout panels' so the affordances don't pollute the editor for users who don't need them. Toggle on, restart the editor, pop away.",
+		],
+	},
+	{
 		id: "2026-06-18-plugin-system-harden",
 		date: "2026-06-18",
 		tag: "improvement",

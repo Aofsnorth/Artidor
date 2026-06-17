@@ -20,6 +20,9 @@ import { ScriptingView } from "./views/scripting";
 import { PresetsView } from "./views/presets";
 import { PluginsView } from "./views/plugins";
 import { ColorView } from "./views/color";
+import { DockPlaceholder } from "@/components/editor/floating-window";
+import { useEditorUIStore } from "@/stores/editor-ui-store";
+import type { FloatablePanelId } from "@/stores/editor-ui-store";
 
 // The AI Edit view pulls in `motion/react` (~80KB) plus the heavy
 // chat UI tree. Lazy-load it so the editor's initial mount doesn't
@@ -43,6 +46,18 @@ function AIEditFallback() {
 
 export function AssetsPanel() {
 	const { activeTab } = useAssetsPanelStore();
+	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
+
+	// Helper — if the requested sub-view is currently popped out into
+	// its own window, render the DockPlaceholder instead of the view
+	// (which would duplicate the content in two places). The tab stays
+	// active so the user can dock it back from this very slot.
+	const maybePlaceholder = (
+		id: FloatablePanelId,
+		title: string,
+		view: ReactNode,
+	): ReactNode =>
+		floatingPanels[id] ? <DockPlaceholder id={id} title={title} /> : view;
 
 	const viewMap: Record<Tab, ReactNode> = {
 		ai: (
@@ -56,8 +71,12 @@ export function AssetsPanel() {
 		text: <TextView />,
 		elements: <StickersView />,
 		stickers: <StickersView />,
-		effects: <EffectsView />,
-		transitions: <TransitionsView />,
+		effects: maybePlaceholder("effects", "Effects", <EffectsView />),
+		transitions: maybePlaceholder(
+			"transitions",
+			"Transitions",
+			<TransitionsView />,
+		),
 		overlays: <OverlaysView />,
 		animations: <AnimationsView />,
 		templates: <TemplatesView />,
@@ -65,10 +84,10 @@ export function AssetsPanel() {
 		quicktools: <QuickToolsView />,
 		audio: <SoundsView />,
 		motion: <AnimationsView />,
-		plugins: <PluginsView />,
+		plugins: maybePlaceholder("plugins", "Plugins", <PluginsView />),
 		filters: <FiltersView />,
 		captions: <Captions />,
-		adjustment: <AdjustmentsView />,
+		adjustment: maybePlaceholder("adjust", "Adjustments", <AdjustmentsView />),
 		scripting: <ScriptingView />,
 		settings: <SettingsView />,
 		color: <ColorView />,

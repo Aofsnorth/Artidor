@@ -13,6 +13,10 @@ import { TabBar } from "@/components/editor/panels/assets/tabbar";
 import { PropertiesPanel } from "@/components/editor/panels/properties";
 import { Timeline } from "@/components/editor/panels/timeline";
 import { PreviewPanel } from "@/components/editor/panels/preview";
+import { EffectsView } from "@/components/editor/panels/assets/views/effects";
+import { TransitionsView } from "@/components/editor/panels/assets/views/transitions";
+import { AdjustmentsView } from "@/components/editor/panels/assets/views/adjustments";
+import { PluginsView } from "@/components/editor/panels/assets/views/plugins";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { VerticalAudioMeter } from "@/components/editor/vertical-audio-meter";
 import { EditorProvider } from "@/components/providers/editor-provider";
@@ -356,6 +360,42 @@ function EditorPanels() {
 					state={floatingPanels.timeline}
 				>
 					<Timeline />
+				</FloatingWindow>
+			)}
+			{floatingPanels.effects && (
+				<FloatingWindow
+					id="effects"
+					title="Effects"
+					state={floatingPanels.effects}
+				>
+					<EffectsView />
+				</FloatingWindow>
+			)}
+			{floatingPanels.transitions && (
+				<FloatingWindow
+					id="transitions"
+					title="Transitions"
+					state={floatingPanels.transitions}
+				>
+					<TransitionsView />
+				</FloatingWindow>
+			)}
+			{floatingPanels.adjust && (
+				<FloatingWindow
+					id="adjust"
+					title="Adjustments"
+					state={floatingPanels.adjust}
+				>
+					<AdjustmentsView />
+				</FloatingWindow>
+			)}
+			{floatingPanels.plugins && (
+				<FloatingWindow
+					id="plugins"
+					title="Plugins"
+					state={floatingPanels.plugins}
+				>
+					<PluginsView />
 				</FloatingWindow>
 			)}
 		</div>
