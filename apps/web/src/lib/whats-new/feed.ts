@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-freehand-drawing",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Freehand vector drawing tool",
+		items: [
+			"Click the pencil icon in the preview toolbar to enter draw mode, then drag on the canvas to sketch vector strokes.",
+			"Paths are automatically simplified and smoothed (Ramer-Douglas-Peucker + Catmull-Rom curves) for clean, minimal vectors.",
+			"Each drawing becomes a fully editable graphic element — change stroke color, width, fill, and toggle closed path in the inspector.",
+		],
+	},
+	{
 		id: "2026-06-17-copy-paste-style",
 		date: "2026-06-17",
 		tag: "feature",

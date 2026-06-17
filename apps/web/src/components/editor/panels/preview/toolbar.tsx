@@ -16,10 +16,12 @@ import {
 	PreviousIcon,
 	NextIcon,
 	RepeatIcon,
+	PencilEdit01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getGuideById } from "@/lib/guides";
 import { usePreviewStore } from "@/stores/preview-store";
+import { useToolModeStore } from "@/stores/tool-mode-store";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import {
 	getNextBookmarkTimeWithin,
@@ -63,6 +65,7 @@ export function PreviewToolbar({
 			<TimecodeDisplay />
 			<TransportControls />
 			<div className="flex items-center gap-1 justify-self-end">
+				<DrawToolButton />
 				{/* v0.4.0 */}
 				{/* <GridPopover>
 					<Button
@@ -255,5 +258,38 @@ function TransportControls() {
 				<HugeiconsIcon icon={NextIcon} className="size-4" />
 			</Button>
 		</div>
+	);
+}
+
+/**
+ * Toggle button for the freehand draw tool. When active, the preview
+ * overlay switches to draw mode — pointer drags create vector strokes
+ * that get inserted as GraphicElements on pointer up.
+ */
+function DrawToolButton() {
+	const toolMode = useToolModeStore((s) => s.toolMode);
+	const setToolMode = useToolModeStore((s) => s.setToolMode);
+	const isActive = toolMode === "draw";
+
+	return (
+		<Button
+			variant={isActive ? "secondary" : "text"}
+			size="icon"
+			aria-label={isActive ? "Exit draw mode" : "Enter draw mode"}
+			aria-pressed={isActive}
+			title={
+				isActive
+					? "Drawing on canvas — click again to exit"
+					: "Draw on the canvas (freehand vector)"
+			}
+			className={
+				isActive
+					? "text-black"
+					: "text-white/60 hover:text-white"
+			}
+			onClick={() => setToolMode(isActive ? "select" : "draw")}
+		>
+			<HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
+		</Button>
 	);
 }

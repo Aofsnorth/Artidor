@@ -27,6 +27,7 @@ import { squircleGraphicDefinition } from "./squircle";
 import { starGraphicDefinition } from "./star";
 import { teardropGraphicDefinition } from "./teardrop";
 import { trapezoidGraphicDefinition } from "./trapezoid";
+import { freehandDefinition } from "./freehand";
 
 const defaultGraphicDefinitions = [
 	rectangleGraphicDefinition,
@@ -57,6 +58,7 @@ const defaultGraphicDefinitions = [
 	rhombusGraphicDefinition,
 	houseGraphicDefinition,
 	squircleGraphicDefinition,
+	freehandDefinition,
 ];
 
 export function registerDefaultGraphics(): void {
@@ -78,6 +80,7 @@ export {
 	crossGraphicDefinition,
 	ellipseGraphicDefinition,
 	flowerGraphicDefinition,
+	freehandDefinition,
 	gearGraphicDefinition,
 	heartGraphicDefinition,
 	houseGraphicDefinition,

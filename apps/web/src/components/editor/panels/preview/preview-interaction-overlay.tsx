@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { usePreviewViewport } from "@/components/editor/panels/preview/preview-viewport";
 import { usePreviewInteraction } from "@/hooks/use-preview-interaction";
+import { useFreehandDraw } from "@/hooks/use-freehand-draw";
+import { useToolModeStore } from "@/stores/tool-mode-store";
 import type { SnapLine } from "@/lib/preview/preview-snap";
 import { TransformHandles } from "./transform-handles";
 import { MaskHandles } from "./mask-handles";
 import { SnapGuides } from "./snap-guides";
 import { TextEditOverlay } from "./text-edit-overlay";
+import { FreehandDrawOverlay } from "./freehand-draw-overlay";
 import { usePropertiesStore } from "../properties/stores/properties-store";
 import { useEditor } from "@/hooks/use-editor";
 
@@ -15,6 +18,7 @@ export function PreviewInteractionOverlay() {
 	const viewport = usePreviewViewport();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 	const activeTabPerType = usePropertiesStore((s) => s.activeTabPerType);
+	const toolMode = useToolModeStore((s) => s.toolMode);
 
 	const selectedRef =
 		selectedElements.length === 1 ? selectedElements[0] : null;
@@ -29,40 +33,49 @@ export function PreviewInteractionOverlay() {
 		? activeTabPerType[activeElement.type] === "masks"
 		: false;
 
-	const {
-		onPointerDown,
-		onPointerMove,
-		onPointerUp,
-		onDoubleClick,
-		editingText,
-		commitTextEdit,
-	} = usePreviewInteraction({
+	const selectInteraction = usePreviewInteraction({
 		onSnapLinesChange: setSnapLines,
 		isMaskMode,
 	});
 
-	const handlePointerDown = (event: React.PointerEvent) => {
-		if (viewport.handlePanPointerDown({ event })) {
-			return;
-		}
+	const drawInteraction = useFreehandDraw();
 
-		onPointerDown(event);
+	const isDrawMode = toolMode === "draw";
+	const isDrawing = isDrawMode && drawInteraction.isDrawing;
+
+	const handlePointerDown = (event: React.PointerEvent) => {
+		if (viewport.handlePanPointerDown({ event })) return;
+
+		if (isDrawMode) {
+			drawInteraction.handlePointerDown(event);
+		} else {
+			selectInteraction.onPointerDown(event);
+		}
 	};
 
 	const handlePointerMove = (event: React.PointerEvent) => {
-		if (viewport.handlePanPointerMove({ event })) {
-			return;
-		}
+		if (viewport.handlePanPointerMove({ event })) return;
 
-		onPointerMove(event);
+		if (isDrawMode) {
+			drawInteraction.handlePointerMove(event);
+		} else {
+			selectInteraction.onPointerMove(event);
+		}
 	};
 
 	const handlePointerUp = (event: React.PointerEvent) => {
-		if (viewport.handlePanPointerUp({ event })) {
-			return;
-		}
+		if (viewport.handlePanPointerUp({ event })) return;
 
-		onPointerUp(event);
+		if (isDrawMode) {
+			drawInteraction.handlePointerUp(event);
+		} else {
+			selectInteraction.onPointerUp(event);
+		}
+	};
+
+	const onDoubleClick = (event: React.MouseEvent) => {
+		if (isDrawMode) return;
+		selectInteraction.onDoubleClick(event);
 	};
 
 	return (
@@ -76,7 +89,9 @@ export function PreviewInteractionOverlay() {
 						? "grabbing"
 						: viewport.canPan
 							? "default"
-							: undefined,
+							: isDrawMode
+								? "crosshair"
+								: undefined,
 				}}
 				onPointerDown={handlePointerDown}
 				onPointerMove={handlePointerMove}
@@ -85,19 +100,23 @@ export function PreviewInteractionOverlay() {
 				onDoubleClick={onDoubleClick}
 				onDragStart={(e) => e.preventDefault()}
 			/>
-			{editingText ? (
+			{selectInteraction.editingText ? (
 				<TextEditOverlay
-					trackId={editingText.trackId}
-					elementId={editingText.elementId}
-					element={editingText.element}
-					onCommit={commitTextEdit}
+					trackId={selectInteraction.editingText.trackId}
+					elementId={selectInteraction.editingText.elementId}
+					element={selectInteraction.editingText.element}
+					onCommit={selectInteraction.commitTextEdit}
 				/>
+			) : isDrawMode ? (
+				drawInteraction.currentPath && (
+					<FreehandDrawOverlay points={drawInteraction.currentPath} />
+				)
 			) : isMaskMode ? (
 				<MaskHandles onSnapLinesChange={setSnapLines} />
 			) : (
 				<TransformHandles onSnapLinesChange={setSnapLines} />
 			)}
-			<SnapGuides lines={snapLines} />
+			{!isDrawing && <SnapGuides lines={snapLines} />}
 		</div>
 	);
 }
