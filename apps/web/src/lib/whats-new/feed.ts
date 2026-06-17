@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-plugin-system",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Plugin system (with categories & import)",
+		items: [
+			"New Plugins tab in the assets panel — install .artidor-plugin packages to add custom shapes, effects, transitions, and presets.",
+			"Plugins are sandboxed, namespaced by id, and can be enabled/disabled or uninstalled without restarting the editor.",
+			"Download a sample plugin from the panel to try the import flow — it adds a custom 'Demo Star' shape with a magenta fill.",
+		],
+	},
+	{
 		id: "2026-06-17-freehand-drawing",
 		date: "2026-06-17",
 		tag: "feature",
