@@ -70,8 +70,36 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
 	);
 }
 
+function hashString(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = (hash << 5) - hash + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
+}
+
+function getEffectBackground(effectType: string): string {
+	const h = hashString(effectType);
+	const hue1 = h % 360;
+	const hue2 = (h * 13) % 360;
+	const patternType = h % 4;
+
+	if (patternType === 0) {
+		return `linear-gradient(135deg, hsl(${hue1}, 70%, 30%), hsl(${hue2}, 80%, 20%))`;
+	}
+	if (patternType === 1) {
+		return `radial-gradient(circle at 30% 30%, hsl(${hue1}, 80%, 40%), hsl(${hue2}, 70%, 15%))`;
+	}
+	if (patternType === 2) {
+		return `conic-gradient(from ${h % 360}deg, hsl(${hue1}, 70%, 30%), hsl(${hue2}, 80%, 20%), hsl(${hue1}, 70%, 30%))`;
+	}
+	return `linear-gradient(45deg, hsl(${hue1}, 60%, 25%) 25%, hsl(${hue2}, 60%, 15%) 25%, hsl(${hue2}, 60%, 15%) 50%, hsl(${hue1}, 60%, 25%) 50%, hsl(${hue1}, 60%, 25%) 75%, hsl(${hue2}, 60%, 15%) 75%)`;
+}
+
 function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const bgStyle = getEffectBackground(effectType);
 
 	useEffect(() => {
 		const render = () => {
@@ -89,7 +117,10 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	}, [effectType]);
 
 	return (
-		<div className="relative size-full overflow-hidden rounded-sm bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.24),transparent_32%),linear-gradient(135deg,#111827,#020617)]">
+		<div
+			className="relative size-full overflow-hidden rounded-sm"
+			style={{ background: bgStyle }}
+		>
 			<canvas ref={canvasRef} className="relative z-10 size-full" />
 			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 		</div>
