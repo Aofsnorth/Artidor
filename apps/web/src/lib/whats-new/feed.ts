@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-shapes-75",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "75+ customizable shapes",
+		items: [
+			"Added trapezoid, parallelogram, diamond, pie, arc, gear, burst, flower, teardrop, location pin, shield, cloud, home, squircle and more.",
+			"Polygons (3–10 sides), multi-point stars, and outline variants are all one click away.",
+			"Every shape stays fully adjustable: fill, border and per-shape controls.",
+		],
+	},
+	{
 		id: "2026-06-17-color-picker-fix",
 		date: "2026-06-17",
 		tag: "fix",
