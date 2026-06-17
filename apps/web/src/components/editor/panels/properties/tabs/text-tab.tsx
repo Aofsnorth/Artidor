@@ -305,10 +305,10 @@ function AnimateSection({
 									</SelectContent>
 								</Select>
 							</SectionField>
-							<div className="flex items-start gap-2">
+							<div className="grid min-w-0 grid-cols-2 gap-2">
 								<SectionField
 									label={animator.preset === "wave" ? "Cycle" : "Speed"}
-									className="w-1/2"
+									className="min-w-0"
 								>
 									<NumberField
 										value={formatNumberForDisplay({
@@ -322,7 +322,7 @@ function AnimateSection({
 										onChange={onNumberChange("duration", 0.05)}
 									/>
 								</SectionField>
-								<SectionField label="Stagger" className="w-1/2">
+								<SectionField label="Stagger" className="min-w-0">
 									<NumberField
 										value={formatNumberForDisplay({
 											value: animator.stagger,
