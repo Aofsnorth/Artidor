@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
+import { effects as presetEffects } from "@/lib/presets/effects";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
 import { effectPreviewService } from "@/services/renderer/effect-preview";
 import { useEditor } from "@/hooks/use-editor";
@@ -17,12 +18,47 @@ import {
 } from "@/components/editor/panels/assets/views/category-bar";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
+const PRESET_EFFECT_CATEGORY_BY_TYPE = new Map(
+	presetEffects.map((effect) => [effect.type, effect.category]),
+);
+
+const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map((effect) => ({
+	type: effect.type,
+	name: effect.name,
+	keywords: [effect.category.toLowerCase()],
+	params: [],
+	renderer: {
+		passes: [
+			{
+				shader: "contrast",
+				uniforms: () => ({ amount: 1 }),
+			},
+		],
+	},
+}));
+
+const EFFECT_PANEL_CATEGORIES = [
+	...EFFECT_CATEGORIES,
+	"Distortion",
+	"Particles",
+	"Texture",
+	"Artistic",
+	"Generator",
+] as const;
+
 export function EffectsView() {
-	const effects = effectsRegistry
-		.getAll()
-		.filter(
-			(definition) => !isAdjustmentEffect({ effectType: definition.type }),
-		);
+	const effects = useMemo(() => {
+		const existing = effectsRegistry
+			.getAll()
+			.filter(
+				(definition) => !isAdjustmentEffect({ effectType: definition.type }),
+			);
+		const existingTypes = new Set(existing.map((effect) => effect.type));
+		return [
+			...existing,
+			...PRESET_EFFECTS.filter((effect) => !existingTypes.has(effect.type)),
+		];
+	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
 	const filtered = useMemo(
@@ -30,7 +66,9 @@ export function EffectsView() {
 			filterByCategory({
 				items: effects,
 				category,
-				getCategory: (def) => getEffectCategory(def.type),
+				getCategory: (def) =>
+					PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
+					getEffectCategory(def.type),
 			}),
 		[effects, category],
 	);
@@ -44,7 +82,7 @@ export function EffectsView() {
 					Overlays.
 				</p>
 				<CategoryBar
-					categories={EFFECT_CATEGORIES}
+					categories={EFFECT_PANEL_CATEGORIES}
 					value={category}
 					onChange={setCategory}
 				/>
@@ -70,36 +108,31 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
 	);
 }
 
-function hashString(str: string): number {
-	let hash = 0;
-	for (let i = 0; i < str.length; i++) {
-		hash = (hash << 5) - hash + str.charCodeAt(i);
-		hash |= 0;
-	}
-	return Math.abs(hash);
-}
-
-function getEffectBackground(effectType: string): string {
+function getEffectBackgroundPosition(effectType: string): string {
 	const h = hashString(effectType);
-	const hue1 = h % 360;
-	const hue2 = (h * 13) % 360;
-	const patternType = h % 4;
-
-	if (patternType === 0) {
-		return `linear-gradient(135deg, hsl(${hue1}, 70%, 30%), hsl(${hue2}, 80%, 20%))`;
-	}
-	if (patternType === 1) {
-		return `radial-gradient(circle at 30% 30%, hsl(${hue1}, 80%, 40%), hsl(${hue2}, 70%, 15%))`;
-	}
-	if (patternType === 2) {
-		return `conic-gradient(from ${h % 360}deg, hsl(${hue1}, 70%, 30%), hsl(${hue2}, 80%, 20%), hsl(${hue1}, 70%, 30%))`;
-	}
-	return `linear-gradient(45deg, hsl(${hue1}, 60%, 25%) 25%, hsl(${hue2}, 60%, 15%) 25%, hsl(${hue2}, 60%, 15%) 50%, hsl(${hue1}, 60%, 25%) 50%, hsl(${hue1}, 60%, 25%) 75%, hsl(${hue2}, 60%, 15%) 75%)`;
+	const positions = [
+		"0% 0%",
+		"100% 0%",
+		"0% 100%",
+		"100% 100%",
+		"50% 50%",
+		"0% 50%",
+		"100% 50%",
+		"50% 0%",
+		"50% 100%",
+		"25% 25%",
+		"75% 25%",
+		"25% 75%",
+		"75% 75%",
+		"33% 33%",
+		"66% 66%",
+	];
+	return positions[h % positions.length];
 }
 
 function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
-	const bgStyle = getEffectBackground(effectType);
+	const bgPosition = getEffectBackgroundPosition(effectType);
 
 	useEffect(() => {
 		const render = () => {
@@ -119,7 +152,11 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	return (
 		<div
 			className="relative size-full overflow-hidden rounded-sm"
-			style={{ background: bgStyle }}
+			style={{
+				background: `url('/effects/preview.jpg')`,
+				backgroundSize: "200% 200%",
+				backgroundPosition: bgPosition,
+			}}
 		>
 			<canvas ref={canvasRef} className="relative z-10 size-full" />
 			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
@@ -163,4 +200,13 @@ function EffectItem({ effect }: { effect: EffectDefinition }) {
 			containerClassName="w-full"
 		/>
 	);
+}
+
+function hashString(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = (hash << 5) - hash + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
 }

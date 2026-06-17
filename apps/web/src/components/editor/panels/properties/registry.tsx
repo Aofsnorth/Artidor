@@ -178,6 +178,7 @@ function buildAudioEffectsTab({
 
 import { BasicAdjustTab } from "./tabs/basic-adjust-tab";
 import { ColorWheelsTab } from "./tabs/color-wheels-tab";
+import { DavinciAdjustTab } from "./tabs/davinci-adjust-tab";
 
 function buildBasicAdjustTab({
 	element,
@@ -220,6 +221,21 @@ function buildColorGradingTab({
 		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
 		content: ({ trackId }) => (
 			<ColorGradingTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+function buildDavinciAdjustTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		id: "davinci-adjust",
+		label: "Manual",
+		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
+		content: ({ trackId }) => (
+			<DavinciAdjustTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -416,6 +432,7 @@ function getVideoConfig({
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
 			buildBasicAdjustTab({ element }),
+			buildDavinciAdjustTab({ element }),
 			buildColorWheelsTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
@@ -501,6 +518,7 @@ function getImageConfig({
 			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildBasicAdjustTab({ element }),
+			buildDavinciAdjustTab({ element }),
 			buildColorWheelsTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),

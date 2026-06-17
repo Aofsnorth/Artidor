@@ -89,6 +89,7 @@ import {
 	TextFontIcon,
 	BookmarkAdd02Icon,
 	PaintBrushIcon,
+	ClipboardIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
@@ -796,6 +797,14 @@ export function TimelineElement({
 							Duplicate
 						</ActionMenuItem>
 					)}
+					{editor.clipboard.hasEntry() && (
+						<ActionMenuItem
+							action="paste-copied"
+							icon={<HugeiconsIcon icon={ClipboardIcon} />}
+						>
+							Paste layer
+						</ActionMenuItem>
+					)}
 					{selectedElements.length === 1 && (
 						<ActionMenuItem
 							action="copy-style"
@@ -810,6 +819,14 @@ export function TimelineElement({
 							icon={<HugeiconsIcon icon={PaintBrushIcon} />}
 						>
 							Paste style
+						</ActionMenuItem>
+					)}
+					{editor.clipboard.hasEffectEntry() && (
+						<ActionMenuItem
+							action="paste-effect"
+							icon={<HugeiconsIcon icon={MagicWand05Icon} />}
+						>
+							Paste effect
 						</ActionMenuItem>
 					)}
 					{selectedElements.length > 1 && (
@@ -854,7 +871,7 @@ export function TimelineElement({
 							});
 						}}
 					>
-						Save to preset
+						Save as preset
 					</ContextMenuItem>
 					{canElementHaveAudio(element) && hasAudio && (
 						<MuteMenuItem
@@ -1972,7 +1989,7 @@ function CopyMenuItem() {
 			action="copy-selected"
 			icon={<HugeiconsIcon icon={Copy01Icon} />}
 		>
-			Copy
+			Copy layer
 		</ActionMenuItem>
 	);
 }

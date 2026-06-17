@@ -498,6 +498,14 @@ export function useEditorActions() {
 	);
 
 	useActionHandler(
+		"paste-effect",
+		() => {
+			editor.clipboard.pasteEffect();
+		},
+		undefined,
+	);
+
+	useActionHandler(
 		"toggle-snapping",
 		() => {
 			toggleSnapping();

@@ -180,12 +180,12 @@ function ToolbarLeftSection() {
 				{/* Clipboard */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Copy01Icon} />}
-					tooltip="Copy selected"
+					tooltip="Copy layer"
 					onClick={() => invokeAction("copy-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={ClipboardIcon} />}
-					tooltip="Paste at playhead"
+					tooltip="Paste layer at playhead"
 					onClick={() => invokeAction("paste-copied")}
 				/>
 

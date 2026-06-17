@@ -62,6 +62,7 @@ export const VISIBLE_TAB_KEYS = [
 	"adjustment",
 	"templates",
 	"presets",
+	"quicktools",
 	"plugins",
 	"scripting",
 	"settings",
@@ -134,7 +135,7 @@ export const tabs = {
 	},
 	presets: {
 		icon: createHugeiconsIcon({ icon: BookmarkAdd02Icon }),
-		label: "Presets",
+		label: "Preset Tools",
 	},
 	quicktools: {
 		icon: createHugeiconsIcon({ icon: SparklesIcon }),

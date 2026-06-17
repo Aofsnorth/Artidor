@@ -18,6 +18,81 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-unsplash-fade-header",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Unsplash thumbnails + header glass fade",
+		items: [
+			"source.unsplash.com is now whitelisted in next.config images — text, transition, effect, and other asset thumbnails no longer crash with 'Invalid src prop' on next/image.",
+			"Project header is taller with content centred vertically, and the bottom edge fades to transparent (gradient mask + 2-layer glass) so it floats into the artwork below instead of a hard line.",
+		],
+	},
+	{
+		id: "2026-06-18-vector-am-features",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Vector tool Alight-Motion features + .artidor import/export",
+		items: [
+			"Project files now save and reload using the dedicated .artidor JSON format — import picker only accepts that extension.",
+			"Freehand strokes no longer snap to the canvas center on release — the path lands exactly where the user drew it.",
+			"Vector tool gained Alight Motion-style 'Close path' and 'Delete last anchor' action buttons in the inspector, alongside the existing keyboard shortcuts.",
+			"Vector and freehand paths now expose a 'Drawing Progress' section (start / end percentages) — keyframe end from 0 to 100 for the classic draw-on animation.",
+		],
+	},
+	{
+		id: "2026-06-18-preview-draw-tools-toolbar",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Preview toolbar drawing tools",
+		items: [
+			"Freehand Draw and Vector Draw now live beside the Loop button in the preview toolbar, so drawing starts directly from the canvas controls.",
+			"Drawing customization stays in the right inspector only — the preview canvas no longer shows the duplicate color/size config card.",
+			"The inspector Drawing state now has a single clean header instead of repeating the word 'Drawing' twice.",
+		],
+	},
+	{
+		id: "2026-06-18-project-header-polish",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Cleaner project header bar",
+		items: [
+			"Project screen header has been tightened into a cleaner glass toolbar with better spacing, smaller action chips, and responsive labels so it no longer feels crowded.",
+			"Project actions are grouped into a compact pill cluster, while search and shortcut hints only show at roomy breakpoints.",
+		],
+	},
+	{
+		id: "2026-06-18-shadow-velocity-presets",
+		date: "2026-06-18",
+		tag: "feature",
+		title: "Shadow panel + CapCut-style velocity presets",
+		items: [
+			"Graphic inspector now has a dedicated 'Shadow' section (Alight Motion-style) with colour, blur, X/Y offset, and an optional inner shadow — all keyframable.",
+			"Speed Ramp curve now ships 6 CapCut-style velocity presets: Flash In, Flash Out, Smooth In-Out, Quick Pulse, Glide In, Glide Out — alongside the existing Hero / Bullet Time / Montage presets.",
+		],
+	},
+	{
+		id: "2026-06-18-inspector-copy-layer-tools-tab",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Inspector fit-to-text, copy layer, and Tools tab",
+		items: [
+			"Inspector primary and secondary tabs now size to their label instead of getting squashed — long names like 'Speed Ramp' and 'Adjust' are no longer truncated.",
+			"Right-click menu now shows explicit 'Copy layer', 'Paste layer' (when clipboard has content), and 'Paste effect' (when effect clipboard is filled) entries — matches Alight Motion's clipboard model.",
+			"Freehand and Vector draw buttons are reachable from the new 'Tools' tab in the asset panel (Freehand Draw, Vector Draw, Teleprompter, Reverse, Stabilize, Auto Reframe).",
+			"Adjust sub-tabs (Basic, Manual/DaVinci, Wheels, Color) now hide the transform/audio/speed secondary row so color correction gets the full panel height.",
+		],
+	},
+	{
+		id: "2026-06-18-freehand-centering-fade-responsive",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Freehand centering and audio fade responsiveness",
+		items: [
+			"Fixed freehand strokes 'snapping to center' on release by centring the simplified path inside the 512x512 source space before committing, so the element lands where the user actually drew.",
+			"Inspector audio Fade In/Out fields now stack on panels narrower than 420px so the second field no longer clips the digit.",
+		],
+	},
+	{
 		id: "2026-06-18-massive-ux-polish-150-presets",
 		date: "2026-06-18",
 		tag: "feature",

@@ -117,14 +117,14 @@ export function TabBar() {
 function StorageCard() {
 	const storage = useStorageEstimate();
 
-	const freeLabel = storage ? formatStorageSize(storage.freeBytes) : "482 GB";
+	const freeLabel = storage ? formatStorageSize(storage.freeBytes) : "—";
 	const usedPercent =
 		storage && storage.totalBytes > 0
 			? Math.min(
 					100,
 					Math.max(2, (storage.usedBytes / storage.totalBytes) * 100),
 				)
-			: 30;
+			: 0;
 
 	return (
 		<div

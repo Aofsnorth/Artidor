@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEditor } from "@/hooks/use-editor";
+import { stickers as presetStickers } from "@/lib/presets/stickers";
+import type { Sticker as PresetSticker } from "@/lib/presets/types";
 import { resolveStickerIntrinsicSize } from "@/lib/stickers";
 import {
 	buildGraphicElement,
@@ -259,6 +261,7 @@ function StickersContentView() {
 					}}
 				/>
 			))}
+			<PresetStickersSection />
 		</div>
 	);
 }
@@ -322,6 +325,127 @@ function StickerSection({
 	);
 }
 
+function PresetStickersSection() {
+	const grouped = useMemo(
+		() =>
+			presetStickers.reduce<Record<string, PresetSticker[]>>((acc, sticker) => {
+				acc[sticker.subcategory] ??= [];
+				acc[sticker.subcategory].push(sticker);
+				return acc;
+			}, {}),
+		[],
+	);
+
+	return (
+		<div className="flex flex-col gap-3">
+			<p className="text-xs text-muted-foreground">Stickers</p>
+			{Object.entries(grouped).map(([subcategory, items]) => (
+				<div key={subcategory} className="flex flex-col gap-2">
+					<p className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
+						{subcategory}
+					</p>
+					<div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
+						{items.map((item) => (
+							<PresetStickerItem key={item.id} item={item} />
+						))}
+					</div>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function PresetStickerItem({ item }: { item: PresetSticker }) {
+	const editor = useEditor();
+	const [isAdding, setIsAdding] = useState(false);
+	const pathData =
+		item.asset.kind === "emoji" ? item.asset.char : item.asset.paths.join(" ");
+
+	const handleAdd = () => {
+		setIsAdding(true);
+		try {
+			const element = buildGraphicElement({
+				definitionId: "freehand",
+				name: item.name,
+				startTime: editor.playback.getCurrentTime(),
+				params: { pathData },
+			});
+
+			editor.timeline.insertElement({
+				placement: { mode: "auto" },
+				element,
+			});
+		} catch (error) {
+			console.error("Failed to add preset sticker:", error);
+			toast.error("Failed to add sticker to timeline");
+		} finally {
+			setIsAdding(false);
+		}
+	};
+
+	return (
+		<div
+			className={cn("relative", isAdding && "pointer-events-none opacity-50")}
+		>
+			<DraggableItem
+				name={item.name}
+				preview={
+					<div className="flex size-full items-center justify-center rounded-sm bg-accent p-3">
+						{item.asset.kind === "emoji" ? (
+							<span className="text-4xl leading-none">{item.asset.char}</span>
+						) : (
+							<svg
+								viewBox={item.asset.viewBox}
+								className="size-full"
+								aria-hidden="true"
+							>
+								{item.asset.paths.map((d) => (
+									<path
+										key={`${item.id}-${d}`}
+										d={d}
+										fill={
+											item.asset.kind === "svg" ? item.asset.fill : undefined
+										}
+									/>
+								))}
+							</svg>
+						)}
+					</div>
+				}
+				dragData={{
+					id: item.id,
+					type: "sticker",
+					name: item.name,
+					stickerId: item.id,
+				}}
+				onAddToTimeline={handleAdd}
+				aspectRatio={1}
+				shouldShowLabel={false}
+				isRounded
+				variant="card"
+				containerClassName="w-full"
+			/>
+			{isAdding && (
+				<div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black/60">
+					<Spinner className="size-6 text-white" />
+				</div>
+			)}
+		</div>
+	);
+}
+
+function getStickerPhotoUrl(stickerId: string): string {
+	let hash = 0;
+	for (let i = 0; i < stickerId.length; i++) {
+		hash = (hash << 5) - hash + stickerId.charCodeAt(i);
+		hash |= 0;
+	}
+	hash = Math.abs(hash);
+	const categories = ["graphic", "design", "art", "illustration", "creative"];
+	const category = categories[hash % categories.length];
+	return `https://source.unsplash.com/300x300/?${category}&sig=${hash}`;
+}
+
 interface StickerItemProps {
 	item: StickerData;
 	shouldCapSize?: boolean;
@@ -337,6 +461,7 @@ function StickerItem({
 	const { addToRecentStickers } = useStickersStore();
 	const [isAdding, setIsAdding] = useState(false);
 	const [hasImageError, setHasImageError] = useState(false);
+	const photoUrl = getStickerPhotoUrl(item.id);
 
 	useEffect(() => {
 		if (!item.id) {
@@ -394,9 +519,19 @@ function StickerItem({
 	};
 
 	const preview = (
-		<div className="flex size-full items-center justify-center p-3">
+		<div className="relative flex size-full items-center justify-center p-3">
+			<Image
+				src={photoUrl}
+				alt=""
+				fill
+				className="object-cover rounded-sm"
+				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+				loading="lazy"
+				unoptimized
+			/>
+			<div className="absolute inset-0 bg-black/30 rounded-sm" />
 			{hasImageError ? (
-				<span className="text-muted-foreground text-center text-xs break-all">
+				<span className="relative z-10 text-white text-center text-xs break-all">
 					{displayName}
 				</span>
 			) : (
@@ -405,7 +540,7 @@ function StickerItem({
 					alt={displayName}
 					width={64}
 					height={64}
-					className="size-full object-contain"
+					className="relative z-10 size-full object-contain"
 					style={
 						shouldCapSize
 							? {

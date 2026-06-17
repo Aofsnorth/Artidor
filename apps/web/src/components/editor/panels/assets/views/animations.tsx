@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -16,6 +17,8 @@ import {
 	useAnimationPresets,
 	useApplyAnimationPreset,
 } from "@/hooks/use-animation-presets";
+import { motionPresets } from "@/lib/presets/motion";
+import type { MotionPreset } from "@/lib/presets/types";
 import type {
 	AnimationPreset,
 	AnimationPresetCategory,
@@ -42,6 +45,46 @@ const ANIMATION_KEY_TO_LABEL = new Map(
 	ANIMATION_CATEGORIES.map((c) => [c.key, c.label]),
 );
 
+const MOTION_CATEGORY_TO_ANIMATION_CATEGORY: Record<
+	MotionPreset["category"],
+	AnimationPresetCategory
+> = {
+	In: "entrance",
+	Out: "exit",
+	InOut: "combo",
+	Loop: "loop",
+};
+
+const MOTION_PROPERTY_PATHS = {
+	opacity: ["opacity"],
+	translate: ["transform.positionY"],
+	scale: ["transform.scaleX", "transform.scaleY"],
+	rotate: ["transform.rotate"],
+	blur: ["params.blur"],
+} as const satisfies Record<MotionPreset["targetProperties"][number], string[]>;
+
+const motionAnimationPresets: AnimationPreset[] = motionPresets.map(
+	(motion) => ({
+		id: motion.id,
+		type: motion.id,
+		name: motion.name,
+		keywords: [motion.category.toLowerCase(), ...motion.targetProperties],
+		category: MOTION_CATEGORY_TO_ANIMATION_CATEGORY[motion.category],
+		duration: 1000,
+		keyframes: ({ elementDuration }) =>
+			motion.targetProperties.flatMap((property) =>
+				MOTION_PROPERTY_PATHS[property].flatMap((propertyPath) =>
+					motion.keyframes.map((keyframe) => ({
+						propertyPath,
+						time: Math.round(keyframe.t * elementDuration),
+						value: keyframe.value,
+						interpolation: "linear" as const,
+					})),
+				),
+			),
+	}),
+);
+
 const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 	entrance: <HugeiconsIcon icon={ArrowDown01Icon} className="size-3" />,
 	emphasis: <HugeiconsIcon icon={SparklesIcon} className="size-3" />,
@@ -51,7 +94,16 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 };
 
 export function AnimationsView() {
-	const all = useAnimationPresets();
+	const existingPresets = useAnimationPresets();
+	const all = useMemo(() => {
+		const existingTypes = new Set(existingPresets.map((preset) => preset.type));
+		return [
+			...existingPresets,
+			...motionAnimationPresets.filter(
+				(preset) => !existingTypes.has(preset.type),
+			),
+		];
+	}, [existingPresets]);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
@@ -91,9 +143,22 @@ export function AnimationsView() {
 	);
 }
 
+function getAnimationPhotoUrl(presetId: string): string {
+	let hash = 0;
+	for (let i = 0; i < presetId.length; i++) {
+		hash = (hash << 5) - hash + presetId.charCodeAt(i);
+		hash |= 0;
+	}
+	hash = Math.abs(hash);
+	const categories = ["motion", "movement", "dynamic", "action", "energy"];
+	const category = categories[hash % categories.length];
+	return `https://source.unsplash.com/300x200/?${category}&sig=${hash}`;
+}
+
 function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 	const apply = useApplyAnimationPreset();
 	const [busy, setBusy] = useState(false);
+	const photoUrl = getAnimationPhotoUrl(preset.type);
 
 	const handleApply = () => {
 		setBusy(true);
@@ -133,6 +198,15 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
 				style={{ width: "80%", height: "80%" }}
 			>
+				<Image
+					src={photoUrl}
+					alt=""
+					fill
+					className="object-cover"
+					sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+					loading="lazy"
+				/>
+				<div className="absolute inset-0 bg-black/20" />
 				<div
 					className="absolute inset-0 flex items-center justify-center z-10"
 					style={previewStyle}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
+import { transitions as presetTransitions } from "@/lib/presets/transitions";
 import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
@@ -21,13 +23,40 @@ import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 const TRANSITION_CATEGORIES = [
 	"Fade",
 	"Slide",
+	"Push",
 	"Zoom",
+	"Rotate",
 	"Wipe",
+	"Morph",
 	"Glitch",
+	"Liquid",
+	"Light",
+	"3D",
+	"Geometric",
 ] as const;
 
+const PRESET_TRANSITION_CATEGORY_BY_TYPE = new Map(
+	presetTransitions.map((transition) => {
+		const category = TRANSITION_CATEGORIES.find((candidate) =>
+			transition.keywords.includes(candidate.toLowerCase()),
+		);
+		return [transition.type, category ?? transition.category];
+	}),
+);
+
 export function TransitionsView() {
-	const transitions = transitionsRegistry.getAll();
+	const transitions = useMemo(() => {
+		const existing = transitionsRegistry.getAll();
+		const existingTypes = new Set(
+			existing.map((transition) => transition.type),
+		);
+		return [
+			...existing,
+			...presetTransitions.filter(
+				(transition) => !existingTypes.has(transition.type),
+			),
+		];
+	}, []);
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
@@ -36,7 +65,8 @@ export function TransitionsView() {
 			filterByCategory({
 				items: transitions,
 				category,
-				getCategory: (def) => def.category,
+				getCategory: (def) =>
+					PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
 			}),
 		[transitions, category],
 	);
@@ -181,6 +211,40 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	);
 }
 
+function getTransitionPhotoUrl(
+	transitionType: string,
+	plate: "A" | "B",
+): string {
+	const h = hashString(transitionType + plate);
+	const categories = [
+		"nature",
+		"architecture",
+		"people",
+		"technology",
+		"abstract",
+		"food",
+		"travel",
+		"business",
+		"animals",
+		"sports",
+	];
+	const category = categories[h % categories.length];
+	return `https://source.unsplash.com/300x200/?${category}&sig=${h}`;
+}
+
+function hashString(str: string): number {
+	let hash = 0;
+	for (let i = 0; i < str.length; i++) {
+		hash = (hash << 5) - hash + str.charCodeAt(i);
+		hash |= 0;
+	}
+	return Math.abs(hash);
+}
+
+function extractKeyframeName(css: string): string | null {
+	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
+}
+
 function TransitionPreview({
 	definition,
 }: {
@@ -199,43 +263,35 @@ function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
-	const h = hashString(definition.type);
-	const hue1 = h % 360;
-	const hue2 = (h * 13) % 360;
-	const hue3 = (h * 23) % 360;
-	const hue4 = (h * 37) % 360;
-
-	const plateA = `linear-gradient(135deg, hsla(${hue1}, 85%, 65%, 0.85), hsla(${hue2}, 80%, 55%, 0.85))`;
-	const plateB = `radial-gradient(circle at 70% 35%, hsla(${hue3}, 90%, 70%, 0.9), hsla(${hue4}, 85%, 50%, 0.88))`;
+	const photoA = getTransitionPhotoUrl(definition.type, "A");
+	const photoB = getTransitionPhotoUrl(definition.type, "B");
 
 	return (
 		<div
 			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-black/35"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<div className="absolute inset-0" style={{ background: plateA }} />
-			<div
-				className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+			<Image
+				src={photoA}
+				alt=""
+				fill
+				className="object-cover"
+				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+				loading="lazy"
+			/>
+			<Image
+				src={photoB}
+				alt=""
+				fill
+				className="z-10 object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 				style={{
-					background: plateB,
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
 				}}
+				loading="lazy"
 			/>
 			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 			<style>{scopedCss}</style>
 		</div>
 	);
-}
-
-function hashString(str: string): number {
-	let hash = 0;
-	for (let i = 0; i < str.length; i++) {
-		hash = (hash << 5) - hash + str.charCodeAt(i);
-		hash |= 0;
-	}
-	return Math.abs(hash);
-}
-
-function extractKeyframeName(css: string): string | null {
-	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
 }

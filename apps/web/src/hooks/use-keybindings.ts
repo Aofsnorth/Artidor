@@ -90,6 +90,7 @@ export function useKeybindingsListener() {
 					}, 400);
 					toggleAutoScroll();
 					ev.preventDefault();
+					ev.stopImmediatePropagation();
 					return;
 				}
 			}
@@ -100,7 +101,10 @@ export function useKeybindingsListener() {
 			// the user's "play" intent gets hijacked into toggling whatever
 			// button is focused (e.g. renaming the track). We blur the
 			// button first so the keybinding takes over, then re-prevent
-			// default to stop the synthesized click.
+			// default + stop immediate propagation to stop the synthesised
+			// click from reaching the button. We also actively re-focus
+			// the document body so the keydown chain doesn't bounce back
+			// into another click on a different focusable ancestor.
 			const isPlayShortcut = boundAction === "toggle-play";
 			const isFocusOnButton =
 				activeElement instanceof HTMLButtonElement ||
@@ -108,6 +112,7 @@ export function useKeybindingsListener() {
 					activeElement.getAttribute("role") === "button");
 			if (isPlayShortcut && isFocusOnButton && document.activeElement) {
 				(document.activeElement as HTMLElement).blur();
+				document.body.focus();
 			}
 
 			if (boundAction === "paste-copied") {

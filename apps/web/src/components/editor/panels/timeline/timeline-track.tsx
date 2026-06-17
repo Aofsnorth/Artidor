@@ -67,6 +67,14 @@ export function TimelineTrackContent({
 		<div className="relative size-full overflow-hidden rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-[length:48px_100%,100%_100%]">
 			<button
 				type="button"
+				// `tabIndex={-1}` keeps the track button out of the tab
+				// order and prevents it from being focused on click. Without
+				// this, clicking the main track would leave the button
+				// focused, and the browser's synthesised `click` on Space
+				// would race against the global keybinding handler and
+				// hijack the "toggle play" intent (the user would then have
+				// to click the timeline area first before Space worked).
+				tabIndex={-1}
 				className="absolute inset-0 m-0 size-full appearance-none border-0 bg-transparent p-0"
 				aria-label={`Select ${track.name} track`}
 				onMouseUp={(event) => {

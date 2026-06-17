@@ -1,7 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { overlays as presetOverlays } from "@/lib/presets/overlays";
+import type { OverlaySubcategory } from "@/lib/presets/types";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import {
@@ -31,7 +34,39 @@ export const OVERLAY_CATEGORIES = [
 	"Vignette",
 	"Light",
 	"Flash",
+	"Texture",
+	"Weather",
+	"Particles",
+	"Glitch",
+	"Paper",
+	"Neon",
+	"Prismatic",
+	"VHS",
 ] as const;
+
+const OVERLAY_SUBCATEGORY_MAP: Partial<Record<OverlaySubcategory, string>> = {
+	LightLeak: "Light",
+	LensFlare: "Light",
+	Halo: "Light",
+	Vignette: "Vignette",
+	Dust: "Texture",
+	Scratch: "Texture",
+	FilmGrain: "Texture",
+	Halftone: "Texture",
+	Snow: "Weather",
+	Rain: "Weather",
+	Fog: "Weather",
+	Smoke: "Weather",
+	Glitter: "Particles",
+	Sparkle: "Particles",
+	Bokeh: "Particles",
+	Glitch: "Glitch",
+	Paper: "Paper",
+	Neon: "Neon",
+	Prismatic: "Prismatic",
+	Holographic: "Prismatic",
+	VHS: "VHS",
+};
 
 const OVERLAY_PRESETS: OverlayPreset[] = [
 	{
@@ -461,7 +496,21 @@ const genOverlays = Array.from({ length: 150 }).map((_, i): OverlayPreset => {
 	};
 });
 
-OVERLAY_PRESETS.push(...genOverlays);
+const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
+	id: overlay.id,
+	name: overlay.name,
+	description: overlay.description,
+	category: OVERLAY_SUBCATEGORY_MAP[overlay.subcategory] ?? "Color Wash",
+	definitionId: "rectangle",
+	params: {
+		fill: `rgba(255,255,255,${overlay.opacity * 0.3})`,
+		strokeWidth: 0,
+		cornerRadius: 0,
+	},
+	previewStyle: { background: overlay.css },
+}));
+
+OVERLAY_PRESETS.push(...genOverlays, ...presetOverlayPresets);
 
 export function OverlaysView() {
 	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
@@ -544,9 +593,30 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 	);
 }
 
+function getOverlayPhotoUrl(presetId: string): string {
+	let hash = 0;
+	for (let i = 0; i < presetId.length; i++) {
+		hash = (hash << 5) - hash + presetId.charCodeAt(i);
+		hash |= 0;
+	}
+	hash = Math.abs(hash);
+	const categories = ["portrait", "landscape", "city", "nature", "abstract"];
+	const category = categories[hash % categories.length];
+	return `https://source.unsplash.com/300x300/?${category}&sig=${hash}`;
+}
+
 function OverlayPreview({ preset }: { preset: OverlayPreset }) {
+	const photoUrl = getOverlayPhotoUrl(preset.id);
 	return (
-		<div className="relative size-full overflow-hidden rounded-sm bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.28),transparent_32%),linear-gradient(135deg,#111827,#030712)] p-2">
+		<div className="relative size-full overflow-hidden rounded-sm p-2">
+			<Image
+				src={photoUrl}
+				alt=""
+				fill
+				className="object-cover"
+				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+				loading="lazy"
+			/>
 			<div className="absolute inset-2 rounded-md border border-white/[0.08]" />
 			<div
 				className="absolute inset-3 overflow-hidden rounded-md"

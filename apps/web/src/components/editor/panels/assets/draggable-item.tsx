@@ -25,6 +25,16 @@ import { cn } from "@/utils/ui";
 export interface DraggableItemProps {
 	name: string;
 	preview: ReactNode;
+	/**
+	 * Optional override for what the floating drag ghost shows while the
+	 * user is dragging. Defaults to the same `preview` content, but
+	 * consumers that have a photo-laden card preview (e.g. text presets
+	 * that show a stock-photo backdrop behind a "Title" overlay) should
+	 * pass a simpler, type-appropriate ghost here — otherwise the user
+	 * sees an image floating under the cursor and assumes the drag is
+	 * dragging the image instead of the preset.
+	 */
+	dragPreview?: ReactNode;
 	dragData: TimelineDragData;
 	onDragStart?: ({ e }: { e: React.DragEvent }) => void;
 	onAddToTimeline?: ({ currentTime }: { currentTime: number }) => void;
@@ -41,6 +51,7 @@ export interface DraggableItemProps {
 export function DraggableItem({
 	name,
 	preview,
+	dragPreview,
 	dragData,
 	onDragStart,
 	onAddToTimeline,
@@ -221,7 +232,7 @@ export function DraggableItem({
 								className="ring-primary relative overflow-hidden rounded-md shadow-2xl ring-3"
 							>
 								<div className="size-full [&_img]:size-full [&_img]:rounded-none [&_img]:object-cover">
-									{preview}
+									{dragPreview ?? preview}
 								</div>
 								{shouldShowPlusOnDrag && (
 									<PlusButton

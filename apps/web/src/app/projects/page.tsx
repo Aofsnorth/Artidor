@@ -16,6 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { useEditor } from "@/hooks/use-editor";
 import { ImportDriveButton } from "@/components/import-drive-button";
 import { DriveAccountButton } from "@/components/drive-account-button";
@@ -26,6 +27,7 @@ import { StatsOverview } from "./stats-overview";
 import { TemplatesRow, type ProjectTemplate } from "./templates-row";
 import { useProjectsKeyboardShortcuts } from "./use-keyboard-shortcuts";
 import type {
+	TProject,
 	TProjectMetadata,
 	TProjectSortKey,
 	TProjectSortOption,
@@ -77,6 +79,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteProjectDialog } from "@/components/editor/dialogs/delete-project-dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { ProjectInfoDialog } from "@/components/editor/dialogs/project-info-dialog";
 import { RenameProjectDialog } from "@/components/editor/dialogs/rename-project-dialog";
 import { cn } from "@/utils/ui";
@@ -84,6 +94,10 @@ import { ChangelogNotification } from "@/lib/changelog/components/changelog-noti
 import { PageTransition } from "@/components/page-transition";
 import { lazy, Suspense } from "react";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
+import { exportProject, importProject } from "@/lib/project/file";
+import { savePreset } from "@/lib/presets/storage";
+import type { UserPreset } from "@/lib/presets/types";
+import { generateUUID } from "@/utils/id";
 
 const SettingsDialog = lazy(() =>
 	import("@/components/editor/dialogs/settings-dialog").then((m) => ({
@@ -380,14 +394,28 @@ function ProjectsHeader() {
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
 	return (
-		<header className="sticky top-0 z-20 flex flex-col gap-2 px-8 transition-all">
-			{/* Glassmorphism backdrop for the header. */}
+		<header className="sticky top-0 z-20 flex flex-col gap-2 px-4 transition-all sm:px-6 lg:px-8">
+			{/* Glassmorphism backdrop for the header. The bottom edge fades
+			   into transparent so the header feels weightless against the
+			   artwork underneath, instead of leaving a hard seam. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10 bg-background/30 backdrop-blur-xl border-b border-white/5 shadow-sm"
+				className="pointer-events-none absolute inset-x-0 top-0 -bottom-5 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+				style={{
+					maskImage:
+						"linear-gradient(to bottom, black 0%, black 55%, rgba(0,0,0,0.85) 78%, transparent 100%)",
+					WebkitMaskImage:
+						"linear-gradient(to bottom, black 0%, black 55%, rgba(0,0,0,0.85) 78%, transparent 100%)",
+				}}
 			/>
-			<div className="flex items-center justify-between h-16 pt-2">
-				<div className="flex items-center gap-5">
+			{/* A second, brighter glass pass on top so the controls read
+			   crisp against the artwork below. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-white/[0.045] via-white/[0.02] to-transparent"
+			/>
+			<div className="flex min-h-16 items-center justify-between gap-3 py-3">
+				<div className="flex min-w-0 flex-1 items-center justify-start gap-3 lg:gap-5">
 					<Breadcrumb>
 						<BreadcrumbList>
 							<BreadcrumbItem>
@@ -406,15 +434,17 @@ function ProjectsHeader() {
 						</BreadcrumbList>
 					</Breadcrumb>
 
-					<div className="hidden md:flex items-center rounded-md border p-1 px-1.5 h-10 bg-background/30 backdrop-blur-sm">
+					<div className="hidden h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur-sm md:flex">
 						{VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => (
 							<Button
 								key={mode}
 								variant="ghost"
 								size="icon"
 								className={cn(
-									"rounded-sm hover:bg-background",
-									isHydrated && viewMode === mode && "!bg-accent",
+									"size-7 rounded-full text-white/50 hover:bg-white/[0.08] hover:text-white",
+									isHydrated &&
+										viewMode === mode &&
+										"!bg-white !text-black shadow-sm",
 								)}
 								onClick={() => setViewMode({ viewMode: mode })}
 								aria-label={label}
@@ -426,10 +456,13 @@ function ProjectsHeader() {
 					</div>
 				</div>
 
-				<div className="flex items-center gap-3 md:gap-4">
-					<SearchBar className="hidden md:block" />
-					<ShortcutHint label="Search" keys={["/"]} />
-					<ShortcutHint label="New" keys={["N"]} />
+				<div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-2.5">
+					<SearchBar className="hidden w-[220px] xl:block" />
+					<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
+						<ShortcutHint label="Search" keys={["/"]} />
+						<ShortcutHint label="New" keys={["N"]} />
+					</div>
+					<div className="hidden h-5 w-px bg-white/[0.08] xl:block" />
 					<TemplatesButton />
 					<ImportDriveButton />
 					<NewProjectButton />
@@ -640,6 +673,44 @@ async function renameProject({
 	await editor.project.renameProject({ id, name });
 }
 
+function buildProjectPreset({
+	project,
+	name = project.metadata.name,
+	category = "Project",
+	description = "",
+}: {
+	project: TProject;
+	name?: string;
+	category?: string;
+	description?: string;
+}): UserPreset {
+	const items = project.scenes.flatMap((scene) =>
+		[scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio].flatMap(
+			(track) =>
+				track.elements.map((element) => {
+					const { id: _id, ...elementWithoutId } = element;
+					return {
+						trackType: track.type,
+						sourceTrackKey: track.id,
+						relativeStartTime: element.startTime,
+						element: elementWithoutId,
+					};
+				}),
+		),
+	);
+	return {
+		id: generateUUID(),
+		name: name.trim() || "Untitled preset",
+		kind: "project",
+		category: category.trim() || "Project",
+		description: description.trim(),
+		thumbnail: project.metadata.thumbnail ?? null,
+		duration: project.metadata.duration,
+		createdAt: Date.now(),
+		items,
+	};
+}
+
 function ProjectActions() {
 	const editor = useEditor();
 	const { selectedProjectIds, clearSelectedProjects } = useProjectsStore();
@@ -757,6 +828,7 @@ function SortDropdown({ children }: { children: React.ReactNode }) {
 function NewProjectButton() {
 	const editor = useEditor();
 	const router = useRouter();
+	const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
 
 	const handleCreateProject = async () => {
 		const projectId = await editor.project.createNewProject({
@@ -765,89 +837,138 @@ function NewProjectButton() {
 		router.push(`/editor/${projectId}`);
 	};
 
-	const handleCreatePreset = async () => {
-		const projectId = await editor.project.createNewProject({
-			name: "Preset",
-		});
-		router.push(`/editor/${projectId}`);
-	};
-
 	const handleImportProject = async () => {
 		const input = document.createElement("input");
 		input.type = "file";
-		input.accept = ".artidor,.json";
-		input.onchange = async (e) => {
-			const file = (e.target as HTMLInputElement).files?.[0];
+		input.accept = ".artidor";
+		input.onchange = async (event) => {
+			const file = (event.target as HTMLInputElement).files?.[0];
 			if (!file) return;
 			try {
-				const text = await file.text();
-				const data = JSON.parse(text);
-				if (data?.metadata && data.scenes) {
-					const projectId = await editor.project.createNewProject({
-						name: data.metadata.name || file.name.replace(/\.[^/.]+$/, ""),
-					});
-					// Overwrite the new project's data with the imported data
-					const existingMeta = editor.project
-						.getSavedProjects()
-						.find((p) => p.id === projectId);
-					if (existingMeta) {
-						const fullProject = await storageService.loadProject({
-							id: existingMeta.id,
-						});
-						if (fullProject?.project) {
-							fullProject.project.scenes = data.scenes;
-							fullProject.project.settings =
-								data.settings || fullProject.project.settings;
-							fullProject.project.metadata.name =
-								data.metadata.name || fullProject.project.metadata.name;
-							await storageService.saveProject({
-								project: fullProject.project,
-							});
-							editor.project.loadAllProjects();
-							toast.success("Project imported");
-							router.push(`/editor/${fullProject.project.metadata.id}`);
-						}
-					}
-				} else {
-					toast.error("Invalid project file");
-				}
-			} catch (_err) {
-				toast.error("Failed to import project");
+				const project = await importProject(file);
+				await storageService.saveProject({ project });
+				await editor.project.loadAllProjects();
+				toast.success("Project imported");
+				router.push(`/editor/${project.metadata.id}`);
+			} catch (error) {
+				toast.error("Failed to import project", {
+					description: error instanceof Error ? error.message : "Invalid file",
+				});
 			}
 		};
 		input.click();
 	};
 
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex shrink-0 items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur">
 			<Button
-				size="lg"
-				variant="outline"
-				className="h-9 gap-1.5 rounded-full px-4 text-[12.5px] font-medium"
+				size="sm"
+				variant="ghost"
+				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/[0.08] hover:text-white"
 				onClick={handleImportProject}
 			>
-				<span className="hidden sm:inline">Import</span>
-				<span className="sm:hidden">In</span>
+				<span className="hidden xl:inline">Import project</span>
+				<span className="xl:hidden">Import</span>
 			</Button>
 			<Button
-				size="lg"
-				variant="outline"
-				className="h-9 gap-1.5 rounded-full px-4 text-[12.5px] font-medium"
-				onClick={handleCreatePreset}
+				size="sm"
+				variant="ghost"
+				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/[0.08] hover:text-white"
+				onClick={() => setIsPresetDialogOpen(true)}
 			>
-				<span className="hidden sm:inline">New Preset</span>
-				<span className="sm:hidden">Preset</span>
+				<span className="hidden xl:inline">New Preset</span>
+				<span className="xl:hidden">Preset</span>
 			</Button>
 			<Button
-				size="lg"
-				className="h-9 gap-1.5 rounded-full bg-white px-4 text-[12.5px] font-medium text-[#0a0a0c] shadow-[0_4px_16px_rgba(255,255,255,0.18)] hover:bg-white/90"
+				size="sm"
+				className="h-8 gap-1.5 rounded-full bg-white px-3.5 text-[12px] font-semibold text-[#0a0a0c] shadow-[0_6px_22px_rgba(255,255,255,0.18)] hover:bg-white/90"
 				onClick={handleCreateProject}
 			>
 				<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />
-				<span className="hidden sm:inline">New project</span>
-				<span className="sm:hidden">New</span>
+				<span className="hidden lg:inline">New project</span>
+				<span className="lg:hidden">New</span>
 			</Button>
+			<NewPresetDialog
+				open={isPresetDialogOpen}
+				onOpenChange={setIsPresetDialogOpen}
+			/>
 		</div>
+	);
+}
+
+function NewPresetDialog({
+	open,
+	onOpenChange,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const [name, setName] = useState("New preset");
+	const [category, setCategory] = useState("Custom");
+	const [description, setDescription] = useState("");
+
+	const handleSave = async (event: React.FormEvent) => {
+		event.preventDefault();
+		const preset: UserPreset = {
+			id: generateUUID(),
+			name: name.trim() || "New preset",
+			kind: "group",
+			category: category.trim() || "Custom",
+			description: description.trim(),
+			thumbnail: null,
+			duration: 0,
+			createdAt: Date.now(),
+			items: [],
+		};
+		await savePreset({ preset });
+		toast.success(`Saved "${preset.name}" to presets`);
+		onOpenChange(false);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-[420px]">
+				<form onSubmit={handleSave}>
+					<DialogHeader>
+						<DialogTitle>New Preset</DialogTitle>
+						<DialogDescription>
+							Configure preset metadata and save it to your library.
+						</DialogDescription>
+					</DialogHeader>
+					<div className="flex flex-col gap-4 p-6">
+						<Input
+							value={name}
+							placeholder="Preset name"
+							onChange={(event) => setName(event.target.value)}
+						/>
+						<Input
+							value={category}
+							placeholder="Category"
+							onChange={(event) => setCategory(event.target.value)}
+						/>
+						<Textarea
+							value={description}
+							placeholder="Description"
+							onChange={(event) => setDescription(event.target.value)}
+						/>
+						<p className="text-xs text-muted-foreground">
+							Included elements/keyframes: 0. Save timeline selections from the
+							element context menu.
+						</p>
+					</div>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<Button type="submit">Save preset</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
@@ -858,14 +979,14 @@ function TemplatesButton() {
 	return (
 		<Button
 			type="button"
-			size="lg"
+			size="sm"
 			variant="outline"
 			aria-disabled
 			title="Online templates — coming soon"
-			className="relative flex cursor-not-allowed items-center gap-1.5 px-4 opacity-60 md:px-5"
+			className="relative hidden h-9 cursor-not-allowed items-center gap-1.5 rounded-full border-white/[0.08] bg-white/[0.03] px-3 text-[12px] opacity-60 hover:bg-white/[0.05] lg:flex"
 		>
-			<HugeiconsIcon icon={LayoutGridIcon} className="size-4" />
-			<span className="hidden text-sm font-medium md:block">Templates</span>
+			<HugeiconsIcon icon={LayoutGridIcon} className="size-3.5" />
+			<span className="hidden font-medium xl:block">Templates</span>
 			<span className="rounded-full border border-white/15 bg-white/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/60">
 				Soon
 			</span>
@@ -1023,6 +1144,7 @@ function ProjectItem({
 
 			{!isMultiSelect && (
 				<ProjectMenu
+					projectId={project.id}
 					isOpen={isDropdownOpen}
 					onOpenChange={setIsDropdownOpen}
 					variant="list"
@@ -1065,6 +1187,7 @@ function ProjectItem({
 
 								{!isMultiSelect && (
 									<ProjectMenu
+										projectId={project.id}
 										isOpen={isDropdownOpen}
 										onOpenChange={setIsDropdownOpen}
 										onRenameClick={handleRename}
@@ -1135,36 +1258,26 @@ function ProjectContextMenuContent({
 				toast.error("Failed to load project for export");
 				return;
 			}
-			const json = JSON.stringify(fullProject.project, null, 2);
-			const blob = new Blob([json], { type: "application/json" });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `${fullProject.project.metadata.name || "project"}.artidor`;
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
+			exportProject(fullProject.project);
 			toast.success("Project exported");
 		} catch (_err) {
 			toast.error("Failed to export project");
 		}
 	};
 
-	const handleConvertToPreset = async () => {
+	const handleSaveAsPreset = async () => {
 		try {
 			const fullProject = await storageService.loadProject({ id: projectId });
 			if (!fullProject?.project) {
 				toast.error("Failed to load project for preset");
 				return;
 			}
-			// Save as a template (using a custom flag since TProjectMetadata is strict)
-			fullProject.project.metadata.name = `Preset: ${fullProject.project.metadata.name}`;
-			await storageService.saveProject({ project: fullProject.project });
+			const preset = buildProjectPreset({ project: fullProject.project });
+			await savePreset({ preset });
 			editor.project.loadAllProjects();
-			toast.success("Project converted to preset");
+			toast.success(`Saved "${preset.name}" to presets`);
 		} catch (_err) {
-			toast.error("Failed to convert project to preset");
+			toast.error("Failed to save project as preset");
 		}
 	};
 
@@ -1190,9 +1303,9 @@ function ProjectContextMenuContent({
 			</ContextMenuItem>
 			<ContextMenuItem
 				icon={<HugeiconsIcon icon={StarIcon} />}
-				onClick={handleConvertToPreset}
+				onClick={handleSaveAsPreset}
 			>
-				Convert to Preset
+				Save as preset
 			</ContextMenuItem>
 			<ContextMenuItem
 				icon={<HugeiconsIcon icon={InformationCircleIcon} />}
@@ -1213,6 +1326,7 @@ function ProjectContextMenuContent({
 }
 
 function ProjectMenu({
+	projectId,
 	isOpen,
 	onOpenChange,
 	variant = "grid",
@@ -1221,6 +1335,7 @@ function ProjectMenu({
 	onDeleteClick,
 	onInfoClick,
 }: {
+	projectId: string;
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	variant?: "grid" | "list";
@@ -1229,6 +1344,29 @@ function ProjectMenu({
 	onDeleteClick: () => void;
 	onInfoClick: () => void;
 }) {
+	const editor = useEditor();
+	const handleExportProject = async () => {
+		const fullProject = await storageService.loadProject({ id: projectId });
+		if (!fullProject?.project) {
+			toast.error("Failed to load project for export");
+			return;
+		}
+		exportProject(fullProject.project);
+		toast.success("Project exported");
+		onOpenChange(false);
+	};
+	const handleSaveAsPreset = async () => {
+		const fullProject = await storageService.loadProject({ id: projectId });
+		if (!fullProject?.project) {
+			toast.error("Failed to load project for preset");
+			return;
+		}
+		const preset = buildProjectPreset({ project: fullProject.project });
+		await savePreset({ preset });
+		editor.project.loadAllProjects();
+		toast.success(`Saved "${preset.name}" to presets`);
+		onOpenChange(false);
+	};
 	const handleMenuClick = ({
 		event,
 	}: {
@@ -1311,6 +1449,14 @@ function ProjectMenu({
 				<DropdownMenuItem onClick={handleDuplicate}>
 					<HugeiconsIcon icon={Copy02Icon} />
 					Duplicate
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => void handleExportProject()}>
+					<HugeiconsIcon icon={FileExportIcon} />
+					Export
+				</DropdownMenuItem>
+				<DropdownMenuItem onClick={() => void handleSaveAsPreset()}>
+					<HugeiconsIcon icon={StarIcon} />
+					Save as preset
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={handleInfoClick}>
 					<HugeiconsIcon icon={InformationCircleIcon} />

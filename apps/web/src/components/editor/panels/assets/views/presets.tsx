@@ -24,7 +24,7 @@ export function PresetsView() {
 	}, [isLoaded, loadPresets]);
 
 	return (
-		<PanelView title="Presets">
+		<PanelView title="Preset Tools">
 			{presets.length === 0 ? (
 				<EmptyState />
 			) : (

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -74,6 +75,27 @@ export function TextView() {
 	);
 }
 
+function getTextPhotoUrl(presetId: string): string {
+	let hash = 0;
+	for (let i = 0; i < presetId.length; i++) {
+		hash = (hash << 5) - hash + presetId.charCodeAt(i);
+		hash |= 0;
+	}
+	hash = Math.abs(hash);
+	const categories = [
+		"nature",
+		"architecture",
+		"people",
+		"technology",
+		"abstract",
+		"minimal",
+		"dark",
+		"light",
+	];
+	const category = categories[hash % categories.length];
+	return `https://source.unsplash.com/400x250/?${category}&sig=${hash}`;
+}
+
 function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const editor = useEditor();
 	const applyAnimation = useApplyAnimationPreset();
@@ -122,6 +144,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 	}, [editor, preset, applyAnimation]);
 
 	const previewData = preset.build();
+	const photoUrl = getTextPhotoUrl(preset.id);
 	const previewStyle: React.CSSProperties = {
 		fontFamily: previewData.fontFamily ?? "var(--font-sans)",
 		fontSize: Math.min(previewData.fontSize ?? 32, 22),
@@ -152,11 +175,35 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 			<DraggableItem
 				name={preset.name}
 				preview={
+					<div className="relative h-full w-full overflow-hidden">
+						<Image
+							src={photoUrl}
+							alt=""
+							fill
+							className="object-cover"
+							sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+							loading="lazy"
+						/>
+						<div className="absolute inset-0 bg-black/30" />
+						<div
+							className="relative z-10 line-clamp-2 text-balance break-words flex h-full w-full items-center justify-center px-3"
+							style={previewStyle}
+						>
+							{previewData.content}
+						</div>
+					</div>
+				}
+				dragPreview={
 					<div
-						className="line-clamp-2 text-balance break-words flex h-full w-full items-center justify-center px-3"
-						style={previewStyle}
+						className="flex size-full items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-black p-3"
+						title={preset.name}
 					>
-						{previewData.content}
+						<span
+							className="line-clamp-3 text-center text-balance break-words"
+							style={previewStyle}
+						>
+							{previewData.content}
+						</span>
 					</div>
 				}
 				dragData={dragData}
