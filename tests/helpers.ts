@@ -184,17 +184,14 @@ export async function clickInspectorTab(
 	page: Page,
 	label: RegExp,
 ): Promise<void> {
-	// The inspector's secondary tab bar is the only place that
-	// renders `aria-label={tab.label}` on a small Button — the left
-	// bar uses an icon-only button, so its accessible name comes from
-	// the icon + label composite. Filter by aria-label so we never
-	// accidentally hit the asset-panel "Text" tab when we mean the
-	// inspector "Text" tab.
-	const tab = page.getByRole("button", { name: label }).filter({
-		has: page.locator(":scope[aria-label]"),
-	});
-	await tab.first().scrollIntoViewIfNeeded({ timeout: 10_000 });
-	await tab.first().click({ force: true, timeout: 10_000 });
+	// The PropertiesPanel has a stable `data-testid` so tests can
+	// target it without false positives on the asset panel / timeline.
+	const tab = page
+		.getByTestId("properties-panel")
+		.getByRole("button", { name: label })
+		.first();
+	await tab.scrollIntoViewIfNeeded({ timeout: 10_000 });
+	await tab.click({ force: true, timeout: 10_000 });
 	await page.waitForTimeout(400);
 }
 

@@ -47,6 +47,7 @@ export const TAB_KEYS = [
 	"captions",
 	"scripting",
 	"settings",
+	"advanced",
 ] as const;
 
 export const VISIBLE_TAB_KEYS = [
@@ -63,6 +64,7 @@ export const VISIBLE_TAB_KEYS = [
 	"templates",
 	"presets",
 	"quicktools",
+	"advanced",
 	"plugins",
 	"scripting",
 	"settings",
@@ -164,6 +166,10 @@ export const tabs = {
 	settings: {
 		icon: createHugeiconsIcon({ icon: Settings01Icon }),
 		label: "Settings",
+	},
+	advanced: {
+		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),
+		label: "Advanced",
 	},
 } satisfies Record<
 	Tab,

@@ -14,6 +14,7 @@
  */
 
 import type { EditorCore } from "@/core";
+import type { TextElement, TimelineElement } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { TOOLS_BY_EXECUTOR_KEY } from "./registry";
 

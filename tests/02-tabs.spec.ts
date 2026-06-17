@@ -212,10 +212,10 @@ test.describe("Editor — asset & inspector tabs", () => {
 		await bootEditor(page);
 		await insertAndSelectText(page, { content: "Inspector smoke" });
 		await page.waitForTimeout(800);
-		// The inspector should now be visible with a "Text" tab (since
-		// the element is a text element). Scope to the PropertiesPanel
-		// so we don't hit the asset-panel "Text" tab by mistake.
-		const inspector = page.locator(".panel.glass-strong").last();
+		// The PropertiesPanel (right column) exposes a stable
+		// `data-testid` so tests can scope to it without false
+		// positives on the asset panel or timeline.
+		const inspector = page.getByTestId("properties-panel");
 		await expect(inspector).toBeVisible();
 		const inspectorTextTab = inspector
 			.locator('button[aria-label="Text"]')
@@ -229,9 +229,7 @@ test.describe("Editor — asset & inspector tabs", () => {
 		await bootEditor(page);
 		await insertAndSelectText(page, { content: "Text only" });
 		await page.waitForTimeout(500);
-		// Scope to the PropertiesPanel (right column) so we don't
-		// false-positive on the asset-panel tabs in the left bar.
-		const inspector = page.locator(".panel.glass-strong").last();
+		const inspector = page.getByTestId("properties-panel");
 		await expect(inspector).toBeVisible();
 		// Tabs that should NOT appear for a plain text element.
 		for (const forbiddenLabel of ["Speed", "Speed Ramp", "Audio"]) {
