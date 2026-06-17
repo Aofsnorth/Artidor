@@ -46,7 +46,6 @@ type OrtModule = {
 		): Promise<unknown>;
 	};
 	Tensor: new (
-		type: string,
 		data: Float32Array,
 		dims: readonly number[],
 	) => RifeTensor;
