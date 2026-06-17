@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-inspector-text-assets-polish",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Inspector, text, and asset library polish",
+		items: [
+			"Element quick tab now focuses on shape/graphic controls, while text layers get their own dedicated Text quick tab.",
+			"Long asset and inspector tab names now marquee instead of clipping.",
+			"Speed now points users to the Interpolation tab, text animator controls no longer overflow, and audio controls have more top padding.",
+			"Shapes now expose 100+ distinct presets and Overlays gained 25 new presets across Color Wash, Frames, Vignette, Light, and Flash.",
+		],
+	},
+	{
 		id: "2026-06-17-frame-interpolation",
 		date: "2026-06-17",
 		tag: "feature",
