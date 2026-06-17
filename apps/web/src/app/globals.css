@@ -699,3 +699,27 @@ body::-webkit-scrollbar,
 .export-pulse-strong {
 	animation: export-pulse-strong 1.6s ease-in-out infinite;
 }
+
+/* Marquee text — single keyframe baking in the scroll + pause.
+   The inner track contains TWO copies of the same string; at -50% the
+   second copy is exactly where the first started, so the loop is seamless.
+   The pause is achieved by holding at the start position for the final 30%
+   of the cycle. */
+@keyframes marquee-cycle {
+	0% {
+		transform: translateX(0);
+	}
+	70% {
+		transform: translateX(-50%);
+	}
+	100% {
+		transform: translateX(-50%);
+	}
+}
+
+.animate-marquee-cycle {
+	animation-name: marquee-cycle;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+	will-change: transform;
+}

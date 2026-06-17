@@ -36,6 +36,7 @@ import { ProjectDetailsView } from "./details-view";
 import type { MediaAsset } from "@/lib/media/types";
 import type { TimelineElement } from "@/lib/timeline";
 import Image from "next/image";
+import { MarqueeText } from "@/components/ui/marquee-text";
 
 // Wrap the panel in React.memo so re-renders of the editor page
 // (which happen on every playhead tick via useElementPlayhead) don't
@@ -218,7 +219,7 @@ function InspectorView() {
 			)}
 
 			<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
-				{activeTab.content({ trackId: track.id })}
+				{activeTab.content({ trackId: track.id, trackName: track.name })}
 			</ScrollArea>
 		</>
 	);
@@ -263,6 +264,10 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 
 const PRIMARY_INSPECTOR_TABS = [
 	{
+		label: "Element",
+		ids: ["element-info"],
+	},
+	{
 		label: "Video",
 		ids: [
 			"transform",
@@ -282,7 +287,6 @@ const PRIMARY_INSPECTOR_TABS = [
 	},
 	{ label: "Effects", ids: ["effects", "color", "adjustments", "masks"] },
 	{ label: "Animation", ids: ["animations"] },
-	{ label: "AI", ids: ["ai-tools"] },
 ] as const;
 
 function buildPrimaryInspectorTabs({
@@ -489,7 +493,7 @@ function EditableElementName({
 		return (
 			<button
 				type="button"
-				className={cn("cursor-text truncate text-left", className)}
+				className={cn("min-w-0 cursor-text text-left", className)}
 				title={`${displayName} — double-click to rename`}
 				onDoubleClick={() => {
 					setValue(element.customName ?? "");
@@ -497,7 +501,9 @@ function EditableElementName({
 					setTimeout(() => inputRef.current?.select(), 0);
 				}}
 			>
-				{displayName}
+				<MarqueeText className="text-left">
+					{displayName}
+				</MarqueeText>
 			</button>
 		);
 	}
