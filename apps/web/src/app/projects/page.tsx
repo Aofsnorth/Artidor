@@ -365,7 +365,7 @@ function ProjectsSettingsButton() {
 	return (
 		<button
 			type="button"
-			className="fixed bottom-5 right-5 z-50 grid size-10 place-items-center rounded-full border border-white/[0.10] bg-white/[0.06] text-white/50 shadow-lg shadow-black/30 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white hover:shadow-xl"
+			className="fixed bottom-5 right-5 z-50 grid size-10 cursor-pointer place-items-center rounded-full border border-white/[0.10] bg-white/[0.06] text-white/50 shadow-lg shadow-black/30 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white hover:shadow-xl"
 			onClick={() => setOpen("settings", true)}
 			title="Settings"
 			aria-label="Open settings"

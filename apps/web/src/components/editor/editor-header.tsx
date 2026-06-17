@@ -392,7 +392,7 @@ function SettingsButton() {
 	return (
 		<button
 			type="button"
-			className="grid size-8 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+			className="grid size-8 cursor-pointer place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
 			onClick={() => setOpen("settings", true)}
 			title="Settings"
 			aria-label="Open settings"
