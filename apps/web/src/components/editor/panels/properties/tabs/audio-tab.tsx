@@ -314,8 +314,8 @@ export function AudioTab({
 							/>
 						</SectionField>
 
-						<div className="flex gap-2">
-							<SectionField label="Fade In" className="flex-1">
+						<div className="flex flex-col gap-2">
+							<SectionField label="Fade In">
 								<NumberField
 									icon="In"
 									value={fadeIn.displayValue}
@@ -341,7 +341,7 @@ export function AudioTab({
 									suffix="s"
 								/>
 							</SectionField>
-							<SectionField label="Fade Out" className="flex-1">
+							<SectionField label="Fade Out">
 								<NumberField
 									icon="Out"
 									value={fadeOut.displayValue}

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { usePreviewViewport } from "@/components/editor/panels/preview/preview-viewport";
+import { useToolModeStore } from "@/stores/tool-mode-store";
 import { buildGraphicElement } from "@/lib/timeline";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
 import {
@@ -35,10 +36,15 @@ export interface UseFreehandDrawResult extends FreehandDrawState {
  * The path is simplified (Ramer-Douglas-Peucker) and smoothed (Catmull-Rom
  * → cubic Bezier) before being stored, so even a rough scribble becomes a
  * clean vector path with few control points.
+ *
+ * Stroke colour, width, and (when closed) fill are read from the tool
+ * mode store so the committed shape matches the live preview the user
+ * has been tweaking in the right-hand config panel.
  */
 export function useFreehandDraw(): UseFreehandDrawResult {
 	const editor = useEditor();
 	const viewport = usePreviewViewport();
+	const drawConfig = useToolModeStore((s) => s.drawConfig);
 	const [currentPath, setCurrentPath] = useState<Point[] | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const pointerIdRef = useRef<number | null>(null);
@@ -123,20 +129,23 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			if (!rawPath || rawPath.length < 2) return;
 
 			const simplified = simplifyPath(rawPath, 2);
-			const svgPath = pointsToSvgPath(simplified);
+			const svgPath = pointsToSvgPath(simplified, 0, drawConfig.closed);
 			if (!svgPath) return;
 
 			const element = buildGraphicElement({
 				definitionId: "freehand",
-				name: "Drawing",
+				name: drawConfig.closed ? "Shape" : "Drawing",
 				startTime: editor.playback.getCurrentTime(),
 				params: {
-					fill: "rgba(0,0,0,0)",
-					stroke: "#ffffff",
-					strokeWidth: 4,
+					fill:
+						drawConfig.closed && drawConfig.fill !== "transparent"
+							? drawConfig.fill
+							: "rgba(0,0,0,0)",
+					stroke: drawConfig.stroke,
+					strokeWidth: drawConfig.strokeWidth,
 					strokeAlign: "center",
 					pathData: svgPath,
-					closed: false,
+					closed: drawConfig.closed,
 				},
 			});
 
@@ -145,7 +154,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 				element,
 			});
 		},
-		[isDrawing, currentPath, editor],
+		[isDrawing, currentPath, drawConfig, editor],
 	);
 
 	// Ref to access latest currentPath from handlePointerUp without re-binding

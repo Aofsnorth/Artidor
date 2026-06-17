@@ -23,7 +23,36 @@ import type {
 	GraphicDragData,
 	StickerDragData,
 	EffectDragData,
+	TextDragData,
 } from "@/lib/timeline/drag";
+import { textPresets } from "@/lib/text/presets";
+import { DEFAULTS } from "@/lib/timeline/defaults";
+
+/**
+ * Sensible defaults applied when a text drag carries only `name`/`content`
+ * (e.g. dragging from a quick-add menu). Mirrors the base defaults used
+ * by `buildTextElement` so the result is always a complete, renderable
+ * element rather than a half-populated one.
+ */
+const TEXT_ELEMENT_BUILD_DEFAULTS = {
+	duration: DEFAULT_NEW_ELEMENT_DURATION,
+	trimStart: 0,
+	trimEnd: 0,
+	textAlign: "center" as const,
+	fontWeight: "normal" as const,
+	fontStyle: "normal" as const,
+	textDecoration: "none" as const,
+	letterSpacing: 0,
+	lineHeight: 1.2,
+	hidden: false,
+	transform: {
+		scaleX: 1,
+		scaleY: 1,
+		position: { x: 0, y: 0 },
+		rotate: 0,
+	},
+	opacity: 1,
+};
 
 interface UseTimelineDragDropProps {
 	containerRef: RefObject<HTMLDivElement | null>;
@@ -204,18 +233,42 @@ export function useTimelineDragDrop({
 	);
 
 	const executeTextDrop = useCallback(
-		({
-			target,
-			dragData,
-		}: {
-			target: DropTarget;
-			dragData: { name?: string; content?: string };
-		}) => {
-			const element = buildTextElement({
-				raw: {
-					name: dragData.name ?? "",
+		({ target, dragData }: { target: DropTarget; dragData: TextDragData }) => {
+			// Prefer the full preset build (carries the original font,
+			// background, animation, etc.) over the slim name+content
+			// fallback so drag-and-drop matches click-to-add styling.
+			let raw: Omit<import("@/lib/timeline").TextElement, "id" | "startTime">;
+			if (dragData.presetId) {
+				const preset = textPresets.find((p) => p.id === dragData.presetId);
+				if (preset) {
+					raw = preset.build();
+				} else {
+					raw = {
+						...TEXT_ELEMENT_BUILD_DEFAULTS,
+						fontSize: DEFAULTS.text.element.fontSize,
+						fontFamily: DEFAULTS.text.element.fontFamily,
+						color: DEFAULTS.text.element.color,
+						background: { ...DEFAULTS.text.element.background },
+						name: dragData.name ?? "Text",
+						content: dragData.content ?? "",
+						type: "text",
+					};
+				}
+			} else {
+				raw = {
+					...TEXT_ELEMENT_BUILD_DEFAULTS,
+					fontSize: DEFAULTS.text.element.fontSize,
+					fontFamily: DEFAULTS.text.element.fontFamily,
+					color: DEFAULTS.text.element.color,
+					background: { ...DEFAULTS.text.element.background },
+					name: dragData.name ?? "Text",
 					content: dragData.content ?? "",
-				},
+					type: "text",
+				};
+			}
+
+			const element = buildTextElement({
+				raw,
 				startTime: target.xPosition,
 			});
 

@@ -17,6 +17,7 @@ import {
 	NextIcon,
 	RepeatIcon,
 	PencilEdit01Icon,
+	PenTool01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { getGuideById } from "@/lib/guides";
@@ -66,6 +67,7 @@ export function PreviewToolbar({
 			<TransportControls />
 			<div className="flex items-center gap-1 justify-self-end">
 				<DrawToolButton />
+				<VectorDrawButton />
 				{/* v0.4.0 */}
 				{/* <GridPopover>
 					<Button
@@ -286,6 +288,37 @@ function DrawToolButton() {
 			onClick={() => setToolMode(isActive ? "select" : "draw")}
 		>
 			<HugeiconsIcon icon={PencilEdit01Icon} className="size-4" />
+		</Button>
+	);
+}
+
+/**
+ * Toggle button for the pen-style vector draw tool. Click on the
+ * canvas to add anchors; click the first to close, double-click or
+ * Enter to finish, Backspace to remove the last anchor, Esc to
+ * cancel. Distinct from the freehand tool so the two don't fight
+ * for the same pointer event semantics.
+ */
+function VectorDrawButton() {
+	const toolMode = useToolModeStore((s) => s.toolMode);
+	const setToolMode = useToolModeStore((s) => s.setToolMode);
+	const isActive = toolMode === "vector";
+
+	return (
+		<Button
+			variant={isActive ? "secondary" : "text"}
+			size="icon"
+			aria-label={isActive ? "Exit vector mode" : "Enter vector mode"}
+			aria-pressed={isActive}
+			title={
+				isActive
+					? "Building a vector path — click again to exit"
+					: "Vector path (pen tool)"
+			}
+			className={isActive ? "text-black" : "text-white/60 hover:text-white"}
+			onClick={() => setToolMode(isActive ? "select" : "vector")}
+		>
+			<HugeiconsIcon icon={PenTool01Icon} className="size-4" />
 		</Button>
 	);
 }

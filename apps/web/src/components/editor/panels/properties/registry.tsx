@@ -177,6 +177,12 @@ function buildFrameInterpolationTab({
 		),
 	};
 }
+// Frame-interpolation tab is no longer registered as a primary tab — its
+// controls live inside the Speed tab as a collapsible sub-section. The
+// helper is kept here so future surfaces (export, batch ops) can re-use
+// it without re-implementing.
+// biome-ignore lint/correctness/noUnusedVariables: kept for future re-export/batch-op surface
+export const _frameInterpolationTabHelper = buildFrameInterpolationTab;
 
 function buildAudioEffectsTab({
 	element,
@@ -360,10 +366,10 @@ function getTextConfig({
 	element: TextElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
-	void mediaAssets;
 	return {
 		defaultTab: "text",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTextTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
@@ -382,7 +388,6 @@ function getVideoConfig({
 	mediaAsset: MediaAsset | undefined;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
-	void mediaAssets;
 	// Show the Audio tab whenever the underlying media *might* have an
 	// audio track. We treat `undefined` and `true` as "show" — only an
 	// explicit `hasAudio === false` hides the tab. This is more
@@ -395,34 +400,11 @@ function getVideoConfig({
 	return {
 		defaultTab: "transform",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
-			buildFrameInterpolationTab({ element }),
-			buildColorGradingTab({ element }),
-			buildParentingTab({ element }),
-			buildCameraTab(),
-			buildAnimationsTab(),
-			buildAdjustmentsTab({ element }),
-			buildMasksTab({ element }),
-			buildClipEffectsTab({ element }),
-		],
-	};
-}
-
-function getImageConfig({
-	element,
-	mediaAssets,
-}: {
-	element: ImageElement;
-	mediaAssets: MediaAsset[];
-}): ElementPropertiesConfig {
-	void mediaAssets;
-	return {
-		defaultTab: "transform",
-		tabs: [
-			buildTransformTab({ element }),
 			buildColorGradingTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -441,10 +423,10 @@ function getStickerConfig({
 	element: StickerElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
-	void mediaAssets;
 	return {
 		defaultTab: "transform",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -482,15 +464,37 @@ function getAudioConfig({
 	element: AudioElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
-	void mediaAssets;
 	return {
 		defaultTab: "audio-element",
 		tabs: [
+			buildElementTab({ element, mediaAssets }),
 			buildAudioElementTab({ element }),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
-			buildFrameInterpolationTab({ element }),
 			buildAudioEffectsTab({ element }),
+		],
+	};
+}
+
+function getImageConfig({
+	element,
+	mediaAssets,
+}: {
+	element: ImageElement;
+	mediaAssets: MediaAsset[];
+}): ElementPropertiesConfig {
+	return {
+		defaultTab: "transform",
+		tabs: [
+			buildElementTab({ element, mediaAssets }),
+			buildTransformTab({ element }),
+			buildColorGradingTab({ element }),
+			buildParentingTab({ element }),
+			buildCameraTab(),
+			buildAnimationsTab(),
+			buildAdjustmentsTab({ element }),
+			buildMasksTab({ element }),
+			buildClipEffectsTab({ element }),
 		],
 	};
 }
@@ -502,10 +506,12 @@ function getEffectConfig({
 	element: EffectElement;
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
-	void mediaAssets;
 	return {
 		defaultTab: "effects",
-		tabs: [buildStandaloneEffectTab({ element })],
+		tabs: [
+			buildElementTab({ element, mediaAssets }),
+			buildStandaloneEffectTab({ element }),
+		],
 	};
 }
 
