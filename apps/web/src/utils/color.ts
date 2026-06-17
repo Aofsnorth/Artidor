@@ -12,6 +12,20 @@ export function hexToHsv({ hex }: { hex: string }): [number, number, number] {
 	return [color.h ?? 0, color.s ?? 0, color.v ?? 0];
 }
 
+function channelToHex({ value }: { value: number }): string {
+	const clamped = Math.min(255, Math.max(0, Math.round(value * 255)));
+	return clamped.toString(16).padStart(2, "0");
+}
+
+/**
+ * Converts HSV (h in degrees, s/v in 0..1) to a 6-digit hex string (no `#`).
+ *
+ * Done by hand rather than via culori's `formatHex({ mode: "hsv" })`: passing a
+ * raw hsv object literal to culori's hex formatter threw inside its color
+ * conversion ("Cannot read properties of undefined (reading 'rgb')") on the
+ * saturation/value drag path. A direct conversion is dependency-free and also
+ * gracefully handles an undefined/NaN hue (grayscale, where s = 0).
+ */
 export function hsvToHex({
 	h,
 	s,
@@ -21,8 +35,38 @@ export function hsvToHex({
 	s: number;
 	v: number;
 }): string {
-	const hex = formatHex({ mode: "hsv", h, s, v });
-	return hex.slice(1);
+	const hue = Number.isFinite(h) ? ((h % 360) + 360) % 360 : 0;
+	const sat = Math.min(1, Math.max(0, s));
+	const val = Math.min(1, Math.max(0, v));
+
+	const c = val * sat;
+	const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+	const m = val - c;
+
+	let r = 0;
+	let g = 0;
+	let b = 0;
+	if (hue < 60) {
+		r = c;
+		g = x;
+	} else if (hue < 120) {
+		r = x;
+		g = c;
+	} else if (hue < 180) {
+		g = c;
+		b = x;
+	} else if (hue < 240) {
+		g = x;
+		b = c;
+	} else if (hue < 300) {
+		r = x;
+		b = c;
+	} else {
+		r = c;
+		b = x;
+	}
+
+	return `${channelToHex({ value: r + m })}${channelToHex({ value: g + m })}${channelToHex({ value: b + m })}`;
 }
 
 export function parseHexAlpha({ hex }: { hex: string }): {
@@ -159,24 +203,19 @@ export function parseColorInput({
 		case "hsl": {
 			const parts = input.split(",").map((part) => parseFloat(part.trim()));
 			if (parts.length < 3 || parts.some(Number.isNaN)) return null;
-			const color = {
-				mode: "hsl" as const,
-				h: parts[0],
-				s: parts[1] / 100,
-				l: parts[2] / 100,
-			};
-			return formatHex(color).slice(1);
+			// Convert HSL -> HSV, then reuse the dependency-free hsvToHex (passing
+			// a raw hsl object to culori's formatHex hits the same crash hsvToHex
+			// was written to avoid).
+			const sl = parts[1] / 100;
+			const l = parts[2] / 100;
+			const v = l + sl * Math.min(l, 1 - l);
+			const s = v === 0 ? 0 : 2 * (1 - l / v);
+			return hsvToHex({ h: parts[0], s, v });
 		}
 		case "hsv": {
 			const parts = input.split(",").map((part) => parseFloat(part.trim()));
 			if (parts.length < 3 || parts.some(Number.isNaN)) return null;
-			const color = {
-				mode: "hsv" as const,
-				h: parts[0],
-				s: parts[1] / 100,
-				v: parts[2] / 100,
-			};
-			return formatHex(color).slice(1);
+			return hsvToHex({ h: parts[0], s: parts[1] / 100, v: parts[2] / 100 });
 		}
 	}
 }
