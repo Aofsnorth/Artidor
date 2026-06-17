@@ -482,6 +482,22 @@ export function useEditorActions() {
 	);
 
 	useActionHandler(
+		"copy-style",
+		() => {
+			editor.clipboard.copyStyle();
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"paste-style",
+		() => {
+			editor.clipboard.pasteStyle();
+		},
+		undefined,
+	);
+
+	useActionHandler(
 		"toggle-snapping",
 		() => {
 			toggleSnapping();

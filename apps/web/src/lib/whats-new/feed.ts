@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-copy-paste-style",
+		date: "2026-06-17",
+		tag: "feature",
+		title: "Copy & paste style (Alight Motion-style)",
+		items: [
+			"Right-click an element → \"Copy style\" to grab its transform, effects, animations, text formatting, and more.",
+			"Then \"Paste style\" onto any other element(s) to apply the same look — incompatible properties are silently skipped.",
+			"Keyboard shortcuts: Ctrl+Shift+C (copy style) and Ctrl+Shift+V (paste style).",
+		],
+	},
+	{
 		id: "2026-06-17-element-tab",
 		date: "2026-06-17",
 		tag: "feature",
