@@ -49,7 +49,10 @@ import { DrawToolConfigPanel } from "../preview/draw-tool-config-panel";
 // switches tabs, favourites a media, or changes the summary size.
 export const PropertiesPanel = memo(function PropertiesPanel() {
 	return (
-		<div className="panel glass-strong flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#09090b]/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]">
+		<div
+			data-testid="properties-panel"
+			className="panel glass-strong flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#09090b]/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+		>
 			<InspectorView />
 		</div>
 	);
