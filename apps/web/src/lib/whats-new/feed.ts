@@ -18,6 +18,34 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-massive-ux-polish-150-presets",
+		date: "2026-06-18",
+		tag: "feature",
+		title: "Massive UX polish and 150+ presets",
+		items: [
+			"Added 150+ high-quality generated presets for text, shapes, overlays, transitions, effects, animations, and templates.",
+			"New 'Basic Correction' (DaVinci-style) and 'Color Wheels' tabs added to the inspector Adjust category.",
+			"Track audio slider now applies volume multiplier to the track's clips in real-time.",
+			"Freehand and Vector draw tool settings moved into the inspector as a dedicated 'Drawing' view.",
+			"Double-space shortcut now toggles timeline auto-scroll-to-playhead.",
+			"Added 'Import Project' and 'New Preset' buttons to the projects page, and 'Convert to Preset' / 'Export' in the right-click menu.",
+		],
+	},
+	{
+		id: "2026-06-18-freehand-vector-audio-fixes",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Drawing and audio bug fixes",
+		items: [
+			"Fixed freehand draw black-flash bug by adding an anchor dot on click.",
+			"Fixed audio fade in/out fields being truncated horizontally in the inspector.",
+			"Fixed 'Info' tab switching primary inspector category when selecting video/audio tracks.",
+			"Fixed main track spacebar play/pause when generic buttons are focused.",
+			"Fixed text template drag-and-drop inserting images instead of text.",
+			"Fixed NumberField scrubbing removing the mouse cursor by replacing pointer-lock with document-level drag tracking and a floating value bubble.",
+		],
+	},
+	{
 		id: "2026-06-17-asset-preview-polish",
 		date: "2026-06-17",
 		tag: "improvement",
