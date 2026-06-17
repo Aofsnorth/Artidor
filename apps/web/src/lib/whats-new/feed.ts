@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-speed-frame-quality-presets",
+		date: "2026-06-18",
+		tag: "improvement",
+		title: "Speed + Frame Interpolation: Fast/Balanced/High quality presets",
+		items: [
+			"Speed tab now exposes three one-tap quality presets for frame interpolation: Fast (frame blending — every device, real-time safe), Balanced (optical flow block-matching — needs WebGL2), and High Quality (RIFE v4.9 neural net — WebGPU only). Each maps to the matching method under the hood, so the user picks the experience they want and gets the right algorithm without having to read about Frame Blending vs Optical Flow vs AI Interpolation.",
+			"Device capability detection runs once on mount and the hardware chip at the bottom of the section reflects it (WebGPU/WebGL2/WASM). If AI isn't available, the High Quality chip is greyed out with an inline 'unavailable on this device' tooltip rather than silently failing when you click it. AI-ready devices get an amber 'heavy on weak GPUs' hint so you know to expect a slow export.",
+			"Per-method advanced override stays available under a collapsible 'Advanced — pick a specific method' disclosure — keeps the simple case simple but lets power users still drop down to the raw Frame Blending / Optical Flow / AI Interpolation cards with their Quality/Speed indicator bars.",
+			"Speed Ramp tab (the Alight Motion-style speed curve editor) and Speed Ramp presets (Hero / Bullet Time / Montage / Jump Cut / Flash In / Flash Out / Smooth In-Out / Glide In / Glide Out / Quick Pulse / Smooth Ramp / Slow Zoom / Fast Forward) are all wired into the inspector's Video tab strip, so the features live one click away from any selected video clip.",
+		],
+	},
+	{
 		id: "2026-06-18-preview-variety-color-separation",
 		date: "2026-06-18",
 		tag: "improvement",
