@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-17-interactive-speed-graph",
+		date: "2026-06-17",
+		tag: "improvement",
+		title: "Interactive speed graph (Alight Motion-style)",
+		items: [
+			"The speed ramp curve is now fully interactive — click anywhere on the graph to add a keyframe, drag points to adjust time and speed, double-click to remove.",
+			"Grid lines with speed labels (1x, 3x, 5x) for easier reading. Real-time speed readout while dragging.",
+			"Speed range: 0.05x to 5x. Endpoints are locked to 0% and 100% time.",
+		],
+	},
+	{
 		id: "2026-06-17-adjust-tab",
 		date: "2026-06-17",
 		tag: "improvement",
