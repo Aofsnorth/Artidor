@@ -26,6 +26,10 @@ export const PLUGIN_CATEGORIES = [
 	"transitions",
 	"shapes",
 	"presets",
+	"text",
+	"export",
+	"ai",
+	"utility",
 	"tools",
 	"themes",
 ] as const;
@@ -37,19 +41,89 @@ export const PLUGIN_EXTENSION_TYPES = [
 	"transition",
 	"shape",
 	"preset",
+	"text",
+	"export",
+	"ai",
+	"utility",
 ] as const;
 export type PluginExtensionType = (typeof PLUGIN_EXTENSION_TYPES)[number];
 
-/** Permissions a plugin can request. Currently informational. */
+/**
+ * Permissions a plugin can request. Each permission gates a specific
+ * capability on the plugin API — the sandbox refuses registerX calls
+ * when the corresponding permission is not declared in the manifest.
+ *
+ * "dangerous" here is a marker for permissions that touch the host
+ * network or filesystem; the UI surfaces them with a warning chip so
+ * the user can audit what they're installing.
+ */
 export const PLUGIN_PERMISSIONS = [
 	"effects",
 	"transitions",
 	"shapes",
 	"presets",
+	"text",
+	"export",
+	"ai",
+	"utility",
 	"storage",
 	"network",
 ] as const;
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];
+
+/**
+ * Permissions considered potentially sensitive — the UI flags them with
+ * a warning icon in the detail dialog so the user is aware that the
+ * plugin can touch things outside the in-app sandbox (network requests
+ * or persistent local storage).
+ */
+export const DANGEROUS_PERMISSIONS: ReadonlySet<PluginPermission> = new Set([
+	"storage",
+	"network",
+]);
+
+/** User-facing labels for plugin categories. Singular noun + " Plugin"
+ *  suffix is dropped at the call sites that already say "Plugins". */
+export const CATEGORY_LABELS: Record<PluginCategory, string> = {
+	effects: "Effect",
+	transitions: "Transition",
+	shapes: "Shape",
+	presets: "Preset",
+	text: "Text",
+	export: "Export",
+	ai: "AI",
+	utility: "Utility",
+	tools: "Tool",
+	themes: "Theme",
+};
+
+/** User-facing labels for permissions — short verb form. */
+export const PERMISSION_LABELS: Record<PluginPermission, string> = {
+	effects: "Register effects",
+	transitions: "Register transitions",
+	shapes: "Register shapes",
+	presets: "Register presets",
+	text: "Register text styles",
+	export: "Register export formats",
+	ai: "Use AI endpoints",
+	utility: "Register utility panels",
+	storage: "Read/write persistent plugin storage",
+	network: "Make network requests",
+};
+
+/** One-line description of what each category is for, used in tooltips. */
+export const CATEGORY_DESCRIPTIONS: Record<PluginCategory, string> = {
+	effects: "Custom video / image effect definitions.",
+	transitions: "Custom scene transition definitions.",
+	shapes: "Custom shape definitions for the graphics library.",
+	presets: "Reusable parameter presets that show up in the Preset Tools tab.",
+	text: "Custom text styles and animation presets.",
+	export: "Additional export formats and rendering targets.",
+	ai: "AI-driven tools and inference hooks.",
+	utility: "Side panels, helpers, and other editor extensions.",
+	tools: "Custom editor tools that show up in Quick Tools.",
+	themes: "Color schemes and visual styling overrides.",
+};
 
 /** A single extension that a plugin contributes (e.g. one effect). */
 export interface PluginExtension {

@@ -69,7 +69,9 @@ export function packageToInstalled({
 
 /**
  * Generate a sample plugin package (for documentation & testing). The
- * sample registers a custom shape "demo-shape" with a magenta fill.
+ * sample registers a custom shape "demo-shape" with a magenta fill
+ * AND a custom effect "demo-blur" so the user can see both register
+ * hooks in action with a single download.
  */
 export function buildSamplePluginPackage(): PluginPackage {
 	return {
@@ -77,17 +79,24 @@ export function buildSamplePluginPackage(): PluginPackage {
 			id: "com.example.demo-plugin",
 			name: "Demo Plugin",
 			version: "1.0.0",
-			description: "A sample plugin that adds a custom shape",
+			description:
+				"A sample plugin that adds a custom shape and a custom blur effect.",
 			author: "Artidor",
-			category: "shapes",
+			category: "utility",
 			entry: "plugin.js",
-			permissions: ["shapes"],
+			permissions: ["shapes", "effects"],
 			extensions: [
 				{
 					type: "shape",
 					id: "demo-star",
 					name: "Demo Star",
 					description: "A custom shape added by the demo plugin",
+				},
+				{
+					type: "effect",
+					id: "demo-blur",
+					name: "Demo Blur",
+					description: "A soft blur effect added by the demo plugin",
 				},
 			],
 		},
@@ -127,6 +136,34 @@ artidor.registerShape({
       ctx.stroke(path);
     }
     artidor.log("Demo shape rendered");
+  }
+});
+
+// Register a custom effect via the plugin API
+artidor.registerEffect({
+  id: "demo-blur",
+  name: "Demo Blur",
+  params: [
+    { key: "strength", label: "Strength", type: "number", default: 4, min: 0, max: 32, step: 1 },
+  ],
+  render: function(ctx, params, strength) {
+    // A very cheap blur — the point is to show the API contract,
+    // not to ship a production-grade filter.
+    var s = Math.max(0, Number(strength) || 0);
+    if (s === 0) return;
+    var w = ctx.canvas.width;
+    var h = ctx.canvas.height;
+    var tmp = document.createElement("canvas");
+    tmp.width = w; tmp.height = h;
+    var tctx = tmp.getContext("2d");
+    tctx.drawImage(ctx.canvas, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.globalAlpha = 0.5;
+    for (var dx = -s; dx <= s; dx += s) {
+      ctx.drawImage(tmp, dx, 0);
+    }
+    ctx.globalAlpha = 1;
+    artidor.log("Demo blur rendered with strength", s);
   }
 });
 `,

@@ -2,9 +2,27 @@ import type {
 	InstalledPlugin,
 	PluginApi,
 	PluginInstance,
+	PluginPermission,
 	PluginRegistrations,
 	PluginStorage,
 } from "./types";
+
+/**
+ * Map each registration / capability on the plugin API to the permission
+ * that gates it. The sandbox uses this to refuse registerX calls when
+ * the plugin's manifest does not declare the corresponding permission.
+ *
+ * Keep the map tiny — anything not listed here is unrestricted (just
+ * `log()` and storage get/set, which the user already opted into by
+ * installing the plugin).
+ */
+const PERMISSION_GATES: Record<string, PluginPermission> = {
+	registerEffect: "effects",
+	registerTransition: "transitions",
+	registerShape: "shapes",
+	registerPreset: "presets",
+	storage: "storage",
+};
 
 /**
  * Sandboxed execution environment for a plugin. Uses a Function
@@ -12,6 +30,13 @@ import type {
  * a restricted `artidor` API object and shadowing global objects
  * like `window`, `document`, and `localStorage` to prevent accidental
  * breakage.
+ *
+ * Each plugin API method is gated by the corresponding permission in
+ * the plugin's manifest — calling registerEffect() without an `effects`
+ * permission is a silent no-op with a console warning. This is the
+ * host-side half of the security model: the Function-sandbox wrapper
+ * already prevents `window`/`document`/`localStorage` access; this
+ * prevents privilege escalation within the plugin API itself.
  *
  * This is a lightweight sandbox for robustness, not a perfect security
  * sandbox (which would require Web Workers or cross-origin iframes).
@@ -32,15 +57,29 @@ export function createPluginSandbox({
 		presets: [],
 	};
 
+	const granted: ReadonlySet<PluginPermission> = new Set(
+		plugin.manifest.permissions ?? [],
+	);
+
+	const requirePermission = (gate: PluginPermission): boolean => {
+		if (granted.has(gate)) return true;
+		console.warn(
+			`[plugin:${plugin.id}] blocked — manifest does not declare "${gate}" permission. Add "${gate}" to the manifest's permissions array to enable.`,
+		);
+		return false;
+	};
+
 	let state = { ...(plugin.state ?? {}) };
 
 	const storage: PluginStorage = {
 		get: <T>(key: string) => (state[key] as T) ?? null,
 		set: <T>(key: string, value: T) => {
+			if (!requirePermission(PERMISSION_GATES.storage)) return;
 			state = { ...state, [key]: value };
 			onStateChange(state);
 		},
 		delete: (key: string) => {
+			if (!requirePermission(PERMISSION_GATES.storage)) return;
 			const next = { ...state };
 			delete next[key];
 			state = next;
@@ -54,6 +93,7 @@ export function createPluginSandbox({
 			console.log(`[plugin:${plugin.id}]`, ...args);
 		},
 		registerEffect: (def: Record<string, unknown>) => {
+			if (!requirePermission(PERMISSION_GATES.registerEffect)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(`[plugin:${plugin.id}] Invalid effect definition`, def);
 				return;
@@ -65,6 +105,7 @@ export function createPluginSandbox({
 			});
 		},
 		registerTransition: (def: Record<string, unknown>) => {
+			if (!requirePermission(PERMISSION_GATES.registerTransition)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(
 					`[plugin:${plugin.id}] Invalid transition definition`,
@@ -79,6 +120,7 @@ export function createPluginSandbox({
 			});
 		},
 		registerShape: (def: Record<string, unknown>) => {
+			if (!requirePermission(PERMISSION_GATES.registerShape)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
 				console.warn(`[plugin:${plugin.id}] Invalid shape definition`, def);
 				return;
@@ -90,6 +132,7 @@ export function createPluginSandbox({
 			});
 		},
 		registerPreset: (def: Record<string, unknown>) => {
+			if (!requirePermission(PERMISSION_GATES.registerPreset)) return;
 			if (!def?.id || !def?.name || !def?.data) {
 				console.warn(`[plugin:${plugin.id}] Invalid preset definition`, def);
 				return;
