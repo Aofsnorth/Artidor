@@ -45,6 +45,37 @@ declare global {
 	interface Window {
 		/** Present only in the live editor tab; absent during SSR. */
 		__ARTIDOR_API__?: EditorApi;
+		/**
+		 * Dev-only debug handle. Tree-shaken out of production builds
+		 * (the editor core wraps the assignment in a NODE_ENV guard).
+		 * Exposes a read-only snapshot of the active scene's tracks +
+		 * elements so end-to-end tests can assert on timeline state
+		 * without depending on private selectors.
+		 */
+		__ARTIDOR_DEBUG__?: {
+			getState: () => {
+				activeSceneId: string | null;
+				tracks: {
+					main: { id: string; name: string; elementCount: number };
+					overlay: Array<{
+						id: string;
+						name: string;
+						elementCount: number;
+					}>;
+					audio: Array<{
+						id: string;
+						name: string;
+						elementCount: number;
+					}>;
+				} | null;
+				elements: Array<{
+					id: string;
+					trackId: string;
+					type: string;
+					name: string;
+				}>;
+			};
+		};
 	}
 }
 

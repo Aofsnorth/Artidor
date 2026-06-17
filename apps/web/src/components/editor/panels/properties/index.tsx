@@ -206,57 +206,53 @@ function InspectorView() {
 				mediaAssets={mediaAssets}
 			/>
 
-			{/* Hide the secondary tab bar when the active tab is one of the
-			   "focus" categories (Effects / Animation / Adjust*). The
-			   reasoning: when you're tweaking an effect, an animation, or
-			   any color correction sub-tab, the transform/audio/speed row
-			   underneath is irrelevant noise that eats vertical space. The
-			   primary tabs at the top of the inspector still let the user
-			   jump back to "Video" if they want to access transform etc.
-
-			   Note: element-info intentionally stays visible so users can
-			   always reach the media info card. */}
-			{activeTab.id !== "effects" &&
-				activeTab.id !== "animations" &&
-				activeTab.id !== "davinci-adjust" &&
-				activeTab.id !== "basic-adjust" &&
-				activeTab.id !== "color-wheels" &&
-				activeTab.id !== "color" &&
-				activeTab.id !== "adjustments" && (
-					<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
-						<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
-							{visibleTabs.map((tab) => (
-								<TooltipProvider key={tab.id} delayDuration={0}>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												variant={
-													tab.id === activeTab.id ? "secondary" : "ghost"
-												}
-												size="sm"
-												onClick={() => setActiveTab(element.type, tab.id)}
-												aria-label={tab.label}
-												className={cn(
-													"h-7 shrink-0 rounded-md border px-2.5 text-[0.68rem] flex items-center justify-center gap-1.5",
-													tab.id === activeTab.id
-														? "border-white/20 bg-white text-black hover:bg-white/90"
-														: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
-												)}
-											>
-												<span className="opacity-70 shrink-0">{tab.icon}</span>
-												<span className="whitespace-nowrap">{tab.label}</span>
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent side="bottom">{tab.label}</TooltipContent>
-									</Tooltip>
-								</TooltipProvider>
-							))}
-						</div>
+			{/* Always show the secondary tab bar. The user can be inside an
+			   effect, animation, or advanced sub-tab and still needs to
+			   jump back to Transform / Audio / Speed without losing
+			   their place. The primary tab bar at the top of the
+			   inspector still surfaces the high-level categories
+			   (Element / Text / Video / Image / Audio). */}
+			{
+				<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
+					<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
+						{visibleTabs.map((tab) => (
+							<TooltipProvider key={tab.id} delayDuration={0}>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant={tab.id === activeTab.id ? "secondary" : "ghost"}
+											size="sm"
+											onClick={() => setActiveTab(element.type, tab.id)}
+											aria-label={tab.label}
+											className={cn(
+												"h-7 shrink-0 rounded-md border px-2.5 text-[0.68rem] flex items-center justify-center gap-1.5",
+												tab.id === activeTab.id
+													? "border-white/20 bg-white text-black hover:bg-white/90"
+													: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+											)}
+										>
+											<span className="opacity-70 shrink-0">{tab.icon}</span>
+											<span className="whitespace-nowrap">{tab.label}</span>
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent side="bottom">{tab.label}</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						))}
 					</div>
-				)}
+				</div>
+			}
 
 			<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
-				{activeTab.content({ trackId: track.id, trackName: track.name })}
+				{activeTab.content({
+					trackId: track.id,
+					trackName: track.name,
+					mediaAssets,
+					mediaAsset:
+						"mediaId" in element
+							? mediaAssets.find((m) => m.id === element.mediaId)
+							: undefined,
+				})}
 			</ScrollArea>
 		</>
 	);
@@ -324,14 +320,34 @@ const PRIMARY_INSPECTOR_TABS = [
 			"blending",
 			"parenting",
 			"camera",
+			// Effects, Animations, and the new Advanced tab are
+			// folded into the Video/Image primary tabs as secondary
+			// chips so the user never loses access to them, but
+			// the primary bar stays a quick A→B "category" switch
+			// instead of a long horizontal scroll of feature names.
+			"effects",
+			"masks",
+			"animations",
+			"advanced",
+		],
+	},
+	{
+		label: "Image",
+		ids: [
+			"image",
+			"transform",
+			"advanced",
+			"parenting",
+			"camera",
+			"effects",
+			"masks",
+			"animations",
 		],
 	},
 	{
 		label: "Audio",
 		ids: ["audio-element", "audio-effects"],
 	},
-	{ label: "Effects", ids: ["effects", "masks"] },
-	{ label: "Animation", ids: ["animations"] },
 ] as const;
 
 function buildPrimaryInspectorTabs({
@@ -345,11 +361,11 @@ function buildPrimaryInspectorTabs({
 }) {
 	// Which primary tab should remain highlighted if we are on a "global" secondary tab like element-info?
 	let fallbackPrimaryLabel = "Element";
-	if (elementType === "video" || elementType === "image")
-		fallbackPrimaryLabel = "Video";
+	if (elementType === "video") fallbackPrimaryLabel = "Video";
+	if (elementType === "image") fallbackPrimaryLabel = "Image";
 	if (elementType === "text") fallbackPrimaryLabel = "Text";
 	if (elementType === "audio") fallbackPrimaryLabel = "Audio";
-	if (elementType === "effect") fallbackPrimaryLabel = "Effects";
+	if (elementType === "effect") fallbackPrimaryLabel = "Video";
 
 	// Context-aware hiding: when the user is inside one of the
 	// "focus" categories (Effects, Animation, Adjust*), we only

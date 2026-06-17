@@ -397,26 +397,35 @@ function ProjectsHeader() {
 		<header className="sticky top-0 z-20 relative">
 			{/* Glassmorphism backdrop for the header. The bottom edge fades
 					   into transparent so the header feels weightless against the
-					   artwork underneath, instead of leaving a hard seam. */}
+					   artwork underneath, instead of leaving a hard seam. The
+					   backdrop is kept short with a softer mid-falloff so the
+					   blur reads through more before trailing into the seam. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -bottom-12 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+				className="pointer-events-none absolute inset-x-0 top-0 -bottom-6 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
 				style={{
 					maskImage:
-						"linear-gradient(to bottom, black 0%, black 55%, rgba(0,0,0,0.85) 78%, transparent 100%)",
+						"linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.85) 70%, transparent 100%)",
 					WebkitMaskImage:
-						"linear-gradient(to bottom, black 0%, black 55%, rgba(0,0,0,0.85) 78%, transparent 100%)",
+						"linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.85) 70%, transparent 100%)",
 				}}
 			/>
 			{/* A second, brighter glass pass on top so the controls read
-			   crisp against the artwork below. */}
+				   crisp against the artwork below. */}
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-white/[0.045] via-white/[0.02] to-transparent"
 			/>
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 sm:px-6 lg:px-8">
+			{/* The header content spans the full viewport so the left
+				   controls (breadcrumb + view toggle) pin to the left
+				   corner and the right cluster (search, actions, new
+				   project) pin to the right corner, regardless of how
+				   wide the screen is. The main grid below keeps the
+				   narrower `max-w-7xl` rail so the project cards still
+				   read as a contained gallery. */}
+			<div className="flex w-full flex-col gap-2 px-4 sm:px-6 lg:px-8">
 				<div className="flex min-h-16 items-center justify-between gap-3 py-3">
-					<div className="flex min-w-0 flex-1 items-center justify-start gap-3 lg:gap-5">
+					<div className="flex min-w-0 items-center justify-start gap-3 lg:gap-5">
 						<Breadcrumb>
 							<BreadcrumbList>
 								<BreadcrumbItem>
@@ -457,7 +466,7 @@ function ProjectsHeader() {
 						</div>
 					</div>
 
-					<div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-2.5">
+					<div className="flex min-w-0 items-center justify-end gap-2 lg:gap-2.5">
 						<SearchBar className="hidden w-[220px] xl:block" />
 						<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
 							<ShortcutHint label="Search" keys={["/"]} />

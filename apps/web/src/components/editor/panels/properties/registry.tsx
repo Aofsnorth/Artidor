@@ -26,6 +26,7 @@ import {
 	Link01Icon,
 	Camera01Icon,
 	InformationCircleIcon,
+	Image01Icon,
 } from "@hugeicons/core-free-icons";
 import { TransformTab } from "./tabs/transform-tab";
 import { AudioTab } from "./tabs/audio-tab";
@@ -36,18 +37,26 @@ import { MasksTab } from "./tabs/masks-tab";
 import { SpeedTab } from "./tabs/speed-tab";
 import { SpeedRampTab } from "./tabs/speed-ramp-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
-import { AdjustmentsTab } from "./tabs/adjustments-tab";
 import { ColorGradingTab } from "./tabs/color-grading-tab";
 import { AnimationsTab } from "./tabs/animations-tab";
 import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
 import { ElementTab } from "./tabs/element-tab";
+import { ImageTab } from "./tabs/image-tab";
 import { OcShapesIcon } from "@/components/icons";
 
 export type TabContentProps = {
 	trackId: string;
 	/** Display name of the track the selected element sits on. */
 	trackName: string;
+	/** All media assets in the current project. Available to tabs that
+	   need to look up the source media for the selected element
+	   (e.g. the Image tab). */
+	mediaAssets: MediaAsset[];
+	/** Convenience — the MediaAsset bound to the selected element
+	   (if any). Mirrors `(mediaAssets ?? []).find(...)` against the
+	   element's `mediaId`. */
+	mediaAsset: MediaAsset | undefined;
 };
 
 export type PropertiesTabDef = {
@@ -159,66 +168,25 @@ function buildAudioEffectsTab({
 	};
 }
 
-import { BasicAdjustTab } from "./tabs/basic-adjust-tab";
-import { ColorWheelsTab } from "./tabs/color-wheels-tab";
-import { DavinciAdjustTab } from "./tabs/davinci-adjust-tab";
-
-function buildBasicAdjustTab({
+/**
+ * "Advanced" colour tab. Wraps the same HSL / Curves / LUT controls
+ * as the legacy `color` tab, but with an id that doesn't collide with
+ * the left-bar Color tab and a label that better reflects the
+ * slider-based UX after the v1.5 inspector reshuffle. Replaces the
+ * old Basic / Manual / Wheels / Color / Adjustments five-pack with
+ * a single, fully-fleshed-out slider surface.
+ */
+function buildAdvancedTab({
 	element,
 }: {
 	element: VisualElement;
 }): PropertiesTabDef {
 	return {
-		id: "basic-adjust",
-		label: "Basic",
-		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<BasicAdjustTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-function buildColorWheelsTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "color-wheels",
-		label: "Wheels",
-		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<ColorWheelsTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-function buildColorGradingTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "color",
-		label: "Color",
+		id: "advanced",
+		label: "Advanced",
 		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
 		content: ({ trackId }) => (
 			<ColorGradingTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-function buildDavinciAdjustTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "davinci-adjust",
-		label: "Manual",
-		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<DavinciAdjustTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -247,6 +215,27 @@ function buildClipEffectsTab({
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
 		content: ({ trackId }) => (
 			<ClipEffectsTab element={element} trackId={trackId} />
+		),
+	};
+}
+
+/**
+ * Image-specific source / opacity / replace controls. Pulls the
+ * media asset straight from the `mediaAssets` passed in via
+ * `TabContentProps` so the registry can keep all tab lookups
+ * through the same props surface.
+ */
+function buildImageTab({
+	element,
+}: {
+	element: ImageElement;
+}): PropertiesTabDef {
+	return {
+		id: "image",
+		label: "Image",
+		icon: <HugeiconsIcon icon={Image01Icon} size={16} />,
+		content: ({ trackId, mediaAsset }) => (
+			<ImageTab element={element} trackId={trackId} mediaAsset={mediaAsset} />
 		),
 	};
 }
@@ -286,21 +275,6 @@ function buildStandaloneEffectTab({
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
 		content: ({ trackId }) => (
 			<StandaloneEffectTab element={element} trackId={trackId} />
-		),
-	};
-}
-
-function buildAdjustmentsTab({
-	element,
-}: {
-	element: VisualElement;
-}): PropertiesTabDef {
-	return {
-		id: "adjustments",
-		label: "Adjust",
-		icon: <HugeiconsIcon icon={Sun01Icon} size={16} />,
-		content: ({ trackId }) => (
-			<AdjustmentsTab element={element} trackId={trackId} />
 		),
 	};
 }
@@ -418,11 +392,11 @@ function getVideoConfig({
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
-			// Colour-correction sub-tabs (Basic / Manual / Wheels / Color /
-			// Adjustments) moved to the left bar's new `color` tab —
-			// see `views/color.tsx`. They operate on the same effect
-			// params (`davinci-adjust`) so users don't lose any tools,
-			// only the location changes.
+			// The "Advanced" colour tab (HSL / Curves / LUT) replaces the
+			// old Basic / Manual / Wheels / Color / Adjustments five-pack
+			// for video elements too. The left-bar "Color" tab still
+			// exposes the same five-pack for quick global correction.
+			buildAdvancedTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
 			buildAnimationsTab(),
@@ -503,15 +477,12 @@ function getImageConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildElementTab({ element, mediaAssets }),
+			buildImageTab({ element }),
 			buildTransformTab({ element }),
-			buildBasicAdjustTab({ element }),
-			buildDavinciAdjustTab({ element }),
-			buildColorWheelsTab({ element }),
-			buildColorGradingTab({ element }),
+			buildAdvancedTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
 			buildAnimationsTab(),
-			buildAdjustmentsTab({ element }),
 			buildMasksTab({ element }),
 			buildClipEffectsTab({ element }),
 		],

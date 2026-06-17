@@ -11,8 +11,6 @@ import { useAutoReframe } from "@/hooks/use-auto-reframe";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 
-import { useToolModeStore } from "@/stores/tool-mode-store";
-
 type ToolId = "teleprompter" | "reverse" | "stabilize" | "auto-reframe" | null;
 
 export function QuickToolsView() {
@@ -22,35 +20,17 @@ export function QuickToolsView() {
 	const { reframe, isProcessing: reframing } = useAutoReframe();
 	const editor = useEditor();
 
-	const setToolMode = useToolModeStore((s) => s.setToolMode);
-	const toolMode = useToolModeStore((s) => s.toolMode);
-
 	if (activeTool === "teleprompter") {
 		return <Teleprompter onClose={() => setActiveTool(null)} />;
 	}
 
 	const tools: Array<{
-		id: Exclude<ToolId, null> | "freehand" | "vector";
+		id: Exclude<ToolId, null>;
 		label: string;
 		description: string;
 		onClick: () => void;
 		busy?: boolean;
-		active?: boolean;
 	}> = [
-		{
-			id: "freehand",
-			label: "Freehand Draw",
-			description: "Draw freehand strokes on the canvas.",
-			onClick: () => setToolMode(toolMode === "draw" ? "select" : "draw"),
-			active: toolMode === "draw",
-		},
-		{
-			id: "vector",
-			label: "Vector Draw",
-			description: "Create precise vector paths with anchor points.",
-			onClick: () => setToolMode(toolMode === "vector" ? "select" : "vector"),
-			active: toolMode === "vector",
-		},
 		{
 			id: "teleprompter",
 			label: "Teleprompter",
@@ -102,8 +82,6 @@ export function QuickToolsView() {
 						disabled={tool.busy}
 						className={cn(
 							"group bg-accent hover:bg-accent/70 relative flex flex-col items-start gap-1 overflow-hidden rounded-md p-3 text-left transition-colors disabled:opacity-50",
-							tool.active &&
-								"bg-white/15 hover:bg-white/20 ring-2 ring-cyan-400",
 						)}
 					>
 						<div className="flex items-center gap-2">

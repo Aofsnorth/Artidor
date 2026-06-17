@@ -107,6 +107,82 @@ export class EditorCore {
 			// Expose the public command API on the live editor tab so scripts,
 			// other same-origin tabs, and the MCP relay can drive the editor.
 			window.__ARTIDOR_API__ = this.api;
+			// Dev-only: expose a read-only snapshot of the live editor state so
+			// end-to-end tests (Playwright) and the in-browser console can
+			// inspect tracks / elements / selection without re-implementing
+			// the entire state-walking logic. Tree-shaken out of prod builds
+			// because `process.env.NODE_ENV` is statically replaced to
+			// `"production"` at build time.
+			if (process.env.NODE_ENV !== "production") {
+				window.__ARTIDOR_DEBUG__ = {
+					getState: (): {
+						activeSceneId: string | null;
+						tracks: {
+							main: { id: string; name: string; elementCount: number };
+							overlay: { id: string; name: string; elementCount: number }[];
+							audio: { id: string; name: string; elementCount: number }[];
+						} | null;
+						elements: Array<{
+							id: string;
+							trackId: string;
+							type: string;
+							name: string;
+						}>;
+					} => {
+						const scene = this.scenes.getActiveSceneOrNull();
+						if (!scene) {
+							return {
+								activeSceneId: null,
+								tracks: null,
+								elements: [],
+							};
+						}
+						const allElements: Array<{
+							id: string;
+							trackId: string;
+							type: string;
+							name: string;
+						}> = [];
+						const collect = (track: {
+							id: string;
+							elements: Array<{ id: string; type: string; name: string }>;
+						}) => {
+							for (const el of track.elements) {
+								allElements.push({
+									id: el.id,
+									trackId: track.id,
+									type: el.type,
+									name: el.name,
+								});
+							}
+						};
+						collect(scene.tracks.main);
+						scene.tracks.overlay.forEach(collect);
+						scene.tracks.audio.forEach(collect);
+						return {
+							activeSceneId: scene.id,
+							tracks: {
+								main: {
+									id: scene.tracks.main.id,
+									name: scene.tracks.main.name,
+									elementCount: scene.tracks.main.elements.length,
+								},
+								overlay: scene.tracks.overlay.map((t) => ({
+									id: t.id,
+									name: t.name,
+									elementCount: t.elements.length,
+								})),
+								audio: scene.tracks.audio.map((t) => ({
+									id: t.id,
+									name: t.name,
+									elementCount: t.elements.length,
+								})),
+							},
+							elements: allElements,
+						};
+					},
+				};
+			}
 		}
 	}
 

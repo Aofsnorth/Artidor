@@ -11,11 +11,6 @@ struct EffectUniforms {
 @group(0) @binding(1) var u_sampler: sampler;
 @group(1) @binding(0) var<uniform> uniforms: EffectUniforms;
 
-@vertex
-fn vertex_main(@location(0) position: vec2<f32>) -> vec4<f32> {
-    return vec4<f32>(position, 0.0, 1.0);
-}
-
 // Rec.709 luma/chroma. We key on the chroma plane (Cb, Cr) only, so the
 // matte is independent of how brightly the screen is lit — a green wall in
 // shadow still keys against the same hue as the same wall in highlight.

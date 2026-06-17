@@ -189,7 +189,10 @@ export interface EffectPresetDefinition {
 	description: string;
 	params: EffectPresetParams;
 	previewCss?: string;
-	renderPreview?: (canvas: HTMLCanvasElement, params: EffectPresetParams) => void;
+	renderPreview?: (
+		canvas: HTMLCanvasElement,
+		params: EffectPresetParams,
+	) => void;
 }
 
 // ─── Motion ────────────────────────────────────────────────────────────────

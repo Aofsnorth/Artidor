@@ -3,6 +3,7 @@ import type {
 	AudioTrack,
 	EffectTrack,
 	GraphicTrack,
+	ImageTrack,
 	TextTrack,
 	TrackType,
 	TimelineTrack,
@@ -54,6 +55,15 @@ export function buildEmptyTrack({
 	type: "effect";
 	name?: string;
 }): EffectTrack;
+export function buildEmptyTrack({
+	id,
+	type,
+	name,
+}: {
+	id: string;
+	type: "image";
+	name?: string;
+}): ImageTrack;
 
 export function buildEmptyTrack({
 	id,
@@ -114,6 +124,14 @@ export function buildEmptyTrack({
 				id,
 				name: trackName,
 				type: "effect",
+				elements: [],
+				hidden: false,
+			};
+		case "image":
+			return {
+				id,
+				name: trackName,
+				type: "image",
 				elements: [],
 				hidden: false,
 			};
