@@ -92,7 +92,7 @@ export function DrawToolConfigPanel() {
 				<div className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/80">
 					<HugeiconsIcon
 						icon={isVector ? PenToolIcon : PencilEdit01Icon}
-						className="size-3 text-cyan-300"
+						className="size-3 text-white/70"
 					/>
 					{isVector ? "Vector" : "Freehand"}
 				</div>
@@ -148,7 +148,7 @@ export function DrawToolConfigPanel() {
 							className={cn(
 								"aspect-square rounded-full border transition",
 								drawConfig.stroke.toLowerCase() === color.toLowerCase()
-									? "border-white shadow-[0_0_0_1.5px_rgba(34,211,238,0.55)]"
+									? "border-white shadow-[0_0_0_1.5px_rgba(255,255,255,0.45)]"
 									: "border-white/15 hover:border-white/45",
 							)}
 							style={{ background: color }}
@@ -175,7 +175,7 @@ export function DrawToolConfigPanel() {
 							className={cn(
 								"flex aspect-square items-center justify-center rounded-md border transition",
 								drawConfig.strokeWidth === w
-									? "border-cyan-300/55 bg-cyan-400/15 text-cyan-100"
+									? "border-white/40 bg-white/15 text-white"
 									: "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/25 hover:text-white",
 							)}
 							onClick={() => setDrawConfig({ strokeWidth: w })}
@@ -208,9 +208,9 @@ export function DrawToolConfigPanel() {
 					value={drawConfig.opacity}
 					onChange={(e) => setDrawConfig({ opacity: Number(e.target.value) })}
 					aria-label="Brush opacity"
-					className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-cyan-400"
+					className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-white"
 					style={{
-						background: `linear-gradient(to right, rgb(34,211,238) 0%, rgb(34,211,238) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) 100%)`,
+						background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) ${drawConfig.opacity * 100}%, rgba(255,255,255,0.08) 100%)`,
 					}}
 				/>
 				<div className="grid grid-cols-4 gap-1">
@@ -221,7 +221,7 @@ export function DrawToolConfigPanel() {
 							className={cn(
 								"flex h-6 items-center justify-center rounded-md border text-[0.62rem] font-medium transition",
 								Math.abs(drawConfig.opacity - o) < 0.01
-									? "border-cyan-300/55 bg-cyan-400/15 text-cyan-100"
+									? "border-white/40 bg-white/15 text-white"
 									: "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/25 hover:text-white",
 							)}
 							onClick={() => setDrawConfig({ opacity: o })}
@@ -243,7 +243,7 @@ export function DrawToolConfigPanel() {
 					onClick={() => setDrawConfig({ closed: !drawConfig.closed })}
 					className={cn(
 						"relative h-4 w-7 rounded-full transition",
-						drawConfig.closed ? "bg-cyan-400/60" : "bg-white/[0.08]",
+						drawConfig.closed ? "bg-white/60" : "bg-white/[0.08]",
 					)}
 				>
 					<span
@@ -302,7 +302,7 @@ export function DrawToolConfigPanel() {
 				<div className="flex items-center gap-1.5">
 					<button
 						type="button"
-						className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.025] px-2 text-[0.68rem] font-medium text-white/85 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
+						className="flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.025] px-2 text-[0.68rem] font-medium text-white/85 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
 						onClick={() =>
 							vectorInteraction.handleKeyDown(
 								new KeyboardEvent("keydown", { key: "Enter" }),
@@ -339,7 +339,7 @@ export function DrawToolConfigPanel() {
 			)}
 
 			{isVector && (
-				<p className="rounded-md border border-cyan-400/15 bg-cyan-400/[0.04] px-2 py-1 text-[0.62rem] leading-snug text-cyan-100/65">
+				<p className="rounded-md border border-white/[0.08] bg-white/[0.02] px-2 py-1 text-[0.62rem] leading-snug text-white/45">
 					Click to add anchors · click the first to close · Enter to finish ·
 					Esc to cancel · Backspace to remove the last anchor.
 				</p>
