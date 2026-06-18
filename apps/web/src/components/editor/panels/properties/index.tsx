@@ -165,7 +165,7 @@ function InspectorView() {
 										type="button"
 										disabled={!tab.target}
 										className={cn(
-											"relative shrink-0 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+											"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
 											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
 											!tab.target &&
 												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
@@ -180,7 +180,7 @@ function InspectorView() {
 												className="size-2.5 opacity-70"
 											/>
 										)}
-										<span className="truncate">{tab.label}</span>
+										<span>{tab.label}</span>
 									</button>
 								</TooltipTrigger>
 								{!tab.target && (
