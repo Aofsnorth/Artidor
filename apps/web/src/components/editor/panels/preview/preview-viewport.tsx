@@ -599,12 +599,17 @@ const PreviewViewportFallback: PreviewViewportContextValue = {
 		y: positionY,
 	}),
 	panByScreenDelta: () => undefined,
-	registerContainer: () => undefined,
-	screenToCanvas: ({ x, y }) => ({ x, y }),
-	setZoomAround: () => undefined,
-	setZoomAroundCenter: () => undefined,
-	setZoomAt: () => undefined,
-	setZoomToFit: () => undefined,
+	resetPan: () => undefined,
+	scaleZoom: () => undefined,
+	screenPixelsToLogicalThreshold: ({ screenPixels }) => ({
+		x: screenPixels,
+		y: screenPixels,
+	}),
+	screenToCanvas: ({ clientX, clientY }) => ({ x: clientX, y: clientY }),
+	setActualSize: () => undefined,
+	setViewportPercent: () => undefined,
+	zoomIn: () => undefined,
+	zoomOut: () => undefined,
 };
 
 export function usePreviewViewport() {

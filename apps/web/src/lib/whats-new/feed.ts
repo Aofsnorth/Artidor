@@ -18,11 +18,21 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-effect-preview-registry-fix",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Effects panel previews no longer crash on preset effects",
+		items: [
+			"Effect preset cards now register themselves before the preview renderer runs, so Blur, Glow, Distortion, Texture, and generated effects open without the 'Unknown effect' runtime error.",
+			"Preview fallback controls now match the current viewport API, keeping inspector tools safe even when they render outside the main preview area.",
+			"Developer MCP setup now includes the screenshot list plus Playwright, Perplexity, Time, and Designer Skill entries enabled for the next Hermes restart.",
+		],
+	},
+	{
 		id: "v0.0.1-beta-advanced-color",
 		date: "2026-06-18",
 		tag: "feature",
-		title:
-			"v0.0.1-beta: Advanced colour card now DaVinci + Kdenlive-grade",
+		title: "v0.0.1-beta: Advanced colour card now DaVinci + Kdenlive-grade",
 		items: [
 			"New: live Scopes sub-tab in the Advanced card — Waveform (luminance column histogram), Vectorscope (B-Y / R-Y with 75 % colour-bar targets), and RGB Parade. Samples the live preview canvas at ~12 fps via a downsampled getImageData and renders to a small canvas in the inspector. The Freeze button holds the current frame for A/B comparison; the Live chip in the legend tells the user whether they're seeing real-time or parked data.",
 			"New: Qualifier (HSL key) sub-tab with channel toggles (Hue / Sat / Lum), master Range, Low/High Softness sliders, and a triple-handle Luma range bar (Low — Mid — High). The B/W badge in the Matte finesse section shows whether the key includes all three channels or just one. Drag any of the three colour-coded handles horizontally; the numbers under the bar stay in sync with the param store.",

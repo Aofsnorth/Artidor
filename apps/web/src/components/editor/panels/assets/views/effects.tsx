@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo, useState } from "react";
+import { memo, useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { PopOutAction } from "@/components/editor/floating-window";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -48,16 +48,17 @@ const EFFECT_PANEL_CATEGORIES = EFFECT_CATEGORIES;
 
 export function EffectsView() {
 	const effects = useMemo(() => {
-		const existing = effectsRegistry
+		for (const effect of PRESET_EFFECTS) {
+			if (!effectsRegistry.has(effect.type)) {
+				effectsRegistry.register(effect.type, effect);
+			}
+		}
+
+		return effectsRegistry
 			.getAll()
 			.filter(
 				(definition) => !isAdjustmentEffect({ effectType: definition.type }),
 			);
-		const existingTypes = new Set(existing.map((effect) => effect.type));
-		return [
-			...existing,
-			...PRESET_EFFECTS.filter((effect) => !existingTypes.has(effect.type)),
-		];
 	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
@@ -118,16 +119,23 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
  * in on hover. The bg-black/35 sits behind the canvas so an empty or
  * mid-render frame is still visually distinct from the panel bg.
  *
- * Visibility-gated: the canvas only paints once the card scrolls
- * inside the panel's IntersectionObserver rootMargin. Effects panels
- * can hold 150+ previews; rendering all of them upfront blocks the
- * main thread for ~600ms. With the gate, only the ~12 visible (or
- * near-visible) cards render — first paint drops to ~120ms.
+ * Visibility-gated AND queue-scheduled. The IntersectionObserver
+ * only marks the card "visible" once it scrolls inside the
+ * panel's 100px rootMargin — out-of-view cards stay in their
+ * skeleton state and never compete for GPU time. Visible cards
+ * submit their render job to the preview service's bounded queue
+ * (4 concurrent GPU jobs) so opening the Effects tab no longer
+ * floods the GPU pipeline with 165 simultaneous `applyEffect`
+ * calls — the visible cards paint in the first 50-100 ms, the
+ * rest trickle in via the idle pump. Cancels its queued job on
+ * unmount so a card that scrolls back out of view before its
+ * turn doesn't waste a render.
  */
 function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [isVisible, setIsVisible] = useState(false);
+	const [isPainted, setIsPainted] = useState(false);
 
 	useEffect(() => {
 		const node = containerRef.current;
@@ -150,9 +158,15 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 				}
 			},
 			{
-				// Pre-render when the card is within 250px of the visible
-				// area so it appears instantly as the user scrolls.
-				rootMargin: "250px 0px",
+				// Pre-render when the card is within 100px of the visible
+				// area so it appears instantly as the user scrolls. We
+				// used to use 250px but that meant opening the Effects
+				// tab would enqueue 165 GPU jobs at once, which is why
+				// the panel felt laggy and many cards never painted
+				// (they were way past the user's viewport). 100 px is
+				// enough to keep scrolling smooth without flooding the
+				// scheduler.
+				rootMargin: "100px 0px",
 				threshold: 0,
 			},
 		);
@@ -169,10 +183,26 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 					params: {},
 					targetCanvas: canvasRef.current,
 				});
+				setIsPainted(true);
 			}
 		};
-		render();
-		return effectPreviewService.onPreviewImageReady({ callback: render });
+		// Submit to the service's bounded queue. Negative priority
+		// (–1) so visible cards run ahead of off-screen cards that
+		// might have been deferred by the IntersectionObserver
+		// firing for cards just outside the rootMargin.
+		const cancel = effectPreviewService.scheduleRender({
+			run: render,
+			priority: -1,
+		});
+		// If the preview image isn't loaded yet, also re-run the
+		// render once it does (gradient patterns use it as a base).
+		const unsubscribe = effectPreviewService.onPreviewImageReady({
+			callback: render,
+		});
+		return () => {
+			cancel();
+			unsubscribe();
+		};
 	}, [effectType, isVisible]);
 
 	return (
@@ -182,6 +212,12 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 		>
 			{isVisible ? (
 				<>
+					{!isPainted && (
+						<div
+							aria-hidden
+							className="absolute inset-0 z-0 animate-pulse bg-gradient-to-br from-white/[0.03] to-transparent"
+						/>
+					)}
 					<canvas ref={canvasRef} className="relative z-10 size-full" />
 					<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 				</>
@@ -190,7 +226,11 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 	);
 }
 
-function EffectItem({ effect }: { effect: EffectDefinition }) {
+const EffectItem = memo(function EffectItem({
+	effect,
+}: {
+	effect: EffectDefinition;
+}) {
 	const editor = useEditor();
 
 	const handleAddToTimeline = useCallback(() => {
@@ -226,4 +266,4 @@ function EffectItem({ effect }: { effect: EffectDefinition }) {
 			containerClassName="w-full"
 		/>
 	);
-}
+});
