@@ -8,22 +8,6 @@
 import { test, expect } from "@playwright/test";
 import { bootEditor, getEditorState } from "./helpers";
 
-/** Drive the editor into a tool mode via the dev-only debug handle. */
-async function setToolMode(
-	page: import("@playwright/test").Page,
-	mode: "select" | "draw" | "vector",
-): Promise<void> {
-	await page.evaluate((m) => {
-		const w = window as unknown as {
-			__ARTIDOR_DEBUG__?: {
-				setToolMode: (mode: "select" | "draw" | "vector") => void;
-			};
-		};
-		w.__ARTIDOR_DEBUG__?.setToolMode(m);
-	}, mode);
-	await page.waitForTimeout(300);
-}
-
 test.describe("Editor — FreeDraw + Vector tools", () => {
 	test("Freehand draw button enters draw mode and adds a stroke layer", async ({
 		page,
@@ -31,16 +15,16 @@ test.describe("Editor — FreeDraw + Vector tools", () => {
 		await bootEditor(page);
 		const freehand = page.getByRole("button", { name: /Freehand draw/i });
 		await expect(freehand, "Freehand draw button").toBeVisible();
-		// The user reports the toolbar buttons are broken in the
-		// real app — clicking toggles the `aria-pressed` state on
-		// the button but the inspector never updates because the
-		// underlying state mutation doesn't reach the store. So
-		// instead of clicking the button (which silently no-ops),
-		// we drive the same state mutation through the dev-only
-		// debug handle. If the click path is later fixed, the
-		// visual assertion below still passes — and we can
-		// flip the test back to a real click.
-		await setToolMode(page, "draw");
+		// Click the button — this used to throw (the
+		// `DrawToolConfigPanel` was rendered without a
+		// `PreviewViewportProvider` so the click → setToolMode
+		// → render chain crashed the React tree with
+		// "usePreviewViewport must be used within
+		// PreviewViewportProvider"). After fixing
+		// `usePreviewViewport` to fall back to a no-op
+		// context, the click is safe.
+		await freehand.click({ force: true });
+		await page.waitForTimeout(500);
 		const drawingHeader = page.getByText(/^Drawing$/i).first();
 		await expect(drawingHeader, "Drawing inspector header").toBeVisible({
 			timeout: 5_000,
@@ -51,9 +35,8 @@ test.describe("Editor — FreeDraw + Vector tools", () => {
 		await bootEditor(page);
 		const vector = page.getByRole("button", { name: /Vector draw/i });
 		await expect(vector, "Vector draw button").toBeVisible();
-		// Same rationale as above — drive the state through the
-		// dev handle until the toolbar click is fixed.
-		await setToolMode(page, "vector");
+		await vector.click({ force: true });
+		await page.waitForTimeout(500);
 		const drawingHeader = page.getByText(/^Drawing$/i).first();
 		await expect(drawingHeader, "Drawing inspector header").toBeVisible({
 			timeout: 5_000,
@@ -66,9 +49,9 @@ test.describe("Editor — FreeDraw + Vector tools", () => {
 		await bootEditor(page);
 		const stateBefore = await getEditorState(page);
 		const countBefore = stateBefore.elements.length;
-		// Enter freehand mode via the dev handle (see note above).
-		await setToolMode(page, "draw");
-		// Find the preview canvas and draw a stroke on it.
+		const freehand = page.getByRole("button", { name: /Freehand draw/i });
+		await freehand.click({ force: true });
+		await page.waitForTimeout(300);
 		const preview = page.getByRole("application", { name: /Preview canvas/i });
 		const box = await preview.boundingBox();
 		expect(box, "preview canvas bounding box").toBeTruthy();
@@ -90,11 +73,11 @@ test.describe("Editor — FreeDraw + Vector tools", () => {
 		page,
 	}) => {
 		await bootEditor(page);
-		await setToolMode(page, "draw");
-		await setToolMode(page, "select");
-		// The Drawing inspector header should no longer be visible.
-		// The page should now show the project details or the
-		// selected-element summary. Just verify no crash.
+		const freehand = page.getByRole("button", { name: /Freehand draw/i });
+		await freehand.click({ force: true });
+		await page.waitForTimeout(300);
+		await freehand.click({ force: true });
+		await page.waitForTimeout(500);
 		const text = await page.locator("body").innerText();
 		expect(text.length, "body still rendered").toBeGreaterThan(50);
 	});
