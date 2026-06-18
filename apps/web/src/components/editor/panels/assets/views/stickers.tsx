@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { getPaletteForId } from "./components/procedural-preview";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -434,16 +435,11 @@ function PresetStickerItem({ item }: { item: PresetSticker }) {
 	);
 }
 
-function getStickerPhotoUrl(stickerId: string): string {
-	let hash = 0;
-	for (let i = 0; i < stickerId.length; i++) {
-		hash = (hash << 5) - hash + stickerId.charCodeAt(i);
-		hash |= 0;
-	}
-	hash = Math.abs(hash);
-	const categories = ["graphic", "design", "art", "illustration", "creative"];
-	const category = categories[hash % categories.length];
-	return `https://source.unsplash.com/300x300/?${category}&sig=${hash}`;
+function getStickerPhotoUrl(_stickerId: string): null {
+	// Backwards-compat. The sticker preview no longer fetches a remote
+	// thumbnail — `StickerPreview` uses procedural CSS via
+	// `getPaletteForId` plus the real `item.previewUrl` when one exists.
+	return null;
 }
 
 interface StickerItemProps {
@@ -520,14 +516,10 @@ function StickerItem({
 
 	const preview = (
 		<div className="relative flex size-full items-center justify-center p-3">
-			<Image
-				src={photoUrl}
-				alt=""
-				fill
-				className="object-cover rounded-sm"
-				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-				loading="lazy"
-				unoptimized
+			<div
+				aria-hidden
+				className="absolute inset-0 rounded-sm"
+				style={{ background: getPaletteForId(item.id).background }}
 			/>
 			<div className="absolute inset-0 bg-black/30 rounded-sm" />
 			{hasImageError ? (

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -10,6 +9,7 @@ import { useApplyAnimationPreset } from "@/hooks/use-animation-presets";
 import { animationPresetsRegistry } from "@/lib/animation/presets";
 import { buildTextElement } from "@/lib/timeline/element-utils";
 import type { TimelineDragData } from "@/lib/timeline/drag";
+import { getPaletteForId } from "./components/procedural-preview";
 import {
 	textPresets,
 	type TextPreset,
@@ -75,25 +75,10 @@ export function TextView() {
 	);
 }
 
-function getTextPhotoUrl(presetId: string): string {
-	let hash = 0;
-	for (let i = 0; i < presetId.length; i++) {
-		hash = (hash << 5) - hash + presetId.charCodeAt(i);
-		hash |= 0;
-	}
-	hash = Math.abs(hash);
-	const categories = [
-		"nature",
-		"architecture",
-		"people",
-		"technology",
-		"abstract",
-		"minimal",
-		"dark",
-		"light",
-	];
-	const category = categories[hash % categories.length];
-	return `https://source.unsplash.com/400x250/?${category}&sig=${hash}`;
+function getTextPhotoUrl(_presetId: string): null {
+	// Backwards-compat. The text preview now uses procedural CSS via
+	// `getPaletteForId` — no remote thumbnail fetch.
+	return null;
 }
 
 function TextPresetItem({ preset }: { preset: TextPreset }) {
@@ -145,6 +130,8 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 
 	const previewData = preset.build();
 	const photoUrl = getTextPhotoUrl(preset.id);
+	void photoUrl;
+	const textPalette = getPaletteForId(preset.id);
 	const previewStyle: React.CSSProperties = {
 		fontFamily: previewData.fontFamily ?? "var(--font-sans)",
 		fontSize: Math.min(previewData.fontSize ?? 32, 22),
@@ -176,13 +163,10 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				name={preset.name}
 				preview={
 					<div className="relative h-full w-full overflow-hidden">
-						<Image
-							src={photoUrl}
-							alt=""
-							fill
-							className="object-cover"
-							sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-							loading="lazy"
+						<div
+							aria-hidden
+							className="absolute inset-0"
+							style={{ background: textPalette.background }}
 						/>
 						<div className="absolute inset-0 bg-black/30" />
 						<div

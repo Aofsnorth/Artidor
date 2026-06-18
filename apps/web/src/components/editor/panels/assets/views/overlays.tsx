@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { overlays as presetOverlays } from "@/lib/presets/overlays";
@@ -370,8 +369,8 @@ const OVERLAY_PRESETS: OverlayPreset[] = [
 			"linear-gradient(90deg,transparent 49%,rgba(255,255,255,0.5) 49% 51%,transparent 51%),linear-gradient(0deg,transparent 49%,rgba(255,255,255,0.5) 49% 51%,transparent 51%)",
 		],
 		[
-			"soft-vignette",
-			"Soft Vignette",
+			"soft-vignette-rect",
+			"Soft Vignette (rect)",
 			"Vignette",
 			"radial-gradient(circle,transparent 34%,rgba(0,0,0,0.55) 100%)",
 		],
@@ -593,33 +592,18 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 	);
 }
 
-function getOverlayPhotoUrl(presetId: string): string {
-	let hash = 0;
-	for (let i = 0; i < presetId.length; i++) {
-		hash = (hash << 5) - hash + presetId.charCodeAt(i);
-		hash |= 0;
-	}
-	hash = Math.abs(hash);
-	const categories = ["portrait", "landscape", "city", "nature", "abstract"];
-	const category = categories[hash % categories.length];
-	return `https://source.unsplash.com/300x300/?${category}&sig=${hash}`;
+function getOverlayPhotoUrl(_presetId: string): null {
+	// Backwards-compat: older call sites still reach for this. The
+	// overlay preview no longer fetches a remote thumbnail — see
+	// `OverlayPreview` below, which now uses pure CSS for the plate.
+	return null;
 }
 
 function OverlayPreview({ preset }: { preset: OverlayPreset }) {
-	const photoUrl = getOverlayPhotoUrl(preset.id);
 	return (
 		<div className="relative size-full overflow-hidden rounded-sm p-2">
-			<Image
-				src={photoUrl}
-				alt=""
-				fill
-				className="object-cover"
-				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-				loading="lazy"
-			/>
-			<div className="absolute inset-2 rounded-md border border-white/[0.08]" />
 			<div
-				className="absolute inset-3 overflow-hidden rounded-md"
+				className="absolute inset-2 overflow-hidden rounded-md border border-white/[0.08]"
 				style={preset.previewStyle}
 			>
 				{preset.accentStyle && (

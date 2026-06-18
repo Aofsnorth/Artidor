@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -8,6 +7,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { templates as presetTemplates } from "@/lib/presets/templates";
 import type { TemplateCategory as PresetTemplateCategory } from "@/lib/presets/types";
+import { getPaletteForId, hashString } from "./components/procedural-preview";
 import {
 	PROJECT_TEMPLATES,
 	TEMPLATE_CATEGORIES,
@@ -157,20 +157,10 @@ function applyTemplate({
 	}
 }
 
-function getTemplatePhotoUrl(templateId: string): string {
-	const h = hashString(templateId);
-	const categories = [
-		"nature",
-		"architecture",
-		"people",
-		"technology",
-		"abstract",
-		"food",
-		"travel",
-		"business",
-	];
-	const category = categories[h % categories.length];
-	return `https://source.unsplash.com/400x300/?${category}&sig=${h}`;
+function getTemplatePhotoUrl(_templateId: string): null {
+	// Backwards-compat. The template preview now uses `getPaletteForId`
+	// for a procedural background — no remote thumbnail fetch.
+	return null;
 }
 
 function hashString(str: string): number {
@@ -193,6 +183,8 @@ function TemplateItem({
 	const h = hashString(template.id);
 	const layoutType = h % 3;
 	const photoUrl = getTemplatePhotoUrl(template.id);
+	void photoUrl;
+	const templatePalette = getPaletteForId(template.id);
 
 	return (
 		<button
@@ -203,13 +195,10 @@ function TemplateItem({
 			)}
 		>
 			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10">
-				<Image
-					src={photoUrl}
-					alt=""
-					fill
-					className="object-cover"
-					sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-					loading="lazy"
+				<div
+					aria-hidden
+					className="absolute inset-0"
+					style={{ background: templatePalette.background }}
 				/>
 				<div className="absolute inset-0 bg-black/40" />
 

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
@@ -18,6 +17,7 @@ import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { getTransitionPalettes } from "./components/procedural-preview";
 import type { TransitionDefinition } from "@/lib/transitions";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 
@@ -216,24 +216,13 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 }
 
 function getTransitionPhotoUrl(
-	transitionType: string,
-	plate: "A" | "B",
-): string {
-	const h = hashString(transitionType + plate);
-	const categories = [
-		"nature",
-		"architecture",
-		"people",
-		"technology",
-		"abstract",
-		"food",
-		"travel",
-		"business",
-		"animals",
-		"sports",
-	];
-	const category = categories[h % categories.length];
-	return `https://source.unsplash.com/300x200/?${category}&sig=${h}`;
+	_type: string,
+	_plate: "A" | "B",
+): null {
+	// Backwards-compat: older call sites still reach for this. The
+	// transition preview now uses pure CSS via `getTransitionPalettes`
+	// — no more `source.unsplash.com` fetches.
+	return null;
 }
 
 function hashString(str: string): number {
@@ -269,30 +258,27 @@ function TransitionPreview({
 
 	const photoA = getTransitionPhotoUrl(definition.type, "A");
 	const photoB = getTransitionPhotoUrl(definition.type, "B");
+	void photoA;
+	void photoB;
+	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
 
 	return (
 		<div
 			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-black/35"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<Image
-				src={photoA}
-				alt=""
-				fill
-				className="object-cover"
-				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-				loading="lazy"
+			<div
+				aria-hidden
+				className="absolute inset-0"
+				style={{ background: paletteA.background }}
 			/>
-			<Image
-				src={photoB}
-				alt=""
-				fill
-				className="z-10 object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-				sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+			<div
+				aria-hidden
+				className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				style={{
+					background: paletteB.background,
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
 				}}
-				loading="lazy"
 			/>
 			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 			<style>{scopedCss}</style>
