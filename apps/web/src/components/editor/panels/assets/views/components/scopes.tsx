@@ -156,13 +156,7 @@ function ScopeToolbar({
 	];
 	return (
 		<div className="flex items-center gap-2">
-			<div
-				className="scrollbar-hidden flex flex-1 gap-1 overflow-x-auto rounded-md border border-white/[0.08] bg-black/30 p-0.5"
-				style={{
-					maskImage:
-						"linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)",
-				}}
-			>
+			<div className="scrollbar-hidden flex flex-1 gap-1 overflow-x-auto rounded-md border border-white/[0.08] bg-black/30 p-0.5">
 				{options.map((option) => {
 					const isActive = option.id === active;
 					return (

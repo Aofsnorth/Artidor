@@ -19,6 +19,7 @@ import {
 } from "@/hooks/use-animation-presets";
 import { motionPresets } from "@/lib/presets/motion";
 import type { MotionPreset } from "@/lib/presets/types";
+import type { AnimationPath } from "@/lib/animation/types";
 import type {
 	AnimationPreset,
 	AnimationPresetCategory,
@@ -57,11 +58,26 @@ const MOTION_CATEGORY_TO_ANIMATION_CATEGORY: Record<
 
 const MOTION_PROPERTY_PATHS = {
 	opacity: ["opacity"],
-	translate: ["transform.positionY"],
 	scale: ["transform.scaleX", "transform.scaleY"],
 	rotate: ["transform.rotate"],
 	blur: ["params.blur"],
-} as const satisfies Record<MotionPreset["targetProperties"][number], string[]>;
+} as const satisfies Record<
+	Exclude<MotionPreset["targetProperties"][number], "translate">,
+	string[]
+>;
+
+function getMotionPropertyPaths(
+	motion: MotionPreset,
+	property: MotionPreset["targetProperties"][number],
+): AnimationPath[] {
+	if (property !== "translate") {
+		return [...MOTION_PROPERTY_PATHS[property]];
+	}
+	const text = `${motion.id} ${motion.name}`.toLowerCase();
+	return text.includes("left") || text.includes("right")
+		? ["transform.positionX"]
+		: ["transform.positionY"];
+}
 
 const motionAnimationPresets: AnimationPreset[] = motionPresets.map(
 	(motion) => ({
@@ -73,7 +89,7 @@ const motionAnimationPresets: AnimationPreset[] = motionPresets.map(
 		duration: 1000,
 		keyframes: ({ elementDuration }) =>
 			motion.targetProperties.flatMap((property) =>
-				MOTION_PROPERTY_PATHS[property].flatMap((propertyPath) =>
+				getMotionPropertyPaths(motion, property).flatMap((propertyPath) =>
 					motion.keyframes.map((keyframe) => ({
 						propertyPath,
 						time: Math.round(keyframe.t * elementDuration),
@@ -286,6 +302,9 @@ function presetStyleKeyframes(preset: AnimationPreset): string {
 		case "float":
 			return `@keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-12px); } 100% { transform: translateY(0); } }`;
 		default:
+			if (preset.type.startsWith("m-")) {
+				return motionPresetStyleKeyframes(preset);
+			}
 			if (preset.type.startsWith("gen-animation-")) {
 				const i = parseInt(preset.type.split("-")[2] || "0", 10);
 				const dir = i % 4;
@@ -298,5 +317,47 @@ function presetStyleKeyframes(preset: AnimationPreset): string {
 				return `@keyframes ${preset.type} { from { opacity: 0; transform: translateY(-20px) scale(1.2); } to { opacity: 1; transform: translateY(0) scale(1); } }`;
 			}
 			return "";
+	}
+}
+
+function motionPresetStyleKeyframes(preset: AnimationPreset): string {
+	const motion = motionPresets.find((item) => item.id === preset.type);
+	if (!motion) return "";
+	const frames = motion.keyframes
+		.map((keyframe) => {
+			const declarations = motion.targetProperties
+				.map((property) =>
+					motionCssDeclaration(motion, property, Number(keyframe.value)),
+				)
+				.filter(Boolean)
+				.join(" ");
+			return `${Math.round(keyframe.t * 100)}% { ${declarations} }`;
+		})
+		.join(" ");
+	return `@keyframes ${preset.type} { ${frames} }`;
+}
+
+function motionCssDeclaration(
+	motion: MotionPreset,
+	property: MotionPreset["targetProperties"][number],
+	value: number,
+): string {
+	switch (property) {
+		case "opacity":
+			return `opacity: ${value};`;
+		case "translate": {
+			const axis = getMotionPropertyPaths(motion, property).includes(
+				"transform.positionX",
+			)
+				? "X"
+				: "Y";
+			return `transform: translate${axis}(${value}px);`;
+		}
+		case "scale":
+			return `transform: scale(${value});`;
+		case "rotate":
+			return `transform: rotate(${value}deg);`;
+		case "blur":
+			return `filter: blur(${value}px);`;
 	}
 }

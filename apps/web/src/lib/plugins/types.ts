@@ -212,6 +212,8 @@ export interface PluginApi {
 	registerShape(definition: unknown): void;
 	/** Register a custom preset. */
 	registerPreset(definition: unknown): void;
+	/** Network access, gated by the `network` permission. */
+	fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 	/** Persistent state for this plugin. */
 	storage: PluginStorage;
 }

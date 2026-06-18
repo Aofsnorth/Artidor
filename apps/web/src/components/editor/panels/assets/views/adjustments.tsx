@@ -56,13 +56,7 @@ export function AdjustmentsView() {
 			}
 		>
 			<div className="border-b border-white/[0.06] px-2 py-2">
-				<div
-					className="scrollbar-hidden flex gap-1 overflow-x-auto"
-					style={{
-						maskImage:
-							"linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)",
-					}}
-				>
+				<div className="scrollbar-hidden flex gap-1 overflow-x-auto">
 					{SUB_TABS.map((tab) => {
 						const isActive = activeSubTab === tab.id;
 						return (

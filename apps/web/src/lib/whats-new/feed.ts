@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-editor-audit-plugin-motion-fixes",
+		date: "2026-06-18",
+		tag: "fix",
+		title:
+			"Editor audit: plugin bootstrap, network gating, and motion previews fixed",
+		items: [
+			"Enabled installed editor plugins at editor startup, so effect, transition, and shape extensions are available without opening the Plugins panel first.",
+			"Plugin network access now goes through a permission-gated fetch wrapper, and the bundled demo blur plugin no longer crashes inside the sandboxed document-free runtime.",
+			"Motion preset cards now preview the imported motion library, and left/right slide presets apply on the X axis instead of moving vertically.",
+		],
+	},
+	{
 		id: "2026-06-18-live-audio-visualizer-button",
 		date: "2026-06-18",
 		tag: "fix",
