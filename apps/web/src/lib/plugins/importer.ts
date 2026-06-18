@@ -153,9 +153,13 @@ artidor.registerEffect({
     if (s === 0) return;
     var w = ctx.canvas.width;
     var h = ctx.canvas.height;
-    var tmp = document.createElement("canvas");
+    var tmp = ctx.canvas && ctx.canvas.ownerDocument
+      ? ctx.canvas.ownerDocument.createElement("canvas")
+      : (typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : null);
+    if (!tmp) return;
     tmp.width = w; tmp.height = h;
     var tctx = tmp.getContext("2d");
+    if (!tctx) return;
     tctx.drawImage(ctx.canvas, 0, 0);
     ctx.clearRect(0, 0, w, h);
     ctx.globalAlpha = 0.5;

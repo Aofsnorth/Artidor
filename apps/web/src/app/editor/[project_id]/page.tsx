@@ -26,6 +26,7 @@ import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { usePasteMedia } from "@/hooks/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
+import { usePluginsStore } from "@/lib/plugins/store";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
@@ -103,6 +104,7 @@ export default function Editor() {
 							   via internal state, so the boundary never actually
 							   shows anything to the user. */}
 							<Suspense fallback={null}>
+								<PluginRegistryBootstrap />
 								<Onboarding />
 								<MigrationDialog />
 								<ChangelogNotification />
@@ -114,6 +116,19 @@ export default function Editor() {
 			</EditorProvider>
 		</MobileGate>
 	);
+}
+
+function PluginRegistryBootstrap() {
+	const loaded = usePluginsStore((s) => s.loaded);
+	const loadPlugins = usePluginsStore((s) => s.loadPlugins);
+
+	useEffect(() => {
+		if (!loaded) {
+			void loadPlugins();
+		}
+	}, [loaded, loadPlugins]);
+
+	return null;
 }
 
 function DegradedRendererBanner() {

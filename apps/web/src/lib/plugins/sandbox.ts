@@ -21,6 +21,7 @@ const PERMISSION_GATES: Record<string, PluginPermission> = {
 	registerTransition: "transitions",
 	registerShape: "shapes",
 	registerPreset: "presets",
+	fetch: "network",
 	storage: "storage",
 };
 
@@ -143,6 +144,16 @@ export function createPluginSandbox({
 				data: def.data,
 			});
 		},
+		fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+			if (!requirePermission(PERMISSION_GATES.fetch)) {
+				return Promise.reject(
+					new Error(
+						`Plugin "${plugin.id}" does not declare the "network" permission`,
+					),
+				);
+			}
+			return globalThis.fetch(input, init);
+		},
 		storage,
 	};
 
@@ -156,6 +167,7 @@ export function createPluginSandbox({
 			"document",
 			"localStorage",
 			"sessionStorage",
+			"fetch",
 			`
 "use strict";
 try {
@@ -166,8 +178,9 @@ try {
 			`,
 		);
 
-		// Execute with undefined shadows for globals to prevent DOM manipulation
-		wrapper(api, undefined, undefined, undefined, undefined);
+		// Execute with undefined shadows for globals to prevent DOM manipulation.
+		// `fetch` is replaced with the permission-gated plugin API wrapper.
+		wrapper(api, undefined, undefined, undefined, undefined, api.fetch);
 	} catch (err) {
 		console.error(`[plugin:${plugin.id}] Initialization failed:`, err);
 	}

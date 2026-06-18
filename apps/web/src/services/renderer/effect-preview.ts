@@ -8,6 +8,15 @@ const PREVIEW_SIZE = 160;
 const PREVIEW_IMAGE_PATH = "/effects/preview.jpg";
 
 /**
+ * Hard cap on concurrent GPU renders. 4 keeps the GPU command
+ * queue full without starving the rest of the editor — the
+ * preview canvas, timeline, and audio engine all need the GPU
+ * during playback. Visible cards paint within the first 50-100
+ * ms; the rest trickle in via the queue's idle pump.
+ */
+const MAX_CONCURRENT_RENDERS = 4;
+
+/**
  * Procedurally-generated test sources used as input for the effect
  * preview. Each pattern exercises a different aspect of the GPU
  * pipeline so a quick scan of the Effects panel actually shows the
@@ -56,6 +65,29 @@ class EffectPreviewService {
 	private previewImageElement: HTMLImageElement | null = null;
 	private hasPreviewImageFailed = false;
 	private onReadyCallbacks = new Set<() => void>();
+	/**
+	 * Pending GPU render jobs. The GPU pipeline is single-threaded
+	 * (WebGPU command queue), so calling `applyEffect` 165 times in
+	 * rapid succession — which is what happens when the user opens
+	 * the Effects tab — simply queues 165 jobs that all fight for
+	 * the same lock. That queue then starves the rest of the editor
+	 * (timeline, preview, audio) and the visible cards all
+	 * flicker their silhouette logo for several hundred ms before
+	 * any of them paints.
+	 *
+	 * The scheduler below caps concurrent GPU work to
+	 * `MAX_CONCURRENT_RENDERS` (4) and processes the rest in
+	 * `requestIdleCallback` chunks so the visible cards paint
+	 * first and the rest trickle in as the browser goes idle.
+	 */
+	private renderQueue: Array<{
+		id: number;
+		run: () => void;
+		priority: number;
+	}> = [];
+	private inFlight = 0;
+	private nextRenderId = 0;
+	private idleDrainHandle: number | null = null;
 
 	readonly PREVIEW_SIZE = PREVIEW_SIZE;
 
@@ -66,6 +98,96 @@ class EffectPreviewService {
 	onPreviewImageReady({ callback }: { callback: () => void }): () => void {
 		this.onReadyCallbacks.add(callback);
 		return () => this.onReadyCallbacks.delete(callback);
+	}
+
+	/**
+	 * Schedule a GPU render at the given priority. The default
+	 * priority is 0 (visible card). Negative numbers run sooner
+	 * (used for the first batch of cards the user sees when a tab
+	 * opens). Positive numbers defer until the browser is idle.
+	 *
+	 * Returns a cancel function. If the card scrolls out of view
+	 * before its turn comes up, the caller should invoke it to
+	 * remove the job from the queue — otherwise we'll waste GPU
+	 * time on a card the user can't see.
+	 */
+	scheduleRender({
+		run,
+		priority = 0,
+	}: {
+		run: () => void;
+		priority?: number;
+	}): () => void {
+		const job = { id: ++this.nextRenderId, run, priority };
+		this.renderQueue.push(job);
+		// Re-sort so the lowest priority (most negative) jobs run
+		// first. Insertion sort is O(n) and n is small (≤ a few
+		// hundred in pathological cases) so this is fine.
+		this.renderQueue.sort((a, b) => a.priority - b.priority);
+		this.pumpQueue();
+		return () => {
+			const index = this.renderQueue.findIndex((j) => j.id === job.id);
+			if (index !== -1) this.renderQueue.splice(index, 1);
+		};
+	}
+
+	private pumpQueue(): void {
+		// Drain the visible / already-visible (priority ≤ 0) jobs
+		// immediately. Anything priority > 0 is deferred to the next
+		// idle slot via requestIdleCallback so the off-screen cards
+		// only paint when the browser has nothing better to do.
+		while (
+			this.inFlight < MAX_CONCURRENT_RENDERS &&
+			this.renderQueue.length > 0 &&
+			(this.renderQueue[0]?.priority ?? 0) <= 0
+		) {
+			const job = this.renderQueue.shift();
+			if (!job) break;
+			this.runJob(job);
+		}
+		if (this.renderQueue.some((j) => j.priority > 0)) {
+			this.scheduleIdleDrain();
+		}
+	}
+
+	private scheduleIdleDrain(): void {
+		if (this.idleDrainHandle !== null) return;
+		// Browser idle callback when available (Chrome / Edge / Safari
+		// 16.5+ / Firefox 55+); fall back to a 16 ms setTimeout on
+		// older browsers. The handle type is `number` in both cases
+		// at runtime, but TypeScript widens `setTimeout` to
+		// `Timeout`, so we cast to `number`.
+		const handle: number =
+			typeof window !== "undefined" && "requestIdleCallback" in window
+				? (
+						window as unknown as {
+							requestIdleCallback: (cb: () => void) => number;
+						}
+					).requestIdleCallback(() => {
+						this.idleDrainHandle = null;
+						this.pumpQueue();
+					})
+				: (setTimeout(() => {
+						this.idleDrainHandle = null;
+						this.pumpQueue();
+					}, 16) as unknown as number);
+		this.idleDrainHandle = handle;
+	}
+
+	private runJob(job: { run: () => void }): void {
+		this.inFlight++;
+		// Defer to a microtask so React can finish its commit pass
+		// before we start hammering the GPU — gives the browser a
+		// chance to paint the skeleton/placeholder for any
+		// still-unrendered cards.
+		queueMicrotask(() => {
+			try {
+				job.run();
+			} finally {
+				this.inFlight--;
+				this.pumpQueue();
+			}
+		});
 	}
 
 	renderPreview({
