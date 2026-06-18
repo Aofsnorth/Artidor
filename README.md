@@ -1,3 +1,10 @@
+# ⚠️ ATTENTION: UNDERGOING STABILIZATION
+
+> **Please be advised that this application is currently undergoing major stabilization, bug fixes, and a comprehensive codebase audit.** 
+> **Do not use this application in production or rely on it for critical work until these processes are complete.**
+
+<br />
+
 <div align="center">
 
 <a href="https://artidor.vercel.app/">
@@ -20,9 +27,6 @@
 [![Postgres](https://img.shields.io/badge/db-postgres-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org)
 
 </div>
-
-> [!WARNING]
-> Please do not use this application yet, it is currently undergoing bug fixes and a codebase audit to ensure it is safe to use.
 
 ## Preview
 
