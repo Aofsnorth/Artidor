@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
+import { getPaletteForId } from "./components/procedural-preview";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	PlayIcon,
@@ -159,22 +159,18 @@ export function AnimationsView() {
 	);
 }
 
-function getAnimationPhotoUrl(presetId: string): string {
-	let hash = 0;
-	for (let i = 0; i < presetId.length; i++) {
-		hash = (hash << 5) - hash + presetId.charCodeAt(i);
-		hash |= 0;
-	}
-	hash = Math.abs(hash);
-	const categories = ["motion", "movement", "dynamic", "action", "energy"];
-	const category = categories[hash % categories.length];
-	return `https://source.unsplash.com/300x200/?${category}&sig=${hash}`;
+function getAnimationPhotoUrl(_presetId: string): null {
+	// Backwards-compat. The animation preview uses procedural CSS via
+	// `getPaletteForId` — no remote thumbnail fetch.
+	return null;
 }
 
 function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 	const apply = useApplyAnimationPreset();
 	const [busy, setBusy] = useState(false);
 	const photoUrl = getAnimationPhotoUrl(preset.type);
+	void photoUrl;
+	const animationPalette = getPaletteForId(preset.type);
 
 	const handleApply = () => {
 		setBusy(true);
@@ -214,13 +210,10 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
 				style={{ width: "80%", height: "80%" }}
 			>
-				<Image
-					src={photoUrl}
-					alt=""
-					fill
-					className="object-cover"
-					sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-					loading="lazy"
+				<div
+					aria-hidden
+					className="absolute inset-0"
+					style={{ background: animationPalette.background }}
 				/>
 				<div className="absolute inset-0 bg-black/20" />
 				<div
