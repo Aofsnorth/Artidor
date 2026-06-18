@@ -352,8 +352,8 @@ const OVERLAY_PRESETS: OverlayPreset[] = [
 			"linear-gradient(135deg,rgba(34,211,238,0.9),rgba(34,211,238,0.15))",
 		],
 		[
-			"gold-frame",
-			"Gold Frame",
+			"gold-frame-thin",
+			"Gold Frame Thin",
 			"Frames",
 			"linear-gradient(135deg,rgba(251,191,36,0.9),rgba(180,83,9,0.24))",
 		],
