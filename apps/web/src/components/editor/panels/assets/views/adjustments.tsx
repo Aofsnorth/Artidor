@@ -16,8 +16,87 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AdvancedView } from "./advanced";
+import { cn } from "@/utils/ui";
 
+const SUB_TABS = [
+	{ id: "library" as const, label: "Adjustments" },
+	{ id: "advanced" as const, label: "Advanced" },
+];
+
+/**
+ * Top-level card shown when the user clicks the Adjust tab in the
+ * left rail. Two facets:
+ *
+ *   Library  → the existing preset grid (Basic / Manual / Color /
+ *              Adjustments chips → drag-to-timeline cards).
+ *   Advanced → the full colour-correction card (Lift / Gamma /
+ *              Gain / Offset wheels, master + per-band HSL, RGB
+ *              curves, .cube LUT import).
+ *
+ * Both views read the same underlying effect params on the selected
+ * element, so a grade made in one is visible in the other. The
+ * "Advanced" card is what used to live as its own left-rail tab —
+ * folding it in here keeps the rail clean (no duplicate icon
+ * collisions with Overlays / Templates / etc.) while still giving
+ * the user a single tap to reach the colour tools.
+ */
 export function AdjustmentsView() {
+	const [activeSubTab, setActiveSubTab] = useState<"library" | "advanced">(
+		"library",
+	);
+
+	return (
+		<PanelView
+			title="Adjust"
+			actions={
+				activeSubTab === "library" ? (
+					<PopOutAction id="adjust" title="Adjustments" />
+				) : null
+			}
+		>
+			<div className="border-b border-white/[0.06] px-2 py-2">
+				<div
+					className="scrollbar-hidden flex gap-1 overflow-x-auto"
+					style={{
+						maskImage:
+							"linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)",
+					}}
+				>
+					{SUB_TABS.map((tab) => {
+						const isActive = activeSubTab === tab.id;
+						return (
+							<button
+								key={tab.id}
+								type="button"
+								onClick={() => setActiveSubTab(tab.id)}
+								aria-pressed={isActive}
+								className={cn(
+									"shrink-0 rounded-md border px-2.5 py-1 text-[0.68rem] font-medium transition",
+									isActive
+										? "border-white/20 bg-white text-[#09090b] shadow-sm"
+										: "border-white/[0.06] bg-white/[0.025] text-white/[0.55] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+								)}
+							>
+								{tab.label}
+							</button>
+						);
+					})}
+				</div>
+			</div>
+
+			{activeSubTab === "library" ? (
+				<AdjustmentsLibrary />
+			) : (
+				<div className="flex-1 min-h-0 overflow-hidden">
+					<AdvancedView embedded />
+				</div>
+			)}
+		</PanelView>
+	);
+}
+
+function AdjustmentsLibrary() {
 	const all = effectsRegistry.getAll();
 	const adjustments = all.filter((def) =>
 		isAdjustmentEffect({ effectType: def.type }),
@@ -35,19 +114,18 @@ export function AdjustmentsView() {
 	);
 
 	return (
-		<PanelView
-			title="Adjustments"
-			actions={<PopOutAction id="adjust" title="Adjustments" />}
-		>
-			<div className="flex flex-col gap-3 pb-3">
+		<div className="flex h-full flex-col gap-3 overflow-hidden">
+			<div className="px-2 pt-2">
 				<CategoryBar
 					categories={ADJUST_CATEGORIES}
 					value={category}
 					onChange={setCategory}
 				/>
+			</div>
+			<div className="flex-1 min-h-0 overflow-auto px-2 pb-3">
 				<AdjustmentsGrid adjustments={filtered} />
 			</div>
-		</PanelView>
+		</div>
 	);
 }
 

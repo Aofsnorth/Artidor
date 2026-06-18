@@ -172,7 +172,7 @@ export function ElementTab({
 						Identity
 					</h3>
 				</header>
-				<p className="mb-2 text-xs text-white/45">
+				<p className="mb-2 text-xs break-words text-white/45">
 					{getElementDisplayName({ element, mediaName: media?.name })}
 				</p>
 				<dl className="flex flex-col gap-1.5">

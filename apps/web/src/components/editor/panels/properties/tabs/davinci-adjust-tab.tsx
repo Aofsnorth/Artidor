@@ -44,6 +44,9 @@ const DEFAULTS: ParamRecord = {
 	hue: 0,
 	lum_mix: 1,
 	chroma_mix: 1,
+	temperature: 0,
+	tint: 0,
+	y_only: 0,
 	curve_master: "",
 	curve_r: "",
 	curve_g: "",
@@ -211,10 +214,39 @@ function PrimaryWheelsSection({
 	] as const;
 	return (
 		<Section collapsible defaultOpen sectionKey={`${element.id}:dv:wheels`}>
-			<SectionHeader>
+			<SectionHeader
+				trailing={
+					<button
+						type="button"
+						onClick={() => {
+							setParams({
+								temperature: 0,
+								tint: 0,
+								y_only: 0,
+							});
+							for (const w of wheels) {
+								setParams({
+									[`${w.id}_x`]: 0,
+									[`${w.id}_y`]: 0,
+									[`${w.id}_luma`]: 0,
+								});
+							}
+						}}
+						className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wider text-white/55 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+					>
+						Reset all
+					</button>
+				}
+			>
 				<SectionTitle>Primary Wheels</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
+				<GlobalTempTint
+					temperature={num(get("temperature"), 0)}
+					tint={num(get("tint"), 0)}
+					yOnly={num(get("y_only"), 0) > 0.5}
+					onChange={(key, value) => setParams({ [key]: value })}
+				/>
 				<div className="grid grid-cols-2 gap-3">
 					{wheels.map((w) => (
 						<ColorWheel
@@ -232,6 +264,167 @@ function PrimaryWheelsSection({
 				</div>
 			</SectionContent>
 		</Section>
+	);
+}
+
+/**
+ * Top-of-wheels global temp/tint + Y-only toggle. Mirrors
+ * DaVinci Resolve's "Temp / Tint" row + the "Y Only" master
+ * that switches the wheel/bars grade between luma+chroma and
+ * luma-only.
+ */
+function GlobalTempTint({
+	temperature,
+	tint,
+	yOnly,
+	onChange,
+}: {
+	temperature: number;
+	tint: number;
+	yOnly: boolean;
+	onChange: (key: string, value: number) => void;
+}) {
+	return (
+		<div className="mb-3 rounded-md border border-white/[0.06] bg-white/[0.02] p-2.5">
+			<div className="mb-1.5 flex items-center justify-between">
+				<div className="flex items-center gap-1.5">
+					<span className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white/65">
+						Global
+					</span>
+				</div>
+				<button
+					type="button"
+					aria-pressed={yOnly}
+					onClick={() => onChange("y_only", yOnly ? 0 : 1)}
+					className={`flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider transition ${
+						yOnly
+							? "border-cyan-300/40 bg-cyan-400/10 text-cyan-100"
+							: "border-white/[0.08] bg-white/[0.02] text-white/45 hover:border-white/20 hover:text-white/80"
+					}`}
+				>
+					<span
+						aria-hidden
+						className="size-1.5 rounded-full"
+						style={{ background: yOnly ? "#67e8f9" : "rgba(255,255,255,0.3)" }}
+					/>
+					Y only
+				</button>
+			</div>
+			<div className="flex items-center gap-3">
+				<TempTintSlider
+					label="Temp"
+					value={temperature}
+					min={-100}
+					max={100}
+					gradient="linear-gradient(to right, #4d9aff 0%, #ffffff 50%, #ffb84d 100%)"
+					hint="Cool ↔ Warm"
+					onChange={(v) => onChange("temperature", v)}
+					onReset={() => onChange("temperature", 0)}
+				/>
+				<TempTintSlider
+					label="Tint"
+					value={tint}
+					min={-100}
+					max={100}
+					gradient="linear-gradient(to right, #22c55e 0%, #ffffff 50%, #ec4899 100%)"
+					hint="Green ↔ Magenta"
+					onChange={(v) => onChange("tint", v)}
+					onReset={() => onChange("tint", 0)}
+				/>
+			</div>
+		</div>
+	);
+}
+
+function TempTintSlider({
+	label,
+	value,
+	min,
+	max,
+	gradient,
+	hint,
+	onChange,
+	onReset,
+}: {
+	label: string;
+	value: number;
+	min: number;
+	max: number;
+	gradient: string;
+	hint: string;
+	onChange: (v: number) => void;
+	onReset: () => void;
+}) {
+	const isModified = value !== 0;
+	return (
+		<div className="flex flex-1 flex-col gap-1">
+			<div className="flex items-center justify-between text-[0.6rem]">
+				<span className="font-semibold uppercase tracking-wider text-white/65">
+					{label}
+				</span>
+				<div className="flex items-center gap-1">
+					<span
+						className={`font-mono ${
+							isModified ? "text-cyan-200" : "text-white/35"
+						}`}
+					>
+						{value > 0 ? "+" : ""}
+						{value.toFixed(0)}
+					</span>
+					{isModified && (
+						<button
+							type="button"
+							onClick={onReset}
+							className="text-[0.55rem] text-white/40 hover:text-white/80 transition"
+							title={`Reset ${label}`}
+						>
+							↺
+						</button>
+					)}
+				</div>
+			</div>
+			<div className="relative h-3">
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full border border-white/10"
+					style={{ background: gradient }}
+				/>
+				{min < 0 && (
+					<div
+						className="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/10"
+						style={{
+							left: `${((0 - min) / (max - min)) * 100}%`,
+							right:
+								value < 0
+									? `${100 - ((value - min) / (max - min)) * 100}%`
+									: "50%",
+						}}
+					/>
+				)}
+				<input
+					type="range"
+					min={min}
+					max={max}
+					step={1}
+					value={value}
+					onChange={(e) => onChange(Number.parseFloat(e.target.value))}
+					aria-label={label}
+					title={hint}
+					className="absolute inset-0 h-3 w-full cursor-pointer appearance-none bg-transparent
+						[&::-webkit-slider-thumb]:appearance-none
+						[&::-webkit-slider-thumb]:size-3.5
+						[&::-webkit-slider-thumb]:rounded-full
+						[&::-webkit-slider-thumb]:bg-white
+						[&::-webkit-slider-thumb]:shadow-[0_0_0_1.5px_rgba(0,0,0,0.55),0_0_8px_rgba(255,255,255,0.45)]
+						[&::-moz-range-thumb]:size-3.5
+						[&::-moz-range-thumb]:rounded-full
+						[&::-moz-range-thumb]:bg-white
+						[&::-moz-range-thumb]:border-0
+						[&::-moz-range-thumb]:shadow-[0_0_0_1.5px_rgba(0,0,0,0.55),0_0_8px_rgba(255,255,255,0.45)]
+						focus:outline-none"
+				/>
+			</div>
+		</div>
 	);
 }
 

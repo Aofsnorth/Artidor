@@ -26,7 +26,8 @@ import { cn } from "@/utils/ui";
 const MINI_BAR_COUNT = 5;
 const MINI_BAR_WIDTH_PX = 2;
 const MINI_BAR_GAP_PX = 2;
-const MINI_HEIGHT_PX = 18;
+const MINI_HEIGHT_PX = 20;
+const MINI_BAR_MIN_PX = 3;
 
 const LARGE_BAR_COUNT = 56;
 const LARGE_PANEL_WIDTH_PX = 308;
@@ -55,18 +56,24 @@ function useAudioBars(barCount: number) {
 		const data = bins > 0 ? new Uint8Array(bins) : null;
 
 		const tick = () => {
-			if (data && analyser) {
+			// Only drive bar heights when there's actual audio to
+			// read. When idle the parent container's CSS keyframe
+			// animates the bars via `transform: scaleY`, so the
+			// rAF loop just stays out of the way and lets the
+			// browser handle the visual feedback. As soon as
+			// playback starts the loop takes over and writes real
+			// frequency data into the same bars.
+			const playing = playingRef.current;
+			if (data && analyser && playing) {
 				analyser.getByteFrequencyData(data);
-			}
-			// Split the frequency bins into `barCount` equal chunks. We
-			// average each chunk so high-freq bars reflect treble and
-			// low-freq bars reflect bass.
-			const chunkSize = Math.max(1, Math.floor(bins / barCount));
-			for (let i = 0; i < barCount; i++) {
-				const ref = refs.current[i];
-				if (!ref) continue;
-				let level: number;
-				if (data) {
+				// Split the frequency bins into `barCount` equal chunks. We
+				// average each chunk so high-freq bars reflect treble and
+				// low-freq bars reflect bass.
+				const chunkSize = Math.max(1, Math.floor(bins / barCount));
+				for (let i = 0; i < barCount; i++) {
+					const ref = refs.current[i];
+					if (!ref) continue;
+					let level: number;
 					let sum = 0;
 					const start = i * chunkSize;
 					const end = i === barCount - 1 ? bins : start + chunkSize;
@@ -78,16 +85,23 @@ function useAudioBars(barCount: number) {
 					// Add a tiny floor so silent audio still shows a soft
 					// pulse when playback is active — gives the visualizer
 					// life even between notes.
-					if (playingRef.current) {
-						level = Math.max(level, 0.04);
-					}
-				} else {
-					level = 0;
+					level = Math.max(level, 0.04);
+					// Map to a percentage. We cap at 100 and add a 6% floor
+					// so the bar is always visible against the 20px-tall
+					// container.
+					const pct = Math.min(100, Math.max(6, level * 100));
+					ref.style.height = `${pct}%`;
 				}
-				// Map to a percentage. We cap at 100 and add a 4% floor so
-				// the bar is always visible.
-				const pct = Math.min(100, Math.max(4, level * 100));
-				ref.style.height = `${pct}%`;
+			} else {
+				// Not playing: park each bar at the idle baseline so the
+				// CSS `scaleY` keyframe can scale from a stable height.
+				// Without this the bar would stick at whatever height
+				// the last rAF write left behind.
+				for (let i = 0; i < barCount; i++) {
+					const ref = refs.current[i];
+					if (!ref) continue;
+					ref.style.height = "60%";
+				}
 			}
 			frameId = requestAnimationFrame(tick);
 		};
@@ -110,6 +124,7 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 	const isOpen = useUiOverlayStore((s) => s.isAudioVisualizerOpen);
 	const toggle = useUiOverlayStore((s) => s.toggleAudioVisualizer);
 	const barRefs = useAudioBars(MINI_BAR_COUNT);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
 
 	return (
 		<button
@@ -119,14 +134,17 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 			aria-pressed={isOpen}
 			title={isOpen ? "Hide audio visualizer" : "Show audio visualizer"}
 			className={cn(
-				"flex h-6 items-center justify-center rounded-md border px-1.5 transition-all cursor-pointer",
+				"flex h-7 items-center justify-center rounded-md border px-2 transition-all cursor-pointer overflow-hidden",
 				isOpen
 					? "border-white/20 bg-white/[0.12] text-white shadow-[0_0_10px_rgba(255,255,255,0.08)]"
 					: "border-transparent text-white/55 hover:bg-white/[0.06] hover:text-white",
 			)}
 		>
 			<div
-				className="flex items-end"
+				className={cn(
+					"flex items-end",
+					!isPlaying && !isOpen && "mini-bars-idle",
+				)}
 				style={{
 					height: `${MINI_HEIGHT_PX}px`,
 					gap: `${MINI_BAR_GAP_PX}px`,
@@ -142,7 +160,8 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 						className="rounded-[1px] bg-current"
 						style={{
 							width: `${MINI_BAR_WIDTH_PX}px`,
-							height: "8%",
+							height: "16%",
+							minHeight: `${MINI_BAR_MIN_PX}px`,
 						}}
 					/>
 				))}

@@ -6,6 +6,7 @@ import {
 	ClosedCaptionIcon,
 	Folder03Icon,
 	Happy01Icon,
+	Layers01Icon,
 	MagicWand05Icon,
 	TextIcon,
 	Settings01Icon,
@@ -21,6 +22,9 @@ import {
 	AiBrain01Icon,
 	SourceCodeIcon,
 	BookmarkAdd02Icon,
+	PlayIcon,
+	SquareIcon,
+	Sun01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -64,7 +68,6 @@ export const VISIBLE_TAB_KEYS = [
 	"templates",
 	"presets",
 	"quicktools",
-	"advanced",
 	"plugins",
 	"scripting",
 	"settings",
@@ -100,7 +103,7 @@ export const tabs = {
 		label: "Text",
 	},
 	elements: {
-		icon: createHugeiconsIcon({ icon: Happy01Icon }),
+		icon: createHugeiconsIcon({ icon: SquareIcon }),
 		label: "Elements",
 	},
 	effects: {
@@ -112,7 +115,7 @@ export const tabs = {
 		label: "Transitions",
 	},
 	overlays: {
-		icon: createHugeiconsIcon({ icon: LayoutGridIcon }),
+		icon: createHugeiconsIcon({ icon: Layers01Icon }),
 		label: "Overlays",
 	},
 	audio: {
@@ -128,7 +131,7 @@ export const tabs = {
 		label: "Adjust",
 	},
 	animations: {
-		icon: createHugeiconsIcon({ icon: MotionIcon }),
+		icon: createHugeiconsIcon({ icon: PlayIcon }),
 		label: "Animations",
 	},
 	templates: {
@@ -168,7 +171,7 @@ export const tabs = {
 		label: "Settings",
 	},
 	advanced: {
-		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),
+		icon: createHugeiconsIcon({ icon: Sun01Icon }),
 		label: "Advanced",
 	},
 } satisfies Record<

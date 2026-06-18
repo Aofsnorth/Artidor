@@ -18,6 +18,25 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "v0.0.1-beta-advanced-color",
+		date: "2026-06-18",
+		tag: "feature",
+		title:
+			"v0.0.1-beta: Advanced colour card now DaVinci + Kdenlive-grade",
+		items: [
+			"New: live Scopes sub-tab in the Advanced card — Waveform (luminance column histogram), Vectorscope (B-Y / R-Y with 75 % colour-bar targets), and RGB Parade. Samples the live preview canvas at ~12 fps via a downsampled getImageData and renders to a small canvas in the inspector. The Freeze button holds the current frame for A/B comparison; the Live chip in the legend tells the user whether they're seeing real-time or parked data.",
+			"New: Qualifier (HSL key) sub-tab with channel toggles (Hue / Sat / Lum), master Range, Low/High Softness sliders, and a triple-handle Luma range bar (Low — Mid — High). The B/W badge in the Matte finesse section shows whether the key includes all three channels or just one. Drag any of the three colour-coded handles horizontally; the numbers under the bar stay in sync with the param store.",
+			"New: Vignette sub-tab with Offset, Softness, Roundness sliders plus per-zone amount (Shadows / Midtones / Highlights). The shape preview SVG in the header mirrors the params live — drag Offset to slide the inner mask, watch the dashed inner ring move with it. Per-zone amount drives the same `vig_*` params the legacy DaVinci adjust tab used, so the grade round-trips cleanly.",
+			"New: HSL Curves sub-tab with the seven DaVinci HSL qualifier pairs: Hue vs Sat, Hue vs Lum, Hue vs Hue, Sat vs Sat, Sat vs Lum, Lum vs Sat, Lum vs Hue. Each curve's X axis is one component; the Y axis is another. Same drag / double-click-to-remove UX as the master Curves tab. Writes to a per-element `hsl-curve` effect (params: `hsl_<axis>_curve` per pair).",
+			"Improvement: Wheels sub-tab now opens with the full DaVinci primary panel (Lift / Gamma / Gain / Offset colour wheels + 11 primary bars: contrast, pivot, midtone detail, highlights, shadows, whites, blacks, saturation, hue, sharpen, blur) plus a Global strip at the top with Temperature (cool ↔ warm blue/orange gradient), Tint (green ↔ magenta), and a Y-only master toggle that switches the whole grade between luma+chroma and luma-only. A Reset all button at the panel header zeros every wheel, every bar, the temp/tint, and the Y-only flag in one click.",
+			"Improvement: Inspector primary tab bar now scopes each tab's `ids` to a specific element type. The shared `transform` / `effects` / `animations` / `masks` ids no longer light up both the Video and Image primaries at once — when an image is selected only the Image primary stays highlighted, and the Video primary is locked (with a tooltip explaining why). The Element / Text / Audio primaries keep their original single-id scopes.",
+			"Improvement: MiniAudioVisualizer button in the preview toolbar now always animates. When audio is playing the bars drive off the live analyser data (same rAF tick as the large panel). When idle the bars pulse via a CSS keyframe (each bar offset by 0.18 s so they read as a left-to-right wave) so the button is visibly 'live' even before you press play. Container is now 20 px tall with a 3 px min-height so the bars are always at least visible, not just a 0.7 px sliver.",
+			"Improvement: AdjustmentsView (left rail card) was polished: replaced the chip row with a two-tab strip ('Adjustments' preset grid vs 'Advanced' colour card) so the colour tools live next to the preset browser instead of fighting the right inspector for the same role. Sub-tab pill row scrolls with a mask gradient on overflow, the scrollbar is hidden, and the active state uses white text on dark instead of the legacy cyan accent.",
+			"Fix: Inspector 'Inspector' / 'Element' tab now wraps long element names (`<p>` showing the display name) with `break-words` so a 200-character text element doesn't overflow the panel's right edge. Same fix for the long `ID` / `Group` SummaryRow values — they wrap to multiple lines instead of being silently truncated.",
+			"Fix: Text tab 'Content' textarea now auto-grows with the content. A long paste is auto-sized to fit (capped at 280 px so a giant paste doesn't push the rest of the inspector offscreen) and scrolls internally past that point. Also expanded `resize-none` so the user can no longer accidentally drag a tiny corner handle and lose content.",
+		],
+	},
+	{
 		id: "2026-06-18-qa-roundup",
 		date: "2026-06-18",
 		tag: "improvement",

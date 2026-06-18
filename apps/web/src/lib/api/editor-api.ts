@@ -75,6 +75,32 @@ declare global {
 					name: string;
 				}>;
 			};
+			/**
+			 * Test-only: insert a synthetic video element onto the
+			 * main track so end-to-end tests can drive the
+			 * retime / frame-interpolation / speed-graph inspector
+			 * flows without a real media file. The element has no
+			 * mediaId and never renders, so it's invisible to the
+			 * user but full-fidelity for inspector / clipboard /
+			 * preset flows.
+			 */
+			insertMockVideo: (opts?: { durationSeconds?: number }) => string;
+			/**
+			 * Test-only: open the "Save to preset" dialog with the
+			 * given elements. The right-click context menu's "Save
+			 * as preset" item funnels into the same dialog store.
+			 */
+			openSavePresetDialog: (input: {
+				elements: Array<{ trackId: string; elementId: string }>;
+				defaultName: string;
+			}) => void;
+			/**
+			 * Test-only: switch the editor's tool mode
+			 * (`select` | `draw` | `vector`) so tests can drive
+			 * the freehand / vector flows without depending on
+			 * the preview toolbar's click-to-toggle UI.
+			 */
+			setToolMode: (mode: "select" | "draw" | "vector") => void;
 		};
 	}
 }
