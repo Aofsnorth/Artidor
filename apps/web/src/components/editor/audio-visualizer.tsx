@@ -47,56 +47,40 @@ function useAudioBars(barCount: number) {
 
 	useEffect(() => {
 		let frameId: number;
-		// Re-use a single Uint8Array across frames — analyser.frequencyBinCount
-		// is stable for the lifetime of the AudioContext, so allocating once
-		// here is correct and removes ~60 allocations/second of GC pressure.
-		const { left, right } = editor.audio.getAnalysers();
-		const analyser = left ?? right ?? null;
-		const bins = analyser ? analyser.frequencyBinCount : 0;
-		const data = bins > 0 ? new Uint8Array(bins) : null;
+		let analyser: AnalyserNode | null = null;
+		let data: Uint8Array | null = null;
 
 		const tick = () => {
-			// Only drive bar heights when there's actual audio to
-			// read. When idle the parent container's CSS keyframe
-			// animates the bars via `transform: scaleY`, so the
-			// rAF loop just stays out of the way and lets the
-			// browser handle the visual feedback. As soon as
-			// playback starts the loop takes over and writes real
-			// frequency data into the same bars.
+			// The audio context is created lazily when playback starts,
+			// while this button is mounted long before that. Re-read the
+			// analyser every frame so the toolbar pill locks onto the
+			// same live source as the right-side meter as soon as music
+			// starts.
+			const { left, right } = editor.audio.getAnalysers();
+			const nextAnalyser = left ?? right;
+			if (nextAnalyser !== analyser) {
+				analyser = nextAnalyser ?? null;
+				data = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
+			}
+
 			const playing = playingRef.current;
 			if (data && analyser && playing) {
 				analyser.getByteFrequencyData(data);
-				// Split the frequency bins into `barCount` equal chunks. We
-				// average each chunk so high-freq bars reflect treble and
-				// low-freq bars reflect bass.
+				const bins = analyser.frequencyBinCount;
 				const chunkSize = Math.max(1, Math.floor(bins / barCount));
 				for (let i = 0; i < barCount; i++) {
 					const ref = refs.current[i];
 					if (!ref) continue;
-					let level: number;
 					let sum = 0;
 					const start = i * chunkSize;
 					const end = i === barCount - 1 ? bins : start + chunkSize;
 					for (let j = start; j < end; j++) sum += data[j];
-					// Normalise to 0..1 then apply a perceptual curve so the
-					// bars feel closer to how loud the signal actually is.
 					const avg = sum / (end - start) / 255;
-					level = Math.sqrt(avg);
-					// Add a tiny floor so silent audio still shows a soft
-					// pulse when playback is active — gives the visualizer
-					// life even between notes.
-					level = Math.max(level, 0.04);
-					// Map to a percentage. We cap at 100 and add a 6% floor
-					// so the bar is always visible against the 20px-tall
-					// container.
+					const level = Math.max(Math.sqrt(avg), 0.04);
 					const pct = Math.min(100, Math.max(6, level * 100));
 					ref.style.height = `${pct}%`;
 				}
 			} else {
-				// Not playing: park each bar at the idle baseline so the
-				// CSS `scaleY` keyframe can scale from a stable height.
-				// Without this the bar would stick at whatever height
-				// the last rAF write left behind.
 				for (let i = 0; i < barCount; i++) {
 					const ref = refs.current[i];
 					if (!ref) continue;

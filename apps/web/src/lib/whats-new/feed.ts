@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-18-live-audio-visualizer-button",
+		date: "2026-06-18",
+		tag: "fix",
+		title: "Audio visualizer button now follows the playing song",
+		items: [
+			"The Show audio visualizer button now locks onto the live audio source when playback starts, even if the button was already mounted before the song played.",
+			"Toolbar bars and the right-side visualizer now read from the same analyser path, so the motion follows the actual music instead of staying idle.",
+			"The visualizer keeps the lightweight direct-DOM animation path, so playback stays smooth while the waveform is visible.",
+		],
+	},
+	{
 		id: "2026-06-18-effect-preview-registry-fix",
 		date: "2026-06-18",
 		tag: "fix",
