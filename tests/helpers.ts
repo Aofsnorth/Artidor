@@ -35,7 +35,13 @@ export type DebugState = {
  */
 export async function bootEditor(page: Page): Promise<void> {
 	await page.goto("/editor/test-project", { waitUntil: "domcontentloaded" });
-	await expect(page.locator("html")).toHaveClass(/dark/, { timeout: 30_000 });
+	// The editor route wraps its subtree in a `dark editing-screen`
+	// div (apps/web/src/app/editor/[project_id]/page.tsx) — *not* on
+	// the html element. So we wait for that wrapper to appear instead
+	// of `html.dark`, which only ever applies to the marketing pages.
+	await expect(page.locator(".editing-screen").first()).toBeVisible({
+		timeout: 30_000,
+	});
 	await expect(page.getByText(/Artidor/i).first()).toBeVisible({
 		timeout: 30_000,
 	});
@@ -112,6 +118,22 @@ export async function runCommand(
 		},
 		[name, args] as const,
 	);
+}
+
+/** Insert a synthetic video element for tests. Returns the new id. */
+export async function insertMockVideo(
+	page: Page,
+	opts: { durationSeconds?: number } = {},
+): Promise<string> {
+	return await page.evaluate((o) => {
+		const w = window as unknown as {
+			__ARTIDOR_DEBUG__?: {
+				insertMockVideo: (o?: { durationSeconds?: number }) => string;
+			};
+		};
+		if (!w.__ARTIDOR_DEBUG__) throw new Error("__ARTIDOR_DEBUG__ missing");
+		return w.__ARTIDOR_DEBUG__.insertMockVideo(o);
+	}, opts);
 }
 
 /** Read the live editor state via the dev-only debug handle. */

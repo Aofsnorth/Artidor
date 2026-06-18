@@ -607,6 +607,36 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"Paste the clipboard contents. Optional time (ticks) sets where to paste; defaults to the playhead.",
 		objectSchema({ time: numberSchema(0) }),
 	),
+	tool(
+		"clipboard",
+		"copy-style",
+		"copy-style",
+		"Copy the style of the currently selected element (font, color, size, etc.) to the style clipboard slot.",
+		objectSchema({}),
+	),
+	tool(
+		"clipboard",
+		"paste-style",
+		"paste-style",
+		"Paste the style from the style clipboard slot onto the currently selected element.",
+		objectSchema({}),
+	),
+	tool(
+		"clipboard",
+		"copy-effect",
+		"copy-effect",
+		"Copy a specific effect (by type) to the effect clipboard slot. effectType is the registry key, e.g. 'blur'.",
+		objectSchema({ effectType: { type: "string", minLength: 1 } }, [
+			"effectType",
+		]),
+	),
+	tool(
+		"clipboard",
+		"paste-effect",
+		"paste-effect",
+		"Paste the effect from the effect clipboard slot onto the currently selected visual elements.",
+		objectSchema({}),
+	),
 
 	/* ---------------------------- Scene (additional) ------------------------- */
 	tool(

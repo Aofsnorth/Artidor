@@ -723,3 +723,44 @@ body::-webkit-scrollbar,
 	animation-iteration-count: infinite;
 	will-change: transform;
 }
+
+/*
+ * Mini audio-visualizer idle pulse. The toggle pill in the
+ * preview toolbar always shows a subtle 5-bar pulse so the user
+ * can see at a glance that it's a live visualizer (not a
+ * static icon). The pulse is paused the moment real audio
+ * arrives — the per-bar `useAudioBars` rAF loop takes over and
+ * drives the heights directly so the live signal wins.
+ */
+@keyframes mini-bars-idle {
+	0%,
+	100% {
+		transform: scaleY(0.35);
+		opacity: 0.55;
+	}
+	50% {
+		transform: scaleY(1);
+		opacity: 1;
+	}
+}
+
+.mini-bars-idle > div {
+	transform-origin: bottom center;
+	animation: mini-bars-idle 1.4s ease-in-out infinite;
+}
+
+.mini-bars-idle > div:nth-child(1) {
+	animation-delay: 0s;
+}
+.mini-bars-idle > div:nth-child(2) {
+	animation-delay: 0.18s;
+}
+.mini-bars-idle > div:nth-child(3) {
+	animation-delay: 0.36s;
+}
+.mini-bars-idle > div:nth-child(4) {
+	animation-delay: 0.54s;
+}
+.mini-bars-idle > div:nth-child(5) {
+	animation-delay: 0.72s;
+}

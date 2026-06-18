@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { withBotId } from "botid/next/config";
 import { withContentCollections } from "@content-collections/next";
-import path from "path";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
 	turbopack: {

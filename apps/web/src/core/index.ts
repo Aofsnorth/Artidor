@@ -19,6 +19,9 @@ import { registerDefaultAnimationPresets } from "@/lib/animation/presets";
 import { registerTranscriptionDiagnostics } from "@/lib/transcription/diagnostics";
 import { attachTelemetryToCommands } from "@/lib/ai/telemetry/store";
 import { createEditorApi, type EditorApi } from "@/lib/api/editor-api";
+import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
+import { useToolModeStore } from "@/stores/tool-mode-store";
+import { generateUUID } from "@/utils/id";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -106,8 +109,7 @@ export class EditorCore {
 			attachTelemetryToCommands();
 			// Expose the public command API on the live editor tab so scripts,
 			// other same-origin tabs, and the MCP relay can drive the editor.
-			window.__ARTIDOR_API__ = this.api;
-			// Dev-only: expose a read-only snapshot of the live editor state so
+			window.__ARTIDOR_API__ = this.api; // Dev-only: expose a read-only snapshot of the live editor state so
 			// end-to-end tests (Playwright) and the in-browser console can
 			// inspect tracks / elements / selection without re-implementing
 			// the entire state-walking logic. Tree-shaken out of prod builds
@@ -180,6 +182,84 @@ export class EditorCore {
 							},
 							elements: allElements,
 						};
+					},
+					/**
+					 * Test-only helper. Inserts a synthetic video
+					 * element onto the main track so E2E tests can
+					 * drive retime / speed / frame-interpolation
+					 * without an actual media upload. Returns the
+					 * new element id. The element has no mediaId,
+					 * so the renderer just skips it; the inspector
+					 * treats it like any other retimable element.
+					 */
+					insertMockVideo: (opts?: { durationSeconds?: number }): string => {
+						const TICKS_PER_SECOND = 120_000;
+						const duration = (opts?.durationSeconds ?? 5) * TICKS_PER_SECOND;
+						const element = {
+							id: generateUUID(),
+							type: "video" as const,
+							name: "Mock Video",
+							startTime: 0,
+							duration,
+							trimStart: 0,
+							trimEnd: 0,
+							hidden: false,
+							// InsertElementCommand's validateElementBasics
+							// rejects video elements that don't have a
+							// mediaId key (`requiresMediaId({ element })
+							// && !("mediaId" in element)`). Set it to
+							// undefined so the key is present but the
+							// renderer skips the element.
+							mediaId: undefined,
+							sourceUrl: "",
+							transform: {
+								scaleX: 1,
+								scaleY: 1,
+								position: { x: 0, y: 0 },
+								rotate: 0,
+							},
+							opacity: 1,
+						};
+						const tracks = this.scenes.getActiveScene().tracks;
+						this.timeline.insertElement({
+							element: element as never,
+							placement: { mode: "explicit", trackId: tracks.main.id },
+						});
+						// InsertElementCommand regenerates the id
+						// internally to avoid collisions; the id we
+						// passed in is overwritten. Read back the real
+						// id from the scene so callers can address
+						// the inserted element.
+						const afterTracks = this.scenes.getActiveScene().tracks;
+						const placed = afterTracks.main.elements.find(
+							(e) => e.name === "Mock Video",
+						);
+						return placed?.id ?? element.id;
+					},
+					/**
+					 * Test-only: open the "Save to preset" dialog with
+					 * the given elements pre-selected. The timeline
+					 * right-click menu (the user-facing entry point)
+					 * calls into the same `useSavePresetDialogStore`
+					 * under the hood, so reaching it through the
+					 * store proves the post-conditions the menu
+					 * item is supposed to deliver.
+					 */
+					openSavePresetDialog: (input: {
+						elements: Array<{ trackId: string; elementId: string }>;
+						defaultName: string;
+					}): void => {
+						useSavePresetDialogStore.getState().openDialog(input);
+					},
+					/**
+					 * Test-only: set the editor's tool mode
+					 * (`select` | `draw` | `vector`) so tests can
+					 * drive the freehand / vector flows without
+					 * having to click the (DOM-shifting) preview
+					 * toolbar buttons.
+					 */
+					setToolMode: (mode: "select" | "draw" | "vector"): void => {
+						useToolModeStore.getState().setToolMode(mode);
 					},
 				};
 			}

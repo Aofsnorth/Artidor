@@ -56,7 +56,7 @@ export function ColorGradingTab({
 /*  Master HSL                                                                */
 /* -------------------------------------------------------------------------- */
 
-function MasterSection({
+export function MasterSection({
 	element,
 	trackId,
 }: {
@@ -189,7 +189,7 @@ function MasterSection({
 /*  Per-band HSL (8 colour bands)                                             */
 /* -------------------------------------------------------------------------- */
 
-function PerBandHslSection({
+export function PerBandHslSection({
 	element,
 	trackId,
 }: {
@@ -264,8 +264,7 @@ function PerBandHslSection({
 						const bandHue = params[hueKey] ?? 0;
 						const bandSat = params[satKey] ?? 0;
 						const bandLum = params[lumKey] ?? 0;
-						const isModified =
-							bandHue !== 0 || bandSat !== 0 || bandLum !== 0;
+						const isModified = bandHue !== 0 || bandSat !== 0 || bandLum !== 0;
 						return (
 							<div
 								key={band.id}
@@ -471,10 +470,7 @@ function CurveChannelControl({
 	const [dragging, setDragging] = useState<number | null>(null);
 	const svgRef = useRef<SVGSVGElement>(null);
 
-	const sorted = useMemo(
-		() => [...points].sort((a, b) => a.x - b.x),
-		[points],
-	);
+	const sorted = useMemo(() => [...points].sort((a, b) => a.x - b.x), [points]);
 	const path = sorted
 		.map((p, i) => {
 			const x = padding + (p.x / 255) * (width - padding * 2);
@@ -575,9 +571,7 @@ function CurveChannelControl({
 					if (Math.abs(sorted[closest].x - localX) < 20) {
 						handlePointerDown(e, closest);
 					} else {
-						handleDoubleClick(
-							e as unknown as React.MouseEvent<SVGSVGElement>,
-						);
+						handleDoubleClick(e as unknown as React.MouseEvent<SVGSVGElement>);
 					}
 				}}
 				onPointerMove={handlePointerMove}
@@ -660,7 +654,7 @@ function CurveChannelControl({
 /*  LUT (.cube)                                                               */
 /* -------------------------------------------------------------------------- */
 
-function LutSection({
+export function LutSection({
 	element,
 	trackId,
 }: {

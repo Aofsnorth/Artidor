@@ -26,6 +26,7 @@ import {
 	usePreviewViewport,
 } from "./preview-viewport";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
 
 function usePreviewSize() {
@@ -186,6 +187,22 @@ function PreviewCanvas({
 	}, [renderer, renderTree, editor.playback, editor.timeline.getLastFrameTime]);
 
 	useRafLoop(render);
+
+	// Register the live canvas with the global scope sampler so the
+	// Scopes sub-tab in the Advanced card can read pixels from it.
+	// The handle is updated on every size change and torn down on
+	// unmount so scopes show the empty silhouette when the preview
+	// isn't mounted (e.g. in a fullscreen pop-out).
+	useEffect(() => {
+		registerPreviewCanvas({
+			canvas: canvasRef.current,
+			width: nativeWidth,
+			height: nativeHeight,
+		});
+		return () => {
+			registerPreviewCanvas({ canvas: null, width: 0, height: 0 });
+		};
+	}, [nativeWidth, nativeHeight]);
 
 	useEffect(() => {
 		const container = viewportRef.current;

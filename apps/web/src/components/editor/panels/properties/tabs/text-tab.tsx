@@ -352,6 +352,7 @@ function ContentSection({
 	trackId: string;
 }) {
 	const editor = useEditor();
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const content = usePropertyDraft({
 		displayValue: element.content,
@@ -365,6 +366,24 @@ function ContentSection({
 		onCommit: () => editor.timeline.commitPreview(),
 	});
 
+	// Auto-grow the textarea to fit the content. Without this, long
+	// copy would either get clipped (with `resize-none`) or require
+	// the user to drag a tiny corner handle to reveal it. We clamp
+	// the height so a giant paste doesn't push the rest of the
+	// inspector offscreen — past that point, the textarea scrolls
+	// internally instead of growing. Resizes on every keystroke
+	// (React's `onChange` fires for each character) and on focus /
+	// mount so the initial selection of a long element fits.
+	const autoresize = (el: HTMLTextAreaElement | null) => {
+		if (!el) return;
+		el.style.height = "auto";
+		el.style.height = `${Math.min(el.scrollHeight, 280)}px`;
+	};
+	const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+		autoresize(event.currentTarget);
+		content.onChange(event);
+	};
+
 	return (
 		<Section collapsible sectionKey={`${element.id}:content`}>
 			<SectionHeader>
@@ -372,11 +391,15 @@ function ContentSection({
 			</SectionHeader>
 			<SectionContent>
 				<Textarea
+					ref={textareaRef}
 					placeholder="Name"
 					value={content.displayValue}
-					className="min-h-20"
-					onFocus={content.onFocus}
-					onChange={content.onChange}
+					className="min-h-20 max-h-72"
+					onFocus={(event) => {
+						autoresize(event.currentTarget);
+						content.onFocus();
+					}}
+					onChange={handleChange}
 					onBlur={content.onBlur}
 				/>
 			</SectionContent>

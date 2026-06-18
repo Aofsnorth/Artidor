@@ -742,6 +742,37 @@ const HANDLERS: Record<string, Handler> = {
 				: editor.clipboard.paste();
 		return { ok, message: ok ? "Pasted" : "Nothing to paste" };
 	},
+	"copy-style": async (editor) => {
+		const ok = editor.clipboard.copyStyle();
+		return { ok, message: ok ? "Style copied" : "Nothing to copy style from" };
+	},
+	"paste-style": async (editor) => {
+		const ok = editor.clipboard.pasteStyle();
+		return {
+			ok,
+			message: ok ? "Style pasted" : "Nothing to paste style onto",
+		};
+	},
+	"copy-effect": async (editor, args) => {
+		const effectType = asString(args.effectType);
+		// The effect entry on the clipboard is { type, params, enabled }.
+		// We don't have a params map at copy-time from the user; the
+		// clipboard manager fills in defaults from the registry, then
+		// callers (the inspector / AI agent) can override later.
+		const ok = editor.clipboard.copyEffect({
+			type: effectType,
+			params: {},
+			enabled: true,
+		});
+		return { ok, message: ok ? "Effect copied" : "Failed to copy effect" };
+	},
+	"paste-effect": async (editor) => {
+		const ok = editor.clipboard.pasteEffect();
+		return {
+			ok,
+			message: ok ? "Effect pasted" : "Nothing to paste effect onto",
+		};
+	},
 
 	/* -------------------------- scene (additional) ---------------------- */
 	delete_scene: async (editor, args) => {

@@ -118,7 +118,7 @@ export function ColorWheelsTab({
 	);
 }
 
-function ColorWheelControl({
+export function ColorWheelControl({
 	label,
 	x,
 	y,
