@@ -375,7 +375,7 @@ export function MediaView() {
 						/>
 						<QuickAccessGrid stats={mediaStats} />
 						{assetSource === "library" ? (
-							<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden">
+							<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden p-[3px] -m-[3px]">
 								{currentFolderId === null && folders.length > 0 && (
 									<FolderGrid
 										folders={folders}
@@ -750,6 +750,7 @@ function MediaItemList({
 	return (
 		<div
 			className={cn(
+				"p-[2px] -m-[2px]",
 				isGrid ? "grid gap-2.5" : "flex min-w-0 flex-col gap-1.5", // `min-w-0` lets the
 				//   compact list shrink inside the parent flex
 				//   column without forcing the panel wider.
