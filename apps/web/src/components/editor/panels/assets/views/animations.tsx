@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { getPaletteForId } from "./components/procedural-preview";
+
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	PlayIcon,
@@ -170,7 +170,7 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 	const [busy, setBusy] = useState(false);
 	const photoUrl = getAnimationPhotoUrl(preset.type);
 	void photoUrl;
-	const animationPalette = getPaletteForId(preset.type);
+
 
 	const handleApply = () => {
 		setBusy(true);
@@ -212,10 +212,8 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 			>
 				<div
 					aria-hidden
-					className="absolute inset-0"
-					style={{ background: animationPalette.background }}
+					className="absolute inset-0 bg-black"
 				/>
-				<div className="absolute inset-0 bg-black/20" />
 				<div
 					className="absolute inset-0 flex items-center justify-center z-10"
 					style={previewStyle}

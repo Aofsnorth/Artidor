@@ -4,7 +4,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getPaletteForId } from "./components/procedural-preview";
+
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -518,10 +518,8 @@ function StickerItem({
 		<div className="relative flex size-full items-center justify-center p-3">
 			<div
 				aria-hidden
-				className="absolute inset-0 rounded-sm"
-				style={{ background: getPaletteForId(item.id).background }}
+				className="absolute inset-0 rounded-sm bg-black"
 			/>
-			<div className="absolute inset-0 bg-black/30 rounded-sm" />
 			{hasImageError ? (
 				<span className="relative z-10 text-white text-center text-xs break-all">
 					{displayName}
