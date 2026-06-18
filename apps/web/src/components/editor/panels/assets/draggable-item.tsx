@@ -159,6 +159,7 @@ export function DraggableItem({
 						"group relative w-full",
 						containerClassName,
 					)}
+					style={{ contentVisibility: "auto" }}
 				>
 					<div
 						className={cn(
@@ -208,6 +209,7 @@ export function DraggableItem({
 				<div
 					ref={dragRef}
 					className={cn("group relative w-full", containerClassName)}
+					style={{ contentVisibility: "auto" }}
 				>
 					<button
 						type="button"
