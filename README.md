@@ -21,6 +21,9 @@
 
 </div>
 
+> [!WARNING]
+> Please do not use this application yet, it is currently undergoing bug fixes and a codebase audit to ensure it is safe to use.
+
 ## Preview
 
 <p align="center">
