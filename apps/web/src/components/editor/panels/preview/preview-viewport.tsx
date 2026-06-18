@@ -570,13 +570,53 @@ export function usePreviewViewportState({
 	);
 }
 
+/**
+ * Safe no-op fallback returned by `usePreviewViewport` when the
+ * hook is called outside a `PreviewViewportProvider`. Lets panels
+ * like the right-side `DrawToolConfigPanel` in the PropertiesPanel
+ * read the same context shape without crashing the React tree
+ * when they're mounted in a sibling subtree. Functions return
+ * no-op values that are correct for "I don't have a viewport".
+ */
+const PreviewViewportFallback: PreviewViewportContextValue = {
+	canPan: false,
+	isAtFit: true,
+	isAtActualSize: true,
+	isPanning: false,
+	sceneHeight: 0,
+	sceneLeft: 0,
+	sceneTop: 0,
+	sceneWidth: 0,
+	zoomPercent: 100,
+	canvasToOverlay: ({ canvasX, canvasY }) => ({ x: canvasX, y: canvasY }),
+	fitToScreen: () => undefined,
+	getDisplayScale: () => ({ x: 1, y: 1 }),
+	handlePanPointerDown: () => false,
+	handlePanPointerMove: () => false,
+	handlePanPointerUp: () => false,
+	positionToOverlay: ({ positionX, positionY }) => ({
+		x: positionX,
+		y: positionY,
+	}),
+	panByScreenDelta: () => undefined,
+	registerContainer: () => undefined,
+	screenToCanvas: ({ x, y }) => ({ x, y }),
+	setZoomAround: () => undefined,
+	setZoomAroundCenter: () => undefined,
+	setZoomAt: () => undefined,
+	setZoomToFit: () => undefined,
+};
+
 export function usePreviewViewport() {
 	const context = useContext(PreviewViewportContext);
 	if (!context) {
-		throw new Error(
-			"usePreviewViewport must be used within PreviewViewportProvider",
-		);
+		// Fall back to a no-op viewport so hooks that read this
+		// context from outside the preview (e.g. the right-side
+		// `DrawToolConfigPanel` in the PropertiesPanel) don't crash
+		// the React tree. Functions that need real coordinate
+		// conversion will return the input as-is, which is the
+		// correct no-op for "I don't have a viewport".
+		return PreviewViewportFallback;
 	}
-
 	return context;
 }
