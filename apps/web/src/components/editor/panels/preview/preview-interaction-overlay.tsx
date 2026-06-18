@@ -11,7 +11,7 @@ import { SnapGuides } from "./snap-guides";
 import { TextEditOverlay } from "./text-edit-overlay";
 import { FreehandDrawOverlay } from "./freehand-draw-overlay";
 import { VectorDrawOverlay } from "./vector-draw-overlay";
-import { DrawToolConfigPanel } from "./draw-tool-config-panel";
+
 import { usePropertiesStore } from "../properties/stores/properties-store";
 import { useEditor } from "@/hooks/use-editor";
 import type { Point } from "@/lib/graphics/path-utils";
@@ -173,7 +173,6 @@ export function PreviewInteractionOverlay() {
 				<TransformHandles onSnapLinesChange={setSnapLines} />
 			)}
 			{!isDrawing && <SnapGuides lines={snapLines} />}
-			<DrawToolConfigPanel />
 		</div>
 	);
 }
