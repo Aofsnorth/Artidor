@@ -120,7 +120,7 @@ function Card({ onClose }: { onClose: () => void }) {
 			</div>
 
 			{/* Entries */}
-			<div className="flex max-h-[52vh] flex-col gap-4 overflow-y-auto scrollbar-hidden px-4 py-4">
+				<div className="flex max-h-[52vh] flex-col gap-4 overflow-x-hidden overflow-y-auto scrollbar-hidden px-4 py-4">
 				{WHATS_NEW.map((entry) => {
 					const tag = TAG_STYLES[entry.tag];
 					return (
@@ -148,7 +148,7 @@ function Card({ onClose }: { onClose: () => void }) {
 												tag.dot,
 											)}
 										/>
-										<span className="text-[12px] leading-relaxed text-white/60">
+										<span className="min-w-0 break-words text-[12px] leading-relaxed text-white/60">
 											{item}
 										</span>
 									</li>
