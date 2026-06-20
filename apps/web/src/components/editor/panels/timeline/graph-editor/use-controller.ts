@@ -20,6 +20,12 @@ export function useGraphEditorController() {
 			currentEditor.scenes.getActiveScene().tracks,
 	);
 	const { selectedKeyframes } = useKeyframeSelection();
+	const selectedElements = useEditor((currentEditor) =>
+		currentEditor.selection.getSelectedElements(),
+	);
+	const playheadTime = useEditor((currentEditor) =>
+		currentEditor.playback.getCurrentTime(),
+	);
 	const [open, setOpen] = useState(false);
 	const [activeComponentKey, setActiveComponentKey] = useState<string | null>(
 		null,
@@ -31,9 +37,11 @@ export function useGraphEditorController() {
 			resolveGraphEditorSelectionState({
 				tracks: renderTracks,
 				selectedKeyframes,
+				selectedElements,
+				playheadTime,
 				preferredComponentKey: activeComponentKey,
 			}),
-		[activeComponentKey, renderTracks, selectedKeyframes],
+		[activeComponentKey, playheadTime, renderTracks, selectedElements, selectedKeyframes],
 	);
 
 	const stateKey =

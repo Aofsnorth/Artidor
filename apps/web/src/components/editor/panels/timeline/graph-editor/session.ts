@@ -14,7 +14,7 @@ import type {
 	ScalarGraphKeyframeContext,
 	SelectedKeyframeRef,
 } from "@/lib/animation/types";
-import type { SceneTracks, TimelineElement } from "@/lib/timeline";
+import type { ElementRef, SceneTracks, TimelineElement } from "@/lib/timeline";
 
 const GRAPH_LINEAR_CURVE: NormalizedCubicBezier = [0, 0, 1, 1];
 const FLAT_VALUE_EPSILON = 1e-6;
@@ -22,6 +22,8 @@ const LINEAR_CURVE_EPSILON = 1e-6;
 
 export type GraphEditorUnavailableReason =
 	| "no-keyframe-selected"
+	| "no-playhead-segment"
+	| "multiple-elements-selected"
 	| "multiple-keyframes-selected"
 	| "selected-keyframes-span-multiple-elements"
 	| "selected-keyframes-are-not-adjacent"
@@ -132,6 +134,64 @@ function findElementByKeyframe({
 	}
 
 	return null;
+}
+
+function findElementByRef({
+	tracks,
+	elementRef,
+}: {
+	tracks: SceneTracks;
+	elementRef: ElementRef;
+}): { element: TimelineElement; trackId: string; elementId: string } | null {
+	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+		if (track.id !== elementRef.trackId) continue;
+		const element = track.elements.find(
+			(trackElement) => trackElement.id === elementRef.elementId,
+		);
+		if (!element) return null;
+		return { element, trackId: track.id, elementId: element.id };
+	}
+	return null;
+}
+
+export function findGraphEditorKeyframesAtPlayhead({
+	element,
+	trackId,
+	playheadTime,
+}: {
+	element: TimelineElement;
+	trackId: string;
+	playheadTime: number;
+}): SelectedKeyframeRef[] {
+	const animations = element.animations;
+	if (!animations) return [];
+	const elementTime = playheadTime - element.startTime;
+	if (elementTime < 0 || elementTime > element.duration) return [];
+
+	const keyframes: SelectedKeyframeRef[] = [];
+	for (const [propertyPath, binding] of Object.entries(
+		animations.bindings,
+	) as [AnimationPath, NonNullable<ElementAnimations["bindings"][AnimationPath]>][]) {
+		const scalarChannels = binding.components
+			.map((component) => animations.channels[component.channelId])
+			.filter((channel) => channel?.kind === "scalar");
+		const leftKey = scalarChannels
+			.flatMap((channel) => channel.keys)
+			.filter((key) => key.time <= elementTime)
+			.sort((a, b) => b.time - a.time)[0];
+		if (!leftKey) continue;
+		const hasNextKey = scalarChannels.some((channel) =>
+			channel.keys.some((key) => key.time > leftKey.time),
+		);
+		if (!hasNextKey) continue;
+		keyframes.push({
+			trackId,
+			elementId: element.id,
+			propertyPath,
+			keyframeId: leftKey.id,
+		});
+	}
+	return keyframes;
 }
 
 function findKeyframeTime({
@@ -452,21 +512,57 @@ function resolveSegmentForOption({
 export function resolveGraphEditorSelectionState({
 	tracks,
 	selectedKeyframes,
+	selectedElements = [],
+	playheadTime = null,
 	preferredComponentKey,
 }: {
 	tracks: SceneTracks;
 	selectedKeyframes: SelectedKeyframeRef[];
+	selectedElements?: ElementRef[];
+	playheadTime?: number | null;
 	preferredComponentKey?: string | null;
 }): GraphEditorSelectionState {
-	if (selectedKeyframes.length === 0) {
-		return createUnavailableState({
-			reason: "no-keyframe-selected",
-			message: "Select a keyframe to edit its curve.",
+	let targetKeyframes = selectedKeyframes;
+	if (targetKeyframes.length === 0) {
+		if (selectedElements.length === 0) {
+			return createUnavailableState({
+				reason: "no-keyframe-selected",
+				message: "Select a keyframe or move the playhead between two keyframes.",
+			});
+		}
+		if (selectedElements.length > 1) {
+			return createUnavailableState({
+				reason: "multiple-elements-selected",
+				message: "Select one element to edit a playhead curve segment.",
+			});
+		}
+		if (playheadTime == null) {
+			return createUnavailableState({
+				reason: "no-playhead-segment",
+				message: "Move the playhead between two keyframes to edit a curve.",
+			});
+		}
+		const selectedElement = findElementByRef({
+			tracks,
+			elementRef: selectedElements[0],
 		});
+		targetKeyframes = selectedElement
+			? findGraphEditorKeyframesAtPlayhead({
+					element: selectedElement.element,
+					trackId: selectedElement.trackId,
+					playheadTime,
+				})
+			: [];
+		if (targetKeyframes.length === 0) {
+			return createUnavailableState({
+				reason: "no-playhead-segment",
+				message: "Move the playhead between two keyframes to edit a curve.",
+			});
+		}
 	}
 
 	const propertyKeyframes = groupSelectedKeyframesByProperty({
-		selectedKeyframes,
+		selectedKeyframes: targetKeyframes,
 	});
 	const primaryKeyframe = propertyKeyframes[0]?.keyframes[0];
 	if (!primaryKeyframe) {

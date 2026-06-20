@@ -24,8 +24,16 @@ fn fragment_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<
     }
 
     let newUv = center + d;
+    
+    // Clamp UV to valid range for texture sampling (WGSL requires uniform control flow for textureSample).
+    // We sample with clamped coordinates, then check if the original UV was out of bounds.
+    let clampedUv = clamp(newUv, vec2<f32>(0.0), vec2<f32>(1.0));
+    let sampled = textureSample(u_texture, u_sampler, clampedUv);
+    
+    // Return black if original UV was out of bounds (outside the fisheye distortion radius)
     if (newUv.x < 0.0 || newUv.x > 1.0 || newUv.y < 0.0 || newUv.y > 1.0) {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
-    return textureSample(u_texture, u_sampler, newUv);
+    
+    return sampled;
 }

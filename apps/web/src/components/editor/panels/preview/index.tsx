@@ -359,8 +359,8 @@ function PreviewOverlayControls({
 	const aspectLabel = canvas ? formatAspectRatio(canvas) : "16:9";
 
 	return (
-		<div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-start justify-end gap-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
-			<div className="pointer-events-auto flex items-center gap-1 rounded-lg border border-white/10 bg-black/60 p-0.5 shadow-xl shadow-black/40 backdrop-blur-xl">
+		<div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex items-start justify-end gap-3">
+			<div className="pointer-events-auto flex items-center gap-1 rounded-lg border border-white/10 bg-black/60 p-0.5 opacity-0 shadow-xl shadow-black/40 backdrop-blur-xl transition-opacity duration-200 hover:opacity-100 focus-within:opacity-100">
 				<button
 					type="button"
 					onClick={fitToScreen}

@@ -1196,6 +1196,7 @@ function KeyframeIndicators({
 		elementLeft: number;
 	}) => number;
 }) {
+	const editor = useEditor();
 	const { isKeyframeSelected } = useKeyframeSelection();
 	const orderedKeyframes = indicators.flatMap(
 		(indicator) => indicator.keyframes,
@@ -1264,7 +1265,7 @@ function KeyframeIndicators({
 					<button
 						key={indicator.time}
 						type="button"
-						className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
+						className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab"
 						style={{ left: visualOffsetPx }}
 						onMouseDown={(event) =>
 							onKeyframeMouseDown({ event, keyframes: indicator.keyframes })
@@ -1277,12 +1278,17 @@ function KeyframeIndicators({
 								indicatorTime: indicator.time,
 							})
 						}
+						onDoubleClick={(event) => {
+							event.stopPropagation();
+							event.preventDefault();
+							editor.timeline.removeKeyframes({ keyframes: indicator.keyframes });
+						}}
 						aria-label="Select keyframe"
 					>
 						<HugeiconsIcon
 							icon={KeyframeIcon}
 							className={cn(
-								"size-3.5 text-black",
+								"size-[1.125rem] text-black",
 								isIndicatorSelected ? "fill-primary" : "fill-white",
 							)}
 							strokeWidth={1.5}
@@ -1347,6 +1353,7 @@ function ExpandedKeyframeLanes({
 		elementLeft: number;
 	}) => number;
 }) {
+	const editor = useEditor();
 	const { isKeyframeSelected } = useKeyframeSelection();
 
 	const orderedKeyframes = useMemo(
@@ -1378,12 +1385,73 @@ function ExpandedKeyframeLanes({
 				const laneKeyframes = keyframes.filter(
 					(kf) => kf.propertyPath === row.propertyPath,
 				);
+				const sortedLaneKeyframes = [...laneKeyframes].sort(
+					(a, b) => a.time - b.time,
+				);
 				return (
 					<div
 						key={row.propertyPath}
 						className={cn("relative flex items-center bg-muted/50")}
 						style={{ height: `${KEYFRAME_LANE_HEIGHT_PX}px` }}
 					>
+						{sortedLaneKeyframes.slice(0, -1).map((kf, index) => {
+							const nextKeyframe = sortedLaneKeyframes[index + 1];
+							if (!nextKeyframe || nextKeyframe.time <= kf.time) return null;
+							const keyframeRef: SelectedKeyframeRef = {
+								trackId,
+								elementId,
+								propertyPath: row.propertyPath,
+								keyframeId: kf.id,
+							};
+							const startLeft = timelineTimeToSnappedPixels({
+								time: displayedStartTime + kf.time,
+								zoomLevel,
+							});
+							const endLeft = timelineTimeToSnappedPixels({
+								time: displayedStartTime + nextKeyframe.time,
+								zoomLevel,
+							});
+							const startOffset = startLeft - elementLeft;
+							const endOffset = endLeft - elementLeft;
+							const startVisualOffset = getVisualOffsetPx({
+								indicatorTime: kf.time,
+								indicatorOffsetPx: startOffset,
+								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(kf.id),
+								displayedStartTime,
+								elementLeft,
+							});
+							const endVisualOffset = getVisualOffsetPx({
+								indicatorTime: nextKeyframe.time,
+								indicatorOffsetPx: endOffset,
+								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(nextKeyframe.id),
+								displayedStartTime,
+								elementLeft,
+							});
+							const left = Math.min(startVisualOffset, endVisualOffset);
+							const width = Math.abs(endVisualOffset - startVisualOffset);
+							if (width < 8) return null;
+							return (
+								<button
+									key={`${kf.id}-${nextKeyframe.id}`}
+									type="button"
+									className="group/keyframe-segment pointer-events-auto absolute top-1/2 h-3 -translate-y-1/2 rounded-full outline-none"
+									style={{ left, width }}
+									onMouseDown={(event) => event.stopPropagation()}
+									onClick={(event) => {
+										event.stopPropagation();
+										onKeyframeClick({
+											event,
+											keyframes: [keyframeRef],
+											orderedKeyframes,
+											indicatorTime: kf.time,
+										});
+									}}
+									aria-label="Select keyframe segment"
+								>
+									<span className="absolute inset-x-1 top-1/2 h-px -translate-y-1/2 rounded-full bg-white/10 transition-colors group-hover/keyframe-segment:bg-cyan-300/70 group-focus-visible/keyframe-segment:bg-cyan-300" />
+								</button>
+							);
+						})}
 						{laneKeyframes.map((kf) => {
 							const keyframeRef: SelectedKeyframeRef = {
 								trackId,
@@ -1435,12 +1503,17 @@ function ExpandedKeyframeLanes({
 												indicatorTime: kf.time,
 											});
 										}}
+										onDoubleClick={(event) => {
+											event.stopPropagation();
+											event.preventDefault();
+											editor.timeline.removeKeyframes({ keyframes: [keyframeRef] });
+										}}
 										aria-label="Select keyframe"
 									>
 										<HugeiconsIcon
 											icon={KeyframeIcon}
 											className={cn(
-												"size-3.5 text-black mr-1",
+												"size-[1.125rem] text-black",
 												isSelected ? "fill-primary" : "fill-white",
 											)}
 											strokeWidth={1.5}

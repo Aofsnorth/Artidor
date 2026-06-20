@@ -277,26 +277,17 @@ function MeterView({
 			<div className="flex items-center gap-1">
 				<button
 					type="button"
-					onClick={onToggleDim}
-					aria-pressed={dimmed}
-					title={dimmed ? "Show meter" : "Dim meter"}
+					onClick={onOpenVisualizer}
+					aria-label="Open audio visualizer"
+					title="Open audio visualizer (also: visualizer pill in the preview toolbar)"
 					className={cn(
 						"h-4 flex-1 rounded text-[0.55rem] font-bold uppercase tracking-[0.16em] transition-colors",
 						dimmed
 							? "bg-white/15 text-white"
 							: "bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/70",
 					)}
-				>
+					>
 					DIM
-				</button>
-				<button
-					type="button"
-					onClick={onOpenVisualizer}
-					aria-label="Open audio visualizer"
-					title="Open audio visualizer (also: visualizer pill in the preview toolbar)"
-					className="grid h-4 w-4 shrink-0 place-items-center rounded bg-white/[0.04] text-white/45 transition-colors hover:bg-white/[0.1] hover:text-white"
-				>
-					<HugeiconsIcon icon={AudioWave01Icon} className="size-2.5" />
 				</button>
 			</div>
 		</>
