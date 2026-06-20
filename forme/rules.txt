@@ -1,0 +1,17 @@
+1. Prompt audit dulu, no edit
+2. Setelah dapat daftar masalah, pilih 1 masalah
+3. Prompt fix 1 masalah kecil
+4. Suruh AI jelaskan diff dan cara test
+5. Baru lanjut masalah berikutnya
+
+Urutan:
+Context
+Goal
+Rules
+Files/areas to avoid
+Ask AI to plan first
+Small edit only
+Explain changed files
+Run checks
+Manual test steps
+Teach me what changed
