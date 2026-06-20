@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 
@@ -111,6 +111,7 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 
 export function AnimationsView() {
 	const existingPresets = useAnimationPresets();
+	const apply = useApplyAnimationPreset();
 	const all = useMemo(() => {
 		const existingTypes = new Set(existingPresets.map((preset) => preset.type));
 		return [
@@ -133,6 +134,18 @@ export function AnimationsView() {
 		[all, category],
 	);
 
+	const handleApplyPreset = useCallback(
+		(preset: AnimationPreset) => {
+			const result = apply(preset);
+			if (!result.ok) {
+				toast.error(result.error ?? "Could not apply animation");
+				return;
+			}
+			toast.success(`${preset.name} applied`);
+		},
+		[apply],
+	);
+
 	return (
 		<PanelView title="Animations">
 			<div className="flex flex-col gap-3 pb-3">
@@ -151,7 +164,11 @@ export function AnimationsView() {
 					}}
 				>
 					{filtered.map((preset) => (
-						<AnimationPresetItem key={preset.type} preset={preset} />
+						<AnimationPresetItem
+							key={preset.type}
+							preset={preset}
+							onApply={handleApplyPreset}
+						/>
 					))}
 				</div>
 			</div>
@@ -165,28 +182,27 @@ function getAnimationPhotoUrl(_presetId: string): null {
 	return null;
 }
 
-function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
-	const apply = useApplyAnimationPreset();
+const AnimationPresetItem = memo(function AnimationPresetItem({
+	preset,
+	onApply,
+}: {
+	preset: AnimationPreset;
+	onApply: (preset: AnimationPreset) => void;
+}) {
 	const [busy, setBusy] = useState(false);
 	const photoUrl = getAnimationPhotoUrl(preset.type);
 	void photoUrl;
 
-
-	const handleApply = () => {
+	const handleApply = useCallback(() => {
 		setBusy(true);
 		try {
-			const result = apply(preset);
-			if (!result.ok) {
-				toast.error(result.error ?? "Could not apply animation");
-				return;
-			}
-			toast.success(`${preset.name} applied`);
+			onApply(preset);
 		} finally {
 			setBusy(false);
 		}
-	};
+	}, [onApply, preset]);
 
-	const previewStyle = presetPreviewStyle(preset);
+	const previewStyle = useMemo(() => presetPreviewStyle(preset), [preset]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
@@ -232,9 +248,11 @@ function AnimationPresetItem({ preset }: { preset: AnimationPreset }) {
 			</div>
 		</div>
 	);
-}
+});
 
-function PresetIcon({ preset }: { preset: AnimationPreset }) {
+const PresetIcon = memo(function PresetIcon({ preset }: { preset: AnimationPreset }) {
+	const keyframes = useMemo(() => presetStyleKeyframes(preset), [preset]);
+
 	return (
 		<div
 			className="flex size-12 items-center justify-center rounded-md bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 text-white"
@@ -243,10 +261,10 @@ function PresetIcon({ preset }: { preset: AnimationPreset }) {
 			}}
 		>
 			<HugeiconsIcon icon={PlayIcon} className="size-5" />
-			<style>{presetStyleKeyframes(preset)}</style>
+			<style>{keyframes}</style>
 		</div>
 	);
-}
+});
 
 function presetPreviewStyle(preset: AnimationPreset): React.CSSProperties {
 	return {

@@ -123,7 +123,7 @@ function ChatMockup() {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true }}
 					transition={{ duration: 0.4, delay: 0.4 }}
-					className="flex flex-col gap-2 self-start"
+					className="flex w-full flex-col gap-2 self-start"
 				>
 					<div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90">
 						Got it. Trimming the long take, generating captions, then setting
@@ -131,7 +131,7 @@ function ChatMockup() {
 					</div>
 
 					{/* Tool call cards */}
-					<div className="flex max-w-[95%] flex-col gap-1.5">
+					<div className="flex w-full min-w-0 flex-col gap-1.5">
 						{[
 							{
 								icon: Scissors,
@@ -160,13 +160,13 @@ function ChatMockup() {
 								whileInView={{ opacity: 1, x: 0 }}
 								viewport={{ once: true }}
 								transition={{ duration: 0.3, delay: 0.7 + i * 0.18 }}
-								className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-2.5 py-1.5 text-[11.5px] text-white/75"
+								className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-2.5 py-1.5 text-[11.5px] text-white/75"
 							>
-								<tool.icon className="size-3.5 text-white/55" />
-								<span className="font-mono text-white">{tool.name}</span>
-								<span className="text-white/35">·</span>
-								<span className="truncate text-white/55">{tool.detail}</span>
-								<span className="ml-auto text-[10px] text-emerald-300/85">
+								<tool.icon className="size-3.5 shrink-0 text-white/55" />
+								<span className="shrink-0 font-mono text-white">{tool.name}</span>
+								<span className="shrink-0 text-white/35">·</span>
+								<span className="min-w-0 truncate text-white/55">{tool.detail}</span>
+								<span className="ml-auto shrink-0 text-[10px] text-emerald-300/85">
 									ok
 								</span>
 							</motion.div>

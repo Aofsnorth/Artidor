@@ -245,6 +245,7 @@ function ProjectDropdown() {
 							src={DEFAULT_LOGO_URL}
 							alt="Project thumbnail"
 							fill
+							priority
 							unoptimized
 							className="object-cover mix-blend-screen"
 						/>

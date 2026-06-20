@@ -56,11 +56,6 @@ const MigrationDialog = lazy(() =>
 		default: m.MigrationDialog,
 	})),
 );
-const ChangelogNotification = lazy(() =>
-	import("@/lib/changelog/components/changelog-notification").then((m) => ({
-		default: m.ChangelogNotification,
-	})),
-);
 const TeleprompterDialog = lazy(() =>
 	import("@/components/editor/dialogs/teleprompter-dialog").then((m) => ({
 		default: m.TeleprompterDialog,
@@ -107,7 +102,6 @@ export default function Editor() {
 								<PluginRegistryBootstrap />
 								<Onboarding />
 								<MigrationDialog />
-								<ChangelogNotification />
 								<LazyOverlays />
 							</Suspense>
 						</div>

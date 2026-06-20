@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -45,13 +47,19 @@ export function KeyframeContextMenu({
 	const { selectedKeyframes, isKeyframeSelected, setKeyframeSelection } =
 		useKeyframeSelection();
 
-	const applyMode = (mode: KeyframeEasingMode) => {
+	const getTargets = () => {
 		const alreadySelected = isKeyframeSelected({ keyframe });
-		const targets = alreadySelected ? selectedKeyframes : [keyframe];
-		if (!alreadySelected) {
-			setKeyframeSelection({ keyframes: [keyframe] });
-		}
-		editor.timeline.applyKeyframeEasing({ keyframes: targets, mode });
+		if (alreadySelected) return selectedKeyframes;
+		setKeyframeSelection({ keyframes: [keyframe] });
+		return [keyframe];
+	};
+
+	const applyMode = (mode: KeyframeEasingMode) => {
+		editor.timeline.applyKeyframeEasing({ keyframes: getTargets(), mode });
+	};
+
+	const deleteKeyframe = () => {
+		editor.timeline.removeKeyframes({ keyframes: getTargets() });
 	};
 
 	return (
@@ -71,6 +79,14 @@ export function KeyframeContextMenu({
 						{option.label}
 					</ContextMenuItem>
 				))}
+				<ContextMenuSeparator />
+				<ContextMenuItem
+					variant="destructive"
+					icon={<HugeiconsIcon icon={Delete02Icon} />}
+					onSelect={deleteKeyframe}
+				>
+					Delete keyframe
+				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>
 	);

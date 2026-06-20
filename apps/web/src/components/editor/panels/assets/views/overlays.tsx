@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { parseCssDeclarations } from "@/lib/presets/css-parser";
 import { overlays as presetOverlays } from "@/lib/presets/overlays";
 import type { OverlaySubcategory } from "@/lib/presets/types";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -506,7 +507,7 @@ const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
 		strokeWidth: 0,
 		cornerRadius: 0,
 	},
-	previewStyle: { background: overlay.css },
+	previewStyle: parseCssDeclarations(overlay.css),
 }));
 
 OVERLAY_PRESETS.push(...genOverlays, ...presetOverlayPresets);
