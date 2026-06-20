@@ -5,7 +5,7 @@
 
 ## Status Saat Ini
 
-Audit problem 001 dan fix problem 005 dalam antrian. Placeholder problem 003 dan 004 belum ada pekerjaan. Problem 002 selesai penuh.
+Audit problem 001 dalam antrian. Problem 005 sudah diimplementasikan dan menunggu hand-test manual pengguna di browser. Placeholder problem 003 dan 004 belum ada pekerjaan. Problem 002 selesai penuh.
 
 ## Bug yang Sudah Diperbaiki
 
@@ -14,7 +14,7 @@ Audit problem 001 dan fix problem 005 dalam antrian. Placeholder problem 003 dan
 ## Bug yang Sedang Dikerjakan
 
 * **Problem 001** — Audit alur "What's New" / Changelog. Disetujui 2026-06-20 08:56. Belum ada kode sumber yang disentuh.
-* **Problem 005** — Fix console error tab Overlays ("Style property values shouldn't contain a semicolon."). Dilaporkan 2026-06-20 09:09. Akar penyebab terkonfirmasi: baris 509 di `overlays.tsx`. Menunggu keputusan strategi dari pengguna.
+* **Problem 005** — Fix console error tab Overlays ("Style property values shouldn't contain a semicolon."). Fix diterapkan pada 2026-06-20 09:18 dengan Strategi A: helper parser di file baru + `overlays.tsx` memakai parser. Lint, typecheck, dan validasi parser lulus. Menunggu hand-test manual pengguna.
 
 ## Bug yang Mungkin Perlu Diperiksa Ulang di Masa Depan
 
@@ -31,6 +31,8 @@ Audit problem 001 dan fix problem 005 dalam antrian. Placeholder problem 003 dan
 * 2026-06-20 08:56 SEAST — Problem 001 (audit) dan problem 002 (fix modal) disetujui. Placeholder problem 003 dan 004 dibuat (entri maintenance 005).
 * 2026-06-20 09:02 SEAST — Fix problem 002 diterapkan: `overflow-x-hidden` pada container entri dan `min-w-0 break-words` pada span teks (entri maintenance 006).
 * 2026-06-20 09:09 SEAST — Problem 002 diverifikasi visual tanpa regresi. Problem 005 (console error Overlays) dicatat (entri maintenance 007).
+* 2026-06-20 09:14 SEAST — Jawaban review problem 005 disimpan: Strategi A, helper di file baru, hand-test manual, problem 002 tetap ditutup tanpa screenshot tambahan (entri maintenance 008).
+* 2026-06-20 09:18 SEAST — Fix problem 005 diterapkan: `css-parser.ts` baru + `overlays.tsx` memakai `parseCssDeclarations`. Lint, typecheck, dan validasi parser lulus. Menunggu hand-test pengguna (entri maintenance 009).
 
 ## Placeholder Problem (belum ada pekerjaan)
 
@@ -39,7 +41,7 @@ Audit problem 001 dan fix problem 005 dalam antrian. Placeholder problem 003 dan
 
 ## Langkah Berikutnya yang Direkomendasikan
 
-1. **Pengguna mereview** laporan problem 005 di `PROBLEM.MD` dan menjawab §8 Q1–Q5 (terutama Q1: strategi fix A/B/C).
-2. **Setelah strategi 005 disetujui**: terapkan fix (kemungkinan besar Strategi A — parser di `overlays.tsx`), jalankan lint + typecheck, verifikasi visual.
+1. **Pengguna hand-test problem 005** — buka tab Overlays di browser dan cek console + tampilan preset.
+2. Setelah pengguna mengonfirmasi problem 005 tidak ada regresi, tutup problem 005 sebagai selesai di file governance.
 3. **Setelah fix 005 selesai**: mulai audit problem 001 — baca konfigurasi `content-collections` dan `entries/*.md`, tulis temuan inline di `PROBLEM.MD`.
 4. Setelah audit 001 selesai, pindah ke placeholder 003/004 sesuai prioritas pengguna.
