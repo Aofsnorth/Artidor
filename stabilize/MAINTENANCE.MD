@@ -837,3 +837,31 @@ File ini adalah log maintenance kronologis untuk branch `stabilize`. Setiap entr
   * `stabilize/MAINTENANCE.MD`
 * **Persetujuan pengguna diperlukan:** Ya — hand-test manual sebelum `STATE.MD` diperbarui atau problem ditutup.
 * **Status:** Fix diterapkan. Menunggu hand-test manual pengguna.
+
+---
+
+## Entri 028 — Problem 012: Approval dan alignment visual keyframe
+
+* **Tanggal / waktu:** 2026-06-20 13:45 SEAST
+* **Ringkasan permintaan pengguna:**
+  Pengguna menyetujui fix Problem 012, lalu meminta keyframe logo/diamond lebih besar dan memastikan garis vertikal playhead berada tepat di tengah keyframe saat menambahkan keyframe.
+* **Tindakan yang diambil:**
+  * Memperbesar keyframe diamond timeline dan icon toggle property keyframe ke `1.125rem`.
+  * Menghapus extra horizontal margin pada keyframe diamond timeline (`mr-0.5` / `mr-1`) agar posisi visual keyframe tetap center terhadap `left` dan garis playhead.
+  * Menambahkan What's New entry `2026-06-20-keyframe-visual-alignment`.
+  * Menutup Problem 012 di `PROBLEM.MD`, `TODO.MD`, dan `STATE.MD` setelah approval pengguna.
+* **Verifikasi:**
+  * `bun run lint:web` selesai dengan warning lama yang sudah diketahui.
+  * `cd apps/web && bunx tsc --noEmit` lulus.
+  * `bun test apps/web/src/lib/whats-new/__tests__/feed.test.ts` lulus.
+  * `bun run build:web` lulus.
+* **File yang diperbarui:**
+  * `apps/web/src/components/editor/panels/timeline/timeline-element.tsx`
+  * `apps/web/src/components/editor/panels/properties/components/keyframe-toggle.tsx`
+  * `apps/web/src/lib/whats-new/feed.ts`
+  * `stabilize/PROBLEM.MD`
+  * `stabilize/TODO.MD`
+  * `stabilize/STATE.MD`
+  * `stabilize/MAINTENANCE.MD`
+* **Persetujuan pengguna diperlukan:** Tidak. Approval sudah diberikan.
+* **Status:** Problem 012 selesai penuh.

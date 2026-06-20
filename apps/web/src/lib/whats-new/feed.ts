@@ -18,6 +18,26 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-20-keyframe-delete-actions",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "Keyframes can be deleted from the timeline",
+		items: [
+			"Right-clicking a timeline keyframe now includes a `Delete keyframe` action alongside the easing options.",
+			"Double-clicking a keyframe deletes it directly, and the keyframe hitbox now matches the larger centered diamond size so the playhead line aligns through the middle.",
+		],
+	},
+	{
+		id: "2026-06-20-keyframe-visual-alignment",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "Keyframes are easier to see and align to the playhead",
+		items: [
+			"Timeline keyframe diamonds and property keyframe toggles are slightly larger, making keyframe targets easier to see and click.",
+			"Removed the extra horizontal offset from timeline keyframe diamonds so newly-added keyframes sit centered under the vertical playhead line.",
+		],
+	},
+	{
 		id: "2026-06-20-keyframe-curve-segment-selection",
 		date: "2026-06-20",
 		tag: "fix",

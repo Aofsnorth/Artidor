@@ -10,7 +10,7 @@ export const TIMELINE_TRACK_HEIGHTS_PX: Record<TrackType, number> = {
 } as const;
 
 export const KEYFRAME_LANE_HEIGHT_PX = 20;
-export const KEYFRAME_DIAMOND_SIZE_PX = 14;
+export const KEYFRAME_DIAMOND_SIZE_PX = 18;
 export const EXPANDED_GROUP_HEADER_HEIGHT_PX = 18;
 
 export const TIMELINE_TRACK_GAP_PX = 4;

@@ -1196,6 +1196,7 @@ function KeyframeIndicators({
 		elementLeft: number;
 	}) => number;
 }) {
+	const editor = useEditor();
 	const { isKeyframeSelected } = useKeyframeSelection();
 	const orderedKeyframes = indicators.flatMap(
 		(indicator) => indicator.keyframes,
@@ -1264,7 +1265,7 @@ function KeyframeIndicators({
 					<button
 						key={indicator.time}
 						type="button"
-						className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
+						className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab"
 						style={{ left: visualOffsetPx }}
 						onMouseDown={(event) =>
 							onKeyframeMouseDown({ event, keyframes: indicator.keyframes })
@@ -1277,12 +1278,17 @@ function KeyframeIndicators({
 								indicatorTime: indicator.time,
 							})
 						}
+						onDoubleClick={(event) => {
+							event.stopPropagation();
+							event.preventDefault();
+							editor.timeline.removeKeyframes({ keyframes: indicator.keyframes });
+						}}
 						aria-label="Select keyframe"
 					>
 						<HugeiconsIcon
 							icon={KeyframeIcon}
 							className={cn(
-								"size-3.5 text-black",
+								"size-[1.125rem] text-black",
 								isIndicatorSelected ? "fill-primary" : "fill-white",
 							)}
 							strokeWidth={1.5}
@@ -1347,6 +1353,7 @@ function ExpandedKeyframeLanes({
 		elementLeft: number;
 	}) => number;
 }) {
+	const editor = useEditor();
 	const { isKeyframeSelected } = useKeyframeSelection();
 
 	const orderedKeyframes = useMemo(
@@ -1496,12 +1503,17 @@ function ExpandedKeyframeLanes({
 												indicatorTime: kf.time,
 											});
 										}}
+										onDoubleClick={(event) => {
+											event.stopPropagation();
+											event.preventDefault();
+											editor.timeline.removeKeyframes({ keyframes: [keyframeRef] });
+										}}
 										aria-label="Select keyframe"
 									>
 										<HugeiconsIcon
 											icon={KeyframeIcon}
 											className={cn(
-												"size-3.5 text-black mr-1",
+												"size-[1.125rem] text-black",
 												isSelected ? "fill-primary" : "fill-white",
 											)}
 											strokeWidth={1.5}

@@ -27,7 +27,7 @@
 * [ ] **Preview controls hover + Inspector tabs horizontal scroll** (problem 009, dilaporkan 2026-06-20 12:10). 2 masalah UI di editor: (A) kontrol preview muncul terlalu agresif saat hover, (B) inspector tab row perlu horizontal scroll dengan mouse wheel. Audit source awal selesai. Menunggu review pengguna dan jawaban §8 Q1–Q3.
 * [x] **Mobile home AI chat mockup overflow** (problem 010, dilaporkan 2026-06-20 12:10). Fix diterapkan: tool call cards container diubah dari `max-w-[95%]` ke `w-full min-w-0`, parent `motion.div` ditambahkan `w-full`, individual cards ditambahkan `min-w-0` dan `shrink-0` pada elemen fixed-width. Lint dan typecheck lulus. **Diverifikasi aman oleh pengguna pada 2026-06-20 12:20. ✅ Selesai.**
 * [x] **Performance audit: Transitions, Motion, Templates tabs** (problem 011, dilaporkan 2026-06-20 12:20). Implementasi awal Motion selesai dan disetujui pengguna: `AnimationPresetItem`/`PresetIcon` dimemoisasi, hook apply dipindah ke parent, preview style/keyframes dimemoisasi, What's New ditambahkan. Lint/typecheck/build lulus dengan warning lama. ✅ Selesai untuk scope Motion awal.
-* [ ] **Keyframe curve editor button locked saat playhead berada di segment valid** (problem 012, dilaporkan 2026-06-20 13:20). Fix diterapkan: Graph Editor fallback berbasis selected element + playhead segment, timeline lane segment affordance, What's New entry. Lint/typecheck/build lulus dengan warning lama. Menunggu hand-test manual pengguna sebelum close/STATE update.
+* [x] **Keyframe curve editor button locked saat playhead berada di segment valid** (problem 012, dilaporkan 2026-06-20 13:20). Fix diterapkan dan disetujui pengguna: Graph Editor fallback berbasis selected element + playhead segment, timeline lane segment affordance, larger/centered keyframe icons, What's New entries. Lint/typecheck/feed-test/build lulus dengan warning lama. ✅ Selesai.
 
 ## Menunggu Review Pengguna
 
@@ -37,7 +37,6 @@
 
 * [ ] **Hand-test problem 005 di browser** — buka tab Overlays, pastikan console bersih dari `Style property values shouldn't contain a semicolon.`, overlay preset tetap tampil normal, dan tidak ada regresi visual.
 * [ ] **Hand-test problem 006 di browser** — buka Audio → Sound effects, pastikan category chips tidak kepotong, bisa horizontal scroll, fade kanan terlihat rapi, search bar + filter icon tetap sejajar, dan sound list tetap scroll normal.
-* [ ] **Hand-test problem 012 di browser** — pilih clip dengan dua keyframe, taruh playhead di antara keyframe, pastikan Graph Editor button aktif; hover/click segment di expanded keyframe lane memilih segment kiri dan tidak merusak selected-keyframe workflow.
 
 ## Tugas yang Selesai
 
@@ -54,6 +53,7 @@
 * Problem 007 — fix UI copy/formatting diterapkan hanya di `tabbar.tsx`; lint, typecheck, runtime check, dan UI anti-slop detector lulus.
 * Problem 007 — diverifikasi aman oleh pengguna pada 2026-06-20 11:47 dan ditutup.
 * Problem 011 — implementasi awal Motion diterapkan dan disetujui pengguna; lint/typecheck/build lulus dengan warning lama.
+* Problem 012 — Graph Editor keyframe segment fallback + timeline segment affordance + keyframe visual alignment diterapkan dan disetujui pengguna; lint/typecheck/feed-test/build lulus dengan warning lama.
 
 ## Tugas yang Tertunda (diantrikan)
 
