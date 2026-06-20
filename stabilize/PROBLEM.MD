@@ -1527,7 +1527,7 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 ### Problem 012 — Button edit curve/easing keyframe tetap locked saat playhead berada di segment valid
 
 * **Tanggal / waktu:** 2026-06-20 13:20 SEAST
-* **Status:** Fix diterapkan pada 2026-06-20 setelah approval pengguna. Lint/typecheck/build lulus dengan warning lama yang sudah diketahui. Menunggu hand-test manual pengguna sebelum `STATE.MD` diperbarui.
+* **Status:** Selesai. Fix diterapkan pada 2026-06-20 setelah approval pengguna; keyframe visual/alignment tweak diterapkan setelah approval lanjutan. Lint/typecheck/feed-test/build lulus dengan warning lama yang sudah diketahui.
 
 #### 1. Laporan Asli Pengguna
 
@@ -1673,4 +1673,8 @@ Jika implementasi playhead-based segment resolution ternyata ambigu (misalnya be
 * Tidak mengubah global selected keyframes hanya karena playhead berada di segment; selection berubah saat user klik keyframe/segment.
 * Unit test helper Graph Editor dicoba tapi dibatalkan karena Bun test memuat `artidor_wasm` dan gagal bootstrap (`wasm.__wbindgen_start is not a function`). Dicatat sebagai alasan tidak menambah test unit baru untuk helper ini.
 * Verifikasi: lint selesai dengan warning lama, typecheck lulus, Whats New feed test lulus, build web lulus.
-* `STATE.MD` belum diperbarui karena menunggu hand-test manual pengguna.
+* User approve hasil awal Problem 012 pada 2026-06-20.
+* Tweak lanjutan diterapkan: keyframe diamond di timeline dan icon toggle property diperbesar ke `1.125rem`; extra horizontal margin pada timeline keyframe diamond dihapus agar garis playhead berada di tengah keyframe saat keyframe ditambahkan.
+* Entri What's New tambahan `2026-06-20-keyframe-visual-alignment` ditambahkan.
+* Verifikasi ulang: lint warning lama saja, typecheck lulus, feed test lulus, build web lulus.
+* `STATE.MD` diperbarui setelah approval pengguna.
