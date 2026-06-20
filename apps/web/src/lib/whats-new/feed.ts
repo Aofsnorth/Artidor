@@ -18,6 +18,56 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-20-keyframe-curve-segment-selection",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "Keyframe curve editor now recognizes playhead segments",
+		items: [
+			"The curve/easing editor button can now unlock from a selected clip when the playhead sits between editable keyframes, instead of requiring an exact keyframe click first.",
+			"Expanded keyframe lanes now expose hoverable/clickable segment affordances between adjacent keyframes so the curve target is visible and selectable directly in the timeline.",
+		],
+	},
+	{
+		id: "2026-06-20-stabilize-cleanups-editor-ui",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Stabilization cleanups and editor interaction fixes",
+		items: [
+			"Added a development/test guard for the What's New feed so duplicate ids and out-of-order entries are caught automatically instead of relying on reviewer discipline.",
+			"Removed the dead changelog notification mount path, added editor logo priority loading, and fixed editor controls so preview buttons reveal only on their own hotspot while inspector tabs scroll horizontally with the mouse wheel.",
+		],
+	},
+	{
+		id: "2026-06-20-motion-tab-performance",
+		date: "2026-06-20",
+		tag: "performance",
+		title: "Motion tab renders with less repeated work",
+		items: [
+			"Moved the apply-animation hook out of each Motion card and into the parent Animations view, so opening/filtering the tab no longer subscribes every visible card to editor state individually.",
+			"Memoized Motion cards, preview icons, preview styles, and generated keyframes to reduce repeated CSS/keyframe computation while preserving the same visuals and click-to-apply behavior.",
+		],
+	},
+	{
+		id: "2026-06-20-fisheye-shader-fix",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "Fisheye effect now renders correctly on WebGPU",
+		items: [
+			"Moved `textureSample()` call outside the conditional block in `fisheye.wgsl` to comply with WGSL uniform control flow requirements. The effect previously fell back to the unmodified source frame — it now applies the spherical distortion as intended.",
+			"UV coordinates are clamped to [0, 1] before sampling, then an out-of-bounds check returns black for pixels outside the fisheye radius. The visual behavior is identical to the original intent — only the shader execution order changed to satisfy the WebGPU spec.",
+		],
+	},
+	{
+		id: "2026-06-20-mobile-ai-chat-mockup-fix",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "AI chat mockup no longer overflows on mobile",
+		items: [
+			"Tool call cards in the AI Co-Pilot showcase section were clipping off the right edge on mobile viewports. Changed the container from `max-w-[95%]` to `w-full min-w-0` so cards now respect the viewport width and shrink gracefully.",
+			"Added `shrink-0` to fixed-width elements (icon, tool name, separator, status badge) and `min-w-0` to the detail text span so `truncate` works correctly. Desktop layout is unchanged — the fix only affects narrow screens where the grid collapses to a single column.",
+		],
+	},
+	{
 		id: "2026-06-18-broken-thumbnails-procedural-fallback",
 		date: "2026-06-18",
 		tag: "fix",
@@ -762,6 +812,28 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		],
 	},
 ];
+
+export function validateWhatsNewFeed(entries: readonly WhatsNewEntry[] = WHATS_NEW) {
+	const seen = new Set<string>();
+	for (let index = 0; index < entries.length; index += 1) {
+		const entry = entries[index];
+		if (seen.has(entry.id)) {
+			throw new Error(`Duplicate What's New id: ${entry.id}`);
+		}
+		seen.add(entry.id);
+
+		const previous = entries[index - 1];
+		if (previous && entry.date > previous.date) {
+			throw new Error(
+				`What's New entries must be newest first: ${entry.id} is dated after ${previous.id}`,
+			);
+		}
+	}
+}
+
+if (process.env.NODE_ENV !== "production") {
+	validateWhatsNewFeed();
+}
 
 export function getLatestWhatsNewId(): string | null {
 	return WHATS_NEW[0]?.id ?? null;

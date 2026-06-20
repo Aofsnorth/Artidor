@@ -292,18 +292,25 @@ function SoundEffectsView() {
 				</DropdownMenu>
 			</div>
 
-			<CategoryBar
-				categories={SOUND_LABELS}
-				value={SOUND_QUERY_TO_LABEL.get(searchQuery) ?? ALL_CATEGORY}
-				onChange={(label) =>
-					setSearchQuery({
-						query:
-							label === ALL_CATEGORY
-								? ""
-								: (SOUND_LABEL_TO_QUERY.get(label) ?? ""),
-					})
-				}
-			/>
+			<div className="relative min-w-0 max-w-full">
+				<CategoryBar
+					categories={SOUND_LABELS}
+					value={SOUND_QUERY_TO_LABEL.get(searchQuery) ?? ALL_CATEGORY}
+					className="w-full min-w-0 max-w-full scroll-smooth pr-8"
+					onChange={(label) =>
+						setSearchQuery({
+							query:
+								label === ALL_CATEGORY
+									? ""
+									: (SOUND_LABEL_TO_QUERY.get(label) ?? ""),
+						})
+					}
+				/>
+				<div
+					aria-hidden
+					className="pointer-events-none absolute top-0 right-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent"
+				/>
+			</div>
 
 			<div className="relative h-full overflow-hidden">
 				<ScrollArea

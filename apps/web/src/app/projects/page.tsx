@@ -90,7 +90,6 @@ import {
 import { ProjectInfoDialog } from "@/components/editor/dialogs/project-info-dialog";
 import { RenameProjectDialog } from "@/components/editor/dialogs/rename-project-dialog";
 import { cn } from "@/utils/ui";
-import { ChangelogNotification } from "@/lib/changelog/components/changelog-notification";
 import { PageTransition } from "@/components/page-transition";
 import { lazy, Suspense } from "react";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
@@ -300,7 +299,6 @@ export default function ProjectsPage() {
 					)}
 					<MigrationDialog />
 					<StoragePersistenceDialog />
-					<ChangelogNotification />
 					<ProjectsHeader />
 					<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
 					<main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
