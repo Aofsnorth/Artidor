@@ -26,3 +26,12 @@ target/
 .cargo-tools/
 
 PROGRESS_SUMMARY.md
+
+.next/
+test-results/
+playwright-report/
+.env
+.env.local
+node_modules/
+dist/
+build/
