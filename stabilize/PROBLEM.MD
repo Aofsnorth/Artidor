@@ -398,7 +398,7 @@ _(akan diisi saat problem dimulai — kandidat: apakah akan menghapus komponen s
 ### Problem 005 — Console error di tab Overlays: "Style property values shouldn't contain a semicolon."
 
 * **Tanggal / waktu:** 2026-06-20 09:09 SEAST
-* **Status:** Menunggu review pengguna. Tidak ada kode sumber yang diedit. Tidak ada fix yang diterapkan.
+* **Status:** Fix diterapkan pada 2026-06-20 09:18 SEAST. Strategi A dipakai: helper parser di file baru dan `overlays.tsx` memakai helper tersebut. Lint, typecheck, dan validasi parser terhadap 161 overlay lulus. Menunggu hand-test manual pengguna di browser sebelum problem ditutup sebagai selesai.
 
 #### 1. Laporan Asli Pengguna
 
@@ -552,7 +552,160 @@ Ini menggabungkan string deklarasi penuh sebagai **nilai** property `background`
 #### 8. Pertanyaan untuk Review
 
 * **Q1. Strategi fix**: apakah Anda memilih **Strategi A** (parser di consumer, default yang saya usulkan), **Strategi B** (edit 161 entry data), atau **Strategi C** (field baru di `Overlay`)? Strategi A paling kecil dan tidak menyentuh data atau API.
+* **Answer = A** — pakai Strategi A: parser di consumer, tidak edit 161 entry data, tidak ubah API `Overlay`.
 * **Q2. Lokasi helper**: jika Strategi A, apakah helper `parseOverlayCss` diletakkan inline di `overlays.tsx` atau di file baru `apps/web/src/lib/presets/css-parser.ts`? (Inline = paling kecil; file terpisah = lebih reusable tapi satu file tambahan.)
+* **Answer = File baru** — helper dibuat di file baru, bukan inline di `overlays.tsx`.
 * **Q3. Test untuk parser**: apakah Anda ingin saya tambahkan unit test kecil untuk parser (kasus multi-deklarasi, `;` di dalam data URL, `kebab-case` ke `camelCase`), atau cukup hand-test di dev server?
+* **Answer = Hand-test aja** — tidak tambah unit test untuk parser.
 * **Q4. Verifikasi headless**: apakah Anda ingin saya spin up dev server dan capture screenshot via Playwright untuk verifikasi, atau Anda verifikasi manual di browser?
+* **Answer = Manual aja aku di browser** — verifikasi visual dilakukan manual oleh pengguna di browser.
 * **Q5. Penutupan problem 002**: Anda menyatakan "Saya sudah verifikasi dan tidak ada regresi" untuk fix modal "What's New" (problem 002). Apakah ini cukup untuk menutup problem 002 sebagai selesai, atau Anda ingin satu langkah verifikasi tambahan (mis. capture screenshot)?
+* **Answer = Cukup tutup dengan konfirmasi tidak ada regresi** — problem 002 tetap ditutup sebagai selesai tanpa capture screenshot tambahan.
+
+---
+
+### Problem 006 — Category chips Sound effects kepotong di tab Audio
+
+* **Tanggal / waktu:** 2026-06-20 09:32 SEAST
+* **Status:** Menunggu review pengguna. Tidak ada kode sumber yang diedit. Tidak ada fix yang diterapkan.
+
+#### 1. Laporan Asli Pengguna
+
+> Di tab `Audio` bagian `Sound effects`, kategori kecil/chip di bawah search bar terlihat kepotong di sisi kanan. Contohnya kategori seperti `Amb...` tidak tampil penuh karena area kategori tidak menangani overflow dengan benar.
+>
+> Expected behavior:
+>
+> * Category chips di bawah search bar tidak boleh kepotong.
+> * Jika kategori terlalu banyak, harus ada handling yang rapi:
+>   * horizontal scroll yang halus, atau
+>   * wrap ke baris berikutnya jika lebih cocok dengan layout.
+> * Teks kategori harus tetap terbaca.
+> * Layout tidak boleh keluar dari container panel.
+> * Tampilan tetap rapi di ukuran layar kecil.
+> * Search bar dan filter icon tetap sejajar dan tidak rusak.
+>
+> Area yang perlu diaudit:
+>
+> * Audio panel / Sound effects view
+> * Komponen category chips/filter tags
+> * Styling container di bawah search bar
+>
+> Ikuti rules di folder `stabilize/`.
+>
+> Jangan edit source code dulu.
+>
+> Tulis ulang problem ini ke `stabilize/PROBLEM.MD` lengkap dengan:
+>
+> * interpreted problem
+> * acceptance criteria
+> * actionable tasks
+> * Definition of Done
+> * files likely involved
+> * risks
+> * questions for review
+>
+> Update `MAINTENANCE.MD` dan `TODO.MD` sesuai rules.
+>
+> Setelah itu stop dan minta aku review.
+
+#### 2. Interpretasi Problem
+
+Di tab `Audio` → `Sound effects`, deretan category chip di bawah search bar tidak menangani overflow secara rapi pada lebar panel tertentu. Akibatnya chip di sisi kanan terlihat terpotong; contoh yang dilaporkan adalah kategori `Ambient` yang tampak seperti `Amb...` atau hanya terlihat sebagian.
+
+Pembacaan kode read-only menemukan area utama:
+
+* `apps/web/src/components/editor/panels/assets/views/sounds.tsx`:
+  * `SoundsView` me-render tab `Sound effects` pada line 70–82.
+  * `SoundEffectsView` me-render search row + filter button pada line 255–293.
+  * `CategoryBar` untuk Sound effects dipanggil pada line 295–306 dengan `categories={SOUND_LABELS}`.
+  * `SOUND_CATEGORIES` berisi 10 label: `Whoosh`, `Impact`, `Click`, `Riser`, `Pop`, `Cinematic`, `Ambient`, `Lofi`, `Nature`, `Beep` (line 39–50).
+* `apps/web/src/components/editor/panels/assets/views/category-bar.tsx`:
+  * Komponen shared `CategoryBar` memang didesain sebagai horizontal scroll row (komentar line 3–8).
+  * Container menggunakan `scrollbar-hidden -mx-0.5 flex items-center gap-1.5 overflow-x-auto px-0.5 pb-1` (line 31).
+  * Button chip menggunakan `shrink-0 ... whitespace-nowrap` (line 43), jadi text chip seharusnya tidak wrap/truncate secara internal.
+
+Hipotesis awal: masalah bukan karena text chip `Ambient` secara eksplisit di-truncate oleh `CategoryBar`, tetapi karena container horizontal scroll di bawah search bar tidak punya lebar/overflow boundary yang cukup eksplisit pada layout `SoundEffectsView`. Kombinasi `scrollbar-hidden`, negative margin kecil (`-mx-0.5`), dan container parent yang berada dalam nested flex panel dapat membuat sisi kanan terlihat clipped tanpa affordance scroll yang jelas. Karena `CategoryBar` shared dipakai di Effects, Overlays, Transitions, Text, Templates, Animations, Adjustments, dan Sounds, fix harus dipilih hati-hati: apakah memperbaiki shared component atau hanya instance Sound effects.
+
+#### 3. Acceptance Criteria
+
+1. Di tab `Audio` → `Sound effects`, semua category chip di bawah search bar terbaca penuh saat berada dalam area visible.
+2. Jika jumlah chip melebihi lebar panel, overflow ditangani rapi dengan salah satu pendekatan yang disetujui:
+   * horizontal scroll yang halus dan jelas, tanpa chip terpotong secara membingungkan; atau
+   * wrap ke baris berikutnya jika lebih cocok dengan layout panel.
+3. Text kategori seperti `Ambient`, `Cinematic`, dan kategori lain tidak terpotong atau menjadi ellipsis yang tidak disengaja.
+4. Layout chip tidak keluar dari container panel dan tidak menyebabkan horizontal scroll pada panel utama.
+5. Search bar dan filter icon di line 255–293 tetap sejajar, tetap berfungsi, dan tidak berubah layout secara negatif.
+6. Layout tetap rapi di viewport/panel kecil.
+7. Jika fix menyentuh shared `CategoryBar`, semua pengguna `CategoryBar` lain tetap tidak regresi (Effects, Overlays, Transitions, Text, Templates, Animations, Adjustments, Filters).
+8. Lint dan typecheck lulus.
+
+#### 4. Actionable Tasks
+
+1. **Verifikasi UI di browser**: buka tab Audio → Sound effects, cek apakah chip `Ambient` atau chip kanan lain memang clipped, dan catat viewport/panel width saat bug muncul.
+2. **Inspeksi DOM/computed style** untuk menentukan elemen yang clipping:
+   * container `CategoryBar` line 29–34 di `category-bar.tsx`;
+   * parent `SoundEffectsView` line 255–306 di `sounds.tsx`;
+   * wrapper `TabsContent` line 78–82 di `sounds.tsx`;
+   * panel/scroll container di parent asset panel jika diperlukan.
+3. **Pilih strategi fix** (lihat §8):
+   * **Strategi A — shared horizontal scroll fix**: perkuat `CategoryBar` agar selalu `w-full min-w-0 max-w-full overflow-x-auto` dan tetap `shrink-0 whitespace-nowrap`. Dampaknya shared ke semua tab pemakai `CategoryBar`.
+   * **Strategi B — sound-only wrapper fix**: bungkus instance `CategoryBar` di `sounds.tsx` dengan container `min-w-0 overflow-hidden` atau pass `className` khusus seperti `w-full min-w-0 max-w-full`. Dampak paling kecil ke tab lain.
+   * **Strategi C — wrap chips**: ubah instance Sound effects agar chip bisa wrap (`flex-wrap`) di bawah search bar. Lebih readable, tapi bisa menambah tinggi area filter dan mengurangi ruang list sound.
+4. **Usulkan diff kecil** sesuai strategi yang dipilih, tanpa mengubah logic search/filter.
+5. **Tunggu approval implementasi** sebelum mengedit source code.
+6. Setelah approval, terapkan fix, jalankan `bun run lint:web` dan `bunx tsc --noEmit` di `apps/web`.
+7. Minta pengguna hand-test manual di browser pada panel kecil dan normal.
+8. Update `MAINTENANCE.MD`, `STATE.MD`, `TODO.MD`, dan status problem ini setelah fix diverifikasi.
+
+#### 5. Definition of Done
+
+* Category chips Sound effects tidak kepotong di sisi kanan.
+* Text chip tetap terbaca penuh, terutama `Ambient` dan `Cinematic`.
+* Overflow kategori ditangani sesuai strategi yang disetujui (horizontal scroll rapi atau wrap).
+* Search bar dan filter icon tetap sejajar dan berfungsi.
+* Sound list tetap scroll normal dan tidak terdorong keluar layout.
+* Tidak ada horizontal overflow pada panel utama.
+* Tidak ada regresi visual pada tab lain jika `CategoryBar` shared disentuh.
+* `bun run lint:web` lulus tanpa error baru.
+* `bunx tsc --noEmit` di `apps/web` lulus.
+* Pengguna hand-test manual dan mengonfirmasi tidak ada regresi.
+* File governance diperbarui dan problem 006 ditutup sebagai selesai.
+
+#### 6. File yang Kemungkinan Terlibat
+
+**In scope utama:**
+
+* `apps/web/src/components/editor/panels/assets/views/sounds.tsx`
+  * line 39–50 — daftar `SOUND_CATEGORIES` (`Ambient` termasuk di sini).
+  * line 255–293 — search bar + filter icon row.
+  * line 295–306 — `CategoryBar` instance untuk Sound effects.
+* `apps/web/src/components/editor/panels/assets/views/category-bar.tsx`
+  * line 29–34 — container horizontal scroll.
+  * line 38–50 — chip button styling.
+
+**Adjacent (dibaca jika strategi shared dipilih):**
+
+* `apps/web/src/components/editor/panels/assets/views/effects.tsx`
+* `apps/web/src/components/editor/panels/assets/views/overlays.tsx`
+* `apps/web/src/components/editor/panels/assets/views/transitions.tsx`
+* `apps/web/src/components/editor/panels/assets/views/text.tsx`
+* `apps/web/src/components/editor/panels/assets/views/templates.tsx`
+* `apps/web/src/components/editor/panels/assets/views/animations.tsx`
+* `apps/web/src/components/editor/panels/assets/views/adjustments.tsx`
+* `apps/web/src/components/editor/panels/assets/views/filters.tsx`
+
+#### 7. Risiko
+
+* **Shared component regression**: `CategoryBar` dipakai banyak tab. Mengubah shared styling dapat memperbaiki Audio tetapi mengubah spacing/scrolling di tab lain. Mitigasi: jika ingin paling aman, pilih Strategi B (sound-only fix).
+* **Scrollbar tersembunyi tetap membingungkan**: jika tetap pakai `scrollbar-hidden`, horizontal scroll mungkin bekerja tetapi user tidak sadar ada konten di kanan. Mitigasi: pertimbangkan fade/mask atau padding kanan, atau wrap.
+* **Wrap chips mengurangi ruang list**: Strategi C membuat kategori lebih terbaca tapi bisa menambah tinggi filter area dan mengurangi area sound list, terutama di panel kecil.
+* **Search row regresi**: perubahan parent layout bisa membuat search input dan filter icon tidak sejajar. Mitigasi: jangan sentuh search row kecuali computed style menunjukkan itu penyebab.
+* **Tidak ada area sensitif yang disentuh**: ini UI-only, tidak menyentuh auth, API key, env var, database, AI tool calls, export/render, Rust/WASM, WebGPU/WGSL, atau payment.
+
+#### 8. Pertanyaan untuk Review
+
+* **Q1. Strategi fix**: pilih A (fix shared `CategoryBar`), B (fix khusus Sound effects), atau C (wrap chips)? Default saya: **B** karena paling kecil dan paling aman untuk stabilisasi.
+* **Q2. Preferensi overflow**: untuk Sound effects, Anda lebih ingin horizontal scroll atau wrap ke baris berikutnya?
+* **Q3. Scrollbar/fade affordance**: jika memilih horizontal scroll, apakah perlu affordance visual seperti fade kanan/kiri, atau cukup memastikan chip tidak terpotong dan scroll bisa dilakukan?
+* **Q4. Scope regresi**: jika memilih A/shared, apakah Anda ingin saya cek semua tab pemakai `CategoryBar`, atau cukup Sound effects dulu?
+* **Q5. Verifikasi**: setelah fix diterapkan, apakah Anda akan hand-test manual di browser seperti problem 005, atau Anda ingin saya coba jalankan verifikasi headless?

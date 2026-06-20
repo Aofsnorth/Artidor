@@ -190,3 +190,98 @@ File ini adalah log maintenance kronologis untuk branch `stabilize`. Setiap entr
   * `stabilize/MAINTENANCE.MD` (entri ini)
 * **Persetujuan pengguna diperlukan:** Problem 005 menunggu review atas laporan problem dan jawaban §8 sebelum fix apa pun diusulkan.
 * **Status:** Problem 002 selesai. Problem 005 dalam antrian, menunggu review dan keputusan strategi fix.
+
+---
+
+## Entri 008 — Jawaban review problem 005 disimpan
+
+* **Tanggal / waktu:** 2026-06-20 09:14 SEAST
+* **Ringkasan permintaan pengguna:**
+  Pengguna menjawab pertanyaan §8 problem 005 dan meminta jawaban tersebut disimpan di `PROBLEM.MD`.
+* **Jawaban pengguna:**
+  * Q1 — **A**: pakai Strategi A, parser di consumer.
+  * Q2 — **File baru**: helper dibuat di file baru, bukan inline di `overlays.tsx`.
+  * Q3 — **Hand-test aja**: tidak tambah unit test untuk parser.
+  * Q4 — **Manual aja aku di browser**: verifikasi visual dilakukan manual oleh pengguna di browser.
+  * Q5 — **Cukup tutup dengan konfirmasi tidak ada regresi**: problem 002 ditutup tanpa capture screenshot tambahan.
+* **Tindakan yang diambil:**
+  * Menyimpan jawaban Q1–Q5 ke `stabilize/PROBLEM.MD` problem 005 §8.
+  * Memperbarui status problem 005 di `PROBLEM.MD`: strategi fix dikonfirmasi, tetapi fix belum diterapkan.
+  * Memperbarui `TODO.MD` dan `STATE.MD` agar langkah berikutnya adalah meminta persetujuan implementasi Strategi A.
+  * Tidak menyentuh source code di `apps/`.
+* **File yang diperbarui:**
+  * `stabilize/PROBLEM.MD`
+  * `stabilize/TODO.MD`
+  * `stabilize/STATE.MD`
+  * `stabilize/MAINTENANCE.MD` (entri ini)
+* **Persetujuan pengguna diperlukan:** Ya — sebelum membuat file helper baru dan mengubah `overlays.tsx`, pengguna perlu memberi approval implementasi.
+* **Status:** Problem 005 siap untuk usulan diff / implementasi Strategi A setelah approval eksplisit.
+
+---
+
+## Entri 009 — Fix problem 005 diterapkan, menunggu hand-test pengguna
+
+* **Tanggal / waktu:** 2026-06-20 09:18 SEAST
+* **Ringkasan permintaan pengguna:**
+  Pengguna mengatakan "OK terapkan problem 005", menyetujui implementasi Strategi A untuk console error tab Overlays.
+* **Tindakan yang diambil:**
+  * Membuat file helper baru `apps/web/src/lib/presets/css-parser.ts`.
+  * Helper `parseCssDeclarations(css: string)` mengubah string deklarasi CSS menjadi `React.CSSProperties`:
+    * split deklarasi pada `;` top-level;
+    * skip `;` di dalam tanda kutip dan dalam `url(...)` / function parentheses;
+    * split property/value pada `:` top-level;
+    * konversi `kebab-case` menjadi React camelCase (`background-color` → `backgroundColor`, `box-shadow` → `boxShadow`, `background-size` → `backgroundSize`).
+  * Mengubah `apps/web/src/components/editor/panels/assets/views/overlays.tsx`:
+    * import `parseCssDeclarations` dari `@/lib/presets/css-parser`;
+    * ganti `previewStyle: { background: overlay.css }` menjadi `previewStyle: parseCssDeclarations(overlay.css)`.
+  * Tidak mengubah `apps/web/src/lib/presets/overlays.ts` (161 data entry tidak disentuh).
+  * Tidak mengubah `apps/web/src/lib/presets/types.ts` (`Overlay.css: string` tidak diubah).
+  * Tidak menambahkan unit test, sesuai jawaban pengguna (`hand-test aja`).
+* **Verifikasi otomatis:**
+  * `bun run lint:web` — lulus tanpa error baru. Ada 4 warning pre-existing:
+    * `procedural-preview.ts` non-null assertion;
+    * `overlays.tsx` unused `getOverlayPhotoUrl` (pre-existing, bukan akibat fix ini, tidak disentuh karena di luar scope);
+    * `stickers.tsx` unused `photoUrl`;
+    * `transitions.tsx` unused `hashString`.
+  * `bunx tsc --noEmit` di `apps/web` — lulus, exit code 0.
+  * Validasi parser terhadap seluruh 161 overlay:
+    * `count: 161`;
+    * `empty: 0` (tidak ada overlay yang menghasilkan style kosong);
+    * `trailing: 0` (tidak ada value yang masih berakhir dengan `;`);
+    * property yang ditemukan: `background`, `backgroundColor`, `backgroundImage`, `backgroundSize`, `boxShadow`, `mask`.
+* **File source yang disentuh:**
+  * `apps/web/src/lib/presets/css-parser.ts` (baru)
+  * `apps/web/src/components/editor/panels/assets/views/overlays.tsx`
+* **File governance yang diperbarui:**
+  * `stabilize/PROBLEM.MD` (status problem 005)
+  * `stabilize/TODO.MD`
+  * `stabilize/STATE.MD`
+  * `stabilize/MAINTENANCE.MD` (entri ini)
+* **Persetujuan pengguna diperlukan:** Sudah diberikan untuk implementasi. Masih menunggu hand-test manual pengguna di browser sesuai jawaban Q4.
+* **Status:** Fix diterapkan dan automated checks lulus. Problem 005 belum ditutup sampai pengguna melakukan hand-test visual dan mengonfirmasi tidak ada regresi.
+
+---
+
+## Entri 010 — Problem 006 dicatat: category chips Sound effects kepotong
+
+* **Tanggal / waktu:** 2026-06-20 09:32 SEAST
+* **Ringkasan permintaan pengguna:**
+  Pengguna melaporkan bahwa di tab `Audio` bagian `Sound effects`, category chips di bawah search bar terlihat kepotong di sisi kanan. Contoh: kategori seperti `Amb...` tidak tampil penuh. Expected behavior: chips tidak boleh kepotong; overflow harus ditangani rapi dengan horizontal scroll atau wrap; teks kategori tetap terbaca; layout tidak keluar container; tampilan rapi di layar kecil; search bar dan filter icon tetap sejajar. Pengguna meminta problem ditulis ke `PROBLEM.MD`, update `MAINTENANCE.MD` dan `TODO.MD`, lalu stop untuk review. Source code tidak boleh diedit dulu.
+* **Tindakan yang diambil:**
+  * Membaca `apps/web/src/components/editor/panels/assets/views/sounds.tsx` secara read-only:
+    * `SOUND_CATEGORIES` line 39–50 berisi `Ambient` dan kategori lainnya.
+    * search row + filter icon line 255–293.
+    * `CategoryBar` instance untuk Sound effects line 295–306.
+  * Membaca `apps/web/src/components/editor/panels/assets/views/category-bar.tsx` secara read-only:
+    * container horizontal scroll line 29–34.
+    * chip button styling line 38–50.
+  * Menulis problem 006 lengkap di `PROBLEM.MD` dengan interpretasi, acceptance criteria, actionable tasks, DoD, files likely involved, risks, dan questions for review.
+  * Memperbarui `TODO.MD` dengan problem 006 yang menunggu review.
+  * Tidak mengubah `STATE.MD` karena problem 006 belum direview/approved.
+  * Tidak menyentuh source code di `apps/`.
+* **File yang diperbarui:**
+  * `stabilize/PROBLEM.MD` (problem 006 ditambahkan)
+  * `stabilize/TODO.MD` (problem 006 ditambahkan)
+  * `stabilize/MAINTENANCE.MD` (entri ini)
+* **Persetujuan pengguna diperlukan:** Ya — problem 006 menunggu review pengguna dan jawaban §8 sebelum fix diusulkan.
+* **Status:** Menunggu review pengguna atas problem 006.
