@@ -1,5 +1,6 @@
 "use client";
 
+import type { WheelEvent } from "react";
 import { memo, useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,17 @@ import { MarqueeText } from "@/components/ui/marquee-text";
 
 import { useToolModeStore } from "@/stores/tool-mode-store";
 import { DrawToolConfigPanel } from "../preview/draw-tool-config-panel";
+
+function handleHorizontalTabWheel(event: WheelEvent<HTMLDivElement>) {
+	if (event.shiftKey) return;
+	const delta =
+		Math.abs(event.deltaY) >= Math.abs(event.deltaX)
+			? event.deltaY
+			: event.deltaX;
+	if (delta === 0) return;
+	event.currentTarget.scrollBy({ left: delta, behavior: "smooth" });
+	event.preventDefault();
+}
 
 // Wrap the panel in React.memo so re-renders of the editor page
 // (which happen on every playhead tick via useElementPlayhead) don't
@@ -156,7 +168,10 @@ function InspectorView() {
 						Reset all
 					</button>
 				</div>
-				<div className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]">
+				<div
+					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
+					onWheel={handleHorizontalTabWheel}
+				>
 					{primaryTabs.map((tab) => (
 						<TooltipProvider key={tab.label} delayDuration={0}>
 							<Tooltip>
@@ -211,7 +226,10 @@ function InspectorView() {
 			   (Element / Text / Video / Image / Audio). */}
 			{
 				<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
-					<div className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto">
+					<div
+						className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto"
+						onWheel={handleHorizontalTabWheel}
+					>
 						{visibleTabs.map((tab) => (
 							<TooltipProvider key={tab.id} delayDuration={0}>
 								<Tooltip>
@@ -279,6 +297,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			{!disabled && (
 				<div
 					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
+					onWheel={handleHorizontalTabWheel}
 					style={{
 						maskImage:
 							"linear-gradient(to right, transparent, black 8px, black calc(100% - 8px), transparent)",

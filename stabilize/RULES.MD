@@ -26,6 +26,8 @@ Branch `stabilize` **bukan** untuk:
 * Pengguna harus secara eksplisit mengatakan "OK" atau menyetujui perubahan yang diusulkan sebelum AI melanjutkan.
 * Setelah disetujui, AI membaca ulang file yang relevan (mis. `PROBLEM.MD`) sebelum melanjutkan, untuk jaga-jaga jika pengguna mengeditnya secara manual.
 * Diam bukan berarti setuju.
+* Jumlah pertanyaan review tidak harus tetap. AI boleh mengajukan kurang atau lebih dari enam pertanyaan sesuai kebutuhan problem.
+* Pertanyaan review harus dikirim juga di chat agar mudah dijawab pengguna. Setelah pengguna menjawab di chat, AI harus langsung mencatat jawaban tersebut ke `PROBLEM.MD` sebelum melanjutkan langkah berikutnya.
 
 ## 3. Pembatasan Edit
 
@@ -90,12 +92,13 @@ Saat memutuskan apa yang harus dilakukan selanjutnya, gunakan urutan ini:
 
 1. Pengguna melaporkan masalah, bug, atau user story.
 2. AI menulis ulangnya ke dalam `PROBLEM.MD` menggunakan struktur yang diperlukan.
-3. AI berhenti dan meminta pengguna untuk mereview pemahaman.
+3. AI berhenti dan meminta pengguna untuk mereview pemahaman. Jika ada pertanyaan review, AI mengirim pertanyaan tersebut di chat; jumlahnya fleksibel sesuai kebutuhan problem.
 4. Pengguna mereview dan mengatakan "OK" (atau mengoreksi).
-5. AI membaca ulang `PROBLEM.MD`, lalu mengusulkan perubahan kecil yang terlingkup.
+5. Jika pengguna menjawab pertanyaan di chat, AI langsung mencatat jawaban ke `PROBLEM.MD`, lalu membaca ulang `PROBLEM.MD` sebelum mengusulkan perubahan kecil yang terlingkup.
 6. Pengguna menyetujui.
 7. AI melakukan perubahan, menjalankan test, mencatat di `MAINTENANCE.MD`, memperbarui `TODO.MD`.
-8. Hanya setelah itu AI memperbarui `STATE.MD` untuk mencerminkan perubahan yang disetujui.
+8. **AI menambahkan entri "What's New"** ke `apps/web/src/lib/whats-new/feed.ts` (lihat §10 untuk detail format dan aturan).
+9. Hanya setelah itu AI memperbarui `STATE.MD` untuk mencerminkan perubahan yang disetujui.
 
 ## 9. Alur Kerja untuk Isu Kritis
 
@@ -106,3 +109,20 @@ Hanya tulis ke `CRITICAL.MD` setelah AI dengan hati-hati memeriksa file yang ter
 3. Menjelaskan mengapa itu kritis.
 4. Meminta persetujuan eksplisit.
 5. Tidak memperbaikinya sampai persetujuan diberikan.
+
+## 10. Pembaruan "What's New"
+
+Setelah AI menerapkan fix atau perbaikan (bukan audit saja), AI **wajib** menambahkan entri ke file `apps/web/src/lib/whats-new/feed.ts` di bagian atas array `WHATS_NEW`.
+
+* **Tag yang digunakan:**
+  * `"fix"` — untuk perbaikan bug (mis. modal scroll horizontal, category chips kepotong, storage badge misleading).
+  * `"improvement"` — untuk peningkatan UX/copy/formatting yang bukan bug.
+  * `"performance"` — untuk perbaikan performa (render lag, unnecessary re-render, dll).
+* **Format entri:**
+  * `id`: string unik dengan format `YYYY-MM-DD-slug-singkat` (mis. `"2026-06-20-fisheye-shader-fix"`).
+  * `date`: tanggal hari ini dalam format `YYYY-MM-DD`.
+  * `title`: judul singkat yang jelas (bahasa Inggris, mengikuti konvensi yang sudah ada).
+  * `items`: array string yang menjelaskan perubahan secara detail dan teknis (bahasa Inggris, mengikuti gaya entri yang sudah ada).
+* **Posisi:** entri baru selalu ditambahkan di **paling atas** array `WHATS_NEW` (sebelum entri pertama yang sudah ada).
+* **Tidak perlu persetujuan terpisah** untuk menambah entri What's New — ini adalah bagian dari langkah implementasi yang sudah disetujui.
+* **Pengecualian:** perubahan governance (update `RULES.MD`, `MAINTENANCE.MD`, `TODO.MD`, `PROBLEM.MD`, `STATE.MD`) tidak memerlukan entri What's New.

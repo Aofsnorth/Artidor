@@ -35,3 +35,4 @@ playwright-report/
 node_modules/
 dist/
 build/
+.playwright-mcp/
