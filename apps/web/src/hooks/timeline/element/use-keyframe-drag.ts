@@ -19,6 +19,16 @@ import type { SelectedKeyframeRef } from "@/lib/animation/types";
 import type { TimelineElement } from "@/lib/timeline";
 import type { Command } from "@/lib/commands/base-command";
 import { registerCanceller } from "@/lib/cancel-interaction";
+import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
+import { useTimelineStore } from "@/stores/timeline-store";
+
+function getPropertiesTabForKeyframe(propertyPath: string): string {
+	if (propertyPath === "volume" || propertyPath === "pan") return "audio";
+	if (propertyPath.startsWith("effects.")) return "effects";
+	if (propertyPath.startsWith("background.")) return "graphic";
+	return "transform";
+}
+
 export interface KeyframeDragState {
 	isDragging: boolean;
 	draggingKeyframeIds: Set<string>;
@@ -46,6 +56,11 @@ export function useKeyframeDrag({
 	displayedStartTime: number;
 }) {
 	const editor = useEditor();
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const setActiveTab = usePropertiesStore((s) => s.setActiveTab);
+	const setFocusedKeyframePropertyPath = useTimelineStore(
+		(s) => s.setFocusedKeyframePropertyPath,
+	);
 	const {
 		selectedKeyframes,
 		isKeyframeSelected,
@@ -65,6 +80,33 @@ export function useKeyframeDrag({
 	const fps = activeProject.settings.fps;
 
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
+
+	const focusKeyframeOwner = useCallback(
+		(keyframes: SelectedKeyframeRef[]) => {
+			const keyframe = keyframes[0];
+			if (!keyframe) return;
+			const isOwnerSelected = selectedElements.some(
+				(elementRef) =>
+					elementRef.trackId === keyframe.trackId &&
+					elementRef.elementId === keyframe.elementId,
+			);
+			if (!isOwnerSelected) {
+				editor.selection.setSelectedElements({
+					elements: [{ trackId: keyframe.trackId, elementId: keyframe.elementId }],
+					preserveKeyframes: true,
+				});
+			}
+			setActiveTab(element.type, getPropertiesTabForKeyframe(keyframe.propertyPath));
+			setFocusedKeyframePropertyPath(keyframe.propertyPath);
+		},
+		[
+			editor.selection,
+			element.type,
+			selectedElements,
+			setActiveTab,
+			setFocusedKeyframePropertyPath,
+		],
+	);
 
 	const endDrag = useCallback(() => {
 		setDragState(initialDragState);
@@ -221,6 +263,7 @@ export function useKeyframeDrag({
 			event.stopPropagation();
 
 			mouseDownXRef.current = event.clientX;
+			focusKeyframeOwner(keyframes);
 
 			const anySelected = keyframes.some((keyframe) =>
 				isKeyframeSelected({ keyframe }),
@@ -239,7 +282,7 @@ export function useKeyframeDrag({
 			};
 			setIsPendingDrag(true);
 		},
-		[isKeyframeSelected, selectedKeyframes, setKeyframeSelection],
+		[focusKeyframeOwner, isKeyframeSelected, selectedKeyframes, setKeyframeSelection],
 	);
 
 	const handleKeyframeClick = useCallback(
@@ -263,6 +306,7 @@ export function useKeyframeDrag({
 			mouseDownXRef.current = null;
 
 			if (wasDrag) return;
+			focusKeyframeOwner(keyframes);
 
 			const duration = editor.timeline.getTotalDuration();
 			// Seek to the keyframe's EXACT time, not the frame-snapped time. The
@@ -296,6 +340,7 @@ export function useKeyframeDrag({
 			selectKeyframeRange,
 			editor,
 			displayedStartTime,
+			focusKeyframeOwner,
 		],
 	);
 

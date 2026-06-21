@@ -119,20 +119,22 @@ export function TimelinePlayhead({
 			onKeyDown={handlePlayheadKeyDown}
 		>
 			<div
-				className="bg-primary pointer-events-none absolute left-0 h-full w-0.5"
+				className="pointer-events-none absolute left-0 h-full w-0.5"
 				style={
 					hasSelectedKeyframe
 						? { transform: `translateX(${PLAYHEAD_KEYFRAME_NUDGE_PX}px)` }
 						: undefined
 				}
-			/>
+			>
+				<div className="bg-primary h-full w-full" />
 
-			<button
-				type="button"
-				aria-label="Drag playhead"
-				className={`pointer-events-auto absolute top-1 left-1/2 size-3.5 -translate-x-1/2 transform cursor-col-resize rounded-full border-2 shadow-xs ${isSnappingToPlayhead ? "bg-primary border-primary" : "bg-primary border-primary/50"}`}
-				onMouseDown={handlePlayheadMouseDown}
-			/>
+				<button
+					type="button"
+					aria-label="Drag playhead"
+					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-primary bg-primary" : "border-primary/70 bg-primary/90"}`}
+					onMouseDown={handlePlayheadMouseDown}
+				/>
+			</div>
 		</div>
 	);
 }

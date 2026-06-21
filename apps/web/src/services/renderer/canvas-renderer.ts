@@ -16,11 +16,16 @@ export class CanvasRenderer {
 	width: number;
 	height: number;
 	fps: FrameRate;
+	// Longest-edge cap for video decode. Set by the preview to avoid decoding
+	// 4K sources for a downscaled preview. Left undefined (= no cap, full
+	// source resolution) by the exporter so export quality is never reduced.
+	maxSourceDim: number | undefined;
 
 	constructor({ width, height, fps }: CanvasRendererParams) {
 		this.width = width;
 		this.height = height;
 		this.fps = fps;
+		this.maxSourceDim = undefined;
 
 		try {
 			this.canvas = new OffscreenCanvas(width, height);
@@ -49,6 +54,12 @@ export class CanvasRenderer {
 	}
 
 	setSize({ width, height }: { width: number; height: number }) {
+		// No-op when unchanged: the preview calls this every frame to apply the
+		// current quality scale, and reallocating the backing canvas per frame
+		// would defeat the purpose.
+		if (this.width === width && this.height === height) {
+			return;
+		}
 		this.width = width;
 		this.height = height;
 

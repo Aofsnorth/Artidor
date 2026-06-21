@@ -15,6 +15,13 @@ export interface DrawToolConfig {
 	closed: boolean;
 	/** Optional fill colour for closed paths. "transparent" means no fill. */
 	fill: string;
+	/** Brush style — solid / dashed / dotted (maps to the renderer's
+	 *  `strokeDash` param). */
+	strokeDash: "solid" | "dashed" | "dotted";
+	/** Stroke alignment relative to the path (renderer `strokeAlign`). */
+	strokeAlign: "inside" | "center" | "outside";
+	/** Pressure-style taper at the stroke ends (renderer `strokeTaper`). */
+	strokeTaper: "none" | "in" | "out";
 }
 
 const DEFAULT_DRAW_CONFIG: DrawToolConfig = {
@@ -23,6 +30,9 @@ const DEFAULT_DRAW_CONFIG: DrawToolConfig = {
 	opacity: 1,
 	closed: false,
 	fill: "transparent",
+	strokeDash: "solid",
+	strokeAlign: "center",
+	strokeTaper: "none",
 };
 
 interface ToolModeState {

@@ -130,6 +130,7 @@ function ElementEnvelope({
 	onKeyframeMouseDown,
 	onKeyframeClick,
 	getVisualOffsetPx,
+	isDimmed = false,
 }: {
 	element: TimelineElementType;
 	track: TimelineTrack;
@@ -160,14 +161,17 @@ function ElementEnvelope({
 		displayedStartTime: number;
 		elementLeft: number;
 	}) => number;
+	isDimmed?: boolean;
 }) {
 	const { isKeyframeSelected } = useKeyframeSelection();
 
-	const elementKeyframes = getElementKeyframes({
-		animations: element.animations,
-	})
-		.filter((kf) => kf.propertyPath === propertyPath)
-		.sort((a, b) => a.time - b.time);
+	const elementKeyframes = useMemo(
+		() =>
+			getElementKeyframes({ animations: element.animations })
+				.filter((kf) => kf.propertyPath === propertyPath)
+				.sort((a, b) => a.time - b.time),
+		[element.animations, propertyPath],
+	);
 
 	// `volume` is stored in decibels (default 0 dB = full level), whereas
 	// `opacity` is already a normalized 0–1 value. The envelope draws on a 0–1
@@ -255,7 +259,7 @@ function ElementEnvelope({
 
 	return (
 		<div
-			className="pointer-events-none absolute overflow-hidden"
+			className="pointer-events-none absolute overflow-hidden rounded-xl"
 			style={{
 				height: `${resolvedHeight}px`,
 				top: `${envelopeTop}px`,
@@ -310,9 +314,10 @@ function ElementEnvelope({
 							>
 								<span
 									className={cn(
-										"block size-4 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+										"block size-4 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
+										isDimmed && "size-3 opacity-35",
 										isSelected &&
-											"size-5 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
+											"size-5 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_10px_2px_rgba(255,255,255,0.72)]",
 									)}
 								/>
 							</button>
@@ -542,17 +547,31 @@ export function TimelineElement({
 			side,
 		});
 	};
-	const keyframeIndicators = isSelected
-		? getKeyframeIndicators({
-				keyframes: getElementKeyframes({ animations: element.animations }),
+	const elementKeyframes = useMemo(
+		() => getElementKeyframes({ animations: element.animations }),
+		[element.animations],
+	);
+	const keyframeIndicators = useMemo(
+		() =>
+			getKeyframeIndicators({
+				keyframes: elementKeyframes,
 				trackId: track.id,
 				elementId: element.id,
 				displayedStartTime,
 				zoomLevel,
 				elementLeft,
 				elementWidth,
-			})
-		: [];
+			}),
+		[
+			elementKeyframes,
+			track.id,
+			element.id,
+			displayedStartTime,
+			zoomLevel,
+			elementLeft,
+			elementWidth,
+		],
+	);
 
 	const {
 		keyframeDragState,
@@ -561,16 +580,20 @@ export function TimelineElement({
 		getVisualOffsetPx,
 	} = useKeyframeDrag({ zoomLevel, element, displayedStartTime });
 
-	const elementKeyframes = getElementKeyframes({
-		animations: element.animations,
-	});
-
 	const isExpanded = useTimelineStore((s) =>
 		s.expandedElementIds.has(element.id),
 	);
 	const toggleElementExpanded = useTimelineStore(
 		(s) => s.toggleElementExpanded,
 	);
+	const focusedKeyframePropertyPaths = useTimelineStore(
+		(s) => s.focusedKeyframePropertyPaths,
+	);
+	const shouldDimUnfocusedKeyframes =
+		!isSelected || focusedKeyframePropertyPaths.length > 0;
+	const shouldDimPropertyKeyframes = (propertyPath: AnimationPath) =>
+		shouldDimUnfocusedKeyframes &&
+		!focusedKeyframePropertyPaths.includes(propertyPath);
 	const expandedRows = useMemo(
 		() =>
 			isExpanded ? getExpandedRows({ animations: element.animations }) : [],
@@ -634,6 +657,7 @@ export function TimelineElement({
 				onLaneClick={handleExpandedAreaClick}
 				selectionBox={keyframeSelectionBox}
 				isBoxSelecting={isKeyframeBoxSelecting}
+				focusedPropertyPaths={focusedKeyframePropertyPaths}
 			/>
 		) : null;
 
@@ -697,6 +721,7 @@ export function TimelineElement({
 									onKeyframeMouseDown={handleKeyframeMouseDown}
 									onKeyframeClick={handleKeyframeClick}
 									getVisualOffsetPx={getVisualOffsetPx}
+									isDimmed={shouldDimPropertyKeyframes("opacity")}
 								/>
 								{((element as VideoElement).isSourceAudioEnabled ?? true) && (
 									<ElementEnvelope
@@ -715,6 +740,7 @@ export function TimelineElement({
 										onKeyframeMouseDown={handleKeyframeMouseDown}
 										onKeyframeClick={handleKeyframeClick}
 										getVisualOffsetPx={getVisualOffsetPx}
+										isDimmed={shouldDimPropertyKeyframes("volume")}
 									/>
 								)}
 							</>
@@ -734,6 +760,7 @@ export function TimelineElement({
 								onKeyframeMouseDown={handleKeyframeMouseDown}
 								onKeyframeClick={handleKeyframeClick}
 								getVisualOffsetPx={getVisualOffsetPx}
+								isDimmed={shouldDimPropertyKeyframes("volume")}
 							/>
 						)}
 						{track.type === "text" && (
@@ -751,6 +778,7 @@ export function TimelineElement({
 								onKeyframeMouseDown={handleKeyframeMouseDown}
 								onKeyframeClick={handleKeyframeClick}
 								getVisualOffsetPx={getVisualOffsetPx}
+								isDimmed={shouldDimPropertyKeyframes("opacity")}
 							/>
 						)}
 						{element.bookmarks?.map((bookmark) => {
@@ -770,12 +798,14 @@ export function TimelineElement({
 								</div>
 							);
 						})}
-						{isSelected && (
+						{keyframeIndicators.length > 0 && (
 							<div
 								className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
 								style={{ height: `${baseTrackHeight}px` }}
 							>
 								<KeyframeIndicators
+									focusedPropertyPaths={focusedKeyframePropertyPaths}
+									shouldDimUnfocused={shouldDimUnfocusedKeyframes}
 									indicators={keyframeIndicators
 										.map((ind) => ({
 											...ind,
@@ -1207,6 +1237,8 @@ function ResizeHandle({
 
 function KeyframeIndicators({
 	indicators,
+	focusedPropertyPaths,
+	shouldDimUnfocused,
 	dragState,
 	displayedStartTime,
 	elementLeft,
@@ -1215,6 +1247,8 @@ function KeyframeIndicators({
 	getVisualOffsetPx,
 }: {
 	indicators: KeyframeIndicator[];
+	focusedPropertyPaths: string[];
+	shouldDimUnfocused: boolean;
 	dragState: KeyframeDragState;
 	displayedStartTime: number;
 	elementLeft: number;
@@ -1290,6 +1324,10 @@ function KeyframeIndicators({
 				const isIndicatorSelected = indicator.keyframes.some((keyframe) =>
 					isKeyframeSelected({ keyframe }),
 				);
+				const isFocusedProperty = indicator.keyframes.some((keyframe) =>
+					focusedPropertyPaths.includes(keyframe.propertyPath),
+				);
+				const isDimmed = shouldDimUnfocused && !isFocusedProperty;
 				const isBeingDragged = indicator.keyframes.some((keyframe) =>
 					dragState.draggingKeyframeIds.has(keyframe.keyframeId),
 				);
@@ -1331,9 +1369,11 @@ function KeyframeIndicators({
 					>
 						<span
 							className={cn(
-								"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+								"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity,transform] duration-150",
+								isDimmed &&
+									"size-3.5 opacity-35 shadow-[0_0_0_1px_rgba(255,255,255,0.25)]",
 								isIndicatorSelected &&
-									"size-6 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
+									"size-6 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_11px_3px_rgba(255,255,255,0.72)] opacity-100",
 							)}
 						/>
 					</button>
@@ -1360,6 +1400,7 @@ function ExpandedKeyframeLanes({
 	onLaneClick,
 	selectionBox,
 	isBoxSelecting,
+	focusedPropertyPaths,
 }: {
 	rows: ExpandedRow[];
 	keyframes: ElementKeyframe[];
@@ -1382,6 +1423,7 @@ function ExpandedKeyframeLanes({
 		isActive: boolean;
 	} | null;
 	isBoxSelecting: boolean;
+	focusedPropertyPaths: string[];
 	onKeyframeClick: (params: {
 		event: React.MouseEvent;
 		keyframes: SelectedKeyframeRef[];
@@ -1520,6 +1562,9 @@ function ExpandedKeyframeLanes({
 							const isSelected = isKeyframeSelected({
 								keyframe: keyframeRef,
 							});
+							const isDimmed =
+								focusedPropertyPaths.length > 0 &&
+								!focusedPropertyPaths.includes(row.propertyPath);
 
 							return (
 								<KeyframeContextMenu key={kf.id} keyframe={keyframeRef}>
@@ -1559,9 +1604,10 @@ function ExpandedKeyframeLanes({
 									>
 										<span
 										className={cn(
-											"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+											"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
+											isDimmed && "size-3.5 opacity-35",
 											isSelected &&
-												"size-6 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
+												"size-6 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_11px_3px_rgba(255,255,255,0.72)]",
 										)}
 									/>
 									</button>
@@ -1955,9 +2001,19 @@ function VideoFilmstrip({
 		scrollParentRef.current = findScrollParent({ element: container });
 		const scrollParent = scrollParentRef.current;
 		if (!scrollParent) return;
-		const handler = () => drawRef.current();
+		let rafId: number | null = null;
+		const handler = () => {
+			if (rafId !== null) return;
+			rafId = requestAnimationFrame(() => {
+				rafId = null;
+				drawRef.current();
+			});
+		};
 		scrollParent.addEventListener("scroll", handler, { passive: true });
-		return () => scrollParent.removeEventListener("scroll", handler);
+		return () => {
+			scrollParent.removeEventListener("scroll", handler);
+			if (rafId !== null) cancelAnimationFrame(rafId);
+		};
 	}, []);
 
 	return (

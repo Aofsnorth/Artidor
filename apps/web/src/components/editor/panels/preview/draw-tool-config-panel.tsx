@@ -13,23 +13,32 @@ import { useToolModeStore } from "@/stores/tool-mode-store";
 import { useVectorDraw } from "@/hooks/use-vector-draw";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
-
-const PRESET_COLORS = [
-	"#ffffff",
-	"#000000",
-	"#f43f5e",
-	"#f97316",
-	"#eab308",
-	"#22c55e",
-	"#06b6d4",
-	"#3b82f6",
-	"#a855f7",
-	"#ec4899",
-];
+import {
+	DEFAULT_PALETTE,
+	useColorPaletteStore,
+} from "@/stores/color-palette-store";
 
 const PRESET_STROKE_WIDTHS = [1, 2, 4, 6, 10, 16, 24];
 
 const PRESET_OPACITIES = [0.25, 0.5, 0.75, 1];
+
+const BRUSH_STYLES = [
+	{ value: "solid", label: "Solid" },
+	{ value: "dashed", label: "Dashed" },
+	{ value: "dotted", label: "Dotted" },
+] as const;
+
+const STROKE_ALIGNS = [
+	{ value: "inside", label: "In" },
+	{ value: "center", label: "Center" },
+	{ value: "outside", label: "Out" },
+] as const;
+
+const STROKE_TAPERS = [
+	{ value: "none", label: "Flat" },
+	{ value: "in", label: "Taper in" },
+	{ value: "out", label: "Taper out" },
+] as const;
 
 /**
  * Floating config panel that appears next to the canvas whenever the
@@ -51,6 +60,8 @@ export function DrawToolConfigPanel() {
 	const colorInputRef = useRef<HTMLInputElement>(null);
 	const fillInputRef = useRef<HTMLInputElement>(null);
 	const editor = useEditor();
+	const recentColors = useColorPaletteStore((s) => s.recentColors);
+	const addRecentColor = useColorPaletteStore((s) => s.addRecentColor);
 
 	// We only need the vector interaction state when the vector tool
 	// is active, but hooks must run unconditionally. The hook itself
@@ -138,10 +149,11 @@ export function DrawToolConfigPanel() {
 						value={drawConfig.stroke}
 						className="sr-only"
 						onChange={(e) => setDrawConfig({ stroke: e.target.value })}
+						onBlur={(e) => addRecentColor(e.target.value)}
 					/>
 				</div>
-				<div className="grid grid-cols-10 gap-1">
-					{PRESET_COLORS.map((color) => (
+				<div className="grid grid-cols-8 gap-1">
+					{DEFAULT_PALETTE.map((color) => (
 						<button
 							key={color}
 							type="button"
@@ -157,6 +169,30 @@ export function DrawToolConfigPanel() {
 						/>
 					))}
 				</div>
+				{recentColors.length > 0 && (
+					<div className="flex flex-col gap-1">
+						<span className="text-[0.56rem] uppercase tracking-[0.16em] text-white/30">
+							Recent
+						</span>
+						<div className="grid grid-cols-8 gap-1">
+							{recentColors.map((color) => (
+								<button
+									key={color}
+									type="button"
+									className={cn(
+										"aspect-square rounded-full border transition",
+										drawConfig.stroke.toLowerCase() === color.toLowerCase()
+											? "border-white shadow-[0_0_0_1.5px_rgba(255,255,255,0.45)]"
+											: "border-white/15 hover:border-white/45",
+									)}
+									style={{ background: color }}
+									aria-label={`Set stroke to ${color}`}
+									onClick={() => setDrawConfig({ stroke: color })}
+								/>
+							))}
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Stroke width presets */}
@@ -189,6 +225,28 @@ export function DrawToolConfigPanel() {
 					))}
 				</div>
 			</div>
+
+			{/* Brush style / alignment / taper — these map 1:1 to the
+			    renderer's strokeDash / strokeAlign / strokeTaper params, so the
+			    committed stroke honours them. */}
+			<SegmentedRow
+				label="Brush"
+				options={BRUSH_STYLES}
+				value={drawConfig.strokeDash}
+				onChange={(v) => setDrawConfig({ strokeDash: v })}
+			/>
+			<SegmentedRow
+				label="Align"
+				options={STROKE_ALIGNS}
+				value={drawConfig.strokeAlign}
+				onChange={(v) => setDrawConfig({ strokeAlign: v })}
+			/>
+			<SegmentedRow
+				label="Taper"
+				options={STROKE_TAPERS}
+				value={drawConfig.strokeTaper}
+				onChange={(v) => setDrawConfig({ strokeTaper: v })}
+			/>
 
 			{/* Opacity presets + slider. Brush opacity multiplies the
 			   committed `strokeOpacity` param so the live preview matches
@@ -349,6 +407,44 @@ export function DrawToolConfigPanel() {
 					Drag on the canvas to draw a freehand stroke. Release to insert.
 				</p>
 			)}
+		</div>
+	);
+}
+
+function SegmentedRow<T extends string>({
+	label,
+	options,
+	value,
+	onChange,
+}: {
+	label: string;
+	options: ReadonlyArray<{ value: T; label: string }>;
+	value: T;
+	onChange: (value: T) => void;
+}) {
+	return (
+		<div className="flex flex-col gap-1.5">
+			<span className="text-[0.62rem] uppercase tracking-[0.16em] text-white/45">
+				{label}
+			</span>
+			<div className="flex gap-1">
+				{options.map((option) => (
+					<button
+						key={option.value}
+						type="button"
+						className={cn(
+							"flex h-6 flex-1 items-center justify-center rounded-md border text-[0.6rem] font-medium transition",
+							value === option.value
+								? "border-white/40 bg-white/15 text-white"
+								: "border-white/[0.08] bg-white/[0.03] text-white/55 hover:border-white/25 hover:text-white",
+						)}
+						onClick={() => onChange(option.value)}
+						aria-pressed={value === option.value}
+					>
+						{option.label}
+					</button>
+				))}
+			</div>
 		</div>
 	);
 }

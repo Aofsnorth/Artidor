@@ -11,6 +11,7 @@ import type {
 import type { TimelineElement } from "@/lib/timeline";
 import { snapToStep } from "@/utils/math";
 import { usePropertyDraft } from "./use-property-draft";
+import { generateUUID } from "@/utils/id";
 
 export function useKeyframedNumberProperty({
 	trackId,
@@ -129,16 +130,21 @@ export function useKeyframedNumberProperty({
 			return;
 		}
 
+		const keyframeId = generateUUID();
 		editor.timeline.upsertKeyframes({
 			keyframes: [
 				{
 					trackId,
 					elementId,
 					propertyPath,
+					keyframeId,
 					time: localTime,
 					value: snapValue(valueAtPlayhead),
 				},
 			],
+		});
+		editor.selection.setSelectedKeyframes({
+			keyframes: [{ trackId, elementId, propertyPath, keyframeId }],
 		});
 	};
 

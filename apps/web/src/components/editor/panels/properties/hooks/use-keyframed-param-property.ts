@@ -13,6 +13,7 @@ import {
 import type { ElementAnimations } from "@/lib/animation/types";
 import type { ParamDefinition } from "@/lib/params";
 import type { TimelineElement } from "@/lib/timeline";
+import { generateUUID } from "@/utils/id";
 
 export interface KeyframedParamPropertyResult {
 	hasAnimatedKeyframes: boolean;
@@ -124,16 +125,21 @@ export function useKeyframedParamProperty({
 			return;
 		}
 
+		const keyframeId = generateUUID();
 		editor.timeline.upsertKeyframes({
 			keyframes: [
 				{
 					trackId,
 					elementId,
 					propertyPath,
+					keyframeId,
 					time: localTime,
 					value: resolvedValue,
 				},
 			],
+		});
+		editor.selection.setSelectedKeyframes({
+			keyframes: [{ trackId, elementId, propertyPath, keyframeId }],
 		});
 	};
 

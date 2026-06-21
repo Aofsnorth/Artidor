@@ -151,5 +151,6 @@ export function applyAlignedStroke({
 		strokeColor,
 		strokeOpacity,
 		strokeDash,
+		strokeTaper,
 	});
 }

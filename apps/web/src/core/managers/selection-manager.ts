@@ -24,10 +24,18 @@ export class SelectionManager {
 		return this.keyframeSelectionAnchor;
 	}
 
-	setSelectedElements({ elements }: { elements: ElementRef[] }): void {
+	setSelectedElements({
+		elements,
+		preserveKeyframes = false,
+	}: {
+		elements: ElementRef[];
+		preserveKeyframes?: boolean;
+	}): void {
 		this.selectedElements = elements;
-		this.selectedKeyframes = [];
-		this.keyframeSelectionAnchor = null;
+		if (!preserveKeyframes) {
+			this.selectedKeyframes = [];
+			this.keyframeSelectionAnchor = null;
+		}
 		this.notify();
 	}
 

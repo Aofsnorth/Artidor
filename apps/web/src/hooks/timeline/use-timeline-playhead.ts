@@ -13,6 +13,7 @@ import {
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { getElementKeyframes } from "@/lib/animation";
 
 // Where the playhead parks horizontally while auto-scroll follows it,
 // as a fraction of the tracks viewport width. A true 0.5 (dead-centre of
@@ -135,6 +136,26 @@ export function useTimelinePlayhead({
 					snapPoints,
 					zoomLevel,
 				});
+				if (
+					snapResult.snapPoint?.type === "keyframe" &&
+					snapResult.snapPoint.trackId &&
+					snapResult.snapPoint.elementId &&
+					snapResult.snapPoint.propertyPath &&
+					snapResult.snapPoint.keyframeId
+				) {
+					editor.selection.setSelectedKeyframes({
+						keyframes: [
+							{
+								trackId: snapResult.snapPoint.trackId,
+								elementId: snapResult.snapPoint.elementId,
+								propertyPath: snapResult.snapPoint.propertyPath,
+								keyframeId: snapResult.snapPoint.keyframeId,
+							},
+						],
+					});
+				} else if (editor.selection.getSelectedKeyframes().length > 0) {
+					editor.selection.clearKeyframeSelection();
+				}
 				return snapResult.snapPoint ? snapResult.snappedTime : frameTime;
 			})();
 
@@ -151,8 +172,30 @@ export function useTimelinePlayhead({
 			activeProject.settings.fps,
 			isShiftHeldRef,
 			editor.scenes,
+			editor.selection,
 		],
 	);
+
+	const getSelectedKeyframeTimes = useCallback(() => {
+		const selectedKeyframes = editor.selection.getSelectedKeyframes();
+		if (selectedKeyframes.length === 0) return [];
+		const tracks = editor.scenes.getActiveScene().tracks;
+		const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+		return selectedKeyframes.flatMap((selectedKeyframe) => {
+			const track = orderedTracks.find(
+				(track) => track.id === selectedKeyframe.trackId,
+			);
+			const element = track?.elements.find(
+				(element) => element.id === selectedKeyframe.elementId,
+			);
+			const keyframe = getElementKeyframes({ animations: element?.animations }).find(
+				(keyframe) =>
+					keyframe.id === selectedKeyframe.keyframeId &&
+					keyframe.propertyPath === selectedKeyframe.propertyPath,
+			);
+			return element && keyframe ? [element.startTime + keyframe.time] : [];
+		});
+	}, [editor.scenes, editor.selection]);
 
 	const pendingScrubRef = useRef<{
 		event: ScrubPointer;
@@ -348,6 +391,14 @@ export function useTimelinePlayhead({
 			const time = (e as CustomEvent<{ time: number }>).detail.time;
 			updatePlayheadLeft(time);
 
+			const selectedKeyframeTimes = getSelectedKeyframeTimes();
+			if (
+				selectedKeyframeTimes.length > 0 &&
+				!selectedKeyframeTimes.some((keyframeTime) => keyframeTime === time)
+			) {
+				editor.selection.clearKeyframeSelection();
+			}
+
 			if (!isPlayingRef.current || isScrubbingRef.current) return;
 			const rulerViewport = rulerScrollRef.current;
 			const tracksViewport = tracksScrollRef.current;
@@ -403,7 +454,14 @@ export function useTimelinePlayhead({
 			window.removeEventListener("playback-update", handlePlaybackUpdate);
 			window.removeEventListener("playback-seek", handlePlaybackUpdate);
 		};
-	}, [editor.playback, rulerScrollRef, tracksScrollRef, updatePlayheadLeft]);
+	}, [
+		editor.playback,
+		editor.selection,
+		rulerScrollRef,
+		tracksScrollRef,
+		updatePlayheadLeft,
+		getSelectedKeyframeTimes,
+	]);
 
 	// rAF-driven autoscroll follower. `handlePlaybackUpdate` only fires
 	// on `playback-update` / `playback-seek` events, which can be
@@ -413,7 +471,7 @@ export function useTimelinePlayhead({
 	// the viewport every frame. The Math.abs(>0.5) guard stops the loop
 	// from fighting the user's own scroll wheel input.
 	useEffect(() => {
-		if (!autoScrollEnabled) return;
+		if (!autoScrollEnabled || !isPlaying || isScrubbing) return;
 		const rulerViewport = rulerScrollRef.current;
 		const tracksViewport = tracksScrollRef.current;
 		if (!rulerViewport || !tracksViewport) return;
@@ -442,7 +500,14 @@ export function useTimelinePlayhead({
 		};
 		rafId = requestAnimationFrame(tick);
 		return () => cancelAnimationFrame(rafId);
-	}, [autoScrollEnabled, editor.playback, rulerScrollRef, tracksScrollRef]);
+	}, [
+		autoScrollEnabled,
+		isPlaying,
+		isScrubbing,
+		editor.playback,
+		rulerScrollRef,
+		tracksScrollRef,
+	]);
 
 	return {
 		handlePlayheadMouseDown: handlePlayheadMouseDownEvent,

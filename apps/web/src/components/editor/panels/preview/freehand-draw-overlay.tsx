@@ -62,11 +62,16 @@ export function FreehandDrawOverlay({
 
 	// Position the SVG over the canvas, sized to match the canvas in screen
 	// pixels so the 512x512 source coords map to the visible area.
-	const scale = viewport.getDisplayScale();
-	const width = viewport.sceneWidth * scale.x;
-	const height = viewport.sceneHeight * scale.y;
-	const left = viewport.sceneLeft;
-	const top = viewport.sceneTop;
+	// The renderer maps the 512x512 source into a CENTERED square of side
+	// min(canvasW, canvasH) (contain-fit) — not the full canvas rect. Cover
+	// that exact square here so the live preview lands where the committed
+	// graphic will. (Stretching across the whole rect shifts/squashes the
+	// committed shape relative to the preview.)
+	const side = Math.min(viewport.sceneWidth, viewport.sceneHeight);
+	const left = viewport.sceneLeft + (viewport.sceneWidth - side) / 2;
+	const top = viewport.sceneTop + (viewport.sceneHeight - side) / 2;
+	const width = side;
+	const height = side;
 	const clampedOpacity = Math.max(0, Math.min(1, opacity));
 
 	return (
@@ -81,7 +86,7 @@ export function FreehandDrawOverlay({
 				overflow: "visible",
 			}}
 			viewBox={`0 0 ${DEFAULT_GRAPHIC_SOURCE_SIZE} ${DEFAULT_GRAPHIC_SOURCE_SIZE}`}
-			preserveAspectRatio="none"
+			preserveAspectRatio="xMidYMid meet"
 		>
 			<title>Freehand stroke preview</title>
 			{path && (

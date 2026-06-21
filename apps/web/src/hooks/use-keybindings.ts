@@ -3,7 +3,7 @@ import { invokeAction } from "@/lib/actions";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { isTypableDOMElement } from "@/utils/browser";
-import { useTimelineStore } from "@/stores/timeline-store";
+
 
 /**
  * a composable that hooks to the caller component's
@@ -19,11 +19,8 @@ export function useKeybindingsListener() {
 		isLoadingProject,
 		isRecording,
 	} = useKeybindingsStore();
-	const toggleAutoScroll = useTimelineStore((s) => s.toggleAutoScroll);
-
 	// Track the most recent space press for the double-space shortcut.
-	// Two presses within 350ms toggle the timeline's auto-scroll-to-playhead
-	// feature, mirroring the convention used in most NLEs.
+	// Two presses within 350ms adds a timeline mark.
 	const lastSpaceAtRef = useRef<number>(0);
 	const doubleSpaceAnnouncedRef = useRef<boolean>(false);
 
@@ -72,11 +69,9 @@ export function useKeybindingsListener() {
 
 			if (isGenuineTextEntry) return;
 
-			// Double-space toggles the timeline's auto-scroll-to-playhead
-			// (mirrors the convention in most NLEs and editing
-			// extensions). We only fire it when the first space would
-			// have toggled play, so the user doesn't get surprising
-			// scroll toggles when typing or hitting space inside a menu.
+			// Double-space adds a timeline mark. Only fire it when the
+			// first space would have toggled play, so typing/menu space
+			// stays untouched.
 			if (normalizedKey === "space" && boundAction === "toggle-play") {
 				const now = ev.timeStamp;
 				const delta = now - lastSpaceAtRef.current;
@@ -88,7 +83,7 @@ export function useKeybindingsListener() {
 					setTimeout(() => {
 						doubleSpaceAnnouncedRef.current = false;
 					}, 400);
-					toggleAutoScroll();
+					invokeAction("add-bookmark", undefined, "keypress");
 					ev.preventDefault();
 					ev.stopImmediatePropagation();
 					return;
@@ -161,6 +156,5 @@ export function useKeybindingsListener() {
 		isLoadingProject,
 		isRecording,
 		editor,
-		toggleAutoScroll,
 	]);
 }

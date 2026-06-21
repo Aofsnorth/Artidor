@@ -28,7 +28,20 @@ import {
 	getPreviousBookmarkTimeWithin,
 } from "@/lib/timeline";
 import { useToolModeStore } from "@/stores/tool-mode-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import {
+	PREVIEW_QUALITIES,
+	PREVIEW_QUALITY_LABELS,
+} from "@/lib/perf/preview-quality";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/utils/ui";
+import { getElementKeyframes } from "@/lib/animation";
 
 /**
  * The Rust `formatTimecode` API only accepts integer ticks (MediaTime is i64).
@@ -82,6 +95,7 @@ export function PreviewToolbar({
 				</GridPopover> */}
 				<LoopButton />
 				<DrawToolButtons />
+				<QualityMenu />
 				<Button variant="text" onClick={onToggleFullscreen}>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
@@ -176,6 +190,40 @@ function DrawToolButtons() {
 	);
 }
 
+function QualityMenu() {
+	const previewQuality = useSettingsStore((s) => s.previewQuality);
+	const setPreviewQuality = useSettingsStore((s) => s.setPreviewQuality);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<Button
+					variant="text"
+					size="sm"
+					title="Preview render quality (does not affect export)"
+					className="h-7 px-2 text-[0.62rem] font-medium text-white/55 hover:text-white"
+				>
+					{PREVIEW_QUALITY_LABELS[previewQuality]}
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="min-w-32">
+				<DropdownMenuRadioGroup
+					value={previewQuality}
+					onValueChange={(value) =>
+						setPreviewQuality(value as typeof previewQuality)
+					}
+				>
+					{PREVIEW_QUALITIES.map((quality) => (
+						<DropdownMenuRadioItem key={quality} value={quality}>
+							{PREVIEW_QUALITY_LABELS[quality]}
+						</DropdownMenuRadioItem>
+					))}
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
 function LoopButton() {
 	const editor = useEditor();
 	const [loop, setLoop] = useState(false);
@@ -224,11 +272,47 @@ function TransportControls() {
 	const editor = useEditor();
 	const currentTime = useEditor((e) => e.playback.getCurrentTime());
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const selectedKeyframes = useEditor((e) => e.selection.getSelectedKeyframes());
 	const bookmarks = scene?.bookmarks ?? [];
 
+	const getSelectedNavigationTimes = () => {
+		if (!scene) return [];
+		const tracks = Object.values(scene.tracks).flat();
+		const selectedElementIds = new Set(
+			selectedElements.map((element) => `${element.trackId}:${element.elementId}`),
+		);
+		const times = new Set<number>();
+		for (const track of tracks) {
+			for (const element of track.elements) {
+				const isSelectedElement = selectedElementIds.has(`${track.id}:${element.id}`);
+				for (const keyframe of getElementKeyframes({
+					animations: element.animations,
+				})) {
+					const isSelectedKeyframe = selectedKeyframes.some(
+						(selectedKeyframe) =>
+							selectedKeyframe.trackId === track.id &&
+							selectedKeyframe.elementId === element.id &&
+							selectedKeyframe.propertyPath === keyframe.propertyPath &&
+							selectedKeyframe.keyframeId === keyframe.id,
+					);
+					if (isSelectedElement || isSelectedKeyframe) {
+						times.add(element.startTime + keyframe.time);
+					}
+				}
+			}
+		}
+		return [...times].sort((a, b) => a - b);
+	};
+
 	const handleJumpBackward = () => {
-		// If a bookmark sits within the jump window behind the playhead, snap to
-		// the closest one. Otherwise fall back to the regular 5s skip.
+		const keyframeTime = getSelectedNavigationTimes()
+			.reverse()
+			.find((time) => time < currentTime);
+		if (keyframeTime != null) {
+			editor.playback.seek({ time: keyframeTime });
+			return;
+		}
 		const candidate = getPreviousBookmarkTimeWithin({
 			bookmarks,
 			time: currentTime,
@@ -242,6 +326,13 @@ function TransportControls() {
 	};
 
 	const handleJumpForward = () => {
+		const keyframeTime = getSelectedNavigationTimes().find(
+			(time) => time > currentTime,
+		);
+		if (keyframeTime != null) {
+			editor.playback.seek({ time: keyframeTime });
+			return;
+		}
 		const candidate = getNextBookmarkTimeWithin({
 			bookmarks,
 			time: currentTime,

@@ -27,6 +27,11 @@ import {
 } from "./preview-viewport";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { usePreviewStore } from "@/stores/preview-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import {
+	resolveDecodeMaxDim,
+	resolvePreviewScale,
+} from "@/lib/perf/preview-quality";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
 
@@ -119,7 +124,10 @@ function PreviewCanvas({
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const lastFrameRef = useRef(-1);
 	const lastSceneRef = useRef<RootNode | null>(null);
+	const lastScaleRef = useRef(-1);
 	const renderingRef = useRef(false);
+	const previewQuality = useSettingsStore((s) => s.previewQuality);
+	const gpuDegraded = useEditor((e) => e.renderer.isDegraded);
 	const { width: nativeWidth, height: nativeHeight } = usePreviewSize();
 	const viewportSize = useContainerSize({ containerRef: viewportRef });
 	const editor = useEditor();
@@ -161,13 +169,44 @@ function PreviewCanvas({
 			);
 			const frame = Math.floor(renderTime / ticksPerFrame);
 
+			// Resolution scaling: render the preview at a fraction of project
+			// resolution (and cap video decode to match) on weak machines /
+			// during playback. The output canvas keeps its native size and the
+			// compositor result is stretched up on blit — cheap, and the whole
+			// transform pipeline derives from renderer.width/height so it all
+			// scales coherently. Decode cap follows the *idle* tier so play/pause
+			// never rebuilds the video decoder.
+			const isPlaying = editor.playback.getIsPlaying();
+			const scale = resolvePreviewScale({
+				quality: previewQuality,
+				isPlaying,
+				gpuDegraded,
+			});
+			const idleScale = resolvePreviewScale({
+				quality: previewQuality,
+				isPlaying: false,
+				gpuDegraded,
+			});
+			renderer.setSize({
+				width: Math.max(2, Math.round(nativeWidth * scale)),
+				height: Math.max(2, Math.round(nativeHeight * scale)),
+			});
+			renderer.maxSourceDim = resolveDecodeMaxDim({
+				renderWidth: nativeWidth,
+				renderHeight: nativeHeight,
+				scale: idleScale,
+			});
+
+			// Re-render the same frame when scale changes (e.g. pause → sharpen).
 			if (
 				frame !== lastFrameRef.current ||
-				renderTree !== lastSceneRef.current
+				renderTree !== lastSceneRef.current ||
+				scale !== lastScaleRef.current
 			) {
 				renderingRef.current = true;
 				lastSceneRef.current = renderTree;
 				lastFrameRef.current = frame;
+				lastScaleRef.current = scale;
 				renderer
 					.renderToCanvas({
 						node: renderTree,
@@ -185,7 +224,16 @@ function PreviewCanvas({
 					});
 			}
 		}
-	}, [renderer, renderTree, editor.playback, editor.timeline.getLastFrameTime]);
+	}, [
+		renderer,
+		renderTree,
+		editor.playback,
+		editor.timeline.getLastFrameTime,
+		previewQuality,
+		gpuDegraded,
+		nativeWidth,
+		nativeHeight,
+	]);
 
 	useRafLoop(render);
 

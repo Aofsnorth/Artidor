@@ -285,8 +285,16 @@ export const ACTIONS = {
 		category: "editing",
 	},
 	"ease-keyframes": {
-		description: "Easy Ease selected keyframes (smooth in/out)",
-		category: "editing",
+		description: "Ease selected keyframes",
+		category: "timeline",
+	},
+	"select-previous-keyframe-layer": {
+		description: "Select previous keyframe layer",
+		category: "timeline",
+	},
+	"select-next-keyframe-layer": {
+		description: "Select next keyframe layer",
+		category: "timeline",
 	},
 } as const satisfies Record<string, TActionBaseDefinition>;
 
@@ -332,6 +340,8 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	"nudge-left": ["alt+left"],
 	"nudge-right": ["alt+right"],
 	"ease-keyframes": ["f9"],
+	"select-previous-keyframe-layer": ["up"],
+	"select-next-keyframe-layer": ["down"],
 } as const satisfies Partial<
 	Record<TActionWithOptionalArgs, readonly ShortcutKey[]>
 >;

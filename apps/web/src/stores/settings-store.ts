@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { PreviewQuality } from "@/lib/perf/preview-quality";
 
 /**
  * Application-wide settings, persisted to localStorage. Keeps the
@@ -23,6 +24,14 @@ interface SettingsState {
 	 */
 	enablePopoutPanels: boolean;
 	setEnablePopoutPanels: (value: boolean) => void;
+
+	/**
+	 * Preview render quality. Scales the preview's render resolution (and
+	 * video decode) down to keep playback smooth on low-end machines.
+	 * "auto" picks a tier from device hints. Export is never affected.
+	 */
+	previewQuality: PreviewQuality;
+	setPreviewQuality: (value: PreviewQuality) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -36,6 +45,9 @@ export const useSettingsStore = create<SettingsState>()(
 
 			enablePopoutPanels: false,
 			setEnablePopoutPanels: (value) => set({ enablePopoutPanels: value }),
+
+			previewQuality: "auto",
+			setPreviewQuality: (value) => set({ previewQuality: value }),
 		}),
 		{
 			name: "app-settings",
