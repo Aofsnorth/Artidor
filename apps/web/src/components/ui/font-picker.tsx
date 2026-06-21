@@ -20,10 +20,12 @@ import { loadFullFont } from "@/lib/fonts/google-fonts";
 import { SYSTEM_FONTS } from "@/lib/fonts/system-fonts";
 import type { FontAtlas, FontAtlasEntry } from "@/lib/fonts/types";
 import { useFontAtlas } from "@/hooks/use-font-atlas";
+import { useCustomFontsStore } from "@/stores/custom-fonts-store";
 import { cn } from "@/utils/ui";
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, Upload } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { TextIcon } from "@hugeicons/core-free-icons";
+import { toast } from "sonner";
 
 const FONT_TABS = [
 	{ key: "all", label: "All fonts" },
@@ -60,12 +62,43 @@ export function FontPicker({
 		fontNames,
 		retry: handleRetry,
 	} = useFontAtlas({ open });
+	const customFonts = useCustomFontsStore((s) => s.fonts);
+	const importFont = useCustomFontsStore((s) => s.importFont);
+	const fontFileInputRef = useRef<HTMLInputElement>(null);
+
+	// Merge custom fonts with atlas fonts (custom fonts appear at the top).
+	const allFontNames = useMemo(() => {
+		const customNames = customFonts.map((f) => f.family);
+		return [...customNames, ...fontNames.filter((n) => !customNames.includes(n))];
+	}, [customFonts, fontNames]);
+
+	const handleImportFont = useCallback(async () => {
+		fontFileInputRef.current?.click();
+	}, []);
+
+	const handleFontFileChange = useCallback(
+		async (event: React.ChangeEvent<HTMLInputElement>) => {
+			const files = event.target.files;
+			if (!files?.length) return;
+			for (const file of Array.from(files)) {
+				const family = await importFont(file);
+				if (family) {
+					toast.success(`Font "${file.name.replace(/\.[^.]+$/, "")}" imported`);
+				} else {
+					toast.error(`Failed to import "${file.name}"`);
+				}
+			}
+			// Reset so the same file can be re-imported.
+			event.target.value = "";
+		},
+		[importFont],
+	);
 
 	const filteredFonts = useMemo(() => {
-		if (!search) return fontNames;
+		if (!search) return allFontNames;
 		const query = search.toLowerCase();
-		return fontNames.filter((name) => name.toLowerCase().includes(query));
-	}, [fontNames, search]);
+		return allFontNames.filter((name) => name.toLowerCase().includes(query));
+	}, [allFontNames, search]);
 
 	const listHeight = Math.min(
 		MAX_LIST_HEIGHT,
@@ -74,7 +107,9 @@ export function FontPicker({
 
 	const handleSelect = useCallback(
 		async ({ family }: { family: string }) => {
-			if (!SYSTEM_FONTS.has(family)) {
+			// Custom fonts are already loaded via FontFace API.
+			const isCustom = customFonts.some((f) => f.family === family);
+			if (!isCustom && !SYSTEM_FONTS.has(family)) {
 				try {
 					await loadFullFont({ family });
 				} catch {
@@ -84,7 +119,7 @@ export function FontPicker({
 			onValueChange?.(family);
 			setOpen(false);
 		},
-		[onValueChange],
+		[onValueChange, customFonts],
 	);
 
 	useEffect(() => {
@@ -156,6 +191,30 @@ export function FontPicker({
 						</button>
 					))}
 				</div>
+				{/* Custom font import */}
+				<div className="flex items-center gap-2 border-b px-3 py-1.5">
+					<button
+						type="button"
+						className="flex items-center gap-1.5 rounded-md bg-white/[0.06] px-2 py-1 text-[0.68rem] text-white/70 transition hover:bg-white/[0.12] hover:text-white"
+						onClick={handleImportFont}
+					>
+						<Upload className="size-3" />
+						Import font
+					</button>
+					<input
+						ref={fontFileInputRef}
+						type="file"
+						accept=".ttf,.otf,.woff,.woff2"
+						multiple
+						className="hidden"
+						onChange={handleFontFileChange}
+					/>
+					{customFonts.length > 0 && (
+						<span className="text-[0.6rem] text-white/30">
+							{customFonts.length} custom
+						</span>
+					)}
+				</div>
 				{status === "loading" && (
 					<div className="py-8 text-center text-sm text-muted-foreground">
 						Loading fonts...
@@ -189,6 +248,7 @@ export function FontPicker({
 							filteredFonts,
 							selectedFont: defaultValue,
 							onFontSelect: handleSelect,
+							customFontFamilies: new Set(customFonts.map((f) => f.family)),
 						}}
 						style={{ height: listHeight, width: LIST_WIDTH }}
 					/>
@@ -224,6 +284,7 @@ type FontRowProps = {
 	filteredFonts: string[];
 	selectedFont: string | undefined;
 	onFontSelect: (params: { family: string }) => void;
+	customFontFamilies: Set<string>;
 };
 
 function FontRow({
@@ -233,11 +294,18 @@ function FontRow({
 	filteredFonts,
 	selectedFont,
 	onFontSelect,
+	customFontFamilies,
 }: RowComponentProps<FontRowProps>) {
 	const fontName = filteredFonts[index];
-	const entry = atlas.fonts[fontName];
+	const entry = atlas?.fonts[fontName];
 	const isSelected = fontName === selectedFont;
 	const isSystemFont = SYSTEM_FONTS.has(fontName);
+	const isCustomFont = customFontFamilies.has(fontName);
+
+	// Custom fonts show their display name (without the prefix).
+	const displayName = isCustomFont
+		? fontName.replace(/^ArtidorCustom_/, "")
+		: fontName;
 
 	return (
 		<button
@@ -254,18 +322,25 @@ function FontRow({
 					onFontSelect({ family: fontName });
 				}
 			}}
-			aria-label={fontName}
+			aria-label={displayName}
 		>
-			<div className="min-w-0 overflow-hidden">
-				{isSystemFont ? (
+			<div className="min-w-0 overflow-hidden flex items-center gap-2">
+				{isSystemFont || isCustomFont ? (
 					<span
 						className="text-xl text-foreground/85"
 						style={{ fontFamily: fontName }}
 					>
-						{fontName}
+						{displayName}
 					</span>
-				) : (
+				) : entry ? (
 					<FontSpritePreview entry={entry} />
+				) : (
+					<span className="text-sm text-foreground/60">{fontName}</span>
+				)}
+				{isCustomFont && (
+					<span className="rounded bg-white/[0.08] px-1 py-0.5 text-[0.5rem] uppercase tracking-wider text-white/40">
+						custom
+					</span>
 				)}
 			</div>
 		</button>

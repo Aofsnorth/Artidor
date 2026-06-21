@@ -78,6 +78,10 @@ export const ACTIONS = {
 		description: "Split and remove right",
 		category: "editing",
 	},
+	"align-to-playhead": {
+		description: "Align clip start to playhead",
+		category: "editing",
+	},
 	"delete-selected": {
 		description: "Delete selected elements",
 		category: "editing",
@@ -166,6 +170,10 @@ export const ACTIONS = {
 	},
 	"group-selected": {
 		description: "Group selected elements",
+		category: "editing",
+	},
+	"combine-selected": {
+		description: "Combine selected elements into one element",
 		category: "editing",
 	},
 	"ungroup-selected": {
@@ -297,6 +305,7 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	split: ["s"],
 	"split-left": ["q"],
 	"split-right": ["w"],
+	"align-to-playhead": ["["],
 	"delete-selected": ["backspace", "delete"],
 	"copy-selected": ["ctrl+c"],
 	"paste-copied": ["ctrl+v"],

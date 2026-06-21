@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { AudioWave01Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import { cn } from "@/utils/ui";
@@ -190,6 +188,7 @@ export function VerticalAudioMeter() {
 
 	return (
 		<div
+			title="Peak audio meter: L/R levels. Click VIS to switch to the audio visualizer."
 			className={cn(
 				"relative flex shrink-0 flex-col items-stretch gap-1.5 rounded-lg",
 				"border border-white/[0.08] bg-black/40 p-1.5 select-none",
@@ -254,6 +253,9 @@ function MeterView({
 }) {
 	return (
 		<>
+			<div className="text-center text-[0.5rem] font-bold uppercase tracking-[0.16em] text-white/35">
+				Meter
+			</div>
 			<div className="flex flex-1 items-stretch gap-1">
 				<ChannelBar
 					barRef={leftBarRef}
@@ -278,15 +280,14 @@ function MeterView({
 				<button
 					type="button"
 					onClick={onOpenVisualizer}
-					aria-label="Open audio visualizer"
-					title="Open audio visualizer (also: visualizer pill in the preview toolbar)"
+					aria-label="Toggle meter dim"
 					className={cn(
 						"h-4 flex-1 rounded text-[0.55rem] font-bold uppercase tracking-[0.16em] transition-colors",
 						dimmed
 							? "bg-white/15 text-white"
 							: "bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/70",
 					)}
-					>
+				>
 					DIM
 				</button>
 			</div>

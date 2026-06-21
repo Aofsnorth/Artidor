@@ -238,6 +238,36 @@ function extractKeyframeName(css: string): string | null {
 	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
 }
 
+function SceneThumbnail({
+	seed,
+	variant,
+}: {
+	seed: number;
+	variant: "from" | "to";
+}) {
+	void seed;
+	const isTo = variant === "to";
+	return (
+		<div className="absolute inset-0 overflow-hidden">
+			<div
+				className="absolute inset-0"
+				style={{
+					background: isTo
+						? "linear-gradient(180deg, #b9c7d4 0%, #53616f 54%, #17202a 100%)"
+						: "linear-gradient(180deg, #d8c4a2 0%, #806a4c 54%, #211912 100%)",
+				}}
+			/>
+			<div className="absolute left-[8%] top-[12%] size-[18%] rounded-full bg-white/70 blur-[1px]" />
+			<div className="absolute inset-x-0 bottom-0 h-[46%] bg-[linear-gradient(155deg,transparent_0_28%,rgba(15,23,42,0.92)_29%_58%,transparent_59%),linear-gradient(25deg,transparent_0_38%,rgba(30,41,59,0.88)_39%_70%,transparent_71%)]" />
+			<div className="absolute bottom-0 left-0 h-[24%] w-full bg-[linear-gradient(180deg,rgba(20,83,45,0.18),rgba(20,83,45,0.78))]" />
+			<div className="absolute bottom-[18%] left-[12%] h-[22%] w-[18%] rounded-t-full bg-black/45" />
+			<div className="absolute bottom-[19%] left-[16%] size-[8%] rounded-full bg-black/50" />
+			<div className="absolute bottom-[16%] right-[12%] h-[18%] w-[26%] rounded-sm bg-white/18 shadow-[0_0_0_1px_rgba(255,255,255,0.16)]" />
+			<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,transparent_0%,rgba(0,0,0,0.34)_100%)]" />
+		</div>
+	);
+}
+
 function TransitionPreview({
 	definition,
 }: {
@@ -260,27 +290,37 @@ function TransitionPreview({
 	const photoB = getTransitionPhotoUrl(definition.type, "B");
 	void photoA;
 	void photoB;
-	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
+	const { b: paletteB } = getTransitionPalettes(definition.type);
+	const seed = hashString(definition.type);
+	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
+		`${definition.type} ${definition.name}`,
+	);
 
 	return (
 		<div
-			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-black/35"
+			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-zinc-950"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<div
-				aria-hidden
-				className="absolute inset-0"
-				style={{ background: paletteA.background }}
-			/>
+			<SceneThumbnail seed={seed} variant="from" />
 			<div
 				aria-hidden
 				className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
 				style={{
-					background: paletteB.background,
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
 				}}
+			>
+				<SceneThumbnail seed={seed + 37} variant="to" />
+			</div>
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-20 opacity-0 mix-blend-screen transition-opacity duration-200 group-hover:opacity-100"
+				style={{
+					background: usesColorEffect
+						? paletteB.background
+						: "linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent)",
+				}}
 			/>
-			<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+			<div className="pointer-events-none absolute inset-0 z-30 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.2)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 			<style>{scopedCss}</style>
 		</div>
 	);

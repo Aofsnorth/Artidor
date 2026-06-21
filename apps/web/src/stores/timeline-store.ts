@@ -11,6 +11,8 @@ interface TimelineStore {
 	toggleSnapping: () => void;
 	autoScrollEnabled: boolean;
 	toggleAutoScroll: () => void;
+	autoPlayWhileScrubbing: boolean;
+	toggleAutoPlayWhileScrubbing: () => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
 	expandedElementIds: Set<string>;
@@ -47,6 +49,14 @@ export const useTimelineStore = create<TimelineStore>()(
 			toggleAutoScroll: () => {
 				set((state) => ({
 					autoScrollEnabled: !state.autoScrollEnabled,
+				}));
+			},
+
+			autoPlayWhileScrubbing: false,
+
+			toggleAutoPlayWhileScrubbing: () => {
+				set((state) => ({
+					autoPlayWhileScrubbing: !state.autoPlayWhileScrubbing,
 				}));
 			},
 
@@ -143,6 +153,7 @@ export const useTimelineStore = create<TimelineStore>()(
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
+				autoPlayWhileScrubbing: state.autoPlayWhileScrubbing,
 			}),
 		},
 	),

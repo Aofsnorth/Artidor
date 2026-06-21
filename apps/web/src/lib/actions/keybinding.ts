@@ -77,7 +77,15 @@ export type Key =
 	| "backspace"
 	| "delete"
 	| "home"
-	| "end";
+	| "end"
+	| "["
+	| "]"
+	| "{"
+	| "}"
+	| "="
+	| "-"
+	| "+"
+	| "_";
 /* eslint-enable */
 
 export type ModifierBasedShortcutKey = `${ModifierKeys}+${Key}`;

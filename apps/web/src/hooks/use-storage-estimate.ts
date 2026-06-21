@@ -41,13 +41,17 @@ export function useStorageEstimate(): StorageEstimate | null {
 }
 
 export function formatStorageSize(bytes: number): string {
-	const gb = bytes / 1_000_000_000;
-	if (gb >= 1000) {
-		const tb = gb / 1000;
-		return `${tb >= 10 ? Math.round(tb) : tb.toFixed(1)} TB`;
+	const units = ["B", "KB", "MB", "GB", "TB"] as const;
+	let value = Math.max(0, bytes);
+	let unitIndex = 0;
+
+	while (value >= 1000 && unitIndex < units.length - 1) {
+		value /= 1000;
+		unitIndex++;
 	}
-	if (gb >= 1) {
-		return `${Math.round(gb)} GB`;
-	}
-	return `${Math.max(1, Math.round(gb * 1000))} MB`;
+
+	const maximumFractionDigits = value >= 10 || unitIndex === 0 ? 0 : 1;
+	return `${new Intl.NumberFormat(undefined, {
+		maximumFractionDigits,
+	}).format(value)} ${units[unitIndex]}`;
 }

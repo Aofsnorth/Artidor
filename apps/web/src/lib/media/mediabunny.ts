@@ -252,3 +252,62 @@ export async function extractClipAudio({
 		return createWavBlob({ samples: new Float32Array(0) });
 	}
 }
+
+export async function extractAssetAudio({
+	asset,
+}: {
+	asset: { file: File; duration?: number | null; name?: string };
+}): Promise<Blob> {
+	try {
+		const input = new Input({
+			source: new BlobSource(asset.file),
+			formats: ALL_FORMATS,
+		});
+		const audioTrack = await input.getPrimaryAudioTrack();
+		if (!audioTrack) {
+			return createWavBlob({ samples: new Float32Array(0) });
+		}
+
+		const sink = new AudioBufferSink(audioTrack);
+		const collected: Float32Array[] = [];
+		let totalLength = 0;
+
+		for await (const wrapped of sink.buffers()) {
+			const { buffer } = wrapped;
+			const length = buffer.length;
+			if (length <= 0) continue;
+
+			const channelCount = Math.min(CLIP_NUM_CHANNELS, buffer.numberOfChannels);
+			const mixed = new Float32Array(length);
+
+			for (let ch = 0; ch < channelCount; ch++) {
+				const data = buffer.getChannelData(ch);
+				for (let i = 0; i < length; i++) {
+					mixed[i] += (data[i] ?? 0) / channelCount;
+				}
+			}
+
+			collected.push(mixed);
+			totalLength += length;
+		}
+
+		if (totalLength === 0) {
+			return createWavBlob({ samples: new Float32Array(0) });
+		}
+
+		const interleaved = new Float32Array(totalLength * CLIP_NUM_CHANNELS);
+		let offset = 0;
+		for (const arr of collected) {
+			for (let i = 0; i < arr.length; i++) {
+				interleaved[(offset + i) * CLIP_NUM_CHANNELS] = arr[i] ?? 0;
+				interleaved[(offset + i) * CLIP_NUM_CHANNELS + 1] = arr[i] ?? 0;
+			}
+			offset += arr.length;
+		}
+
+		return createWavBlob({ samples: interleaved });
+	} catch (error) {
+		console.warn("extractAssetAudio failed:", error);
+		return createWavBlob({ samples: new Float32Array(0) });
+	}
+}

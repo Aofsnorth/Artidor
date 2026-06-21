@@ -54,6 +54,8 @@ export interface DraggableItemProps {
 	dragData: TimelineDragData;
 	onDragStart?: ({ e }: { e: React.DragEvent }) => void;
 	onAddToTimeline?: ({ currentTime }: { currentTime: number }) => void;
+	/** Optional click handler — fires on single click (not drag). */
+	onClick?: () => void;
 	aspectRatio?: number;
 	className?: string;
 	containerClassName?: string;
@@ -71,6 +73,7 @@ export function DraggableItem({
 	dragData,
 	onDragStart,
 	onAddToTimeline,
+	onClick,
 	aspectRatio = 16 / 9,
 	className = "",
 	containerClassName,
@@ -181,11 +184,22 @@ export function DraggableItem({
 								isRounded && "rounded-sm",
 								isDraggable && "[&::-webkit-drag-ghost]:opacity-0",
 							)}
-							draggable={isDraggable}
-							onDragStart={isDraggable ? handleDragStart : undefined}
-							onDragEnd={isDraggable ? handleDragEnd : undefined}
+							draggable={!onClick && isDraggable}
+							onDragStart={!onClick && isDraggable ? handleDragStart : undefined}
+							onDragEnd={!onClick && isDraggable ? handleDragEnd : undefined}
 						>
 							{preview}
+							{onClick && (
+								<button
+									type="button"
+									aria-label={`Preview ${name}`}
+									className="absolute inset-0 z-10 cursor-default rounded-[inherit] bg-transparent focus:outline-none focus:ring-2 focus:ring-white/30"
+									draggable={isDraggable}
+									onClick={onClick}
+									onDragStart={isDraggable ? handleDragStart : undefined}
+									onDragEnd={isDraggable ? handleDragEnd : undefined}
+								/>
+							)}
 							{!isDragging && (
 								<PlusButton
 									className="opacity-0 transition-opacity group-hover:opacity-100 bg-black/50 hover:bg-black/80 border border-white/10 text-cyan-400 z-20"
@@ -213,6 +227,7 @@ export function DraggableItem({
 				>
 					<button
 						type="button"
+						onClick={onClick}
 						className={cn(
 							"flex h-8 w-full cursor-default items-center gap-3 px-1 outline-none",
 							isDraggable && "[&::-webkit-drag-ghost]:opacity-0",

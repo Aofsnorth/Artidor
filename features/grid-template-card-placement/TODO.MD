@@ -1,18 +1,14 @@
-# TODO
+# TODO — Grid Template Card Placement
 
-## Completed
 - [x] Create feature workflow folder.
 - [x] Create required workflow files.
-
-## Pending
-- [ ] Review FEATURE.MD for Grid Template Card Placement.
-- [ ] Review PLAN.MD for Grid Template Card Placement.
-- [ ] Audit current source and behavior for Grid Template Card Placement.
-- [ ] Approve implementation for Grid Template Card Placement.
-
-## Blocked
-- None.
-
-## Do not start yet
-- [ ] Source edits for Grid Template Card Placement.
-- [ ] Optional improvements for Grid Template Card Placement.
+- [x] Fill `FEATURE.MD`.
+- [x] Fill `PLAN.MD`.
+- [x] Fill `RISKS.MD`.
+- [x] Fill `QA.MD`.
+- [ ] User review of `FEATURE.MD` and `PLAN.MD`.
+- [ ] Audit current template card layout.
+- [ ] Audit FlashCut reference behavior/license.
+- [ ] Implement approved layout changes.
+- [ ] Run QA and checks.
+- [ ] Update `STATE.MD` after verification.

@@ -1,6 +1,8 @@
 import type { ParamDefinition } from "@/lib/params";
 
 export type GraphicStrokeAlign = "inside" | "center" | "outside";
+export type GraphicStrokeDash = "solid" | "dashed" | "dotted";
+export type GraphicStrokeTaper = "none" | "in" | "out";
 
 export const STROKE_ALIGN_PARAM: ParamDefinition<"strokeAlign"> = {
 	key: "strokeAlign",
@@ -12,6 +14,32 @@ export const STROKE_ALIGN_PARAM: ParamDefinition<"strokeAlign"> = {
 		{ value: "inside", label: "Inside" },
 		{ value: "center", label: "Center" },
 		{ value: "outside", label: "Outside" },
+	],
+};
+
+export const STROKE_DASH_PARAM: ParamDefinition<"strokeDash"> = {
+	key: "strokeDash",
+	label: "Stroke style",
+	type: "select",
+	default: "solid",
+	group: "stroke",
+	options: [
+		{ value: "solid", label: "Solid" },
+		{ value: "dashed", label: "Dashed" },
+		{ value: "dotted", label: "Dotted" },
+	],
+};
+
+export const STROKE_TAPER_PARAM: ParamDefinition<"strokeTaper"> = {
+	key: "strokeTaper",
+	label: "Stroke taper",
+	type: "select",
+	default: "none",
+	group: "stroke",
+	options: [
+		{ value: "none", label: "None" },
+		{ value: "in", label: "Taper in" },
+		{ value: "out", label: "Taper out" },
 	],
 };
 
@@ -45,6 +73,8 @@ export const STROKE_PARAMS: ParamDefinition[] = [
 		group: "stroke",
 	},
 	STROKE_ALIGN_PARAM,
+	STROKE_DASH_PARAM,
+	STROKE_TAPER_PARAM,
 ];
 
 export interface ShapeBaseStyle {
@@ -52,6 +82,8 @@ export interface ShapeBaseStyle {
 	stroke: string;
 	strokeWidth: number;
 	strokeAlign: GraphicStrokeAlign;
+	strokeDash: GraphicStrokeDash;
+	strokeTaper: "none" | "in" | "out";
 	/** Half the stroke width when centre-aligned, so the shape stays inside its
 	 * bounds; zero otherwise. */
 	inset: number;
@@ -63,14 +95,20 @@ export function readShapeBaseStyle(params: {
 	stroke?: unknown;
 	strokeWidth?: unknown;
 	strokeAlign?: unknown;
+	strokeDash?: unknown;
+	strokeTaper?: unknown;
 }): ShapeBaseStyle {
 	const strokeWidth = Math.max(0, Number(params.strokeWidth ?? 0));
 	const strokeAlign = (params.strokeAlign ?? "center") as GraphicStrokeAlign;
+	const strokeDash = (params.strokeDash ?? "solid") as GraphicStrokeDash;
+	const strokeTaper = (params.strokeTaper ?? "none") as "none" | "in" | "out";
 	return {
 		fill: String(params.fill ?? "#ffffff"),
 		stroke: String(params.stroke ?? "#000000"),
 		strokeWidth,
 		strokeAlign,
+		strokeDash,
+		strokeTaper,
 		inset: strokeAlign === "center" ? strokeWidth / 2 : 0,
 	};
 }

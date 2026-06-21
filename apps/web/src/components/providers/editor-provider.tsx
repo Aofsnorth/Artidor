@@ -144,6 +144,15 @@ function EditorRuntimeBindings() {
 		editor.command.isRippleEnabled = rippleEditingEnabled;
 	}, [editor, rippleEditingEnabled]);
 
+	// Pause playback when the editor unmounts (e.g. navigating back to
+	// project selection via the breadcrumb link). This prevents orphaned
+	// audio from continuing to play after the editor is gone.
+	useEffect(() => {
+		return () => {
+			editor.playback.pause();
+		};
+	}, [editor]);
+
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 			if (!editor.save.getIsDirty()) return;

@@ -564,10 +564,48 @@ export function useEditorActions() {
 
 	// Group / ungroup / parent
 	useActionHandler(
+		"align-to-playhead",
+		() => {
+			if (selectedElements.length === 0) return;
+			const playhead = editor.playback.getCurrentTime();
+			const updates: Array<{
+				trackId: string;
+				elementId: string;
+				patch: Record<string, number>;
+			}> = [];
+			
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				if (!element) continue;
+				updates.push({
+					trackId: ref.trackId,
+					elementId: ref.elementId,
+					patch: { startTime: playhead },
+				});
+			}
+
+			if (updates.length > 0) {
+				editor.timeline.updateElements({ updates });
+			}
+		},
+		undefined,
+	);
+
+	useActionHandler(
 		"group-selected",
 		() => {
-			if (selectedElements.length < 2) return;
+			if (selectedElements.length < 1) return;
 			editor.timeline.groupElements({ elementRefs: [...selectedElements] });
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"combine-selected",
+		() => {
+			if (selectedElements.length < 1) return;
+			editor.timeline.combineElements({ elementRefs: [...selectedElements] });
 		},
 		undefined,
 	);

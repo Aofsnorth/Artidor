@@ -1,42 +1,11 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
-import { STROKE_ALIGN_PARAM, type GraphicStrokeAlign } from "./shared";
+import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import type { GraphicDefinition } from "../types";
 
-interface RectangleParams {
-	fill: string;
-	stroke: string;
-	strokeWidth: number;
-	strokeAlign: GraphicStrokeAlign;
-	cornerRadius: number;
-}
-
-const RECTANGLE_PARAMS: ParamDefinition<keyof RectangleParams & string>[] = [
-	{
-		key: "fill",
-		label: "Fill",
-		type: "color",
-		default: "#ffffff",
-	},
-	{
-		key: "stroke",
-		label: "Color",
-		type: "color",
-		default: "#000000",
-		group: "stroke",
-	},
-	{
-		key: "strokeWidth",
-		label: "Width",
-		type: "number",
-		default: 0,
-		min: 0,
-		max: 64,
-		step: 1,
-		shortLabel: "W",
-		group: "stroke",
-	},
-	STROKE_ALIGN_PARAM,
+const RECTANGLE_PARAMS: ParamDefinition[] = [
+	FILL_PARAM,
+	...STROKE_PARAMS,
 	{
 		key: "cornerRadius",
 		label: "Corner radius",
@@ -55,11 +24,8 @@ export const rectangleGraphicDefinition: GraphicDefinition = {
 	keywords: ["rectangle", "square", "box"],
 	params: RECTANGLE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const fill = String(params.fill ?? "#ffffff");
-		const stroke = String(params.stroke ?? "#000000");
-		const strokeWidth = Math.max(0, Number(params.strokeWidth ?? 0));
-		const strokeAlign = (params.strokeAlign ?? "center") as GraphicStrokeAlign;
-		const inset = strokeAlign === "center" ? strokeWidth / 2 : 0;
+		const { fill, stroke, strokeWidth, strokeAlign, strokeDash, strokeTaper, inset } =
+			readShapeBaseStyle(params);
 		const drawWidth = Math.max(1, width - inset * 2);
 		const drawHeight = Math.max(1, height - inset * 2);
 		const radiusPercent = Math.max(0, Number(params.cornerRadius ?? 0));
@@ -80,6 +46,8 @@ export const rectangleGraphicDefinition: GraphicDefinition = {
 				strokeWidth,
 				strokeAlign,
 				strokeColor: stroke,
+				strokeDash,
+				strokeTaper,
 			});
 		}
 	},

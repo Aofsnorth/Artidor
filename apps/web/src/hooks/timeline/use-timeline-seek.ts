@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { MutableRefObject, RefObject } from "react";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { snappedSeekTime } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEditor } from "../use-editor";
@@ -132,7 +133,8 @@ export function useTimelineSeek({
 				0,
 				Math.min(
 					duration / TICKS_PER_SECOND,
-					(mouseX + scrollLeft) / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel),
+					(mouseX + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX) /
+						(BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel),
 				),
 			);
 			const rawTime = Math.round(rawTimeSeconds * TICKS_PER_SECOND);

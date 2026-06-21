@@ -1,5 +1,6 @@
 "use client";
 
+import { MarqueeText } from "@/components/ui/marquee-text";
 import { useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -17,6 +18,7 @@ import { KeyframeContextMenu } from "./keyframe-context-menu";
 import { useTimelineElementResize } from "@/hooks/timeline/element/use-element-resize";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { dBToLinear } from "@/lib/timeline/audio-state";
+import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "@/lib/timeline/audio-constants";
 import { SelectionBox } from "@/lib/selection/selection-box";
 import { getElementKeyframes } from "@/lib/animation";
 import {
@@ -167,9 +169,21 @@ function ElementEnvelope({
 		.filter((kf) => kf.propertyPath === propertyPath)
 		.sort((a, b) => a.time - b.time);
 
+	// `volume` is stored in decibels (default 0 dB = full level), whereas
+	// `opacity` is already a normalized 0–1 value. The envelope draws on a 0–1
+	// vertical axis, so volume must be mapped from its dB range first — otherwise
+	// 0 dB reads as "0" and the line/keyframes collapse to the bottom of the lane.
+	const normalizeEnvelopeValue = (raw: number): number => {
+		if (propertyPath !== "volume") {
+			return Math.min(1, Math.max(0, raw));
+		}
+		const ratio = (raw - VOLUME_DB_MIN) / (VOLUME_DB_MAX - VOLUME_DB_MIN);
+		return Math.min(1, Math.max(0, ratio));
+	};
+
 	const defaultValue =
 		propertyPath === "volume"
-			? ((element as AudioElement).volume ?? 1)
+			? ((element as AudioElement).volume ?? 0)
 			: propertyPath === "opacity"
 				? ((element as VideoElement).opacity ?? 1)
 				: 1;
@@ -182,23 +196,24 @@ function ElementEnvelope({
 	}[] = [];
 	const linePaddingY = 4;
 	const resolvedHeight = envelopeHeight ?? baseTrackHeight;
+	const resolvedWidth = Math.max(0, elementWidth - ELEMENT_RING_WIDTH_PX * 2);
 	const usableHeight = resolvedHeight - linePaddingY * 2;
 
 	if (elementKeyframes.length === 0) {
 		const y =
 			linePaddingY +
 			usableHeight -
-			Math.min(1, Math.max(0, defaultValue as number)) * usableHeight;
+			normalizeEnvelopeValue(defaultValue as number) * usableHeight;
 		points.push({ x: 0, y });
-		points.push({ x: elementWidth, y });
+		points.push({ x: resolvedWidth, y });
 	} else {
 		for (let i = 0; i < elementKeyframes.length; i++) {
 			const kf = elementKeyframes[i];
-			const val = typeof kf.value === "number" ? kf.value : 1;
+			const val = typeof kf.value === "number" ? kf.value : defaultValue;
 			const y =
 				linePaddingY +
 				usableHeight -
-				Math.min(1, Math.max(0, val)) * usableHeight;
+				normalizeEnvelopeValue(val as number) * usableHeight;
 
 			const indicatorTime = kf.time;
 			const indicatorOffsetPx =
@@ -214,6 +229,10 @@ function ElementEnvelope({
 				displayedStartTime,
 				elementLeft,
 			});
+			const x = Math.max(
+				0,
+				Math.min(resolvedWidth, visualX - ELEMENT_RING_WIDTH_PX),
+			);
 
 			const keyframeRef: SelectedKeyframeRef = {
 				trackId: track.id,
@@ -222,12 +241,12 @@ function ElementEnvelope({
 				keyframeId: kf.id,
 			};
 
-			if (i === 0 && visualX > 0) {
+			if (i === 0 && x > 0) {
 				points.push({ x: 0, y });
 			}
-			points.push({ x: visualX, y, kf, keyframeRef });
-			if (i === elementKeyframes.length - 1 && visualX < elementWidth) {
-				points.push({ x: elementWidth, y });
+			points.push({ x, y, kf, keyframeRef });
+			if (i === elementKeyframes.length - 1 && x < resolvedWidth) {
+				points.push({ x: resolvedWidth, y });
 			}
 		}
 	}
@@ -236,12 +255,17 @@ function ElementEnvelope({
 
 	return (
 		<div
-			className="pointer-events-none absolute inset-x-0 overflow-hidden"
-			style={{ height: `${resolvedHeight}px`, top: `${envelopeTop}px` }}
+			className="pointer-events-none absolute overflow-hidden"
+			style={{
+				height: `${resolvedHeight}px`,
+				top: `${envelopeTop}px`,
+				left: `${ELEMENT_RING_WIDTH_PX}px`,
+				right: `${ELEMENT_RING_WIDTH_PX}px`,
+			}}
 		>
 			<svg
 				aria-hidden="true"
-				className="absolute inset-0 size-full overflow-visible pointer-events-none"
+				className="absolute inset-0 size-full overflow-hidden pointer-events-none"
 			>
 				<polyline
 					points={pointsString}
@@ -266,8 +290,12 @@ function ElementEnvelope({
 						<KeyframeContextMenu key={kf.id} keyframe={keyframeRef}>
 							<button
 								type="button"
-								className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
-								style={{ left: p.x, top: p.y }}
+								className="pointer-events-auto absolute cursor-grab"
+								style={{
+									left: p.x,
+									top: p.y,
+									transform: "translate(-50%, -50%)",
+								}}
 								onMouseDown={(event) =>
 									onKeyframeMouseDown({ event, keyframes: [keyframeRef] })
 								}
@@ -280,13 +308,12 @@ function ElementEnvelope({
 									})
 								}
 							>
-								<HugeiconsIcon
-									icon={KeyframeIcon}
+								<span
 									className={cn(
-										"size-3.5 text-black",
-										isSelected ? "fill-primary" : "fill-white",
+										"block size-4 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+										isSelected &&
+											"size-5 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
 									)}
-									strokeWidth={1.5}
 								/>
 							</button>
 						</KeyframeContextMenu>
@@ -842,6 +869,19 @@ export function TimelineElement({
 							Group elements
 						</ContextMenuItem>
 					)}
+					{selectedElements.length > 1 && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={Layers01Icon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								editor.timeline.combineElements({
+									elementRefs: selectedElements,
+								});
+							}}
+						>
+							Combine elements
+						</ContextMenuItem>
+					)}
 					{element.groupId && (
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={Layers01Icon} />}
@@ -1265,8 +1305,12 @@ function KeyframeIndicators({
 					<button
 						key={indicator.time}
 						type="button"
-						className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab"
-						style={{ left: visualOffsetPx }}
+						className="pointer-events-auto absolute cursor-grab"
+						style={{
+							left: visualOffsetPx,
+							top: "50%",
+							transform: "translate(-50%, -50%)",
+						}}
 						onMouseDown={(event) =>
 							onKeyframeMouseDown({ event, keyframes: indicator.keyframes })
 						}
@@ -1285,13 +1329,12 @@ function KeyframeIndicators({
 						}}
 						aria-label="Select keyframe"
 					>
-						<HugeiconsIcon
-							icon={KeyframeIcon}
+						<span
 							className={cn(
-								"size-[1.125rem] text-black",
-								isIndicatorSelected ? "fill-primary" : "fill-white",
+								"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+								isIndicatorSelected &&
+									"size-6 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
 							)}
-							strokeWidth={1.5}
 						/>
 					</button>
 				);
@@ -1483,10 +1526,14 @@ function ExpandedKeyframeLanes({
 									<button
 										type="button"
 										className={cn(
-											"pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab",
+											"pointer-events-auto absolute cursor-grab",
 											isBoxSelecting && "pointer-events-none",
 										)}
-										style={{ left: visualOffset }}
+										style={{
+											left: visualOffset,
+											top: "50%",
+											transform: "translate(-50%, -50%)",
+										}}
 										onMouseDown={(event) => {
 											event.stopPropagation();
 											onKeyframeMouseDown({
@@ -1510,14 +1557,13 @@ function ExpandedKeyframeLanes({
 										}}
 										aria-label="Select keyframe"
 									>
-										<HugeiconsIcon
-											icon={KeyframeIcon}
-											className={cn(
-												"size-[1.125rem] text-black",
-												isSelected ? "fill-primary" : "fill-white",
-											)}
-											strokeWidth={1.5}
-										/>
+										<span
+										className={cn(
+											"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height] duration-150",
+											isSelected &&
+												"size-6 border-2 border-white bg-gradient-to-br from-sky-300 to-blue-500 shadow-[0_0_0_2px_rgba(56,189,248,0.5),0_0_9px_2px_rgba(56,189,248,0.6)]",
+										)}
+									/>
 									</button>
 								</KeyframeContextMenu>
 							);
@@ -1672,6 +1718,7 @@ function AudioElementContent({
 	// displays as ~40% height instead of 16%, which feels proportional
 	// to how loud the audio still sounds.
 	const waveformScale = Math.sqrt(effectiveVolume);
+	const trackVolumePercent = Math.max(0, Math.min(100, trackVolume * 100));
 
 	if (hasAudioSource) {
 		return (
@@ -1693,9 +1740,24 @@ function AudioElementContent({
 					}
 					scale={waveformScale}
 				/>
-				<div className="pointer-events-none absolute right-1.5 bottom-1 rounded-full border border-white/10 bg-black/25 px-1.5 py-0.5 text-[0.48rem] font-semibold uppercase tracking-[0.18em] text-white/42">
-					Beat
+				<div className="pointer-events-none absolute inset-0 overflow-hidden">
+					<div
+						className="absolute inset-x-0 h-px bg-white/50"
+						style={{
+							top: `${100 - trackVolumePercent}%`,
+							transform: "translateY(-50%)",
+						}}
+					/>
+					<div
+						className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/[0.04] to-transparent"
+						style={{ height: `${trackVolumePercent}%` }}
+					/>
 				</div>
+				<AudioFadeOverlay
+					fadeInDuration={element.fadeInDuration ?? 0}
+					fadeOutDuration={element.fadeOutDuration ?? 0}
+					durationTicks={element.duration}
+				/>
 				<MediaElementHeader name={mediaLabel} hasFade={false} />
 			</div>
 		);
@@ -1703,6 +1765,41 @@ function AudioElementContent({
 
 	return (
 		<span className="text-foreground/80 truncate text-xs">{mediaLabel}</span>
+	);
+}
+
+function AudioFadeOverlay({
+	fadeInDuration,
+	fadeOutDuration,
+	durationTicks,
+}: {
+	fadeInDuration: number;
+	fadeOutDuration: number;
+	durationTicks: number;
+}) {
+	const durationSeconds = durationTicks / TICKS_PER_SECOND;
+	if (durationSeconds <= 0) return null;
+
+	const fadeInPct = Math.min(100, (fadeInDuration / durationSeconds) * 100);
+	const fadeOutPct = Math.min(100, (fadeOutDuration / durationSeconds) * 100);
+
+	if (fadeInPct <= 0 && fadeOutPct <= 0) return null;
+
+	return (
+		<div className="pointer-events-none absolute inset-0 overflow-hidden">
+			{fadeInPct > 0 && (
+				<div
+					className="absolute inset-y-0 left-0 bg-gradient-to-r from-black/60 to-transparent"
+					style={{ width: `${fadeInPct}%` }}
+				/>
+			)}
+			{fadeOutPct > 0 && (
+				<div
+					className="absolute inset-y-0 right-0 bg-gradient-to-l from-black/60 to-transparent"
+					style={{ width: `${fadeOutPct}%` }}
+				/>
+			)}
+		</div>
 	);
 }
 
@@ -2015,6 +2112,8 @@ function MediaElementHeader({
 		return null;
 	}
 
+	const isLongName = name && name.length > 24;
+
 	return (
 		<div
 			className={cn(
@@ -2024,9 +2123,15 @@ function MediaElementHeader({
 		>
 			{leading && <div className="pl-1">{leading}</div>}
 			{name && (
-				<span className="truncate px-1.5 text-[0.6rem] leading-tight text-white/75">
-					{name}
-				</span>
+				<div className="overflow-hidden px-1.5 text-[0.6rem] leading-tight text-white/75">
+					{isLongName ? (
+						<MarqueeText pxPerSecond={40} className="text-white/75">
+							{name}
+						</MarqueeText>
+					) : (
+						<span className="truncate block">{name}</span>
+					)}
+				</div>
 			)}
 		</div>
 	);

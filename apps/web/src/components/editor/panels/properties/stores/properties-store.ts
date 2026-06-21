@@ -28,6 +28,8 @@ interface PropertiesState {
 	toggleMediaFavorite: (mediaId: string) => void;
 	mediaSummarySize: MediaSummarySize;
 	setMediaSummarySize: (size: MediaSummarySize) => void;
+	arePrimaryTabsHidden: boolean;
+	setPrimaryTabsHidden: (hidden: boolean) => void;
 }
 
 export const usePropertiesStore = create<PropertiesState>()((set) => ({
@@ -36,7 +38,7 @@ export const usePropertiesStore = create<PropertiesState>()((set) => ({
 		set((state) => ({
 			activeTabPerType: { ...state.activeTabPerType, [elementType]: tabId },
 		})),
-	isTransformScaleLocked: false,
+	isTransformScaleLocked: true,
 	setTransformScaleLocked: (locked) => set({ isTransformScaleLocked: locked }),
 
 	favoriteMediaIds: new Set<string>(),
@@ -56,4 +58,6 @@ export const usePropertiesStore = create<PropertiesState>()((set) => ({
 
 	mediaSummarySize: "default",
 	setMediaSummarySize: (size) => set({ mediaSummarySize: size }),
+	arePrimaryTabsHidden: false,
+	setPrimaryTabsHidden: (hidden) => set({ arePrimaryTabsHidden: hidden }),
 }));

@@ -493,7 +493,7 @@ export function Timeline() {
 			playheadRef,
 		});
 
-	const { isDragOver, dropTarget, dragProps } = useTimelineDragDrop({
+	const { isDragOver, dropTarget, dragElementType, dragProps } = useTimelineDragDrop({
 		containerRef: tracksContainerRef,
 		tracksScrollRef,
 		zoomLevel,
@@ -627,6 +627,7 @@ export function Timeline() {
 						tracks={tracks}
 						isVisible={isDragOver && !dropTarget?.targetElement}
 						headerHeight={timelineHeaderHeight}
+						dragElementType={dragElementType}
 					/>
 					<DragLine
 						dropTarget={dragDropTarget}
@@ -1168,29 +1169,31 @@ function TrackLabelsPanel({
 												</div>
 											</div>
 											{/* Bottom rows: Opacity (no fill) and optional Volume (with fill) */}
-											<div className="flex flex-col gap-1 pl-[30px] pr-1">
-												{/* Opacity slider — no fill line */}
-												<div className="flex w-full items-center gap-2">
-													<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
-														O
-													</span>
-													<input
-														type="range"
-														min="0"
-														max="100"
-														value={opacityValue}
-														onChange={handleOpacityChange}
-														disabled={isLocked}
-														title={`Track opacity: ${opacityValue}%`}
-														className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_rgba(0,0,0,0.35)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-track]:bg-transparent"
-														style={{
-															background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${opacityValue}%, rgba(255,255,255,0.15) ${opacityValue}%, rgba(255,255,255,0.15) 100%)`,
-														}}
-													/>
-													<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
-														{opacityValue}%
-													</span>
-												</div>
+											<div className="flex flex-col gap-1 pl-[30px] pr-1 overflow-hidden">
+												{/* Opacity slider — no fill line (not applicable to audio tracks) */}
+												{track.type !== "audio" && (
+													<div className="flex w-full items-center gap-2">
+														<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
+															O
+														</span>
+														<input
+															type="range"
+															min="0"
+															max="100"
+															value={opacityValue}
+															onChange={handleOpacityChange}
+															disabled={isLocked}
+															title={`Track opacity: ${opacityValue}%`}
+															className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_rgba(0,0,0,0.35)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-track]:bg-transparent"
+															style={{
+																background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${opacityValue}%, rgba(255,255,255,0.15) ${opacityValue}%, rgba(255,255,255,0.15) 100%)`,
+															}}
+														/>
+														<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
+															{opacityValue}%
+														</span>
+													</div>
+												)}
 												{/* Volume slider — on audio, video, and main tracks, with fill line */}
 												{["audio", "video", "main"].includes(track.type) &&
 													volumeValue !== null && (

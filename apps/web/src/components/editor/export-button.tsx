@@ -223,14 +223,14 @@ function ExportPopover({
 			)}
 			style={
 				{
-					"--primary": "0 0% 100%",
-					"--primary-foreground": "0 0% 0%",
-					"--border": "0 0% 12%",
-					"--accent": "0 0% 15%",
-					"--accent-foreground": "0 0% 100%",
-					"--muted-foreground": "0 0% 50%",
-					"--foreground": "0 0% 90%",
-					"--ring": "0 0% 100%",
+					"--primary": "hsl(0, 0%, 100%)",
+					"--primary-foreground": "hsl(0, 0%, 0%)",
+					"--border": "hsl(0, 0%, 12%)",
+					"--accent": "hsl(0, 0%, 15%)",
+					"--accent-foreground": "hsl(0, 0%, 100%)",
+					"--muted-foreground": "hsl(0, 0%, 50%)",
+					"--foreground": "hsl(0, 0%, 90%)",
+					"--ring": "hsl(0, 0%, 100%)",
 				} as React.CSSProperties
 			}
 		>

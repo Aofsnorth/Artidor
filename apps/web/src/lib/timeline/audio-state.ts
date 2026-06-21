@@ -54,7 +54,25 @@ export function resolveEffectiveAudioGain({
 		localTime: Math.round(localTime * TICKS_PER_SECOND),
 	});
 
-	return dBToLinear(resolvedDb);
+	let gain = dBToLinear(resolvedDb);
+
+	// Apply Fade In
+	const fadeIn = element.fadeInDuration ?? 0;
+	if (fadeIn > 0 && localTime < fadeIn) {
+		gain *= localTime / fadeIn;
+	}
+
+	// Apply Fade Out
+	const fadeOut = element.fadeOutDuration ?? 0;
+	const elementDuration = element.duration / TICKS_PER_SECOND;
+	if (fadeOut > 0) {
+		const timeFromEnd = elementDuration - localTime;
+		if (timeFromEnd < fadeOut) {
+			gain *= Math.max(0, timeFromEnd / fadeOut);
+		}
+	}
+
+	return gain;
 }
 
 export function buildAudioGainAutomation({

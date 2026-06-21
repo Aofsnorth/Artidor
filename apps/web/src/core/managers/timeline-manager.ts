@@ -63,6 +63,7 @@ import type { TrackPropertyUpdates } from "@/lib/commands/timeline";
 import {
 	GroupElementsCommand,
 	UngroupElementsCommand,
+	CombineElementsCommand,
 	SetParentCommand,
 	UnlinkParentCommand,
 } from "@/lib/commands/timeline/grouping";
@@ -242,7 +243,7 @@ export class TimelineManager {
 	}
 
 	groupElements({ elementRefs }: { elementRefs: ElementRef[] }): string | null {
-		if (elementRefs.length < 2) return null;
+		if (elementRefs.length < 1) return null;
 		const command = new GroupElementsCommand({ elementRefs });
 		this.editor.command.execute({ command });
 		return command.getGroupId();
@@ -251,6 +252,13 @@ export class TimelineManager {
 	ungroupElements({ groupId }: { groupId: string }): void {
 		const command = new UngroupElementsCommand({ groupId });
 		this.editor.command.execute({ command });
+	}
+
+	combineElements({ elementRefs }: { elementRefs: ElementRef[] }): string | null {
+		if (elementRefs.length < 2) return null;
+		const command = new CombineElementsCommand({ elementRefs });
+		this.editor.command.execute({ command });
+		return command.getCombinedId();
 	}
 
 	setParent({

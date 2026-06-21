@@ -1,5 +1,5 @@
 /**
- * Plugin manifest format. Every plugin package (.artidor-plugin) contains
+ * Plugin manifest format. Every plugin package (.artpl) contains
  * a `manifest.json` file conforming to this schema. The manifest declares
  * what the plugin is, what version, what category, and what extension
  * points it contributes to.

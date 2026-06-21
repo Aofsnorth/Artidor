@@ -378,6 +378,12 @@ export class ProjectManager {
 	}
 
 	closeProject(): void {
+		// Stop playback BEFORE clearing state to prevent orphaned audio
+		// sources from continuing to play after navigation. Pausing
+		// triggers the AudioManager's handlePlaybackChange which calls
+		// stopPlayback() on the audio engine automatically.
+		this.editor.playback.pause();
+
 		this.active = null;
 		this.notify();
 

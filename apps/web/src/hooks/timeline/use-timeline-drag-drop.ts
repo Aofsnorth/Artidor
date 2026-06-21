@@ -203,6 +203,25 @@ export function useTimelineDragDrop({
 
 			target.xPosition = getSnappedTime({ time: target.xPosition });
 
+			if (
+				dragData?.type === "media" &&
+				(dragData as MediaDragData).mediaType === "image" &&
+				!target.isNewTrack &&
+				!target.targetElement
+			) {
+				const orderedTracks = [
+					...sceneTracks.overlay,
+					sceneTracks.main,
+					...sceneTracks.audio,
+				];
+				const hovered = orderedTracks[target.trackIndex];
+				if (hovered && hovered.id === sceneTracks.main.id) {
+					target.isNewTrack = true;
+					target.trackIndex = sceneTracks.overlay.length;
+					target.targetElement = null;
+				}
+			}
+
 			setDropTarget(target);
 			e.dataTransfer.dropEffect = "copy";
 		},
@@ -392,16 +411,24 @@ export function useTimelineDragDrop({
 	const executeMediaDrop = useCallback(
 		({ target, dragData }: { target: DropTarget; dragData: MediaDragData }) => {
 			if (target.targetElement) {
-				editor.timeline.updateElements({
-					updates: [
-						{
-							trackId: target.targetElement.trackId,
-							elementId: target.targetElement.elementId,
-							patch: { mediaId: dragData.id },
-						},
-					],
+				const targetTrack = editor.timeline.getTrackById({
+					trackId: target.targetElement.trackId,
 				});
-				return;
+				const targetElement = targetTrack?.elements.find(
+					(element) => element.id === target.targetElement?.elementId,
+				);
+				if (targetElement?.type === dragData.mediaType) {
+					editor.timeline.updateElements({
+						updates: [
+							{
+								trackId: target.targetElement.trackId,
+								elementId: target.targetElement.elementId,
+								patch: { mediaId: dragData.id },
+							},
+						],
+					});
+					return;
+				}
 			}
 
 			const mediaAssets = editor.media.getAssets();
@@ -435,13 +462,38 @@ export function useTimelineDragDrop({
 				return;
 			}
 
-			const tracks = [
-				...editor.scenes.getActiveScene().tracks.overlay,
-				editor.scenes.getActiveScene().tracks.main,
-				...editor.scenes.getActiveScene().tracks.audio,
+			const sceneTracks = editor.scenes.getActiveScene().tracks;
+			const orderedTracks = [
+				...sceneTracks.overlay,
+				sceneTracks.main,
+				...sceneTracks.audio,
 			];
-			const track = tracks[target.trackIndex];
+			const track = orderedTracks[target.trackIndex];
 			if (!track) return;
+
+			const elementTypeForTrack =
+				dragData.mediaType === "audio"
+					? "audio"
+					: dragData.mediaType === "image"
+						? "image"
+						: "video";
+			const dropOnMainVideoTrack =
+				track.id === sceneTracks.main.id && elementTypeForTrack === "image";
+			if (dropOnMainVideoTrack) {
+				target.isNewTrack = true;
+				target.trackIndex = sceneTracks.overlay.length;
+				const overlayIndex = sceneTracks.overlay.length;
+				const addTrackCmd = new AddTrackCommand("video", overlayIndex);
+				const insertCmd = new InsertElementCommand({
+					element,
+					placement: { mode: "explicit", trackId: addTrackCmd.getTrackId() },
+				});
+				editor.command.execute({
+					command: new BatchCommand([addTrackCmd, insertCmd]),
+				});
+				return;
+			}
+
 			editor.timeline.insertElement({
 				placement: { mode: "explicit", trackId: track.id },
 				element,

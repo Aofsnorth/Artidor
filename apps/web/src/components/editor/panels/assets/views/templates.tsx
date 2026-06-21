@@ -111,7 +111,7 @@ export function TemplatesView() {
 				<div
 					className="grid gap-3"
 					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
+						gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(assetCardSize, 132)}px, 1fr))`,
 					}}
 				>
 					{filteredTemplates.map((template) => (
@@ -184,7 +184,7 @@ function TemplateItem({
 			type="button"
 			onClick={onApply}
 			className={cn(
-				"group bg-accent hover:bg-accent/70 relative flex flex-col items-center gap-1.5 overflow-hidden rounded-sm p-2 text-center transition-colors aspect-[3/4]",
+				"group bg-accent hover:bg-accent/70 relative flex flex-col overflow-hidden rounded-sm p-2 text-left transition-colors aspect-[4/5]",
 			)}
 		>
 			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10">
@@ -224,16 +224,18 @@ function TemplateItem({
 				<div className="absolute right-3 top-4 grid size-10 place-items-center rounded bg-white/90 text-[0.62rem] font-bold text-black">
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
-				<div className="absolute bottom-1 right-1 rounded bg-black/75 px-1 text-[0.6rem] text-white">
-					{durationSec}s
-				</div>
 			</div>
-			<MarqueeText
-				className="text-muted-foreground w-full text-[0.7rem]"
-				pxPerSecond={30}
-			>
-				{template.name}
-			</MarqueeText>
+			<div className="flex w-full min-w-0 items-center justify-between gap-2 text-[0.68rem]">
+				<MarqueeText
+					className="text-foreground min-w-0 flex-1 font-medium"
+					pxPerSecond={30}
+				>
+					{template.name}
+				</MarqueeText>
+				<span className="text-muted-foreground shrink-0 tabular-nums">
+					{durationSec}s
+				</span>
+			</div>
 			<HugeiconsIcon
 				icon={PlusSignIcon}
 				className="absolute right-1 top-1 size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"

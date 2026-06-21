@@ -18,7 +18,7 @@ export interface PluginPackage {
 }
 
 /**
- * Read a .artidor-plugin file (JSON format) and parse it into a
+ * Read a .artpl file (JSON format) and parse it into a
  * structured package. Validates the manifest before returning.
  */
 export async function readPluginFile(file: File): Promise<PluginPackage> {

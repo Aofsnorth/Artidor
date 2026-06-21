@@ -155,6 +155,126 @@ export class UngroupElementsCommand extends Command {
 }
 
 /**
+ * Combine multiple elements into a single "combined" element.
+ * Unlike grouping (which just links elements), combine merges them
+ * into a single track element with a special type.
+ */
+export class CombineElementsCommand extends Command {
+	private elementRefs: ElementRef[];
+	private combinedId: string;
+	private previousElements: Array<{
+		ref: ElementRef;
+		element: TimelineElement;
+		trackIndex: number;
+	}>;
+
+	constructor({ elementRefs }: { elementRefs: ElementRef[] }) {
+		super();
+		this.elementRefs = elementRefs;
+		this.combinedId = generateUUID();
+		this.previousElements = [];
+	}
+
+	execute(): CommandResult | undefined {
+		const editor = EditorCore.getInstance();
+		const scene = editor.scenes.getActiveScene();
+		const tracks = scene.tracks;
+		const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+
+		// Save previous state
+		for (const ref of this.elementRefs) {
+			const trackIndex = orderedTracks.findIndex((t) => t.id === ref.trackId);
+			const track = orderedTracks[trackIndex];
+			const element = track?.elements.find((el) => el.id === ref.elementId);
+			if (element && trackIndex >= 0) {
+				this.previousElements.push({
+					ref,
+					element: { ...element } as TimelineElement,
+					trackIndex,
+				});
+			}
+		}
+
+		if (this.previousElements.length === 0) return undefined;
+
+		// Remove all original elements
+		for (const prev of this.previousElements) {
+			editor.timeline.deleteElements({
+				elements: [prev.ref],
+			});
+		}
+
+		// Create combined element on first track
+		const firstTrack = orderedTracks[this.previousElements[0].trackIndex];
+		if (!firstTrack) return undefined;
+
+		const combinedElement = {
+			id: this.combinedId,
+			type: "combined" as const,
+			name: `Combined ${this.previousElements.length} layers`,
+			startTime: Math.min(
+				...this.previousElements.map((p) => p.element.startTime),
+			),
+			duration: Math.max(
+				...this.previousElements.map(
+					(p) => p.element.startTime + p.element.duration,
+				),
+			) -
+				Math.min(
+					...this.previousElements.map((p) => p.element.startTime),
+				),
+			trimStart: 0,
+			trimEnd: 0,
+			opacity: 1,
+			transform: {
+				position: { x: 0, y: 0 },
+				scaleX: 1,
+				scaleY: 1,
+				rotate: 0,
+			},
+			combinedElements: this.previousElements.map((p) => p.element),
+		};
+
+		editor.timeline.insertElement({
+			// biome-ignore lint/suspicious/noExplicitAny: combined element carries heterogeneous payloads
+			element: combinedElement as any,
+			placement: { mode: "explicit", trackId: firstTrack.id },
+		});
+
+		return undefined;
+	}
+
+	undo(): void {
+		const editor = EditorCore.getInstance();
+
+		// Remove combined element
+		editor.timeline.deleteElements({
+			elements: [
+				{
+					trackId: editor.scenes
+						.getActiveScene()
+						.tracks.overlay[0]?.id ?? "",
+					elementId: this.combinedId,
+				},
+			],
+		});
+
+		// Restore original elements
+		for (const prev of this.previousElements) {
+			editor.timeline.insertElement({
+				// biome-ignore lint/suspicious/noExplicitAny: combined elements preserve heterogeneous payloads
+			element: prev.element as any,
+				placement: { mode: "explicit", trackId: prev.ref.trackId },
+			});
+		}
+	}
+
+	getCombinedId(): string {
+		return this.combinedId;
+	}
+}
+
+/**
  * Set a parent for an element. Validates the parent chain to prevent cycles.
  */
 export class SetParentCommand extends Command {

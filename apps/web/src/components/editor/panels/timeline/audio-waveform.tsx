@@ -179,8 +179,11 @@ export function AudioWaveform({
 		const canvasH = Math.round(height * dpr);
 		if (canvasW <= 0 || canvasH <= 0) return;
 
-		canvas.width = canvasW;
-		canvas.height = canvasH;
+		// Assigning canvas.width/height reallocates the backing bitmap even when
+		// the value is unchanged. While scrolling within one clip the size is
+		// usually stable, so only touch the attributes when they actually differ.
+		if (canvas.width !== canvasW) canvas.width = canvasW;
+		if (canvas.height !== canvasH) canvas.height = canvasH;
 		canvas.style.width = `${visibleWidth}px`;
 		canvas.style.height = `${height}px`;
 		canvas.style.left = `${clipLeft}px`;
@@ -226,14 +229,17 @@ export function AudioWaveform({
 		const safePeak = 1.0;
 		const logBase = Math.log1p(1);
 
+		// setTransform (not scale) so the dpr scaling is absolute. We no longer
+		// reallocate the canvas every frame, so a multiplicative scale() would
+		// compound across redraws.
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, canvasW, canvasH);
-		ctx.scale(dpr, dpr);
 
-		if (variant === "beats") {
+		// Mirrored (symmetric) beats keep a faint center baseline; bottom-anchored
+		// beats intentionally omit it so no white line sits under the clip.
+		if (variant === "beats" && symmetric) {
 			ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-			// Baseline sits at the vertical center when mirrored, otherwise it
-			// anchors the bars to the bottom of the strip.
-			const baselineY = symmetric ? Math.floor(height / 2) : height - 1;
+			const baselineY = Math.floor(height / 2);
 			ctx.fillRect(0, baselineY, visibleWidth, 1);
 		}
 
@@ -368,7 +374,12 @@ export function AudioWaveform({
 		drawVisible();
 	}, [drawVisible]);
 
-	// Redraw while scrolling the timeline (virtualized rendering).
+	// Redraw while scrolling the timeline (virtualized rendering). Scroll events
+	// fire far faster than the display refresh, and each draw reallocates the
+	// canvas + repaints — so coalesce to at most one redraw per frame. With many
+	// audio/video clips mounted this is the difference between smooth and janky
+	// timeline scrolling. Reads the latest draw fn via ref so styling/trim
+	// changes never re-attach the listener.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -377,9 +388,21 @@ export function AudioWaveform({
 		const scrollParent = scrollParentRef.current;
 		if (!scrollParent) return;
 
-		scrollParent.addEventListener("scroll", drawVisible, { passive: true });
-		return () => scrollParent.removeEventListener("scroll", drawVisible);
-	}, [drawVisible]);
+		let rafId: number | null = null;
+		const onScroll = () => {
+			if (rafId !== null) return;
+			rafId = requestAnimationFrame(() => {
+				rafId = null;
+				drawVisibleRef.current();
+			});
+		};
+
+		scrollParent.addEventListener("scroll", onScroll, { passive: true });
+		return () => {
+			scrollParent.removeEventListener("scroll", onScroll);
+			if (rafId !== null) cancelAnimationFrame(rafId);
+		};
+	}, []);
 
 	const onResize = useCallback(
 		(entry: ResizeObserverEntry) => {

@@ -14,9 +14,9 @@ import { PreviewInteractionOverlay } from "./preview-interaction-overlay";
 import { BookmarkNoteOverlay } from "./bookmark-note-overlay";
 import { GuideOverlay } from "./guide-overlay";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { usePreviewStore } from "@/stores/preview-store";
 import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
+import { MediaAssetPreview } from "./media-asset-preview";
 import { useSelectedElementCssFilter } from "@/hooks/use-selected-element-css-filter";
 import { FullScreenIcon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -26,6 +26,7 @@ import {
 	usePreviewViewport,
 } from "./preview-viewport";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { usePreviewStore } from "@/stores/preview-store";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
 
@@ -331,6 +332,7 @@ function PreviewCanvas({
 									}}
 								/>
 								<GuideOverlay />
+								<MediaAssetPreview />
 								<PreviewInteractionOverlay />
 								{overlays.bookmarks && <BookmarkNoteOverlay />}
 							</div>

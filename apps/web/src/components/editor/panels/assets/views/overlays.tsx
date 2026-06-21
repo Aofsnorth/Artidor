@@ -593,13 +593,6 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 	);
 }
 
-function getOverlayPhotoUrl(_presetId: string): null {
-	// Backwards-compat: older call sites still reach for this. The
-	// overlay preview no longer fetches a remote thumbnail — see
-	// `OverlayPreview` below, which now uses pure CSS for the plate.
-	return null;
-}
-
 function OverlayPreview({ preset }: { preset: OverlayPreset }) {
 	return (
 		<div className="relative size-full overflow-hidden rounded-sm p-2">

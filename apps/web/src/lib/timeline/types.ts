@@ -240,6 +240,13 @@ interface BaseTimelineElement {
 	bookmarks?: Bookmark[];
 }
 
+export interface MediaGraphicStyle {
+	fillColor?: string;
+	fillOpacity?: number;
+	stroke?: TextStroke;
+	shadow?: TextShadow;
+}
+
 export interface VideoElement extends BaseTimelineElement {
 	type: "video";
 	mediaId: string;
@@ -252,6 +259,7 @@ export interface VideoElement extends BaseTimelineElement {
 	transform3d?: Transform3D;
 	opacity: number;
 	blendMode?: BlendMode;
+	graphicStyle?: MediaGraphicStyle;
 	effects?: Effect[];
 	masks?: Mask[];
 	pan?: number;
@@ -267,6 +275,7 @@ export interface ImageElement extends BaseTimelineElement {
 	transform3d?: Transform3D;
 	opacity: number;
 	blendMode?: BlendMode;
+	graphicStyle?: MediaGraphicStyle;
 	effects?: Effect[];
 	masks?: Mask[];
 }

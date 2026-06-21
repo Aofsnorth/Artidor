@@ -435,13 +435,6 @@ function PresetStickerItem({ item }: { item: PresetSticker }) {
 	);
 }
 
-function getStickerPhotoUrl(_stickerId: string): null {
-	// Backwards-compat. The sticker preview no longer fetches a remote
-	// thumbnail — `StickerPreview` uses procedural CSS via
-	// `getPaletteForId` plus the real `item.previewUrl` when one exists.
-	return null;
-}
-
 interface StickerItemProps {
 	item: StickerData;
 	shouldCapSize?: boolean;
@@ -457,7 +450,7 @@ function StickerItem({
 	const { addToRecentStickers } = useStickersStore();
 	const [isAdding, setIsAdding] = useState(false);
 	const [hasImageError, setHasImageError] = useState(false);
-	const photoUrl = getStickerPhotoUrl(item.id);
+
 
 	useEffect(() => {
 		if (!item.id) {
