@@ -277,6 +277,17 @@ async function collectVisualSourceNode({
 		transform,
 		textures,
 	});
+	const mediaStyleLayer = buildMediaGraphicStyleLayer({
+		node,
+		path,
+		sourceWidth,
+		sourceHeight,
+		transform,
+		textures,
+	});
+	if (mediaStyleLayer) {
+		items.push(mediaStyleLayer);
+	}
 
 	items.push({
 		type: "layer",
@@ -290,6 +301,93 @@ async function collectVisualSourceNode({
 	if (strokeLayer) {
 		items.push(strokeLayer);
 	}
+}
+
+function buildMediaGraphicStyleLayer({
+	node,
+	path,
+	sourceWidth,
+	sourceHeight,
+	transform,
+	textures,
+}: {
+	node: GraphicNode | ImageNode | StickerNode | VideoNode;
+	path: string;
+	sourceWidth: number;
+	sourceHeight: number;
+	transform: QuadTransformDescriptor;
+	textures: Map<string, TextureUploadDescriptor>;
+}): FrameItemDescriptor | null {
+	if (node instanceof GraphicNode || node instanceof StickerNode) return null;
+	const style = node.params.graphicStyle;
+	if (!style) return null;
+	const hasFill = (style.fillOpacity ?? 0) > 0;
+	const hasStroke = Boolean(style.stroke?.enabled && style.stroke.width > 0);
+	const hasShadow = Boolean(style.shadow?.enabled);
+	if (!hasFill && !hasStroke && !hasShadow) return null;
+
+	const padding = Math.ceil(
+		Math.max(style.stroke?.width ?? 0, style.shadow?.blur ?? 0) * 2 +
+			Math.abs(style.shadow?.offsetX ?? 0) +
+			Math.abs(style.shadow?.offsetY ?? 0),
+	);
+	const width = sourceWidth + padding * 2;
+	const height = sourceHeight + padding * 2;
+	const canvas = createOffscreenCanvas({ width, height });
+	const ctx = canvas.getContext("2d") as
+		| CanvasRenderingContext2D
+		| OffscreenCanvasRenderingContext2D
+		| null;
+	if (!ctx) return null;
+
+	if (hasShadow && style.shadow) {
+		ctx.save();
+		ctx.shadowColor = style.shadow.color;
+		ctx.shadowBlur = style.shadow.blur;
+		ctx.shadowOffsetX = style.shadow.offsetX;
+		ctx.shadowOffsetY = style.shadow.offsetY;
+		ctx.fillStyle = "rgba(0,0,0,1)";
+		ctx.fillRect(padding, padding, sourceWidth, sourceHeight);
+		ctx.restore();
+	}
+	if (hasFill) {
+		ctx.save();
+		ctx.globalAlpha = Math.max(0, Math.min(1, style.fillOpacity ?? 0));
+		ctx.fillStyle = style.fillColor ?? "#ffffff";
+		ctx.fillRect(padding, padding, sourceWidth, sourceHeight);
+		ctx.restore();
+	}
+	if (hasStroke && style.stroke) {
+		ctx.strokeStyle = style.stroke.color;
+		ctx.lineWidth = style.stroke.width;
+		ctx.strokeRect(
+			padding + style.stroke.width / 2,
+			padding + style.stroke.width / 2,
+			Math.max(1, sourceWidth - style.stroke.width),
+			Math.max(1, sourceHeight - style.stroke.width),
+		);
+	}
+
+	const textureId = `${path}:media-graphic-style`;
+	textures.set(textureId, { id: textureId, source: canvas, width, height });
+	const scaleX = transform.width / Math.max(1, sourceWidth);
+	const scaleY = transform.height / Math.max(1, sourceHeight);
+	const paddedTransform: QuadTransformDescriptor = {
+		...transform,
+		centerX: transform.centerX - padding * scaleX,
+		centerY: transform.centerY - padding * scaleY,
+		width: width * scaleX,
+		height: height * scaleY,
+	};
+	return {
+		type: "layer",
+		textureId,
+		transform: paddedTransform,
+		opacity: 1,
+		blendMode: "normal",
+		effectPassGroups: [],
+		mask: null,
+	};
 }
 
 /**

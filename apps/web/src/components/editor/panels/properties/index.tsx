@@ -21,8 +21,13 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	LockKeyIcon,
+	MinusSignIcon,
 	MoreHorizontalIcon,
+	MusicNote01Icon,
+	PlusSignIcon,
 	StarIcon,
+	Video01Icon,
+	Image02Icon,
 } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { getElementDisplayName } from "@/lib/timeline";
@@ -76,6 +81,8 @@ function InspectorView() {
 	useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
 	const { activeTabPerType, setActiveTab } = usePropertiesStore();
+	const arePrimaryTabsHidden = usePropertiesStore((s) => s.arePrimaryTabsHidden);
+	const setPrimaryTabsHidden = usePropertiesStore((s) => s.setPrimaryTabsHidden);
 	const toolMode = useToolModeStore((s) => s.toolMode);
 
 	if (toolMode === "draw" || toolMode === "vector") {
@@ -156,60 +163,80 @@ function InspectorView() {
 	return (
 		<>
 			<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
-				<div className="flex items-center justify-between">
+				<div className="flex items-center justify-between gap-2">
 					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 						Inspector
 					</div>
-					<button
-						type="button"
-						className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-						onClick={() => setActiveTab(element.type, config.defaultTab)}
+					<div className="flex shrink-0 items-center gap-1.5">
+						<button
+							type="button"
+							className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+							onClick={() => setPrimaryTabsHidden(!arePrimaryTabsHidden)}
+							aria-pressed={arePrimaryTabsHidden}
+							aria-label={arePrimaryTabsHidden ? "Show inspector main tabs" : "Hide inspector main tabs"}
+						>
+							<span className="inline-flex items-center gap-1">
+								<HugeiconsIcon
+									icon={arePrimaryTabsHidden ? PlusSignIcon : MinusSignIcon}
+									className="size-3"
+									strokeWidth={1.5}
+								/>
+								Tabs
+							</span>
+						</button>
+						<button
+							type="button"
+							className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+							onClick={() => setActiveTab(element.type, config.defaultTab)}
+						>
+							Reset all
+						</button>
+					</div>
+				</div>
+				{!arePrimaryTabsHidden && (
+					<div
+						className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
+						onWheel={handleHorizontalTabWheel}
 					>
-						Reset all
-					</button>
-				</div>
-				<div
-					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
-					onWheel={handleHorizontalTabWheel}
-				>
-					{primaryTabs.map((tab) => (
-						<TooltipProvider key={tab.label} delayDuration={0}>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<button
-										type="button"
-										disabled={!tab.target}
-										className={cn(
-											"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
-											tab.isActive && "bg-white/[0.12] text-white shadow-sm",
-											!tab.target &&
-												"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
-										)}
-										onClick={() => {
-											if (tab.target) setActiveTab(element.type, tab.target.id);
-										}}
-									>
-										{!tab.target && (
-											<HugeiconsIcon
-												icon={LockKeyIcon}
-												className="size-2.5 opacity-70"
-											/>
-										)}
-										<span>{tab.label}</span>
-									</button>
-								</TooltipTrigger>
-								{!tab.target && (
-									<TooltipContent
-										side="bottom"
-										className="max-w-[180px] text-center"
-									>
-										This tab is not available for the selected element.
-									</TooltipContent>
-								)}
-							</Tooltip>
-						</TooltipProvider>
-					))}
-				</div>
+						{primaryTabs.map((tab) => (
+							<TooltipProvider key={tab.label} delayDuration={0}>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<button
+											type="button"
+											disabled={!tab.target}
+											className={cn(
+												"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
+												tab.isActive && "bg-white/[0.12] text-white shadow-sm",
+												!tab.target &&
+													"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
+											)}
+											onClick={() => {
+												if (tab.target) setActiveTab(element.type, tab.target.id);
+											}}
+										>
+											{!tab.target && (
+												<HugeiconsIcon
+													icon={LockKeyIcon}
+													className="size-2.5 opacity-70"
+												/>
+											)}
+											<span>{tab.label}</span>
+										</button>
+									</TooltipTrigger>
+									{!tab.target && (
+										<TooltipContent
+											side="bottom"
+											className="max-w-[180px] text-center"
+										>
+											This tab is not available for the selected element.
+										</TooltipContent>
+									)}
+								</Tooltip>
+							</TooltipProvider>
+						))}
+					</div>
+				)}
 			</div>
 
 			<SelectedElementSummary
@@ -324,12 +351,14 @@ const PRIMARY_INSPECTOR_TABS = [
 	},
 	{
 		label: "Text",
-		ids: ["text"],
+		ids: ["text", "graphics-style"],
+		ownedBy: ["text"] as const,
 	},
 	{
 		label: "Video",
 		ids: [
 			"transform",
+			"graphics-style",
 			"audio",
 			"speed",
 			"speed-ramp",
@@ -353,6 +382,7 @@ const PRIMARY_INSPECTOR_TABS = [
 		label: "Image",
 		ids: [
 			"image",
+			"graphics-style",
 			"transform",
 			"parenting",
 			"camera",
@@ -444,7 +474,13 @@ function SelectedElementSummary({
 }) {
 	const mediaId = "mediaId" in element ? element.mediaId : undefined;
 	const media = mediaAssets.find((asset) => asset.id === mediaId);
-	const thumbnail = media?.thumbnailUrl ?? media?.url;
+	// Only use a visual thumbnail when the media actually has an image-like
+	// preview. Audio files (.wav/.mp3) are not valid <Image> sources and
+	// would render a broken image icon — guard against that here.
+	const isAudioMedia = media?.type === "audio";
+	const thumbnail =
+		media?.thumbnailUrl ??
+		(media && !isAudioMedia ? media.url : undefined);
 	const mediaSummarySize = usePropertiesStore((s) => s.mediaSummarySize);
 	const setMediaSummarySize = usePropertiesStore((s) => s.setMediaSummarySize);
 	const favoriteMediaIds = usePropertiesStore((s) => s.favoriteMediaIds);
@@ -487,9 +523,7 @@ function SelectedElementSummary({
 							unoptimized
 						/>
 					) : (
-						<span className="text-[0.55rem] uppercase text-white/[0.35]">
-							{element.type}
-						</span>
+						<MediaTypeIcon type={element.type} size="sm" />
 					)}
 				</div>
 				<EditableElementName
@@ -526,9 +560,7 @@ function SelectedElementSummary({
 						unoptimized
 					/>
 				) : (
-					<span className="text-[0.65rem] uppercase text-white/[0.35]">
-						{element.type}
-					</span>
+					<MediaTypeIcon type={element.type} size="md" />
 				)}
 			</div>
 			<div className="min-w-0 flex-1">
@@ -613,48 +645,65 @@ function EditableElementName({
 		});
 	};
 
-	if (!isEditing) {
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			save();
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			setValue(element.customName ?? "");
+			setIsEditing(false);
+		}
+	};
+
+	if (isEditing) {
 		return (
-			<button
-				type="button"
-				className={cn("min-w-0 cursor-text text-left", className)}
-				title={`${displayName} — double-click to rename`}
-				onDoubleClick={() => {
-					setValue(element.customName ?? "");
-					setIsEditing(true);
-					setTimeout(() => inputRef.current?.select(), 0);
-				}}
-			>
-				<MarqueeText className="text-left">{displayName}</MarqueeText>
-			</button>
+			<input
+				ref={inputRef}
+				// biome-ignore lint/a11y/noAutofocus: input replaces text on click
+				autoFocus
+				type="text"
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				onBlur={save}
+				onKeyDown={handleKeyDown}
+				onMouseDown={(e) => e.stopPropagation()}
+				onDoubleClick={(e) => e.stopPropagation()}
+				className={cn(
+					className,
+					"bg-transparent outline-none focus:ring-1 focus:ring-white/20 rounded-sm px-0.5 -ml-0.5",
+				)}
+			/>
 		);
 	}
 
 	return (
-		<input
-			ref={inputRef}
+		<button
+			type="button"
 			className={cn(
-				"w-full min-w-0 rounded bg-black/30 px-1 outline-none ring-1 ring-white/20",
 				className,
+				"block w-full min-w-0 appearance-none cursor-text select-none overflow-hidden border-0 bg-transparent p-0 text-left",
 			)}
-			value={value}
-			placeholder={displayName}
-			autoComplete="off"
-			onChange={(e) => setValue(e.target.value)}
-			onBlur={save}
+			onDoubleClick={(e) => {
+				e.stopPropagation();
+				setIsEditing(true);
+				setValue(element.customName ?? displayName);
+			}}
 			onKeyDown={(e) => {
-				if (e.key === "Enter") {
+				if (e.key === "Enter" || e.key === " ") {
 					e.preventDefault();
-					save();
-				}
-				if (e.key === "Escape") {
-					setValue(element.customName ?? "");
-					setIsEditing(false);
+					setIsEditing(true);
+					setValue(element.customName ?? displayName);
 				}
 			}}
-		/>
+		>
+			<MarqueeText pxPerSecond={30} className="block w-full">
+				{displayName}
+			</MarqueeText>
+		</button>
 	);
 }
+
 
 /**
  * Star button that toggles the media favourite flag. Filled yellow when
@@ -775,5 +824,51 @@ function MediaSummaryMenu({
 				</DropdownMenuRadioGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+/**
+ * Small fallback icon used inside the SelectedElementSummary card when
+ * there is no image thumbnail (e.g. audio clips, text elements, or any
+ * element whose media has no preview URL). Picks an icon based on the
+ * element type so the user can visually identify the media at a glance
+ * instead of seeing a broken image or a plain uppercase label.
+ */
+function MediaTypeIcon({
+	type,
+	size,
+}: {
+	type: string;
+	size: "sm" | "md";
+}) {
+	const px = size === "sm" ? 14 : 20;
+	const iconClass =
+		size === "sm" ? "text-white/[0.4]" : "text-white/[0.35]";
+
+	if (type === "audio") {
+		return (
+			<HugeiconsIcon icon={MusicNote01Icon} size={px} className={iconClass} />
+		);
+	}
+	if (type === "video") {
+		return (
+			<HugeiconsIcon icon={Video01Icon} size={px} className={iconClass} />
+		);
+	}
+	if (type === "image") {
+		return (
+			<HugeiconsIcon icon={Image02Icon} size={px} className={iconClass} />
+		);
+	}
+	// Text, shape, effect, or any unknown type — render the label.
+	return (
+		<span
+			className={cn(
+				"uppercase text-white/[0.35]",
+				size === "sm" ? "text-[0.55rem]" : "text-[0.65rem]",
+			)}
+		>
+			{type}
+		</span>
 	);
 }

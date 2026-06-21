@@ -7,10 +7,17 @@ import {
 	timelineTimeToSnappedPixels,
 } from "@/lib/timeline";
 import { useTimelinePlayhead } from "@/hooks/timeline/use-timeline-playhead";
+import { useKeyframeSelection } from "@/hooks/timeline/element/use-keyframe-selection";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEditor } from "@/hooks/use-editor";
-import { TIMELINE_SCROLLBAR_SIZE_PX } from "./layout";
+import { TIMELINE_SCROLLBAR_SIZE_PX, TIMELINE_CONTENT_LEFT_INSET_PX } from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
+
+// Horizontal offset (px) applied to the playhead line ONLY while a keyframe is
+// selected, to visually centre the 2px line on the slim keyframe diamond.
+//   Positive = nudge RIGHT, negative = nudge LEFT.
+// Tune this in small 0.5px steps until the line sits dead-centre on the diamond.
+const PLAYHEAD_KEYFRAME_NUDGE_PX = 1;
 
 interface TimelinePlayheadProps {
 	zoomLevel: number;
@@ -35,6 +42,11 @@ export function TimelinePlayhead({
 }: TimelinePlayheadProps) {
 	const editor = useEditor();
 	const duration = editor.timeline.getTotalDuration();
+	// When a keyframe is selected the playhead seeks to its exact time, but the
+	// 2px line renders a hair left of the (now slimmer) diamond's visual centre.
+	// Nudge the line right so it reads as centred on the selected keyframe.
+	const { selectedKeyframes } = useKeyframeSelection();
+	const hasSelectedKeyframe = selectedKeyframes.length > 0;
 	const internalPlayheadRef = useRef<HTMLDivElement>(null);
 	const playheadRef = externalPlayheadRef || internalPlayheadRef;
 
@@ -63,7 +75,9 @@ export function TimelinePlayhead({
 	});
 	const scrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
 	const leftPosition =
-		getCenteredLineLeft({ centerPixel: centerPosition }) - scrollLeft;
+		getCenteredLineLeft({ centerPixel: centerPosition }) -
+		scrollLeft +
+		TIMELINE_CONTENT_LEFT_INSET_PX;
 
 	const handlePlayheadKeyDown = (
 		event: React.KeyboardEvent<HTMLDivElement>,
@@ -104,12 +118,19 @@ export function TimelinePlayhead({
 			}}
 			onKeyDown={handlePlayheadKeyDown}
 		>
-			<div className="bg-primary pointer-events-none absolute left-0 h-full w-0.5" />
+			<div
+				className="bg-primary pointer-events-none absolute left-0 h-full w-0.5"
+				style={
+					hasSelectedKeyframe
+						? { transform: `translateX(${PLAYHEAD_KEYFRAME_NUDGE_PX}px)` }
+						: undefined
+				}
+			/>
 
 			<button
 				type="button"
 				aria-label="Drag playhead"
-				className={`pointer-events-auto absolute top-1 left-1/2 size-3 -translate-x-1/2 transform cursor-col-resize rounded-full border-2 shadow-xs ${isSnappingToPlayhead ? "bg-primary border-primary" : "bg-primary border-primary/50"}`}
+				className={`pointer-events-auto absolute top-1 left-1/2 size-3.5 -translate-x-1/2 transform cursor-col-resize rounded-full border-2 shadow-xs ${isSnappingToPlayhead ? "bg-primary border-primary" : "bg-primary border-primary/50"}`}
 				onMouseDown={handlePlayheadMouseDown}
 			/>
 		</div>

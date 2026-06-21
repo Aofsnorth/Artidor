@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, mock, test } from "bun:test";
 import type { ElementAnimations } from "@/lib/animation/types";
 
 mock.module("artidor-wasm", () => ({
-	TICKS_PER_SECOND: () => 1000,
+	TICKS_PER_SECOND: 1000,
+	roundToFrame: ({ time }: { time: number }) => time,
+	snappedSeekTime: ({ time }: { time: number }) => time,
 }));
 
 let getGroupKeyframesAtTime: typeof import("@/lib/animation/property-groups").getGroupKeyframesAtTime;

@@ -92,7 +92,7 @@ export function PluginsView() {
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = "demo-plugin.artidor-plugin";
+			a.download = "demo-plugin.artpl";
 			a.click();
 			URL.revokeObjectURL(url);
 			toast.success("Downloaded sample plugin package");
@@ -131,7 +131,7 @@ export function PluginsView() {
 						type="button"
 						className="flex items-center justify-center gap-2 rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-[11.5px] font-medium text-white/60 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white/90"
 						onClick={handleDownloadSample}
-						title="Download a sample .artidor-plugin file for testing"
+						title="Download a sample .artpl file for testing"
 					>
 						<HugeiconsIcon icon={Download04Icon} className="size-3.5" />
 						Sample
@@ -139,7 +139,7 @@ export function PluginsView() {
 					<input
 						ref={fileInputRef}
 						type="file"
-						accept=".json,.artidor-plugin,application/json"
+						accept=".json,.artpl,application/json"
 						className="hidden"
 						onChange={(e) => void handleFileChange(e)}
 					/>
@@ -430,7 +430,7 @@ function EmptyState({ hasAnyPlugin }: { hasAnyPlugin: boolean }) {
 			<p className="max-w-[220px] text-[11.5px] leading-snug text-white/55">
 				{hasAnyPlugin
 					? "No plugins match this category."
-					: "No plugins installed yet. Import a .artidor-plugin file or download the sample to get started."}
+					: "No plugins installed yet. Import a .artpl file or download the sample to get started."}
 			</p>
 		</div>
 	);

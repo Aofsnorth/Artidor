@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/ui/number-field";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "@/lib/timeline/audio-constants";
@@ -18,7 +19,7 @@ import { useKeyframedNumberProperty } from "../hooks/use-keyframed-number-proper
 import { usePropertyDraft } from "../hooks/use-property-draft";
 import { KeyframeToggle } from "../components/keyframe-toggle";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { VolumeHighIcon } from "@hugeicons/core-free-icons";
+import { VolumeHighIcon, MusicNote03Icon } from "@hugeicons/core-free-icons";
 import {
 	Section,
 	SectionContent,
@@ -53,6 +54,7 @@ export function AudioTab({
 	trackId: string;
 	variant?: AudioTabVariant;
 }) {
+	const [isHelperHidden, setIsHelperHidden] = useState(false);
 	const editor = useEditor();
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
@@ -238,10 +240,18 @@ export function AudioTab({
 					</Button>
 				</div>
 			)}
-			{variant === "audio-element" && (
-				<div className="rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-[0.7rem] leading-relaxed text-white/60">
+			{variant === "audio-element" && !isHelperHidden && (
+				<div className="relative rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 pr-7 text-[0.7rem] leading-relaxed text-white/60">
 					Audio for this clip. Volume, pan, and fade are local; the source video
 					(if any) is unchanged.
+					<button
+						type="button"
+						className="absolute right-1.5 top-1.5 grid size-4 place-items-center rounded text-white/40 transition hover:bg-white/10 hover:text-white/80"
+						onClick={() => setIsHelperHidden(true)}
+						aria-label="Dismiss helper"
+					>
+						×
+					</button>
 				</div>
 			)}
 			<Section
@@ -251,7 +261,8 @@ export function AudioTab({
 				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
 			>
 				<SectionHeader className="h-10 px-3">
-					<SectionTitle className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+					<SectionTitle className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+						<HugeiconsIcon icon={MusicNote03Icon} size={14} />
 						{variant === "audio-element" ? "Audio Track" : "Audio"}
 					</SectionTitle>
 				</SectionHeader>
@@ -302,7 +313,7 @@ export function AudioTab({
 							}
 						>
 							<NumberField
-								icon="Pan"
+								icon={<HugeiconsIcon icon={MusicNote03Icon} />}
 								value={pan.displayValue}
 								onFocus={pan.onFocus}
 								onChange={pan.onChange}

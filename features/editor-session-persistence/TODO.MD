@@ -3,16 +3,17 @@
 ## Completed
 - [x] Create feature workflow folder.
 - [x] Create required workflow files.
+- [x] Implement project-scoped editor session persistence.
+- [x] Run `bun run lint:web`.
+- [x] Run `cd apps/web && bunx tsc --noEmit`.
+- [x] Run `bun test apps/web/src/lib/whats-new/__tests__/feed.test.ts`.
+- [x] Run `bun run build:web`.
 
 ## Pending
-- [ ] Review FEATURE.MD for Editor Session Persistence.
-- [ ] Review PLAN.MD for Editor Session Persistence.
-- [ ] Audit current source and behavior for Editor Session Persistence.
-- [ ] Approve implementation for Editor Session Persistence.
+- [ ] User hand-test reopen project behavior.
 
 ## Blocked
 - None.
 
 ## Do not start yet
-- [ ] Source edits for Editor Session Persistence.
-- [ ] Optional improvements for Editor Session Persistence.
+- Optional improvements.

@@ -21,7 +21,7 @@ export function KeyframeToggle({
 			disabled={isDisabled}
 			title={title}
 			onClick={onToggle}
-			className="[&>svg]:size-[1.125rem] mb-0.5"
+			className="flex items-center justify-center [&>svg]:size-[0.875rem] mb-0.5"
 		>
 			<HugeiconsIcon
 				icon={KeyframeIcon}

@@ -8,7 +8,7 @@ import {
 import { useEditor } from "@/hooks/use-editor";
 import { getKeyframeById } from "@/lib/animation";
 import { useKeyframeSelection } from "./use-keyframe-selection";
-import { roundToFrame, snappedSeekTime } from "artidor-wasm";
+import { roundToFrame } from "artidor-wasm";
 import { timelineTimeToSnappedPixels } from "@/lib/timeline";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -265,12 +265,16 @@ export function useKeyframeDrag({
 			if (wasDrag) return;
 
 			const duration = editor.timeline.getTotalDuration();
-			const seekTime =
-				snappedSeekTime({
-					time: displayedStartTime + indicatorTime,
-					duration,
-					rate: fps,
-				}) ?? displayedStartTime + indicatorTime;
+			// Seek to the keyframe's EXACT time, not the frame-snapped time. The
+			// keyframe icon is drawn at `timelineTimeToSnappedPixels(start + kfTime)`
+			// and the playhead at `timelineTimeToSnappedPixels(currentTime)` — same
+			// function — so they only line up when currentTime === the keyframe time.
+			// Frame-snapping the seek pushed sub-frame keyframes' playhead a frame to
+			// the left of the icon center.
+			const seekTime = Math.max(
+				0,
+				Math.min(duration, displayedStartTime + indicatorTime),
+			);
 			editor.playback.seek({ time: seekTime });
 
 			if (event.shiftKey) {
@@ -292,7 +296,6 @@ export function useKeyframeDrag({
 			selectKeyframeRange,
 			editor,
 			displayedStartTime,
-			fps,
 		],
 	);
 

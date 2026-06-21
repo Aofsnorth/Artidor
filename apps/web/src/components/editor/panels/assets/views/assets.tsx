@@ -14,6 +14,9 @@ import {
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuTrigger,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
 } from "@/components/ui/context-menu";
 import {
 	DropdownMenu,
@@ -52,7 +55,6 @@ import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/utils/ui";
 import {
 	CloudUploadIcon,
-	FolderAddIcon,
 	GridViewIcon,
 	LeftToRightListDashIcon,
 	SortingOneNineIcon,
@@ -62,6 +64,7 @@ import {
 	Video01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { useAssetPreviewStore } from "@/stores/asset-preview-store";
 
 type AssetSource = "library" | "stock" | "cloud";
 
@@ -113,6 +116,9 @@ export function MediaView() {
 							setProgress(progress.progress),
 					});
 					for (const asset of processedAssets) {
+						if (currentFolderId) {
+							asset.folderId = currentFolderId;
+						}
 						await editor.media.addMediaAsset({
 							projectId: activeProject.metadata.id,
 							asset,
@@ -376,48 +382,20 @@ export function MediaView() {
 						<QuickAccessGrid stats={mediaStats} />
 						{assetSource === "library" ? (
 							<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden p-[3px] -m-[3px]">
-								{currentFolderId === null && folders.length > 0 && (
-									<FolderGrid
-										folders={folders}
-										assetCountByFolder={assetCountByFolder}
-										currentFolderId={currentFolderId}
-										onEnterFolder={(folderId) => setCurrentFolderId(folderId)}
-										onCreateFolder={handleCreateFolder}
-										onRenameFolder={(folderId, name) =>
-											handleRenameFolder({ folderId, name })
-										}
-										onDeleteFolder={(folderId) =>
-											handleDeleteFolder({ folderId })
-										}
-										onExitFolder={() => setCurrentFolderId(null)}
-									/>
-								)}
-								{currentFolderId !== null && (
-									<FolderGrid
-										folders={folders}
-										assetCountByFolder={assetCountByFolder}
-										currentFolderId={currentFolderId}
-										onEnterFolder={(folderId) => setCurrentFolderId(folderId)}
-										onCreateFolder={handleCreateFolder}
-										onRenameFolder={(folderId, name) =>
-											handleRenameFolder({ folderId, name })
-										}
-										onDeleteFolder={(folderId) =>
-											handleDeleteFolder({ folderId })
-										}
-										onExitFolder={() => setCurrentFolderId(null)}
-									/>
-								)}
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									onClick={handleCreateFolder}
-									className="h-7 w-full justify-center gap-1.5 border border-dashed border-white/[0.08] bg-white/[0.02] text-[0.68rem] text-white/55 hover:border-white/20 hover:bg-white/[0.05] hover:text-white"
-								>
-									<HugeiconsIcon icon={FolderAddIcon} className="size-3.5" />
-									New folder
-								</Button>
+								<FolderGrid
+									folders={folders}
+									assetCountByFolder={assetCountByFolder}
+									currentFolderId={currentFolderId}
+									onEnterFolder={(folderId) => setCurrentFolderId(folderId)}
+									onCreateFolder={handleCreateFolder}
+									onRenameFolder={(folderId, name) =>
+										handleRenameFolder({ folderId, name })
+									}
+									onDeleteFolder={(folderId) =>
+										handleDeleteFolder({ folderId })
+									}
+									onExitFolder={() => setCurrentFolderId(null)}
+								/>
 								{filteredMediaItems.length === 0 ? (
 									<EmptyLibraryState onImport={openFilePicker} />
 								) : (
@@ -642,6 +620,7 @@ function MediaAssetDraggable({
 	isRounded?: boolean;
 }) {
 	const editor = useEditor();
+	const setPreviewAsset = useAssetPreviewStore((s) => s.setPreviewAsset);
 
 	const addElementAtTime = ({
 		asset,
@@ -681,6 +660,7 @@ function MediaAssetDraggable({
 				}),
 			}}
 			shouldShowPlusOnDrag={false}
+			onClick={() => setPreviewAsset(item.id)}
 			onAddToTimeline={({ currentTime }) =>
 				addElementAtTime({ asset: item, startTime: currentTime })
 			}
@@ -705,16 +685,101 @@ function MediaItemWithContextMenu({
 		ids: string[];
 	}) => void;
 }) {
+	const editor = useEditor();
+	const activeProject = useEditor((e) => e.project.getActive());
 	const { isSelected, selectedIds } = useSelection();
 	const idsToDelete = isSelected(item.id) ? selectedIds : [item.id];
 	const deleteLabel =
 		idsToDelete.length > 1 ? `Delete ${idsToDelete.length} items` : "Delete";
+	const folders = useEditor((e) => e.media.getFolders());
+
+	const handleExtractAudio = async () => {
+		if (!activeProject) {
+			toast.error("No active project");
+			return;
+		}
+		if (item.type !== "video") {
+			toast.error("Only video assets can extract audio");
+			return;
+		}
+
+		toast.promise(
+			async () => {
+				const { extractAssetAudio } = await import("@/lib/media/mediabunny");
+				const audioBlob = await extractAssetAudio({ asset: item });
+				if (!audioBlob || audioBlob.size === 0) {
+					throw new Error("No audio track found");
+				}
+
+				const audioName = `${item.name.replace(/\.[^.]+$/, "")} (Audio)`;
+				const audioFile = new File([audioBlob], `${audioName}.wav`, {
+					type: "audio/wav",
+				});
+				const processed = await processMediaAssets({ files: [audioFile] });
+				const asset = processed[0];
+				if (!asset) {
+					throw new Error("Could not process audio");
+				}
+
+				const stored = await editor.media.addMediaAsset({
+					projectId: activeProject.metadata.id,
+					asset,
+				});
+				if (!stored) {
+					throw new Error("Could not save audio");
+				}
+				return stored;
+			},
+			{
+				loading: "Extracting audio...",
+				success: "Audio extracted and added to library",
+				error: (err: Error) => err.message || "Failed to extract audio",
+			},
+		);
+	};
+
+	const handleMoveToFolder = async (folderId: string | null) => {
+		if (!activeProject) return;
+		for (const id of idsToDelete) {
+			await editor.media.moveAssetToFolder({
+				assetId: id,
+				folderId,
+			});
+		}
+	};
 
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
 				<ContextMenuItem>Export clips</ContextMenuItem>
+				{item.type === "video" && (
+					<ContextMenuItem onClick={handleExtractAudio}>
+						Extract audio
+					</ContextMenuItem>
+				)}
+				{folders.length > 0 && (
+					<ContextMenuSub>
+						<ContextMenuSubTrigger>Move to folder</ContextMenuSubTrigger>
+						<ContextMenuSubContent className="w-48">
+							<ContextMenuItem
+								onClick={() => handleMoveToFolder(null)}
+								disabled={!item.folderId}
+							>
+								(Library root)
+							</ContextMenuItem>
+							{folders.map((folder) => (
+								<ContextMenuItem
+									key={folder.id}
+									onClick={() => handleMoveToFolder(folder.id)}
+									disabled={item.folderId === folder.id}
+								>
+									{folder.name}
+								</ContextMenuItem>
+							))}
+						</ContextMenuSubContent>
+					</ContextMenuSub>
+				)}
 				<ContextMenuItem
 					variant="destructive"
 					onClick={(event: React.MouseEvent<HTMLDivElement>) =>

@@ -48,7 +48,7 @@ function useAudioBars(barCount: number) {
 	useEffect(() => {
 		let frameId: number;
 		let analyser: AnalyserNode | null = null;
-		let data: Uint8Array | null = null;
+		let data: Uint8Array<ArrayBuffer> | null = null;
 
 		const tick = () => {
 			// The audio context is created lazily when playback starts,

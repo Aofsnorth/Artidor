@@ -24,6 +24,7 @@ import { usePanelStore } from "@/stores/panel-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
 import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { usePasteMedia } from "@/hooks/use-paste-media";
+import { useProjectSessionPersistence } from "@/hooks/use-project-session-persistence";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
 import { usePluginsStore } from "@/lib/plugins/store";
@@ -163,6 +164,9 @@ function EditorFooterChrome() {
 
 function EditorLayout() {
 	usePasteMedia();
+	const params = useParams();
+	const projectId = (params.project_id as string) || null;
+	useProjectSessionPersistence({ projectId });
 
 	return (
 		<div className="flex size-full gap-2 p-2 pt-0">

@@ -30,7 +30,7 @@ export const lineGraphicDefinition: GraphicDefinition = {
 	keywords: ["line", "bar", "divider", "rule", "stroke"],
 	params: LINE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+		const { fill, stroke, strokeWidth, strokeAlign, strokeDash, strokeTaper, inset } =
 			readShapeBaseStyle(params);
 		const thickness = Math.max(
 			1,
@@ -55,6 +55,8 @@ export const lineGraphicDefinition: GraphicDefinition = {
 				strokeWidth,
 				strokeAlign,
 				strokeColor: stroke,
+				strokeDash,
+				strokeTaper,
 			});
 		}
 	},

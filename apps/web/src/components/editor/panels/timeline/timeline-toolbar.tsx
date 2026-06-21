@@ -21,6 +21,7 @@ import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
+	AlignHorizontalCenterIcon,
 	Bookmark01Icon,
 	Bookmark02Icon,
 	Camera01Icon,
@@ -36,9 +37,11 @@ import {
 	Maximize01Icon,
 	MagnetIcon,
 	MusicNote03Icon,
+	PlayIcon,
 	ScissorIcon,
 	SnowIcon,
 	Square01Icon,
+	GitMergeIcon,
 	Target01Icon,
 	Tick01Icon,
 	TickDouble01Icon,
@@ -227,6 +230,11 @@ function ToolbarLeftSection() {
 					tooltip="Split right"
 					onClick={() => invokeAction("split-right")}
 				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={AlignHorizontalCenterIcon} />}
+					tooltip="Align to playhead"
+					onClick={() => invokeAction("align-to-playhead")}
+				/>
 
 				<SectionDivider />
 
@@ -235,6 +243,11 @@ function ToolbarLeftSection() {
 					icon={<HugeiconsIcon icon={GroupLayersIcon} />}
 					tooltip="Group selected"
 					onClick={() => invokeAction("group-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={GitMergeIcon} />}
+					tooltip="Combine selected"
+					onClick={() => invokeAction("combine-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Layers01Icon} />}
@@ -329,6 +342,12 @@ function ToolbarRightSection({
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
 	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
 	const toggleAutoScroll = useTimelineStore((s) => s.toggleAutoScroll);
+	const autoPlayWhileScrubbing = useTimelineStore(
+		(s) => s.autoPlayWhileScrubbing,
+	);
+	const toggleAutoPlayWhileScrubbing = useTimelineStore(
+		(s) => s.toggleAutoPlayWhileScrubbing,
+	);
 
 	const isCurrentlyBookmarked = useEditor((e) =>
 		e.scenes.isBookmarked({ time: e.playback.getCurrentTime() }),
@@ -356,7 +375,7 @@ function ToolbarRightSection({
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
-					tooltip="Auto snapping"
+					tooltip="Magnet"
 					onClick={() => toggleSnapping()}
 				/>
 
@@ -370,6 +389,19 @@ function ToolbarRightSection({
 						<span
 							aria-hidden="true"
 							className="pointer-events-none absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]"
+						/>
+					)}
+				</ToolbarButton>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={PlayIcon} />}
+					isActive={autoPlayWhileScrubbing}
+					tooltip="Auto-play while dragging playhead"
+					onClick={() => toggleAutoPlayWhileScrubbing()}
+				>
+					{autoPlayWhileScrubbing && (
+						<span
+							aria-hidden="true"
+							className="pointer-events-none absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_rgba(103,232,249,0.85)]"
 						/>
 					)}
 				</ToolbarButton>

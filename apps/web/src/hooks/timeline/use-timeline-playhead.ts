@@ -11,6 +11,7 @@ import {
 	timelineTimeToSnappedPixels,
 } from "@/lib/timeline";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { useTimelineStore } from "@/stores/timeline-store";
 
 // Where the playhead parks horizontally while auto-scroll follows it,
@@ -29,6 +30,8 @@ interface UseTimelinePlayheadProps {
 	playheadRef?: React.RefObject<HTMLDivElement | null>;
 }
 
+type ScrubPointer = Pick<MouseEvent | React.MouseEvent, "clientX">;
+
 export function useTimelinePlayhead({
 	zoomLevel,
 	rulerRef,
@@ -43,12 +46,19 @@ export function useTimelinePlayhead({
 	const duration = editor.timeline.getTotalDuration();
 	const isShiftHeldRef = useShiftKey();
 	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
+	const autoPlayWhileScrubbing = useTimelineStore((s) => s.autoPlayWhileScrubbing);
+	// The "Magnet" toolbar toggle. When off, the playhead must not snap to
+	// nearby keyframes/clip edges/bookmarks while scrubbing. Held in a ref
+	// because `handleScrub` is a long-lived callback that reads it at drag time.
+	const magnetEnabled = useTimelineStore((s) => s.snappingEnabled);
 
 	const zoomLevelRef = useRef(zoomLevel);
 	const durationRef = useRef(duration);
 	const isScrubbingRef = useRef(isScrubbing);
 	const isPlayingRef = useRef(isPlaying);
 	const autoScrollEnabledRef = useRef(autoScrollEnabled);
+	const autoPlayWhileScrubbingRef = useRef(autoPlayWhileScrubbing);
+	const magnetEnabledRef = useRef(magnetEnabled);
 
 	useEffect(() => {
 		zoomLevelRef.current = zoomLevel;
@@ -56,7 +66,9 @@ export function useTimelinePlayhead({
 		isScrubbingRef.current = isScrubbing;
 		isPlayingRef.current = isPlaying;
 		autoScrollEnabledRef.current = autoScrollEnabled;
-	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled]);
+		autoPlayWhileScrubbingRef.current = autoPlayWhileScrubbing;
+		magnetEnabledRef.current = magnetEnabled;
+	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled, autoPlayWhileScrubbing, magnetEnabled]);
 
 	const seek = useCallback(
 		({ time }: { time: number }) => editor.playback.seek({ time }),
@@ -73,7 +85,7 @@ export function useTimelinePlayhead({
 			event,
 			snappingEnabled = true,
 		}: {
-			event: MouseEvent | React.MouseEvent;
+			event: ScrubPointer;
 			snappingEnabled?: boolean;
 		}) => {
 			const ruler = rulerRef.current;
@@ -104,7 +116,8 @@ export function useTimelinePlayhead({
 			const frameTime =
 				snappedSeekTime({ time: rawTime, duration, rate }) ?? rawTime;
 
-			const shouldSnap = snappingEnabled && !isShiftHeldRef.current;
+			const shouldSnap =
+				snappingEnabled && magnetEnabledRef.current && !isShiftHeldRef.current;
 			const time = (() => {
 				if (!shouldSnap) return frameTime;
 
@@ -141,12 +154,62 @@ export function useTimelinePlayhead({
 		],
 	);
 
+	const pendingScrubRef = useRef<{
+		event: ScrubPointer;
+		snappingEnabled: boolean;
+	} | null>(null);
+	const scrubAnimationFrameRef = useRef<number | null>(null);
+
+	const flushPendingScrub = useCallback(() => {
+		scrubAnimationFrameRef.current = null;
+		const pending = pendingScrubRef.current;
+		pendingScrubRef.current = null;
+		if (!pending) return;
+		handleScrub(pending);
+	}, [handleScrub]);
+
+	const scheduleScrub = useCallback(
+		({
+			event,
+			snappingEnabled = true,
+		}: {
+			event: ScrubPointer;
+			snappingEnabled?: boolean;
+		}) => {
+			pendingScrubRef.current = {
+				event: { clientX: event.clientX },
+				snappingEnabled,
+			};
+			if (scrubAnimationFrameRef.current !== null) return;
+			scrubAnimationFrameRef.current = requestAnimationFrame(flushPendingScrub);
+		},
+		[flushPendingScrub],
+	);
+
+	const flushScheduledScrub = useCallback(() => {
+		if (scrubAnimationFrameRef.current !== null) {
+			cancelAnimationFrame(scrubAnimationFrameRef.current);
+			scrubAnimationFrameRef.current = null;
+		}
+		flushPendingScrub();
+	}, [flushPendingScrub]);
+
+	useEffect(() => {
+		return () => {
+			if (scrubAnimationFrameRef.current !== null) {
+				cancelAnimationFrame(scrubAnimationFrameRef.current);
+			}
+		};
+	}, []);
+
 	const handlePlayheadMouseDown = useCallback(
 		({ event }: { event: React.MouseEvent }) => {
 			event.preventDefault();
 			event.stopPropagation();
 
-			if (editor.playback.getIsPlaying()) {
+			if (autoPlayWhileScrubbingRef.current) {
+				if (!editor.playback.getIsPlaying()) editor.playback.play();
+			} else if (editor.playback.getIsPlaying()) {
 				editor.playback.pause();
 			}
 
@@ -165,7 +228,9 @@ export function useTimelinePlayhead({
 			isDraggingRulerRef.current = true;
 			hasDraggedRulerRef.current = false;
 
-			if (editor.playback.getIsPlaying()) {
+			if (autoPlayWhileScrubbingRef.current) {
+				if (!editor.playback.getIsPlaying()) editor.playback.play();
+			} else if (editor.playback.getIsPlaying()) {
 				editor.playback.pause();
 			}
 
@@ -197,13 +262,16 @@ export function useTimelinePlayhead({
 		if (!isScrubbing) return;
 
 		const handleMouseMove = ({ event }: { event: MouseEvent }) => {
-			handleScrub({ event });
 			if (isDraggingRulerRef.current) {
 				hasDraggedRulerRef.current = true;
 			}
+			// Always coalesce scrub updates to rAF to prevent audio lag
+			// and jank from flooding the main thread with seek events.
+			scheduleScrub({ event });
 		};
 
 		const handleMouseUp = ({ event }: { event: MouseEvent }) => {
+			flushScheduledScrub();
 			editor.playback.setScrubbing({ isScrubbing: false });
 			const finalTime = scrubTimeRef.current;
 			if (finalTime !== null) {
@@ -237,7 +305,16 @@ export function useTimelinePlayhead({
 			window.removeEventListener("mousemove", onMouseMove);
 			window.removeEventListener("mouseup", onMouseUp);
 		};
-	}, [isScrubbing, seek, handleScrub, editor, tracksScrollRef, zoomLevel]);
+	}, [
+		isScrubbing,
+		seek,
+		handleScrub,
+		scheduleScrub,
+		flushScheduledScrub,
+		editor,
+		tracksScrollRef,
+		zoomLevel,
+	]);
 
 	const updatePlayheadLeft = useCallback(
 		(time: number) => {
@@ -249,7 +326,7 @@ export function useTimelinePlayhead({
 			});
 			const leftPosition = getCenteredLineLeft({ centerPixel: centerPosition });
 			const scrollLeft = rulerScrollRef.current?.scrollLeft ?? 0;
-			playheadEl.style.left = `${leftPosition - scrollLeft}px`;
+			playheadEl.style.left = `${leftPosition - scrollLeft + TIMELINE_CONTENT_LEFT_INSET_PX}px`;
 		},
 		[playheadRef, rulerScrollRef],
 	);

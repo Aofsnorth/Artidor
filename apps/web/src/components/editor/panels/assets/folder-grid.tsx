@@ -50,54 +50,54 @@ export function FolderGrid({
 
 	if (folders.length === 0) {
 		return (
+			<div className="flex flex-col gap-2">
+				<button
+					type="button"
+					onClick={onCreateFolder}
+					className={cn(
+						"flex w-full items-center justify-center gap-2 rounded-lg border border-dashed",
+						"border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs text-white/55",
+						"transition hover:border-white/15 hover:bg-white/[0.05] hover:text-white/80",
+					)}
+					aria-label="Create new folder"
+				>
+					<HugeiconsIcon icon={FolderAddIcon} className="size-3.5" />
+					New folder
+				</button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="flex flex-col gap-2">
+			{/* "+ New folder" button (always visible) */}
 			<button
 				type="button"
 				onClick={onCreateFolder}
 				className={cn(
 					"flex w-full items-center justify-center gap-2 rounded-lg border border-dashed",
-					"border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-xs text-white/55",
+					"border-white/[0.08] bg-white/[0.02] px-3 py-1.5 text-xs text-white/55",
 					"transition hover:border-white/15 hover:bg-white/[0.05] hover:text-white/80",
 				)}
+				aria-label="Create new folder"
 			>
 				<HugeiconsIcon icon={FolderAddIcon} className="size-3.5" />
 				New folder
 			</button>
-		);
-	}
-
-	return (
-		<div className="grid grid-cols-3 gap-2">
-			{/* "+ New folder" tile (always first) */}
-			<button
-				type="button"
-				onClick={onCreateFolder}
-				className={cn(
-					"group flex aspect-square flex-col items-center justify-center gap-1.5",
-					"rounded-lg border border-dashed border-white/[0.08] bg-white/[0.02]",
-					"text-white/40 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-white/75",
-				)}
-				aria-label="Create new folder"
-			>
-				<HugeiconsIcon
-					icon={FolderAddIcon}
-					className="size-5 transition group-hover:scale-110"
-				/>
-				<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em]">
-					New
-				</span>
-			</button>
 
 			{/* Folder cards */}
-			{folders.map((folder) => (
-				<FolderCard
-					key={folder.id}
-					folder={folder}
-					assetCount={assetCountByFolder.get(folder.id) ?? 0}
-					onEnter={() => onEnterFolder(folder.id)}
-					onRename={(name) => onRenameFolder(folder.id, name)}
-					onDelete={() => onDeleteFolder(folder.id)}
-				/>
-			))}
+			<div className="grid grid-cols-3 gap-2">
+				{folders.map((folder) => (
+					<FolderCard
+						key={folder.id}
+						folder={folder}
+						assetCount={assetCountByFolder.get(folder.id) ?? 0}
+						onEnter={() => onEnterFolder(folder.id)}
+						onRename={(name) => onRenameFolder(folder.id, name)}
+						onDelete={() => onDeleteFolder(folder.id)}
+					/>
+				))}
+			</div>
 		</div>
 	);
 }

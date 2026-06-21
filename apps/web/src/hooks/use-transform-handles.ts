@@ -3,6 +3,7 @@ import { usePreviewViewport } from "@/components/editor/panels/preview/preview-v
 import type { OnSnapLinesChange } from "@/hooks/use-preview-interaction";
 import { useEditor } from "@/hooks/use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
+import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import {
 	getVisibleElementsWithBounds,
 	type ElementWithBounds,
@@ -138,6 +139,7 @@ export function useTransformHandles({
 	const canvasSize = useEditor(
 		(e) => e.project.getActive().settings.canvasSize,
 	);
+	const isScaleLocked = usePropertiesStore((s) => s.isTransformScaleLocked);
 
 	const elementsWithBounds = getVisibleElementsWithBounds({
 		tracks,
@@ -533,6 +535,37 @@ export function useTransformHandles({
 					edge === "right" || edge === "left" ? xSnap : ySnap;
 				onSnapLinesChange?.(relevantSnap.activeLines);
 
+				// When the aspect ratio lock is active, edge resizes scale
+				// both axes proportionally so the element is never distorted.
+				let finalScaleX =
+					edge === "right" || edge === "left"
+						? xSnap.snappedScale
+						: initialTransform.scaleX;
+				let finalScaleY =
+					edge === "bottom"
+						? ySnap.snappedScale
+						: initialTransform.scaleY;
+
+				if (isScaleLocked) {
+					if (edge === "right" || edge === "left") {
+						const ratio =
+							initialTransform.scaleY > 0
+								? finalScaleX / initialTransform.scaleX
+								: 1;
+						finalScaleY = clampScaleNonZero(
+							initialTransform.scaleY * ratio,
+						);
+					} else {
+						const ratio =
+							initialTransform.scaleX > 0
+								? finalScaleY / initialTransform.scaleY
+								: 1;
+						finalScaleX = clampScaleNonZero(
+							initialTransform.scaleX * ratio,
+						);
+					}
+				}
+
 				editor.timeline.previewElements({
 					updates: [
 						{
@@ -541,14 +574,8 @@ export function useTransformHandles({
 							updates: {
 								transform: {
 									...initialTransform,
-									scaleX:
-										edge === "right" || edge === "left"
-											? xSnap.snappedScale
-											: initialTransform.scaleX,
-									scaleY:
-										edge === "bottom"
-											? ySnap.snappedScale
-											: initialTransform.scaleY,
+									scaleX: finalScaleX,
+									scaleY: finalScaleY,
 								},
 								...(shouldClearScaleAnimation && {
 									animations: animationsWithoutScale,
@@ -598,6 +625,7 @@ export function useTransformHandles({
 			activeHandle,
 			canvasSize,
 			editor,
+			isScaleLocked,
 			isShiftHeldRef,
 			onSnapLinesChange,
 			viewport,

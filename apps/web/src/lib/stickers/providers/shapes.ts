@@ -709,17 +709,35 @@ const EXTRA_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 	},
 ];
 
-const GEN_SHAPE_PRESETS = Array.from({ length: 150 }).map((_, i) => ({
-	shapeKey: `gen-shape-${i}`,
-	name: `Shape ${i + 1}`,
-	definitionId: "rectangle",
-	params: {
-		fill: `hsla(${(i * 10) % 360}, 60%, 50%, 1)`,
-		stroke: "#ffffff",
-		strokeWidth: (i % 5) * 2,
-		cornerRadius: (i * 2) % 30,
-	},
-}));
+const DOC_SHAPE_PRESETS: ShapeGraphicPreset[] = [
+	{ shapeKey: "ellipse-oval", name: "Ellipse / Oval", definitionId: "ellipse", params: { fill: "#a78bfa" } },
+	{ shapeKey: "superellipse-squircle", name: "Superellipse / Squircle", definitionId: "squircle", params: { fill: "#f8fafc" } },
+	{ shapeKey: "right-triangle-doc", name: "Right Triangle", definitionId: "right-triangle", params: { fill: "#38bdf8" } },
+	{ shapeKey: "isosceles-triangle", name: "Isosceles Triangle", definitionId: "triangle", params: { fill: "#60a5fa" } },
+	{ shapeKey: "equilateral-triangle", name: "Equilateral Triangle", definitionId: "polygon", params: { sides: 3, fill: "#22d3ee" } },
+	{ shapeKey: "star-4-point", name: "Star 4-Point", definitionId: "star", params: { points: 4, depth: 34, fill: "#ffffff" } },
+	{ shapeKey: "star-5-point", name: "Star 5-Point", definitionId: "star", params: { points: 5, depth: 46, fill: "#facc15" } },
+	{ shapeKey: "star-6-point", name: "Star 6-Point", definitionId: "star", params: { points: 6, depth: 44, fill: "#f59e0b" } },
+	{ shapeKey: "star-8-point", name: "Star 8-Point", definitionId: "star", params: { points: 8, depth: 38, fill: "#fde68a" } },
+	{ shapeKey: "multi-point-star", name: "Multi-Point Star", definitionId: "star", params: { points: 12, depth: 52, fill: "#fb7185" } },
+	{ shapeKey: "ring-donut-doc", name: "Ring / Donut", definitionId: "ring", params: { fill: "#22d3ee" } },
+	{ shapeKey: "water-drop", name: "Drop / Water Drop", definitionId: "drop", params: { fill: "#38bdf8" } },
+	{ shapeKey: "wavy-blob", name: "Wavy Blob", definitionId: "blob", params: { fill: "#c084fc" } },
+	{ shapeKey: "s-curve", name: "S-Curve", definitionId: "curved-path", params: { stroke: "#f8fafc", strokeWidth: 10, strokeTaper: "in" } },
+	{ shapeKey: "arrow-right", name: "Arrow Right", definitionId: "arrow", params: { fill: "#38bdf8" } },
+	{ shapeKey: "arrow-left", name: "Arrow Left", definitionId: "arrow", params: { fill: "#60a5fa" } },
+	{ shapeKey: "arrow-up", name: "Arrow Up", definitionId: "arrow", params: { fill: "#818cf8" } },
+	{ shapeKey: "arrow-down", name: "Arrow Down", definitionId: "arrow", params: { fill: "#a78bfa" } },
+	{ shapeKey: "thought-bubble-doc", name: "Thought Bubble", definitionId: "thought-bubble", params: { fill: "#f8fafc" } },
+	{ shapeKey: "callout-label-doc", name: "Callout Label", definitionId: "callout-label", params: { fill: "#facc15" } },
+	{ shapeKey: "rounded-banner", name: "Rounded Banner", definitionId: "banner", params: { fill: "#14b8a6" } },
+	{ shapeKey: "ribbon-doc", name: "Ribbon", definitionId: "ribbon", params: { fill: "#f97316" } },
+	{ shapeKey: "badge-doc", name: "Badge", definitionId: "badge", params: { fill: "#ec4899" } },
+	{ shapeKey: "frame-doc", name: "Frame", definitionId: "frame", params: { fill: "rgba(255,255,255,0)", stroke: "#f8fafc", strokeWidth: 12, strokeAlign: "inside" } },
+	{ shapeKey: "checkmark-doc", name: "Checkmark", definitionId: "checkmark", params: { stroke: "#22c55e", strokeWidth: 14, strokeTaper: "out" } },
+	{ shapeKey: "bracket-doc", name: "Bracket", definitionId: "bracket", params: { stroke: "#f8fafc", strokeWidth: 10 } },
+	{ shapeKey: "lightning-bolt-doc", name: "Lightning Bolt", definitionId: "lightning-bolt", params: { fill: "#facc15" } },
+];
 
 function getShapePresets(): ShapeGraphicPreset[] {
 	registerDefaultGraphics();
@@ -732,14 +750,14 @@ function getShapePresets(): ShapeGraphicPreset[] {
 		[
 			...CURATED_SHAPE_PRESETS,
 			...EXTRA_SHAPE_PRESETS,
-			...GEN_SHAPE_PRESETS,
+			...DOC_SHAPE_PRESETS,
 		].map((preset) => preset.shapeKey),
 	);
 	const uncurated = registryPresets.filter((p) => !curatedKeys.has(p.shapeKey));
 	return [
 		...CURATED_SHAPE_PRESETS,
 		...EXTRA_SHAPE_PRESETS,
-		...GEN_SHAPE_PRESETS,
+		...DOC_SHAPE_PRESETS,
 		...uncurated,
 	];
 }

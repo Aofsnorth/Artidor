@@ -21,3 +21,14 @@
   - `apps/web/src/lib/whats-new/feed.ts`
 - User approval required: Implementation already approved.
 - Current status: Implemented and passing automated checks; awaiting manual verification.
+
+## Entry 003 - Keyframe playhead centering fix
+
+- Date/time: 2026-06-20
+- User request summary: New keyframes landed slightly right of the playhead line; user asked to fix so the diamond centers on the playhead.
+- Action taken: Wrapped the timeline keyframe `HugeiconsIcon` in an inline-flex span so the icon center matches the button center, removing the right offset caused by the SVG intrinsic content box.
+- Files created/updated:
+  - `apps/web/src/components/editor/panels/timeline/timeline-element.tsx`
+  - `apps/web/src/lib/whats-new/feed.ts`
+- User approval required: Approval not required; small visible fix.
+- Current status: Implemented and passing automated checks; awaiting manual verification.

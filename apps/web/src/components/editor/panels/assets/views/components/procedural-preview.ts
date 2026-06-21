@@ -124,7 +124,7 @@ const PALETTES: ReadonlyArray<{
  * returns the same palette, so a re-render never flickers.
  */
 export function getPaletteForId(id: string): (typeof PALETTES)[number] {
-	return PALETTES[hashString(id) % PALETTES.length] ?? PALETTES[0]!;
+	return PALETTES[hashString(id) % PALETTES.length] ?? PALETTES[0];
 }
 
 /**

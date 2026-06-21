@@ -9,11 +9,14 @@
 - User approval required: Yes, review FEATURE.MD and PLAN.MD before implementation unless Auto Approve applies.
 - Current status: Awaiting review.
 
-## Entry 002 - Feature definition submitted
+## Entry 002 - Implementation
 
 - Date/time: 2026-06-20
-- User request summary: User approved workflow setup and requested review of feature/planning files.
-- Action taken: Filled feature definition and initial implementation plan for Editor Session Persistence.
-- Files created/updated: FEATURE.MD, PLAN.MD, TODO.MD.
-- User approval required: Yes, review FEATURE.MD and PLAN.MD before implementation.
-- Current status: Awaiting review.
+- User request summary: User approved the feature and requested persistence implementation.
+- Action taken: Added `useProjectSessionPersistence`, persisted project-scoped active Assets tab, inspector tabs, and playhead time, wired the hook into the editor layout, and added a What's New entry.
+- Files created/updated:
+  - `apps/web/src/hooks/use-project-session-persistence.ts`
+  - `apps/web/src/app/editor/[project_id]/page.tsx`
+  - `apps/web/src/lib/whats-new/feed.ts`
+- User approval required: Implementation already approved.
+- Current status: Implemented and passing automated checks; awaiting manual verification.

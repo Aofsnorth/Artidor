@@ -2,7 +2,7 @@ import { BaseNode } from "./base-node";
 import type { Effect, EffectPass } from "@/lib/effects/types";
 import type { Mask } from "@/lib/masks/types";
 import type { BlendMode, Transform } from "@/lib/rendering";
-import type { RetimeConfig, VisualElement } from "@/lib/timeline";
+import type { MediaGraphicStyle, RetimeConfig, VisualElement } from "@/lib/timeline";
 import type { ParentChainEntry } from "../parenting-resolve";
 
 export interface VisualNodeParams {
@@ -15,6 +15,7 @@ export interface VisualNodeParams {
 	animations?: VisualElement["animations"];
 	opacity: number;
 	blendMode?: BlendMode;
+	graphicStyle?: MediaGraphicStyle;
 	effects?: Effect[];
 	masks?: Mask[];
 	/** Ancestor transform chain (closest-first) for layer parenting. */

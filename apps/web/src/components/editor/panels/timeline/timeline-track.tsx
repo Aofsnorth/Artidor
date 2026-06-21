@@ -102,7 +102,7 @@ export function TimelineTrackContent({
 				}}
 			>
 				{track.elements.length === 0 ? (
-					<div className="pointer-events-none flex size-full items-center justify-center rounded-lg border border-dashed border-white/[0.08] bg-black/[0.12] text-[0.62rem] uppercase tracking-[0.18em] text-white/18">
+					<div className="pointer-events-none sticky left-0 flex h-full w-full items-center justify-center rounded-lg border border-dashed border-white/[0.08] bg-black/[0.12] text-[0.62rem] uppercase tracking-[0.18em] text-white/18">
 						Drop media
 					</div>
 				) : (

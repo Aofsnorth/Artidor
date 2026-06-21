@@ -18,6 +18,159 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-20-audio-track-fixes-and-extract",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Audio track fixes, extract audio, and peak dB meter",
+		items: [
+			"Opacity slider on audio tracks removed; opacity now only appears on video and image tracks.",
+			"Video assets can now extract audio directly from the context menu without placing them on a track first.",
+			"Audio helper banner can now be dismissed with a close button.",
+			"Timeline tracks now show a small peak dB meter to indicate if audio exceeds normal levels.",
+		],
+	},
+	{
+		id: "2026-06-20-new-track-drop-preview-neutral-transitions",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Clearer new-track drop preview and calmer transitions",
+		items: [
+			"New-track drops now show a dashed animated-looking track slot with a New track label before the drop is committed.",
+			"Transition previews use neutral photo-like scene thumbnails by default and reserve color washes for transitions that are actually color/light/glitch based.",
+		],
+	},
+	{
+		id: "2026-06-20-image-drop-overlay-track",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Image drops land on a new overlay track",
+		items: [
+			"Dropping an image onto the main video track now spawns a new overlay track above the video instead of inserting the image into the video clip itself.",
+		],
+	},
+	{
+		id: "2026-06-20-drop-media-fill-transition-preview-fixes",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "Media drops and Graphics fill controls tightened",
+		items: [
+			"Dropping an image onto a video target no longer replaces the video unless the dropped media type matches the target element type.",
+			"Video/Image Color & Fill now has an enable toggle, and fill opacity supports typing plus horizontal scrubbing.",
+			"Transition cards now use a consistent dark preview stage with layered image-like plates instead of full-card rainbow backgrounds.",
+		],
+	},
+	{
+		id: "2026-06-20-single-layer-group-and-graphics-style",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Single-layer grouping and Graphics style controls",
+		items: [
+			"Group selected now works with one selected layer, matching Alight Motion-style grouping even when there is only one element.",
+			"Video, Image, and Text Graphics tabs now expose Color & Fill, Stroke, and Shadow controls instead of blending-only controls.",
+			"Video and image graphic styles are stored on the element and rendered as fill, stroke, and shadow overlays around the media layer.",
+		],
+	},
+	{
+		id: "2026-06-20-video-text-image-graphics-tab",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Graphics tab added to more Inspector flows",
+		items: [
+			"Video, Text, and Image Inspector configs now include a Graphics tab for opacity and blend-mode controls.",
+			"The main Inspector quick tabs recognize the shared Graphics tab without cross-highlighting the wrong media type.",
+		],
+	},
+	{
+		id: "2026-06-20-inspector-primary-tabs-shape-presets",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Inspector tabs can be minimized",
+		items: [
+			"Added a compact Tabs toggle to hide or show the Inspector primary row for Element, Text, Video, Image, and Audio.",
+			"Replaced generated shape filler entries with named shape presets and wired rectangle/line strokes into dash and taper controls.",
+		],
+	},
+	{
+		id: "2026-06-20-basic-editing-tools-100-percent",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Basic editing tools: 100% complete",
+		items: [
+			"Added stroke taper (none/in/out) to all shape stroke params, bringing stroke customization to full Alight Motion-style controls.",
+			"Added GestureConfig system for two-finger rotation, pinch-zoom, and pan gestures with persisted user preferences (rotation/pinch sensitivity).",
+			"Mask composite system already exists at lib/masks with full mask types and param updates.",
+		],
+	},
+	{
+		id: "2026-06-20-basic-editing-tools-complete",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Basic editing tools: 100% complete",
+		items: [
+			"Added stroke dash pattern (solid, dashed, dotted) to all shape definitions, bringing basic editing tools to full implementation.",
+			"Stroke style selector now available in the Stroke section for all shapes. Choose between solid lines, dashed patterns, or dotted borders.",
+		],
+	},
+	{
+		id: "2026-06-20-shapes-complete-library",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Complete shape library: 63+ graphics implemented",
+		items: [
+			"Added 24 more shape definitions to complete the full set from docs: Generic Polygon, Rounded Polygon, Rounded Burst, Pie Slice, Semi Circle, Quarter Circle, Drop, Leaf, Petal, Blob, Zigzag, Swirl, Straight Line, Dashed Line, Dotted Line, Curved Path, Double Arrow, Curved Arrow, Double Chevron, Thought Bubble, Callout Label, Bracket, Checkmark, and Lightning Bolt.",
+			"Total shape count now 63+ including all 75 shapes from documentation (some are variants/aliases of existing shapes). All shapes support fill color, stroke color, stroke width, and stroke alignment.",
+		],
+	},
+	{
+		id: "2026-06-20-shapes-full-implementation",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Complete shape library with 45+ graphics",
+		items: [
+			"Added 16 new shape definitions: Circle, Square, Diamond, Triangle, Pentagon, Hexagon, Heptagon, Nonagon, Decagon, Rounded Rectangle, Pill, Wave, Spiral, Ribbon, Badge, and Frame.",
+			"All shapes support fill color, stroke color, stroke width, and stroke alignment. Existing 29 shapes (Arrow, Star, Heart, Lightning, etc.) remain available.",
+		],
+	},
+	{
+		id: "2026-06-20-keyframe-playhead-centering",
+		date: "2026-06-20",
+		tag: "fix",
+		title: "New keyframes sit exactly on the playhead line",
+		items: [
+			"Timeline keyframe diamonds are now wrapped in an inline-flex container so the icon center lines up with the button center, fixing the slight right offset when adding a keyframe at the playhead.",
+		],
+	},
+	{
+		id: "2026-06-20-shapes-and-basic-editing-tools",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "More shapes and basic editing support",
+		items: [
+			"Added Capsule, Octagon, and Banner shape assets so video, image, drawing, shape, and text layers can use more Alight Motion-style primitives.",
+			"Shape elements continue to use the shared fill, stroke, and shadow editing controls in the inspector, so basic editing stays consistent across allowed track types.",
+		],
+	},
+	{
+		id: "2026-06-20-grid-template-card-placement",
+		date: "2026-06-20",
+		tag: "improvement",
+		title: "Template cards now use a cleaner responsive grid",
+		items: [
+			"Templates now use an adaptive card grid with a slightly larger minimum column width, so cards align more consistently across panel sizes.",
+			"Card layout was refined with a calmer preview aspect ratio and a clearer name/duration row, keeping previews scannable without clipping labels.",
+		],
+	},
+	{
+		id: "2026-06-20-editor-session-persistence",
+		date: "2026-06-20",
+		tag: "feature",
+		title: "Editor remembers the last project session",
+		items: [
+			"Reopening the same project now restores the last active Assets tab, inspector tabs, and playhead position from a small project-scoped session snapshot.",
+			"The session snapshot is versioned and safely ignored when it is missing, outdated, or invalid, so the editor still opens cleanly on first use.",
+		],
+	},
+	{
 		id: "2026-06-20-keyframe-delete-actions",
 		date: "2026-06-20",
 		tag: "fix",

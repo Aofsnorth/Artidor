@@ -12,7 +12,10 @@ import {
 	tabs,
 	useAssetsPanelStore,
 } from "@/stores/assets-panel-store";
-import { useStorageEstimate } from "@/hooks/use-storage-estimate";
+import {
+	formatStorageSize,
+	useStorageEstimate,
+} from "@/hooks/use-storage-estimate";
 import { useAIStore } from "@/stores/ai-store";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import {
@@ -111,44 +114,37 @@ export function TabBar() {
 	);
 }
 
-function formatSidebarStorageSize(bytes: number): string {
-	const gb = bytes / 1_000_000_000;
-	if (gb >= 1000) {
-		const tb = gb / 1000;
-		return `${tb >= 10 ? Math.round(tb) : tb.toFixed(1)} TB`;
-	}
-	if (gb >= 1) {
-		return `${gb.toFixed(1)} GB`;
-	}
-	return `${Math.max(1, Math.round(gb * 1000))} MB`;
-}
-
 function StorageCard() {
 	const storage = useStorageEstimate();
 
-	const freeLabel = storage ? formatSidebarStorageSize(storage.freeBytes) : "—";
+	const usedLabel = storage ? formatStorageSize(storage.usedBytes) : "—";
+	const totalLabel = storage ? formatStorageSize(storage.totalBytes) : "—";
+	const freeLabel = storage ? formatStorageSize(storage.freeBytes) : "—";
 	const usedPercent =
 		storage && storage.totalBytes > 0
-			? Math.min(
-					100,
-					Math.max(2, (storage.usedBytes / storage.totalBytes) * 100),
-				)
+			? Math.min(100, Math.max(0, (storage.usedBytes / storage.totalBytes) * 100))
 			: 0;
 
 	return (
 		<div
+			role="status"
 			className="m-1.5 mt-2 rounded-xl border border-white/10 bg-[#121213]/90 px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] z-20"
+			aria-label={
+				storage
+					? `Local browser storage: ${usedLabel} used of ${totalLabel}. ${freeLabel} available.`
+					: "Browser storage information unavailable"
+			}
 			title={
 				storage
-					? `${freeLabel} browser storage available to Artidor on this device. ${formatSidebarStorageSize(storage.usedBytes)} used of ${formatSidebarStorageSize(storage.totalBytes)} quota. This is not your SSD/OS free disk space.`
+					? `${usedLabel} used of ${totalLabel} browser storage quota. ${freeLabel} available to Artidor on this device. This is not your SSD/OS free disk space.`
 					: "Browser storage information unavailable"
 			}
 		>
 			<div className="text-center text-[0.7rem] font-bold tracking-[-0.01em] text-white/90">
-				{freeLabel}
+				{usedLabel}
 			</div>
 			<div className="mt-0.5 text-center text-[0.5rem] tracking-[0.04em] text-white/40 font-semibold uppercase whitespace-nowrap">
-				Storage
+				Used
 			</div>
 			<div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">
 				<div

@@ -41,6 +41,7 @@ import { ParentingTab } from "./tabs/parenting-tab";
 import { CameraTab } from "./tabs/camera-tab";
 import { ElementTab } from "./tabs/element-tab";
 import { ImageTab } from "./tabs/image-tab";
+import { GraphicsStyleTab } from "./tabs/graphics-style-tab";
 import { OcShapesIcon } from "@/components/icons";
 
 export type TabContentProps = {
@@ -239,6 +240,21 @@ function buildGraphicTab({
 	};
 }
 
+function buildGraphicsStyleTab({
+	element,
+}: {
+	element: VideoElement | ImageElement | TextElement;
+}): PropertiesTabDef {
+	return {
+		id: "graphics-style",
+		label: "Graphics",
+		icon: <OcShapesIcon size={16} />,
+		content: ({ trackId }) => (
+			<GraphicsStyleTab element={element} trackId={trackId} />
+		),
+	};
+}
+
 function buildStandaloneEffectTab({
 	element,
 }: {
@@ -326,13 +342,14 @@ function getTextConfig({
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "text",
-		tabs: [
+			tabs: [
 			// Text elements have their own dedicated tab. The generic
 			// "Element" tab (identity, source, relationships) is skipped
 			// because Text already carries its own identity (the content
 			// string, font, size, etc.) and we don't want to mix generic
 			// metadata into a text-focused inspector.
 			buildTextTab({ element }),
+			buildGraphicsStyleTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),
@@ -361,9 +378,10 @@ function getVideoConfig({
 	const hideAudioTab = mediaAsset?.hasAudio === false;
 	return {
 		defaultTab: "transform",
-		tabs: [
+			tabs: [
 			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
+			buildGraphicsStyleTab({ element }),
 			...(hideAudioTab ? [] : [buildAudioTab({ element })]),
 			buildSpeedTab({ element }),
 			buildSpeedRampTab({ element }),
@@ -449,9 +467,10 @@ function getImageConfig({
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "transform",
-		tabs: [
+			tabs: [
 			buildElementTab({ element, mediaAssets }),
 			buildImageTab({ element }),
+			buildGraphicsStyleTab({ element }),
 			buildTransformTab({ element }),
 			buildParentingTab({ element }),
 			buildCameraTab(),

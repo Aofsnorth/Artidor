@@ -1,3 +1,3 @@
 # State
 
-Awaiting review of FEATURE.MD and PLAN.MD.
+Implemented / awaiting user hand-test.

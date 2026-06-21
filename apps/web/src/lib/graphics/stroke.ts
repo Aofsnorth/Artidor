@@ -1,4 +1,8 @@
-import type { GraphicStrokeAlign } from "./definitions/shared";
+import type {
+	GraphicStrokeAlign,
+	GraphicStrokeDash,
+	GraphicStrokeTaper,
+} from "./definitions/shared";
 
 type GraphicRenderContext =
 	| CanvasRenderingContext2D
@@ -21,21 +25,45 @@ function createTempCanvas({
 	}
 }
 
+function getStrokeDash({
+	strokeDash,
+	strokeWidth,
+}: {
+	strokeDash?: GraphicStrokeDash;
+	strokeWidth: number;
+}): number[] {
+	if (strokeDash === "dashed") {
+		const dashSize = Math.max(1, strokeWidth * 2);
+		return [dashSize, dashSize];
+	}
+	if (strokeDash === "dotted") {
+		return [Math.max(1, strokeWidth), Math.max(1, strokeWidth * 1.5)];
+	}
+	return [];
+}
+
 function applyStroke({
 	ctx,
 	path,
 	strokeWidth,
 	strokeColor,
 	strokeOpacity,
+	strokeDash,
+	strokeTaper,
 }: {
 	ctx: GraphicRenderContext;
 	path: Path2D;
 	strokeWidth: number;
 	strokeColor: string;
 	strokeOpacity?: number;
+	strokeDash?: GraphicStrokeDash;
+	strokeTaper?: GraphicStrokeTaper;
 }) {
 	ctx.strokeStyle = strokeColor;
-	ctx.lineWidth = strokeWidth;
+	ctx.lineWidth = strokeTaper && strokeTaper !== "none" ? Math.max(1, strokeWidth * 0.55) : strokeWidth;
+	ctx.lineCap = strokeTaper && strokeTaper !== "none" ? "round" : ctx.lineCap;
+	ctx.setLineDash(getStrokeDash({ strokeDash, strokeWidth }));
+
 	if (strokeOpacity !== undefined && strokeOpacity < 1) {
 		ctx.save();
 		ctx.globalAlpha = Math.max(0, Math.min(1, strokeOpacity));
@@ -53,6 +81,8 @@ export function applyAlignedStroke({
 	strokeAlign,
 	strokeColor,
 	strokeOpacity,
+	strokeDash,
+	strokeTaper,
 }: {
 	ctx: GraphicRenderContext;
 	path: Path2D;
@@ -60,6 +90,8 @@ export function applyAlignedStroke({
 	strokeAlign: GraphicStrokeAlign;
 	strokeColor: string;
 	strokeOpacity?: number;
+	strokeDash?: GraphicStrokeDash;
+	strokeTaper?: GraphicStrokeTaper;
 }): void {
 	if (strokeWidth <= 0) {
 		return;
@@ -74,6 +106,8 @@ export function applyAlignedStroke({
 			strokeWidth: strokeWidth * 2,
 			strokeColor,
 			strokeOpacity,
+			strokeDash,
+			strokeTaper,
 		});
 		ctx.restore();
 		return;
@@ -97,6 +131,8 @@ export function applyAlignedStroke({
 			strokeWidth: strokeWidth * 2,
 			strokeColor,
 			strokeOpacity,
+			strokeDash,
+			strokeTaper,
 		});
 
 		// Keep only the outer half of the doubled stroke so alpha fills do not
@@ -114,5 +150,6 @@ export function applyAlignedStroke({
 		strokeWidth,
 		strokeColor,
 		strokeOpacity,
+		strokeDash,
 	});
 }

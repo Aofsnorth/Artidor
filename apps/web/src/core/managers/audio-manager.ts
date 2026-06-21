@@ -52,6 +52,8 @@ export class AudioManager {
 	private analyserLeft: AnalyserNode | null = null;
 	private analyserRight: AnalyserNode | null = null;
 	private activeClipGains = new Map<string, Set<GainNode>>();
+	private scrubRestartTimer: number | null = null;
+	private static readonly SCRUB_RESTART_DEBOUNCE_MS = 60;
 
 	getAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
 		return { left: this.analyserLeft, right: this.analyserRight };
@@ -80,6 +82,7 @@ export class AudioManager {
 
 	dispose(): void {
 		this.stopPlayback();
+		this.clearScrubRestartTimer();
 		for (const unsub of this.unsubscribers) {
 			unsub();
 		}
@@ -126,6 +129,17 @@ export class AudioManager {
 		if (!detail) return;
 
 		if (this.editor.playback.getIsScrubbing()) {
+			if (
+				this.editor.playback.getIsPlaying() &&
+				useTimelineStore.getState().autoPlayWhileScrubbing
+			) {
+				// Debounce audio restart during autoplay-scrub to prevent
+				// audio source pile-up that causes exploding/crackling sound.
+				// Instead of restarting on every single seek event, we
+				// schedule a restart that coalesces rapid seeks into one.
+				this.debouncedRestartPlayback(detail.time / TICKS_PER_SECOND);
+				return;
+			}
 			this.stopPlayback();
 			return;
 		}
@@ -137,6 +151,25 @@ export class AudioManager {
 
 		this.stopPlayback();
 	};
+
+	private debouncedRestartPlayback(timeSeconds: number): void {
+		if (this.scrubRestartTimer !== null && typeof window !== "undefined") {
+			window.clearTimeout(this.scrubRestartTimer);
+		}
+		// Silently stop existing audio immediately to prevent overlap,
+		// then schedule a fresh start after the debounce window.
+		this.stopPlayback();
+		if (typeof window === "undefined") return;
+		this.scrubRestartTimer = window.setTimeout(() => {
+			this.scrubRestartTimer = null;
+			if (
+				this.editor.playback.getIsPlaying() &&
+				this.editor.playback.getIsScrubbing()
+			) {
+				void this.startPlayback({ time: timeSeconds });
+			}
+		}, AudioManager.SCRUB_RESTART_DEBOUNCE_MS);
+	}
 
 	private handleTimelineChange = (): void => {
 		if (!this.editor.playback.getIsPlaying()) {
@@ -362,6 +395,7 @@ export class AudioManager {
 	}
 
 	private stopPlayback(): void {
+		this.clearScrubRestartTimer();
 		if (this.scheduleTimer && typeof window !== "undefined") {
 			window.clearInterval(this.scheduleTimer);
 		}
@@ -381,6 +415,13 @@ export class AudioManager {
 		}
 		this.queuedSources.clear();
 		this.activeClipGains.clear();
+	}
+
+	private clearScrubRestartTimer(): void {
+		if (this.scrubRestartTimer !== null && typeof window !== "undefined") {
+			window.clearTimeout(this.scrubRestartTimer);
+			this.scrubRestartTimer = null;
+		}
 	}
 
 	private async runClipIterator({
@@ -629,14 +670,16 @@ export class AudioManager {
 	}: {
 		clip: AudioClipSource;
 	}): boolean {
-		return (
-			this.hasCurveRetime({ clip }) ||
-			hasAnimatedVolume({ element: clip.timelineElement }) ||
-			shouldMaintainPitch({
-				rate: clip.retime?.rate ?? 1,
-				maintainPitch: clip.retime?.maintainPitch,
-			})
-		);
+		const hasCurve = this.hasCurveRetime({ clip });
+		const hasKeyframedVolume = hasAnimatedVolume({ element: clip.timelineElement });
+		const maintainPitch = shouldMaintainPitch({
+			rate: clip.retime?.rate ?? 1,
+			maintainPitch: clip.retime?.maintainPitch,
+		});
+		const fadeIn = clip.timelineElement.fadeInDuration ?? 0;
+		const fadeOut = clip.timelineElement.fadeOutDuration ?? 0;
+		const hasFade = fadeIn > 0 || fadeOut > 0;
+		return hasCurve || hasKeyframedVolume || maintainPitch || hasFade;
 	}
 
 	private hasCurveRetime({ clip }: { clip: AudioClipSource }): boolean {
@@ -658,9 +701,14 @@ export class AudioManager {
 		startLocalTime: number;
 	}): void {
 		clipGain.gain.cancelScheduledValues(startTimestamp);
-		clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
 
-		if (!hasAnimatedVolume({ element: clip.timelineElement })) {
+		const hasKeyframedVolume = hasAnimatedVolume({ element: clip.timelineElement });
+		const fadeIn = clip.timelineElement.fadeInDuration ?? 0;
+		const fadeOut = clip.timelineElement.fadeOutDuration ?? 0;
+		const hasFade = fadeIn > 0 || fadeOut > 0;
+
+		if (!hasKeyframedVolume && !hasFade) {
+			clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
 			return;
 		}
 
@@ -671,6 +719,7 @@ export class AudioManager {
 		});
 
 		if (points.length === 0) {
+			clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
 			return;
 		}
 

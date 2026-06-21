@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { usePreviewViewport } from "@/components/editor/panels/preview/preview-viewport";
 import { useToolModeStore } from "@/stores/tool-mode-store";
@@ -13,6 +13,24 @@ import {
 } from "@/lib/graphics/path-utils";
 
 const MIN_POINT_DISTANCE_SQ = 4; // Skip pointer events closer than 2px to avoid duplicate samples
+
+function computeBoundingBox({
+	points,
+}: {
+	points: Point[];
+}): { minX: number; minY: number; maxX: number; maxY: number } {
+	let minX = Number.POSITIVE_INFINITY;
+	let minY = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+	for (const point of points) {
+		if (point.x < minX) minX = point.x;
+		if (point.y < minY) minY = point.y;
+		if (point.x > maxX) maxX = point.x;
+		if (point.y > maxY) maxY = point.y;
+	}
+	return { minX, minY, maxX, maxY };
+}
 
 export interface FreehandDrawState {
 	/** Currently-being-drawn path (in 512x512 source coords). null when idle. */
@@ -84,7 +102,13 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			event.preventDefault();
 			event.stopPropagation();
 
-			(event.target as Element).setPointerCapture?.(event.pointerId);
+			try {
+				(event.target as Element).setPointerCapture?.(event.pointerId);
+			} catch {
+				// Pointer capture can fail if the pointer is no longer active
+				// (e.g. touch released before the handler ran). Drawing still
+				// works without capture — pointerup just may not bubble here.
+			}
 			pointerIdRef.current = event.pointerId;
 			lastPointRef.current = point;
 			setIsDrawing(true);
@@ -114,28 +138,113 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 		[isDrawing, eventToSourceCoords],
 	);
 
-	const handlePointerUp = useCallback(
-		(event: React.PointerEvent) => {
-			if (!isDrawing || pointerIdRef.current !== event.pointerId) return;
+	// Ref to access latest currentPath from handlePointerUp without re-binding
+	const currentPathRef = useRef<Point[] | null>(null);
+	currentPathRef.current = currentPath;
 
-			(event.target as Element).releasePointerCapture?.(event.pointerId);
-			pointerIdRef.current = null;
-			lastPointRef.current = null;
-			setIsDrawing(false);
+	/**
+	 * Commit the current drawing to the timeline. Extracted from
+	 * handlePointerUp so it can also be called from the document-level
+	 * pointerup fallback listener below.
+	 */
+	const commitDrawing = useCallback(() => {
+		const rawPath = currentPathRef.current;
+		if (!rawPath || rawPath.length < 2) return false;
 
-			// Commit the drawing — build the element from the captured path
-			const rawPath = currentPathRef.current ?? currentPath;
-			setCurrentPath(null);
-			if (!rawPath || rawPath.length < 2) return;
-
+		try {
 			const simplified = simplifyPath(rawPath, 2);
-			// Keep the path in the user's drawn coordinates so the committed
-			// graphic lands where the user actually drew. The vector tool
-			// (useVectorDraw) follows the same convention; centralising here
-			// used to "snap" strokes to the middle of the 512x512 source
-			// box, which felt like the shape teleported on release.
 			const svgPath = pointsToSvgPath(simplified, 0, drawConfig.closed);
-			if (!svgPath) return;
+			if (!svgPath) return false;
+
+			const selectedElements = editor.selection.getSelectedElements();
+			const selectedElement =
+				selectedElements.length === 1 ? selectedElements[0] : null;
+			const selectedTrack = selectedElement
+				? editor.timeline.getTrackById({ trackId: selectedElement.trackId })
+				: null;
+			const selected =
+				selectedTrack?.elements.find(
+					(trackElement) => trackElement.id === selectedElement?.elementId,
+				) ?? null;
+
+			const project = editor.project.getActive();
+			const canvasSize = project?.settings.canvasSize;
+			const canvasWidth = canvasSize?.width ?? 0;
+			const canvasHeight = canvasSize?.height ?? 0;
+
+			let drawingPath = svgPath;
+			if (
+				selected &&
+				(selected.type === "image" || selected.type === "video") &&
+				canvasWidth > 0 &&
+				canvasHeight > 0
+			) {
+				const media = editor.media
+					.getAssets()
+					.find((asset) => asset.id === selected.mediaId);
+				const mediaWidth = media?.width ?? 0;
+				const mediaHeight = media?.height ?? 0;
+				if (mediaWidth > 0 && mediaHeight > 0) {
+					const sourceSize = DEFAULT_GRAPHIC_SOURCE_SIZE;
+					const elementWidth = mediaWidth * selected.transform.scaleX;
+					const elementHeight = mediaHeight * selected.transform.scaleY;
+					const elementCenterSourceX =
+						(selected.transform.position.x / canvasWidth) * sourceSize +
+						sourceSize / 2;
+					const elementCenterSourceY =
+						(selected.transform.position.y / canvasHeight) * sourceSize +
+						sourceSize / 2;
+					const pointsForLocal = simplified.map((point) => ({
+						x: point.x - elementCenterSourceX,
+						y: point.y - elementCenterSourceY,
+					}));
+					const localBoundingBox = computeBoundingBox({ points: pointsForLocal });
+					const padding = drawConfig.strokeWidth / 2;
+					const boundingWidth =
+						localBoundingBox.maxX - localBoundingBox.minX + padding * 2;
+					const boundingHeight =
+						localBoundingBox.maxY - localBoundingBox.minY + padding * 2;
+					const scaleX = boundingWidth > 0 ? elementWidth / boundingWidth : 1;
+					const scaleY =
+						boundingHeight > 0 ? elementHeight / boundingHeight : 1;
+					const localSvg = pointsToSvgPath(pointsForLocal, 0, drawConfig.closed);
+					if (localSvg) {
+						drawingPath = localSvg;
+					}
+					const element = buildGraphicElement({
+						definitionId: "freehand",
+						name: drawConfig.closed ? "Shape" : "Drawing",
+						startTime: editor.playback.getCurrentTime(),
+						params: {
+							fill:
+								drawConfig.closed && drawConfig.fill !== "transparent"
+									? drawConfig.fill
+									: "rgba(0,0,0,0)",
+							stroke: drawConfig.stroke,
+							strokeWidth: drawConfig.strokeWidth,
+							strokeOpacity: drawConfig.opacity,
+							strokeAlign: "center",
+							pathData: drawingPath,
+							closed: drawConfig.closed,
+						},
+					});
+					element.parentId = selected.id;
+					element.transform = {
+						...element.transform,
+						position: {
+							x: selected.transform.position.x,
+							y: selected.transform.position.y,
+						},
+						scaleX,
+						scaleY,
+					};
+					editor.timeline.insertElement({
+						placement: { mode: "auto" },
+						element,
+					});
+					return true;
+				}
+			}
 
 			const element = buildGraphicElement({
 				definitionId: "freehand",
@@ -150,7 +259,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 					strokeWidth: drawConfig.strokeWidth,
 					strokeOpacity: drawConfig.opacity,
 					strokeAlign: "center",
-					pathData: svgPath,
+					pathData: drawingPath,
 					closed: drawConfig.closed,
 				},
 			});
@@ -159,13 +268,58 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 				placement: { mode: "auto" },
 				element,
 			});
+			return true;
+		} catch (error) {
+			console.error("[useFreehandDraw] Failed to commit drawing:", error);
+			return false;
+		}
+	}, [drawConfig, editor]);
+
+	const handlePointerUp = useCallback(
+		(event: React.PointerEvent) => {
+			if (!isDrawing || pointerIdRef.current !== event.pointerId) return;
+
+			try {
+				(event.target as Element).releasePointerCapture?.(event.pointerId);
+			} catch {
+				// Release can throw if the pointer was already released.
+			}
+			pointerIdRef.current = null;
+			lastPointRef.current = null;
+			setIsDrawing(false);
+			setCurrentPath(null);
+
+			commitDrawing();
 		},
-		[isDrawing, currentPath, drawConfig, editor],
+		[isDrawing, commitDrawing],
 	);
 
-	// Ref to access latest currentPath from handlePointerUp without re-binding
-	const currentPathRef = useRef<Point[] | null>(null);
-	currentPathRef.current = currentPath;
+	/**
+	 * Document-level fallback: if pointer capture causes the pointerup event
+	 * to bypass the React handler entirely, this native listener at the
+	 * document root still catches it. Without this, certain browser /
+	 * trackpad combos silently drop the React pointerup after a fast drag,
+	 * leaving the overlay stuck in "drawing" state until the next click.
+	 */
+	useEffect(() => {
+		if (!isDrawing) return;
+
+		const onDocPointerUp = (event: PointerEvent) => {
+			if (pointerIdRef.current !== event.pointerId) return;
+			pointerIdRef.current = null;
+			lastPointRef.current = null;
+			setIsDrawing(false);
+			setCurrentPath(null);
+			commitDrawing();
+		};
+
+		document.addEventListener("pointerup", onDocPointerUp);
+		document.addEventListener("pointercancel", onDocPointerUp);
+		return () => {
+			document.removeEventListener("pointerup", onDocPointerUp);
+			document.removeEventListener("pointercancel", onDocPointerUp);
+		};
+	}, [isDrawing, commitDrawing]);
 
 	return {
 		currentPath,
