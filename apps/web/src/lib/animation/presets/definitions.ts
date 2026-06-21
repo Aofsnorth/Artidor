@@ -1285,30 +1285,4 @@ export function registerDefaultAnimationPresets(): void {
 		if (animationPresetsRegistry.has(preset.type)) continue;
 		animationPresetsRegistry.register(preset.type, preset);
 	}
-
-	for (let i = 0; i < 50; i++) {
-		const type = `gen-animation-${i}`;
-		animationPresetsRegistry.register(type, {
-			type,
-			id: type,
-			name: `Motion ${i + 1}`,
-			keywords: ["generated", "motion"],
-			category: "entrance",
-			duration: SECOND,
-			keyframes: () => [
-				{
-					propertyPath: "opacity",
-					time: 0,
-					value: 0,
-					interpolation: "linear",
-				},
-				{
-					propertyPath: "opacity",
-					time: SECOND,
-					value: 1,
-					interpolation: "linear",
-				},
-			],
-		});
-	}
 }

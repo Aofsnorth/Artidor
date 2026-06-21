@@ -18,6 +18,39 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-22-real-asset-library-cleanup",
+		date: "2026-06-22",
+		tag: "improvement",
+		title: "Asset library cleanup: no more numbered placeholder presets",
+		items: [
+			"Removed the auto-generated Motion 1–50, Effect 1–100, Transition 1–100, and Wash 1–150 filler entries from the asset panels.",
+			"Added real, intentionally named motion, effect, transition, and overlay presets in their place, with distinct preview behavior instead of identical fade/contrast placeholders.",
+			"Template preset cards now apply real text and graphic elements to the project instead of showing the old 'not yet wired' message.",
+			"Asset-card grids now share one responsive layout wrapper, keeping spacing and column sizing consistent across Templates, Effects, Transitions, Overlays, Text, Filters, Animations, and Adjustments.",
+		],
+	},
+	{
+		id: "2026-06-22-editor-fps-monitor-session-restore",
+		date: "2026-06-22",
+		tag: "feature",
+		title: "Realtime editor FPS badge and stronger session restore",
+		items: [
+			"Added a small realtime FPS badge in the preview area's bottom-left corner so editor smoothness is visible while working.",
+			"Settings → General now includes a Show FPS monitor toggle; turning it off unmounts the badge and stops the requestAnimationFrame measurement loop entirely.",
+			"Project session restore now re-applies Inspector tab choices too, not just the Assets tab and playhead time.",
+		],
+	},
+	{
+		id: "2026-06-22-claude-agent-skill-suite",
+		date: "2026-06-22",
+		tag: "improvement",
+		title: "Developer workflow: compact Claude agent skill suite",
+		items: [
+			"Added the caveman skill suite for terse decision guides, commits, reviews, help cards, memory compression, and session token stats.",
+			"This is developer-facing tooling only; it does not change editor project data, rendering, export, or user media behavior.",
+		],
+	},
+	{
 		id: "2026-06-20-audio-track-fixes-and-extract",
 		date: "2026-06-20",
 		tag: "improvement",

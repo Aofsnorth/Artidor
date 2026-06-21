@@ -21,7 +21,7 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const TEXT_CATEGORIES: { key: TextPresetCategory; label: string }[] = [
 	{ key: "basic", label: "Basic" },
@@ -39,7 +39,6 @@ const TEXT_LABELS = TEXT_CATEGORIES.map((c) => c.label);
 const TEXT_KEY_TO_LABEL = new Map(TEXT_CATEGORIES.map((c) => [c.key, c.label]));
 
 export function TextView() {
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
 	const filtered = useMemo(
@@ -60,16 +59,11 @@ export function TextView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-2"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-					}}
-				>
+				<AssetGrid gap="gap-2">
 					{filtered.map((preset) => (
 						<TextPresetItem key={preset.id} preset={preset} />
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);

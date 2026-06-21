@@ -17,7 +17,7 @@ import {
 	CategoryBar,
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const PRESET_EFFECT_CATEGORY_BY_TYPE = new Map(
 	presetEffects.map((effect) => [effect.type, effect.category]),
@@ -97,18 +97,12 @@ export function EffectsView() {
 }
 
 function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	return (
-		<div
-			className="grid gap-2"
-			style={{
-				gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-			}}
-		>
+		<AssetGrid gap="gap-2">
 			{effects.map((effect) => (
 				<EffectItem key={effect.type} effect={effect} />
 			))}
-		</div>
+		</AssetGrid>
 	);
 }
 

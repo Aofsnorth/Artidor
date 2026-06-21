@@ -19,7 +19,7 @@ import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getTransitionPalettes } from "./components/procedural-preview";
 import type { TransitionDefinition } from "@/lib/transitions";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const TRANSITION_CATEGORIES = [
 	"Fade",
@@ -58,7 +58,6 @@ export function TransitionsView() {
 			),
 		];
 	}, []);
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
 	const filtered = useMemo(
@@ -87,16 +86,11 @@ export function TransitionsView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-2"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-					}}
-				>
+				<AssetGrid gap="gap-2">
 					{filtered.map((def) => (
 						<TransitionItem key={def.type} definition={def} />
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);

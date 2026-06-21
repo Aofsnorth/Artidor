@@ -1,20 +1,18 @@
 # State
 
-100% COMPLETE implementation / awaiting user hand-test.
+Verified complete / no code change required.
 
-Total shapes: 63+ (71 files)
+Last updated: 2026-06-22
 
-Basic editing tools: 100% complete
-- ✅ Color & Fill (solid color)
-- ✅ Border & Shadow (stroke color/width/align/dash/taper, drop shadow, inner shadow)
-- ✅ Blending & Opacity (opacity, blend modes)
-- ✅ Move & Transform (position, scale, rotation, anchor, parent transform)
-- ✅ Timeline controls (split, trim, nudge, set-in/out)
-- ✅ Basic adjustments (exposure, contrast, saturation, etc.)
-- ✅ Advanced color grading (HSL, curves, LUT)
-- ✅ Mask composite system
-- ✅ Stroke dash patterns (solid, dashed, dotted)
-- ✅ Stroke taper (none/in/out)
-- ✅ Gesture config (rotation, pinch-zoom, pan)
-- ✅ Gradient fills (existing system)
-- ✅ Snapping & Ripple editing
+## Summary
+Implementation remains complete. Re-audit confirmed this feature is already real,
+not aspirational, so no re-implementation was done per user instruction.
+
+## Verified scope
+- 73 registered Canvas2D graphics definitions rendered via `graphic-node.ts`.
+- Basic editing tools present: fill/color, stroke/shadow, opacity/blend,
+  transform, split/trim/resize, snapping/ripple, masks, adjustments, color
+  grading, stroke dash/taper, gesture config.
+
+## Verification
+No code touched for this feature. User hand-test still optional.

@@ -31,7 +31,7 @@ import {
 } from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
 	[
@@ -122,7 +122,6 @@ export function AnimationsView() {
 		];
 	}, [existingPresets]);
 	const [category, setCategory] = useState(ALL_CATEGORY);
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
 	const filtered = useMemo(
 		() =>
@@ -157,12 +156,7 @@ export function AnimationsView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-2"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-					}}
-				>
+				<AssetGrid gap="gap-2">
 					{filtered.map((preset) => (
 						<AnimationPresetItem
 							key={preset.type}
@@ -170,7 +164,7 @@ export function AnimationsView() {
 							onApply={handleApplyPreset}
 						/>
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);
@@ -313,17 +307,6 @@ function presetStyleKeyframes(preset: AnimationPreset): string {
 		default:
 			if (preset.type.startsWith("m-")) {
 				return motionPresetStyleKeyframes(preset);
-			}
-			if (preset.type.startsWith("gen-animation-")) {
-				const i = parseInt(preset.type.split("-")[2] || "0", 10);
-				const dir = i % 4;
-				if (dir === 0)
-					return `@keyframes ${preset.type} { from { opacity: 0; transform: translateY(20px) rotate(${i % 30}deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }`;
-				if (dir === 1)
-					return `@keyframes ${preset.type} { from { opacity: 0; transform: scale(0.5) rotate(-${i % 30}deg); } to { opacity: 1; transform: scale(1) rotate(0); } }`;
-				if (dir === 2)
-					return `@keyframes ${preset.type} { from { opacity: 0; transform: translateX(${i % 2 === 0 ? "-" : ""}30px); } to { opacity: 1; transform: translateX(0); } }`;
-				return `@keyframes ${preset.type} { from { opacity: 0; transform: translateY(-20px) scale(1.2); } to { opacity: 1; transform: translateY(0) scale(1); } }`;
 			}
 			return "";
 	}

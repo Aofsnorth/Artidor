@@ -15,7 +15,7 @@ import {
 	CategoryBar,
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { AdvancedView } from "./advanced";
 import { cn } from "@/utils/ui";
 
@@ -124,18 +124,12 @@ function AdjustmentsLibrary() {
 }
 
 function AdjustmentsGrid({ adjustments }: { adjustments: EffectDefinition[] }) {
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	return (
-		<div
-			className="grid gap-2"
-			style={{
-				gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-			}}
-		>
+		<AssetGrid gap="gap-2">
 			{adjustments.map((effect) => (
 				<AdjustmentItem key={effect.type} effect={effect} />
 			))}
-		</div>
+		</AssetGrid>
 	);
 }
 

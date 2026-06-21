@@ -85,6 +85,7 @@ export function useProjectSessionPersistence({
 	const activeInspectorTabs = usePropertiesStore(
 		(state) => state.activeTabPerType,
 	);
+	const setInspectorTab = usePropertiesStore((state) => state.setActiveTab);
 	const restoredRef = useRef(false);
 	const pendingSnapshotRef = useRef<ProjectSessionSnapshot | null>(null);
 	const saveTimerRef = useRef<number | null>(null);
@@ -100,13 +101,20 @@ export function useProjectSessionPersistence({
 		) {
 			setActiveTab(snapshot.activeAssetsTab as (typeof VISIBLE_TAB_KEYS)[number]);
 		}
+		if (snapshot.activeInspectorTabs) {
+			for (const [elementType, tabId] of Object.entries(
+				snapshot.activeInspectorTabs,
+			)) {
+				setInspectorTab(elementType, tabId);
+			}
+		}
 		if (
 			typeof snapshot.playheadTime === "number" &&
 			snapshot.playheadTime >= 0
 		) {
 			editor.playback.seek({ time: snapshot.playheadTime });
 		}
-	}, [projectId, setActiveTab, editor]);
+	}, [projectId, setActiveTab, setInspectorTab, editor]);
 
 	useEffect(() => {
 		if (!projectId) return;
