@@ -134,22 +134,4 @@ export function registerDefaultEffects(): void {
 		}
 		effectsRegistry.register(definition.type, definition);
 	}
-
-	for (let i = 0; i < 100; i++) {
-		const type = `gen-effect-${i}`;
-		effectsRegistry.register(type, {
-			type,
-			name: `Effect ${i + 1}`,
-			keywords: ["generated"],
-			params: [],
-			renderer: {
-				passes: [
-					{
-						shader: "contrast",
-						uniforms: () => ({ amount: 1.5 }),
-					},
-				],
-			},
-		});
-	}
 }

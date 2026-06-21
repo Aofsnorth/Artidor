@@ -69,6 +69,7 @@ export const VISIBLE_TAB_KEYS = [
 	"presets",
 	"quicktools",
 	"plugins",
+	"captions",
 	"scripting",
 	"settings",
 ] as const satisfies readonly (typeof TAB_KEYS)[number][];

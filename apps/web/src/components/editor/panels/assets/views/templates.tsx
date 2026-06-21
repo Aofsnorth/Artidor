@@ -6,7 +6,18 @@ import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { templates as presetTemplates } from "@/lib/presets/templates";
-import type { TemplateCategory as PresetTemplateCategory } from "@/lib/presets/types";
+import type {
+	TemplateBuild,
+	TemplateCategory as PresetTemplateCategory,
+} from "@/lib/presets/types";
+import {
+	buildTextElement,
+	buildGraphicElement,
+	buildEffectElement,
+} from "@/lib/timeline/element-utils";
+import { effectsRegistry } from "@/lib/effects";
+import { DEFAULT_CANVAS_SIZE } from "@/lib/canvas/sizes";
+import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics/types";
 import { getPaletteForId, hashString } from "./components/procedural-preview";
 import {
 	PROJECT_TEMPLATES,
@@ -25,7 +36,7 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import type { EditorCore } from "@/core";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const TEMPLATE_LABELS = TEMPLATE_CATEGORIES.map((c) => c.label);
 const TEMPLATE_ID_TO_LABEL = new Map(
@@ -69,10 +80,13 @@ const PRESET_TEMPLATE_IDS = new Set(
 	presetTemplates.map((template) => template.id),
 );
 
+const PRESET_BUILD_BY_ID = new Map(
+	presetTemplates.map((template) => [template.id, template.build]),
+);
+
 export function TemplatesView() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const editor = useEditor();
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 
 	const allTemplates = useMemo(() => {
 		const existingIds = new Set(
@@ -108,12 +122,7 @@ export function TemplatesView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-3"
-					style={{
-						gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(assetCardSize, 132)}px, 1fr))`,
-					}}
-				>
+				<AssetGrid min={132}>
 					{filteredTemplates.map((template) => (
 						<TemplateItem
 							key={template.id}
@@ -121,7 +130,7 @@ export function TemplatesView() {
 							onApply={() => applyTemplate({ editor, template })}
 						/>
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);
@@ -135,7 +144,12 @@ function applyTemplate({
 	template: ProjectTemplate;
 }) {
 	if (PRESET_TEMPLATE_IDS.has(template.id)) {
-		toast.info("Template preset not yet wired");
+		const build = PRESET_BUILD_BY_ID.get(template.id);
+		if (!build) {
+			toast.error("Template preset unavailable");
+			return;
+		}
+		applyPresetTemplate({ editor, name: template.name, build: build() });
 		return;
 	}
 
@@ -153,6 +167,132 @@ function applyTemplate({
 		toast.success(`Template "${template.name}" applied`);
 	} catch (err) {
 		console.error("Failed to apply template:", err);
+		toast.error("Failed to apply template");
+	}
+}
+
+// Percent (0–100) coords in a TemplateBuild → editor px offsets from canvas
+// center, which is how `transform.position` is interpreted by the renderer
+// (frame-descriptor.ts adds position.x/y to width/2, height/2).
+const GRAPHIC_KIND_TO_DEFINITION: Record<string, string> = {
+	rect: "rectangle",
+	rectangle: "rectangle",
+	square: "rectangle",
+	circle: "ellipse",
+	ellipse: "ellipse",
+};
+
+function applyPresetTemplate({
+	editor,
+	name,
+	build,
+}: {
+	editor: EditorCore;
+	name: string;
+	build: TemplateBuild;
+}) {
+	const canvasW = DEFAULT_CANVAS_SIZE.width;
+	const canvasH = DEFAULT_CANVAS_SIZE.height;
+	const sec = (s: number) => Math.round(s * TICKS_PER_SECOND);
+
+	try {
+		// Start from a clean project (mirrors the replace behavior of the
+		// PROJECT_TEMPLATES path) by reusing applyTemplateToProject with no
+		// elements, then layer the preset's content via validated builders.
+		const endSec = Math.max(
+			0,
+			...build.textElements.map((t) => t.startSec + t.durationSec),
+			...build.graphicElements.map((g) => g.startSec + g.durationSec),
+		);
+		const project = applyTemplateToProject({
+			template: {
+				id: `preset-${name}`,
+				name,
+				description: "",
+				category: "intro",
+				canvasSize: DEFAULT_CANVAS_SIZE,
+				durationTicks: sec(endSec || 5),
+				elements: [],
+				placeholders: [],
+			},
+			mediaIdsByPlaceholder: {},
+		});
+		editor.project.setActiveProject({ project });
+		editor.scenes.setScenes({
+			scenes: project.scenes,
+			activeSceneId: project.currentSceneId,
+		});
+
+		// Graphics first so they sit beneath text in track order.
+		for (const g of build.graphicElements) {
+			const definitionId = GRAPHIC_KIND_TO_DEFINITION[g.kind] ?? "rectangle";
+			const base = buildGraphicElement({
+				definitionId,
+				name: g.kind,
+				startTime: sec(g.startSec),
+				params: { fill: g.fill },
+			});
+			editor.timeline.insertElement({
+				placement: { mode: "auto" },
+				element: {
+					...base,
+					duration: sec(g.durationSec),
+					transform: {
+						scaleX: ((g.width / 100) * canvasW) / DEFAULT_GRAPHIC_SOURCE_SIZE,
+						scaleY: ((g.height / 100) * canvasH) / DEFAULT_GRAPHIC_SOURCE_SIZE,
+						position: {
+							x: ((g.x + g.width / 2) / 100 - 0.5) * canvasW,
+							y: ((g.y + g.height / 2) / 100 - 0.5) * canvasH,
+						},
+						positionZ: 0,
+						pivot: { x: 0.5, y: 0.5 },
+						rotate: 0,
+					},
+				},
+			});
+		}
+
+		for (const t of build.textElements) {
+			const element = buildTextElement({
+				startTime: sec(t.startSec),
+				raw: {
+					content: t.text,
+					name: t.text.slice(0, 24) || "Text",
+					duration: sec(t.durationSec),
+					fontSize: t.fontSize,
+					color: t.color,
+					fontWeight: t.fontWeight >= 600 ? "bold" : "normal",
+					textAlign: t.textAlign,
+					transform: {
+						scaleX: 1,
+						scaleY: 1,
+						position: { x: 0, y: (t.y / 100 - 0.5) * canvasH },
+						positionZ: 0,
+						pivot: { x: 0.5, y: 0.5 },
+						rotate: 0,
+					},
+				},
+			});
+			editor.timeline.insertElement({
+				placement: { mode: "auto" },
+				element,
+			});
+		}
+
+		// Effects use preset ids (fx-*) that mostly don't resolve to runtime
+		// effect types; apply the ones that do, skip the rest silently.
+		for (const e of build.effects) {
+			if (!effectsRegistry.has(e.type)) continue;
+			editor.timeline.insertElement({
+				placement: { mode: "auto" },
+				element: buildEffectElement({ effectType: e.type, startTime: 0 }),
+			});
+		}
+
+		editor.project.saveCurrentProject();
+		toast.success(`Template "${name}" applied`);
+	} catch (err) {
+		console.error("Failed to apply preset template:", err);
 		toast.error("Failed to apply template");
 	}
 }

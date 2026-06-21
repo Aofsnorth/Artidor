@@ -82,6 +82,8 @@ function GeneralSettings() {
 	const setEnablePopoutPanels = useSettingsStore(
 		(s) => s.setEnablePopoutPanels,
 	);
+	const showFpsMonitor = useSettingsStore((s) => s.showFpsMonitor);
+	const setShowFpsMonitor = useSettingsStore((s) => s.setShowFpsMonitor);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -109,6 +111,16 @@ function GeneralSettings() {
 				<Switch
 					checked={enablePopoutPanels}
 					onCheckedChange={setEnablePopoutPanels}
+				/>
+			</SettingRow>
+
+			<SettingRow
+				title="Show FPS monitor"
+				description="Display a realtime editor FPS badge in the bottom-left while editing. Measures UI smoothness, not video frame rate. Turning it off stops all measurement."
+			>
+				<Switch
+					checked={showFpsMonitor}
+					onCheckedChange={setShowFpsMonitor}
 				/>
 			</SettingRow>
 

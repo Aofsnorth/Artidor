@@ -114,26 +114,6 @@ export function registerDefaultTransitions(): void {
 		}
 		transitionsRegistry.register(definition.type, definition);
 	}
-
-	for (let i = 0; i < 100; i++) {
-		const type = `gen-transition-${i}`;
-		const category: "fade" | "slide" | "zoom" | "wipe" | "glitch" = (
-			["fade", "slide", "zoom", "wipe", "glitch"] as const
-		)[i % 5];
-		transitionsRegistry.register(type, {
-			type,
-			name: `Transition ${i + 1}`,
-			keywords: ["generated"],
-			category,
-			defaultDuration: 1000,
-			minDuration: 100,
-			maxDuration: 3000,
-			directions: ["in", "out"],
-			previewStyle: ({ direction }) =>
-				`@keyframes gen-transition-${i}-${direction}{from{opacity:${direction === "in" ? 0 : 1};}to{opacity:${direction === "in" ? 1 : 0};}}`,
-			easing: "ease-in-out",
-		});
-	}
 }
 
 export { transitionsRegistry } from "./registry";

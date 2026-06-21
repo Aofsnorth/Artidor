@@ -15,7 +15,7 @@ import {
 import { useEditor } from "@/hooks/use-editor";
 import type { ParamValues } from "@/lib/params";
 import { buildGraphicElement } from "@/lib/timeline/element-utils";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 interface OverlayPreset {
 	id: string;
@@ -477,25 +477,6 @@ const OVERLAY_PRESETS: OverlayPreset[] = [
 	),
 ];
 
-const genOverlays = Array.from({ length: 150 }).map((_, i): OverlayPreset => {
-	const h = (i * 15) % 360;
-	return {
-		id: `gen-overlay-${i}`,
-		name: `Wash ${i + 1}`,
-		description: "Generated color wash.",
-		category: "Color Wash",
-		definitionId: "rectangle",
-		params: {
-			fill: `hsla(${h}, 70%, 50%, 0.15)`,
-			strokeWidth: 0,
-			cornerRadius: 0,
-		},
-		previewStyle: {
-			background: `linear-gradient(135deg, hsla(${h}, 70%, 50%, 0.5), hsla(${(h + 40) % 360}, 70%, 50%, 0.3))`,
-		},
-	};
-});
-
 const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
 	id: overlay.id,
 	name: overlay.name,
@@ -510,10 +491,9 @@ const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
 	previewStyle: parseCssDeclarations(overlay.css),
 }));
 
-OVERLAY_PRESETS.push(...genOverlays, ...presetOverlayPresets);
+OVERLAY_PRESETS.push(...presetOverlayPresets);
 
 export function OverlaysView() {
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
 	const filtered = useMemo(
@@ -538,16 +518,11 @@ export function OverlaysView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-2"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-					}}
-				>
+				<AssetGrid gap="gap-2">
 					{filtered.map((preset) => (
 						<OverlayItem key={preset.id} preset={preset} />
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);

@@ -19,7 +19,7 @@ import { useEditor } from "@/hooks/use-editor";
 import type { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
 import { cn } from "@/utils/ui";
-import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 const FILTER_LABELS = FILTER_CATEGORIES.map((c) => c.label);
 const FILTER_ID_TO_LABEL = new Map(
@@ -28,7 +28,6 @@ const FILTER_ID_TO_LABEL = new Map(
 
 export function FiltersView() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
-	const assetCardSize = useAssetsPanelStore((s) => s.assetCardSize);
 	const editor = useEditor();
 
 	const filtered = useMemo(
@@ -53,12 +52,7 @@ export function FiltersView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<div
-					className="grid gap-3"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${assetCardSize}px, 1fr))`,
-					}}
-				>
+				<AssetGrid>
 					{filtered.map((preset) => (
 						<FilterItem
 							key={preset.id}
@@ -66,7 +60,7 @@ export function FiltersView() {
 							onApply={() => applyFilter({ editor, preset })}
 						/>
 					))}
-				</div>
+				</AssetGrid>
 			</div>
 		</PanelView>
 	);

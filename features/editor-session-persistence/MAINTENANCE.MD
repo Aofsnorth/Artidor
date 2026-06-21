@@ -20,3 +20,15 @@
   - `apps/web/src/lib/whats-new/feed.ts`
 - User approval required: Implementation already approved.
 - Current status: Implemented and passing automated checks; awaiting manual verification.
+
+## Entry 003 - Inspector-tab restore fix
+
+- Date/time: 2026-06-22
+- User request summary: Finish the feature — inspector tabs were saved but never re-applied on reload.
+- Action taken: The restore effect previously applied only `activeAssetsTab` and
+  `playheadTime`. Added re-application of `activeInspectorTabs` into the
+  properties store via `setActiveTab(elementType, tabId)` on hydrate. Unknown
+  element-type keys are applied harmlessly (memory-only store).
+- Files created/updated:
+  - `apps/web/src/hooks/use-project-session-persistence.ts`
+- Current status: Implemented; typecheck clean for touched files; awaiting manual verification.

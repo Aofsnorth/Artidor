@@ -32,6 +32,14 @@ interface SettingsState {
 	 */
 	previewQuality: PreviewQuality;
 	setPreviewQuality: (value: PreviewQuality) => void;
+
+	/**
+	 * Show the realtime editor FPS badge (bottom-left). Measures UI/render
+	 * loop smoothness only — never project/video FPS. When false, the badge
+	 * unmounts and its rAF loop stops, so there's zero measurement overhead.
+	 */
+	showFpsMonitor: boolean;
+	setShowFpsMonitor: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -48,6 +56,9 @@ export const useSettingsStore = create<SettingsState>()(
 
 			previewQuality: "auto",
 			setPreviewQuality: (value) => set({ previewQuality: value }),
+
+			showFpsMonitor: true,
+			setShowFpsMonitor: (value) => set({ showFpsMonitor: value }),
 		}),
 		{
 			name: "app-settings",

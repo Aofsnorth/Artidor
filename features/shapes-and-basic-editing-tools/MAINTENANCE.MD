@@ -112,3 +112,16 @@
   - `apps/web/src/lib/whats-new/feed.ts`
 - User approval required: Implementation already approved.
 - Current status: 100% complete; all basic editing tools from docs implemented.
+
+
+## Entry 007 - Re-verification (no code change)
+
+- Date/time: 2026-06-22
+- User request summary: Broad request to implement features; verify shapes/tools aren't re-implemented if already done.
+- Action taken: Code audit confirmed shapes (73 registered Canvas2D definitions,
+  rendered via `graphic-node.ts`) and basic editing tools (split, trim/resize,
+  opacity/blend, fill/stroke/shadow, masks, ripple, snapping, adjustments,
+  color grading) are genuinely implemented. No code changed — feature treated as
+  out of scope per "don't re-implement existing features."
+- Files created/updated: none (STATE.MD note only).
+- Current status: Verified complete; no further work.
