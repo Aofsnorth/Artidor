@@ -13,6 +13,14 @@ interface TimelineStore {
 	toggleAutoScroll: () => void;
 	autoPlayWhileScrubbing: boolean;
 	toggleAutoPlayWhileScrubbing: () => void;
+	focusedKeyframePropertyPath: string | null;
+	focusedKeyframePropertyPaths: string[];
+	setFocusedKeyframePropertyPath: (propertyPath: string | null) => void;
+	toggleFocusedKeyframePropertyPath: (propertyPath: string) => void;
+	keyframeLayerSearch: string;
+	setKeyframeLayerSearch: (search: string) => void;
+	keyframeLayerNames: Record<string, string>;
+	setKeyframeLayerName: (propertyPath: string, name: string) => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
 	expandedElementIds: Set<string>;
@@ -44,7 +52,7 @@ export const useTimelineStore = create<TimelineStore>()(
 				set((state) => ({ snappingEnabled: !state.snappingEnabled }));
 			},
 
-			autoScrollEnabled: true,
+			autoScrollEnabled: false,
 
 			toggleAutoScroll: () => {
 				set((state) => ({
@@ -57,6 +65,39 @@ export const useTimelineStore = create<TimelineStore>()(
 			toggleAutoPlayWhileScrubbing: () => {
 				set((state) => ({
 					autoPlayWhileScrubbing: !state.autoPlayWhileScrubbing,
+				}));
+			},
+
+			focusedKeyframePropertyPath: null,
+			focusedKeyframePropertyPaths: [],
+			setFocusedKeyframePropertyPath: (propertyPath) => {
+				set({
+					focusedKeyframePropertyPath: propertyPath,
+					focusedKeyframePropertyPaths: propertyPath ? [propertyPath] : [],
+				});
+			},
+			toggleFocusedKeyframePropertyPath: (propertyPath) => {
+				set((state) => {
+					const next = state.focusedKeyframePropertyPaths.includes(propertyPath)
+						? state.focusedKeyframePropertyPaths.filter((path) => path !== propertyPath)
+						: [...state.focusedKeyframePropertyPaths, propertyPath];
+					return {
+						focusedKeyframePropertyPaths: next,
+						focusedKeyframePropertyPath: next[0] ?? null,
+					};
+				});
+			},
+			keyframeLayerSearch: "",
+			setKeyframeLayerSearch: (search) => {
+				set({ keyframeLayerSearch: search });
+			},
+			keyframeLayerNames: {},
+			setKeyframeLayerName: (propertyPath, name) => {
+				set((state) => ({
+					keyframeLayerNames: {
+						...state.keyframeLayerNames,
+						[propertyPath]: name,
+					},
 				}));
 			},
 
@@ -154,6 +195,7 @@ export const useTimelineStore = create<TimelineStore>()(
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
 				autoPlayWhileScrubbing: state.autoPlayWhileScrubbing,
+				keyframeLayerNames: state.keyframeLayerNames,
 			}),
 		},
 	),

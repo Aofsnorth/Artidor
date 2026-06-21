@@ -32,6 +32,14 @@ import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
 	FloatingWindow,
 	DockPlaceholder,
 	PopOutButton,
@@ -103,6 +111,7 @@ export default function Editor() {
 								<PluginRegistryBootstrap />
 								<Onboarding />
 								<MigrationDialog />
+								<FeedbackPrompt />
 								<LazyOverlays />
 							</Suspense>
 						</div>
@@ -110,6 +119,44 @@ export default function Editor() {
 				</PageTransition>
 			</EditorProvider>
 		</MobileGate>
+	);
+}
+
+function FeedbackPrompt() {
+	const [open, setOpen] = useState(false);
+
+	useEffect(() => {
+		if (sessionStorage.getItem("artidor-feedback-prompt-shown") === "true") {
+			return;
+		}
+		const timeoutId = window.setTimeout(() => {
+			sessionStorage.setItem("artidor-feedback-prompt-shown", "true");
+			setOpen(true);
+		}, 5 * 60 * 1000);
+		return () => window.clearTimeout(timeoutId);
+	}, []);
+
+	return (
+		<Dialog open={open} onOpenChange={setOpen}>
+			<DialogContent className="border-white/10 bg-[#0c0c0e]/95 text-white">
+				<DialogHeader>
+					<DialogTitle>Please give a feedback</DialogTitle>
+					<DialogDescription>
+						Help us improve the editor after trying it for a few minutes.
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="ghost" onClick={() => setOpen(false)}>
+						Later
+					</Button>
+					<Button asChild>
+						<a href="baru place holder" target="_blank" rel="noreferrer">
+							Open form
+						</a>
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }
 

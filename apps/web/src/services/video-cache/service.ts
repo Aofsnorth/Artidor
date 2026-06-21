@@ -14,6 +14,28 @@ interface VideoSinkData {
 	lastTime: number;
 	prefetching: boolean;
 	prefetchPromise: Promise<void> | null;
+	// Longest-edge decode cap this sink was built with (undefined = full res).
+	// Changing it (e.g. preview quality change) rebuilds the sink.
+	maxDim: number | undefined;
+}
+
+/**
+ * Map a longest-edge cap onto a CanvasSink size, preserving aspect ratio.
+ * Returns {} (no resize → full source resolution) when uncapped or when the
+ * source is already smaller than the cap. Sets only the longer edge; the sink
+ * derives the other from the track's aspect.
+ */
+function resolveDecodeSize({
+	srcWidth,
+	srcHeight,
+	maxDim,
+}: {
+	srcWidth: number;
+	srcHeight: number;
+	maxDim?: number;
+}): { width?: number; height?: number } {
+	if (!maxDim || Math.max(srcWidth, srcHeight) <= maxDim) return {};
+	return srcWidth >= srcHeight ? { width: maxDim } : { height: maxDim };
 }
 
 export class VideoCache {
@@ -25,12 +47,15 @@ export class VideoCache {
 		mediaId,
 		file,
 		time,
+		maxDim,
 	}: {
 		mediaId: string;
 		file: File;
 		time: number;
+		/** Longest-edge decode cap (preview downscale). Omit for full res. */
+		maxDim?: number;
 	}): Promise<WrappedCanvas | null> {
-		await this.ensureSink({ mediaId, file });
+		await this.ensureSink({ mediaId, file, maxDim });
 
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
@@ -236,18 +261,26 @@ export class VideoCache {
 	private async ensureSink({
 		mediaId,
 		file,
+		maxDim,
 	}: {
 		mediaId: string;
 		file: File;
+		maxDim?: number;
 	}): Promise<void> {
-		if (this.sinks.has(mediaId)) return;
+		const existing = this.sinks.get(mediaId);
+		if (existing) {
+			// Rebuild only when the decode cap actually changed (e.g. the user
+			// switched preview quality). Steady-state playback never rebuilds.
+			if (existing.maxDim === maxDim) return;
+			this.clearVideo({ mediaId });
+		}
 
 		if (this.initPromises.has(mediaId)) {
 			await this.initPromises.get(mediaId);
 			return;
 		}
 
-		const initPromise = this.initializeSink({ mediaId, file });
+		const initPromise = this.initializeSink({ mediaId, file, maxDim });
 		this.initPromises.set(mediaId, initPromise);
 
 		try {
@@ -259,9 +292,11 @@ export class VideoCache {
 	private async initializeSink({
 		mediaId,
 		file,
+		maxDim,
 	}: {
 		mediaId: string;
 		file: File;
+		maxDim?: number;
 	}): Promise<void> {
 		try {
 			const input = new Input({
@@ -279,9 +314,18 @@ export class VideoCache {
 				throw new Error("Video codec not supported for decoding");
 			}
 
+			// Cap decode resolution to the preview's longest edge, preserving
+			// aspect. Decoding a 4K source for a 720p preview is pure waste.
+			const decodeSize = resolveDecodeSize({
+				srcWidth: videoTrack.displayWidth,
+				srcHeight: videoTrack.displayHeight,
+				maxDim,
+			});
+
 			const sink = new CanvasSink(videoTrack, {
 				poolSize: 3,
 				fit: "contain",
+				...decodeSize,
 			});
 
 			this.sinks.set(mediaId, {
@@ -292,6 +336,7 @@ export class VideoCache {
 				lastTime: -1,
 				prefetching: false,
 				prefetchPromise: null,
+				maxDim,
 			});
 		} catch (error) {
 			console.error(`Failed to initialize video sink for ${mediaId}:`, error);

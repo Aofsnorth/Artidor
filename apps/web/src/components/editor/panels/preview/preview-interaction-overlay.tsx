@@ -16,6 +16,7 @@ import { usePropertiesStore } from "../properties/stores/properties-store";
 import { useEditor } from "@/hooks/use-editor";
 import type { Point } from "@/lib/graphics/path-utils";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
+import { canvasLogicalToGraphicSource } from "@/lib/preview/preview-coords";
 
 export function PreviewInteractionOverlay() {
 	const [snapLines, setSnapLines] = useState<SnapLine[]>([]);
@@ -189,11 +190,15 @@ function screenToSourcePoint({
 		clientY: event.clientY,
 	});
 	if (!canvas) return null;
-	const w = viewport.sceneWidth;
-	const h = viewport.sceneHeight;
+	const scale = viewport.getDisplayScale();
+	const w = scale.x > 0 ? viewport.sceneWidth / scale.x : 0;
+	const h = scale.y > 0 ? viewport.sceneHeight / scale.y : 0;
 	if (w <= 0 || h <= 0) return null;
-	return {
-		x: (canvas.x / w) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-		y: (canvas.y / h) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-	};
+	return canvasLogicalToGraphicSource({
+		canvasX: canvas.x,
+		canvasY: canvas.y,
+		canvasWidth: w,
+		canvasHeight: h,
+		sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
+	});
 }

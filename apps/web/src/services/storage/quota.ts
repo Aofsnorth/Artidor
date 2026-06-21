@@ -56,6 +56,15 @@ export async function readStorageQuotaStatus(): Promise<StorageQuotaStatus> {
 		};
 	}
 
+	// Ask for persistent storage so the browser hands us the full quota
+	// instead of a best-effort (often tiny) eviction-prone budget. Fire and
+	// forget — a rejection just leaves us on best-effort, which still works.
+	if (typeof navigator.storage.persist === "function") {
+		navigator.storage.persisted?.().then((already) => {
+			if (!already) navigator.storage.persist?.().catch(() => {});
+		});
+	}
+
 	const estimate = await navigator.storage.estimate();
 	const quotaBytes = normalizeByteValue({ value: estimate.quota });
 	const usageBytes = normalizeByteValue({ value: estimate.usage });
@@ -90,15 +99,21 @@ export function evaluateStorageCapacity({
 	requiredBytes: number;
 	quotaStatus: StorageQuotaStatus;
 }): StorageCapacityCheckResult {
-	if (quotaStatus.availableBytes === null) {
+	// Gate the hard block on REAL headroom (quota − usage), not the
+	// reserve-discounted `availableBytes`. The 50 MB reserve is a soft
+	// cushion for the warning copy only — blocking on it rejected files
+	// that would actually save fine (the save path already rolls back on a
+	// genuine QuotaExceededError). `availableBytes` is still surfaced so the
+	// toast can warn when a file eats into the reserve.
+	if (quotaStatus.headroomBytes === null) {
 		return {
 			canStore: true,
 			reason: "estimate-unavailable",
-			availableBytes: null,
+			availableBytes: quotaStatus.availableBytes,
 		};
 	}
 
-	if (requiredBytes > quotaStatus.availableBytes) {
+	if (requiredBytes > quotaStatus.headroomBytes) {
 		return {
 			canStore: false,
 			reason: "insufficient-space",

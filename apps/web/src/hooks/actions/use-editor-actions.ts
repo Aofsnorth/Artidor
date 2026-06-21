@@ -9,7 +9,7 @@ import { useEditor } from "../use-editor";
 import { useElementSelection } from "../timeline/element/use-element-selection";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useKeyframeSelection } from "../timeline/element/use-keyframe-selection";
-import { getElementsAtTime, hasMediaId } from "@/lib/timeline";
+import { getElementsAtTime, hasMediaId, type TimelineTrack } from "@/lib/timeline";
 import { cancelInteraction } from "@/lib/cancel-interaction";
 import { invokeAction } from "@/lib/actions";
 import {
@@ -17,6 +17,7 @@ import {
 	doesElementHaveEnabledAudio,
 } from "@/lib/timeline/audio-separation";
 import { toast } from "sonner";
+import { getElementKeyframes } from "@/lib/animation";
 import {
 	activateScope,
 	clearActiveScope,
@@ -32,6 +33,12 @@ export function useEditorActions() {
 	const { selectedElements, setElementSelection } = useElementSelection();
 	const { selectedKeyframes, clearKeyframeSelection } = useKeyframeSelection();
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
+	const focusedKeyframePropertyPath = useTimelineStore(
+		(s) => s.focusedKeyframePropertyPath,
+	);
+	const setFocusedKeyframePropertyPath = useTimelineStore(
+		(s) => s.setFocusedKeyframePropertyPath,
+	);
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
 	const hasTimelineSelectionRef = useRef(false);
@@ -39,6 +46,35 @@ export function useEditorActions() {
 	const timelineScopeRef = useRef<ScopeEntry | null>(null);
 	const hasTimelineSelection =
 		selectedElements.length > 0 || selectedKeyframes.length > 0;
+
+	const getSelectedKeyframeLayerPaths = () => {
+		const scene = editor.scenes.getActiveScene();
+		const tracks = Object.values(scene.tracks).flat() as TimelineTrack[];
+		const paths = new Set<string>();
+		for (const selectedElement of selectedElements) {
+			const track = tracks.find((track) => track.id === selectedElement.trackId);
+			const element = track?.elements.find(
+				(element) => element.id === selectedElement.elementId,
+			);
+			for (const keyframe of getElementKeyframes({
+				animations: element?.animations,
+			})) {
+				paths.add(keyframe.propertyPath);
+			}
+		}
+		return [...paths];
+	};
+
+	const selectKeyframeLayer = ({ direction }: { direction: -1 | 1 }) => {
+		const paths = getSelectedKeyframeLayerPaths();
+		if (paths.length === 0) return;
+		const currentIndex = Math.max(
+			0,
+			paths.indexOf(focusedKeyframePropertyPath ?? paths[0]),
+		);
+		const nextIndex = (currentIndex + direction + paths.length) % paths.length;
+		setFocusedKeyframePropertyPath(paths[nextIndex]);
+	};
 
 	hasTimelineSelectionRef.current = hasTimelineSelection;
 	clearTimelineSelectionRef.current = () => {
@@ -181,6 +217,18 @@ export function useEditorActions() {
 		() => {
 			editor.playback.seek({ time: editor.timeline.getTotalDuration() });
 		},
+		undefined,
+	);
+
+	useActionHandler(
+		"select-previous-keyframe-layer",
+		() => selectKeyframeLayer({ direction: -1 }),
+		undefined,
+	);
+
+	useActionHandler(
+		"select-next-keyframe-layer",
+		() => selectKeyframeLayer({ direction: 1 }),
 		undefined,
 	);
 

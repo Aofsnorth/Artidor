@@ -39,11 +39,12 @@ export function VectorDrawOverlay({
 		return pointsToSvgPath(preview, 0, false);
 	}, [anchors, cursor]);
 
-	const scale = viewport.getDisplayScale();
-	const width = viewport.sceneWidth * scale.x;
-	const height = viewport.sceneHeight * scale.y;
-	const left = viewport.sceneLeft;
-	const top = viewport.sceneTop;
+	// Match the renderer's contain-fit square (see freehand-draw-overlay).
+	const side = Math.min(viewport.sceneWidth, viewport.sceneHeight);
+	const left = viewport.sceneLeft + (viewport.sceneWidth - side) / 2;
+	const top = viewport.sceneTop + (viewport.sceneHeight - side) / 2;
+	const width = side;
+	const height = side;
 	const clampedOpacity = Math.max(0, Math.min(1, opacity));
 
 	if (anchors.length === 0 && !cursor) return null;
@@ -60,7 +61,7 @@ export function VectorDrawOverlay({
 				overflow: "visible",
 			}}
 			viewBox={`0 0 ${DEFAULT_GRAPHIC_SOURCE_SIZE} ${DEFAULT_GRAPHIC_SOURCE_SIZE}`}
-			preserveAspectRatio="none"
+			preserveAspectRatio="xMidYMid meet"
 		>
 			<title>Vector path preview</title>
 			{path && (

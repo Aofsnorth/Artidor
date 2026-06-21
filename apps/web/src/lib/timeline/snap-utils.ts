@@ -1,4 +1,5 @@
 import type { Bookmark, SceneTracks } from "@/lib/timeline";
+import type { AnimationPath } from "@/lib/animation/types";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { getElementKeyframes } from "@/lib/animation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -8,6 +9,8 @@ export interface SnapPoint {
 	type: "element-start" | "element-end" | "playhead" | "bookmark" | "keyframe";
 	elementId?: string;
 	trackId?: string;
+	propertyPath?: AnimationPath;
+	keyframeId?: string;
 }
 
 export interface SnapResult {
@@ -72,6 +75,8 @@ export function findSnapPoints({
 						type: "keyframe",
 						elementId: element.id,
 						trackId: track.id,
+						propertyPath: keyframe.propertyPath,
+						keyframeId: keyframe.id,
 					});
 				}
 			}

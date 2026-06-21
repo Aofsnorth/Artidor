@@ -9,6 +9,7 @@ import type {
 	ElementAnimations,
 } from "@/lib/animation/types";
 import type { TimelineElement } from "@/lib/timeline";
+import { generateUUID } from "@/utils/id";
 
 export function useKeyframedColorProperty({
 	trackId,
@@ -87,16 +88,21 @@ export function useKeyframedColorProperty({
 			return;
 		}
 
+		const keyframeId = generateUUID();
 		editor.timeline.upsertKeyframes({
 			keyframes: [
 				{
 					trackId,
 					elementId,
 					propertyPath,
+					keyframeId,
 					time: localTime,
 					value: resolvedColor,
 				},
 			],
+		});
+		editor.selection.setSelectedKeyframes({
+			keyframes: [{ trackId, elementId, propertyPath, keyframeId }],
 		});
 	};
 

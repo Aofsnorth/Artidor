@@ -7,6 +7,7 @@ import { useToolModeStore } from "@/stores/tool-mode-store";
 import { buildGraphicElement } from "@/lib/timeline";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
 import { pointsToSvgPath, type Point } from "@/lib/graphics/path-utils";
+import { canvasLogicalToGraphicSource } from "@/lib/preview/preview-coords";
 
 export interface VectorDrawState {
 	/** Sequence of anchor points in 512x512 source coords. */
@@ -55,13 +56,17 @@ export function useVectorDraw(): UseVectorDrawResult {
 				clientY: event.clientY,
 			});
 			if (!canvas) return null;
-			const canvasWidth = viewport.sceneWidth;
-			const canvasHeight = viewport.sceneHeight;
+			const scale = viewport.getDisplayScale();
+			const canvasWidth = scale.x > 0 ? viewport.sceneWidth / scale.x : 0;
+			const canvasHeight = scale.y > 0 ? viewport.sceneHeight / scale.y : 0;
 			if (canvasWidth <= 0 || canvasHeight <= 0) return null;
-			return {
-				x: (canvas.x / canvasWidth) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-				y: (canvas.y / canvasHeight) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-			};
+			return canvasLogicalToGraphicSource({
+				canvasX: canvas.x,
+				canvasY: canvas.y,
+				canvasWidth,
+				canvasHeight,
+				sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
+			});
 		},
 		[viewport],
 	);

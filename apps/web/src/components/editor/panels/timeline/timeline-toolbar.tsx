@@ -18,6 +18,12 @@ import { cn } from "@/utils/ui";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
+import { getElementKeyframes } from "@/lib/animation";
+import type { TimelineTrack } from "@/lib/timeline";
+import { buildTextElement } from "@/lib/timeline/element-utils";
+import { DEFAULTS } from "@/lib/timeline/defaults";
+import { getPropertyLabel } from "./expanded-layout";
+import { useMemo } from "react";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
@@ -136,7 +142,19 @@ function AddTrackDropdown() {
 					<DropdownMenuItem
 						key={option.type}
 						onClick={() => {
-							editor.timeline.addTrack({ type: option.type });
+							const trackId = editor.timeline.addTrack({ type: option.type });
+							if (option.type !== "text") return;
+							editor.timeline.insertElement({
+								placement: { mode: "explicit", trackId },
+								element: buildTextElement({
+									raw: {
+										name: "Text",
+										content: "Text",
+										fontFamily: DEFAULTS.text.element.fontFamily,
+									},
+									startTime: editor.playback.getCurrentTime(),
+								}),
+							});
 						}}
 					>
 						{option.label}
@@ -291,6 +309,43 @@ function SceneSelector() {
 	const editor = useEditor();
 	const currentScene = editor.scenes.getActiveScene();
 	const scenes = editor.scenes.getScenes();
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const focusedKeyframePropertyPaths = useTimelineStore(
+		(s) => s.focusedKeyframePropertyPaths,
+	);
+	const toggleFocusedKeyframePropertyPath = useTimelineStore(
+		(s) => s.toggleFocusedKeyframePropertyPath,
+	);
+	const keyframeLayerSearch = useTimelineStore((s) => s.keyframeLayerSearch);
+	const setKeyframeLayerSearch = useTimelineStore(
+		(s) => s.setKeyframeLayerSearch,
+	);
+	const keyframeLayerNames = useTimelineStore((s) => s.keyframeLayerNames);
+	const setKeyframeLayerName = useTimelineStore((s) => s.setKeyframeLayerName);
+	const keyframeLayers = useMemo(() => {
+		const layers = new Map<string, { propertyPath: string; label: string }>();
+		const tracks = Object.values(currentScene?.tracks ?? {}).flat() as TimelineTrack[];
+		for (const selectedElement of selectedElements) {
+			const track = tracks.find((track) => track.id === selectedElement.trackId);
+			const element = track?.elements.find(
+				(element) => element.id === selectedElement.elementId,
+			);
+			for (const keyframe of getElementKeyframes({
+				animations: element?.animations,
+			})) {
+				layers.set(keyframe.propertyPath, {
+					propertyPath: keyframe.propertyPath,
+					label:
+						keyframeLayerNames[keyframe.propertyPath] ||
+						getPropertyLabel(keyframe.propertyPath),
+				});
+			}
+		}
+		return [...layers.values()].filter((layer) =>
+			layer.label.toLowerCase().includes(keyframeLayerSearch.toLowerCase()),
+		);
+	}, [currentScene, keyframeLayerNames, keyframeLayerSearch, selectedElements]);
+	const hasKeyframeLayers = keyframeLayers.length > 0;
 
 	return (
 		<div className="flex items-center z-20">
@@ -301,7 +356,7 @@ function SceneSelector() {
 						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
 					>
 						<span className="tracking-wide select-none">
-							{currentScene?.name || "Main scene"}
+							{hasKeyframeLayers ? "Keyframes" : currentScene?.name || "Main scene"}
 						</span>
 						<div className="h-3 w-px bg-white/15" />
 						<HugeiconsIcon
@@ -310,15 +365,66 @@ function SceneSelector() {
 						/>
 					</button>
 				</DropdownMenuTrigger>
-				<DropdownMenuContent className="w-40 z-100">
-					{scenes.map((scene) => (
-						<DropdownMenuItem
-							key={scene.id}
-							onClick={() => editor.scenes.switchToScene({ sceneId: scene.id })}
-						>
-							{scene.name}
-						</DropdownMenuItem>
-					))}
+				<DropdownMenuContent className="w-56 z-100">
+					{hasKeyframeLayers ? (
+						<>
+							<div className="p-1.5">
+								<input
+									value={keyframeLayerSearch}
+									onChange={(event) => setKeyframeLayerSearch(event.target.value)}
+									placeholder="Search keyframes"
+									className="h-7 w-full rounded-md border border-white/10 bg-black/30 px-2 text-xs text-white outline-none placeholder:text-white/35"
+									onKeyDown={(event) => event.stopPropagation()}
+								/>
+							</div>
+							{keyframeLayers.map((layer) => (
+								<DropdownMenuItem
+									key={layer.propertyPath}
+									onClick={() => toggleFocusedKeyframePropertyPath(layer.propertyPath)}
+									className={cn(
+										"gap-2",
+										focusedKeyframePropertyPaths.includes(layer.propertyPath) &&
+											"bg-white/10 text-white",
+									)}
+								>
+									<button
+										type="button"
+											onClick={(event) => {
+											event.stopPropagation();
+											toggleFocusedKeyframePropertyPath(layer.propertyPath);
+										}}
+										className={cn(
+											"size-3 rounded-full border border-white/25",
+											focusedKeyframePropertyPaths.includes(layer.propertyPath) &&
+												"border-white bg-white shadow-[0_0_8px_rgba(255,255,255,0.75)]",
+										)}
+										aria-label={`Select ${layer.label} keyframes`}
+									/>
+									<input
+										value={layer.label}
+										onClick={(event) => event.stopPropagation()}
+										onKeyDown={(event) => event.stopPropagation()}
+										onChange={(event) =>
+											setKeyframeLayerName(
+												layer.propertyPath,
+												event.target.value,
+											)
+										}
+										className="min-w-0 flex-1 bg-transparent text-xs outline-none"
+									/>
+								</DropdownMenuItem>
+							))}
+						</>
+					) : (
+						scenes.map((scene) => (
+							<DropdownMenuItem
+								key={scene.id}
+								onClick={() => editor.scenes.switchToScene({ sceneId: scene.id })}
+							>
+								{scene.name}
+							</DropdownMenuItem>
+						))
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>

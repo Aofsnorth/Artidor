@@ -102,8 +102,19 @@ export function TimelineTrackContent({
 				}}
 			>
 				{track.elements.length === 0 ? (
-					<div className="pointer-events-none sticky left-0 flex h-full w-full items-center justify-center rounded-lg border border-dashed border-white/[0.08] bg-black/[0.12] text-[0.62rem] uppercase tracking-[0.18em] text-white/18">
-						Drop media
+					<div className="pointer-events-none h-full w-full rounded-lg border border-dashed border-white/[0.08] bg-black/[0.12]">
+						{/* Pin the label to the visible scroll viewport (sticky left-0
+						    + width = scroller clientWidth) so it stays centered on
+						    screen regardless of zoom/scroll, instead of drifting with
+						    the full timeline width.
+						    ponytail: viewport width read from the ref at render — no
+						    ResizeObserver. Add one if panel-resize centering drifts. */}
+						<div
+							className="sticky left-0 flex h-full items-center justify-center text-[0.62rem] uppercase tracking-[0.18em] text-white/18"
+							style={{ width: tracksScrollRef.current?.clientWidth ?? "100%" }}
+						>
+							Drop media
+						</div>
 					</div>
 				) : (
 					track.elements.map((element) => {

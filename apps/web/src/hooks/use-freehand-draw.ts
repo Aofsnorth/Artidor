@@ -11,6 +11,8 @@ import {
 	simplifyPath,
 	type Point,
 } from "@/lib/graphics/path-utils";
+import { canvasLogicalToGraphicSource } from "@/lib/preview/preview-coords";
+import { useColorPaletteStore } from "@/stores/color-palette-store";
 
 const MIN_POINT_DISTANCE_SQ = 4; // Skip pointer events closer than 2px to avoid duplicate samples
 
@@ -63,6 +65,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 	const editor = useEditor();
 	const viewport = usePreviewViewport();
 	const drawConfig = useToolModeStore((s) => s.drawConfig);
+	const addRecentColor = useColorPaletteStore((s) => s.addRecentColor);
 	const [currentPath, setCurrentPath] = useState<Point[] | null>(null);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const pointerIdRef = useRef<number | null>(null);
@@ -81,14 +84,18 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			});
 			if (!canvas) return null;
 
-			const canvasWidth = viewport.sceneWidth;
-			const canvasHeight = viewport.sceneHeight;
+			const scale = viewport.getDisplayScale();
+			const canvasWidth = scale.x > 0 ? viewport.sceneWidth / scale.x : 0;
+			const canvasHeight = scale.y > 0 ? viewport.sceneHeight / scale.y : 0;
 			if (canvasWidth <= 0 || canvasHeight <= 0) return null;
 
-			return {
-				x: (canvas.x / canvasWidth) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-				y: (canvas.y / canvasHeight) * DEFAULT_GRAPHIC_SOURCE_SIZE,
-			};
+			return canvasLogicalToGraphicSource({
+				canvasX: canvas.x,
+				canvasY: canvas.y,
+				canvasWidth,
+				canvasHeight,
+				sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
+			});
 		},
 		[viewport],
 	);
@@ -155,6 +162,13 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			const simplified = simplifyPath(rawPath, 2);
 			const svgPath = pointsToSvgPath(simplified, 0, drawConfig.closed);
 			if (!svgPath) return false;
+
+			// Remember the colours actually used so the palette's recents row
+			// reflects the user's drawing history.
+			addRecentColor(drawConfig.stroke);
+			if (drawConfig.closed && drawConfig.fill !== "transparent") {
+				addRecentColor(drawConfig.fill);
+			}
 
 			const selectedElements = editor.selection.getSelectedElements();
 			const selectedElement =
@@ -223,7 +237,9 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 							stroke: drawConfig.stroke,
 							strokeWidth: drawConfig.strokeWidth,
 							strokeOpacity: drawConfig.opacity,
-							strokeAlign: "center",
+							strokeAlign: drawConfig.strokeAlign,
+							strokeDash: drawConfig.strokeDash,
+							strokeTaper: drawConfig.strokeTaper,
 							pathData: drawingPath,
 							closed: drawConfig.closed,
 						},
@@ -258,7 +274,9 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 					stroke: drawConfig.stroke,
 					strokeWidth: drawConfig.strokeWidth,
 					strokeOpacity: drawConfig.opacity,
-					strokeAlign: "center",
+					strokeAlign: drawConfig.strokeAlign,
+					strokeDash: drawConfig.strokeDash,
+					strokeTaper: drawConfig.strokeTaper,
 					pathData: drawingPath,
 					closed: drawConfig.closed,
 				},
@@ -273,7 +291,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			console.error("[useFreehandDraw] Failed to commit drawing:", error);
 			return false;
 		}
-	}, [drawConfig, editor]);
+	}, [drawConfig, editor, addRecentColor]);
 
 	const handlePointerUp = useCallback(
 		(event: React.PointerEvent) => {
