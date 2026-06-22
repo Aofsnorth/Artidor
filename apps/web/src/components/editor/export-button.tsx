@@ -23,10 +23,9 @@ import { ExportModal } from "./export-modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/utils/ui";
-import { Check, Copy, Download, RotateCcw } from "lucide-react";
+import { Check, Copy, Download, RotateCcw, Play } from "lucide-react";
 import {
 	EXPORT_FORMAT_LABELS,
 	EXPORT_FORMAT_VALUES,
@@ -36,6 +35,7 @@ import {
 	downloadBuffer,
 	type ExportFormat,
 	type ExportQuality,
+	type ExportResult,
 } from "@/lib/export";
 import {
 	Section,
@@ -137,7 +137,9 @@ export function ExportButton() {
 								? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%)"
 								: "linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 100%)",
 						}}
-						onClick={hasProject ? () => setIsExportPopoverOpen(true) : undefined}
+						onClick={
+							hasProject ? () => setIsExportPopoverOpen(true) : undefined
+						}
 						disabled={!hasProject}
 						onKeyDown={(event) => {
 							if (hasProject && (event.key === "Enter" || event.key === " ")) {
@@ -215,6 +217,8 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
+	const filename = `${activeProject.metadata.name}${getExportFileExtension({ format })}`;
+	const mimeType = getExportMimeType({ format });
 
 	const handleExport = async () => {
 		if (!activeProject) return;
@@ -234,14 +238,9 @@ function ExportPopover({
 		}
 
 		if (result.success && result.buffer) {
-			downloadBuffer({
-				buffer: result.buffer,
-				filename: `${activeProject.metadata.name}${getExportFileExtension({ format })}`,
-				mimeType: getExportMimeType({ format }),
-			});
-
-			editor.project.clearExportState();
-			onOpenChange(false);
+			toast.success(
+				result.cached ? "Export restored from history" : "Export ready",
+			);
 		}
 	};
 
@@ -268,7 +267,14 @@ function ExportPopover({
 				} as React.CSSProperties
 			}
 		>
-			{exportResult && !exportResult.success ? (
+			{exportResult?.success && exportResult.buffer ? (
+				<ExportResultCard
+					result={exportResult}
+					filename={filename}
+					mimeType={mimeType}
+					onNewExport={() => editor.project.clearExportState()}
+				/>
+			) : exportResult && !exportResult.success ? (
 				<ExportError
 					error={exportResult.error || "Unknown error occurred"}
 					onRetry={handleExport}
@@ -459,6 +465,91 @@ function ExportPopover({
 	);
 }
 
+function ExportResultCard({
+	result,
+	filename,
+	mimeType,
+	onNewExport,
+}: {
+	result: ExportResult;
+	filename: string;
+	mimeType: string;
+	onNewExport: () => void;
+}) {
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!result.buffer) return;
+
+		const url = URL.createObjectURL(
+			new Blob([result.buffer], { type: mimeType }),
+		);
+		setPreviewUrl(url);
+		return () => URL.revokeObjectURL(url);
+	}, [result.buffer, mimeType]);
+
+	const handleDownload = () => {
+		if (!result.buffer) return;
+		downloadBuffer({ buffer: result.buffer, filename, mimeType });
+	};
+
+	return (
+		<div className="flex flex-col gap-4 p-4">
+			<div className="overflow-hidden rounded-lg border border-stone-800 bg-black">
+				{previewUrl ? (
+					<video
+						controls
+						className="aspect-video w-full bg-black"
+						src={previewUrl}
+					>
+						<track kind="captions" />
+					</video>
+				) : (
+					<div className="flex aspect-video items-center justify-center text-stone-500">
+						<Play className="size-5" />
+					</div>
+				)}
+			</div>
+
+			<div className="space-y-1">
+				<p className="text-sm font-medium text-stone-100">Export ready</p>
+				<p className="truncate text-xs text-stone-500">{filename}</p>
+				<p className="text-xs text-stone-500">
+					{result.cached ? "From history" : "Fresh render"} ·{" "}
+					{formatBytes(result.buffer?.byteLength ?? 0)}
+				</p>
+			</div>
+
+			<div className="flex gap-2">
+				<Button
+					variant="outline"
+					className="h-9 flex-1 border-stone-800 text-xs text-stone-300 hover:bg-stone-900"
+					onClick={onNewExport}
+				>
+					New export
+				</Button>
+				<Button
+					className="h-9 flex-1 gap-2 bg-[#FAF8F5] text-xs text-black hover:bg-white"
+					onClick={handleDownload}
+				>
+					<Download className="size-3.5" />
+					Download
+				</Button>
+			</div>
+		</div>
+	);
+}
+
+function formatBytes(bytes: number): string {
+	if (!bytes) return "0 B";
+	const units = ["B", "KB", "MB", "GB"];
+	const index = Math.min(
+		Math.floor(Math.log(bytes) / Math.log(1024)),
+		units.length - 1,
+	);
+	return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
 function ExportToDriveButton({ onDone }: { onDone: () => void }) {
 	const editor = useEditor();
 	const [busy, setBusy] = useState(false);
@@ -467,7 +558,8 @@ function ExportToDriveButton({ onDone }: { onDone: () => void }) {
 		// Ensure Drive is configured + connected before attempting the copy.
 		if (!getGoogleClientId()) {
 			toast.error("Google Drive isn't set up yet", {
-				description: "Add your Google Client ID via the Drive import dialog first.",
+				description:
+					"Add your Google Client ID via the Drive import dialog first.",
 			});
 			return;
 		}
@@ -492,7 +584,8 @@ function ExportToDriveButton({ onDone }: { onDone: () => void }) {
 			});
 			onDone();
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Export to Drive failed";
+			const message =
+				err instanceof Error ? err.message : "Export to Drive failed";
 			toast.error(
 				message === "unauthenticated"
 					? "Connect Google Drive to export."

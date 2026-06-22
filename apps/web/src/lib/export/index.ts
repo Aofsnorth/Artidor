@@ -25,6 +25,7 @@ export interface ExportResult {
 	buffer?: ArrayBuffer;
 	error?: string;
 	cancelled?: boolean;
+	cached?: boolean;
 }
 
 export interface ExportState {

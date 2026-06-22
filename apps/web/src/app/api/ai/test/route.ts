@@ -13,6 +13,8 @@
  */
 
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,7 +42,8 @@ const TEST_PROMPT = [
  * standard) if it doesn't already. Returns the URL we'll POST to.
  */
 function normalizeBaseUrl({ baseUrl }: { baseUrl: string }): string {
-	const trimmed = baseUrl.trim().replace(/\/+$/, "");
+	const safeUrl = assertSafeProviderBaseUrl({ baseUrl });
+	const trimmed = safeUrl.toString().replace(/\/+$/, "");
 	if (trimmed.endsWith("/v1")) return trimmed;
 	// If user typed just the host (e.g. `https://api.openai.com`) we
 	// add the /v1 ourselves. If they typed `/chat/completions` we
@@ -77,6 +80,14 @@ interface TestResult {
 }
 
 export async function POST(request: Request): Promise<Response> {
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return Response.json(
+			{ ok: false, error: "Too many requests" } satisfies TestResult,
+			{ status: 429 },
+		);
+	}
+
 	let body: z.infer<typeof bodySchema>;
 	try {
 		const json = (await request.json()) as unknown;
@@ -91,7 +102,18 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
-	const url = `${normalizeBaseUrl({ baseUrl: body.baseUrl })}/chat/completions`;
+	let url: string;
+	try {
+		url = `${normalizeBaseUrl({ baseUrl: body.baseUrl })}/chat/completions`;
+	} catch (err) {
+		return Response.json(
+			{
+				ok: false,
+				error: err instanceof Error ? err.message : "Invalid provider URL.",
+			} satisfies TestResult,
+			{ status: 400 },
+		);
+	}
 	const auth = buildAuthHeader({ apiKey: body.apiKey, kind: body.kind });
 	const startedAt = Date.now();
 

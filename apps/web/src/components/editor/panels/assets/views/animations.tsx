@@ -113,13 +113,12 @@ export function AnimationsView() {
 	const existingPresets = useAnimationPresets();
 	const apply = useApplyAnimationPreset();
 	const all = useMemo(() => {
-		const existingTypes = new Set(existingPresets.map((preset) => preset.type));
-		return [
-			...existingPresets,
-			...motionAnimationPresets.filter(
-				(preset) => !existingTypes.has(preset.type),
-			),
-		];
+		const presets = new Map<string, AnimationPreset>();
+		for (const preset of existingPresets) presets.set(preset.type, preset);
+		for (const preset of motionAnimationPresets) {
+			if (!presets.has(preset.type)) presets.set(preset.type, preset);
+		}
+		return [...presets.values()];
 	}, [existingPresets]);
 	const [category, setCategory] = useState(ALL_CATEGORY);
 
@@ -220,10 +219,7 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
 				style={{ width: "80%", height: "80%" }}
 			>
-				<div
-					aria-hidden
-					className="absolute inset-0 bg-black"
-				/>
+				<div aria-hidden className="absolute inset-0 bg-black" />
 				<div
 					className="absolute inset-0 flex items-center justify-center z-10"
 					style={previewStyle}
@@ -244,7 +240,11 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 	);
 });
 
-const PresetIcon = memo(function PresetIcon({ preset }: { preset: AnimationPreset }) {
+const PresetIcon = memo(function PresetIcon({
+	preset,
+}: {
+	preset: AnimationPreset;
+}) {
 	const keyframes = useMemo(() => presetStyleKeyframes(preset), [preset]);
 
 	return (
