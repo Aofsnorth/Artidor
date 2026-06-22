@@ -107,6 +107,7 @@ import { usePropertiesStore } from "@/components/editor/panels/properties/stores
 import { getTrackTypeForElementType } from "@/lib/timeline/placement/compatibility";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { KEYFRAME_LANE_HEIGHT_PX } from "./layout";
+import { TIMELINE_LAYERS } from "./layers";
 import {
 	getExpandedRows,
 	getExpansionHeight,
@@ -678,6 +679,12 @@ export function TimelineElement({
 								isBeingDragged && dragState.isDragging
 									? `translate3d(0, ${dragOffsetY}px, 0)`
 									: undefined,
+							zIndex:
+								isBeingDragged && dragState.isDragging
+									? TIMELINE_LAYERS.dragLine + 2
+									: undefined,
+							pointerEvents:
+								isBeingDragged && dragState.isDragging ? "none" : undefined,
 						}}
 					>
 						<ElementInner
@@ -1363,7 +1370,9 @@ function KeyframeIndicators({
 						onDoubleClick={(event) => {
 							event.stopPropagation();
 							event.preventDefault();
-							editor.timeline.removeKeyframes({ keyframes: indicator.keyframes });
+							editor.timeline.removeKeyframes({
+								keyframes: indicator.keyframes,
+							});
 						}}
 						aria-label="Select keyframe"
 					>
@@ -1501,14 +1510,18 @@ function ExpandedKeyframeLanes({
 							const startVisualOffset = getVisualOffsetPx({
 								indicatorTime: kf.time,
 								indicatorOffsetPx: startOffset,
-								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(kf.id),
+								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(
+									kf.id,
+								),
 								displayedStartTime,
 								elementLeft,
 							});
 							const endVisualOffset = getVisualOffsetPx({
 								indicatorTime: nextKeyframe.time,
 								indicatorOffsetPx: endOffset,
-								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(nextKeyframe.id),
+								isBeingDragged: keyframeDragState.draggingKeyframeIds.has(
+									nextKeyframe.id,
+								),
 								displayedStartTime,
 								elementLeft,
 							});
@@ -1598,18 +1611,20 @@ function ExpandedKeyframeLanes({
 										onDoubleClick={(event) => {
 											event.stopPropagation();
 											event.preventDefault();
-											editor.timeline.removeKeyframes({ keyframes: [keyframeRef] });
+											editor.timeline.removeKeyframes({
+												keyframes: [keyframeRef],
+											});
 										}}
 										aria-label="Select keyframe"
 									>
 										<span
-										className={cn(
-											"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
-											isDimmed && "size-3.5 opacity-35",
-											isSelected &&
-												"size-6 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_11px_3px_rgba(255,255,255,0.72)]",
-										)}
-									/>
+											className={cn(
+												"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
+												isDimmed && "size-3.5 opacity-35",
+												isSelected &&
+													"size-6 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_11px_3px_rgba(255,255,255,0.72)]",
+											)}
+										/>
 									</button>
 								</KeyframeContextMenu>
 							);

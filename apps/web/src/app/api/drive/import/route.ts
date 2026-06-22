@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { buildDriveDirectUrl, parseDriveUrl } from "@/lib/drive/parse";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_FILE_BYTES = 200 * 1024 * 1024; // 200 MB safety cap
@@ -36,6 +39,20 @@ export type DriveFileImport = {
 export type DriveImportResult = DriveFileImport | DriveFolderImport;
 
 export async function POST(request: Request) {
+	// This route is a server-side fetch proxy (bytes flow through our server),
+	// so it must be rate-limited like the other public endpoints to blunt abuse
+	// and bandwidth amplification.
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return NextResponse.json(
+			{
+				code: "fetch_failed",
+				message: "Too many import requests. Wait a moment and try again.",
+			} satisfies DriveImportError,
+			{ status: 429 },
+		);
+	}
+
 	const body = (await request.json().catch(() => null)) as {
 		url?: string;
 	} | null;

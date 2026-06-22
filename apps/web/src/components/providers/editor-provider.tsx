@@ -10,6 +10,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsListener } from "@/hooks/use-keybindings";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useViewerStore } from "@/stores/viewer-store";
 import { useEditorActions } from "@/hooks/actions/use-editor-actions";
 import { loadFontAtlas } from "@/lib/fonts/google-fonts";
 import {
@@ -28,10 +29,34 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const { setLoadingProject } = useKeybindingsStore();
+	const setViewer = useViewerStore((s) => s.setViewer);
 
 	useEffect(() => {
 		setLoadingProject(isLoading);
 	}, [isLoading, setLoadingProject]);
+
+	// Read-only viewer enforcement. `EditorCore` is a singleton that survives
+	// client navigation, so `command.readOnly` MUST be set on every mount —
+	// both to turn it ON for shared links and to turn it back OFF when the
+	// same tab later opens an owned project. We read the share id straight from
+	// `window.location.search` (rather than `useSearchParams`) so the provider
+	// doesn't force the whole editor route into a Suspense boundary at build
+	// time; viewer mode is a client-only concern keyed on `projectId` changes.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: projectId is an intentional trigger — re-deriving read-only state on every project navigation, even though the value is read from the URL inside the effect.
+	useEffect(() => {
+		const editor = EditorCore.getInstance();
+		const shareId = new URLSearchParams(window.location.search).get("share");
+		const isViewer = Boolean(shareId);
+		editor.command.readOnly = isViewer;
+		setViewer({ isViewer, shareId });
+		return () => {
+			// Clear the viewer mirror on unmount. We don't fail-safe to
+			// read-only here: that would brick an owned project if React
+			// remounts the provider. The next mount re-derives the
+			// authoritative flag from its own URL.
+			setViewer({ isViewer: false, shareId: null });
+		};
+	}, [projectId, setViewer]);
 
 	useEffect(() => {
 		let cancelled = false;

@@ -32,10 +32,13 @@ import { SavePresetDialog } from "./dialogs/save-preset-dialog";
 import Image from "next/image";
 import { cn } from "@/utils/ui";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
+import { useViewerStore } from "@/stores/viewer-store";
+import { ViewIcon } from "@hugeicons/core-free-icons";
 
 import { CloudStatusIndicator } from "./cloud-status-indicator";
 
 export function EditorHeader() {
+	const isViewer = useViewerStore((s) => s.isViewer);
 	return (
 		<header className="relative z-50 flex h-12 items-center justify-between gap-2 overflow-hidden bg-gradient-to-b from-[#111114] to-transparent px-4 transition-all">
 			{/* Subtle top glow that fades into the body. No bottom border
@@ -95,15 +98,27 @@ export function EditorHeader() {
 			   with breathing room so the Export button doesn't sit
 			   flush against the panel boundary. */}
 			<nav className="relative ml-auto flex items-center gap-2.5 pr-1">
-				<CloudStatusIndicator />
-				<SettingsButton />
-				{/* Theme toggle removed — the editor is pinned to dark, so a
-					light/dark switch did nothing visible here. */}
+				{isViewer ? (
+					// Read-only share: no cloud sync, no re-sharing, no export of
+					// someone else's project. Surface the mode instead so the viewer
+					// understands why edit affordances are gone.
+					<span className="flex h-7 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 text-[0.72rem] font-medium text-white/70">
+						<HugeiconsIcon icon={ViewIcon} className="size-3.5" />
+						Read-only
+					</span>
+				) : (
+					<>
+						<CloudStatusIndicator />
+						<SettingsButton />
+						{/* Theme toggle removed — the editor is pinned to dark, so a
+							light/dark switch did nothing visible here. */}
 
-				<ShareButton />
-				<div className="ml-1">
-					<ExportButton />
-				</div>
+						<ShareButton />
+						<div className="ml-1">
+							<ExportButton />
+						</div>
+					</>
+				)}
 			</nav>
 		</header>
 	);

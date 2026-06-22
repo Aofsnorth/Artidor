@@ -82,8 +82,9 @@ export async function captureFrameViaMediaBunny({
 	timeSeconds: number;
 	fileName: string;
 }): Promise<CapturedFrame | null> {
+	let input: Input | null = null;
 	try {
-		const input = new Input({
+		input = new Input({
 			source: new BlobSource(file),
 			formats: ALL_FORMATS,
 		});
@@ -92,26 +93,33 @@ export async function captureFrameViaMediaBunny({
 
 		const sink = new CanvasSink(videoTrack);
 		const safeTime = Math.max(0, timeSeconds);
-		for await (const wrapped of sink.canvases()) {
-			const ts = wrapped.timestamp;
-			const te = ts + wrapped.duration;
-			if (te <= safeTime) continue;
-			if (ts > safeTime) break;
+		const iterator = sink.canvases();
+		try {
+			for await (const wrapped of iterator) {
+				const ts = wrapped.timestamp;
+				const te = ts + wrapped.duration;
+				if (te <= safeTime) continue;
+				if (ts > safeTime) break;
 
-			const canvas = wrapped.canvas;
-			const blob = await canvasToPngBlob({ canvas });
-			if (!blob) return null;
-			return {
-				blob,
-				width: canvas.width,
-				height: canvas.height,
-				fileName,
-			};
+				const canvas = wrapped.canvas;
+				const blob = await canvasToPngBlob({ canvas });
+				if (!blob) return null;
+				return {
+					blob,
+					width: canvas.width,
+					height: canvas.height,
+					fileName,
+				};
+			}
+		} finally {
+			await iterator.return();
 		}
 		return null;
 	} catch (error) {
 		console.warn("captureFrameViaMediaBunny failed:", error);
 		return null;
+	} finally {
+		input?.dispose();
 	}
 }
 

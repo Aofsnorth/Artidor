@@ -20,24 +20,28 @@ export async function getVideoInfo({
 		formats: ALL_FORMATS,
 	});
 
-	const duration = await input.computeDuration();
-	const videoTrack = await input.getPrimaryVideoTrack();
+	try {
+		const duration = await input.computeDuration();
+		const videoTrack = await input.getPrimaryVideoTrack();
 
-	if (!videoTrack) {
-		throw new Error("No video track found in the file");
+		if (!videoTrack) {
+			throw new Error("No video track found in the file");
+		}
+
+		const packetStats = await videoTrack.computePacketStats(100);
+		const fps = packetStats.averagePacketRate;
+		const audioTrack = await input.getPrimaryAudioTrack();
+
+		return {
+			duration,
+			width: videoTrack.displayWidth,
+			height: videoTrack.displayHeight,
+			fps,
+			hasAudio: audioTrack !== null,
+		};
+	} finally {
+		input.dispose();
 	}
-
-	const packetStats = await videoTrack.computePacketStats(100);
-	const fps = packetStats.averagePacketRate;
-	const audioTrack = await input.getPrimaryAudioTrack();
-
-	return {
-		duration,
-		width: videoTrack.displayWidth,
-		height: videoTrack.displayHeight,
-		fps,
-		hasAudio: audioTrack !== null,
-	};
 }
 
 const SAMPLE_RATE = 44100;
@@ -188,8 +192,9 @@ export async function extractClipAudio({
 	const startSeconds = (element.trimStart ?? 0) / TICKS_PER_SECOND;
 	const endSeconds = startSeconds + element.duration / TICKS_PER_SECOND;
 
+	let input: Input | null = null;
 	try {
-		const input = new Input({
+		input = new Input({
 			source: new BlobSource(asset.file),
 			formats: ALL_FORMATS,
 		});
@@ -250,6 +255,8 @@ export async function extractClipAudio({
 	} catch (error) {
 		console.warn("extractClipAudio failed:", error);
 		return createWavBlob({ samples: new Float32Array(0) });
+	} finally {
+		input?.dispose();
 	}
 }
 
@@ -258,8 +265,9 @@ export async function extractAssetAudio({
 }: {
 	asset: { file: File; duration?: number | null; name?: string };
 }): Promise<Blob> {
+	let input: Input | null = null;
 	try {
-		const input = new Input({
+		input = new Input({
 			source: new BlobSource(asset.file),
 			formats: ALL_FORMATS,
 		});
@@ -309,5 +317,7 @@ export async function extractAssetAudio({
 	} catch (error) {
 		console.warn("extractAssetAudio failed:", error);
 		return createWavBlob({ samples: new Float32Array(0) });
+	} finally {
+		input?.dispose();
 	}
 }

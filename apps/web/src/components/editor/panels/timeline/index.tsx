@@ -216,6 +216,7 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import { useEditor } from "@/hooks/use-editor";
 import { useTimelinePlayhead } from "@/hooks/timeline/use-timeline-playhead";
 import { DragLine } from "./drag-line";
+import { TIMELINE_LAYERS } from "./layers";
 import { invokeAction } from "@/lib/actions";
 import { resolveTimelineElementIntersections } from "./selection-hit-testing";
 import { cn } from "@/utils/ui";
@@ -493,11 +494,12 @@ export function Timeline() {
 			playheadRef,
 		});
 
-	const { isDragOver, dropTarget, dragElementType, dragProps } = useTimelineDragDrop({
-		containerRef: tracksContainerRef,
-		tracksScrollRef,
-		zoomLevel,
-	});
+	const { isDragOver, dropTarget, dragElementType, dragProps } =
+		useTimelineDragDrop({
+			containerRef: tracksContainerRef,
+			tracksScrollRef,
+			zoomLevel,
+		});
 
 	const {
 		selectionBox,
@@ -1329,6 +1331,9 @@ function TimelineTrackRows({
 	return (
 		<>
 			{sortedTracks.map(({ track, index }) => {
+				const hasDraggedElement = track.elements.some((element) =>
+					dragState.dragElementIds.includes(element.id),
+				);
 				const trackAccent = getTrackTypeAccent({
 					type: track.type,
 					customColor: track.color,
@@ -1343,12 +1348,16 @@ function TimelineTrackRows({
 						<ContextMenuTrigger asChild>
 							<div
 								className={cn(
-									"group absolute left-0 right-0 overflow-hidden rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
+									"group absolute left-0 right-0 rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
+									hasDraggedElement ? "overflow-visible" : "overflow-hidden",
 									tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
 								)}
 								style={{
 									top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight, overrideHeights: trackHeights })}px`,
 									height: `${trackRowHeight}px`,
+									zIndex: hasDraggedElement
+										? TIMELINE_LAYERS.dragLine + 1
+										: undefined,
 									// Track colour used to tint the whole row, which
 									// muddied the clip thumbnails. The accent now
 									// lives on a thin left stripe (rendered below

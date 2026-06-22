@@ -126,6 +126,8 @@ function PreviewCanvas({
 	const lastSceneRef = useRef<RootNode | null>(null);
 	const lastScaleRef = useRef(-1);
 	const renderingRef = useRef(false);
+	const pendingRenderRef = useRef(false);
+	const renderTokenRef = useRef(0);
 	const previewQuality = useSettingsStore((s) => s.previewQuality);
 	const gpuDegraded = useEditor((e) => e.renderer.isDegraded);
 	const { width: nativeWidth, height: nativeHeight } = usePreviewSize();
@@ -159,70 +161,79 @@ function PreviewCanvas({
 	const cssFilter = useSelectedElementCssFilter();
 
 	const render = useCallback(() => {
-		if (canvasRef.current && renderTree && !renderingRef.current) {
-			const renderTime = Math.min(
-				editor.playback.getCurrentTime(),
-				editor.timeline.getLastFrameTime(),
-			);
-			const ticksPerFrame = Math.round(
-				(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
-			);
-			const frame = Math.floor(renderTime / ticksPerFrame);
+		if (!canvasRef.current || !renderTree) return;
+		if (renderingRef.current) {
+			pendingRenderRef.current = true;
+			return;
+		}
 
-			// Resolution scaling: render the preview at a fraction of project
-			// resolution (and cap video decode to match) on weak machines /
-			// during playback. The output canvas keeps its native size and the
-			// compositor result is stretched up on blit — cheap, and the whole
-			// transform pipeline derives from renderer.width/height so it all
-			// scales coherently. Decode cap follows the *idle* tier so play/pause
-			// never rebuilds the video decoder.
-			const isPlaying = editor.playback.getIsPlaying();
-			const scale = resolvePreviewScale({
-				quality: previewQuality,
-				isPlaying,
-				gpuDegraded,
-			});
-			const idleScale = resolvePreviewScale({
-				quality: previewQuality,
-				isPlaying: false,
-				gpuDegraded,
-			});
-			renderer.setSize({
-				width: Math.max(2, Math.round(nativeWidth * scale)),
-				height: Math.max(2, Math.round(nativeHeight * scale)),
-			});
-			renderer.maxSourceDim = resolveDecodeMaxDim({
-				renderWidth: nativeWidth,
-				renderHeight: nativeHeight,
-				scale: idleScale,
-			});
+		const renderTime = Math.min(
+			editor.playback.getCurrentTime(),
+			editor.timeline.getLastFrameTime(),
+		);
+		const ticksPerFrame = Math.round(
+			(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
+		);
+		const frame = Math.floor(renderTime / ticksPerFrame);
 
-			// Re-render the same frame when scale changes (e.g. pause → sharpen).
-			if (
-				frame !== lastFrameRef.current ||
-				renderTree !== lastSceneRef.current ||
-				scale !== lastScaleRef.current
-			) {
-				renderingRef.current = true;
-				lastSceneRef.current = renderTree;
-				lastFrameRef.current = frame;
-				lastScaleRef.current = scale;
-				renderer
-					.renderToCanvas({
-						node: renderTree,
-						time: renderTime,
-						targetCanvas: canvasRef.current,
-					})
-					.then(() => {
-						renderingRef.current = false;
-					})
-					.catch(() => {
-						// Release the lock on failure (e.g. the GPU is still warming
-						// up, or a transient frame/device error) so the next frame
-						// retries instead of leaving the preview permanently stuck.
-						renderingRef.current = false;
-					});
-			}
+		// Resolution scaling: render the preview at a fraction of project
+		// resolution (and cap video decode to match) on weak machines /
+		// during playback. The output canvas keeps its native size and the
+		// compositor result is stretched up on blit — cheap, and the whole
+		// transform pipeline derives from renderer.width/height so it all
+		// scales coherently. Decode cap follows the *idle* tier so play/pause
+		// never rebuilds the video decoder.
+		const isPlaying = editor.playback.getIsPlaying();
+		const scale = resolvePreviewScale({
+			quality: previewQuality,
+			isPlaying,
+			gpuDegraded,
+		});
+		const idleScale = resolvePreviewScale({
+			quality: previewQuality,
+			isPlaying: false,
+			gpuDegraded,
+		});
+		renderer.setSize({
+			width: Math.max(2, Math.round(nativeWidth * scale)),
+			height: Math.max(2, Math.round(nativeHeight * scale)),
+		});
+		renderer.maxSourceDim = resolveDecodeMaxDim({
+			renderWidth: nativeWidth,
+			renderHeight: nativeHeight,
+			scale: idleScale,
+		});
+
+		// Re-render the same frame when scale changes (e.g. pause → sharpen).
+		if (
+			frame !== lastFrameRef.current ||
+			renderTree !== lastSceneRef.current ||
+			scale !== lastScaleRef.current
+		) {
+			renderingRef.current = true;
+			pendingRenderRef.current = false;
+			const token = ++renderTokenRef.current;
+			renderer
+				.renderToCanvas({
+					node: renderTree,
+					time: renderTime,
+					targetCanvas: canvasRef.current,
+				})
+				.then(() => {
+					if (token === renderTokenRef.current && !pendingRenderRef.current) {
+						lastSceneRef.current = renderTree;
+						lastFrameRef.current = frame;
+						lastScaleRef.current = scale;
+					}
+				})
+				.catch(() => {
+					// Release the lock on failure (e.g. the GPU is still warming
+					// up, or a transient frame/device error) so the next frame
+					// retries instead of leaving the preview permanently stuck.
+				})
+				.finally(() => {
+					renderingRef.current = false;
+				});
 		}
 	}, [
 		renderer,
