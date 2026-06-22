@@ -32,7 +32,7 @@ export function TimelineRuler({
 	handleRulerMouseDown,
 }: TimelineRulerProps) {
 	const durationTicks = useEditor((e) => e.timeline.getTotalDuration());
-	const durationSeconds = mediaTimeToSeconds({ time: durationTicks });
+	const durationSeconds = mediaTimeToSeconds({ time: Math.round(durationTicks) });
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
 	const visibleDurationSeconds = dynamicTimelineWidth / pixelsPerSecond;
 	const effectiveDurationSeconds = Math.max(

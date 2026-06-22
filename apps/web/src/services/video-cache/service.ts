@@ -18,6 +18,9 @@ interface VideoSinkData {
 	// Longest-edge decode cap this sink was built with (undefined = full res).
 	// Changing it (e.g. preview quality change) rebuilds the sink.
 	maxDim: number | undefined;
+	// Seek generation counter. When a new seek comes in, this increments.
+	// Old seeks check this and bail out if they're stale.
+	seekGeneration: number;
 }
 
 /**
@@ -63,8 +66,19 @@ export class VideoCache {
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
 
+		// Increment seek generation to invalidate stale seeks.
+		// When a new seek comes in while an old one is still processing,
+		// the old one checks `seekGeneration` and bails out early.
+		sinkData.seekGeneration++;
+		const myGeneration = sinkData.seekGeneration;
+
 		const previous = this.frameChain.get(mediaId) ?? Promise.resolve();
-		const current = previous.then(() => this.resolveFrame({ sinkData, time }));
+		const current = previous.then(() => {
+			// Bail out if a newer seek has been requested — don't waste decode time
+			// on frames the user has already scrubbed past.
+			if (sinkData.seekGeneration !== myGeneration) return null;
+			return this.resolveFrame({ sinkData, time });
+		});
 		this.frameChain.set(
 			mediaId,
 			current.catch(() => {}),
@@ -79,6 +93,10 @@ export class VideoCache {
 		sinkData: VideoSinkData;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
+		// Check if this seek is still the latest one — bail out if a newer seek
+		// has been requested while we were waiting in the queue.
+		const myGeneration = sinkData.seekGeneration;
+
 		if (sinkData.nextFrame && sinkData.nextFrame.timestamp <= time) {
 			sinkData.currentFrame = sinkData.nextFrame;
 			sinkData.nextFrame = null;
@@ -101,7 +119,9 @@ export class VideoCache {
 			time >= sinkData.lastTime &&
 			time < sinkData.lastTime + FORWARD_ITERATE_WINDOW_SECONDS
 		) {
-			const frame = await this.iterateToTime({ sinkData, targetTime: time });
+			const frame = await this.iterateToTime({ sinkData, targetTime: time, generation: myGeneration });
+			// Bail out if stale
+			if (sinkData.seekGeneration !== myGeneration) return null;
 			if (frame) {
 				if (!sinkData.nextFrame && !sinkData.prefetching) {
 					this.startPrefetch({ sinkData });
@@ -110,7 +130,9 @@ export class VideoCache {
 			}
 		}
 
-		const frame = await this.seekToTime({ sinkData, time });
+		const frame = await this.seekToTime({ sinkData, time, generation: myGeneration });
+		// Bail out if stale
+		if (sinkData.seekGeneration !== myGeneration) return null;
 		if (frame && !sinkData.nextFrame && !sinkData.prefetching) {
 			this.startPrefetch({ sinkData });
 		}
@@ -129,18 +151,26 @@ export class VideoCache {
 	private async iterateToTime({
 		sinkData,
 		targetTime,
+		generation,
 	}: {
 		sinkData: VideoSinkData;
 		targetTime: number;
+		generation: number;
 	}): Promise<WrappedCanvas | null> {
 		if (!sinkData.iterator) return null;
 
 		try {
 			while (true) {
+				// Bail out if a newer seek has been requested
+				if (sinkData.seekGeneration !== generation) return null;
+
 				// Wait for any pending prefetch to finish before touching iterator
 				if (sinkData.prefetching && sinkData.prefetchPromise) {
 					await sinkData.prefetchPromise;
 				}
+
+				// Bail out if a newer seek has been requested
+				if (sinkData.seekGeneration !== generation) return null;
 
 				// Check if the nextFrame (which might have just arrived) is what we need
 				if (
@@ -178,11 +208,16 @@ export class VideoCache {
 	private async seekToTime({
 		sinkData,
 		time,
+		generation,
 	}: {
 		sinkData: VideoSinkData;
 		time: number;
+		generation: number;
 	}): Promise<WrappedCanvas | null> {
 		try {
+			// Bail out if a newer seek has been requested
+			if (sinkData.seekGeneration !== generation) return null;
+
 			if (sinkData.iterator) {
 				await sinkData.iterator.return();
 				sinkData.iterator = null;
@@ -191,6 +226,9 @@ export class VideoCache {
 			sinkData.nextFrame = null;
 			sinkData.iterator = sinkData.sink.canvases(time);
 			sinkData.lastTime = time;
+
+			// Bail out if a newer seek has been requested
+			if (sinkData.seekGeneration !== generation) return null;
 
 			// Fetch current frame
 			const { value: frame } = await sinkData.iterator.next();
@@ -326,6 +364,7 @@ export class VideoCache {
 				prefetching: false,
 				prefetchPromise: null,
 				maxDim,
+				seekGeneration: 0,
 			});
 		} catch (error) {
 			input?.dispose();

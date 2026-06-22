@@ -11,8 +11,9 @@ export async function generateReversedVideo({
 	file: File;
 	onProgress?: ({ progress }: { progress: number }) => void;
 }): Promise<File | null> {
+	let input: Input | null = null;
 	try {
-		const input = new Input({
+		input = new Input({
 			source: new BlobSource(file),
 			formats: ALL_FORMATS,
 		});
@@ -76,6 +77,8 @@ export async function generateReversedVideo({
 	} catch (err) {
 		console.warn("Reverse failed:", err);
 		return null;
+	} finally {
+		input?.dispose();
 	}
 }
 

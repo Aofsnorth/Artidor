@@ -143,15 +143,26 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		// Check codec support and fall back to more compatible options.
 		// HEVC (H.265) is not supported on all browsers (e.g., Edge, Firefox).
 		// AVC (H.264) has the broadest support across browsers and devices.
+		// Some browsers throw a TypeError instead of returning {supported:false}
+		// when the bitrate isn't a valid unsigned long long, so wrap in try/catch.
 		if (videoCodec === "hevc" && typeof VideoEncoder !== "undefined") {
-			const { supported } = await VideoEncoder.isConfigSupported({
-				codec: "hev1.1.6.L93.B0",
-				width: this.renderer.width,
-				height: this.renderer.height,
-				bitrate: qualityMap[this.quality],
-				framerate: fpsFloat,
-			});
-			if (!supported) {
+			try {
+				const hevcBitrate = Math.max(
+					1,
+					Math.floor(Number(qualityMap[this.quality])),
+				);
+				const { supported } = await VideoEncoder.isConfigSupported({
+					codec: "hev1.1.6.L93.B0",
+					width: this.renderer.width,
+					height: this.renderer.height,
+					bitrate: hevcBitrate,
+					framerate: fpsFloat,
+				});
+				if (!supported) {
+					videoCodec = "avc";
+				}
+			} catch {
+				// Browser threw on isConfigSupported — assume HEVC unsupported and fall back.
 				videoCodec = "avc";
 			}
 		}

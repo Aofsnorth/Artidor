@@ -26,7 +26,7 @@ interface AudioWaveformProps {
 	color?: string;
 	beatColor?: string;
 	symmetric?: boolean;
-	variant?: "waveform" | "beats";
+	variant?: "waveform" | "beats" | "lines" | "liquid" | "graph";
 	className?: string;
 	trimStartTicks?: number;
 	trimEndTicks?: number;
@@ -237,7 +237,7 @@ export function AudioWaveform({
 
 		// Mirrored (symmetric) beats keep a faint center baseline; bottom-anchored
 		// beats intentionally omit it so no white line sits under the clip.
-		if (variant === "beats" && symmetric) {
+		if ((variant === "beats" || variant === "lines") && symmetric) {
 			ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
 			const baselineY = Math.floor(height / 2);
 			ctx.fillRect(0, baselineY, visibleWidth, 1);
@@ -246,14 +246,62 @@ export function AudioWaveform({
 		// Bottom-anchored bars grow in a single direction, so they get more of
 		// the strip height than mirrored bars (which use it on both sides).
 		const maxBarHeight =
-			variant === "beats"
+			variant === "beats" || variant === "lines"
 				? symmetric
 					? height * 0.44
 					: height * 0.85
-				: symmetric
-					? height * 0.45
-					: height * 0.7;
+				: variant === "graph"
+					? symmetric
+						? height * 0.45
+						: height * 0.85
+					: variant === "liquid"
+						? symmetric
+							? height * 0.42
+							: height * 0.78
+						: symmetric
+							? height * 0.45
+							: height * 0.7;
 		const centerY = height / 2;
+
+		// Graph mode: draw a smooth line through all peaks (no fill)
+		if (variant === "graph") {
+			drawGraphVariant({
+				ctx,
+				peaks,
+				barStep,
+				maxBarHeight,
+				scale,
+				symmetric,
+				height,
+				centerY,
+				color,
+				beatColor,
+				logBase,
+				visibleWidth,
+			});
+			ctx.shadowBlur = 0;
+			return;
+		}
+
+		// Liquid mode: filled smooth wave with vertical gradient
+		if (variant === "liquid") {
+			drawLiquidVariant({
+				ctx,
+				peaks,
+				barStep,
+				maxBarHeight,
+				scale,
+				symmetric,
+				height,
+				centerY,
+				color,
+				beatColor,
+				logBase,
+				visibleWidth,
+			});
+			ctx.shadowBlur = 0;
+			return;
+		}
 
 		for (let i = 0; i < barCount; i++) {
 			const normalized = Math.min(1, peaks[i] / safePeak);
@@ -261,17 +309,18 @@ export function AudioWaveform({
 			const leftPeak = peaks[Math.max(0, i - 1)] ?? 0;
 			const rightPeak = peaks[Math.min(peaks.length - 1, i + 1)] ?? 0;
 			const isBeat =
-				variant === "beats" &&
+				(variant === "beats" || variant === "lines") &&
 				scaled > 0.32 &&
 				peaks[i] >= leftPeak &&
 				peaks[i] >= rightPeak;
 			const rawBarH = Math.max(
-				variant === "beats" ? 2 : 1,
+				variant === "beats" || variant === "lines" ? 2 : 1,
 				scaled * maxBarHeight,
 			);
 			const barH = rawBarH * scale;
 			const x = i * barStep;
-			const radius = variant === "beats" ? Math.min(barWidth, 2) : 0;
+			const radius =
+				variant === "beats" || variant === "lines" ? Math.min(barWidth, 2) : 0;
 
 			const finalAmplitude = normalized * scale;
 			const isOversound = finalAmplitude >= 1.0;
@@ -291,7 +340,14 @@ export function AudioWaveform({
 				ctx.shadowBlur = isBeat ? 10 : 0;
 			}
 
-			if (symmetric) {
+			if (variant === "lines") {
+				// Lines variant: just a thin vertical line at each peak position
+				if (symmetric) {
+					ctx.fillRect(x, centerY - barH, 1, barH * 2);
+				} else {
+					ctx.fillRect(x, height - barH, 1, barH);
+				}
+			} else if (symmetric) {
 				drawRoundedBar({
 					ctx,
 					x,
@@ -316,7 +372,7 @@ export function AudioWaveform({
 			if (isBeat) {
 				ctx.shadowBlur = 0;
 				ctx.fillStyle = "rgba(255, 255, 255, 1)";
-				const tickH = variant === "beats" ? 1.5 : 1;
+				const tickH = variant === "beats" || variant === "lines" ? 1.5 : 1;
 				const tickW = barWidth + (variant === "beats" ? 1 : 0);
 				if (symmetric) {
 					ctx.fillRect(x - 0.5, centerY - tickH / 2, tickW, tickH);

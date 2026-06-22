@@ -63,6 +63,10 @@ export function TimelineTrackContent({
 		contentWidth: duration * BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel,
 	});
 
+	const hasDraggedElement = track.elements.some((element) =>
+		dragState.dragElementIds.includes(element.id),
+	);
+
 	return (
 		<div className="relative size-full overflow-hidden rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-[length:48px_100%,100%_100%]">
 			<button
@@ -89,7 +93,7 @@ export function TimelineTrackContent({
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: empty track area is a pointer-only seek surface */}
 			<div
 				className="relative h-full min-w-full"
-				style={{ zIndex: TIMELINE_LAYERS.trackContent }}
+				style={{ zIndex: hasDraggedElement ? TIMELINE_LAYERS.dragLine + 2 : TIMELINE_LAYERS.trackContent }}
 				onMouseUp={(event) => {
 					if (event.target !== event.currentTarget) return;
 					if (shouldIgnoreClick?.()) return;
