@@ -42,6 +42,7 @@ export default function RootLayout({
 			</head>
 			<body
 				className={`${siteFont.variable} ${serifFont.variable} font-sans antialiased`}
+				suppressHydrationWarning
 			>
 				<ThemeProvider
 					attribute="class"

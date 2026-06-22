@@ -121,7 +121,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		const ticksPerFrame = Math.round(
 			(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
 		);
-		const frameCount = Math.floor(rootNode.duration / ticksPerFrame);
+		// Round duration to integer ticks to avoid WASM i64 type errors.
+		// WASM functions expect integer MediaTime values, not floating point.
+		const durationTicks = Math.round(rootNode.duration);
+		const frameCount = Math.floor(durationTicks / ticksPerFrame);
 
 		const outputFormat =
 			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
@@ -134,8 +137,24 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		// Pick the right video codec for the requested format. HEVC is the
 		// H.265 codec (smaller files, modern devices); AVC is the broadly
 		// compatible H.264 codec; VP9 is the WebM default.
-		const videoCodec: "avc" | "vp9" | "hevc" =
+		let videoCodec: "avc" | "vp9" | "hevc" =
 			this.format === "webm" ? "vp9" : this.format === "hevc" ? "hevc" : "avc";
+
+		// Check codec support and fall back to more compatible options.
+		// HEVC (H.265) is not supported on all browsers (e.g., Edge, Firefox).
+		// AVC (H.264) has the broadest support across browsers and devices.
+		if (videoCodec === "hevc" && typeof VideoEncoder !== "undefined") {
+			const { supported } = await VideoEncoder.isConfigSupported({
+				codec: "hev1.1.6.L93.B0",
+				width: this.renderer.width,
+				height: this.renderer.height,
+				bitrate: qualityMap[this.quality],
+				framerate: fpsFloat,
+			});
+			if (!supported) {
+				videoCodec = "avc";
+			}
+		}
 
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: videoCodec,
@@ -205,6 +224,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				return null;
 			}
 
+			// Use integer ticks to avoid WASM i64 type errors.
 			const timeTicks = i * ticksPerFrame;
 			const timeSeconds = mediaTimeToSeconds({ time: timeTicks });
 
