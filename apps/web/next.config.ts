@@ -25,6 +25,7 @@ const cspDirectives: Record<string, string[]> = {
 	"script-src": [
 		"'self'",
 		"'unsafe-inline'",
+		"'wasm-unsafe-eval'",
 		...(isProd ? [] : ["'unsafe-eval'"]),
 		"https://cdn.databuddy.cc",
 		"https://cdn.jsdelivr.net",
