@@ -22,6 +22,8 @@
  */
 import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 import {
 	resolveProvider,
 	type ChatMessage,
@@ -117,6 +119,14 @@ export async function POST(request: Request) {
 		return new Response("Not Found", { status: 404 });
 	}
 
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return new Response(JSON.stringify({ error: "rate_limited" }), {
+			status: 429,
+			headers: { "content-type": "application/json" },
+		});
+	}
+
 	let body: z.infer<typeof bodySchema>;
 	try {
 		const json = (await request.json()) as unknown;
@@ -151,6 +161,20 @@ export async function POST(request: Request) {
 		};
 	} else {
 		config = resolveProvider();
+	}
+
+	if (config?.baseUrl) {
+		try {
+			assertSafeProviderBaseUrl({ baseUrl: config.baseUrl });
+		} catch (err) {
+			return new Response(
+				JSON.stringify({
+					error: "invalid_provider_url",
+					message: err instanceof Error ? err.message : "Invalid provider URL.",
+				}),
+				{ status: 400, headers: { "content-type": "application/json" } },
+			);
+		}
 	}
 
 	if (!config) {

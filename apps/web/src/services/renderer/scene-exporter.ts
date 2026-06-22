@@ -41,7 +41,7 @@ const qualityMap = {
 // render/encode work is otherwise all microtasks, which would starve paints and
 // macrotask timers — freezing the progress bar and the cancel interval. Yielding
 // a real macrotask lets React repaint and the cancel check fire.
-const YIELD_EVERY_FRAMES = 8;
+const YIELD_EVERY_FRAMES = 30;
 
 // Stage-1 export profiling. Render and encode are pipelined, so the only number
 // that tells us *what* is slow is how main-thread wall-clock per frame splits:
@@ -53,7 +53,7 @@ const YIELD_EVERY_FRAMES = 8;
 // and moving it to a Worker/OffscreenCanvas raises throughput. If backpressure
 // dominates, the encoder is the limit and a Worker only smooths the UI.
 // Flip to false to silence the summary once the numbers are in.
-const PROFILE_EXPORT = true;
+const PROFILE_EXPORT = false;
 
 // Yield a macrotask so the browser can paint and run timers. MessageChannel is
 // used over setTimeout(0) because it is not subject to the 4ms clamp, keeping
@@ -200,10 +200,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		await output.start();
 
-		if (audioSource && this.audioBuffer) {
-			await audioSource.add(this.audioBuffer);
-			audioSource.close();
-		}
+		const audioEncode =
+			audioSource && this.audioBuffer
+				? audioSource.add(this.audioBuffer).finally(() => audioSource?.close())
+				: null;
 
 		// Pipeline render and encode. `videoSource.add()` snapshots the canvas
 		// synchronously into an independent VideoFrame, hands it to the WebCodecs
@@ -315,6 +315,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		}
 
 		videoSource.close();
+		if (audioEncode) await audioEncode;
 		await output.finalize();
 		this.emit("progress", 1);
 

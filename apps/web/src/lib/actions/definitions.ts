@@ -79,7 +79,11 @@ export const ACTIONS = {
 		category: "editing",
 	},
 	"align-to-playhead": {
-		description: "Align clip start to playhead",
+		description: "Align clip edge to playhead",
+		category: "editing",
+	},
+	"extend-to-playhead": {
+		description: "Extend clip edge to playhead",
 		category: "editing",
 	},
 	"delete-selected": {

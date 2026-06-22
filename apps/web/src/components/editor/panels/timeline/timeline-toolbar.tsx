@@ -23,7 +23,7 @@ import type { TimelineTrack } from "@/lib/timeline";
 import { buildTextElement } from "@/lib/timeline/element-utils";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 import { getPropertyLabel } from "./expanded-layout";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
@@ -61,7 +61,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
-import { Plus } from "lucide-react";
+import { Plus, StretchHorizontal } from "lucide-react";
 import { useGraphEditorController } from "./graph-editor/use-controller";
 import { GraphEditorPopover } from "./graph-editor/popover";
 import {
@@ -119,6 +119,8 @@ function AddTrackDropdown() {
 	const editor = useEditor();
 	const options = [
 		{ label: "Video track", type: "video" as const },
+		{ label: "Audio track", type: "audio" as const },
+		{ label: "Camera layer", action: "add-camera" as const },
 		{ label: "Text track", type: "text" as const },
 		{ label: "Image track", type: "image" as const },
 		{ label: "Effect track", type: "effect" as const },
@@ -140,8 +142,12 @@ function AddTrackDropdown() {
 			<DropdownMenuContent align="start" className="z-100 w-40">
 				{options.map((option) => (
 					<DropdownMenuItem
-						key={option.type}
+						key={"type" in option ? option.type : option.action}
 						onClick={() => {
+							if ("action" in option && option.action) {
+								invokeAction(option.action);
+								return;
+							}
 							const trackId = editor.timeline.addTrack({ type: option.type });
 							if (option.type !== "text") return;
 							editor.timeline.insertElement({
@@ -166,7 +172,66 @@ function AddTrackDropdown() {
 }
 
 function ToolbarLeftSection() {
+	const editor = useEditor();
 	const freezeFrame = useFreezeFrame();
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const allTimelineElements = useEditor((e) =>
+		Object.values(e.scenes.getActiveScene().tracks)
+			.flat()
+			.flatMap((track) => track.elements),
+	);
+	const [hasClipboardEntry, setHasClipboardEntry] = useState(() =>
+		editor.clipboard.hasEntry(),
+	);
+	const playhead = useEditor((e) => e.playback.getCurrentTime());
+	const canUndo = useEditor((e) => e.command.canUndo());
+	const canRedo = useEditor((e) => e.command.canRedo());
+	const alignDirection = useMemo(() => {
+		for (const ref of selectedElements) {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((el) => el.id === ref.elementId);
+			if (!element) continue;
+			if (playhead < element.startTime) return "left";
+			if (playhead > element.startTime + element.duration) return "right";
+		}
+		return "center";
+	}, [editor, selectedElements, playhead]);
+	useEffect(
+		() =>
+			editor.clipboard.subscribe(() =>
+				setHasClipboardEntry(editor.clipboard.hasEntry()),
+			),
+		[editor],
+	);
+
+	const selectedTimelineElements = useMemo(
+		() =>
+			selectedElements.flatMap((ref) => {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				return element ? [element] : [];
+			}),
+		[editor, selectedElements],
+	);
+	const hasSelection = selectedElements.length > 0;
+	const singleSelection = selectedElements.length === 1;
+	const canSelectAll = allTimelineElements.length > selectedElements.length;
+	const canAlignToPlayhead = alignDirection !== "center";
+	const canLinkParent = selectedElements.length === 2;
+	const canUnlinkParent = selectedTimelineElements.some(
+		(element) => (element as { parentId?: string }).parentId,
+	);
+	const canAddBeatMarkers =
+		singleSelection &&
+		selectedTimelineElements.some(
+			(element) => element.type === "audio" || element.type === "video",
+		);
+	const alignIcon =
+		alignDirection === "left"
+			? AlignLeftIcon
+			: alignDirection === "right"
+				? AlignRightIcon
+				: AlignHorizontalCenterIcon;
 
 	return (
 		<div className="flex items-center gap-0.5">
@@ -175,11 +240,13 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={UndoIcon} />}
 					tooltip="Undo"
+					disabled={!canUndo}
 					onClick={() => invokeAction("undo")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={RedoIcon} />}
 					tooltip="Redo"
+					disabled={!canRedo}
 					onClick={() => invokeAction("redo")}
 				/>
 
@@ -189,11 +256,13 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={TickDouble01Icon} />}
 					tooltip="Select all"
+					disabled={!canSelectAll}
 					onClick={() => invokeAction("select-all")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Tick01Icon} />}
 					tooltip="Deselect all"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("deselect-all")}
 				/>
 
@@ -203,11 +272,13 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Copy01Icon} />}
 					tooltip="Copy layer"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("copy-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={ClipboardIcon} />}
 					tooltip="Paste layer at playhead"
+					disabled={!hasClipboardEntry}
 					onClick={() => invokeAction("paste-copied")}
 				/>
 
@@ -217,6 +288,7 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
 					tooltip="Freeze frame"
+					disabled={!singleSelection}
 					onClick={(e) => {
 						e.stopPropagation();
 						freezeFrame();
@@ -226,32 +298,44 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Delete02Icon} />}
 					tooltip="Delete selected"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("delete-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
 					tooltip="Split clip"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("split")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Copy02Icon} />}
 					tooltip="Duplicate selected"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("duplicate-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
 					tooltip="Split left"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("split-left")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignRightIcon} />}
 					tooltip="Split right"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("split-right")}
 				/>
 				<ToolbarButton
-					icon={<HugeiconsIcon icon={AlignHorizontalCenterIcon} />}
+					icon={<HugeiconsIcon icon={alignIcon} />}
 					tooltip="Align to playhead"
+					disabled={!canAlignToPlayhead}
 					onClick={() => invokeAction("align-to-playhead")}
+				/>
+				<ToolbarButton
+					icon={<StretchHorizontal className="size-3.5" />}
+					tooltip="Extend to playhead"
+					disabled={!canAlignToPlayhead}
+					onClick={() => invokeAction("extend-to-playhead")}
 				/>
 
 				<SectionDivider />
@@ -260,26 +344,31 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={GroupLayersIcon} />}
 					tooltip="Group selected"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("group-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={GitMergeIcon} />}
 					tooltip="Combine selected"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("combine-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Layers01Icon} />}
 					tooltip="Ungroup selected"
+					disabled={!hasSelection}
 					onClick={() => invokeAction("ungroup-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Link01Icon} />}
 					tooltip="Link parent"
+					disabled={!canLinkParent}
 					onClick={() => invokeAction("link-parent")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Unlink01Icon} />}
 					tooltip="Unlink parent"
+					disabled={!canUnlinkParent}
 					onClick={() => invokeAction("unlink-parent")}
 				/>
 
@@ -289,6 +378,7 @@ function ToolbarLeftSection() {
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
 					tooltip="Add beat markers"
+					disabled={!canAddBeatMarkers}
 					onClick={() => invokeAction("add-beat-markers")}
 				/>
 			</TooltipProvider>
@@ -324,9 +414,13 @@ function SceneSelector() {
 	const setKeyframeLayerName = useTimelineStore((s) => s.setKeyframeLayerName);
 	const keyframeLayers = useMemo(() => {
 		const layers = new Map<string, { propertyPath: string; label: string }>();
-		const tracks = Object.values(currentScene?.tracks ?? {}).flat() as TimelineTrack[];
+		const tracks = Object.values(
+			currentScene?.tracks ?? {},
+		).flat() as TimelineTrack[];
 		for (const selectedElement of selectedElements) {
-			const track = tracks.find((track) => track.id === selectedElement.trackId);
+			const track = tracks.find(
+				(track) => track.id === selectedElement.trackId,
+			);
 			const element = track?.elements.find(
 				(element) => element.id === selectedElement.elementId,
 			);
@@ -356,7 +450,9 @@ function SceneSelector() {
 						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
 					>
 						<span className="tracking-wide select-none">
-							{hasKeyframeLayers ? "Keyframes" : currentScene?.name || "Main scene"}
+							{hasKeyframeLayers
+								? "Keyframes"
+								: currentScene?.name || "Main scene"}
 						</span>
 						<div className="h-3 w-px bg-white/15" />
 						<HugeiconsIcon
@@ -371,7 +467,9 @@ function SceneSelector() {
 							<div className="p-1.5">
 								<input
 									value={keyframeLayerSearch}
-									onChange={(event) => setKeyframeLayerSearch(event.target.value)}
+									onChange={(event) =>
+										setKeyframeLayerSearch(event.target.value)
+									}
 									placeholder="Search keyframes"
 									className="h-7 w-full rounded-md border border-white/10 bg-black/30 px-2 text-xs text-white outline-none placeholder:text-white/35"
 									onKeyDown={(event) => event.stopPropagation()}
@@ -380,7 +478,9 @@ function SceneSelector() {
 							{keyframeLayers.map((layer) => (
 								<DropdownMenuItem
 									key={layer.propertyPath}
-									onClick={() => toggleFocusedKeyframePropertyPath(layer.propertyPath)}
+									onClick={() =>
+										toggleFocusedKeyframePropertyPath(layer.propertyPath)
+									}
 									className={cn(
 										"gap-2",
 										focusedKeyframePropertyPaths.includes(layer.propertyPath) &&
@@ -389,13 +489,15 @@ function SceneSelector() {
 								>
 									<button
 										type="button"
-											onClick={(event) => {
+										onClick={(event) => {
 											event.stopPropagation();
 											toggleFocusedKeyframePropertyPath(layer.propertyPath);
 										}}
 										className={cn(
 											"size-3 rounded-full border border-white/25",
-											focusedKeyframePropertyPaths.includes(layer.propertyPath) &&
+											focusedKeyframePropertyPaths.includes(
+												layer.propertyPath,
+											) &&
 												"border-white bg-white shadow-[0_0_8px_rgba(255,255,255,0.75)]",
 										)}
 										aria-label={`Select ${layer.label} keyframes`}
@@ -419,7 +521,9 @@ function SceneSelector() {
 						scenes.map((scene) => (
 							<DropdownMenuItem
 								key={scene.id}
-								onClick={() => editor.scenes.switchToScene({ sceneId: scene.id })}
+								onClick={() =>
+									editor.scenes.switchToScene({ sceneId: scene.id })
+								}
 							>
 								{scene.name}
 							</DropdownMenuItem>

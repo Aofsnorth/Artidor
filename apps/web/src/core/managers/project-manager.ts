@@ -78,6 +78,7 @@ export class ProjectManager {
 		result: null,
 	};
 	private exportCancelRequested = false;
+	private exportHistory = new Map<string, ExportResult>();
 	private driveSyncState: DriveSyncState = {
 		status: "idle",
 		progress: 0,
@@ -282,7 +283,32 @@ export class ProjectManager {
 		}
 	}
 
+	private getExportHistoryKey({
+		options,
+	}: {
+		options: ExportOptions;
+	}): string | null {
+		if (!this.active) return null;
+
+		return JSON.stringify({
+			projectId: this.active.metadata.id,
+			updatedAt:
+				this.active.metadata.updatedAt?.toISOString?.() ??
+				this.active.metadata.updatedAt,
+			options,
+		});
+	}
+
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {
+		const cacheKey = this.getExportHistoryKey({ options });
+		const cached = cacheKey ? this.exportHistory.get(cacheKey) : null;
+		if (cached?.success && cached.buffer) {
+			const result = { ...cached, cached: true };
+			this.exportState = { isExporting: false, progress: 1, result };
+			this.notify();
+			return result;
+		}
+
 		this.exportCancelRequested = false;
 		this.exportState = { isExporting: true, progress: 0, result: null };
 		this.notify();
@@ -295,6 +321,10 @@ export class ProjectManager {
 			},
 			onCancel: () => this.exportCancelRequested,
 		});
+
+		if (cacheKey && result.success && result.buffer) {
+			this.exportHistory.set(cacheKey, result);
+		}
 
 		this.exportState = {
 			isExporting: false,
@@ -838,8 +868,11 @@ export class ProjectManager {
 			const folderName = folderMeta.name || "Drive Project";
 
 			const files = await fetchFolderFiles(folderId);
-			const artidorFile = files.find((f) => isArtprFileName(f.name)) ??
-				files.find((f) => f.name === "artidor.json" || f.name === "project.json");
+			const artidorFile =
+				files.find((f) => isArtprFileName(f.name)) ??
+				files.find(
+					(f) => f.name === "artidor.json" || f.name === "project.json",
+				);
 
 			if (artidorFile) {
 				projectFileId = artidorFile.id;

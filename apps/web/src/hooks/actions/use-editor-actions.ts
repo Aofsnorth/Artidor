@@ -9,7 +9,12 @@ import { useEditor } from "../use-editor";
 import { useElementSelection } from "../timeline/element/use-element-selection";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useKeyframeSelection } from "../timeline/element/use-keyframe-selection";
-import { getElementsAtTime, hasMediaId, type TimelineTrack } from "@/lib/timeline";
+import {
+	getElementsAtTime,
+	hasMediaId,
+	type TimelineElement,
+	type TimelineTrack,
+} from "@/lib/timeline";
 import { cancelInteraction } from "@/lib/cancel-interaction";
 import { invokeAction } from "@/lib/actions";
 import {
@@ -52,7 +57,9 @@ export function useEditorActions() {
 		const tracks = Object.values(scene.tracks).flat() as TimelineTrack[];
 		const paths = new Set<string>();
 		for (const selectedElement of selectedElements) {
-			const track = tracks.find((track) => track.id === selectedElement.trackId);
+			const track = tracks.find(
+				(track) => track.id === selectedElement.trackId,
+			);
 			const element = track?.elements.find(
 				(element) => element.id === selectedElement.elementId,
 			);
@@ -621,20 +628,77 @@ export function useEditorActions() {
 				elementId: string;
 				patch: Record<string, number>;
 			}> = [];
-			
+
 			for (const ref of selectedElements) {
 				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
 				const element = track?.elements.find((el) => el.id === ref.elementId);
 				if (!element) continue;
+				const end = element.startTime + element.duration;
+				const nextStart =
+					playhead <= element.startTime
+						? playhead
+						: playhead - element.duration;
+				if (playhead > element.startTime && playhead < end) continue;
+				if (nextStart === element.startTime) continue;
 				updates.push({
 					trackId: ref.trackId,
 					elementId: ref.elementId,
-					patch: { startTime: playhead },
+					patch: { startTime: Math.max(0, nextStart) },
 				});
 			}
 
 			if (updates.length > 0) {
-				editor.timeline.updateElements({ updates });
+				editor.timeline.updateElements({ updates, pushHistory: true });
+			}
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"extend-to-playhead",
+		() => {
+			if (selectedElements.length === 0) return;
+			const playhead = editor.playback.getCurrentTime();
+			const updates: Array<{
+				trackId: string;
+				elementId: string;
+				patch: Partial<TimelineElement>;
+			}> = [];
+
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				if (!element) continue;
+				const end = element.startTime + element.duration;
+				if (playhead > element.startTime && playhead < end) continue;
+
+				const nextStart = Math.min(playhead, element.startTime);
+				const nextEnd = Math.max(playhead, end);
+				const nextDuration = nextEnd - nextStart;
+				if (nextDuration === element.duration) continue;
+
+				const patch: Partial<TimelineElement> = {
+					startTime: nextStart,
+					duration: nextDuration,
+				};
+				if (element.type === "video" && element.sourceDuration) {
+					const sourceSpan = Math.max(
+						1,
+						element.sourceDuration - element.trimStart - element.trimEnd,
+					);
+					Object.assign(patch, {
+						retime: {
+							...(element.retime ?? { rate: 1 }),
+							rate: sourceSpan / nextDuration,
+							mode: "constant",
+						},
+					});
+				}
+				updates.push({ trackId: ref.trackId, elementId: ref.elementId, patch });
+			}
+
+			if (updates.length > 0) {
+				editor.timeline.updateElements({ updates, pushHistory: true });
 			}
 		},
 		undefined,
@@ -809,27 +873,37 @@ export function useEditorActions() {
 	);
 	useActionHandler("toggle-focus-mode", () => toggleFocusMode(), undefined);
 
-	useActionHandler(
-		"link-selected-elements",
-		() => {
-			if (selectedElements.length !== 2) return;
-			// Default linking: first selected = child, second = parent.
-			const [child, parent] = selectedElements;
-			editor.timeline.setParent({
-				ref: child,
-				parentId: parent.elementId,
-			});
-		},
-		undefined,
-	);
+	const linkSelectedElements = () => {
+		if (selectedElements.length !== 2) {
+			toast.info("Select exactly 2 clips: child first, parent second.");
+			return;
+		}
+		const [child, parent] = selectedElements;
+		editor.timeline.setParent({
+			ref: child,
+			parentId: parent.elementId,
+		});
+	};
+
+	useActionHandler("link-selected-elements", linkSelectedElements, undefined);
+	useActionHandler("link-parent", linkSelectedElements, undefined);
 
 	useActionHandler(
 		"unlink-parent",
 		() => {
-			if (selectedElements.length === 0) return;
-			for (const ref of selectedElements) {
-				editor.timeline.unlinkParent({ ref });
+			if (selectedElements.length === 0) {
+				toast.info("Select a linked clip first.");
+				return;
 			}
+			let changed = false;
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				if (!(element as { parentId?: string } | undefined)?.parentId) continue;
+				editor.timeline.unlinkParent({ ref });
+				changed = true;
+			}
+			if (!changed) toast.info("Selected clips have no parent link.");
 		},
 		undefined,
 	);
@@ -1003,29 +1077,23 @@ export function useEditorActions() {
 		undefined,
 	);
 
-	useActionHandler(
-		"add-camera",
-		() => {
-			editor.timeline.insertCameraLayer();
-		},
-		undefined,
-	);
+	const addCameraLayer = () => {
+		editor.timeline.insertCameraLayer();
+		toast.success("Camera layer added");
+	};
+
+	useActionHandler("add-camera", addCameraLayer, undefined);
 
 	useActionHandler(
 		"add-null-layer",
 		() => {
 			editor.timeline.insertNullLayer();
+			toast.success("Null layer added");
 		},
 		undefined,
 	);
 
-	useActionHandler(
-		"insert-camera",
-		() => {
-			editor.timeline.insertCameraLayer();
-		},
-		undefined,
-	);
+	useActionHandler("insert-camera", addCameraLayer, undefined);
 
 	useActionHandler(
 		"open-teleprompter",
