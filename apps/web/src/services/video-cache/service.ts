@@ -7,6 +7,7 @@ import {
 } from "mediabunny";
 
 interface VideoSinkData {
+	input: Input;
 	sink: CanvasSink;
 	iterator: AsyncGenerator<WrappedCanvas, void, unknown> | null;
 	currentFrame: WrappedCanvas | null;
@@ -37,6 +38,8 @@ function resolveDecodeSize({
 	if (!maxDim || Math.max(srcWidth, srcHeight) <= maxDim) return {};
 	return srcWidth >= srcHeight ? { width: maxDim } : { height: maxDim };
 }
+
+const FORWARD_ITERATE_WINDOW_SECONDS = 8;
 
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
@@ -96,7 +99,7 @@ export class VideoCache {
 			sinkData.iterator &&
 			sinkData.currentFrame &&
 			time >= sinkData.lastTime &&
-			time < sinkData.lastTime + 2.0
+			time < sinkData.lastTime + FORWARD_ITERATE_WINDOW_SECONDS
 		) {
 			const frame = await this.iterateToTime({ sinkData, targetTime: time });
 			if (frame) {
@@ -180,10 +183,6 @@ export class VideoCache {
 		time: number;
 	}): Promise<WrappedCanvas | null> {
 		try {
-			if (sinkData.prefetching && sinkData.prefetchPromise) {
-				await sinkData.prefetchPromise;
-			}
-
 			if (sinkData.iterator) {
 				await sinkData.iterator.return();
 				sinkData.iterator = null;
@@ -198,18 +197,6 @@ export class VideoCache {
 
 			if (frame) {
 				sinkData.currentFrame = frame;
-
-				// Aggressively fetch next frame immediately to fill buffer
-				// This matches the mediaplayer example which fetches 2 frames on start
-				try {
-					const { value: next } = await sinkData.iterator.next();
-					if (next) {
-						sinkData.nextFrame = next;
-					}
-				} catch (e) {
-					console.warn("Failed to pre-fetch next frame on seek:", e);
-				}
-
 				return frame;
 			}
 		} catch (error) {
@@ -298,8 +285,9 @@ export class VideoCache {
 		file: File;
 		maxDim?: number;
 	}): Promise<void> {
+		let input: Input | null = null;
 		try {
-			const input = new Input({
+			input = new Input({
 				source: new BlobSource(file),
 				formats: ALL_FORMATS,
 			});
@@ -329,6 +317,7 @@ export class VideoCache {
 			});
 
 			this.sinks.set(mediaId, {
+				input,
 				sink,
 				iterator: null,
 				currentFrame: null,
@@ -339,6 +328,7 @@ export class VideoCache {
 				maxDim,
 			});
 		} catch (error) {
+			input?.dispose();
 			console.error(`Failed to initialize video sink for ${mediaId}:`, error);
 			throw error;
 		}
@@ -350,11 +340,13 @@ export class VideoCache {
 			if (sinkData.iterator) {
 				void sinkData.iterator.return();
 			}
+			sinkData.input.dispose();
 
 			this.sinks.delete(mediaId);
 		}
 
 		this.initPromises.delete(mediaId);
+		this.frameChain.delete(mediaId);
 	}
 
 	clearAll(): void {

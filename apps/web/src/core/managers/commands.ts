@@ -11,6 +11,11 @@ interface CommandHistoryEntry {
 
 export class CommandManager {
 	public isRippleEnabled = false;
+	// When true, every mutating command is rejected. This is the single
+	// enforcement point for read-only / shared-viewer sessions: hiding UI is
+	// cosmetic, but routing all edits through `execute()` means one switch
+	// reliably blocks inserts, deletes, keyframes, effects, paste, etc.
+	public readOnly = false;
 	private history: CommandHistoryEntry[] = [];
 	private redoStack: CommandHistoryEntry[] = [];
 	private reactors: Array<(command: Command) => void> = [];
@@ -18,6 +23,16 @@ export class CommandManager {
 	constructor(private editor: EditorCore) {}
 
 	execute({ command }: { command: Command }): Command {
+		if (this.readOnly) {
+			// Silently ignore in production; warn in dev so accidental edit paths
+			// surface. The returned command is never pushed to history.
+			if (process.env.NODE_ENV !== "production") {
+				console.warn(
+					`[read-only] blocked command: ${command.constructor.name}`,
+				);
+			}
+			return command;
+		}
 		const beforeTracks = this.isRippleEnabled
 			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
@@ -48,6 +63,7 @@ export class CommandManager {
 	}
 
 	undo(): void {
+		if (this.readOnly) return;
 		if (this.history.length === 0) return;
 		const entry = this.history.pop();
 		entry?.command.undo();
@@ -67,6 +83,7 @@ export class CommandManager {
 	}
 
 	redo(): void {
+		if (this.readOnly) return;
 		if (this.redoStack.length === 0) return;
 		const entry = this.redoStack.pop();
 		if (!entry) {

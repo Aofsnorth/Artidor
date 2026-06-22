@@ -28,7 +28,8 @@ import { useProjectSessionPersistence } from "@/hooks/use-project-session-persis
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
 import { usePluginsStore } from "@/lib/plugins/store";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
+import { useViewerStore } from "@/stores/viewer-store";
+import { Cancel01Icon, ViewIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -96,6 +97,7 @@ export default function Editor() {
 					<div className="dark editing-screen flex h-screen w-screen flex-col overflow-hidden bg-[#111114] text-white relative">
 						{/* Main App Content */}
 						<div className="z-10 flex flex-col h-full w-full relative">
+							<ReadOnlyBanner />
 							<DegradedRendererBanner />
 							<EditorChrome />
 							<div className="min-h-0 min-w-0 flex-1 z-10 pb-1">
@@ -171,6 +173,24 @@ function PluginRegistryBootstrap() {
 	}, [loaded, loadPlugins]);
 
 	return null;
+}
+
+// Persistent strip shown while viewing a shared project read-only. The hard
+// edit block lives in `CommandManager.readOnly`; this is the user-facing
+// explanation for why the timeline won't accept changes. Intentionally not
+// dismissible — the constraint is in effect for the whole session.
+function ReadOnlyBanner() {
+	const isViewer = useViewerStore((s) => s.isViewer);
+	if (!isViewer) return null;
+
+	return (
+		<div className="flex h-9 items-center justify-center gap-2 border-b border-white/10 bg-white/[0.04] text-xs text-white/70">
+			<HugeiconsIcon icon={ViewIcon} className="size-3.5" />
+			<span>
+				You're viewing a shared project in read-only mode. Edits are disabled.
+			</span>
+		</div>
+	);
 }
 
 function DegradedRendererBanner() {
