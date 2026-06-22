@@ -798,89 +798,119 @@ export const textPresets: TextPreset[] = [
 	},
 ];
 
-const fonts = [
-	"Inter",
-	"Roboto",
-	"Playfair Display",
-	"Montserrat",
-	"Oswald",
-	"Raleway",
-	"Poppins",
-];
-
-// Modern, high-quality color palettes
-const palettes = [
-	{ text: "#ffffff", bg: "transparent" },
-	{ text: "#000000", bg: "#ffffff" },
-	{ text: "#ffffff", bg: "#000000" },
-	{ text: "#f8fafc", bg: "#0ea5e9" }, // cyan
-	{ text: "#fff1f2", bg: "#e11d48" }, // rose
-	{ text: "#fdf4ff", bg: "#c026d3" }, // fuchsia
-	{ text: "#f0fdf4", bg: "#16a34a" }, // green
-	{ text: "#fffbeb", bg: "#d97706" }, // amber
-	{ text: "#fafafa", bg: "#4f46e5" }, // indigo
-	{ text: "#18181b", bg: "#fcd34d" }, // dark text on yellow
-	{ text: "#ffffff", bg: "#111827" }, // zinc
-	{ text: "#ecfdf5", bg: "#15803d" }, // emerald
-	{ text: "#fef2f2", bg: "#be123c" }, // red
-];
-
-for (let i = 0; i < 150; i++) {
-	const palette = palettes[i % palettes.length];
-	const isSerif = i % 3 === 0;
-	const isMono = i % 7 === 0;
-	let font = fonts[i % fonts.length];
-	if (isSerif) font = "Playfair Display";
-	if (isMono) font = "monospace";
-
-	const isBold = i % 2 === 0;
-	const isItalic = i % 5 === 0;
-	const isUppercase = i % 4 === 0;
-	const hasBg = palette.bg !== "transparent";
-
-	// Vary sizes and spacing for distinct looks
-	const sizeType = i % 3;
-	let fontSize = 48;
-	let letterSpacing = 0;
-	let cornerRadius = 0;
-	let category: TextPresetCategory = "basic";
-
-	if (sizeType === 0) {
-		fontSize = 72; // Big title
-		letterSpacing = isUppercase ? 4 : -1;
-		category = "title";
-	} else if (sizeType === 1) {
-		fontSize = 36; // Subtitle / Lower third
-		letterSpacing = isUppercase ? 8 : 1;
-		category = "subtitle";
-		cornerRadius = hasBg ? 8 : 0;
-	} else {
-		fontSize = 24; // Caption / pill
-		letterSpacing = 0;
-		category = "callout";
-		cornerRadius = hasBg ? 999 : 0; // fully rounded pill
-	}
-
-	const contentText = isUppercase ? `STYLE ${i + 1}` : `Style ${i + 1}`;
-
-	textPresets.push({
-		id: `gen-text-${i}`,
-		type: `gen-text-${i}`,
-		name: `Premium ${i + 1}`,
-		keywords: ["premium", "text", "style", "generated"],
+/** Compact authoring helper: one real, named preset (no auto-numbers). */
+function tp(
+	id: string,
+	name: string,
+	category: TextPresetCategory,
+	content: string,
+	style: Partial<Omit<TextElement, "id" | "startTime" | "type" | "name">>,
+	keywords: string[] = [],
+): TextPreset {
+	return {
+		id,
+		type: id,
+		name,
+		keywords: [category, ...keywords],
 		category,
 		build: () => ({
 			...baseDefaults,
 			type: "text",
-			name: `Premium ${i + 1}`,
-			content: contentText,
-			fontFamily: font,
-			fontSize,
-			color: palette.text,
-			fontWeight: isBold ? "bold" : "normal",
-			fontStyle: isItalic ? "italic" : "normal",
-			letterSpacing,
-			background: hasBg ? box(palette.bg, cornerRadius) : NO_BG,
+			name,
+			content,
+			fontSize: 18,
+			fontFamily: "Inter",
+			color: "#ffffff",
+			background: NO_BG,
+			...style,
 		}),
-	});
+	};
 }
+
+// Distinct, hand-named presets (replaced the old "Style N" / "Premium N" filler).
+// Each differs by font, weight, size, color, spacing, or background — no clones.
+textPresets.push(
+	tp("title-cinematic", "Cinematic", "title", "CINEMATIC", {
+		fontFamily: "Oswald", fontSize: 30, fontWeight: "bold", letterSpacing: 6,
+	}, ["wide", "film"]),
+	tp("title-serif-hero", "Serif Hero", "title", "Headline", {
+		fontFamily: "Playfair Display", fontSize: 30, fontWeight: "bold", letterSpacing: -1,
+	}, ["serif", "elegant"]),
+	tp("title-outline-pop", "Sunburst", "title", "BIG NEWS", {
+		fontFamily: "Impact", fontSize: 28, fontWeight: "bold", color: "#fcd34d", letterSpacing: 2,
+	}, ["yellow", "loud"]),
+	tp("title-gradient-cool", "Cool Glass", "title", "Smooth", {
+		fontFamily: "Poppins", fontSize: 26, fontWeight: "bold", color: "#67e8f9",
+	}, ["cyan", "modern"]),
+	tp("subtitle-news-bar", "News Bar", "subtitle", "Breaking story", {
+		fontFamily: "Roboto", fontSize: 13, color: "#ffffff",
+		background: box("#be123c", 2), letterSpacing: 1,
+	}, ["news", "bar", "red"]),
+	tp("subtitle-soft-pill", "Soft Pill", "subtitle", "Now playing", {
+		fontFamily: "Inter", fontSize: 13, color: "#0f172a",
+		background: box("#e2e8f0", 999),
+	}, ["pill", "light"]),
+	tp("subtitle-mono-tag", "Mono Tag", "subtitle", "v1.0 · build", {
+		fontFamily: "monospace", fontSize: 12, color: "#a7f3d0",
+		background: box("#052e16", 4), letterSpacing: 1,
+	}, ["mono", "code"]),
+	tp("lower-third-anchor", "Anchor", "lower-third", "Jane Doe", {
+		fontFamily: "Montserrat", fontSize: 16, fontWeight: "bold", color: "#ffffff",
+		background: box("#1d4ed8", 6), textAlign: "left",
+	}, ["name", "host"]),
+	tp("lower-third-minimal", "Hairline", "lower-third", "Reporter · Live", {
+		fontFamily: "Raleway", fontSize: 13, color: "#f8fafc", textAlign: "left", letterSpacing: 2,
+	}, ["clean", "thin"]),
+	tp("callout-warning", "Warning", "callout", "⚠ Heads up", {
+		fontFamily: "Inter", fontSize: 15, fontWeight: "bold", color: "#451a03",
+		background: box("#f59e0b", 8),
+	}, ["alert", "amber"]),
+	tp("callout-success", "Success", "callout", "✓ Done", {
+		fontFamily: "Inter", fontSize: 15, fontWeight: "bold", color: "#052e16",
+		background: box("#22c55e", 999),
+	}, ["green", "ok"]),
+	tp("callout-link", "Swipe Link", "callout", "Swipe up →", {
+		fontFamily: "Poppins", fontSize: 14, color: "#ffffff",
+		background: box("#7c3aed", 999),
+	}, ["cta", "purple"]),
+	tp("quote-bold-mark", "Bold Quote", "quote", "“Stay hungry.”", {
+		fontFamily: "Playfair Display", fontSize: 22, fontStyle: "italic", color: "#fafafa",
+	}, ["italic", "serif"]),
+	tp("quote-card", "Quote Card", "quote", "“Less, but better.”", {
+		fontFamily: "Georgia", fontSize: 18, fontStyle: "italic", color: "#1c1917",
+		background: box("#fef3c7", 10),
+	}, ["card", "warm"]),
+	tp("social-handle", "Handle", "social", "@username", {
+		fontFamily: "Inter", fontSize: 15, fontWeight: "bold", color: "#ffffff",
+		background: box("#0ea5e9", 999),
+	}, ["tag", "blue"]),
+	tp("social-hot-take", "Hot Take", "social", "unpopular opinion:", {
+		fontFamily: "Roboto", fontSize: 16, color: "#fdf2f8",
+		background: box("#db2777", 6),
+	}, ["pink", "meme"]),
+	tp("social-caption-clean", "Clean Caption", "social", "watch till the end", {
+		fontFamily: "Inter", fontSize: 14, color: "#ffffff", letterSpacing: 1,
+	}, ["caption", "white"]),
+	tp("bold-stamp", "Stamp", "bold", "SOLD OUT", {
+		fontFamily: "Impact", fontSize: 26, fontWeight: "bold", color: "#ffffff",
+		background: box("#dc2626", 4), letterSpacing: 3,
+	}, ["red", "stamp"]),
+	tp("bold-marquee", "Marquee", "bold", "ON SALE NOW", {
+		fontFamily: "Oswald", fontSize: 22, fontWeight: "bold", color: "#fde047", letterSpacing: 4,
+	}, ["sale", "yellow"]),
+	tp("handwritten-note", "Note", "handwritten", "thank you!", {
+		fontFamily: "Comic Sans MS", fontSize: 22, color: "#f472b6",
+	}, ["script", "casual"]),
+	tp("handwritten-signature", "Signature", "handwritten", "— from the team", {
+		fontFamily: "Brush Script MT", fontSize: 24, fontStyle: "italic", color: "#fafafa",
+	}, ["sign", "cursive"]),
+	tp("neon-electric", "Electric", "neon", "GLOW", {
+		fontFamily: "Oswald", fontSize: 28, fontWeight: "bold", color: "#22d3ee", letterSpacing: 4,
+	}, ["cyan", "glow"]),
+	tp("neon-magenta", "Magenta", "neon", "VIBE", {
+		fontFamily: "Montserrat", fontSize: 28, fontWeight: "bold", color: "#f0abfc", letterSpacing: 4,
+	}, ["pink", "glow"]),
+	tp("basic-watermark", "Watermark", "basic", "© your brand", {
+		fontFamily: "Inter", fontSize: 12, color: "#94a3b8", letterSpacing: 1,
+	}, ["credit", "subtle"]),
+);

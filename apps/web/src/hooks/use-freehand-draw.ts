@@ -12,6 +12,7 @@ import {
 	type Point,
 } from "@/lib/graphics/path-utils";
 import { canvasLogicalToGraphicSource } from "@/lib/preview/preview-coords";
+import { normalizeStandaloneFreehand } from "@/lib/graphics/freehand-normalize";
 import { useColorPaletteStore } from "@/stores/color-palette-store";
 
 const MIN_POINT_DISTANCE_SQ = 4; // Skip pointer events closer than 2px to avoid duplicate samples
@@ -262,6 +263,23 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 				}
 			}
 
+			// Standalone (not media-parented) drawing. The drawn points are in
+			// 512² source coords mapped via a contain-fit (min(w,h)/512). On a
+			// non-square canvas the left/right (or top/bottom) margins fall
+			// OUTSIDE [0,512], so a stroke drawn near an edge would be clipped by
+			// the 512² offscreen buffer and vanish. Recenter the path into the
+			// source and place/scale the element so it renders where it was drawn.
+			const normalized = normalizeStandaloneFreehand({
+				points: simplified,
+				sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
+				strokeWidth: drawConfig.strokeWidth,
+				canvasWidth,
+				canvasHeight,
+			});
+			const localSvgPath =
+				pointsToSvgPath(normalized.localPoints, 0, drawConfig.closed) ??
+				drawingPath;
+
 			const element = buildGraphicElement({
 				definitionId: "freehand",
 				name: drawConfig.closed ? "Shape" : "Drawing",
@@ -272,15 +290,23 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 							? drawConfig.fill
 							: "rgba(0,0,0,0)",
 					stroke: drawConfig.stroke,
-					strokeWidth: drawConfig.strokeWidth,
+					// Stroke is in source units; multiply by k so apparent width is
+					// unchanged after the element is scaled back by 1/k.
+					strokeWidth: drawConfig.strokeWidth * normalized.strokeScale,
 					strokeOpacity: drawConfig.opacity,
 					strokeAlign: drawConfig.strokeAlign,
 					strokeDash: drawConfig.strokeDash,
 					strokeTaper: drawConfig.strokeTaper,
-					pathData: drawingPath,
+					pathData: localSvgPath,
 					closed: drawConfig.closed,
 				},
 			});
+			element.transform = {
+				...element.transform,
+				position: normalized.position,
+				scaleX: normalized.elementScale,
+				scaleY: normalized.elementScale,
+			};
 
 			editor.timeline.insertElement({
 				placement: { mode: "auto" },

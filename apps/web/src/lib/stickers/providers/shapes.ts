@@ -1,6 +1,7 @@
 import {
 	buildGraphicPreviewUrl,
 	buildDefaultGraphicInstance,
+	getGraphicDefinition,
 	graphicsRegistry,
 	registerDefaultGraphics,
 } from "@/lib/graphics";
@@ -721,22 +722,11 @@ const DOC_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 	{ shapeKey: "star-8-point", name: "Star 8-Point", definitionId: "star", params: { points: 8, depth: 38, fill: "#fde68a" } },
 	{ shapeKey: "multi-point-star", name: "Multi-Point Star", definitionId: "star", params: { points: 12, depth: 52, fill: "#fb7185" } },
 	{ shapeKey: "ring-donut-doc", name: "Ring / Donut", definitionId: "ring", params: { fill: "#22d3ee" } },
-	{ shapeKey: "water-drop", name: "Drop / Water Drop", definitionId: "drop", params: { fill: "#38bdf8" } },
-	{ shapeKey: "wavy-blob", name: "Wavy Blob", definitionId: "blob", params: { fill: "#c084fc" } },
-	{ shapeKey: "s-curve", name: "S-Curve", definitionId: "curved-path", params: { stroke: "#f8fafc", strokeWidth: 10, strokeTaper: "in" } },
 	{ shapeKey: "arrow-right", name: "Arrow Right", definitionId: "arrow", params: { fill: "#38bdf8" } },
 	{ shapeKey: "arrow-left", name: "Arrow Left", definitionId: "arrow", params: { fill: "#60a5fa" } },
 	{ shapeKey: "arrow-up", name: "Arrow Up", definitionId: "arrow", params: { fill: "#818cf8" } },
 	{ shapeKey: "arrow-down", name: "Arrow Down", definitionId: "arrow", params: { fill: "#a78bfa" } },
-	{ shapeKey: "thought-bubble-doc", name: "Thought Bubble", definitionId: "thought-bubble", params: { fill: "#f8fafc" } },
-	{ shapeKey: "callout-label-doc", name: "Callout Label", definitionId: "callout-label", params: { fill: "#facc15" } },
 	{ shapeKey: "rounded-banner", name: "Rounded Banner", definitionId: "banner", params: { fill: "#14b8a6" } },
-	{ shapeKey: "ribbon-doc", name: "Ribbon", definitionId: "ribbon", params: { fill: "#f97316" } },
-	{ shapeKey: "badge-doc", name: "Badge", definitionId: "badge", params: { fill: "#ec4899" } },
-	{ shapeKey: "frame-doc", name: "Frame", definitionId: "frame", params: { fill: "rgba(255,255,255,0)", stroke: "#f8fafc", strokeWidth: 12, strokeAlign: "inside" } },
-	{ shapeKey: "checkmark-doc", name: "Checkmark", definitionId: "checkmark", params: { stroke: "#22c55e", strokeWidth: 14, strokeTaper: "out" } },
-	{ shapeKey: "bracket-doc", name: "Bracket", definitionId: "bracket", params: { stroke: "#f8fafc", strokeWidth: 10 } },
-	{ shapeKey: "lightning-bolt-doc", name: "Lightning Bolt", definitionId: "lightning-bolt", params: { fill: "#facc15" } },
 ];
 
 function getShapePresets(): ShapeGraphicPreset[] {
@@ -842,7 +832,9 @@ function filterShapesByQuery({
 	}
 
 	return presets.filter((preset) => {
-		const definition = graphicsRegistry.get(preset.definitionId);
+		const definition = getGraphicDefinition({
+			definitionId: preset.definitionId,
+		});
 		return (
 			preset.name.toLowerCase().includes(normalizedQuery) ||
 			definition.keywords.some((keyword) =>

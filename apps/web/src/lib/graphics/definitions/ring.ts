@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import type { GraphicDefinition } from "../types";
 
@@ -40,8 +41,7 @@ export const ringGraphicDefinition: GraphicDefinition = {
 		const path = new Path2D();
 		path.ellipse(centerX, centerY, outerX, outerY, 0, 0, Math.PI * 2);
 		path.ellipse(centerX, centerY, innerX, innerY, 0, 0, Math.PI * 2);
-		ctx.fillStyle = fill;
-		ctx.fill(path, "evenodd");
+		fillShapePath({ ctx, path, fill, width, height, fillRule: "evenodd" });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

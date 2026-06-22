@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import {
 	FILL_PARAM,
 	STROKE_PARAMS,
@@ -49,8 +50,7 @@ export const rightTriangleGraphicDefinition: GraphicDefinition = {
 		ctx.clearRect(0, 0, width, height);
 		const path = new Path2D();
 		traceRoundedPath({ path, vertices, radius });
-		ctx.fillStyle = fill;
-		ctx.fill(path);
+		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

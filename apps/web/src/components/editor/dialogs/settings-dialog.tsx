@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { useSettingsStore } from "@/stores/settings-store";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/ui";
+import { ShortcutsEditor } from "./shortcuts-editor";
 
 type SettingsTab = "general" | "ai" | "shortcuts";
 
@@ -242,27 +243,20 @@ function AISettings() {
 
 function ShortcutsSettings() {
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex h-full min-h-0 flex-col gap-4">
 			<header>
 				<h2 className="text-sm font-semibold text-white/85">
 					Keyboard shortcuts
 				</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
-					Common editing shortcuts. Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd> to open
-					the command palette and search every action.
+					Click <span className="text-white/70">Edit</span> on any action and
+					press a new key combo to rebind it. Press <Kbd>Ctrl</Kbd>+<Kbd>K</Kbd>{" "}
+					to open the command palette and search every action.
 				</p>
 			</header>
-			<ul className="flex flex-col divide-y divide-white/[0.05] rounded-md border border-white/[0.06] bg-white/[0.02]">
-				<ShortcutRow label="Copy selection" keys={["Ctrl", "C"]} />
-				<ShortcutRow label="Paste" keys={["Ctrl", "V"]} />
-				<ShortcutRow label="Copy style" keys={["Ctrl", "Shift", "C"]} />
-				<ShortcutRow label="Paste style" keys={["Ctrl", "Shift", "V"]} />
-				<ShortcutRow label="Duplicate" keys={["Ctrl", "D"]} />
-				<ShortcutRow label="Group" keys={["Ctrl", "G"]} />
-				<ShortcutRow label="Undo" keys={["Ctrl", "Z"]} />
-				<ShortcutRow label="Redo" keys={["Ctrl", "Shift", "Z"]} />
-				<ShortcutRow label="Play / pause" keys={["Space"]} />
-			</ul>
+			<div className="min-h-0 flex-1">
+				<ShortcutsEditor />
+			</div>
 		</div>
 	);
 }
@@ -288,19 +282,6 @@ function SettingRow({
 			</div>
 			<div className="shrink-0">{children}</div>
 		</div>
-	);
-}
-
-function ShortcutRow({ label, keys }: { label: string; keys: string[] }) {
-	return (
-		<li className="flex items-center justify-between gap-3 px-3 py-2 text-[12.5px] text-white/75">
-			<span>{label}</span>
-			<span className="flex items-center gap-1">
-				{keys.map((k) => (
-					<Kbd key={k}>{k}</Kbd>
-				))}
-			</span>
-		</li>
 	);
 }
 

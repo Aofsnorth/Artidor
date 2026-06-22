@@ -428,13 +428,7 @@ function ImportDriveDialog({
 										Save
 									</Button>
 								</div>
-								<p className="text-[0.58rem] leading-snug text-white/35">
-									Ensure you configure{" "}
-									<code className="bg-white/10 px-1 rounded">
-										http://localhost:3000/oauth-callback
-									</code>{" "}
-									in your Google console.
-								</p>
+								<DriveOAuthGuide />
 							</div>
 						)}
 
@@ -587,6 +581,122 @@ function ImportDriveDialog({
 				</div>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+function DriveOAuthGuide() {
+	const [expanded, setExpanded] = useState(false);
+	const [copied, setCopied] = useState(false);
+
+	// The redirect URI must EXACTLY match the current origin — this is what the
+	// "oauth-callback" notice refers to. On localhost it's the :3000 URL; once
+	// deployed (e.g. artidor.app) it must be that https origin instead.
+	const redirectUri =
+		typeof window !== "undefined"
+			? `${window.location.origin}/oauth-callback`
+			: "https://your-domain/oauth-callback";
+
+	const copyRedirect = async () => {
+		try {
+			await navigator.clipboard.writeText(redirectUri);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			/* clipboard blocked */
+		}
+	};
+
+	return (
+		<div className="mt-1 flex flex-col gap-2 rounded-md border border-white/[0.06] bg-white/[0.015] p-2.5">
+			<div className="flex flex-col gap-1">
+				<span className="text-[0.58rem] font-semibold uppercase tracking-wider text-white/45">
+					Authorized redirect URI
+				</span>
+				<div className="flex items-center gap-1.5">
+					<code className="flex-1 truncate rounded bg-white/10 px-1.5 py-1 font-mono text-[0.62rem] text-white/80">
+						{redirectUri}
+					</code>
+					<button
+						type="button"
+						onClick={copyRedirect}
+						className="shrink-0 rounded border border-white/10 px-1.5 py-1 text-[0.58rem] text-white/55 transition hover:bg-white/10 hover:text-white/85"
+					>
+						{copied ? "Copied" : "Copy"}
+					</button>
+				</div>
+				<p className="text-[0.58rem] leading-snug text-white/40">
+					Paste this into your Google OAuth client's{" "}
+					<span className="text-white/60">Authorized redirect URIs</span>. It's
+					where Google returns the sign-in result — the popup at this URL hands
+					the token back to Artidor, then closes. It must match this site's
+					address exactly (use your real domain in production, not localhost).
+				</p>
+			</div>
+
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="self-start text-[0.6rem] font-medium text-indigo-300/80 hover:text-indigo-200"
+			>
+				{expanded ? "Hide setup guide" : "How do I get a Client ID?"}
+			</button>
+
+			{expanded && (
+				<ol className="flex list-decimal flex-col gap-1.5 pl-4 text-[0.62rem] leading-relaxed text-white/55">
+					<li>
+						Open{" "}
+						<a
+							href="https://console.cloud.google.com/apis/credentials"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-indigo-300 underline underline-offset-2"
+						>
+							Google Cloud Console → Credentials
+						</a>{" "}
+						and create (or pick) a project.
+					</li>
+					<li>
+						Enable the{" "}
+						<a
+							href="https://console.cloud.google.com/apis/library/drive.googleapis.com"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-indigo-300 underline underline-offset-2"
+						>
+							Google Drive API
+						</a>
+						.
+					</li>
+					<li>
+						Configure the OAuth consent screen (External). Add your Google
+						account under <span className="text-white/70">Test users</span> while
+						it's unpublished.
+					</li>
+					<li>
+						Create credentials →{" "}
+						<span className="text-white/70">OAuth client ID</span> →{" "}
+						<span className="text-white/70">Web application</span>.
+					</li>
+					<li>
+						Under <span className="text-white/70">Authorized JavaScript origins</span>{" "}
+						add <code className="bg-white/10 px-1 rounded">{
+							typeof window !== "undefined"
+								? window.location.origin
+								: "https://your-domain"
+						}</code>.
+					</li>
+					<li>
+						Under <span className="text-white/70">Authorized redirect URIs</span>{" "}
+						add the URI above, then Save.
+					</li>
+					<li>
+						Copy the generated{" "}
+						<span className="text-white/70">Client ID</span> and paste it in the
+						field above.
+					</li>
+				</ol>
+			)}
+		</div>
 	);
 }
 

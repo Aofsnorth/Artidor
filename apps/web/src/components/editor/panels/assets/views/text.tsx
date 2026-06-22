@@ -5,8 +5,6 @@ import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { useEditor } from "@/hooks/use-editor";
-import { useApplyAnimationPreset } from "@/hooks/use-animation-presets";
-import { animationPresetsRegistry } from "@/lib/animation/presets";
 import { buildTextElement } from "@/lib/timeline/element-utils";
 import type { TimelineDragData } from "@/lib/timeline/drag";
 import { getPaletteForId } from "./components/procedural-preview";
@@ -77,7 +75,6 @@ function getTextPhotoUrl(_presetId: string): null {
 
 function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const editor = useEditor();
-	const applyAnimation = useApplyAnimationPreset();
 	const [busy, setBusy] = useState(false);
 
 	const handleAdd = useCallback(async () => {
@@ -95,22 +92,9 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				placement: { mode: "auto" },
 			});
 
-			// Apply default fade-in animation to the just-inserted text element
-			const fadeInPreset = animationPresetsRegistry.get("fade-up");
-			if (fadeInPreset) {
-				const tracks = editor.scenes.getActiveScene().tracks;
-				const textTrack = [...tracks.overlay]
-					.reverse()
-					.find((t) => t.type === "text" && t.elements.length > 0);
-				const lastInserted = textTrack?.elements[textTrack.elements.length - 1];
-				if (textTrack && lastInserted) {
-					editor.selection.setSelectedElements({
-						elements: [{ trackId: textTrack.id, elementId: lastInserted.id }],
-					});
-					applyAnimation(fadeInPreset);
-					editor.selection.clearSelection();
-				}
-			}
+			// Note: no auto fade-in. A fade-up preset starts at opacity 0, which
+			// left freshly-added text invisible at the playhead (looked like a bug).
+			// Users can add an entrance animation explicitly from the Animation tab.
 
 			toast.success(`${preset.name} added`);
 		} catch (error) {
@@ -120,7 +104,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 		} finally {
 			setBusy(false);
 		}
-	}, [editor, preset, applyAnimation]);
+	}, [editor, preset]);
 
 	const previewData = preset.build();
 	const photoUrl = getTextPhotoUrl(preset.id);

@@ -119,12 +119,23 @@ function ParamInput({
 	}
 
 	if (param.type === "color") {
+		// Graphic shape fills can be CSS gradients, which must pass through
+		// verbatim (no "#" prefix). Solid colors keep the hex round-trip.
+		const allowGradient = param.key === "fill";
+		const isGradient = (c: string) => /gradient\s*\(/i.test(c);
+		const normalize = (color: string) =>
+			isGradient(color) ? color : `#${color}`;
 		return (
 			<ColorPicker
-				value={String(value).replace(/^#/, "").toUpperCase()}
-				onChange={(color) => onPreview(`#${color}`)}
+				allowGradient={allowGradient}
+				value={
+					isGradient(String(value))
+						? String(value)
+						: String(value).replace(/^#/, "").toUpperCase()
+				}
+				onChange={(color) => onPreview(normalize(color))}
 				onChangeEnd={(color) => {
-					onPreview(`#${color}`);
+					onPreview(normalize(color));
 					onCommit();
 				}}
 			/>

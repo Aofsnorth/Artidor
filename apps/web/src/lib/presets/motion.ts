@@ -1923,7 +1923,7 @@ export const motionPresets: MotionPreset[] = [
 		],
 	),
 	mp(
-		"m-in-unblur",
+		"m-in-unblur-fade",
 		"Unblur",
 		"Resolves from a blur into focus",
 		"In",

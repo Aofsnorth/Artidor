@@ -15,10 +15,12 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	GoogleIcon,
 	Link01Icon,
+	LockPasswordIcon,
 	UserAddIcon,
 } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
@@ -29,26 +31,37 @@ import {
 	getGoogleClientId,
 	initiateGoogleOAuth,
 } from "@/lib/drive/api";
+import { buildShareUrl, createShare } from "@/lib/share/client";
 
 export function ShareButton() {
 	const [open, setOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const [driveConnected, setDriveConnected] = useState(false);
 	const [connecting, setConnecting] = useState(false);
+
+	// Secure-share state
+	const [usePassword, setUsePassword] = useState(false);
+	const [password, setPassword] = useState("");
+	const [creating, setCreating] = useState(false);
+	const [shareUrl, setShareUrl] = useState("");
+	const [manageToken, setManageToken] = useState("");
+
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const hasProject = !!activeProject;
 
-	const projectId = activeProject?.metadata.id;
 	const origin =
 		typeof window !== "undefined"
 			? window.location.origin
 			: "https://artidor.vercel.app";
-	const inviteLink = projectId
-		? `${origin}/editor/${projectId}?invite=viewer`
-		: "";
 
 	useEffect(() => {
-		if (!open) setCopied(false);
+		if (!open) {
+			setCopied(false);
+			setShareUrl("");
+			setManageToken("");
+			setPassword("");
+			setUsePassword(false);
+		}
 	}, [open]);
 
 	// Sharing is Drive-backed, so the dialog reflects the live Drive connection.
@@ -64,12 +77,12 @@ export function ShareButton() {
 	}, []);
 
 	const handleCopy = async () => {
-		if (!inviteLink) return;
+		if (!shareUrl) return;
 		try {
-			await navigator.clipboard.writeText(inviteLink);
+			await navigator.clipboard.writeText(shareUrl);
 			setCopied(true);
-			toast.success("Invite link copied", {
-				description: "Anyone with the link can open the project as a viewer.",
+			toast.success("Share link copied", {
+				description: "Only people with this link (and password) can open it.",
 			});
 			setTimeout(() => setCopied(false), 1800);
 		} catch {
@@ -94,6 +107,43 @@ export function ShareButton() {
 			toast.error(err instanceof Error ? err.message : "Google sign-in failed");
 		} finally {
 			setConnecting(false);
+		}
+	};
+
+	const handleCreateShare = async () => {
+		const project = activeProject;
+		if (!project) return;
+		if (usePassword && password.trim().length < 4) {
+			toast.error("Password too short", {
+				description: "Use at least 4 characters, or turn the password off.",
+			});
+			return;
+		}
+		setCreating(true);
+		try {
+			const result = await createShare({
+				name: project.metadata.name || "Shared project",
+				password: usePassword ? password.trim() : undefined,
+				payload: {
+					v: 1,
+					projectId: project.metadata.id,
+					projectName: project.metadata.name || "Shared project",
+					driveFolderId: project.metadata.googleDriveFolderId ?? undefined,
+					driveFileId: project.metadata.googleDriveFileId ?? undefined,
+				},
+			});
+			const url = buildShareUrl({ origin, shareId: result.shareId });
+			setShareUrl(url);
+			setManageToken(result.manageToken);
+			toast.success("Secure share link created", {
+				description: usePassword
+					? "Password required to open. Save your revoke token."
+					: "Save your revoke token to disable the link later.",
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Could not create share");
+		} finally {
+			setCreating(false);
 		}
 	};
 
@@ -123,7 +173,7 @@ export function ShareButton() {
 							icon={Link01Icon}
 							className="mr-2 size-3.5 text-white/60"
 						/>
-						Invite collaborators
+						Share read-only link
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -146,78 +196,24 @@ export function ShareButton() {
 									className="size-4 text-white/85"
 								/>
 							</span>
-							<div className="flex items-center gap-2">
-								<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
-									Invite collaborators
-								</DialogTitle>
-								<span className="rounded-full border border-white/15 bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/55">
-									Soon
-								</span>
-							</div>
+							<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
+								Share read-only link
+							</DialogTitle>
 						</div>
 						<DialogDescription className="pt-1 text-[0.8rem] leading-relaxed text-white/55">
-							Read-only sharing is Drive-backed: a viewer loads the project and
-							its media straight from{" "}
-							<em className="not-italic text-white/75">your</em> Google Drive
-							(folder shared read-only) — nothing is uploaded to our servers. So
-							you connect Drive first.
+							Creates a private, capability-based link (random id, optional
+							password, revocable). A viewer loads the project read-only from{" "}
+							<em className="not-italic text-white/75">your</em> Google Drive —
+							nothing is uploaded to our servers.
 						</DialogDescription>
 					</DialogHeader>
 
-					{driveConnected ? (
-						<div className="relative flex flex-col gap-2.5 px-6 pt-5 pb-6">
-							<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-								Project link
-							</span>
-							<div className="flex items-center gap-2">
-								<div className="relative flex-1">
-									<HugeiconsIcon
-										icon={Link01Icon}
-										className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-white/35"
-										aria-hidden="true"
-									/>
-									<input
-										id="invite-link"
-										type="text"
-										readOnly
-										value={inviteLink}
-										className="h-9 w-full truncate rounded-md border border-white/[0.1] bg-white/[0.04] pr-2.5 pl-8 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
-										onFocus={(event) => event.currentTarget.select()}
-									/>
-								</div>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={handleCopy}
-									disabled={!inviteLink}
-									className="h-9 shrink-0 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
-								>
-									{copied ? (
-										<>
-											<Check className="size-3.5" />
-											Copied
-										</>
-									) : (
-										<>
-											<Copy className="size-3.5" />
-											Copy
-										</>
-									)}
-								</Button>
-							</div>
-							<p className="text-[0.66rem] leading-relaxed text-white/40">
-								The viewer experience ships soon. Until then this is the link
-								format; rotate the project ID from the projects page to revoke.
-							</p>
-						</div>
-					) : (
+					{!driveConnected ? (
 						<div className="relative px-6 pt-5 pb-6">
 							<div className="flex flex-col gap-3.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-4">
 								<p className="text-[0.78rem] leading-relaxed text-white/60">
-									Connect Google Drive to enable sharing. The link won't work
-									until your project is on Drive — that's where viewers read the
-									media from.
+									Connect Google Drive first — that's where viewers read the
+									project and media from.
 								</p>
 								<Button
 									type="button"
@@ -229,6 +225,97 @@ export function ShareButton() {
 									{connecting ? "Connecting…" : "Connect Google Drive"}
 								</Button>
 							</div>
+						</div>
+					) : shareUrl ? (
+						<div className="relative flex flex-col gap-3 px-6 pt-5 pb-6">
+							<div className="flex flex-col gap-2">
+								<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
+									Share link
+								</span>
+								<div className="flex items-center gap-2">
+									<input
+										type="text"
+										readOnly
+										value={shareUrl}
+										className="h-9 w-full truncate rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 font-mono text-[0.74rem] text-white/85 focus:border-white/30 focus:outline-none"
+										onFocus={(event) => event.currentTarget.select()}
+									/>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={handleCopy}
+										className="h-9 shrink-0 gap-1.5 border-white/15 bg-white/[0.05] px-3 text-[0.72rem] text-white hover:bg-white/[0.1]"
+									>
+										{copied ? (
+											<>
+												<Check className="size-3.5" /> Copied
+											</>
+										) : (
+											<>
+												<Copy className="size-3.5" /> Copy
+											</>
+										)}
+									</Button>
+								</div>
+							</div>
+							<div className="flex flex-col gap-1.5 rounded-md border border-amber-400/20 bg-amber-400/[0.06] p-3">
+								<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-amber-200/80">
+									Revoke token — save this
+								</span>
+								<code className="break-all font-mono text-[0.72rem] text-amber-100/90">
+									{manageToken}
+								</code>
+								<p className="text-[0.66rem] leading-relaxed text-amber-100/55">
+									This is shown once. Keep it to disable the link later; we don't
+									store it in a recoverable form.
+								</p>
+							</div>
+						</div>
+					) : (
+						<div className="relative flex flex-col gap-4 px-6 pt-5 pb-6">
+							<label className="flex items-start gap-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+								<input
+									type="checkbox"
+									checked={usePassword}
+									onChange={(e) => setUsePassword(e.target.checked)}
+									className="mt-0.5 size-4 accent-white"
+								/>
+								<div className="flex flex-col gap-0.5">
+									<span className="flex items-center gap-1.5 text-[0.8rem] font-medium text-white/85">
+										<HugeiconsIcon
+											icon={LockPasswordIcon}
+											className="size-3.5 text-white/60"
+										/>
+										Require a password
+									</span>
+									<span className="text-[0.7rem] leading-relaxed text-white/50">
+										Viewers must enter it to open the project. Verified
+										server-side; never stored in plaintext.
+									</span>
+								</div>
+							</label>
+
+							{usePassword && (
+								<Input
+									type="password"
+									value={password}
+									autoComplete="new-password"
+									placeholder="Share password (min 4 chars)"
+									onChange={(e) => setPassword(e.target.value)}
+									className="h-9"
+								/>
+							)}
+
+							<Button
+								type="button"
+								onClick={handleCreateShare}
+								disabled={creating}
+								className="h-9 gap-1.5 self-start bg-white px-3.5 text-[0.78rem] font-medium text-black hover:bg-white/90"
+							>
+								<HugeiconsIcon icon={Link01Icon} className="size-3.5" />
+								{creating ? "Creating…" : "Create share link"}
+							</Button>
 						</div>
 					)}
 				</DialogContent>

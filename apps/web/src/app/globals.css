@@ -21,6 +21,23 @@ body,
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 }
+
+/* Disable native text selection app-wide (desktop-editor feel). Applied to
+   every element (not just body) so Radix portals / tooltips that escape the
+   body inheritance chain are still covered. Inputs, textareas, contenteditable,
+   and anything explicitly tagged .select-text opt back in. */
+* {
+	user-select: none;
+	-webkit-user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable=""],
+.select-text {
+	user-select: text;
+	-webkit-user-select: text;
+}
 html::-webkit-scrollbar,
 body::-webkit-scrollbar,
 *::-webkit-scrollbar {
