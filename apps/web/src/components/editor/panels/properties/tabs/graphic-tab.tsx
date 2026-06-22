@@ -9,7 +9,7 @@ import {
 import { resolveGraphicParamsAtTime } from "@/lib/animation";
 import type { ParamDefinition, ParamValues } from "@/lib/params";
 import type { GraphicElement } from "@/lib/timeline";
-import { graphicsRegistry, registerDefaultGraphics } from "@/lib/graphics";
+import { getGraphicDefinition, registerDefaultGraphics } from "@/lib/graphics";
 import { useElementPreview } from "@/hooks/use-element-preview";
 import { useEditor } from "@/hooks/use-editor";
 import {
@@ -37,7 +37,9 @@ export function GraphicTab({
 	element: GraphicElement;
 	trackId: string;
 }) {
-	const definition = graphicsRegistry.get(element.definitionId);
+	const definition = getGraphicDefinition({
+		definitionId: element.definitionId,
+	});
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
@@ -93,7 +95,9 @@ function StrokeSection({
 	trackId: string;
 }) {
 	const editor = useEditor();
-	const definition = graphicsRegistry.get(element.definitionId);
+	const definition = getGraphicDefinition({
+		definitionId: element.definitionId,
+	});
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,

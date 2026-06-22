@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useSettingsStore } from "@/stores/settings-store";
 
 /**
- * Realtime editor FPS badge (bottom-left). Measures the browser's animation
- * frame cadence — i.e. how smoothly the editor UI is repainting — not the
- * project/video frame rate. Display is a rolling average updated ~4×/sec so
- * the number doesn't flicker. When the setting is off the component renders
- * null, so no rAF loop runs and there is zero measurement overhead.
+ * Realtime editor FPS badge. Inline pill meant to sit in the footer next to
+ * the "Worked on" card. Measures the browser's animation frame cadence — i.e.
+ * how smoothly the editor UI is repainting — not the project/video frame rate.
+ * Display is a rolling average updated ~4×/sec so the number doesn't flicker.
+ * When the setting is off the component renders null, so no rAF loop runs and
+ * there is zero measurement overhead.
  */
 export function FpsMonitor() {
 	const enabled = useSettingsStore((s) => s.showFpsMonitor);
@@ -48,10 +49,13 @@ export function FpsMonitor() {
 
 	return (
 		<div
-			className="pointer-events-none absolute bottom-2 left-2 z-30 select-none rounded-sm border border-white/10 bg-black/55 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-white/70 backdrop-blur-sm"
-			aria-hidden
+			className="pointer-events-none flex select-none items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.035] px-2.5 py-1 shadow-inner shadow-white/[0.02]"
+			title="Realtime editor repaint rate (UI frames per second)."
 		>
-			{fps} FPS
+			<span className="text-[0.55rem] font-semibold uppercase tracking-[0.18em] text-white/[0.32]">
+				FPS
+			</span>
+			<span className="font-mono tabular-nums text-white/[0.82]">{fps}</span>
 		</div>
 	);
 }

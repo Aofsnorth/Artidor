@@ -9,7 +9,7 @@ export default function OAuthCallbackPage() {
 		if (typeof window === "undefined") return;
 
 		// Google OAuth implicit flow returns variables in the hash fragment:
-		// #access_token=ya29...&token_type=Bearer&expires_in=3600
+		// #access_token=ya29...&token_type=Bearer&expires_in=3600&state=...
 		const hash = window.location.hash;
 		const search = window.location.search;
 
@@ -20,10 +20,11 @@ export default function OAuthCallbackPage() {
 
 		// Try parsing from hash (implicit token grant)
 		const hashParams = new URLSearchParams(hash.substring(1));
+		const searchParams = new URLSearchParams(search);
 		const accessToken = hashParams.get("access_token");
 		const expiresIn = hashParams.get("expires_in");
-		const error =
-			hashParams.get("error") || new URLSearchParams(search).get("error");
+		const state = hashParams.get("state") || searchParams.get("state");
+		const error = hashParams.get("error") || searchParams.get("error");
 
 		if (accessToken) {
 			if (window.opener) {
@@ -32,6 +33,7 @@ export default function OAuthCallbackPage() {
 						type: "oauth-success",
 						token: accessToken,
 						expiresIn: expiresIn ? Number.parseInt(expiresIn, 10) : 3600,
+						state,
 					},
 					window.location.origin,
 				);
@@ -48,6 +50,7 @@ export default function OAuthCallbackPage() {
 					{
 						type: "oauth-error",
 						error: decodeURIComponent(error),
+						state,
 					},
 					window.location.origin,
 				);

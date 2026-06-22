@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import { STROKE_ALIGN_PARAM, type GraphicStrokeAlign } from "./shared";
 import type { GraphicDefinition } from "../types";
 
@@ -57,8 +58,7 @@ export const ellipseGraphicDefinition: GraphicDefinition = {
 		ctx.clearRect(0, 0, width, height);
 		const path = new Path2D();
 		path.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
-		ctx.fillStyle = fill;
-		ctx.fill(path);
+		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

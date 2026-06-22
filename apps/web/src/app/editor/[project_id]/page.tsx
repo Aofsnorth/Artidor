@@ -19,7 +19,6 @@ import { AdjustmentsView } from "@/components/editor/panels/assets/views/adjustm
 import { PluginsView } from "@/components/editor/panels/assets/views/plugins";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { VerticalAudioMeter } from "@/components/editor/vertical-audio-meter";
-import { FpsMonitor } from "@/components/editor/fps-monitor";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { usePanelStore } from "@/stores/panel-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
@@ -328,7 +327,6 @@ function EditorPanels() {
 							) : (
 								<div className="group/panel-slot relative size-full">
 									<PreviewPanel />
-									<FpsMonitor />
 									<PopOutButton id="preview" title="Preview" />
 								</div>
 							)}

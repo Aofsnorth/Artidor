@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
 	ArrowRight01Icon,
+	CloudUploadIcon,
+	GoogleIcon,
 	TransitionTopIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import {
+	getGoogleAccessToken,
+	getGoogleClientId,
+	initiateGoogleOAuth,
+} from "@/lib/drive/api";
 import {
 	Popover,
 	PopoverContent,
@@ -406,7 +414,7 @@ function ExportPopover({
 									</Section>
 								</div>
 
-								<div className="p-4 pt-1">
+								<div className="flex flex-col gap-2 p-4 pt-1">
 									<Button
 										onClick={handleExport}
 										className={cn(
@@ -418,6 +426,7 @@ function ExportPopover({
 										<Download className="size-4 stroke-black stroke-[2.5px]" />
 										export
 									</Button>
+									<ExportToDriveButton onDone={() => onOpenChange(false)} />
 								</div>
 							</>
 						)}
@@ -449,6 +458,70 @@ function ExportPopover({
 				</>
 			)}
 		</PopoverContent>
+	);
+}
+
+function ExportToDriveButton({ onDone }: { onDone: () => void }) {
+	const editor = useEditor();
+	const [busy, setBusy] = useState(false);
+
+	const handleExportToDrive = async () => {
+		// Ensure Drive is configured + connected before attempting the copy.
+		if (!getGoogleClientId()) {
+			toast.error("Google Drive isn't set up yet", {
+				description: "Add your Google Client ID via the Drive import dialog first.",
+			});
+			return;
+		}
+		setBusy(true);
+		try {
+			if (!getGoogleAccessToken()) {
+				await initiateGoogleOAuth();
+			}
+			const folderId = await editor.project.exportProjectToDrive();
+			toast.success("Project exported to Google Drive", {
+				description:
+					"A copy (project + media) now lives in a new Drive folder and will keep syncing.",
+				action: {
+					label: "Open",
+					onClick: () =>
+						window.open(
+							`https://drive.google.com/drive/folders/${folderId}`,
+							"_blank",
+							"noopener,noreferrer",
+						),
+				},
+			});
+			onDone();
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Export to Drive failed";
+			toast.error(
+				message === "unauthenticated"
+					? "Connect Google Drive to export."
+					: message,
+			);
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Button
+			variant="outline"
+			disabled={busy}
+			onClick={handleExportToDrive}
+			className={cn(
+				"w-full gap-2 rounded-lg border-stone-800 py-4 text-stone-300",
+				"hover:bg-stone-900/50 hover:text-white transition-colors",
+				"font-sans text-[11px] uppercase tracking-wider",
+			)}
+		>
+			<HugeiconsIcon
+				icon={busy ? CloudUploadIcon : GoogleIcon}
+				className="size-3.5"
+			/>
+			{busy ? "Exporting to Drive…" : "Export to Drive"}
+		</Button>
 	);
 }
 

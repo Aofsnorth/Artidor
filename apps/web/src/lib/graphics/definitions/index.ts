@@ -2,7 +2,6 @@ import { graphicsRegistry } from "../registry";
 import { arcGraphicDefinition } from "./arc";
 import { arrowGraphicDefinition } from "./arrow";
 import { bannerGraphicDefinition } from "./banner";
-import { capsuleGraphicDefinition } from "./capsule";
 import { burstGraphicDefinition } from "./burst";
 import { chevronGraphicDefinition } from "./chevron";
 import { cloudGraphicDefinition } from "./cloud";
@@ -33,7 +32,6 @@ import { trapezoidGraphicDefinition } from "./trapezoid";
 import { freehandDefinition } from "./freehand";
 import { circleGraphicDefinition } from "./circle";
 import { squareGraphicDefinition } from "./square";
-import { diamondGraphicDefinition } from "./diamond";
 import { triangleGraphicDefinition } from "./triangle";
 import { pentagonGraphicDefinition } from "./pentagon";
 import { hexagonGraphicDefinition } from "./hexagon";
@@ -42,35 +40,6 @@ import { nonagonGraphicDefinition } from "./nonagon";
 import { decagonGraphicDefinition } from "./decagon";
 import { roundedRectangleGraphicDefinition } from "./rounded-rectangle";
 import { pillGraphicDefinition } from "./pill";
-import { waveGraphicDefinition } from "./wave";
-import { spiralGraphicDefinition } from "./spiral";
-import { ribbonGraphicDefinition } from "./ribbon";
-import { badgeGraphicDefinition } from "./badge";
-import { frameGraphicDefinition } from "./frame";
-import { genericPolygonGraphicDefinition } from "./generic-polygon";
-import { roundedPolygonGraphicDefinition } from "./rounded-polygon";
-import { roundedBurstGraphicDefinition } from "./rounded-burst";
-import { pieSliceGraphicDefinition } from "./pie-slice";
-import { semiCircleGraphicDefinition } from "./semi-circle";
-import { quarterCircleGraphicDefinition } from "./quarter-circle";
-import { dropGraphicDefinition } from "./drop";
-import { leafGraphicDefinition } from "./leaf";
-import { petalGraphicDefinition } from "./petal";
-import { blobGraphicDefinition } from "./blob";
-import { zigzagGraphicDefinition } from "./zigzag";
-import { swirlGraphicDefinition } from "./swirl";
-import { straightLineGraphicDefinition } from "./straight-line";
-import { dashedLineGraphicDefinition } from "./dashed-line";
-import { dottedLineGraphicDefinition } from "./dotted-line";
-import { curvedPathGraphicDefinition } from "./curved-path";
-import { doubleArrowGraphicDefinition } from "./double-arrow";
-import { curvedArrowGraphicDefinition } from "./curved-arrow";
-import { doubleChevronGraphicDefinition } from "./double-chevron";
-import { thoughtBubbleGraphicDefinition } from "./thought-bubble";
-import { calloutLabelGraphicDefinition } from "./callout-label";
-import { bracketGraphicDefinition } from "./bracket";
-import { checkmarkGraphicDefinition } from "./checkmark";
-import { lightningBoltGraphicDefinition } from "./lightning-bolt";
 
 const defaultGraphicDefinitions = [
 	rectangleGraphicDefinition,
@@ -102,12 +71,10 @@ const defaultGraphicDefinitions = [
 	houseGraphicDefinition,
 	squircleGraphicDefinition,
 	freehandDefinition,
-	capsuleGraphicDefinition,
 	octagonGraphicDefinition,
 	bannerGraphicDefinition,
 	circleGraphicDefinition,
 	squareGraphicDefinition,
-	diamondGraphicDefinition,
 	triangleGraphicDefinition,
 	pentagonGraphicDefinition,
 	hexagonGraphicDefinition,
@@ -116,36 +83,48 @@ const defaultGraphicDefinitions = [
 	decagonGraphicDefinition,
 	roundedRectangleGraphicDefinition,
 	pillGraphicDefinition,
-	waveGraphicDefinition,
-	spiralGraphicDefinition,
-	ribbonGraphicDefinition,
-	badgeGraphicDefinition,
-	frameGraphicDefinition,
-	genericPolygonGraphicDefinition,
-	roundedPolygonGraphicDefinition,
-	roundedBurstGraphicDefinition,
-	pieSliceGraphicDefinition,
-	semiCircleGraphicDefinition,
-	quarterCircleGraphicDefinition,
-	dropGraphicDefinition,
-	leafGraphicDefinition,
-	petalGraphicDefinition,
-	blobGraphicDefinition,
-	zigzagGraphicDefinition,
-	swirlGraphicDefinition,
-	straightLineGraphicDefinition,
-	dashedLineGraphicDefinition,
-	dottedLineGraphicDefinition,
-	curvedPathGraphicDefinition,
-	doubleArrowGraphicDefinition,
-	curvedArrowGraphicDefinition,
-	doubleChevronGraphicDefinition,
-	thoughtBubbleGraphicDefinition,
-	calloutLabelGraphicDefinition,
-	bracketGraphicDefinition,
-	checkmarkGraphicDefinition,
-	lightningBoltGraphicDefinition,
 ];
+
+/**
+ * Back-compat aliases for graphic ids removed in the 2026-06 placeholder purge.
+ * Older saved projects may still reference these ids; we resolve them to the
+ * real shape they were a stub/duplicate of so nothing throws on load.
+ * - capsule was identical to pill; diamond was a duplicate of rhombus.
+ * - the remaining ids were rectangle-fallback stubs, so they map to rectangle.
+ */
+export const GRAPHIC_ID_ALIASES: Record<string, string> = {
+	capsule: "pill",
+	diamond: "rhombus",
+	zigzag: "rectangle",
+	wave: "rectangle",
+	"thought-bubble": "speech-bubble",
+	swirl: "rectangle",
+	"straight-line": "line",
+	spiral: "rectangle",
+	"semi-circle": "pie",
+	"rounded-polygon": "polygon",
+	"rounded-burst": "burst",
+	ribbon: "banner",
+	"quarter-circle": "pie",
+	"pie-slice": "pie",
+	petal: "teardrop",
+	"lightning-bolt": "lightning",
+	leaf: "teardrop",
+	"generic-polygon": "polygon",
+	frame: "rectangle",
+	drop: "teardrop",
+	"double-chevron": "chevron",
+	"dotted-line": "line",
+	"double-arrow": "arrow",
+	"dashed-line": "line",
+	"curved-path": "line",
+	"curved-arrow": "arrow",
+	checkmark: "cross",
+	"callout-label": "speech-bubble",
+	bracket: "rectangle",
+	blob: "ellipse",
+	badge: "ring",
+};
 
 export function registerDefaultGraphics(): void {
 	for (const definition of defaultGraphicDefinitions) {
@@ -160,7 +139,6 @@ export {
 	arcGraphicDefinition,
 	arrowGraphicDefinition,
 	bannerGraphicDefinition,
-	capsuleGraphicDefinition,
 	burstGraphicDefinition,
 	chevronGraphicDefinition,
 	cloudGraphicDefinition,
@@ -191,7 +169,6 @@ export {
 	trapezoidGraphicDefinition,
 	circleGraphicDefinition,
 	squareGraphicDefinition,
-	diamondGraphicDefinition,
 	triangleGraphicDefinition,
 	pentagonGraphicDefinition,
 	hexagonGraphicDefinition,
@@ -200,34 +177,5 @@ export {
 	decagonGraphicDefinition,
 	roundedRectangleGraphicDefinition,
 	pillGraphicDefinition,
-	waveGraphicDefinition,
-	spiralGraphicDefinition,
-	ribbonGraphicDefinition,
-	badgeGraphicDefinition,
-	frameGraphicDefinition,
-	genericPolygonGraphicDefinition,
-	roundedPolygonGraphicDefinition,
-	roundedBurstGraphicDefinition,
-	pieSliceGraphicDefinition,
-	semiCircleGraphicDefinition,
-	quarterCircleGraphicDefinition,
-	dropGraphicDefinition,
-	leafGraphicDefinition,
-	petalGraphicDefinition,
-	blobGraphicDefinition,
-	zigzagGraphicDefinition,
-	swirlGraphicDefinition,
-	straightLineGraphicDefinition,
-	dashedLineGraphicDefinition,
-	dottedLineGraphicDefinition,
-	curvedPathGraphicDefinition,
-	doubleArrowGraphicDefinition,
-	curvedArrowGraphicDefinition,
-	doubleChevronGraphicDefinition,
-	thoughtBubbleGraphicDefinition,
-	calloutLabelGraphicDefinition,
-	bracketGraphicDefinition,
-	checkmarkGraphicDefinition,
-	lightningBoltGraphicDefinition,
 };
 export { STROKE_ALIGN_PARAM } from "./shared";

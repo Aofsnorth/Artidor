@@ -42,6 +42,10 @@ export class AudioManager {
 		AsyncGenerator<WrappedAudioBuffer, void, unknown>
 	>();
 	private queuedSources = new Set<AudioBufferSourceNode>();
+	// Per-clip context-time cursor: the time the last scheduled buffer of this
+	// clip ends. A new buffer may not start before this — structurally forbids
+	// the same clip's buffers from overlapping (the freeze "explosion").
+	private clipScheduleCursor = new Map<string, number>();
 	private preparedClipBuffers = new Map<string, Promise<AudioBuffer | null>>();
 	private decodedBuffers = new Map<string, Promise<AudioBuffer | null>>();
 	private playbackSessionId = 0;
@@ -54,6 +58,7 @@ export class AudioManager {
 	private activeClipGains = new Map<string, Set<GainNode>>();
 	private scrubRestartTimer: number | null = null;
 	private static readonly SCRUB_RESTART_DEBOUNCE_MS = 60;
+	private static readonly MAX_AUDIO_CATCH_UP_SECONDS = 0.05;
 
 	getAnalysers(): { left: AnalyserNode | null; right: AnalyserNode | null } {
 		return { left: this.analyserLeft, right: this.analyserRight };
@@ -415,6 +420,7 @@ export class AudioManager {
 		}
 		this.queuedSources.clear();
 		this.activeClipGains.clear();
+		this.clipScheduleCursor.clear();
 	}
 
 	private clearScrubRestartTimer(): void {
@@ -477,10 +483,44 @@ export class AudioManager {
 					});
 				if (timelineTime >= clipEnd) break;
 
+				const startTimestamp =
+					this.playbackStartContextTime +
+					this.playbackLatencyCompensationSeconds +
+					(timelineTime - this.playbackStartTime);
+
+				// Overlap guard: never let this clip's next buffer start before its
+				// previous buffer has finished. Without this, a UI freeze makes a
+				// batch of late buffers all land at ~currentTime and sum into a loud
+				// burst. We allow a tiny epsilon for normal back-to-back scheduling.
+				const cursor = this.clipScheduleCursor.get(clip.id) ?? 0;
+				const intendedStart =
+					startTimestamp >= audioContext.currentTime
+						? startTimestamp
+						: audioContext.currentTime;
+				if (intendedStart + 0.001 < cursor) {
+					// Would overlap the previous buffer of this same clip — drop it.
+					consecutiveDroppedBufferCount += 1;
+					if (consecutiveDroppedBufferCount >= 5) {
+						const resyncStartTime = this.getPlaybackTime();
+						this.clipIterators.delete(clip.id);
+						this.clipScheduleCursor.delete(clip.id);
+						void this.runClipIterator({
+							clip,
+							startTime: resyncStartTime,
+							sessionId,
+						});
+						return;
+					}
+					continue;
+				}
+
 				const node = audioContext.createBufferSource();
 				node.buffer = buffer;
+				const playbackRate = clip.retime
+					? clampRetimeRate({ rate: clip.retime.rate })
+					: 1;
 				if (clip.retime) {
-					node.playbackRate.value = clampRetimeRate({ rate: clip.retime.rate });
+					node.playbackRate.value = playbackRate;
 				}
 				const clipGain = audioContext.createGain();
 				const trackSlider =
@@ -490,20 +530,34 @@ export class AudioManager {
 				clipGain.connect(this.masterGain ?? audioContext.destination);
 				this.registerClipGain({ clipId: clip.id, gain: clipGain });
 
-				const startTimestamp =
-					this.playbackStartContextTime +
-					this.playbackLatencyCompensationSeconds +
-					(timelineTime - this.playbackStartTime);
-
 				if (startTimestamp >= audioContext.currentTime) {
 					node.start(startTimestamp);
+					this.clipScheduleCursor.set(
+						clip.id,
+						startTimestamp + buffer.duration / playbackRate,
+					);
 					consecutiveDroppedBufferCount = 0;
 				} else {
 					const offset = audioContext.currentTime - startTimestamp;
-					if (offset < buffer.duration) {
+					// Only nudge a *marginally* late buffer to play now. After a UI
+					// freeze the iterator's pending buffers all resolve at once, each
+					// already late; if every one is crammed to start at currentTime
+					// they overlap into a loud burst ("explosion"). So we cap how late
+					// a buffer may be before we drop it instead — dropped buffers count
+					// toward the resync below, which restarts the iterator at the
+					// correct (post-freeze) source time.
+					if (offset <= AudioManager.MAX_AUDIO_CATCH_UP_SECONDS) {
 						node.start(audioContext.currentTime, offset);
+						this.clipScheduleCursor.set(
+							clip.id,
+							audioContext.currentTime +
+								Math.max(0, buffer.duration - offset) / playbackRate,
+						);
 						consecutiveDroppedBufferCount = 0;
 					} else {
+						node.disconnect();
+						clipGain.disconnect();
+						this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
 						consecutiveDroppedBufferCount += 1;
 						if (consecutiveDroppedBufferCount >= 5) {
 							const nextCompensationSeconds = Math.max(
@@ -519,6 +573,7 @@ export class AudioManager {
 							}
 							const resyncStartTime = this.getPlaybackTime();
 							this.clipIterators.delete(clip.id);
+							this.clipScheduleCursor.delete(clip.id);
 							void this.runClipIterator({
 								clip,
 								startTime: resyncStartTime,
@@ -606,6 +661,14 @@ export class AudioManager {
 			node.start(startTimestamp, clipOffset);
 		} else {
 			const lateOffset = audioContext.currentTime - startTimestamp;
+			// Same freeze-burst guard as the streaming path: if this prepared clip
+			// is grossly late (UI froze past our catch-up budget), don't slam it in
+			// at currentTime — that stacks against whatever should be playing now.
+			// Skip it; the next schedule pass starts a fresh node at the right spot.
+			if (lateOffset > AudioManager.MAX_AUDIO_CATCH_UP_SECONDS) {
+				this.activeClipIds.delete(clip.id);
+				return;
+			}
 			actualStartTimestamp = audioContext.currentTime;
 			actualClipOffset = clipOffset + lateOffset;
 			node.start(actualStartTimestamp, actualClipOffset);

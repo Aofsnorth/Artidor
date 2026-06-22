@@ -1,6 +1,7 @@
 import type { GraphicDefinition } from "../types";
 import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 
 /**
  * Freehand drawing definition — stores an SVG path string as a "pathData"
@@ -77,8 +78,7 @@ export const freehandDefinition: GraphicDefinition = {
 
 		const closed = params.closed as boolean;
 		if (closed && fill && start === 0 && end === 100) {
-			ctx.fillStyle = fill;
-			ctx.fill(path);
+			fillShapePath({ ctx, path, fill, width, height });
 		}
 
 		if (stroke && strokeWidth > 0) {

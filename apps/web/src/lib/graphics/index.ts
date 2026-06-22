@@ -3,6 +3,7 @@ import type { ParamValues } from "@/lib/params";
 import { graphicsRegistry } from "./registry";
 import {
 	registerDefaultGraphics,
+	GRAPHIC_ID_ALIASES,
 	ellipseGraphicDefinition,
 	polygonGraphicDefinition,
 	rectangleGraphicDefinition,
@@ -43,7 +44,17 @@ export function getGraphicDefinition({
 	definitionId: string;
 }): GraphicDefinition {
 	registerDefaultGraphics();
-	return graphicsRegistry.get(definitionId);
+	if (graphicsRegistry.has(definitionId)) {
+		return graphicsRegistry.get(definitionId);
+	}
+	// Back-compat: a saved project may reference a graphic id that was removed
+	// in the placeholder purge. Resolve via alias, else fall back to rectangle
+	// so the render path never throws on an unknown id.
+	const aliasId = GRAPHIC_ID_ALIASES[definitionId];
+	if (aliasId && graphicsRegistry.has(aliasId)) {
+		return graphicsRegistry.get(aliasId);
+	}
+	return rectangleGraphicDefinition;
 }
 
 export function buildDefaultGraphicInstance({

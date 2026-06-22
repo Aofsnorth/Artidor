@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor } from "@/hooks/use-editor";
+import { FpsMonitor } from "@/components/editor/fps-monitor";
 
 import { useEffect, useRef } from "react";
 
@@ -70,6 +71,7 @@ export function EditorFooter() {
 						--:--:--
 					</span>
 				</div>
+				<FpsMonitor />
 			</div>
 
 			<div className="pointer-events-none absolute left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full border border-cyan-300/[0.16] bg-cyan-300/[0.055] px-3 py-1 text-[0.56rem] font-semibold uppercase tracking-[0.2em] text-cyan-100/[0.72] shadow-[0_0_18px_rgba(34,211,238,0.08)]">

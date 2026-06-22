@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import type { GraphicDefinition } from "../types";
 
@@ -21,8 +22,7 @@ export const circleGraphicDefinition: GraphicDefinition = {
 		const radius = Math.max(1, Math.min(width, height) / 2 - inset);
 		path.arc(cx, cy, radius, 0, Math.PI * 2);
 		
-		ctx.fillStyle = fill;
-		ctx.fill(path);
+		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

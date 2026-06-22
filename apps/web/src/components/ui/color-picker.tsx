@@ -27,22 +27,56 @@ import {
 	parseColorInput,
 	parseHexAlpha,
 } from "@/utils/color";
+import { useColorPaletteStore } from "@/stores/color-palette-store";
+import {
+	COLOR_PALETTES,
+	GRADIENT_PRESETS,
+} from "@/lib/presets/color-palettes";
 
 interface ColorPickerProps {
 	value?: string;
 	onChange?: (value: string) => void;
 	onChangeEnd?: (value: string) => void;
 	className?: string;
+	/** When true, the "Saved" tab offers gradient presets. Only enable for
+	 * consumers whose render path can paint a CSS gradient string (graphic
+	 * shape fill). Solid swatches/recents are always available. */
+	allowGradient?: boolean;
 }
 
 const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
-	({ className, value = "FFFFFF", onChange, onChangeEnd, ...props }, ref) => {
+	(
+		{
+			className,
+			value = "FFFFFF",
+			onChange,
+			onChangeEnd,
+			allowGradient = false,
+			...props
+		},
+		ref,
+	) => {
+		const valueIsGradient = /gradient\s*\(/i.test(value);
+
 		const [isDragging, setIsDragging] = useState<
 			"saturation" | "hue" | "opacity" | null
 		>(null);
+		// Live saturation/value thumb position during a drag. Decoupled from the
+		// `value` round-trip so the ring follows the cursor exactly even if a
+		// consumer debounces `onChange` or the color collapses to black (v=0,
+		// where hue/saturation are undefined and the ring would otherwise jump).
+		const [satDrag, setSatDrag] = useState<{ s: number; v: number } | null>(
+			null,
+		);
 		const [internalHue, setInternalHue] = useState(0);
 		const [inputValue, setInputValue] = useState(value);
 		const [colorFormat, setColorFormat] = useState<ColorFormat>("hex");
+		const [mode, setMode] = useState<"custom" | "saved">(
+			valueIsGradient ? "saved" : "custom",
+		);
+
+		const recentColors = useColorPaletteStore((s) => s.recentColors);
+		const addRecentColor = useColorPaletteStore((s) => s.addRecentColor);
 
 		const saturationRef = useRef<HTMLButtonElement>(null);
 		const hueRef = useRef<HTMLButtonElement>(null);
@@ -52,7 +86,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 		const isEyeDropperSupported =
 			typeof window !== "undefined" && "EyeDropper" in window;
 
-		const { rgb: rgbValue, alpha } = parseHexAlpha({ hex: value });
+		const { rgb: rgbValue, alpha } = parseHexAlpha({
+			hex: valueIsGradient ? "FFFFFF" : value,
+		});
 		const [h, s, v] = hexToHsv({ hex: rgbValue });
 
 		const handleEyeDropper = async () => {
@@ -68,6 +104,15 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 				// user cancelled the picker
 			}
 		};
+		// Apply a swatch (recent or palette). Records to the recents MRU.
+		const selectSwatch = (hex: string) => {
+			const rgbHex = hex.replace("#", "").toLowerCase();
+			const finalHex = appendAlpha({ rgbHex, alpha });
+			addRecentColor(rgbHex);
+			onChange?.(finalHex);
+			onChangeEnd?.(finalHex);
+		};
+
 		const hueDiff = Math.abs(h - internalHue);
 		const isSameHueWrapped = hueDiff < 1 || Math.abs(hueDiff - 360) < 1;
 		const displayHue = s === 0 || isSameHueWrapped ? internalHue : h;
@@ -90,6 +135,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 						0,
 						Math.min(1, (e.clientY - rect.top) / rect.height),
 					);
+					setSatDrag({ s: x, v: 1 - y });
 					const newHex = appendAlpha({
 						rgbHex: hsvToHex({ h: displayHue, s: x, v: 1 - y }),
 						alpha,
@@ -129,11 +175,13 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 			};
 
 			const handleMouseUp = () => {
-				if (latestDragColorRef.current !== null && onChangeEnd) {
-					onChangeEnd(latestDragColorRef.current);
+				if (latestDragColorRef.current !== null) {
+					addRecentColor(latestDragColorRef.current);
+					onChangeEnd?.(latestDragColorRef.current);
 					latestDragColorRef.current = null;
 				}
 				setIsDragging(null);
+				setSatDrag(null);
 			};
 
 			if (isDragging) {
@@ -144,7 +192,17 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 					document.removeEventListener("mouseup", handleMouseUp);
 				};
 			}
-		}, [isDragging, displayHue, s, v, alpha, rgbValue, onChange, onChangeEnd]);
+		}, [
+			isDragging,
+			displayHue,
+			s,
+			v,
+			alpha,
+			rgbValue,
+			onChange,
+			onChangeEnd,
+			addRecentColor,
+		]);
 
 		const handleSaturationMouseDown = (e: React.MouseEvent) => {
 			e.preventDefault();
@@ -154,6 +212,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 			const rect = saturationElement.getBoundingClientRect();
 			const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 			const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+			setSatDrag({ s: x, v: 1 - y });
 			const newHex = appendAlpha({
 				rgbHex: hsvToHex({ h: displayHue, s: x, v: 1 - y }),
 				alpha,
@@ -291,7 +350,11 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							/>
 							<span
 								className="absolute inset-0"
-								style={{ backgroundColor: `#${value}` }}
+								style={
+									valueIsGradient
+										? { background: value }
+										: { backgroundColor: `#${value}` }
+								}
 							/>
 						</button>
 					</PopoverTrigger>
@@ -326,7 +389,10 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 					}}
 				>
 					<header className="border-b flex justify-between items-center pb-2 px-2">
-						<Select defaultValue="custom">
+						<Select
+							value={mode}
+							onValueChange={(next) => setMode(next as "custom" | "saved")}
+						>
 							<SelectTrigger variant="outline">
 								<SelectValue placeholder="Select a mode" />
 							</SelectTrigger>
@@ -353,7 +419,10 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							</PopoverClose>
 						</div>
 					</header>
-					<div className="px-2 flex flex-col gap-3">
+					<div
+						className="px-2 flex flex-col gap-3"
+						hidden={mode !== "custom"}
+					>
 						<button
 							ref={saturationRef}
 							className="relative h-44 aspect-square w-full appearance-none border-0 bg-transparent p-0"
@@ -363,7 +432,10 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 						>
 							<ColorCircle
 								size="sm"
-								position={{ left: `${s * 100}%`, top: `${(1 - v) * 100}%` }}
+								position={{
+									left: `${(satDrag ? satDrag.s : s) * 100}%`,
+									top: `${(1 - (satDrag ? satDrag.v : v)) * 100}%`,
+								}}
 								color={`#${value}`}
 							/>
 						</button>
@@ -439,12 +511,85 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							/>
 						</div>
 					</div>
+
+					{mode === "saved" && (
+						<div className="px-2 flex flex-col gap-3 max-h-72 overflow-y-auto">
+							{recentColors.length > 0 && (
+								<Swatches
+									label="Recent"
+									colors={recentColors}
+									onSelect={selectSwatch}
+								/>
+							)}
+							{COLOR_PALETTES.map((palette) => (
+								<Swatches
+									key={palette.id}
+									label={palette.name}
+									colors={palette.colors}
+									onSelect={selectSwatch}
+								/>
+							))}
+							<div
+								className="flex flex-col gap-1.5"
+								hidden={!allowGradient}
+							>
+								<span className="text-muted-foreground text-[0.7rem] font-medium">
+									Gradients
+								</span>
+								<div className="grid grid-cols-2 gap-1.5">
+									{GRADIENT_PRESETS.map((preset) => (
+										<button
+											key={preset.id}
+											type="button"
+											title={preset.name}
+											className="h-8 rounded-md border border-white/10 transition-transform hover:scale-[1.03]"
+											style={{ background: preset.css }}
+											onClick={() => {
+												onChange?.(preset.css);
+												onChangeEnd?.(preset.css);
+											}}
+										/>
+									))}
+								</div>
+							</div>
+						</div>
+					)}
 				</PopoverContent>
 			</Popover>
 		);
 	},
 );
 ColorPicker.displayName = "ColorPicker";
+
+const Swatches = ({
+	label,
+	colors,
+	onSelect,
+}: {
+	label: string;
+	colors: string[];
+	onSelect: (hex: string) => void;
+}) => (
+	<div className="flex flex-col gap-1.5">
+		<span className="text-muted-foreground text-[0.7rem] font-medium">
+			{label}
+		</span>
+		<div className="flex flex-wrap gap-1.5">
+			{colors.map((color, i) => (
+				<button
+					// biome-ignore lint/suspicious/noArrayIndexKey: swatch lists are static and may repeat a color
+					key={`${color}-${i}`}
+					type="button"
+					title={color}
+					aria-label={`Use ${color}`}
+					className="size-5 rounded-full border border-white/15 transition-transform hover:scale-110"
+					style={{ backgroundColor: color }}
+					onClick={() => onSelect(color)}
+				/>
+			))}
+		</div>
+	</div>
+);
 
 const ColorCircle = ({
 	size,

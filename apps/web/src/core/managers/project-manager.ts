@@ -13,7 +13,10 @@ import {
 	fetchFolderFiles,
 	downloadFileBlob,
 	saveProjectToDrive,
+	createDriveFolder,
+	uploadMediaToDrive,
 } from "@/lib/drive/api";
+import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
 import { processMediaAssets } from "@/lib/media/processing";
 import type { ExportOptions, ExportResult, ExportState } from "@/lib/export";
 import { storageService } from "@/services/storage/service";
@@ -835,9 +838,8 @@ export class ProjectManager {
 			const folderName = folderMeta.name || "Drive Project";
 
 			const files = await fetchFolderFiles(folderId);
-			const artidorFile = files.find(
-				(f) => f.name === "artidor.json" || f.name === "project.json",
-			);
+			const artidorFile = files.find((f) => isArtprFileName(f.name)) ??
+				files.find((f) => f.name === "artidor.json" || f.name === "project.json");
 
 			if (artidorFile) {
 				projectFileId = artidorFile.id;
@@ -848,7 +850,9 @@ export class ProjectManager {
 				);
 				const blob = await downloadFileBlob(artidorFile.id);
 				const text = await blob.text();
-				projectData = JSON.parse(text) as TProject;
+				projectData = isArtprFileName(artidorFile.name)
+					? await decodeArtprProject<TProject>(text)
+					: (JSON.parse(text) as TProject);
 			}
 
 			if (projectData) {
@@ -883,7 +887,7 @@ export class ProjectManager {
 					this.setDriveSyncState(
 						"syncing-assets",
 						50,
-						"Creating artidor.json on Drive...",
+						"Creating artidor.artpr on Drive...",
 					);
 					const driveFileId = await saveProjectToDrive(
 						folderId,
@@ -964,6 +968,86 @@ export class ProjectManager {
 				"error",
 				0,
 				err instanceof Error ? err.message : "Sync failed",
+			);
+			throw err;
+		}
+	}
+
+	/**
+	 * Export To Drive — copy the active project to a brand-new Google Drive
+	 * folder: create the folder, upload every local media asset, then write the
+	 * encrypted `artidor.artpr` project file and link the project to that folder
+	 * so future saves sync there. Useful when a user's local inventory is full
+	 * or they want a Drive-backed copy.
+	 *
+	 * Returns the new Drive folder id. Requires an active project and a live
+	 * Drive token (throws "unauthenticated" otherwise).
+	 */
+	async exportProjectToDrive(): Promise<string> {
+		if (!this.active) {
+			throw new Error("No active project to export");
+		}
+		const token = getGoogleAccessToken();
+		if (!token) {
+			this.setDriveSyncState("error", 0, "Drive unauthenticated");
+			throw new Error("unauthenticated");
+		}
+
+		// Persist the latest edits locally first so the exported copy is current.
+		await this.saveCurrentProject();
+		const project = this.active;
+		if (!project) {
+			throw new Error("No active project to export");
+		}
+
+		try {
+			this.setDriveSyncState("saving", 5, "Creating Drive folder...");
+			const folderName = project.metadata.name || "Artidor Project";
+			const folderId = await createDriveFolder(folderName);
+
+			// Upload local media assets into the new folder.
+			const assets = this.editor.media.getAssets();
+			for (let i = 0; i < assets.length; i++) {
+				const asset = assets[i];
+				if (!asset.file) continue;
+				const pct = Math.round(10 + (i / Math.max(1, assets.length)) * 70);
+				this.setDriveSyncState(
+					"saving",
+					pct,
+					`Uploading ${i + 1}/${assets.length}: ${asset.name}`,
+				);
+				try {
+					await uploadMediaToDrive(folderId, asset.file);
+				} catch (uploadErr) {
+					console.error(`Failed to upload asset ${asset.name}:`, uploadErr);
+				}
+			}
+
+			// Write the encrypted project file and link the project to the folder.
+			this.setDriveSyncState("saving", 85, "Writing project file...");
+			const fileId = await saveProjectToDrive(folderId, null, project);
+
+			if (this.active && this.active.metadata.id === project.metadata.id) {
+				this.active.metadata.googleDriveFolderId = folderId;
+				this.active.metadata.googleDriveFileId = fileId;
+				await storageService.saveProject({ project: this.active });
+				this.updateMetadata(this.active);
+			}
+
+			this.setDriveSyncState("saved", 100, "Exported to Drive");
+			setTimeout(() => {
+				if (this.driveSyncState.status === "saved") {
+					this.setDriveSyncState("idle");
+				}
+			}, 3000);
+
+			return folderId;
+		} catch (err) {
+			console.error("Export to Drive failed:", err);
+			this.setDriveSyncState(
+				"error",
+				0,
+				err instanceof Error ? err.message : "Export failed",
 			);
 			throw err;
 		}

@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import type { GraphicDefinition } from "../types";
 
@@ -38,8 +39,7 @@ export const crescentGraphicDefinition: GraphicDefinition = {
 		const path = new Path2D();
 		path.arc(centerX, centerY, radius, 0, Math.PI * 2);
 		path.arc(centerX + offset, centerY, radius, 0, Math.PI * 2);
-		ctx.fillStyle = fill;
-		ctx.fill(path, "evenodd");
+		fillShapePath({ ctx, path, fill, width, height, fillRule: "evenodd" });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

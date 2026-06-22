@@ -1,5 +1,6 @@
 import type { ParamDefinition } from "@/lib/params";
 import { applyAlignedStroke } from "../stroke";
+import { fillShapePath } from "../fill";
 import { FILL_PARAM, STROKE_PARAMS, readShapeBaseStyle } from "./shared";
 import type { GraphicDefinition } from "../types";
 
@@ -41,8 +42,7 @@ export const cloudGraphicDefinition: GraphicDefinition = {
 		path.arc(x + w * 0.8, y + h * 0.6, h * 0.18, Math.PI * 1.8, Math.PI * 2.5);
 		path.lineTo(x + w * 0.8, baseY);
 		path.closePath();
-		ctx.fillStyle = fill;
-		ctx.fill(path);
+		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {
 			applyAlignedStroke({

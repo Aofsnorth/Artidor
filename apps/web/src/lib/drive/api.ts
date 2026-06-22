@@ -1,3 +1,9 @@
+import {
+	ARTPR_PROJECT_FILE_NAME,
+	ARTPR_PROJECT_MIME,
+	encodeArtprProject,
+} from "@/lib/project-file/artpr";
+
 export function getGoogleClientId(): string | null {
 	if (typeof window === "undefined") return null;
 	const envId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -108,6 +114,26 @@ export function logoutGoogle(): void {
 	}
 }
 
+const OAUTH_STATE_KEY = "google_drive_oauth_state";
+
+/** Cryptographically-random CSRF nonce for the OAuth `state` parameter. */
+function generateOAuthState(): string {
+	const bytes = new Uint8Array(16);
+	crypto.getRandomValues(bytes);
+	const state = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+		"",
+	);
+	// Stash it so the callback page (a separate document) can read and echo it
+	// back, letting us confirm the redirect belongs to this request.
+	try {
+		sessionStorage.setItem(OAUTH_STATE_KEY, state);
+	} catch {
+		// sessionStorage can be unavailable (private mode quota); the in-memory
+		// closure check still applies, so this is best-effort.
+	}
+	return state;
+}
+
 let oauthPromise: {
 	resolve: (token: string) => void;
 	reject: (err: Error) => void;
@@ -132,6 +158,12 @@ export function initiateGoogleOAuth(): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		oauthPromise = { resolve, reject };
 
+		// CSRF protection: a random `state` nonce ties this request to its
+		// callback. Google echoes it back in the redirect; the callback page
+		// returns it in the postMessage and we reject any mismatch. Without
+		// this, a malicious page could postMessage a forged token to the opener.
+		const state = generateOAuthState();
+
 		const redirectUri = `${window.location.origin}/oauth-callback`;
 		const scope =
 			"openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
@@ -139,7 +171,7 @@ export function initiateGoogleOAuth(): Promise<string> {
 			clientId,
 		)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(
 			scope,
-		)}&prompt=consent`;
+		)}&state=${encodeURIComponent(state)}&prompt=consent`;
 
 		const width = 600;
 		const height = 650;
@@ -163,9 +195,25 @@ export function initiateGoogleOAuth(): Promise<string> {
 		}
 
 		const handleMessage = async (event: MessageEvent) => {
+			// Only accept messages from our own origin AND from the popup we
+			// opened — a same-origin iframe/tab can't forge `event.source`.
 			if (event.origin !== window.location.origin) return;
+			if (event.source !== popup) return;
 			if (event.data?.type === "oauth-success") {
-				const { token, expiresIn } = event.data;
+				const { token, expiresIn, state: returnedState } = event.data;
+				// Reject a token whose state doesn't match the one we issued.
+				if (returnedState !== state) {
+					window.removeEventListener("message", handleMessage);
+					reject(new Error("OAuth state mismatch — sign-in rejected."));
+					oauthPromise = null;
+					return;
+				}
+				if (typeof token !== "string" || token.length === 0) {
+					window.removeEventListener("message", handleMessage);
+					reject(new Error("OAuth returned an invalid token."));
+					oauthPromise = null;
+					return;
+				}
 				setGoogleAccessToken(token, expiresIn || 3600);
 				// Best-effort: pull the account profile so the UI can show who's
 				// signed in. Never blocks sign-in if it fails.
@@ -263,7 +311,7 @@ export async function saveProjectToDrive(
 	fileId: string | null,
 	projectData: unknown,
 ): Promise<string> {
-	const projectJson = JSON.stringify(projectData);
+	const projectFile = await encodeArtprProject(projectData);
 
 	if (fileId) {
 		// Update existing file
@@ -272,9 +320,9 @@ export async function saveProjectToDrive(
 			{
 				method: "PATCH",
 				headers: {
-					"Content-Type": "application/json",
+					"Content-Type": ARTPR_PROJECT_MIME,
 				},
-				body: projectJson,
+				body: projectFile,
 			},
 		);
 		if (!res.ok) {
@@ -287,9 +335,9 @@ export async function saveProjectToDrive(
 
 	// Create new file
 	const metadata = {
-		name: "artidor.json",
+		name: ARTPR_PROJECT_FILE_NAME,
 		parents: [folderId],
-		mimeType: "application/json",
+		mimeType: ARTPR_PROJECT_MIME,
 	};
 
 	const boundary = "artidor_multipart_boundary";
@@ -301,8 +349,8 @@ export async function saveProjectToDrive(
 		"Content-Type: application/json; charset=UTF-8\r\n\r\n",
 		JSON.stringify(metadata),
 		delimiter,
-		"Content-Type: application/json\r\n\r\n",
-		projectJson,
+		`Content-Type: ${ARTPR_PROJECT_MIME}\r\n\r\n`,
+		projectFile,
 		closeDelimiter,
 	].join("");
 
@@ -325,4 +373,75 @@ export async function saveProjectToDrive(
 
 	const data = await res.json();
 	return data.id;
+}
+
+/**
+ * Create a new Drive folder (optionally under `parentId`) and return its id.
+ * Used by "Export to Drive" to give a project its own folder.
+ */
+export async function createDriveFolder(
+	name: string,
+	parentId?: string,
+): Promise<string> {
+	const metadata: Record<string, unknown> = {
+		name,
+		mimeType: "application/vnd.google-apps.folder",
+	};
+	if (parentId) metadata.parents = [parentId];
+
+	const res = await driveFetch(
+		"https://www.googleapis.com/drive/v3/files?fields=id",
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(metadata),
+		},
+	);
+	if (!res.ok) {
+		throw new Error(`Failed to create Drive folder: HTTP ${res.status}`);
+	}
+	const data = await res.json();
+	return data.id as string;
+}
+
+/**
+ * Upload a binary media file into a Drive folder. Returns the new file id.
+ * Uses a multipart upload so the metadata (name/parent) and bytes go together.
+ */
+export async function uploadMediaToDrive(
+	folderId: string,
+	file: File,
+): Promise<string> {
+	const metadata = {
+		name: file.name,
+		parents: [folderId],
+	};
+
+	const boundary = "artidor_media_boundary";
+	const delimiter = `\r\n--${boundary}\r\n`;
+	const closeDelimiter = `\r\n--${boundary}--\r\n`;
+	const buffer = await file.arrayBuffer();
+
+	const head =
+		`${delimiter}Content-Type: application/json; charset=UTF-8\r\n\r\n` +
+		`${JSON.stringify(metadata)}` +
+		`${delimiter}Content-Type: ${file.type || "application/octet-stream"}\r\n\r\n`;
+
+	const body = new Blob([head, buffer, closeDelimiter]);
+
+	const res = await driveFetch(
+		"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": `multipart/related; boundary=${boundary}`,
+			},
+			body,
+		},
+	);
+	if (!res.ok) {
+		throw new Error(`Failed to upload "${file.name}" to Drive: HTTP ${res.status}`);
+	}
+	const data = await res.json();
+	return data.id as string;
 }
