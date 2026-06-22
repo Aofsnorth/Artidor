@@ -26,13 +26,15 @@ interface AudioWaveformProps {
 	color?: string;
 	beatColor?: string;
 	symmetric?: boolean;
-	variant?: "waveform" | "beats" | "lines" | "liquid" | "graph";
+	variant?: WaveformVariant;
 	className?: string;
 	trimStartTicks?: number;
 	trimEndTicks?: number;
 	sourceDurationTicks?: number;
 	scale?: number;
 }
+
+export type WaveformVariant = "waveform" | "beats" | "lines" | "liquid" | "graph";
 
 // ---------------------------------------------------------------------------
 // Shared decode cache – keyed by File identity (or URL string).
@@ -566,4 +568,200 @@ function drawRoundedBar({
 	ctx.beginPath();
 	ctx.roundRect(x, y, width, height, radius);
 	ctx.fill();
+}
+
+// Graph variant: smooth continuous line through all peaks (like a DAW display).
+function drawGraphVariant({
+	ctx,
+	peaks,
+	barStep,
+	maxBarHeight,
+	scale,
+	symmetric,
+	height,
+	centerY,
+	color,
+	beatColor,
+	logBase,
+}: {
+	ctx: CanvasRenderingContext2D;
+	peaks: number[];
+	barStep: number;
+	maxBarHeight: number;
+	scale: number;
+	symmetric: boolean;
+	height: number;
+	centerY: number;
+	color: string;
+	beatColor: string;
+	logBase: number;
+	visibleWidth: number;
+}) {
+	if (peaks.length === 0) return;
+	const safePeak = 1.0;
+
+	// Compute y-values for each peak
+	const points: { x: number; y: number; intensity: number }[] = [];
+	for (let i = 0; i < peaks.length; i++) {
+		const normalized = Math.min(1, peaks[i] / safePeak);
+		const scaled = Math.log1p(normalized) / logBase;
+		const finalAmp = normalized * scale;
+		const barH = Math.max(1, scaled * maxBarHeight);
+		const x = i * barStep;
+		const y = symmetric ? centerY - barH : height - barH;
+		points.push({ x, y, intensity: finalAmp });
+	}
+
+	// Build the smoothed polyline (top edge of the waveform)
+	ctx.beginPath();
+	const firstPoint = points[0];
+	if (!firstPoint) return;
+	ctx.moveTo(firstPoint.x, symmetric ? height - firstPoint.y + centerY : height);
+
+	for (let i = 0; i < points.length; i++) {
+		const p = points[i];
+		const next = points[i + 1];
+		if (!next) {
+			ctx.lineTo(p.x, symmetric ? centerY + (centerY - p.y) : height);
+			continue;
+		}
+		// Smooth cubic interpolation between adjacent peaks (Catmull-Rom-ish)
+		const prev = points[Math.max(0, i - 1)];
+		const after = points[Math.min(points.length - 1, i + 2)];
+		if (!prev || !after) {
+			ctx.lineTo(p.x, p.y);
+			continue;
+		}
+		const cpX = (p.x + next.x) / 2;
+		ctx.bezierCurveTo(cpX, p.y, cpX, next.y, next.x, next.y);
+	}
+
+	// Close path to baseline for fill
+	const lastPoint = points[points.length - 1];
+	if (lastPoint) {
+		ctx.lineTo(lastPoint.x, symmetric ? centerY + (centerY - lastPoint.y) : height);
+	}
+	if (symmetric) {
+		// Mirror the path across center
+		ctx.lineTo(-1, centerY);
+		ctx.lineTo(-1, centerY);
+	} else {
+		ctx.lineTo(0, height);
+	}
+	ctx.closePath();
+
+	// Stroke the outline with a soft glow
+	ctx.strokeStyle = color;
+	ctx.lineWidth = 1;
+	ctx.shadowColor = color;
+	ctx.shadowBlur = 2;
+	ctx.stroke();
+
+	// Subtle fill beneath
+	ctx.fillStyle = beatColor;
+	ctx.globalAlpha = 0.08;
+	ctx.fill();
+	ctx.globalAlpha = 1;
+	ctx.shadowBlur = 0;
+}
+
+// Liquid variant: continuous smooth waveform filled with vertical gradient.
+// Heavy (slow if used on every clip), but visually rich for featured clips.
+function drawLiquidVariant({
+	ctx,
+	peaks,
+	barStep,
+	maxBarHeight,
+	scale,
+	symmetric,
+	height,
+	centerY,
+	color,
+	beatColor,
+	logBase,
+}: {
+	ctx: CanvasRenderingContext2D;
+	peaks: number[];
+	barStep: number;
+	maxBarHeight: number;
+	scale: number;
+	symmetric: boolean;
+	height: number;
+	centerY: number;
+	color: string;
+	beatColor: string;
+	logBase: number;
+	visibleWidth: number;
+}) {
+	if (peaks.length === 0) return;
+	const safePeak = 1.0;
+
+	// Compute baseline + smoothed top edge for a continuous wave
+	const points: { x: number; y: number }[] = [];
+	for (let i = 0; i < peaks.length; i++) {
+		const normalized = Math.min(1, peaks[i] / safePeak);
+		const scaled = Math.log1p(normalized) / logBase;
+		const barH = Math.max(1, scaled * maxBarHeight);
+		const x = i * barStep;
+		const y = symmetric ? centerY - barH : height - barH;
+		points.push({ x, y });
+	}
+
+	// Build smooth bezier path along the top edge
+	ctx.beginPath();
+	const firstPoint = points[0];
+	if (!firstPoint) return;
+	ctx.moveTo(firstPoint.x, symmetric ? centerY + (centerY - firstPoint.y) : height);
+
+	for (let i = 0; i < points.length - 1; i++) {
+		const p = points[i];
+		const next = points[i + 1];
+		if (!next) break;
+		const cpX = (p.x + next.x) / 2;
+		ctx.bezierCurveTo(cpX, p.y, cpX, next.y, next.x, next.y);
+	}
+
+	// Build mirrored bottom edge to close the shape
+	const lastPoint = points[points.length - 1];
+	if (!lastPoint) return;
+	if (symmetric) {
+		ctx.lineTo(lastPoint.x, lastPoint.y + (lastPoint.y - centerY) * -1 + (height - centerY));
+		// Top edge in reverse for symmetric wave
+		for (let i = points.length - 1; i > 0; i--) {
+			const p = points[i];
+			const prev = points[i - 1];
+			if (!prev) continue;
+			const cpX = (p.x + prev.x) / 2;
+			const mirrorY = centerY + (centerY - p.y);
+			const mirrorPrevY = centerY + (centerY - prev.y);
+			ctx.bezierCurveTo(cpX, mirrorY, cpX, mirrorPrevY, prev.x, mirrorPrevY);
+		}
+	} else {
+		ctx.lineTo(lastPoint.x, height);
+	}
+	ctx.closePath();
+
+	// Vertical gradient fill from baseline up to top of wave
+	const gradient = ctx.createLinearGradient(0, height, 0, 0);
+	gradient.addColorStop(0, `${color}00`); // transparent at bottom
+	gradient.addColorStop(1, `${beatColor}cc`); // bright at top
+	ctx.fillStyle = gradient;
+	ctx.fill();
+
+	// Bright top stroke
+	ctx.beginPath();
+	ctx.moveTo(firstPoint.x, firstPoint.y);
+	for (let i = 0; i < points.length - 1; i++) {
+		const p = points[i];
+		const next = points[i + 1];
+		if (!next) break;
+		const cpX = (p.x + next.x) / 2;
+		ctx.bezierCurveTo(cpX, p.y, cpX, next.y, next.x, next.y);
+	}
+	ctx.strokeStyle = beatColor;
+	ctx.lineWidth = 1;
+	ctx.shadowColor = beatColor;
+	ctx.shadowBlur = 4;
+	ctx.stroke();
+	ctx.shadowBlur = 0;
 }
