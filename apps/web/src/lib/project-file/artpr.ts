@@ -56,7 +56,7 @@ async function deriveArtprKey({
 }): Promise<CryptoKey> {
 	const material = await crypto.subtle.importKey(
 		"raw",
-		new TextEncoder().encode(ARTPR_APP_SECRET),
+		new TextEncoder().encode(ARTPR_APP_SECRET) as BufferSource,
 		"PBKDF2",
 		false,
 		["deriveKey"],
@@ -65,7 +65,7 @@ async function deriveArtprKey({
 		{
 			name: "PBKDF2",
 			hash: "SHA-256",
-			salt,
+			salt: salt as BufferSource,
 			iterations,
 		},
 		material,
@@ -101,9 +101,9 @@ export async function encodeArtprProject(project: unknown): Promise<string> {
 	const key = await deriveArtprKey({ salt, iterations: ARTPR_ITERATIONS });
 	const plaintext = new TextEncoder().encode(JSON.stringify(project));
 	const ciphertext = await crypto.subtle.encrypt(
-		{ name: "AES-GCM", iv },
+		{ name: "AES-GCM", iv: iv as BufferSource },
 		key,
-		plaintext,
+		plaintext as BufferSource,
 	);
 	const envelope: ArtprEnvelope = {
 		format: ARTPR_FORMAT,
@@ -129,9 +129,9 @@ export async function decodeArtprProject<T = unknown>(content: string): Promise<
 	});
 	try {
 		const plaintext = await crypto.subtle.decrypt(
-			{ name: "AES-GCM", iv },
+			{ name: "AES-GCM", iv: iv as BufferSource },
 			key,
-			data,
+			data as BufferSource,
 		);
 		return JSON.parse(new TextDecoder().decode(plaintext)) as T;
 	} catch {

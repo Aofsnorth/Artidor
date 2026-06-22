@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-22-seek-cancellation-and-drag-fixes",
+		date: "2026-06-22",
+		tag: "fix",
+		title: "Timeline scrub responsiveness and drag layering fixes",
+		items: [
+			"Video preview scrubbing now cancels stale seeks — rapid scrubbing no longer wastes decode time on frames the user has already scrubbed past.",
+			"Dragging an element across tracks now renders above other tracks instead of being trapped under them.",
+			"Fixed VideoSample leaks in video thumbnail generation and reverse video processing — resources are now properly disposed after use.",
+		],
+	},
+	{
 		id: "2026-06-22-real-asset-library-cleanup",
 		date: "2026-06-22",
 		tag: "improvement",

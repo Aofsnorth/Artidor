@@ -210,7 +210,8 @@ async function resolveVideoNode({
 	const frame = await videoCache.getFrameAt({
 		mediaId: node.params.mediaId,
 		file: node.params.file,
-		time: mediaTimeToSeconds({ time: sourceTimeTicks }),
+		// Round to integer ticks — WASM mediaTimeToSeconds expects an i64, not float.
+		time: mediaTimeToSeconds({ time: Math.round(sourceTimeTicks) }),
 		maxDim: context.renderer.maxSourceDim,
 	});
 	if (!frame) {
@@ -440,7 +441,7 @@ async function resolveBackdropSource({
 		const frame = await videoCache.getFrameAt({
 			mediaId: node.params.mediaId,
 			file: node.params.file,
-			time: mediaTimeToSeconds({ time: sourceTimeTicks }),
+			time: mediaTimeToSeconds({ time: Math.round(sourceTimeTicks) }),
 			maxDim,
 		});
 		if (!frame) {

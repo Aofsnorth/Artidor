@@ -348,7 +348,9 @@ function CopyButton({ value }: { value: string }) {
 }
 
 function formatTimelineTime({ ticks }: { ticks: number }): string {
-	const seconds = mediaTimeToSeconds({ time: ticks });
+	// Round ticks to integer to avoid WASM i64 type errors
+	const roundedTicks = Math.round(ticks);
+	const seconds = mediaTimeToSeconds({ time: roundedTicks });
 	if (seconds < 1) {
 		// sub-second precision
 		return `${(seconds * 1000).toFixed(0)} ms`;
