@@ -7,6 +7,7 @@ import {
 	CloudUploadIcon,
 	GoogleIcon,
 	TransitionTopIcon,
+	FileExportIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -91,6 +92,30 @@ export function ExportButton() {
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const exportState = useEditor((e) => e.project.getExportState());
 	const hasProject = !!activeProject;
+
+	// Check for pending export from /project page
+	useEffect(() => {
+		if (!hasProject) return;
+		const stored = localStorage.getItem("artidor-pending-export");
+		if (!stored) return;
+		localStorage.removeItem("artidor-pending-export");
+		try {
+			const settings = JSON.parse(stored) as {
+				format?: string;
+				quality?: string;
+				includeAudio?: boolean;
+				saveToDrive?: boolean;
+			};
+			// Store settings for the popover to read
+			localStorage.setItem(
+				"artidor-export-prefs",
+				JSON.stringify(settings),
+			);
+			setIsExportPopoverOpen(true);
+		} catch {
+			// ignore invalid stored data
+		}
+	}, [hasProject]);
 
 	// Auto-close the popover when export starts so only the blocking modal is visible
 	useEffect(() => {
@@ -208,14 +233,36 @@ function ExportPopover({
 	const activeProject = useEditor((e) => e.project.getActive());
 	const exportState = useEditor((e) => e.project.getExportState());
 	const { result: exportResult } = exportState;
+
+	// Read stored preferences from /project page export dialog
+	const storedPrefs = (() => {
+		try {
+			const raw = localStorage.getItem("artidor-export-prefs");
+			if (raw) {
+				localStorage.removeItem("artidor-export-prefs");
+				return JSON.parse(raw) as {
+					format?: ExportFormat;
+					quality?: ExportQuality;
+					includeAudio?: boolean;
+					saveToDrive?: boolean;
+				};
+			}
+		} catch {}
+		return null;
+	})();
+
 	const [format, setFormat] = useState<ExportFormat>(
-		DEFAULT_EXPORT_OPTIONS.format,
+		storedPrefs?.format && isExportFormat(storedPrefs.format)
+			? storedPrefs.format
+			: DEFAULT_EXPORT_OPTIONS.format,
 	);
 	const [quality, setQuality] = useState<ExportQuality>(
-		DEFAULT_EXPORT_OPTIONS.quality,
+		storedPrefs?.quality && isExportQuality(storedPrefs.quality)
+			? storedPrefs.quality
+			: DEFAULT_EXPORT_OPTIONS.quality,
 	);
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
-		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
+		storedPrefs?.includeAudio ?? DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
 	const filename = `${activeProject.metadata.name}${getExportFileExtension({ format })}`;
 	const mimeType = getExportMimeType({ format });
@@ -457,6 +504,7 @@ function ExportPopover({
 								export
 							</Button>
 							<ExportToDriveButton onDone={() => onOpenChange(false)} />
+							<ExportProjectFileButton onDone={() => onOpenChange(false)} />
 						</div>
 					</div>
 				</>
@@ -520,21 +568,24 @@ function ExportResultCard({
 				</p>
 			</div>
 
-			<div className="flex gap-2">
-				<Button
-					variant="outline"
-					className="h-9 flex-1 border-stone-800 text-xs text-stone-300 hover:bg-stone-900"
-					onClick={onNewExport}
-				>
-					New export
-				</Button>
-				<Button
-					className="h-9 flex-1 gap-2 bg-[#FAF8F5] text-xs text-black hover:bg-white"
-					onClick={handleDownload}
-				>
-					<Download className="size-3.5" />
-					Download
-				</Button>
+			<div className="flex flex-col gap-2">
+				<div className="flex gap-2">
+					<Button
+						variant="outline"
+						className="h-9 flex-1 border-stone-800 text-xs text-stone-300 hover:bg-stone-900"
+						onClick={onNewExport}
+					>
+						New export
+					</Button>
+					<Button
+						className="h-9 flex-1 gap-2 bg-[#FAF8F5] text-xs text-black hover:bg-white"
+						onClick={handleDownload}
+					>
+						<Download className="size-3.5" />
+						Download
+					</Button>
+				</div>
+				<ExportToDriveButton onDone={() => {}} />
 			</div>
 		</div>
 	);
@@ -612,6 +663,47 @@ function ExportToDriveButton({ onDone }: { onDone: () => void }) {
 				className="size-3.5"
 			/>
 			{busy ? "Exporting to Drive…" : "Export to Drive"}
+		</Button>
+	);
+}
+
+function ExportProjectFileButton({ onDone }: { onDone: () => void }) {
+	const editor = useEditor();
+	const activeProject = useEditor((e) => e.project.getActive());
+	const [busy, setBusy] = useState(false);
+
+	const handleExportProjectFile = async () => {
+		if (!activeProject) return;
+		setBusy(true);
+		try {
+			await editor.project.saveCurrentProject();
+			const { exportProject } = await import("@/lib/project/file");
+			exportProject(activeProject);
+			toast.success("Project file exported");
+			onDone();
+		} catch {
+			toast.error("Failed to export project file");
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<Button
+			variant="outline"
+			disabled={busy}
+			onClick={handleExportProjectFile}
+			className={cn(
+				"w-full gap-2 rounded-lg border-stone-800 py-4 text-stone-300",
+				"hover:bg-stone-900/50 hover:text-white transition-colors",
+				"font-sans text-[11px] uppercase tracking-wider",
+			)}
+		>
+			<HugeiconsIcon
+				icon={FileExportIcon}
+				className="size-3.5"
+			/>
+			{busy ? "Exporting…" : "Export Project File"}
 		</Button>
 	);
 }

@@ -2,6 +2,7 @@ import type { TProject } from "@/lib/project/types";
 import type { UserPreset } from "@/lib/presets/types";
 import { getProjectDurationFromScenes } from "@/lib/scenes";
 import { generateUUID } from "@/utils/id";
+import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
 
 export type ArtidorFileKind = "artidor-project" | "artidor-preset";
 
@@ -20,12 +21,21 @@ export function exportProject(project: TProject) {
 }
 
 export async function importProject(file: File): Promise<TProject> {
-	const data = await parseArtidorFile<TProject>({
-		file,
-		kind: "artidor-project",
-	});
+	const isArtpr = isArtprFileName(file.name);
+	let rawProject: TProject;
+
+	if (isArtpr) {
+		rawProject = await decodeArtprProject<TProject>(await file.text());
+	} else {
+		const data = await parseArtidorFile<TProject>({
+			file,
+			kind: "artidor-project",
+		});
+		rawProject = data.payload;
+	}
+
 	const now = new Date();
-	const project = reviveProjectDates(data.payload);
+	const project = reviveProjectDates(rawProject);
 	return {
 		...project,
 		metadata: {
@@ -137,4 +147,55 @@ function reviveProjectDates(project: TProject): TProject {
 			updatedAt: new Date(scene.updatedAt),
 		})),
 	};
+}
+
+export interface ImportedMediaRef {
+	mediaId: string;
+	name: string;
+	type: "video" | "audio" | "image";
+	duration: number;
+}
+
+export function collectMediaRefs(project: TProject): ImportedMediaRef[] {
+	const seen = new Set<string>();
+	const refs: ImportedMediaRef[] = [];
+
+	for (const scene of project.scenes) {
+		const allTracks = [
+			...scene.tracks.main,
+			...scene.tracks.overlay,
+			...scene.tracks.audio,
+		];
+		for (const track of allTracks) {
+			for (const element of track.elements) {
+				if (!("mediaId" in element) || !element.mediaId) continue;
+				if (seen.has(element.mediaId)) continue;
+				seen.add(element.mediaId);
+
+				const el = element as {
+					mediaId: string;
+					name?: string;
+					type: string;
+					duration: number;
+				};
+				const mediaType =
+					el.type === "video"
+						? "video"
+						: el.type === "audio"
+							? "audio"
+							: el.type === "image"
+								? "image"
+								: null;
+				if (!mediaType) continue;
+
+				refs.push({
+					mediaId: el.mediaId,
+					name: el.name || `Media ${el.mediaId.slice(0, 6)}`,
+					type: mediaType,
+					duration: el.duration,
+				});
+			}
+		}
+	}
+	return refs;
 }
