@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-audio-meter-revert-overlay-labels",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Audio meter reverted to DAW-style overlay dB scale",
+		items: [
+			"Vertical audio meter dB scale reverted to the earlier overlay-on-bar design (11 marks every 6 dB, from 0 down to -60). The dedicated left-column layout that was introduced in the previous entry felt too sparse and pulled the channel bars into a narrower strip — the DAW-style absolute overlay reads more clearly on a short meter column and matches how audio engineers expect a meter to look.",
+			"Channel bar fill, peak tick, clip indicator, and DIM toggle are unchanged. The ChannelBar wrapper now has min-h-0 so the dB scale (and the bar gradient fill) properly fills the column instead of clipping when the meter is short.",
+		],
+	},
+	{
 		id: "2026-06-24-renderer-pipeline-canvas-coords",
 		date: "2026-06-24",
 		tag: "fix",
