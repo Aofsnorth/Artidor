@@ -44,8 +44,7 @@ const SHARPEN_SHADER_ID: &str = "sharpen";
 const SHARPEN_SHADER_SOURCE: &str = include_str!("shaders/sharpen.wgsl");
 
 const CHROMATIC_ABERRATION_SHADER_ID: &str = "chromatic-aberration";
-const CHROMATIC_ABERRATION_SHADER_SOURCE: &str =
-    include_str!("shaders/chromatic-aberration.wgsl");
+const CHROMATIC_ABERRATION_SHADER_SOURCE: &str = include_str!("shaders/chromatic-aberration.wgsl");
 
 const CHROMA_KEY_SHADER_ID: &str = "chroma-key";
 const CHROMA_KEY_SHADER_SOURCE: &str = include_str!("shaders/chroma-key.wgsl");
@@ -471,41 +470,41 @@ impl EffectPipeline {
                     label: Some("effects-blacks-shader"),
                     source: wgpu::ShaderSource::Wgsl(BLACKS_SHADER_SOURCE.into()),
                 });
-		let color_wheels_shader_module =
-			context
-				.device()
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: Some("effects-color-wheels-shader"),
-					source: wgpu::ShaderSource::Wgsl(COLOR_WHEELS_SHADER_SOURCE.into()),
-				});
-		let velocity_blur_shader_module =
-			context
-				.device()
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: Some("effects-velocity-blur-shader"),
-					source: wgpu::ShaderSource::Wgsl(VELOCITY_BLUR_SHADER_SOURCE.into()),
-				});
-		let stroke_shader_module =
-			context
-				.device()
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: Some("effects-stroke-shader"),
-					source: wgpu::ShaderSource::Wgsl(STROKE_SHADER_SOURCE.into()),
-				});
-		let drop_shadow_shader_module =
-			context
-				.device()
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: Some("effects-drop-shadow-shader"),
-					source: wgpu::ShaderSource::Wgsl(DROP_SHADOW_SHADER_SOURCE.into()),
-				});
-		let outer_glow_shader_module =
-			context
-				.device()
-				.create_shader_module(wgpu::ShaderModuleDescriptor {
-					label: Some("effects-outer-glow-shader"),
-					source: wgpu::ShaderSource::Wgsl(OUTER_GLOW_SHADER_SOURCE.into()),
-				});
+        let color_wheels_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-color-wheels-shader"),
+                    source: wgpu::ShaderSource::Wgsl(COLOR_WHEELS_SHADER_SOURCE.into()),
+                });
+        let velocity_blur_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-velocity-blur-shader"),
+                    source: wgpu::ShaderSource::Wgsl(VELOCITY_BLUR_SHADER_SOURCE.into()),
+                });
+        let stroke_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-stroke-shader"),
+                    source: wgpu::ShaderSource::Wgsl(STROKE_SHADER_SOURCE.into()),
+                });
+        let drop_shadow_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-drop-shadow-shader"),
+                    source: wgpu::ShaderSource::Wgsl(DROP_SHADOW_SHADER_SOURCE.into()),
+                });
+        let outer_glow_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-outer-glow-shader"),
+                    source: wgpu::ShaderSource::Wgsl(OUTER_GLOW_SHADER_SOURCE.into()),
+                });
 
         let pipeline_layout =
             context
@@ -520,87 +519,224 @@ impl EffectPipeline {
                 });
 
         let build_pipeline = |label: &str, module: &wgpu::ShaderModule| {
-            context.device().create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(label),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &vertex_shader_module,
-                    entry_point: Some("vertex_main"),
-                    buffers: &[wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<[f32; 2]>() as u64,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        attributes: &[wgpu::VertexAttribute {
-                            format: wgpu::VertexFormat::Float32x2,
-                            offset: 0,
-                            shader_location: 0,
+            context
+                .device()
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some(label),
+                    layout: Some(&pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &vertex_shader_module,
+                        entry_point: Some("vertex_main"),
+                        buffers: &[wgpu::VertexBufferLayout {
+                            array_stride: std::mem::size_of::<[f32; 2]>() as u64,
+                            step_mode: wgpu::VertexStepMode::Vertex,
+                            attributes: &[wgpu::VertexAttribute {
+                                format: wgpu::VertexFormat::Float32x2,
+                                offset: 0,
+                                shader_location: 0,
+                            }],
                         }],
-                    }],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module,
-                    entry_point: Some("fragment_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: context.texture_format(),
-                        blend: None,
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: wgpu::PipelineCompilationOptions::default(),
-                }),
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            })
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        module,
+                        entry_point: Some("fragment_main"),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: context.texture_format(),
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                        compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    }),
+                    primitive: wgpu::PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview_mask: None,
+                    cache: None,
+                })
         };
 
-        let gaussian_blur_pipeline = build_pipeline("effects-gaussian-blur-pipeline", &gaussian_blur_shader_module);
+        let gaussian_blur_pipeline = build_pipeline(
+            "effects-gaussian-blur-pipeline",
+            &gaussian_blur_shader_module,
+        );
 
         let mut pipelines = HashMap::new();
         pipelines.insert(GAUSSIAN_BLUR_SHADER_ID.to_string(), gaussian_blur_pipeline);
-        pipelines.insert(BRIGHTNESS_SHADER_ID.to_string(), build_pipeline("effects-brightness-pipeline", &brightness_shader_module));
-        pipelines.insert(CONTRAST_SHADER_ID.to_string(), build_pipeline("effects-contrast-pipeline", &contrast_shader_module));
-        pipelines.insert(SATURATION_SHADER_ID.to_string(), build_pipeline("effects-saturation-pipeline", &saturation_shader_module));
-        pipelines.insert(HUE_ROTATE_SHADER_ID.to_string(), build_pipeline("effects-hue-rotate-pipeline", &hue_rotate_shader_module));
-        pipelines.insert(TEMPERATURE_SHADER_ID.to_string(), build_pipeline("effects-temperature-pipeline", &temperature_shader_module));
-        pipelines.insert(SEPIA_SHADER_ID.to_string(), build_pipeline("effects-sepia-pipeline", &sepia_shader_module));
-        pipelines.insert(GRAYSCALE_SHADER_ID.to_string(), build_pipeline("effects-grayscale-pipeline", &grayscale_shader_module));
-        pipelines.insert(INVERT_SHADER_ID.to_string(), build_pipeline("effects-invert-pipeline", &invert_shader_module));
-        pipelines.insert(HIGHLIGHTS_SHADER_ID.to_string(), build_pipeline("effects-highlights-pipeline", &highlights_shader_module));
-        pipelines.insert(SHADOWS_SHADER_ID.to_string(), build_pipeline("effects-shadows-pipeline", &shadows_shader_module));
-        pipelines.insert(SHARPEN_SHADER_ID.to_string(), build_pipeline("effects-sharpen-pipeline", &sharpen_shader_module));
-        pipelines.insert(CHROMATIC_ABERRATION_SHADER_ID.to_string(), build_pipeline("effects-chromatic-aberration-pipeline", &chromatic_aberration_shader_module));
-        pipelines.insert(CHROMA_KEY_SHADER_ID.to_string(), build_pipeline("effects-chroma-key-pipeline", &chroma_key_shader_module));
-        pipelines.insert(POSTERIZE_SHADER_ID.to_string(), build_pipeline("effects-posterize-pipeline", &posterize_shader_module));
-        pipelines.insert(EDGE_DETECT_SHADER_ID.to_string(), build_pipeline("effects-edge-detect-pipeline", &edge_detect_shader_module));
-        pipelines.insert(HALFTONE_SHADER_ID.to_string(), build_pipeline("effects-halftone-pipeline", &halftone_shader_module));
-        pipelines.insert(MIRROR_SHADER_ID.to_string(), build_pipeline("effects-mirror-pipeline", &mirror_shader_module));
-        pipelines.insert(SWIRL_SHADER_ID.to_string(), build_pipeline("effects-swirl-pipeline", &swirl_shader_module));
-        pipelines.insert(BULGE_SHADER_ID.to_string(), build_pipeline("effects-bulge-pipeline", &bulge_shader_module));
-        pipelines.insert(TWIST_SHADER_ID.to_string(), build_pipeline("effects-twist-pipeline", &twist_shader_module));
-        pipelines.insert(THERMAL_SHADER_ID.to_string(), build_pipeline("effects-thermal-pipeline", &thermal_shader_module));
-        pipelines.insert(MOTION_BLUR_SHADER_ID.to_string(), build_pipeline("effects-motion-blur-pipeline", &motion_blur_shader_module));
-        pipelines.insert(WAVE_SHADER_ID.to_string(), build_pipeline("effects-wave-pipeline", &wave_shader_module));
-        pipelines.insert(RIPPLE_SHADER_ID.to_string(), build_pipeline("effects-ripple-pipeline", &ripple_shader_module));
-        pipelines.insert(PIXELATE_SHADER_ID.to_string(), build_pipeline("effects-pixelate-pipeline", &pixelate_shader_module));
-        pipelines.insert(FISHEYE_SHADER_ID.to_string(), build_pipeline("effects-fisheye-pipeline", &fisheye_shader_module));
-        pipelines.insert(SCANLINES_SHADER_ID.to_string(), build_pipeline("effects-scanlines-pipeline", &scanlines_shader_module));
-        pipelines.insert(EMBOSS_SHADER_ID.to_string(), build_pipeline("effects-emboss-pipeline", &emboss_shader_module));
-        pipelines.insert(GLOW_SHADER_ID.to_string(), build_pipeline("effects-glow-pipeline", &glow_shader_module));
-        pipelines.insert(VIBRANCE_SHADER_ID.to_string(), build_pipeline("effects-vibrance-pipeline", &vibrance_shader_module));
-        pipelines.insert(VIGNETTE_SHADER_ID.to_string(), build_pipeline("effects-vignette-pipeline", &vignette_shader_module));
-        pipelines.insert(GRAIN_SHADER_ID.to_string(), build_pipeline("effects-grain-pipeline", &grain_shader_module));
-        pipelines.insert(DEHAZE_SHADER_ID.to_string(), build_pipeline("effects-dehaze-pipeline", &dehaze_shader_module));
-        pipelines.insert(CLARITY_SHADER_ID.to_string(), build_pipeline("effects-clarity-pipeline", &clarity_shader_module));
-        pipelines.insert(FADE_SHADER_ID.to_string(), build_pipeline("effects-fade-pipeline", &fade_shader_module));
-        pipelines.insert(WHITES_SHADER_ID.to_string(), build_pipeline("effects-whites-pipeline", &whites_shader_module));
-        pipelines.insert(BLACKS_SHADER_ID.to_string(), build_pipeline("effects-blacks-pipeline", &blacks_shader_module));
-		pipelines.insert(COLOR_WHEELS_SHADER_ID.to_string(), build_pipeline("effects-color-wheels-pipeline", &color_wheels_shader_module));
-		pipelines.insert(VELOCITY_BLUR_SHADER_ID.to_string(), build_pipeline("effects-velocity-blur-pipeline", &velocity_blur_shader_module));
-		pipelines.insert(STROKE_SHADER_ID.to_string(), build_pipeline("effects-stroke-pipeline", &stroke_shader_module));
-		pipelines.insert(DROP_SHADOW_SHADER_ID.to_string(), build_pipeline("effects-drop-shadow-pipeline", &drop_shadow_shader_module));
-		pipelines.insert(OUTER_GLOW_SHADER_ID.to_string(), build_pipeline("effects-outer-glow-pipeline", &outer_glow_shader_module));
+        pipelines.insert(
+            BRIGHTNESS_SHADER_ID.to_string(),
+            build_pipeline("effects-brightness-pipeline", &brightness_shader_module),
+        );
+        pipelines.insert(
+            CONTRAST_SHADER_ID.to_string(),
+            build_pipeline("effects-contrast-pipeline", &contrast_shader_module),
+        );
+        pipelines.insert(
+            SATURATION_SHADER_ID.to_string(),
+            build_pipeline("effects-saturation-pipeline", &saturation_shader_module),
+        );
+        pipelines.insert(
+            HUE_ROTATE_SHADER_ID.to_string(),
+            build_pipeline("effects-hue-rotate-pipeline", &hue_rotate_shader_module),
+        );
+        pipelines.insert(
+            TEMPERATURE_SHADER_ID.to_string(),
+            build_pipeline("effects-temperature-pipeline", &temperature_shader_module),
+        );
+        pipelines.insert(
+            SEPIA_SHADER_ID.to_string(),
+            build_pipeline("effects-sepia-pipeline", &sepia_shader_module),
+        );
+        pipelines.insert(
+            GRAYSCALE_SHADER_ID.to_string(),
+            build_pipeline("effects-grayscale-pipeline", &grayscale_shader_module),
+        );
+        pipelines.insert(
+            INVERT_SHADER_ID.to_string(),
+            build_pipeline("effects-invert-pipeline", &invert_shader_module),
+        );
+        pipelines.insert(
+            HIGHLIGHTS_SHADER_ID.to_string(),
+            build_pipeline("effects-highlights-pipeline", &highlights_shader_module),
+        );
+        pipelines.insert(
+            SHADOWS_SHADER_ID.to_string(),
+            build_pipeline("effects-shadows-pipeline", &shadows_shader_module),
+        );
+        pipelines.insert(
+            SHARPEN_SHADER_ID.to_string(),
+            build_pipeline("effects-sharpen-pipeline", &sharpen_shader_module),
+        );
+        pipelines.insert(
+            CHROMATIC_ABERRATION_SHADER_ID.to_string(),
+            build_pipeline(
+                "effects-chromatic-aberration-pipeline",
+                &chromatic_aberration_shader_module,
+            ),
+        );
+        pipelines.insert(
+            CHROMA_KEY_SHADER_ID.to_string(),
+            build_pipeline("effects-chroma-key-pipeline", &chroma_key_shader_module),
+        );
+        pipelines.insert(
+            POSTERIZE_SHADER_ID.to_string(),
+            build_pipeline("effects-posterize-pipeline", &posterize_shader_module),
+        );
+        pipelines.insert(
+            EDGE_DETECT_SHADER_ID.to_string(),
+            build_pipeline("effects-edge-detect-pipeline", &edge_detect_shader_module),
+        );
+        pipelines.insert(
+            HALFTONE_SHADER_ID.to_string(),
+            build_pipeline("effects-halftone-pipeline", &halftone_shader_module),
+        );
+        pipelines.insert(
+            MIRROR_SHADER_ID.to_string(),
+            build_pipeline("effects-mirror-pipeline", &mirror_shader_module),
+        );
+        pipelines.insert(
+            SWIRL_SHADER_ID.to_string(),
+            build_pipeline("effects-swirl-pipeline", &swirl_shader_module),
+        );
+        pipelines.insert(
+            BULGE_SHADER_ID.to_string(),
+            build_pipeline("effects-bulge-pipeline", &bulge_shader_module),
+        );
+        pipelines.insert(
+            TWIST_SHADER_ID.to_string(),
+            build_pipeline("effects-twist-pipeline", &twist_shader_module),
+        );
+        pipelines.insert(
+            THERMAL_SHADER_ID.to_string(),
+            build_pipeline("effects-thermal-pipeline", &thermal_shader_module),
+        );
+        pipelines.insert(
+            MOTION_BLUR_SHADER_ID.to_string(),
+            build_pipeline("effects-motion-blur-pipeline", &motion_blur_shader_module),
+        );
+        pipelines.insert(
+            WAVE_SHADER_ID.to_string(),
+            build_pipeline("effects-wave-pipeline", &wave_shader_module),
+        );
+        pipelines.insert(
+            RIPPLE_SHADER_ID.to_string(),
+            build_pipeline("effects-ripple-pipeline", &ripple_shader_module),
+        );
+        pipelines.insert(
+            PIXELATE_SHADER_ID.to_string(),
+            build_pipeline("effects-pixelate-pipeline", &pixelate_shader_module),
+        );
+        pipelines.insert(
+            FISHEYE_SHADER_ID.to_string(),
+            build_pipeline("effects-fisheye-pipeline", &fisheye_shader_module),
+        );
+        pipelines.insert(
+            SCANLINES_SHADER_ID.to_string(),
+            build_pipeline("effects-scanlines-pipeline", &scanlines_shader_module),
+        );
+        pipelines.insert(
+            EMBOSS_SHADER_ID.to_string(),
+            build_pipeline("effects-emboss-pipeline", &emboss_shader_module),
+        );
+        pipelines.insert(
+            GLOW_SHADER_ID.to_string(),
+            build_pipeline("effects-glow-pipeline", &glow_shader_module),
+        );
+        pipelines.insert(
+            VIBRANCE_SHADER_ID.to_string(),
+            build_pipeline("effects-vibrance-pipeline", &vibrance_shader_module),
+        );
+        pipelines.insert(
+            VIGNETTE_SHADER_ID.to_string(),
+            build_pipeline("effects-vignette-pipeline", &vignette_shader_module),
+        );
+        pipelines.insert(
+            GRAIN_SHADER_ID.to_string(),
+            build_pipeline("effects-grain-pipeline", &grain_shader_module),
+        );
+        pipelines.insert(
+            DEHAZE_SHADER_ID.to_string(),
+            build_pipeline("effects-dehaze-pipeline", &dehaze_shader_module),
+        );
+        pipelines.insert(
+            CLARITY_SHADER_ID.to_string(),
+            build_pipeline("effects-clarity-pipeline", &clarity_shader_module),
+        );
+        pipelines.insert(
+            FADE_SHADER_ID.to_string(),
+            build_pipeline("effects-fade-pipeline", &fade_shader_module),
+        );
+        pipelines.insert(
+            WHITES_SHADER_ID.to_string(),
+            build_pipeline("effects-whites-pipeline", &whites_shader_module),
+        );
+        pipelines.insert(
+            BLACKS_SHADER_ID.to_string(),
+            build_pipeline("effects-blacks-pipeline", &blacks_shader_module),
+        );
+        pipelines.insert(
+            COLOR_WHEELS_SHADER_ID.to_string(),
+            build_pipeline("effects-color-wheels-pipeline", &color_wheels_shader_module),
+        );
+        pipelines.insert(
+            VELOCITY_BLUR_SHADER_ID.to_string(),
+            build_pipeline(
+                "effects-velocity-blur-pipeline",
+                &velocity_blur_shader_module,
+            ),
+        );
+        pipelines.insert(
+            STROKE_SHADER_ID.to_string(),
+            build_pipeline("effects-stroke-pipeline", &stroke_shader_module),
+        );
+        pipelines.insert(
+            DROP_SHADOW_SHADER_ID.to_string(),
+            build_pipeline("effects-drop-shadow-pipeline", &drop_shadow_shader_module),
+        );
+        pipelines.insert(
+            OUTER_GLOW_SHADER_ID.to_string(),
+            build_pipeline("effects-outer-glow-pipeline", &outer_glow_shader_module),
+        );
 
         Self {
             uniform_bind_group_layout,
@@ -757,7 +893,25 @@ fn pack_effect_uniforms(
                 });
             }
         }
-        BRIGHTNESS_SHADER_ID | CONTRAST_SHADER_ID | SATURATION_SHADER_ID | HUE_ROTATE_SHADER_ID | TEMPERATURE_SHADER_ID | SEPIA_SHADER_ID | GRAYSCALE_SHADER_ID | INVERT_SHADER_ID | HIGHLIGHTS_SHADER_ID | SHADOWS_SHADER_ID | SHARPEN_SHADER_ID | VIBRANCE_SHADER_ID | VIGNETTE_SHADER_ID | GRAIN_SHADER_ID | DEHAZE_SHADER_ID | CLARITY_SHADER_ID | FADE_SHADER_ID | WHITES_SHADER_ID | BLACKS_SHADER_ID => {
+        BRIGHTNESS_SHADER_ID
+        | CONTRAST_SHADER_ID
+        | SATURATION_SHADER_ID
+        | HUE_ROTATE_SHADER_ID
+        | TEMPERATURE_SHADER_ID
+        | SEPIA_SHADER_ID
+        | GRAYSCALE_SHADER_ID
+        | INVERT_SHADER_ID
+        | HIGHLIGHTS_SHADER_ID
+        | SHADOWS_SHADER_ID
+        | SHARPEN_SHADER_ID
+        | VIBRANCE_SHADER_ID
+        | VIGNETTE_SHADER_ID
+        | GRAIN_SHADER_ID
+        | DEHAZE_SHADER_ID
+        | CLARITY_SHADER_ID
+        | FADE_SHADER_ID
+        | WHITES_SHADER_ID
+        | BLACKS_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -880,103 +1034,103 @@ fn pack_effect_uniforms(
                 });
             }
         }
-		VELOCITY_BLUR_SHADER_ID => {
-			let amount = read_number_uniform(pass, "u_amount")?;
-			direction = read_vec2_uniform(pass, "u_direction")?;
-			scalars[0] = amount;
+        VELOCITY_BLUR_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            direction = read_vec2_uniform(pass, "u_direction")?;
+            scalars[0] = amount;
 
-			for uniform in pass.uniforms.keys() {
-				if uniform == "u_amount" || uniform == "u_direction" {
-					continue;
-				}
-				return Err(EffectsError::UnsupportedUniform {
-					shader: shader.to_string(),
-					uniform: uniform.clone(),
-				});
-			}
-		}
-		STROKE_SHADER_ID => {
-			let amount = read_number_uniform(pass, "u_amount")?;
-			let thickness = read_number_uniform(pass, "u_thickness")?;
-			scalars[0] = amount;
-			scalars[1] = thickness;
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_direction" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        STROKE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let thickness = read_number_uniform(pass, "u_thickness")?;
+            scalars[0] = amount;
+            scalars[1] = thickness;
 
-			for uniform in pass.uniforms.keys() {
-				if uniform == "u_amount" || uniform == "u_thickness" {
-					continue;
-				}
-				return Err(EffectsError::UnsupportedUniform {
-					shader: shader.to_string(),
-					uniform: uniform.clone(),
-				});
-			}
-		}
-		DROP_SHADOW_SHADER_ID => {
-			let distance = read_number_uniform(pass, "u_distance")?;
-			let blur = read_number_uniform(pass, "u_blur")?;
-			direction = read_vec2_uniform(pass, "u_direction")?;
-			scalars[0] = distance;
-			scalars[1] = blur;
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_thickness" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        DROP_SHADOW_SHADER_ID => {
+            let distance = read_number_uniform(pass, "u_distance")?;
+            let blur = read_number_uniform(pass, "u_blur")?;
+            direction = read_vec2_uniform(pass, "u_direction")?;
+            scalars[0] = distance;
+            scalars[1] = blur;
 
-			for uniform in pass.uniforms.keys() {
-				if uniform == "u_distance" || uniform == "u_blur" || uniform == "u_direction" {
-					continue;
-				}
-				return Err(EffectsError::UnsupportedUniform {
-					shader: shader.to_string(),
-					uniform: uniform.clone(),
-				});
-			}
-		}
-		OUTER_GLOW_SHADER_ID => {
-			let radius = read_number_uniform(pass, "u_radius")?;
-			let intensity = read_number_uniform(pass, "u_intensity")?;
-			scalars[0] = radius;
-			scalars[1] = intensity;
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_distance" || uniform == "u_blur" || uniform == "u_direction" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        OUTER_GLOW_SHADER_ID => {
+            let radius = read_number_uniform(pass, "u_radius")?;
+            let intensity = read_number_uniform(pass, "u_intensity")?;
+            scalars[0] = radius;
+            scalars[1] = intensity;
 
-			for uniform in pass.uniforms.keys() {
-				if uniform == "u_radius" || uniform == "u_intensity" {
-					continue;
-				}
-				return Err(EffectsError::UnsupportedUniform {
-					shader: shader.to_string(),
-					uniform: uniform.clone(),
-				});
-			}
-		}
-		COLOR_WHEELS_SHADER_ID => {
-			let lift = read_vec3_uniform(pass, "u_lift")?;
-			let gamma = read_vec3_uniform(pass, "u_gamma")?;
-			let gain = read_vec3_uniform(pass, "u_gain")?;
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_radius" || uniform == "u_intensity" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        COLOR_WHEELS_SHADER_ID => {
+            let lift = read_vec3_uniform(pass, "u_lift")?;
+            let gamma = read_vec3_uniform(pass, "u_gamma")?;
+            let gain = read_vec3_uniform(pass, "u_gain")?;
 
-			// EffectUniformBuffer exposes 4 scalars + 1 vec2 `direction`. We
-			// pass lift as scalars[0..3] (R, G, B, _) and gamma[0] as the
-			// 4th scalar so the colour-wheels WGSL shader can pick up at
-			// least the primary lift. Gain is intentionally read here
-			// (so the `unknown uniform` check below stays truthful) but
-			// cannot be uploaded yet because the current buffer layout
-			// has no slot for it; the follow-up is to extend
-			// EffectUniformBuffer with an extra vec3 for gain.
-			scalars[0] = lift[0];
-			scalars[1] = lift[1];
-			scalars[2] = lift[2];
-			scalars[3] = gamma[0];
-			// `gain` and `gamma` are kept in scope so a future patch can
-			// ship them as soon as the buffer grows; explicit `_ = gain`
-			// documents that the silence is deliberate.
-			let _ = gain;
-			let _ = gamma;
+            // EffectUniformBuffer exposes 4 scalars + 1 vec2 `direction`. We
+            // pass lift as scalars[0..3] (R, G, B, _) and gamma[0] as the
+            // 4th scalar so the colour-wheels WGSL shader can pick up at
+            // least the primary lift. Gain is intentionally read here
+            // (so the `unknown uniform` check below stays truthful) but
+            // cannot be uploaded yet because the current buffer layout
+            // has no slot for it; the follow-up is to extend
+            // EffectUniformBuffer with an extra vec3 for gain.
+            scalars[0] = lift[0];
+            scalars[1] = lift[1];
+            scalars[2] = lift[2];
+            scalars[3] = gamma[0];
+            // `gain` and `gamma` are kept in scope so a future patch can
+            // ship them as soon as the buffer grows; explicit `_ = gain`
+            // documents that the silence is deliberate.
+            let _ = gain;
+            let _ = gamma;
 
-			for uniform in pass.uniforms.keys() {
-				if uniform == "u_lift" || uniform == "u_gamma" || uniform == "u_gain" {
-					continue;
-				}
-				return Err(EffectsError::UnsupportedUniform {
-					shader: shader.to_string(),
-					uniform: uniform.clone(),
-				});
-			}
-		}
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_lift" || uniform == "u_gamma" || uniform == "u_gain" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
         _ => {
             return Err(EffectsError::UnknownEffectShader {
                 shader: shader.to_string(),
@@ -1075,7 +1229,10 @@ mod tests {
         (HIGHLIGHTS_SHADER_ID, HIGHLIGHTS_SHADER_SOURCE),
         (SHADOWS_SHADER_ID, SHADOWS_SHADER_SOURCE),
         (SHARPEN_SHADER_ID, SHARPEN_SHADER_SOURCE),
-        (CHROMATIC_ABERRATION_SHADER_ID, CHROMATIC_ABERRATION_SHADER_SOURCE),
+        (
+            CHROMATIC_ABERRATION_SHADER_ID,
+            CHROMATIC_ABERRATION_SHADER_SOURCE,
+        ),
         (CHROMA_KEY_SHADER_ID, CHROMA_KEY_SHADER_SOURCE),
         (POSTERIZE_SHADER_ID, POSTERIZE_SHADER_SOURCE),
         (EDGE_DETECT_SHADER_ID, EDGE_DETECT_SHADER_SOURCE),
