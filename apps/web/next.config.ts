@@ -173,4 +173,6 @@ const nextConfig: NextConfig = {
 	},
 };
 
-export default withContentCollections(withBotId(nextConfig));
+export default async () => {
+	return withContentCollections(withBotId(nextConfig));
+};
