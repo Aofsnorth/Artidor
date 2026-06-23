@@ -50,7 +50,7 @@ export default function ChangelogPage() {
 					/>
 
 					<div className="flex flex-col">
-						{releases.map((release, releaseIndex) => (
+						{releases.map((release: ReleaseType, releaseIndex: number) => (
 							<div key={release.version} className="flex flex-col">
 								<ReleaseEntry release={release} />
 								{releaseIndex < releases.length - 1 && (
