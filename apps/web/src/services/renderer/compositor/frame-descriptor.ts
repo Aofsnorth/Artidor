@@ -515,9 +515,14 @@ function computeVisualTransform({
 	sourceWidth: number;
 	sourceHeight: number;
 }): QuadTransformDescriptor {
+	// Contain scale is computed against the PROJECT canvas size, not the
+	// preview's output size. The transform pipeline operates in canvas
+	// coords so positions stay correct when the preview renderer is
+	// downscaled for performance (canvas-renderer.render() then scales
+	// these transforms down to the output buffer before blitting).
 	const containScale = Math.min(
-		renderer.width / sourceWidth,
-		renderer.height / sourceHeight,
+		renderer.canvasSize.width / sourceWidth,
+		renderer.canvasSize.height / sourceHeight,
 	);
 	const perspectiveScale = getTransformPerspectiveScale({
 		positionZ: resolved.transform.positionZ,
@@ -531,9 +536,11 @@ function computeVisualTransform({
 
 	return {
 		centerX:
-			renderer.width / 2 + resolved.transform.position.x * perspectiveScale,
+			renderer.canvasSize.width / 2 +
+			resolved.transform.position.x * perspectiveScale,
 		centerY:
-			renderer.height / 2 + resolved.transform.position.y * perspectiveScale,
+			renderer.canvasSize.height / 2 +
+			resolved.transform.position.y * perspectiveScale,
 		width: absWidth,
 		height: absHeight,
 		rotationDegrees: resolved.transform.rotate,
@@ -545,11 +552,13 @@ function computeVisualTransform({
 function fullCanvasTransform(
 	renderer: CanvasRenderer,
 ): QuadTransformDescriptor {
+	// Backdrop fills the project canvas, not the output buffer. The
+	// render() scale pass will scale this to the output buffer size.
 	return {
-		centerX: renderer.width / 2,
-		centerY: renderer.height / 2,
-		width: renderer.width,
-		height: renderer.height,
+		centerX: renderer.canvasSize.width / 2,
+		centerY: renderer.canvasSize.height / 2,
+		width: renderer.canvasSize.width,
+		height: renderer.canvasSize.height,
 		rotationDegrees: 0,
 		flipX: false,
 		flipY: false,

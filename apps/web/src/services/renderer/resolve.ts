@@ -164,8 +164,8 @@ function resolveVisualState({
 		localTime,
 	});
 	const containScale = Math.min(
-		context.renderer.width / sourceWidth,
-		context.renderer.height / sourceHeight,
+		context.renderer.canvasSize.width / sourceWidth,
+		context.renderer.canvasSize.height / sourceHeight,
 	);
 	const effectWidth = Math.round(
 		Math.abs(sourceWidth * containScale * transform.scaleX),
@@ -371,8 +371,8 @@ function resolveTextNode({
 			effects: node.params.effects,
 			animations: node.params.animations,
 			localTime,
-			width: context.renderer.width,
-			height: context.renderer.height,
+			width: context.renderer.canvasSize.width,
+			height: context.renderer.canvasSize.height,
 		}),
 		measuredText: measureTextElement({
 			element: node.params,
@@ -409,12 +409,12 @@ async function resolveBlurBackgroundNode({
 		passes: buildGaussianBlurPasses({
 			sigmaX: intensityToSigma({
 				intensity: node.params.blurIntensity,
-				resolution: context.renderer.width,
+				resolution: context.renderer.canvasSize.width,
 				reference: 1920,
 			}),
 			sigmaY: intensityToSigma({
 				intensity: node.params.blurIntensity,
-				resolution: context.renderer.height,
+				resolution: context.renderer.canvasSize.height,
 				reference: 1080,
 			}),
 		}),
@@ -482,8 +482,8 @@ function resolveEffectLayerNode({
 	const passes = resolveEffectPasses({
 		definition,
 		effectParams: node.params.effectParams,
-		width: context.renderer.width,
-		height: context.renderer.height,
+		width: context.renderer.canvasSize.width,
+		height: context.renderer.canvasSize.height,
 	});
 	if (passes.length === 0) {
 		return null;
