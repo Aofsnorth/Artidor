@@ -19,7 +19,7 @@ import { useTimelineStore } from "@/stores/timeline-store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import { getElementKeyframes } from "@/lib/animation";
-import type { TimelineTrack } from "@/lib/timeline";
+import type { TimelineTrack, TimelineElement } from "@/lib/timeline";
 import { buildTextElement } from "@/lib/timeline/element-utils";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 import { getPropertyLabel } from "./expanded-layout";
@@ -120,7 +120,7 @@ function AddTrackDropdown() {
 	const options = [
 		{ label: "Video track", type: "video" as const },
 		{ label: "Audio track", type: "audio" as const },
-		{ label: "Camera layer", action: "add-camera" as const },
+		{ label: "Camera track", type: "camera" as const },
 		{ label: "Text track", type: "text" as const },
 		{ label: "Image track", type: "image" as const },
 		{ label: "Effect track", type: "effect" as const },
@@ -142,13 +142,24 @@ function AddTrackDropdown() {
 			<DropdownMenuContent align="start" className="z-100 w-40">
 				{options.map((option) => (
 					<DropdownMenuItem
-						key={"type" in option ? option.type : option.action}
+						key={option.type}
 						onClick={() => {
-							if ("action" in option && option.action) {
-								invokeAction(option.action);
+							const trackId = editor.timeline.addTrack({ type: option.type });
+							if (option.type === "camera") {
+								const { buildCameraElement } =
+									require("@/lib/camera") as typeof import("@/lib/camera");
+								const { TICKS_PER_SECOND } =
+									require("@/lib/wasm") as typeof import("@/lib/wasm");
+								editor.timeline.insertElement({
+									placement: { mode: "explicit", trackId },
+									element: buildCameraElement({
+										trackId,
+										startTime: editor.playback.getCurrentTime(),
+										duration: Math.round(5 * TICKS_PER_SECOND),
+									}) as unknown as TimelineElement,
+								});
 								return;
 							}
-							const trackId = editor.timeline.addTrack({ type: option.type });
 							if (option.type !== "text") return;
 							editor.timeline.insertElement({
 								placement: { mode: "explicit", trackId },

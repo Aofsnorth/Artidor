@@ -74,6 +74,7 @@ import { getFilmstripFrame, subscribeFilmstrip } from "./filmstrip-cache";
 import { findScrollParent } from "@/utils/browser";
 import Image from "next/image";
 import {
+	Camera01Icon,
 	ScissorIcon,
 	Delete02Icon,
 	Copy01Icon,
@@ -1664,6 +1665,24 @@ function TextElementContent({
 	);
 }
 
+function CameraElementContent({
+	element,
+}: {
+	element: Extract<TimelineElementType, { type: "camera" }>;
+}) {
+	return (
+		<div className="flex size-full items-center justify-start gap-1.5 pl-2">
+			<HugeiconsIcon
+				icon={Camera01Icon}
+				className="size-3.5 shrink-0 text-white/80"
+			/>
+			<span className="truncate text-xs text-white font-medium">
+				{getElementDisplayName({ element })}
+			</span>
+		</div>
+	);
+}
+
 function EffectElementContent({
 	element,
 }: {
@@ -2220,6 +2239,8 @@ function ElementContent({ element, track, zoomLevel }: ElementContentProps) {
 			return <GraphicElementContent element={element} />;
 		case "audio":
 			return <AudioElementContent element={element} track={track} />;
+		case "camera":
+			return <CameraElementContent element={element} />;
 		case "video":
 		case "image":
 			return (

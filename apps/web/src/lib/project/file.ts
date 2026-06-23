@@ -162,7 +162,7 @@ export function collectMediaRefs(project: TProject): ImportedMediaRef[] {
 
 	for (const scene of project.scenes) {
 		const allTracks = [
-			...scene.tracks.main,
+			scene.tracks.main,
 			...scene.tracks.overlay,
 			...scene.tracks.audio,
 		];

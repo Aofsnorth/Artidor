@@ -12,6 +12,7 @@ import type {
 	AudioElement,
 	TimelineElement,
 } from "@/lib/timeline";
+import type { CameraElement } from "@/lib/camera";
 import type { MediaAsset } from "@/lib/media/types";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -497,6 +498,22 @@ function getEffectConfig({
 	};
 }
 
+function getCameraConfig({
+	element,
+	mediaAssets,
+}: {
+	element: CameraElement;
+	mediaAssets: MediaAsset[];
+}): ElementPropertiesConfig {
+	return {
+		defaultTab: "element-info",
+		tabs: [
+			buildElementTab({ element, mediaAssets }),
+			buildCameraTab(),
+		],
+	};
+}
+
 export function getPropertiesConfig({
 	element,
 	mediaAssets,
@@ -521,5 +538,7 @@ export function getPropertiesConfig({
 			return getAudioConfig({ element, mediaAssets });
 		case "effect":
 			return getEffectConfig({ element, mediaAssets });
+		case "camera":
+			return getCameraConfig({ element, mediaAssets });
 	}
 }

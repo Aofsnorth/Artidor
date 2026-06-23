@@ -105,7 +105,9 @@ function buildOverlayTrackState({
 					? buildEmptyTrack({ id: trackId, type: "graphic" })
 					: trackType === "image"
 						? buildEmptyTrack({ id: trackId, type: "image" })
-						: buildEmptyTrack({ id: trackId, type: "effect" });
+						: trackType === "camera"
+							? buildEmptyTrack({ id: trackId, type: "camera" })
+							: buildEmptyTrack({ id: trackId, type: "effect" });
 	return {
 		...tracks,
 		overlay: [

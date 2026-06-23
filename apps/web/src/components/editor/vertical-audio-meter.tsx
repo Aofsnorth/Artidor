@@ -10,9 +10,9 @@ import { cn } from "@/utils/ui";
  * both L/R channel bars labelled; the upper bound prevents the meter
  * from consuming more than a third of the properties panel width.
  */
-const AUDIO_METER_WIDTH_MIN_PX = 40;
+const AUDIO_METER_WIDTH_MIN_PX = 56;
 const AUDIO_METER_WIDTH_MAX_PX = 220;
-const AUDIO_METER_WIDTH_DEFAULT_PX = 48;
+const AUDIO_METER_WIDTH_DEFAULT_PX = 64;
 
 const VIS_BAR_COUNT = 24;
 const VIS_HEIGHT_PX = 96;
@@ -217,9 +217,6 @@ export function VerticalAudioMeter() {
 					rightClipRef={rightClipRef}
 					dimmed={dimmed}
 					onToggleDim={() => setDimmed((value) => !value)}
-					onOpenVisualizer={() =>
-						useUiOverlayStore.getState().setAudioVisualizerOpen(true)
-					}
 				/>
 			)}
 		</div>
@@ -239,7 +236,6 @@ function MeterView({
 	rightClipRef,
 	dimmed,
 	onToggleDim,
-	onOpenVisualizer,
 }: {
 	leftBarRef: React.RefObject<HTMLDivElement | null>;
 	rightBarRef: React.RefObject<HTMLDivElement | null>;
@@ -249,11 +245,10 @@ function MeterView({
 	rightClipRef: React.RefObject<HTMLDivElement | null>;
 	dimmed: boolean;
 	onToggleDim: () => void;
-	onOpenVisualizer: () => void;
 }) {
 	return (
 		<>
-			<div className="text-center text-[0.5rem] font-bold uppercase tracking-[0.16em] text-white/35">
+			<div className="text-center text-[0.5rem] font-bold uppercase tracking-[0.08em] text-white/35">
 				Meter
 			</div>
 			<div className="flex flex-1 items-stretch gap-1">
@@ -271,15 +266,15 @@ function MeterView({
 				/>
 			</div>
 
-			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.16em] text-white/35">
-				<span className="w-2.5 text-center">L</span>
-				<span className="w-2.5 text-center">R</span>
+			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.04em] text-white/35">
+				<span className="w-3 text-center">L</span>
+				<span className="w-3 text-center">R</span>
 			</div>
 
 			<div className="flex items-center gap-1">
 				<button
 					type="button"
-					onClick={onOpenVisualizer}
+					onClick={onToggleDim}
 					aria-label="Toggle meter dim"
 					className={cn(
 						"h-4 flex-1 rounded text-[0.55rem] font-bold uppercase tracking-[0.16em] transition-colors",

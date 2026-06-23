@@ -6,6 +6,7 @@ import type {
 	TextTrack,
 	EffectTrack,
 	ImageTrack,
+	CameraTrack,
 } from "@/lib/timeline";
 
 export function canTrackHaveAudio(
@@ -16,6 +17,6 @@ export function canTrackHaveAudio(
 
 export function canTrackBeHidden(
 	track: TimelineTrack,
-): track is VideoTrack | TextTrack | GraphicTrack | EffectTrack | ImageTrack {
+): track is VideoTrack | TextTrack | GraphicTrack | EffectTrack | ImageTrack | CameraTrack {
 	return track.type !== "audio";
 }

@@ -124,6 +124,66 @@ Before adding dependency:
 - Check security.
 - Add tests around usage.
 
+## Dependency / Framework Rules
+
+Use existing frameworks before writing custom code.
+
+Required order:
+
+1. Existing code in repo
+2. Existing installed dependency
+3. Standard platform API
+4. Small maintained library
+5. New framework only with approval
+
+Before adding a dependency:
+
+- check security
+- check license
+- check maintenance
+- check bundle/performance impact
+- check transitive dependency risk
+- document alternatives
+- document rollback plan
+
+Do not add dependencies for tiny problems.
+
+Do not add architecture-changing frameworks without approval.
+
+## Product Roadmap Rules
+
+Before adding or changing a feature:
+
+- Read `ROADMAP.md`.
+- Confirm the task aligns with current focus.
+- Do not add off-roadmap features without approval.
+- Prefer stabilization over feature expansion while the app is under stabilization.
+
+## What's New Rules
+
+Update What's New when the change affects users.
+
+Required for:
+
+- new features
+- visible UI changes
+- editor workflow changes
+- timeline behavior changes
+- export/render changes
+- AI copilot changes
+- security/privacy changes
+- meaningful performance improvements
+
+Not required for:
+
+- internal refactor
+- tests only
+- CI only
+- docs only
+- non-user-visible cleanup
+
+If skipped, document the reason.
+
 ## Done Definition
 
 A change is done only when:

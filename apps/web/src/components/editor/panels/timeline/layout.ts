@@ -7,6 +7,7 @@ export const TIMELINE_TRACK_HEIGHTS_PX: Record<TrackType, number> = {
 	graphic: 44,
 	effect: 44,
 	image: 50,
+	camera: 44,
 } as const;
 
 export const KEYFRAME_LANE_HEIGHT_PX = 20;

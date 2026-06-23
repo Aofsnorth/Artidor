@@ -282,16 +282,16 @@ export class TimelineManager {
 			require("@/lib/camera") as typeof import("@/lib/camera");
 		const playhead = this.editor.playback.getCurrentTime();
 		const tracks = this.editor.scenes.getActiveScene().tracks;
-		const overlayTrack = tracks.overlay[0];
-		if (!overlayTrack) return;
+		const cameraTrack = tracks.overlay.find((t) => t.type === "camera");
+		const trackId = cameraTrack ? cameraTrack.id : this.addTrack({ type: "camera" });
 		const camera = buildCameraElement({
-			trackId: overlayTrack.id,
+			trackId,
 			startTime: playhead,
 			duration: Math.round(5 * TICKS_PER_SECOND),
 		});
 		this.insertElement({
 			element: camera as unknown as TimelineElement,
-			placement: { mode: "explicit", trackId: overlayTrack.id },
+			placement: { mode: "explicit", trackId },
 		});
 	}
 

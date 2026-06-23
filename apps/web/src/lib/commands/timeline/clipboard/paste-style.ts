@@ -6,6 +6,10 @@ import type {
 	SceneTracks,
 	TimelineElement,
 	TextElement,
+	VisualElement,
+	MaskableElement,
+	VideoElement,
+	AudioElement,
 } from "@/lib/timeline";
 import { updateElementInSceneTracks } from "@/lib/timeline";
 import { cloneAnimations } from "@/lib/animation";
@@ -210,7 +214,7 @@ function applyStyleToElement({
 
 function isVisualElement(
 	element: TimelineElement,
-): element is Extract<TimelineElement, { transform: unknown }> {
+): element is VisualElement {
 	return (
 		element.type === "video" ||
 		element.type === "image" ||
@@ -222,7 +226,7 @@ function isVisualElement(
 
 function isMaskableElement(
 	element: TimelineElement,
-): element is Extract<TimelineElement, { masks?: unknown }> {
+): element is MaskableElement {
 	return (
 		element.type === "video" ||
 		element.type === "image" ||
@@ -232,6 +236,6 @@ function isMaskableElement(
 
 function isAudioishElement(
 	element: TimelineElement,
-): element is Extract<TimelineElement, { volume?: unknown }> {
+): element is VideoElement | AudioElement {
 	return element.type === "video" || element.type === "audio";
 }
