@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-23-ai-disclaimer-banner",
+		date: "2026-06-23",
+		tag: "improvement",
+		title: "AI-generated codebase disclaimer on homepage",
+		items: [
+			"Homepage now shows a dismissible banner warning that this project was built almost entirely by AI (Claude, GPT, and other LLMs).",
+			"Dismiss the banner with the X button — it won't reappear unless you clear localStorage.",
+			"README warning updated from 'Undergoing stabilization' to the same AI-generated codebase disclaimer.",
+		],
+	},
+	{
 		id: "2026-06-23-camera-track-audio-waveform-export-utilities",
 		date: "2026-06-23",
 		tag: "feature",
