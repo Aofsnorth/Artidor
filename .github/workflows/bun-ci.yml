@@ -45,7 +45,7 @@ jobs:
           version: latest
 
       - name: Cache Rust build artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -68,7 +68,7 @@ jobs:
           bun-version: 1.2.18
 
       - name: Cache Bun modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock') }}
