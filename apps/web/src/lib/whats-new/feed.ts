@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-23-camera-track-audio-waveform-export-utilities",
+		date: "2026-06-23",
+		tag: "feature",
+		title: "Camera track, faster audio waveforms, and shared export utilities",
+		items: [
+			"+ Add track now offers a dedicated Camera track (C1 prefix) instead of a Camera layer on the overlay track, giving camera elements their own lane.",
+			"Selecting a camera element opens the camera-specific properties panel with fields scoped to camera behavior.",
+			"Audio waveforms share a single decode per source file — multiple clips of the same audio no longer trigger duplicate decode work, so heavy projects open faster.",
+			"Waveform rendering precomputes a peak buffer, so scroll and resize redraws skip the full sample walk — scrubbing long tracks is smoother.",
+			"Project export utilities now route through a shared path, keeping exports consistent between the editor and the projects page.",
+		],
+	},
+	{
 		id: "2026-06-23-export-overhaul-drive-copy-media-relink",
 		date: "2026-06-23",
 		tag: "feature",

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { execSync } from "node:child_process";
-import fs from "node:fs";
 
 function run(command) {
   try {
@@ -15,17 +14,21 @@ const changed =
   run("git diff --name-only origin/main...HEAD") ||
   run("git diff --name-only HEAD~1 HEAD");
 
-const files = changed.split("\\n").filter(Boolean);
+const files = changed.split("\n").filter(Boolean);
+
+// Normalize Windows backslashes to forward slashes so the same patterns
+// match regardless of how the runner formats git output.
+const normalize = (p) => p.replaceAll("\\", "/");
 
 const userFacingPatterns = [
-  /^apps\\/web\\/src\\/app\\//,
-  /^apps\\/web\\/src\\/components\\//,
-  /^apps\\/web\\/src\\/core\\//,
-  /^apps\\/web\\/src\\/hooks\\//,
-  /^apps\\/web\\/src\\/lib\\/ai\\//,
-  /^apps\\/web\\/src\\/lib\\/timeline\\//,
-  /^apps\\/web\\/src\\/lib\\/export\\//,
-  /^rust\\//,
+  /^apps\/web\/src\/app\//,
+  /^apps\/web\/src\/components\//,
+  /^apps\/web\/src\/core\//,
+  /^apps\/web\/src\/hooks\//,
+  /^apps\/web\/src\/lib\/ai\//,
+  /^apps\/web\/src\/lib\/timeline\//,
+  /^apps\/web\/src\/lib\/export\//,
+  /^rust\//,
 ];
 
 const whatsNewFiles = [
@@ -35,12 +38,13 @@ const whatsNewFiles = [
   "docs/product/WHATS_NEW_POLICY.md",
 ];
 
-const hasUserFacingChange = files.some((file) =>
-  userFacingPatterns.some((pattern) => pattern.test(file))
-);
+const hasUserFacingChange = files.some((file) => {
+  const normalized = normalize(file);
+  return userFacingPatterns.some((pattern) => pattern.test(normalized));
+});
 
 const hasWhatsNewUpdate = files.some((file) =>
-  whatsNewFiles.includes(file)
+  whatsNewFiles.includes(file) || whatsNewFiles.includes(normalize(file))
 );
 
 if (hasUserFacingChange && !hasWhatsNewUpdate) {
