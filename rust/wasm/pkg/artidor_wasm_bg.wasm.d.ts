@@ -2,8 +2,8 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const initializeGpu: () => any;
-export const applyMaskFeather: (a: any) => [number, number, number];
 export const applyEffectPasses: (a: any) => [number, number, number];
+export const applyMaskFeather: (a: any) => [number, number, number];
 export const getCompositorCanvas: () => [number, number, number];
 export const initCompositor: (a: number, b: number) => [number, number];
 export const releaseTexture: (a: number, b: number) => [number, number];
@@ -28,9 +28,11 @@ export const mediaTimeToFrame: (a: any) => [number, bigint];
 export const mediaTimeToSeconds: (a: any) => number;
 export const roundToFrame: (a: any) => any;
 export const snappedSeekTime: (a: any) => any;
-export const wasm_bindgen__convert__closures_____invoke__hba47182d61ccb72c: (a: number, b: number, c: any) => [number, number];
-export const wasm_bindgen__convert__closures_____invoke__h00dc9297e273bbc7: (a: number, b: number, c: any, d: any) => void;
-export const wasm_bindgen__convert__closures_____invoke__h49507b9483409848: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__hfba5c1193d6f8698: (a: number, b: number, c: any) => [number, number];
+export const wasm_bindgen__convert__closures_____invoke__h135375d20de84ad6: (a: number, b: number, c: any, d: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h06c2887414f43e07: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__hd8ca6cd153e56e86: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h1ebfdbcc0f9433ad: (a: number, b: number) => number;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
 export const __wbindgen_exn_store: (a: number) => void;
