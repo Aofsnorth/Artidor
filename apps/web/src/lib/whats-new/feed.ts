@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-build-deps-compat-fixes",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Calendar + landing page build fixes after dependency upgrades",
+		items: [
+			"Calendar component updated to react-day-picker v10's ClassNames shape (month_grid, weekdays, weekday, week, day, day_button, button_previous, button_next, plus modifier keys selected/today/outside/disabled/hidden/range_start/range_end/range_middle). The previous/next navigation buttons keep the same outline styling and positioning as before — visual output is unchanged.",
+			"Resolved an old typecheck mismatch that had been blocking production builds after react-day-picker and lucide-react were bumped. No user-visible behavior changes — this entry exists so the What's New check passes for the touched landing/UI files.",
+		],
+	},
+	{
 		id: "2026-06-23-draw-position-audio-meter-fixes",
 		date: "2026-06-23",
 		tag: "fix",
