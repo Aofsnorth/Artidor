@@ -8,6 +8,7 @@ import { PledgeSection } from "@/components/landing/pledge-section";
 import { CtaSection } from "@/components/landing/cta-section";
 import { PageShell } from "@/components/landing/page-shell";
 import { WhatsNewCard } from "@/components/whats-new/whats-new-card";
+import { AiDisclaimerBanner } from "@/components/landing/ai-disclaimer-banner";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site/brand";
 
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export default async function Home() {
 	return (
 		<PageShell variant="marketing">
+			<AiDisclaimerBanner />
 			<Header />
 			<main className="flex flex-col">
 				<Hero />

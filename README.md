@@ -1,7 +1,8 @@
-# ⚠️ ATTENTION: UNDERGOING STABILIZATION
+# ⚠️ AI-GENERATED CODEBASE WARNING
 
-> **Please be advised that this application is currently undergoing major stabilization, bug fixes, and a comprehensive codebase audit.** 
-> **Do not use this application in production or rely on it for critical work until these processes are complete.**
+> **This project was built almost entirely by AI (Claude, GPT, and other LLMs).**
+> **The code, architecture, and documentation were largely generated, reviewed, and iterated by AI agents with human oversight.**
+> **Use at your own risk — thorough review before production use is strongly recommended.**
 
 <br />
 
