@@ -82,5 +82,8 @@
   },
   "trustedDependencies": [
     "@tailwindcss/oxide"
-  ]
+  ],
+  "patchedDependencies": {
+    "@content-collections/core@0.15.2": "patches/@content-collections%2Fcore@0.15.2.patch"
+  }
 }
