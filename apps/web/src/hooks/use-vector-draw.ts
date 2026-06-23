@@ -79,9 +79,19 @@ export function useVectorDraw(): UseVectorDrawResult {
 			if (!svgPath) return;
 
 			const project = editor.project.getActive();
-			const canvasSize = project?.settings.canvasSize;
-			const canvasWidth = canvasSize?.width ?? 0;
-			const canvasHeight = canvasSize?.height ?? 0;
+			const settingsCanvas = project?.settings.canvasSize;
+			// Mirror the freehand hook's defensive fallback so the
+			// contain-scale used by normalize always matches the one
+			// eventToSourceCoords used. A zero/NaN project canvas size
+			// would otherwise collapse containScale to 1 and place the
+			// committed vector path at a wildly off position.
+			const viewportScale = viewport.getDisplayScale();
+			const fallbackCanvasWidth =
+				viewportScale.x > 0 ? viewport.sceneWidth / viewportScale.x : 0;
+			const fallbackCanvasHeight =
+				viewportScale.y > 0 ? viewport.sceneHeight / viewportScale.y : 0;
+			const canvasWidth = settingsCanvas?.width ?? fallbackCanvasWidth;
+			const canvasHeight = settingsCanvas?.height ?? fallbackCanvasHeight;
 
 			// Recentre the path into the 512² source and compensate with
 			// element position + scale — same strategy as the freehand hook.

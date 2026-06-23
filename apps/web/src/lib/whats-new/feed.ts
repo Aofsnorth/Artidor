@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-draw-defensive-audio-meter-labels",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Vertical audio meter dB labels + freehand/vector commit guard",
+		items: [
+			"Audio meter column now shows 7 major dB marks (0 / -10 / -20 / -30 / -40 / -50 / -60) at 0.38rem instead of 11 every-6dB marks. The previous dense scale was clipping the lower half of the labels at the top of a short meter column, which read as 'the meter can be scrolled' even though the container is overflow-hidden. The bar fill, peak tick, and clip indicator are unchanged.",
+			"Freehand and vector drawing hooks now fall back to the viewport-derived canvas size when `project.settings.canvasSize` is missing or zero, so the contain-scale used to recenter the path always matches the one the live-preview source conversion used. If the project canvas size hasn't loaded yet, the committed element previously collapsed containScale to 1 and rendered wildly off; the fallback keeps the math internally consistent in that edge case.",
+		],
+	},
+	{
 		id: "2026-06-24-build-deps-compat-fixes",
 		date: "2026-06-24",
 		tag: "fix",
