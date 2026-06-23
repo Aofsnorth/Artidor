@@ -7,6 +7,13 @@ paths = [
   '''.*\.example$''',
   '''apps/web/\.env\.example'''
 ]
+regexes = [
+  # CI workflow placeholder env values that accidentally match the
+  # generic-api-key rule (e.g. "your-upstash-redis-token"). Real secrets
+  # must never use the "your-*" prefix convention — any secret starting
+  # with "your-" is suspicious and should be investigated.
+  '''["']your-[a-z0-9-]+["']''',
+]
 
 [[rules]]
 id = "generic-api-key"
