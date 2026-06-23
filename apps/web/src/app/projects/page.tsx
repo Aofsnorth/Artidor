@@ -100,7 +100,11 @@ import { cn } from "@/utils/ui";
 import { PageTransition } from "@/components/page-transition";
 import { lazy, Suspense } from "react";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
-import { importProject, collectMediaRefs, type ImportedMediaRef } from "@/lib/project/file";
+import {
+	importProject,
+	collectMediaRefs,
+	type ImportedMediaRef,
+} from "@/lib/project/file";
 import { savePreset } from "@/lib/presets/storage";
 import type { UserPreset } from "@/lib/presets/types";
 import { generateUUID } from "@/utils/id";
@@ -851,7 +855,9 @@ function NewProjectButton() {
 	const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
 	const [missingMedia, setMissingMedia] = useState<ImportedMediaRef[]>([]);
 	const [missingDialogOpen, setMissingDialogOpen] = useState(false);
-	const [pendingImportProjectId, setPendingImportProjectId] = useState<string | null>(null);
+	const [pendingImportProjectId, setPendingImportProjectId] = useState<
+		string | null
+	>(null);
 
 	const handleCreateProject = async () => {
 		const projectId = await editor.project.createNewProject({
@@ -897,7 +903,7 @@ function NewProjectButton() {
 
 		if (matches.size > 0) {
 			try {
-				for (const [mediaId, file] of matches) {
+				for (const file of matches.values()) {
 					const processedAssets = await processMediaAssets({ files: [file] });
 					const processed = processedAssets[0];
 					if (processed) {
@@ -907,7 +913,9 @@ function NewProjectButton() {
 						});
 					}
 				}
-				toast.success(`Linked ${matches.size} media file${matches.size !== 1 ? "s" : ""}`);
+				toast.success(
+					`Linked ${matches.size} media file${matches.size !== 1 ? "s" : ""}`,
+				);
 			} catch {
 				toast.error("Some media files could not be linked");
 			}
@@ -1343,7 +1351,8 @@ function ProjectContextMenuContent({
 	const handleCopyToDrive = async () => {
 		if (!getGoogleClientId()) {
 			toast.error("Google Drive isn't set up yet", {
-				description: "Add your Google Client ID via the Drive import dialog first.",
+				description:
+					"Add your Google Client ID via the Drive import dialog first.",
 			});
 			return;
 		}
@@ -1386,7 +1395,9 @@ function ProjectContextMenuContent({
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to copy to Drive";
-			toast.error(msg === "unauthenticated" ? "Connect Google Drive first." : msg);
+			toast.error(
+				msg === "unauthenticated" ? "Connect Google Drive first." : msg,
+			);
 		} finally {
 			setDriveBusy(false);
 		}
@@ -1508,7 +1519,8 @@ function ProjectMenu({
 	const handleCopyToDrive = async () => {
 		if (!getGoogleClientId()) {
 			toast.error("Google Drive isn't set up yet", {
-				description: "Add your Google Client ID via the Drive import dialog first.",
+				description:
+					"Add your Google Client ID via the Drive import dialog first.",
 			});
 			return;
 		}
@@ -1551,7 +1563,9 @@ function ProjectMenu({
 		} catch (err) {
 			const msg =
 				err instanceof Error ? err.message : "Failed to copy to Drive";
-			toast.error(msg === "unauthenticated" ? "Connect Google Drive first." : msg);
+			toast.error(
+				msg === "unauthenticated" ? "Connect Google Drive first." : msg,
+			);
 		} finally {
 			setDriveBusy(false);
 		}
@@ -1641,15 +1655,28 @@ function ProjectMenu({
 						<HugeiconsIcon icon={Copy02Icon} />
 						Duplicate
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => { setExportVideoOpen(true); onOpenChange(false); }}>
+					<DropdownMenuItem
+						onClick={() => {
+							setExportVideoOpen(true);
+							onOpenChange(false);
+						}}
+					>
 						<HugeiconsIcon icon={Video01Icon} />
 						Export to Video
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => { setExportProjectOpen(true); onOpenChange(false); }}>
+					<DropdownMenuItem
+						onClick={() => {
+							setExportProjectOpen(true);
+							onOpenChange(false);
+						}}
+					>
 						<HugeiconsIcon icon={FileExportIcon} />
 						Export Project File
 					</DropdownMenuItem>
-					<DropdownMenuItem onClick={() => void handleCopyToDrive()} disabled={driveBusy}>
+					<DropdownMenuItem
+						onClick={() => void handleCopyToDrive()}
+						disabled={driveBusy}
+					>
 						<HugeiconsIcon icon={GoogleIcon} />
 						{driveBusy ? "Copying…" : "Copy to Google Drive"}
 					</DropdownMenuItem>

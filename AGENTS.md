@@ -182,6 +182,95 @@ Never:
 - Expose internal errors to users.
 - Change auth, API, MCP, or permission logic without explicit review.
 
+## Dependency and Framework Rules
+
+Before writing new custom code, the agent must check whether the repository already has:
+
+- existing framework support
+- existing utility/helper
+- existing component/hook
+- existing Rust crate/module
+- existing package dependency
+- standard platform API
+
+The agent must prefer existing frameworks and existing project patterns over writing complex code from scratch.
+
+Before installing any new dependency, framework, crate, SDK, plugin, or GitHub Action, the agent must read and follow:
+
+- `docs/harness/DEPENDENCY_POLICY.md`
+- `docs/harness/DEPENDENCY_DECISIONS.md`
+
+The agent must not install dependencies without:
+
+1. explaining why existing code is insufficient
+2. comparing alternatives
+3. checking security
+4. checking license
+5. checking maintenance
+6. checking bundle/performance impact
+7. documenting rollback plan
+8. getting approval for high-risk dependencies
+
+If a safe existing framework solves the task, use it.
+
+If a dependency is unnecessary, do not install it.
+
+## Documentation Rules
+
+Before finishing any code change, the agent must read and follow:
+
+- `docs/harness/DOCUMENTATION_POLICY.md`
+
+Every meaningful code change must include documentation.
+
+If the agent edits existing code that has no documentation, the agent must add the minimum useful documentation for the touched area.
+
+Documentation is required for:
+
+- exported functions
+- exported types/interfaces
+- AI copilot tools
+- MCP tools
+- timeline logic
+- export/render logic
+- storage/persistence logic
+- Rust core logic
+- security-sensitive logic
+- complex hooks/components
+- user-facing behavior changes
+
+If documentation is not updated, the agent must explicitly explain why.
+
+## Roadmap and What's New Rules
+
+Before implementing any feature, the agent must read:
+
+1. `ROADMAP.md`
+2. `docs/product/WHATS_NEW_POLICY.md`
+3. `apps/web/src/lib/whats-new/feed.ts` if it exists
+4. `apps/web/src/app/changelog/page.tsx` if it exists
+
+The agent must check whether the task is aligned with the roadmap.
+
+For every user-facing change, the agent must update the What's New feed.
+
+User-facing changes include:
+
+- new feature
+- visible UI change
+- editor workflow change
+- timeline behavior change
+- export/render behavior change
+- AI copilot capability change
+- performance improvement visible to users
+- security/privacy behavior change
+
+If What's New is not updated, the agent must explicitly write:
+
+"What's New not updated because: <reason>"
+
+The agent must not add features that conflict with `ROADMAP.md` without explicit approval.
+
 ## Commercial Readiness Rules
 
 A change is commercial-ready only if:

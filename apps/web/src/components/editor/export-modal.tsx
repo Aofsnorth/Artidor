@@ -45,21 +45,18 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 	if (!isOpen) return null;
 
 	// Stop all pointer events on the backdrop so clicks outside the card don't cancel export
-	const handleBackdropMouseDown = (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-	};
-
-	const handleBackdropClick = (e: React.MouseEvent) => {
+	const handleBackdropMouseDown = (e: React.PointerEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
 	};
 
 	return (
 		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label="Export progress"
 			className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md select-none"
-			onMouseDown={handleBackdropMouseDown}
-			onClick={handleBackdropClick}
+			onPointerDownCapture={handleBackdropMouseDown}
 			onContextMenu={(e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -68,8 +65,7 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 			{/* Card: stopPropagation so clicks inside don't bubble up */}
 			<div
 				className="relative w-full max-w-md mx-4 rounded-xl border border-white/10 bg-gradient-to-b from-[#0a0a0a] to-[#050505] p-8 shadow-2xl"
-				onMouseDown={(e) => e.stopPropagation()}
-				onClick={(e) => e.stopPropagation()}
+				onPointerDownCapture={(e) => e.stopPropagation()}
 			>
 				{/* Close button - top right (only way to cancel besides Cancel button) */}
 				<button
@@ -109,6 +105,7 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 					{/* Progress circle */}
 					<div className="relative flex items-center justify-center">
 						<svg
+							aria-hidden="true"
 							className="h-36 w-36 -rotate-90 transform"
 							viewBox="0 0 100 100"
 						>
@@ -162,7 +159,11 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 
 					{/* Warning */}
 					<p className="text-[10px] font-light text-white/30 text-center">
-						Press <kbd className="rounded border border-white/15 bg-white/5 px-1 py-0.5 font-mono text-[10px]">Esc</kbd> to abort the export
+						Press{" "}
+						<kbd className="rounded border border-white/15 bg-white/5 px-1 py-0.5 font-mono text-[10px]">
+							Esc
+						</kbd>{" "}
+						to abort the export
 					</p>
 				</div>
 			</div>

@@ -8,6 +8,7 @@ import type {
 	TextTrack,
 	TimelineElement,
 	VideoTrack,
+	CameraTrack,
 } from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 import { buildEmptyTrack } from "./track-factory";
@@ -158,6 +159,11 @@ function buildPlacedOverlayTrack({
 			return {
 				...buildEmptyTrack({ id, type: "image" }),
 				elements: elements as ImageElement[],
+			};
+		case "camera":
+			return {
+				...buildEmptyTrack({ id, type: "camera" }),
+				elements: elements as CameraTrack["elements"],
 			};
 	}
 }

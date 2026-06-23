@@ -18,7 +18,7 @@ jobs:
     name: Web checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -34,7 +34,7 @@ jobs:
     name: Rust checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -48,10 +48,16 @@ jobs:
     name: Harness policy check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - run: bun scripts/harness-check.mjs
+      - name: Harness required files check
+        run: bun scripts/harness-check.mjs
+
+      - name: What's New / Roadmap check
+        run: bun scripts/whats-new-check.mjs

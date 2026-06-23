@@ -70,9 +70,14 @@ export const usePanelStore = create<PanelState>()(
 		}),
 		{
 			name: "panel-sizes",
-			version: 3,
+			version: 6,
 			migrate: (persistedState, version) => {
-				if (version < 3) return { panels: { ...PANEL_CONFIG.panels } };
+				// react-resizable-panels v2→v4 changed size units: bare numbers
+				// are now pixels, not percentages. During the broken period
+				// (v5), onLayoutChanged persisted corrupted pixel-based values.
+				// Bumping to version 6 resets layout storage so users get the
+				// correct percentage-based defaults again.
+				if (version < 6) return { panels: { ...PANEL_CONFIG.panels } };
 
 				const state = persistedState as
 					| {

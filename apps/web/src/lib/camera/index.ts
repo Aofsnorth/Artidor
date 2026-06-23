@@ -7,11 +7,12 @@
  * of field, and fog. We use a pinhole projection in our 2D renderer as a
  * simplification — the user sees a perspective-transformed 2D canvas.
  */
-import type { ElementRef } from "@/lib/timeline";
+import type { ElementRef, BaseTimelineElement } from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 import type { Transform } from "@/lib/rendering";
+import type { ElementAnimations } from "@/lib/animation/types";
 
-export interface CameraElement {
+export interface CameraElement extends BaseTimelineElement {
 	id: string;
 	elementId?: string;
 	name: string;
@@ -49,7 +50,7 @@ export interface CameraElement {
 	roll: number;
 
 	transform: Transform;
-	animations?: CameraAnimations;
+	animations?: ElementAnimations;
 }
 
 export type { ElementRef };

@@ -17,6 +17,7 @@
     "lint:web": "biome lint apps/web/src --max-diagnostics=1000",
     "lint:web:fix": "biome lint apps/web/src --write --unsafe --max-diagnostics=1000",
     "preview:web": "turbo run preview --filter=@artidor/web",
+    "harness:whats-new": "bun scripts/whats-new-check.mjs",
     "publish:wasm": "bun run build:wasm && npm publish rust/wasm/pkg --access public",
     "test": "bun test apps/web/src",
     "test:e2e": "playwright test"

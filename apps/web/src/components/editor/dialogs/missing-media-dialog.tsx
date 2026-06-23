@@ -117,8 +117,6 @@ export function MissingMediaDialog({
 		[matches],
 	);
 
-	const allMatched = matchedCount === missingMedia.length;
-
 	const handleFilesSelected = useCallback(
 		async (files: FileList | File[]) => {
 			const fileList = Array.from(files);
@@ -195,23 +193,20 @@ export function MissingMediaDialog({
 		[missingMedia],
 	);
 
-	const handleManualAssign = useCallback(
-		(mediaId: string, file: File) => {
-			setMatches((prev) => {
-				const next = new Map(prev);
-				const existing = next.get(mediaId);
-				if (existing) {
-					next.set(mediaId, {
-						...existing,
-						matchedFile: file,
-						matchedBy: "manual",
-					});
-				}
-				return next;
-			});
-		},
-		[],
-	);
+	const handleManualAssign = useCallback((mediaId: string, file: File) => {
+		setMatches((prev) => {
+			const next = new Map(prev);
+			const existing = next.get(mediaId);
+			if (existing) {
+				next.set(mediaId, {
+					...existing,
+					matchedFile: file,
+					matchedBy: "manual",
+				});
+			}
+			return next;
+		});
+	}, []);
 
 	const handleConfirm = useCallback(() => {
 		const fileMap = new Map<string, File>();
@@ -272,18 +267,13 @@ export function MissingMediaDialog({
 
 					<div className="p-6 max-h-[50vh] overflow-y-auto space-y-3">
 						{!droppedFiles.length ? (
-							<div
-								role="button"
-								tabIndex={0}
+							<button
+								type="button"
 								className={cn(
-									"flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-white/[0.12] bg-white/[0.02] p-8",
+									"flex w-full flex-col items-center gap-4 rounded-xl border-2 border-dashed border-white/[0.12] bg-white/[0.02] p-8",
 									"hover:border-white/25 hover:bg-white/[0.04] transition-all cursor-pointer",
 								)}
 								onClick={() => fileInputRef.current?.click()}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ")
-										fileInputRef.current?.click();
-								}}
 								onDragOver={(e) => {
 									e.preventDefault();
 									e.currentTarget.classList.add(
@@ -322,7 +312,7 @@ export function MissingMediaDialog({
 										Files will be matched by name and duration automatically
 									</p>
 								</div>
-							</div>
+							</button>
 						) : (
 							<div className="space-y-2">
 								{missingMedia.map((ref) => {
@@ -347,10 +337,7 @@ export function MissingMediaDialog({
 													colorClass,
 												)}
 											>
-												<HugeiconsIcon
-													icon={TypeIcon}
-													className="size-4"
-												/>
+												<HugeiconsIcon icon={TypeIcon} className="size-4" />
 											</div>
 											<div className="flex-1 min-w-0">
 												<div className="text-xs font-medium text-white/85 truncate">
@@ -387,8 +374,7 @@ export function MissingMediaDialog({
 													size="sm"
 													className="h-7 text-[10px] text-white/50 hover:text-white/80 shrink-0"
 													onClick={() => {
-														const input =
-															document.createElement("input");
+														const input = document.createElement("input");
 														input.type = "file";
 														const accept =
 															ref.type === "video"
@@ -398,9 +384,8 @@ export function MissingMediaDialog({
 																	: "image/*";
 														input.accept = accept;
 														input.onchange = (e) => {
-															const f = (
-																e.target as HTMLInputElement
-															).files?.[0];
+															const f = (e.target as HTMLInputElement)
+																.files?.[0];
 															if (f) handleManualAssign(ref.mediaId, f);
 														};
 														input.click();

@@ -34,7 +34,12 @@ interface AudioWaveformProps {
 	scale?: number;
 }
 
-export type WaveformVariant = "waveform" | "beats" | "lines" | "liquid" | "graph";
+export type WaveformVariant =
+	| "waveform"
+	| "beats"
+	| "lines"
+	| "liquid"
+	| "graph";
 
 // ---------------------------------------------------------------------------
 // Shared decode cache – keyed by File identity (or URL string).
@@ -292,7 +297,6 @@ export function AudioWaveform({
 				peaks,
 				barStep,
 				maxBarHeight,
-				scale,
 				symmetric,
 				height,
 				centerY,
@@ -616,7 +620,10 @@ function drawGraphVariant({
 	ctx.beginPath();
 	const firstPoint = points[0];
 	if (!firstPoint) return;
-	ctx.moveTo(firstPoint.x, symmetric ? height - firstPoint.y + centerY : height);
+	ctx.moveTo(
+		firstPoint.x,
+		symmetric ? height - firstPoint.y + centerY : height,
+	);
 
 	for (let i = 0; i < points.length; i++) {
 		const p = points[i];
@@ -639,7 +646,10 @@ function drawGraphVariant({
 	// Close path to baseline for fill
 	const lastPoint = points[points.length - 1];
 	if (lastPoint) {
-		ctx.lineTo(lastPoint.x, symmetric ? centerY + (centerY - lastPoint.y) : height);
+		ctx.lineTo(
+			lastPoint.x,
+			symmetric ? centerY + (centerY - lastPoint.y) : height,
+		);
 	}
 	if (symmetric) {
 		// Mirror the path across center
@@ -672,7 +682,6 @@ function drawLiquidVariant({
 	peaks,
 	barStep,
 	maxBarHeight,
-	scale,
 	symmetric,
 	height,
 	centerY,
@@ -684,7 +693,6 @@ function drawLiquidVariant({
 	peaks: number[];
 	barStep: number;
 	maxBarHeight: number;
-	scale: number;
 	symmetric: boolean;
 	height: number;
 	centerY: number;
@@ -711,7 +719,10 @@ function drawLiquidVariant({
 	ctx.beginPath();
 	const firstPoint = points[0];
 	if (!firstPoint) return;
-	ctx.moveTo(firstPoint.x, symmetric ? centerY + (centerY - firstPoint.y) : height);
+	ctx.moveTo(
+		firstPoint.x,
+		symmetric ? centerY + (centerY - firstPoint.y) : height,
+	);
 
 	for (let i = 0; i < points.length - 1; i++) {
 		const p = points[i];
@@ -725,7 +736,10 @@ function drawLiquidVariant({
 	const lastPoint = points[points.length - 1];
 	if (!lastPoint) return;
 	if (symmetric) {
-		ctx.lineTo(lastPoint.x, lastPoint.y + (lastPoint.y - centerY) * -1 + (height - centerY));
+		ctx.lineTo(
+			lastPoint.x,
+			lastPoint.y + (lastPoint.y - centerY) * -1 + (height - centerY),
+		);
 		// Top edge in reverse for symmetric wave
 		for (let i = points.length - 1; i > 0; i--) {
 			const p = points[i];

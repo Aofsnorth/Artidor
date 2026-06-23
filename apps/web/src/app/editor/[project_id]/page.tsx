@@ -6,8 +6,8 @@ import {
 	ResizablePanelGroup,
 	ResizablePanel,
 	ResizableHandle,
+	type ImperativePanelHandle,
 } from "@/components/ui/resizable";
-import type { ImperativePanelHandle } from "react-resizable-panels";
 import { AssetsPanel } from "@/components/editor/panels/assets";
 import { TabBar } from "@/components/editor/panels/assets/tabbar";
 import { PropertiesPanel } from "@/components/editor/panels/properties";
@@ -131,10 +131,13 @@ function FeedbackPrompt() {
 		if (sessionStorage.getItem("artidor-feedback-prompt-shown") === "true") {
 			return;
 		}
-		const timeoutId = window.setTimeout(() => {
-			sessionStorage.setItem("artidor-feedback-prompt-shown", "true");
-			setOpen(true);
-		}, 5 * 60 * 1000);
+		const timeoutId = window.setTimeout(
+			() => {
+				sessionStorage.setItem("artidor-feedback-prompt-shown", "true");
+				setOpen(true);
+			},
+			5 * 60 * 1000,
+		);
 		return () => window.clearTimeout(timeoutId);
 	}, []);
 
@@ -246,8 +249,22 @@ function EditorLayout() {
 }
 
 function EditorPanels() {
-	const { panels, setPanel } = usePanelStore();
+	const { panels, setPanel, resetPanels } = usePanelStore();
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
+	const [layoutVersion, setLayoutVersion] = useState(0);
+
+	// Self-healing: reset corrupt/collapsed layouts from old migrations
+	useEffect(() => {
+		if (
+			panels.tools < 10 ||
+			panels.properties < 10 ||
+			panels.preview < 15 ||
+			panels.timeline < 10
+		) {
+			resetPanels();
+			setLayoutVersion((v) => v + 1);
+		}
+	}, [panels.tools, panels.properties, panels.preview, panels.timeline, resetPanels]);
 	// Pin the top row (which holds the preview) to a fixed pixel height
 	// when the editor viewport changes size — e.g. when the window enters
 	// or exits fullscreen. The vertical split is otherwise purely
@@ -281,12 +298,14 @@ function EditorPanels() {
 			// Re-express the top row's previous pixel height as a percentage
 			// of the new container height; resize() clamps to the panel's
 			// configured min/max sizes.
-			const mainPixels = (mainPanel.getSize() / 100) * previousHeight;
+			const mainPixels =
+				(mainPanel.getSize().asPercentage / 100) * previousHeight;
 			const nextMainPercent = Math.min(
 				100,
 				Math.max(0, (mainPixels / height) * 100),
 			);
-			mainPanel.resize(nextMainPercent);
+			// v4 treats bare numbers as pixels; pass a percentage string.
+			mainPanel.resize(`${nextMainPercent}%`);
 		});
 
 		observer.observe(container);
@@ -296,33 +315,48 @@ function EditorPanels() {
 	return (
 		<div ref={containerRef} className="size-full">
 			<ResizablePanelGroup
+				id="editor-main"
+				key={layoutVersion}
 				direction="vertical"
 				className="size-full gap-1"
-				onLayout={(sizes) => {
-					setPanel("mainContent", sizes[0] ?? panels.mainContent);
-					setPanel("timeline", sizes[1] ?? panels.timeline);
+				onLayoutChanged={(layout) => {
+					if (layout.mainContent !== undefined && layout.mainContent >= 10) {
+						setPanel("mainContent", layout.mainContent);
+					}
+					if (layout.timeline !== undefined && layout.timeline >= 10) {
+						setPanel("timeline", layout.timeline);
+					}
 				}}
 			>
 				<ResizablePanel
-					ref={mainPanelRef}
-					defaultSize={panels.mainContent}
-					minSize={30}
-					maxSize={85}
+					id="mainContent"
+					panelRef={mainPanelRef}
+					defaultSize={`${panels.mainContent}%`}
+					minSize="30%"
+					maxSize="85%"
 					className="min-h-0"
 				>
 					<ResizablePanelGroup
+						id="editor-row"
 						direction="horizontal"
 						className="size-full gap-1"
-						onLayout={(sizes) => {
-							setPanel("tools", sizes[0] ?? panels.tools);
-							setPanel("preview", sizes[1] ?? panels.preview);
-							setPanel("properties", sizes[2] ?? panels.properties);
+						onLayoutChanged={(layout) => {
+							if (layout.tools !== undefined && layout.tools >= 10) {
+								setPanel("tools", layout.tools);
+							}
+							if (layout.preview !== undefined && layout.preview >= 15) {
+								setPanel("preview", layout.preview);
+							}
+							if (layout.properties !== undefined && layout.properties >= 10) {
+								setPanel("properties", layout.properties);
+							}
 						}}
 					>
 						<ResizablePanel
-							defaultSize={panels.tools}
-							minSize={15}
-							maxSize={40}
+							id="tools"
+							defaultSize={`${panels.tools}%`}
+							minSize="15%"
+							maxSize="40%"
 							className="min-w-0"
 						>
 							{floatingPanels.assets ? (
@@ -338,8 +372,9 @@ function EditorPanels() {
 						<ResizableHandle withHandle />
 
 						<ResizablePanel
-							defaultSize={panels.preview}
-							minSize={30}
+							id="preview"
+							defaultSize={`${panels.preview}%`}
+							minSize="30%"
 							className="min-h-0 min-w-0 flex-1"
 						>
 							{floatingPanels.preview ? (
@@ -355,9 +390,10 @@ function EditorPanels() {
 						<ResizableHandle withHandle />
 
 						<ResizablePanel
-							defaultSize={panels.properties}
-							minSize={15}
-							maxSize={40}
+							id="properties"
+							defaultSize={`${panels.properties}%`}
+							minSize="15%"
+							maxSize="40%"
 							className="min-w-0"
 						>
 							{floatingPanels.properties ? (
@@ -380,9 +416,10 @@ function EditorPanels() {
 				<ResizableHandle withHandle />
 
 				<ResizablePanel
-					defaultSize={panels.timeline}
-					minSize={15}
-					maxSize={70}
+					id="timeline"
+					defaultSize={`${panels.timeline}%`}
+					minSize="15%"
+					maxSize="70%"
 					className="min-h-0"
 				>
 					{floatingPanels.timeline ? (

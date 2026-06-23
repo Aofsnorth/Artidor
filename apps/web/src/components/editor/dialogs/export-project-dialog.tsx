@@ -47,23 +47,6 @@ export function ExportProjectDialog({
 	const [saveToDrive, setSaveToDrive] = useState(false);
 	const [busy, setBusy] = useState(false);
 
-	const handleDownload = async () => {
-		setBusy(true);
-		try {
-			const fullProject = await storageService.loadProject({ id: projectId });
-			if (!fullProject?.project) {
-				toast.error("Failed to load project for export");
-				return;
-			}
-			exportProject(fullProject.project);
-			toast.success("Project exported");
-		} catch {
-			toast.error("Failed to export project");
-		} finally {
-			setBusy(false);
-		}
-	};
-
 	const handleExport = async () => {
 		setBusy(true);
 
@@ -183,7 +166,11 @@ export function ExportProjectDialog({
 							<div className="flex items-center gap-2">
 								<div className="size-1.5 rounded-full bg-white/40" />
 								<span className="text-[11px] text-white/60">
-									Downloads a <code className="text-white/80 bg-white/10 px-1 rounded text-[10px]">.artidor</code> project file
+									Downloads a{" "}
+									<code className="text-white/80 bg-white/10 px-1 rounded text-[10px]">
+										.artidor
+									</code>{" "}
+									project file
 								</span>
 							</div>
 							<div className="flex items-center gap-2">

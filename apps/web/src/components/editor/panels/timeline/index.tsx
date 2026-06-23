@@ -2,6 +2,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+	Camera01Icon,
 	Delete02Icon,
 	Image01Icon,
 	MagicWand05Icon,
@@ -249,6 +250,12 @@ const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 	image: (
 		<HugeiconsIcon
 			icon={Image01Icon}
+			className="text-muted-foreground size-4 shrink-0"
+		/>
+	),
+	camera: (
+		<HugeiconsIcon
+			icon={Camera01Icon}
 			className="text-muted-foreground size-4 shrink-0"
 		/>
 	),
@@ -895,19 +902,24 @@ function TrackLabelsPanel({
 
 		let textCount = 0;
 		let videoCount = 0;
+		let cameraCount = 0;
 
 		const allVisualTracks = [...overlayTracks, mainTrack];
 		for (const t of allVisualTracks) {
 			if (t.type === "text") textCount++;
+			else if (t.type === "camera") cameraCount++;
 			else videoCount++;
 		}
 
 		let textIdx = textCount;
 		let videoIdx = videoCount;
+		let cameraIdx = cameraCount;
 
 		for (const t of overlayTracks) {
 			if (t.type === "text") {
 				prefixes.set(t.id, `T${textIdx--}`);
+			} else if (t.type === "camera") {
+				prefixes.set(t.id, `C${cameraIdx--}`);
 			} else {
 				prefixes.set(t.id, `V${videoIdx--}`);
 			}

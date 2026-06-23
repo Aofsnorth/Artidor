@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+	Camera01Icon,
 	LockKeyIcon,
 	MinusSignIcon,
 	MoreHorizontalIcon,
@@ -848,6 +849,11 @@ function MediaTypeIcon({
 	if (type === "audio") {
 		return (
 			<HugeiconsIcon icon={MusicNote01Icon} size={px} className={iconClass} />
+		);
+	}
+	if (type === "camera") {
+		return (
+			<HugeiconsIcon icon={Camera01Icon} size={px} className={iconClass} />
 		);
 	}
 	if (type === "video") {

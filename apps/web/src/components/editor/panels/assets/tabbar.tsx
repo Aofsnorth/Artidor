@@ -75,7 +75,7 @@ export function TabBar() {
 									}}
 								>
 									<tab.icon className="size-[1.15rem]" />
-									<span className="text-[0.55rem] leading-none tracking-[0.02em]">
+									<span className="block max-w-full truncate text-[0.55rem] leading-none tracking-[0.02em]">
 										{tab.label}
 									</span>
 									{isAI && !aiDisabled && aiStatus === "streaming" && (
@@ -122,7 +122,10 @@ function StorageCard() {
 	const freeLabel = storage ? formatStorageSize(storage.freeBytes) : "—";
 	const usedPercent =
 		storage && storage.totalBytes > 0
-			? Math.min(100, Math.max(0, (storage.usedBytes / storage.totalBytes) * 100))
+			? Math.min(
+					100,
+					Math.max(0, (storage.usedBytes / storage.totalBytes) * 100),
+				)
 			: 0;
 
 	return (

@@ -8,6 +8,7 @@ import type {
 	TrackType,
 	TimelineTrack,
 	VideoTrack,
+	CameraTrack,
 } from "@/lib/timeline";
 
 export function buildEmptyTrack({
@@ -64,6 +65,15 @@ export function buildEmptyTrack({
 	type: "image";
 	name?: string;
 }): ImageTrack;
+export function buildEmptyTrack({
+	id,
+	type,
+	name,
+}: {
+	id: string;
+	type: "camera";
+	name?: string;
+}): CameraTrack;
 
 export function buildEmptyTrack({
 	id,
@@ -132,6 +142,14 @@ export function buildEmptyTrack({
 				id,
 				name: trackName,
 				type: "image",
+				elements: [],
+				hidden: false,
+			};
+		case "camera":
+			return {
+				id,
+				name: trackName,
+				type: "camera",
 				elements: [],
 				hidden: false,
 			};

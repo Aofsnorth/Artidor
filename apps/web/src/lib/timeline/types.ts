@@ -8,6 +8,7 @@ import type {
 	Transform,
 	Transform3D,
 } from "@/lib/rendering";
+import type { CameraElement } from "@/lib/camera";
 
 export type ElementRef = {
 	trackId: string;
@@ -53,7 +54,8 @@ export type TrackType =
 	| "audio"
 	| "graphic"
 	| "effect"
-	| "image";
+	| "image"
+	| "camera";
 
 interface BaseTrack {
 	id: string;
@@ -99,20 +101,28 @@ export interface ImageTrack extends BaseTrack {
 	hidden: boolean;
 }
 
+export interface CameraTrack extends BaseTrack {
+	type: "camera";
+	elements: CameraElement[];
+	hidden: boolean;
+}
+
 export type TimelineTrack =
 	| VideoTrack
 	| TextTrack
 	| AudioTrack
 	| GraphicTrack
 	| EffectTrack
-	| ImageTrack;
+	| ImageTrack
+	| CameraTrack;
 
 export type OverlayTrack =
 	| VideoTrack
 	| TextTrack
 	| GraphicTrack
 	| EffectTrack
-	| ImageTrack;
+	| ImageTrack
+	| CameraTrack;
 
 export interface SceneTracks {
 	overlay: OverlayTrack[];
@@ -184,7 +194,7 @@ export interface LibraryAudioElement extends BaseAudioElement {
 
 export type AudioElement = UploadAudioElement | LibraryAudioElement;
 
-interface BaseTimelineElement {
+export interface BaseTimelineElement {
 	id: string;
 	name: string;
 	/**
@@ -398,7 +408,8 @@ export type TimelineElement =
 	| TextElement
 	| StickerElement
 	| GraphicElement
-	| EffectElement;
+	| EffectElement
+	| CameraElement;
 
 export type ElementType = TimelineElement["type"];
 
@@ -444,6 +455,7 @@ export type CreateTextElement = Omit<TextElement, "id">;
 export type CreateStickerElement = Omit<StickerElement, "id">;
 export type CreateGraphicElement = Omit<GraphicElement, "id">;
 export type CreateEffectElement = Omit<EffectElement, "id">;
+export type CreateCameraElement = Omit<CameraElement, "id">;
 export type CreateTimelineElement =
 	| CreateAudioElement
 	| CreateVideoElement
@@ -451,7 +463,8 @@ export type CreateTimelineElement =
 	| CreateTextElement
 	| CreateStickerElement
 	| CreateGraphicElement
-	| CreateEffectElement;
+	| CreateEffectElement
+	| CreateCameraElement;
 
 export interface ElementDragState {
 	isDragging: boolean;

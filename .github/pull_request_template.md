@@ -34,6 +34,18 @@ Describe what changed and why.
 - [ ] I documented risks.
 - [ ] I included rollback notes.
 
+## Product / Roadmap
+
+- [ ] I checked `ROADMAP.md`.
+- [ ] This change aligns with the roadmap.
+- [ ] This change is user-facing.
+- [ ] This change updates What's New.
+- [ ] What's New is not needed because:
+
+## User Impact
+
+Describe what users will notice:
+
 ## Verification
 
 Commands run:
