@@ -1058,7 +1058,9 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 	},
 ];
 
-export function validateWhatsNewFeed(entries: readonly WhatsNewEntry[] = WHATS_NEW) {
+export function validateWhatsNewFeed(
+	entries: readonly WhatsNewEntry[] = WHATS_NEW,
+) {
 	const seen = new Set<string>();
 	for (let index = 0; index < entries.length; index += 1) {
 		const entry = entries[index];
