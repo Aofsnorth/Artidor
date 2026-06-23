@@ -26,7 +26,11 @@ jobs:
 
       - run: bun install --frozen-lockfile
       - run: bun run lint:web
-      - run: cd apps/web && bunx tsc --noEmit
+      # Run the project's pinned typescript (apps/web pins ^6.0.3) through node
+      # directly. `bunx tsc` has been observed to resolve a hoisted, older
+      # typescript from the workspace root that doesn't match apps/web's pinned
+      # version and fails the typecheck even when the same source passes locally.
+      - run: cd apps/web && node ../../node_modules/typescript/bin/tsc --noEmit
       - run: bun run test
       - run: bun run build:web
 
