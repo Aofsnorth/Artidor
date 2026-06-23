@@ -395,13 +395,14 @@ function EditorPanels() {
 							minSize="15%"
 							maxSize="40%"
 							className="min-w-0"
+							style={{ overflow: "hidden" }}
 						>
 							{floatingPanels.properties ? (
 								<DockPlaceholder id="properties" title="Properties" />
 							) : (
-								<div className="group/panel-slot relative size-full">
+								<div className="group/panel-slot relative size-full overflow-hidden">
 									<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
-										<div className="flex-1 min-w-0">
+										<div className="flex min-h-0 flex-1 min-w-0 overflow-hidden">
 											<PropertiesPanel />
 										</div>
 										<VerticalAudioMeter />
@@ -462,8 +463,8 @@ function EditorPanels() {
 					title="Properties"
 					state={floatingPanels.properties}
 				>
-					<div className="flex h-full min-h-0 items-stretch gap-2 p-1 overflow-hidden">
-						<div className="flex-1 min-w-0">
+					<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden p-1">
+						<div className="flex min-h-0 flex-1 min-w-0 overflow-hidden">
 							<PropertiesPanel />
 						</div>
 						<VerticalAudioMeter />
