@@ -22,18 +22,18 @@ function Calendar({
 			classNames={{
 				months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
 				month: "space-y-4",
-				monthCaption: "flex justify-center pt-1 relative items-center",
-				captionLabel: "text-sm font-medium",
+				month_caption: "flex justify-center pt-1 relative items-center",
+				caption_label: "text-sm font-medium",
 				nav: "space-x-1 flex items-center",
-				navButton: cn(
+				nav_button: cn(
 					buttonVariants({ variant: "outline" }),
 					"size-7 bg-transparent p-0 opacity-50 hover:opacity-100",
 				),
-				previousMonthButton: "absolute left-1",
-				nextMonthButton: "absolute right-1",
+				button_previous: "absolute left-1",
+				button_next: "absolute right-1",
 				table: "w-full border-collapse space-y-1",
-				headRow: "flex",
-				headCell:
+				head_row: "flex",
+				head_cell:
 					"text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
 				row: "flex w-full mt-2",
 				cell: cn(
@@ -46,17 +46,17 @@ function Calendar({
 					buttonVariants({ variant: "text" }),
 					"size-8 p-0 font-normal aria-selected:opacity-100",
 				),
-				dayRangeStart: "day-range-start",
-				dayRangeEnd: "day-range-end",
-				daySelected:
+				day_range_start: "day-range-start",
+				day_range_end: "day-range-end",
+				day_selected:
 					"bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-				dayToday: "bg-accent text-accent-foreground",
-				dayOutside:
+				day_today: "bg-accent text-accent-foreground",
+				day_outside:
 					"day-outside text-muted-foreground aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
-				dayDisabled: "text-muted-foreground opacity-50",
-				dayRangeMiddle:
+				day_disabled: "text-muted-foreground opacity-50",
+				day_range_middle:
 					"aria-selected:bg-accent aria-selected:text-accent-foreground",
-				dayHidden: "invisible",
+				day_hidden: "invisible",
 				...classNames,
 			}}
 			components={{
