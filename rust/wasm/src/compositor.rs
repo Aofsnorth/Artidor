@@ -171,4 +171,3 @@ fn parse_upload_texture_options(value: JsValue) -> Result<UploadTextureOptions, 
         height: read_u32_property(&object, "height")?,
     })
 }
-
