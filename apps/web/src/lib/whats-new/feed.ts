@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-properties-scroll-isolation",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Properties panel: scroll isolation so meter no longer follows the card",
+		items: [
+			"Freehand / vector card scrolling no longer drags the audio meter along with it. react-resizable-panels v4 wraps every Panel in an inner div with overflow: auto for touch-action handling, which was creating a secondary scroll context that moved the whole PropertiesPanel + Meter row when the card scrolled. The properties Panel now passes style={{ overflow: \"hidden\" }} to clip that secondary scroll, the panel-slot adds overflow-hidden as a safety net, and the PropertiesPanel wrapper inside the flex row gets min-h-0 + overflow-hidden so it can't grow past its slot either.",
+			"Net effect: scrolling the card moves the card content only; the meter is pinned to its slot regardless of scroll state. The card itself still scrolls cleanly inside its own ScrollArea — the fix only removes the unintended outer scroll context.",
+		],
+	},
+	{
 		id: "2026-06-24-audio-meter-revert-overlay-labels",
 		date: "2026-06-24",
 		tag: "improvement",
