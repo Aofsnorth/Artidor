@@ -1,0 +1,13 @@
+diff --git a/dist/index.js b/dist/index.js
+index a475e857acf68689cb84ac36638fa112bc20668f..016145b8d224ac95e4cc6b67c243c77d0a584b3d 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -717,7 +717,7 @@ function $constructor(name, initializer$1, params) {
+ 		(_a = inst._zod).traits ?? (_a.traits = /* @__PURE__ */ new Set());
+ 		inst._zod.traits.add(name);
+ 		initializer$1(inst, def);
+-		for (const k in _.prototype) if (!(k in inst)) Object.defineProperty(inst, k, { value: _.prototype[k].bind(inst) });
++		for (const k in _.prototype) if (!(k in inst) && typeof _.prototype[k] === "function") Object.defineProperty(inst, k, { value: _.prototype[k].bind(inst) });
+ 		inst._zod.constr = _;
+ 		inst._zod.def = def;
+ 	}
