@@ -30,7 +30,7 @@ export function useReverseVideo() {
 		}
 		const track = editor.timeline.getTrackById({ trackId: ref.trackId });
 		const element = track?.elements.find((el) => el.id === ref.elementId);
-		if (!element || element.type !== "video") {
+		if (element?.type !== "video") {
 			toast.error("Selected element is not a video");
 			return;
 		}

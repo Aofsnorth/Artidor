@@ -79,7 +79,7 @@ export function ImageTab({
 		}
 		try {
 			const [processed] = await processMediaAssets({ files: [file] });
-			if (!processed || processed.type !== "image") {
+			if (processed?.type !== "image") {
 				toast.error("Please pick an image file");
 				return;
 			}

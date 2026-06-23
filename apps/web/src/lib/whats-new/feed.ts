@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-renderer-pipeline-canvas-coords",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Renderer pipeline: transform coords in canvas space, not preview-buffer space",
+		items: [
+			"Element transforms (centerX/centerY/width/height), blur sigma resolution, and effect-layer dimensions now use the project's canvas size instead of the preview-quality-scaled output buffer. Previously, when preview quality was 'Low' or 'Medium' (e.g. 40% on a 1920x1080 canvas, so the buffer was 768x432), the contain-scale used to size and position every element was based on 768/512 instead of 1920/512, causing freehand/vector/imported shapes to appear shifted to the right and down on render. The fix splits the pipeline cleanly: transforms live in canvas coordinates, the scale pass at the boundary of CanvasRenderer.render() downscales them to the output buffer for the compositor, and the compositor blits source-size textures to the scaled positions.",
+			"No visual change at preview quality 'High' (where buffer == canvas size) and no change to export, which already runs at canvas size. The fix is invisible in normal cases — it only corrects the position when the preview is rendered at a lower resolution than the project canvas. The defensive guard in the freehand/vector hooks (added in the previous entry) is no longer the primary defense; it stays as a safety net for projects with missing canvasSize.",
+		],
+	},
+	{
 		id: "2026-06-24-draw-defensive-audio-meter-labels",
 		date: "2026-06-24",
 		tag: "fix",
