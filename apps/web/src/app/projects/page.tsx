@@ -33,7 +33,13 @@ import type {
 	TProjectSortOption,
 } from "@/lib/project/types";
 import { parseDriveUrl } from "@/lib/drive/parse";
-import { getGoogleAccessToken } from "@/lib/drive/api";
+import {
+	getGoogleAccessToken,
+	getGoogleClientId,
+	initiateGoogleOAuth,
+	createDriveFolder,
+	saveProjectToDrive,
+} from "@/lib/drive/api";
 import { formatTimecode, mediaTimeToSeconds } from "artidor-wasm";
 import { formatDate } from "@/utils/date";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -62,6 +68,7 @@ import {
 	Settings01Icon,
 	FileExportIcon,
 	StarIcon,
+	GoogleIcon,
 } from "@hugeicons/core-free-icons";
 import { Label } from "@/components/ui/label";
 import {
@@ -93,10 +100,14 @@ import { cn } from "@/utils/ui";
 import { PageTransition } from "@/components/page-transition";
 import { lazy, Suspense } from "react";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
-import { exportProject, importProject } from "@/lib/project/file";
+import { importProject, collectMediaRefs, type ImportedMediaRef } from "@/lib/project/file";
 import { savePreset } from "@/lib/presets/storage";
 import type { UserPreset } from "@/lib/presets/types";
 import { generateUUID } from "@/utils/id";
+import { MissingMediaDialog } from "@/components/editor/dialogs/missing-media-dialog";
+import { ExportVideoDialog } from "@/components/editor/dialogs/export-video-dialog";
+import { ExportProjectDialog } from "@/components/editor/dialogs/export-project-dialog";
+import { processMediaAssets } from "@/lib/media/processing";
 
 const SettingsDialog = lazy(() =>
 	import("@/components/editor/dialogs/settings-dialog").then((m) => ({
@@ -517,7 +528,7 @@ function ProjectsToolbar({ projectIds }: { projectIds: string[] }) {
 	};
 
 	return (
-		<div className="sticky top-16 z-10 flex items-center justify-between px-6 h-14 pt-2 transition-all">
+		<div className="sticky top-16 z-10 flex items-center justify-between px-6 h-14 pt-2 mt-1 transition-all">
 			<div className="flex items-center gap-2 bg-background/30 backdrop-blur-xl border border-white/5 rounded-full px-2 py-1 shadow-sm">
 				<Label
 					className="flex items-center gap-3 cursor-pointer px-2"
@@ -838,6 +849,9 @@ function NewProjectButton() {
 	const editor = useEditor();
 	const router = useRouter();
 	const [isPresetDialogOpen, setIsPresetDialogOpen] = useState(false);
+	const [missingMedia, setMissingMedia] = useState<ImportedMediaRef[]>([]);
+	const [missingDialogOpen, setMissingDialogOpen] = useState(false);
+	const [pendingImportProjectId, setPendingImportProjectId] = useState<string | null>(null);
 
 	const handleCreateProject = async () => {
 		const projectId = await editor.project.createNewProject({
@@ -849,7 +863,7 @@ function NewProjectButton() {
 	const handleImportProject = async () => {
 		const input = document.createElement("input");
 		input.type = "file";
-		input.accept = ".artidor";
+		input.accept = ".artidor,.artpr";
 		input.onchange = async (event) => {
 			const file = (event.target as HTMLInputElement).files?.[0];
 			if (!file) return;
@@ -857,8 +871,18 @@ function NewProjectButton() {
 				const project = await importProject(file);
 				await storageService.saveProject({ project });
 				await editor.project.loadAllProjects();
-				toast.success("Project imported");
-				router.push(`/editor/${project.metadata.id}`);
+
+				// Detect missing media
+				const mediaRefs = collectMediaRefs(project);
+				if (mediaRefs.length > 0) {
+					setMissingMedia(mediaRefs);
+					setPendingImportProjectId(project.metadata.id);
+					setMissingDialogOpen(true);
+					toast.success("Project imported — some media files may be missing");
+				} else {
+					toast.success("Project imported");
+					router.push(`/editor/${project.metadata.id}`);
+				}
 			} catch (error) {
 				toast.error("Failed to import project", {
 					description: error instanceof Error ? error.message : "Invalid file",
@@ -866,6 +890,32 @@ function NewProjectButton() {
 			}
 		};
 		input.click();
+	};
+
+	const handleMissingMediaConfirm = async (matches: Map<string, File>) => {
+		if (!pendingImportProjectId) return;
+
+		if (matches.size > 0) {
+			try {
+				for (const [mediaId, file] of matches) {
+					const processedAssets = await processMediaAssets({ files: [file] });
+					const processed = processedAssets[0];
+					if (processed) {
+						await editor.media.addMediaAsset({
+							projectId: pendingImportProjectId,
+							asset: processed,
+						});
+					}
+				}
+				toast.success(`Linked ${matches.size} media file${matches.size !== 1 ? "s" : ""}`);
+			} catch {
+				toast.error("Some media files could not be linked");
+			}
+		}
+
+		router.push(`/editor/${pendingImportProjectId}`);
+		setPendingImportProjectId(null);
+		setMissingMedia([]);
 	};
 
 	return (
@@ -900,6 +950,12 @@ function NewProjectButton() {
 			<NewPresetDialog
 				open={isPresetDialogOpen}
 				onOpenChange={setIsPresetDialogOpen}
+			/>
+			<MissingMediaDialog
+				open={missingDialogOpen}
+				onOpenChange={setMissingDialogOpen}
+				missingMedia={missingMedia}
+				onConfirm={handleMissingMediaConfirm}
 			/>
 		</div>
 	);
@@ -1260,19 +1316,13 @@ function ProjectContextMenuContent({
 	projectId: string;
 }) {
 	const editor = useEditor();
-	const handleExportProject = async () => {
-		try {
-			const fullProject = await storageService.loadProject({ id: projectId });
-			if (!fullProject?.project) {
-				toast.error("Failed to load project for export");
-				return;
-			}
-			exportProject(fullProject.project);
-			toast.success("Project exported");
-		} catch (_err) {
-			toast.error("Failed to export project");
-		}
-	};
+	const [exportVideoOpen, setExportVideoOpen] = useState(false);
+	const [exportProjectOpen, setExportProjectOpen] = useState(false);
+	const [driveBusy, setDriveBusy] = useState(false);
+
+	const projectName =
+		editor.project.getSavedProjects().find((p) => p.id === projectId)?.name ??
+		"Project";
 
 	const handleSaveAsPreset = async () => {
 		try {
@@ -1290,47 +1340,127 @@ function ProjectContextMenuContent({
 		}
 	};
 
+	const handleCopyToDrive = async () => {
+		if (!getGoogleClientId()) {
+			toast.error("Google Drive isn't set up yet", {
+				description: "Add your Google Client ID via the Drive import dialog first.",
+			});
+			return;
+		}
+		if (!getGoogleAccessToken()) {
+			try {
+				await initiateGoogleOAuth();
+			} catch {
+				toast.error("Google Drive sign-in required");
+				return;
+			}
+		}
+
+		setDriveBusy(true);
+		try {
+			const fullProject = await storageService.loadProject({ id: projectId });
+			if (!fullProject?.project) {
+				toast.error("Failed to load project");
+				return;
+			}
+
+			const project = fullProject.project;
+			const folderName = project.metadata.name || "Artidor Project";
+			const folderId = await createDriveFolder(folderName);
+
+			// Save encrypted project file to Drive
+			await saveProjectToDrive(folderId, null, project);
+
+			toast.success("Project copied to Google Drive", {
+				description: `${folderName} — open in editor to sync media files`,
+				action: {
+					label: "Open",
+					onClick: () =>
+						window.open(
+							`https://drive.google.com/drive/folders/${folderId}`,
+							"_blank",
+							"noopener,noreferrer",
+						),
+				},
+			});
+		} catch (err) {
+			const msg =
+				err instanceof Error ? err.message : "Failed to copy to Drive";
+			toast.error(msg === "unauthenticated" ? "Connect Google Drive first." : msg);
+		} finally {
+			setDriveBusy(false);
+		}
+	};
+
 	return (
-		<ContextMenuContent>
-			<ContextMenuItem
-				icon={<HugeiconsIcon icon={Edit03Icon} />}
-				onClick={onRenameClick}
-			>
-				Rename
-			</ContextMenuItem>
-			<ContextMenuItem
-				icon={<HugeiconsIcon icon={Copy02Icon} />}
-				onClick={onDuplicateClick}
-			>
-				Duplicate
-			</ContextMenuItem>
-			<ContextMenuItem
-				icon={<HugeiconsIcon icon={FileExportIcon} />}
-				onClick={handleExportProject}
-			>
-				Export
-			</ContextMenuItem>
-			<ContextMenuItem
-				icon={<HugeiconsIcon icon={StarIcon} />}
-				onClick={handleSaveAsPreset}
-			>
-				Save as preset
-			</ContextMenuItem>
-			<ContextMenuItem
-				icon={<HugeiconsIcon icon={InformationCircleIcon} />}
-				onClick={onInfoClick}
-			>
-				Info
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem
-				variant="destructive"
-				icon={<HugeiconsIcon icon={Delete02Icon} />}
-				onClick={onDeleteClick}
-			>
-				Delete
-			</ContextMenuItem>
-		</ContextMenuContent>
+		<>
+			<ContextMenuContent>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={Edit03Icon} />}
+					onClick={onRenameClick}
+				>
+					Rename
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={Copy02Icon} />}
+					onClick={onDuplicateClick}
+				>
+					Duplicate
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={Video01Icon} />}
+					onClick={() => setExportVideoOpen(true)}
+				>
+					Export to Video
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={FileExportIcon} />}
+					onClick={() => setExportProjectOpen(true)}
+				>
+					Export Project File
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={GoogleIcon} />}
+					onClick={handleCopyToDrive}
+					disabled={driveBusy}
+				>
+					{driveBusy ? "Copying to Drive…" : "Copy to Google Drive"}
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={StarIcon} />}
+					onClick={handleSaveAsPreset}
+				>
+					Save as preset
+				</ContextMenuItem>
+				<ContextMenuItem
+					icon={<HugeiconsIcon icon={InformationCircleIcon} />}
+					onClick={onInfoClick}
+				>
+					Info
+				</ContextMenuItem>
+				<ContextMenuSeparator />
+				<ContextMenuItem
+					variant="destructive"
+					icon={<HugeiconsIcon icon={Delete02Icon} />}
+					onClick={onDeleteClick}
+				>
+					Delete
+				</ContextMenuItem>
+			</ContextMenuContent>
+
+			<ExportVideoDialog
+				open={exportVideoOpen}
+				onOpenChange={setExportVideoOpen}
+				projectId={projectId}
+				projectName={projectName}
+			/>
+			<ExportProjectDialog
+				open={exportProjectOpen}
+				onOpenChange={setExportProjectOpen}
+				projectId={projectId}
+				projectName={projectName}
+			/>
+		</>
 	);
 }
 
@@ -1354,16 +1484,14 @@ function ProjectMenu({
 	onInfoClick: () => void;
 }) {
 	const editor = useEditor();
-	const handleExportProject = async () => {
-		const fullProject = await storageService.loadProject({ id: projectId });
-		if (!fullProject?.project) {
-			toast.error("Failed to load project for export");
-			return;
-		}
-		exportProject(fullProject.project);
-		toast.success("Project exported");
-		onOpenChange(false);
-	};
+	const [exportVideoOpen, setExportVideoOpen] = useState(false);
+	const [exportProjectOpen, setExportProjectOpen] = useState(false);
+	const [driveBusy, setDriveBusy] = useState(false);
+
+	const projectName =
+		editor.project.getSavedProjects().find((p) => p.id === projectId)?.name ??
+		"Project";
+
 	const handleSaveAsPreset = async () => {
 		const fullProject = await storageService.loadProject({ id: projectId });
 		if (!fullProject?.project) {
@@ -1376,6 +1504,59 @@ function ProjectMenu({
 		toast.success(`Saved "${preset.name}" to presets`);
 		onOpenChange(false);
 	};
+
+	const handleCopyToDrive = async () => {
+		if (!getGoogleClientId()) {
+			toast.error("Google Drive isn't set up yet", {
+				description: "Add your Google Client ID via the Drive import dialog first.",
+			});
+			return;
+		}
+		if (!getGoogleAccessToken()) {
+			try {
+				await initiateGoogleOAuth();
+			} catch {
+				toast.error("Google Drive sign-in required");
+				return;
+			}
+		}
+
+		setDriveBusy(true);
+		onOpenChange(false);
+		try {
+			const fullProject = await storageService.loadProject({ id: projectId });
+			if (!fullProject?.project) {
+				toast.error("Failed to load project");
+				return;
+			}
+
+			const project = fullProject.project;
+			const folderName = project.metadata.name || "Artidor Project";
+			const folderId = await createDriveFolder(folderName);
+
+			await saveProjectToDrive(folderId, null, project);
+
+			toast.success("Project copied to Google Drive", {
+				description: `${folderName} — open in editor to sync media files`,
+				action: {
+					label: "Open",
+					onClick: () =>
+						window.open(
+							`https://drive.google.com/drive/folders/${folderId}`,
+							"_blank",
+							"noopener,noreferrer",
+						),
+				},
+			});
+		} catch (err) {
+			const msg =
+				err instanceof Error ? err.message : "Failed to copy to Drive";
+			toast.error(msg === "unauthenticated" ? "Connect Google Drive first." : msg);
+		} finally {
+			setDriveBusy(false);
+		}
+	};
+
 	const handleMenuClick = ({
 		event,
 	}: {
@@ -1420,63 +1601,86 @@ function ProjectMenu({
 	const isGrid = variant === "grid";
 
 	return (
-		<DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
-			<DropdownMenuTrigger asChild>
-				<Button
-					variant="background"
-					className={
-						isGrid
-							? `absolute z-10 top-3 right-3 ${isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
-							: "!bg-transparent !shadow-none"
-					}
-					size="icon"
-					aria-label="Project menu"
-					onClick={(event) =>
-						handleMenuClick({
-							event: event as unknown as MouseEvent<HTMLButtonElement>,
-						})
-					}
-					onMouseDown={(event) => event.stopPropagation()}
-					onKeyDown={(event) =>
-						handleMenuKeyDown({
-							event: event as unknown as KeyboardEvent<HTMLButtonElement>,
-						})
-					}
-				>
-					<HugeiconsIcon
-						icon={MoreHorizontalIcon}
-						className="text-foreground"
-						aria-hidden="true"
-					/>
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent className="w-48" align="end">
-				<DropdownMenuItem onClick={handleRename}>
-					<HugeiconsIcon icon={Edit03Icon} />
-					Rename
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={handleDuplicate}>
-					<HugeiconsIcon icon={Copy02Icon} />
-					Duplicate
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => void handleExportProject()}>
-					<HugeiconsIcon icon={FileExportIcon} />
-					Export
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={() => void handleSaveAsPreset()}>
-					<HugeiconsIcon icon={StarIcon} />
-					Save as preset
-				</DropdownMenuItem>
-				<DropdownMenuItem onClick={handleInfoClick}>
-					<HugeiconsIcon icon={InformationCircleIcon} />
-					Info
-				</DropdownMenuItem>
-				<DropdownMenuItem variant="destructive" onClick={handleDeleteClick}>
-					<HugeiconsIcon icon={Delete02Icon} />
-					Delete
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+		<>
+			<DropdownMenu open={isOpen} onOpenChange={onOpenChange}>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="background"
+						className={
+							isGrid
+								? `absolute z-10 top-3 right-3 ${isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
+								: "!bg-transparent !shadow-none"
+						}
+						size="icon"
+						aria-label="Project menu"
+						onClick={(event) =>
+							handleMenuClick({
+								event: event as unknown as MouseEvent<HTMLButtonElement>,
+							})
+						}
+						onMouseDown={(event) => event.stopPropagation()}
+						onKeyDown={(event) =>
+							handleMenuKeyDown({
+								event: event as unknown as KeyboardEvent<HTMLButtonElement>,
+							})
+						}
+					>
+						<HugeiconsIcon
+							icon={MoreHorizontalIcon}
+							className="text-foreground"
+							aria-hidden="true"
+						/>
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent className="w-52" align="end">
+					<DropdownMenuItem onClick={handleRename}>
+						<HugeiconsIcon icon={Edit03Icon} />
+						Rename
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleDuplicate}>
+						<HugeiconsIcon icon={Copy02Icon} />
+						Duplicate
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => { setExportVideoOpen(true); onOpenChange(false); }}>
+						<HugeiconsIcon icon={Video01Icon} />
+						Export to Video
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => { setExportProjectOpen(true); onOpenChange(false); }}>
+						<HugeiconsIcon icon={FileExportIcon} />
+						Export Project File
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => void handleCopyToDrive()} disabled={driveBusy}>
+						<HugeiconsIcon icon={GoogleIcon} />
+						{driveBusy ? "Copying…" : "Copy to Google Drive"}
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => void handleSaveAsPreset()}>
+						<HugeiconsIcon icon={StarIcon} />
+						Save as preset
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleInfoClick}>
+						<HugeiconsIcon icon={InformationCircleIcon} />
+						Info
+					</DropdownMenuItem>
+					<DropdownMenuItem variant="destructive" onClick={handleDeleteClick}>
+						<HugeiconsIcon icon={Delete02Icon} />
+						Delete
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			<ExportVideoDialog
+				open={exportVideoOpen}
+				onOpenChange={setExportVideoOpen}
+				projectId={projectId}
+				projectName={projectName}
+			/>
+			<ExportProjectDialog
+				open={exportProjectOpen}
+				onOpenChange={setExportProjectOpen}
+				projectId={projectId}
+				projectName={projectName}
+			/>
+		</>
 	);
 }
 

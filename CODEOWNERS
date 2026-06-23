@@ -1,0 +1,15 @@
+* @Aofsnorth
+
+.github/ @Aofsnorth
+packages/mcp-server/ @Aofsnorth
+apps/web/src/app/api/ @Aofsnorth
+apps/web/src/lib/auth/ @Aofsnorth
+apps/web/src/lib/ai/ @Aofsnorth
+rust/ @Aofsnorth
+Cargo.toml @Aofsnorth
+Cargo.lock @Aofsnorth
+package.json @Aofsnorth
+bun.lock @Aofsnorth
+LICENSE @Aofsnorth
+SECURITY.md @Aofsnorth
+PERMISSIONS.md @Aofsnorth

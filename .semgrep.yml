@@ -1,0 +1,27 @@
+rules:
+  - id: no-eval
+    message: Avoid eval-like execution.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+
+  - id: no-dangerously-set-inner-html
+    message: Avoid dangerouslySetInnerHTML unless explicitly reviewed.
+    severity: WARNING
+    languages: [typescript, javascript]
+    pattern: dangerouslySetInnerHTML
+
+  - id: no-console-secret
+    message: Do not log variables that look like secrets.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: console.log($X)
+          - pattern: console.error($X)
+          - pattern: console.warn($X)
+      - metavariable-regex:
+          metavariable: $X
+          regex: ".*(secret|token|key|password|credential).*"

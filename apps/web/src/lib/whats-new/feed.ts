@@ -18,6 +18,21 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-23-export-overhaul-drive-copy-media-relink",
+		date: "2026-06-23",
+		tag: "feature",
+		title: "Export overhaul, Google Drive copy, and missing media relink",
+		items: [
+			"Right-click context menu on /project now shows Export to Video, Export Project File, and Copy to Google Drive instead of a single Export action.",
+			"Export to Video opens a configurable dialog (format, quality, audio) that pre-populates the editor's export popover when you navigate in. After render completes, Save to Drive is now available alongside Download.",
+			"Export Project File dialog downloads a .artidor file with an optional Save to Drive checkbox. Both export dialogs use distinct Art Deco-inspired designs (violet/blue for video, gold/amber for project).",
+			"Copy to Google Drive uploads the encrypted project file to a new Drive folder. Requires Google sign-in — locked with a toast notification if Drive isn't configured.",
+			"Editor export popover now includes an Export Project File button below the existing Export to Drive button, so project file exports work from inside the editor too.",
+			"Import now accepts both .artidor (plain JSON) and .artpr (encrypted) files. After import, a missing media dialog detects unreferenced media and lets you relink files by filename match or duration match (within 0.5s tolerance).",
+			"Projects page toolbar top border spacing adjusted to prevent the line from being clipped by the header backdrop.",
+		],
+	},
+	{
 		id: "2026-06-22-seek-cancellation-and-drag-fixes",
 		date: "2026-06-22",
 		tag: "fix",
