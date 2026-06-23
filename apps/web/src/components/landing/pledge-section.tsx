@@ -10,7 +10,7 @@
 
 import { motion } from "motion/react";
 import Link from "next/link";
-import { ArrowRight, Github, Heart, Star } from "lucide-react";
+import { ArrowRight, GitBranch, Heart, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGitHubRepo } from "@/hooks/use-github-repo";
 
@@ -60,7 +60,7 @@ export function PledgeSection() {
 									size="lg"
 									className="h-11 rounded-full bg-white px-5 text-sm font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
 								>
-									<Github className="mr-1.5 size-4" />
+									<GitBranch className="mr-1.5 size-4" />
 									Star the repo
 									<Star className="ml-1.5 size-3.5 text-amber-400" />
 									{repoStats?.stars && (
