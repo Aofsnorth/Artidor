@@ -89,14 +89,16 @@ export function createPluginSandbox({
 		keys: () => Object.keys(state),
 	};
 
+	const logPrefix = `[plugin:${plugin.id}]`;
+
 	const api: PluginApi = {
 		log: (...args: unknown[]) => {
-			console.log(`[plugin:${plugin.id}]`, ...args);
+			console.log("Plugin log:", logPrefix, ...args);
 		},
 		registerEffect: (def: Record<string, unknown>) => {
 			if (!requirePermission(PERMISSION_GATES.registerEffect)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
-				console.warn(`[plugin:${plugin.id}] Invalid effect definition`, def);
+				console.warn("Invalid plugin effect definition:", logPrefix, def);
 				return;
 			}
 			registrations.effects.push({
@@ -108,10 +110,7 @@ export function createPluginSandbox({
 		registerTransition: (def: Record<string, unknown>) => {
 			if (!requirePermission(PERMISSION_GATES.registerTransition)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
-				console.warn(
-					`[plugin:${plugin.id}] Invalid transition definition`,
-					def,
-				);
+				console.warn("Invalid plugin transition definition:", logPrefix, def);
 				return;
 			}
 			registrations.transitions.push({
@@ -123,7 +122,7 @@ export function createPluginSandbox({
 		registerShape: (def: Record<string, unknown>) => {
 			if (!requirePermission(PERMISSION_GATES.registerShape)) return;
 			if (!def?.id || !def?.name || typeof def?.render !== "function") {
-				console.warn(`[plugin:${plugin.id}] Invalid shape definition`, def);
+				console.warn("Invalid plugin shape definition:", logPrefix, def);
 				return;
 			}
 			registrations.shapes.push({
@@ -135,7 +134,7 @@ export function createPluginSandbox({
 		registerPreset: (def: Record<string, unknown>) => {
 			if (!requirePermission(PERMISSION_GATES.registerPreset)) return;
 			if (!def?.id || !def?.name || !def?.data) {
-				console.warn(`[plugin:${plugin.id}] Invalid preset definition`, def);
+				console.warn("Invalid plugin preset definition:", logPrefix, def);
 				return;
 			}
 			registrations.presets.push({
@@ -182,7 +181,7 @@ try {
 		// `fetch` is replaced with the permission-gated plugin API wrapper.
 		wrapper(api, undefined, undefined, undefined, undefined, api.fetch);
 	} catch (err) {
-		console.error(`[plugin:${plugin.id}] Initialization failed:`, err);
+		console.error("Plugin initialization failed:", logPrefix, err);
 	}
 
 	return {

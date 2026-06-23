@@ -368,7 +368,7 @@ export class VideoCache {
 			});
 		} catch (error) {
 			input?.dispose();
-			console.error(`Failed to initialize video sink for ${mediaId}:`, error);
+			console.error("Failed to initialize video sink:", mediaId, error);
 			throw error;
 		}
 	}

@@ -178,7 +178,7 @@ export const usePluginsStore = create<PluginsState>()((set, get) => ({
 					try {
 						activatePlugin(plugin);
 					} catch (err) {
-						console.error(`Failed to activate plugin ${plugin.id}:`, err);
+						console.error("Failed to activate plugin:", plugin.id, err);
 					}
 				}
 			}
@@ -201,7 +201,7 @@ export const usePluginsStore = create<PluginsState>()((set, get) => ({
 				try {
 					activatePlugin(plugin);
 				} catch (err) {
-					console.error(`Failed to activate plugin ${plugin.id}:`, err);
+					console.error("Failed to activate plugin:", plugin.id, err);
 					toast.warning(
 						`Plugin "${plugin.manifest.name}" installed but failed to activate`,
 					);

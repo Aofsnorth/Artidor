@@ -249,7 +249,7 @@ class EffectPreviewService {
 				);
 			}
 		} catch (error) {
-			console.warn(`Failed to render effect preview for ${effectType}:`, error);
+			console.warn("Failed to render effect preview:", effectType, error);
 		}
 
 		targetCtx.clearRect(0, 0, size, size);
@@ -281,7 +281,7 @@ class EffectPreviewService {
 				}
 			}
 		} catch (error) {
-			console.warn(`Failed to draw effect preview for ${effectType}:`, error);
+			console.warn("Failed to draw effect preview:", effectType, error);
 			// Last resort: draw the original source without effects
 			try {
 				targetCtx.clearRect(0, 0, size, size);
