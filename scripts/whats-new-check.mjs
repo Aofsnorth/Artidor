@@ -21,14 +21,17 @@ const files = changed.split("\n").filter(Boolean);
 const normalize = (p) => p.replaceAll("\\", "/");
 
 const userFacingPatterns = [
-  /^apps\/web\/src\/app\//,
-  /^apps\/web\/src\/components\//,
-  /^apps\/web\/src\/core\//,
-  /^apps\/web\/src\/hooks\//,
-  /^apps\/web\/src\/lib\/ai\//,
-  /^apps\/web\/src\/lib\/timeline\//,
-  /^apps\/web\/src\/lib\/export\//,
-  /^rust\//,
+	/^apps\/web\/src\/app\//,
+	/^apps\/web\/src\/components\//,
+	/^apps\/web\/src\/core\//,
+	/^apps\/web\/src\/hooks\//,
+	/^apps\/web\/src\/lib\/ai\//,
+	/^apps\/web\/src\/lib\/timeline\//,
+	/^apps\/web\/src\/lib\/export\//,
+	// rust/ core + wasm source count as user-facing; rust/wasm/pkg/ is the
+	// generated wasm-pack output that gets committed for npm publishing and
+	// should not trigger a What's New requirement.
+	/^rust\/(?!wasm\/pkg\/)/,
 ];
 
 const whatsNewFiles = [
