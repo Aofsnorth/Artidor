@@ -224,8 +224,11 @@ export function VerticalAudioMeter() {
 }
 
 /**
- * Default view: two broadcast-style dB bars (L + R) with peak ticks
- * and a "DIM" toggle at the bottom.
+ * Default view: two broadcast-style dB bars (L + R) with a 7-mark dB
+ * scale running down a dedicated left column. The scale lives OUTSIDE
+ * the channel bar (not overlaid on it) so the labels can never be
+ * clipped by a short bar height — every mark is always visible
+ * regardless of how tall the right-column makes this meter.
  */
 function MeterView({
 	leftBarRef,
@@ -252,18 +255,35 @@ function MeterView({
 				Meter
 			</div>
 			<div className="flex flex-1 items-stretch gap-1">
-				<ChannelBar
-					barRef={leftBarRef}
-					peakRef={leftPeakRef}
-					clipRef={leftClipRef}
-					label="L"
-				/>
-				<ChannelBar
-					barRef={rightBarRef}
-					peakRef={rightPeakRef}
-					clipRef={rightClipRef}
-					label="R"
-				/>
+				{/* Dedicated dB-scale column on the left. 7 marks in a
+				    flex-col with justify-between, so they're always spaced
+				    edge-to-edge across whatever height the bar has. Each
+				    mark is a fixed-width column that never overlaps the
+				    channel bars. */}
+				<div className="flex w-4 shrink-0 flex-col justify-between py-px text-[0.42rem] font-semibold text-white/30 select-none">
+					{DB_LABELS.map((label) => (
+						<span
+							key={label}
+							className="px-0.5 text-right leading-none tabular-nums"
+						>
+							{label}
+						</span>
+					)).reverse()}
+				</div>
+				<div className="flex flex-1 items-stretch gap-1">
+					<ChannelBar
+						barRef={leftBarRef}
+						peakRef={leftPeakRef}
+						clipRef={leftClipRef}
+						label="L"
+					/>
+					<ChannelBar
+						barRef={rightBarRef}
+						peakRef={rightPeakRef}
+						clipRef={rightClipRef}
+						label="R"
+					/>
+				</div>
 			</div>
 
 			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.04em] text-white/35">
@@ -389,19 +409,6 @@ function ChannelBar({
 					bottom: 0,
 				}}
 			/>
-
-			{/* dB scale ticks. Reduced to 7 major labels (0 / -10 / … / -60)
-			   and shrunk to 0.38rem so the full range fits even in a
-			   short meter column (was 11 every-6dB labels, which the
-			   previous build was clipping at the top — the user
-				   experienced it as "the meter can be scrolled"). */}
-			<div className="pointer-events-none absolute inset-0 flex flex-col justify-between text-[0.38rem] font-semibold text-white/25">
-				{DB_LABELS.map((label) => (
-					<span key={label} className="px-0.5 text-right tabular-nums">
-						{label}
-					</span>
-				)).reverse()}
-			</div>
 		</div>
 	);
 }

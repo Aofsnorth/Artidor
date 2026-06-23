@@ -148,6 +148,11 @@ function PreviewCanvas({
 		return new CanvasRenderer({
 			width: nativeWidth,
 			height: nativeHeight,
+			// Output starts at canvas size; renderer.setSize() downscales
+			// it for preview quality below. The transform pipeline uses
+			// canvasSize for positions so the downscale is purely a
+			// blit-time concern.
+			canvasSize: { width: nativeWidth, height: nativeHeight },
 			fps: activeProject.settings.fps,
 		});
 	}, [
@@ -197,6 +202,11 @@ function PreviewCanvas({
 		renderer.setSize({
 			width: Math.max(2, Math.round(nativeWidth * scale)),
 			height: Math.max(2, Math.round(nativeHeight * scale)),
+			// canvasSize stays at the project canvas so the transform
+			// pipeline keeps computing positions in canvas coords.
+			// The scale pass in CanvasRenderer.render() then maps the
+			// resulting frame down to the (output) buffer size.
+			canvasSize: { width: nativeWidth, height: nativeHeight },
 		});
 		renderer.maxSourceDim = resolveDecodeMaxDim({
 			renderWidth: nativeWidth,
