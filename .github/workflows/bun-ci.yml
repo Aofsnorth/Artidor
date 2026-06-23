@@ -65,13 +65,13 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
-          bun-version: 1.2.18
+          bun-version: latest
 
       - name: Cache Bun modules
         uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
         # Install at the workspace root so the shared lockfile is used; running
@@ -81,7 +81,7 @@ jobs:
 
       - name: Build
         working-directory: apps/web
-        run: bun run build
+        run: npx next build
 
       - name: Run tests
         working-directory: apps/web
