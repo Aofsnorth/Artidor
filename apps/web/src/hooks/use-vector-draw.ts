@@ -8,6 +8,7 @@ import { buildGraphicElement } from "@/lib/timeline";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
 import { pointsToSvgPath, type Point } from "@/lib/graphics/path-utils";
 import { canvasLogicalToGraphicSource } from "@/lib/preview/preview-coords";
+import { normalizeStandaloneFreehand } from "@/lib/graphics/freehand-normalize";
 
 export interface VectorDrawState {
 	/** Sequence of anchor points in 512x512 source coords. */
@@ -76,6 +77,26 @@ export function useVectorDraw(): UseVectorDrawResult {
 			if (points.length < 2) return;
 			const svgPath = pointsToSvgPath(points, 0, closed);
 			if (!svgPath) return;
+
+			const project = editor.project.getActive();
+			const canvasSize = project?.settings.canvasSize;
+			const canvasWidth = canvasSize?.width ?? 0;
+			const canvasHeight = canvasSize?.height ?? 0;
+
+			// Recentre the path into the 512² source and compensate with
+			// element position + scale — same strategy as the freehand hook.
+			// Without this, vector paths always land at canvas centre
+			// regardless of where the user clicked.
+			const normalized = normalizeStandaloneFreehand({
+				points,
+				sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
+				strokeWidth: drawConfig.strokeWidth,
+				canvasWidth,
+				canvasHeight,
+			});
+			const localSvgPath =
+				pointsToSvgPath(normalized.localPoints, 0, closed) ?? svgPath;
+
 			const element = buildGraphicElement({
 				definitionId: "freehand",
 				name: closed ? "Vector Shape" : "Vector Path",
@@ -86,13 +107,19 @@ export function useVectorDraw(): UseVectorDrawResult {
 							? drawConfig.fill
 							: "rgba(0,0,0,0)",
 					stroke: drawConfig.stroke,
-					strokeWidth: drawConfig.strokeWidth,
+					strokeWidth: drawConfig.strokeWidth * normalized.strokeScale,
 					strokeOpacity: drawConfig.opacity,
 					strokeAlign: "center",
-					pathData: svgPath,
+					pathData: localSvgPath,
 					closed,
 				},
 			});
+			element.transform = {
+				...element.transform,
+				position: normalized.position,
+				scaleX: normalized.elementScale,
+				scaleY: normalized.elementScale,
+			};
 			editor.timeline.insertElement({
 				placement: { mode: "auto" },
 				element,

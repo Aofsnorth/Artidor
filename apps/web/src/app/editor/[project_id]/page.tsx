@@ -400,7 +400,7 @@ function EditorPanels() {
 								<DockPlaceholder id="properties" title="Properties" />
 							) : (
 								<div className="group/panel-slot relative size-full">
-									<div className="flex h-full min-h-0 items-stretch gap-2">
+									<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
 										<div className="flex-1 min-w-0">
 											<PropertiesPanel />
 										</div>
@@ -462,7 +462,7 @@ function EditorPanels() {
 					title="Properties"
 					state={floatingPanels.properties}
 				>
-					<div className="flex h-full min-h-0 items-stretch gap-2 p-1">
+					<div className="flex h-full min-h-0 items-stretch gap-2 p-1 overflow-hidden">
 						<div className="flex-1 min-w-0">
 							<PropertiesPanel />
 						</div>

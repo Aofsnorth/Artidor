@@ -17,24 +17,6 @@ import { useColorPaletteStore } from "@/stores/color-palette-store";
 
 const MIN_POINT_DISTANCE_SQ = 4; // Skip pointer events closer than 2px to avoid duplicate samples
 
-function computeBoundingBox({
-	points,
-}: {
-	points: Point[];
-}): { minX: number; minY: number; maxX: number; maxY: number } {
-	let minX = Number.POSITIVE_INFINITY;
-	let minY = Number.POSITIVE_INFINITY;
-	let maxX = Number.NEGATIVE_INFINITY;
-	let maxY = Number.NEGATIVE_INFINITY;
-	for (const point of points) {
-		if (point.x < minX) minX = point.x;
-		if (point.y < minY) minY = point.y;
-		if (point.x > maxX) maxX = point.x;
-		if (point.y > maxY) maxY = point.y;
-	}
-	return { minX, minY, maxX, maxY };
-}
-
 export interface FreehandDrawState {
 	/** Currently-being-drawn path (in 512x512 source coords). null when idle. */
 	currentPath: Point[] | null;
@@ -171,6 +153,11 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 				addRecentColor(drawConfig.fill);
 			}
 
+			const project = editor.project.getActive();
+			const canvasSize = project?.settings.canvasSize;
+			const canvasWidth = canvasSize?.width ?? 0;
+			const canvasHeight = canvasSize?.height ?? 0;
+
 			const selectedElements = editor.selection.getSelectedElements();
 			const selectedElement =
 				selectedElements.length === 1 ? selectedElements[0] : null;
@@ -182,93 +169,11 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 					(trackElement) => trackElement.id === selectedElement?.elementId,
 				) ?? null;
 
-			const project = editor.project.getActive();
-			const canvasSize = project?.settings.canvasSize;
-			const canvasWidth = canvasSize?.width ?? 0;
-			const canvasHeight = canvasSize?.height ?? 0;
-
-			let drawingPath = svgPath;
-			if (
-				selected &&
-				(selected.type === "image" || selected.type === "video") &&
-				canvasWidth > 0 &&
-				canvasHeight > 0
-			) {
-				const media = editor.media
-					.getAssets()
-					.find((asset) => asset.id === selected.mediaId);
-				const mediaWidth = media?.width ?? 0;
-				const mediaHeight = media?.height ?? 0;
-				if (mediaWidth > 0 && mediaHeight > 0) {
-					const sourceSize = DEFAULT_GRAPHIC_SOURCE_SIZE;
-					const elementWidth = mediaWidth * selected.transform.scaleX;
-					const elementHeight = mediaHeight * selected.transform.scaleY;
-					const elementCenterSourceX =
-						(selected.transform.position.x / canvasWidth) * sourceSize +
-						sourceSize / 2;
-					const elementCenterSourceY =
-						(selected.transform.position.y / canvasHeight) * sourceSize +
-						sourceSize / 2;
-					const pointsForLocal = simplified.map((point) => ({
-						x: point.x - elementCenterSourceX,
-						y: point.y - elementCenterSourceY,
-					}));
-					const localBoundingBox = computeBoundingBox({ points: pointsForLocal });
-					const padding = drawConfig.strokeWidth / 2;
-					const boundingWidth =
-						localBoundingBox.maxX - localBoundingBox.minX + padding * 2;
-					const boundingHeight =
-						localBoundingBox.maxY - localBoundingBox.minY + padding * 2;
-					const scaleX = boundingWidth > 0 ? elementWidth / boundingWidth : 1;
-					const scaleY =
-						boundingHeight > 0 ? elementHeight / boundingHeight : 1;
-					const localSvg = pointsToSvgPath(pointsForLocal, 0, drawConfig.closed);
-					if (localSvg) {
-						drawingPath = localSvg;
-					}
-					const element = buildGraphicElement({
-						definitionId: "freehand",
-						name: drawConfig.closed ? "Shape" : "Drawing",
-						startTime: editor.playback.getCurrentTime(),
-						params: {
-							fill:
-								drawConfig.closed && drawConfig.fill !== "transparent"
-									? drawConfig.fill
-									: "rgba(0,0,0,0)",
-							stroke: drawConfig.stroke,
-							strokeWidth: drawConfig.strokeWidth,
-							strokeOpacity: drawConfig.opacity,
-							strokeAlign: drawConfig.strokeAlign,
-							strokeDash: drawConfig.strokeDash,
-							strokeTaper: drawConfig.strokeTaper,
-							pathData: drawingPath,
-							closed: drawConfig.closed,
-						},
-					});
-					element.parentId = selected.id;
-					element.transform = {
-						...element.transform,
-						position: {
-							x: selected.transform.position.x,
-							y: selected.transform.position.y,
-						},
-						scaleX,
-						scaleY,
-					};
-					editor.timeline.insertElement({
-						placement: { mode: "auto" },
-						element,
-					});
-					return true;
-				}
-			}
-
-			// Standalone (not media-parented) drawing. The drawn points are in
-			// 512² source coords mapped via a contain-fit (min(w,h)/512). On a
-			// non-square canvas the left/right (or top/bottom) margins fall
-			// OUTSIDE [0,512], so a stroke drawn near an edge would be clipped by
-			// the 512² offscreen buffer and vanish. Recenter the path into the
-			// source and place/scale the element so it renders where it was drawn.
+			// Always use the standalone normalize path. The drawn points are in
+			// 512² source coords via contain-fit; recenter the path into the
+			// source buffer and compute position + scale offsets so the rendered
+			// element lands exactly where the user drew — regardless of whether
+			// a video/image layer is currently selected.
 			const normalized = normalizeStandaloneFreehand({
 				points: simplified,
 				sourceSize: DEFAULT_GRAPHIC_SOURCE_SIZE,
@@ -278,7 +183,13 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			});
 			const localSvgPath =
 				pointsToSvgPath(normalized.localPoints, 0, drawConfig.closed) ??
-				drawingPath;
+				svgPath;
+
+			const parentId =
+				selected &&
+				(selected.type === "image" || selected.type === "video")
+					? selected.id
+					: undefined;
 
 			const element = buildGraphicElement({
 				definitionId: "freehand",
@@ -301,6 +212,9 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 					closed: drawConfig.closed,
 				},
 			});
+			if (parentId) {
+				element.parentId = parentId;
+			}
 			element.transform = {
 				...element.transform,
 				position: normalized.position,
