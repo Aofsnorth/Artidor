@@ -158,17 +158,6 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			const canvasWidth = canvasSize?.width ?? 0;
 			const canvasHeight = canvasSize?.height ?? 0;
 
-			const selectedElements = editor.selection.getSelectedElements();
-			const selectedElement =
-				selectedElements.length === 1 ? selectedElements[0] : null;
-			const selectedTrack = selectedElement
-				? editor.timeline.getTrackById({ trackId: selectedElement.trackId })
-				: null;
-			const selected =
-				selectedTrack?.elements.find(
-					(trackElement) => trackElement.id === selectedElement?.elementId,
-				) ?? null;
-
 			// Always use the standalone normalize path. The drawn points are in
 			// 512² source coords via contain-fit; recenter the path into the
 			// source buffer and compute position + scale offsets so the rendered
@@ -184,12 +173,6 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			const localSvgPath =
 				pointsToSvgPath(normalized.localPoints, 0, drawConfig.closed) ??
 				svgPath;
-
-			const parentId =
-				selected &&
-				(selected.type === "image" || selected.type === "video")
-					? selected.id
-					: undefined;
 
 			const element = buildGraphicElement({
 				definitionId: "freehand",
@@ -212,9 +195,9 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 					closed: drawConfig.closed,
 				},
 			});
-			if (parentId) {
-				element.parentId = parentId;
-			}
+			// Drawings are always standalone — never parented to a selected
+			// media element. normalizeStandaloneFreehand computes the position
+			// in canvas-absolute coords; parenting would double-offset.
 			element.transform = {
 				...element.transform,
 				position: normalized.position,
