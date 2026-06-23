@@ -22,7 +22,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.2.18
 
       - run: bun install --frozen-lockfile
       - run: bun run lint:web
@@ -57,7 +57,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.2.18
 
       - name: Harness required files check
         run: bun scripts/harness-check.mjs
