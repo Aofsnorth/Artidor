@@ -72,11 +72,11 @@ function isPublishedRelease({ published }: Release) {
 export function getSortedReleases() {
 	return allChangelogs
 		.filter(isPublishedRelease)
-		.sort((a, b) =>
+		.sort((a: Release, b: Release) =>
 			b.version.localeCompare(a.version, undefined, { numeric: true }),
 		);
 }
 
 export function getReleaseByVersion({ version }: { version: string }) {
-	return getSortedReleases().find((release) => release.version === version);
+	return getSortedReleases().find((release: Release) => release.version === version);
 }
