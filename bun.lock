@@ -147,7 +147,7 @@
     "@tailwindcss/oxide",
   ],
   "patchedDependencies": {
-    "zod@4.3.6": "patches/zod@4.3.6.patch",
+    "gray-matter@4.0.3": "patches/gray-matter@4.0.3.patch",
     "@content-collections/core@0.15.2": "patches/@content-collections%2Fcore@0.15.2.patch",
   },
   "overrides": {

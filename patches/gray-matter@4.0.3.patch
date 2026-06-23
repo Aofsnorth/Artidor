@@ -1,0 +1,17 @@
+diff --git a/lib/engines.js b/lib/engines.js
+index 38f993db06cf364191ac635a6590c2d29303297d..39f6dd81a4431627145f344464e0bc473143097b 100644
+--- a/lib/engines.js
++++ b/lib/engines.js
+@@ -13,8 +13,10 @@ const engines = exports = module.exports;
+  */
+ 
+ engines.yaml = {
+-  parse: yaml.safeLoad.bind(yaml),
+-  stringify: yaml.safeDump.bind(yaml)
++  // js-yaml v4+ removed safeLoad/safeDump; `load`/`dump` are safe by default.
++  // Fall back to the legacy names so this works across js-yaml majors.
++  parse: (yaml.safeLoad || yaml.load).bind(yaml),
++  stringify: (yaml.safeDump || yaml.dump).bind(yaml)
+ };
+ 
+ /**
