@@ -60,7 +60,6 @@
   },
   "resolutions": {
     "@content-collections/core": "0.15.2",
-    "gray-matter/js-yaml": "^3.14.1",
     "@protobufjs/utf8": "^1.1.1",
     "brace-expansion": "^5.0.6",
     "esbuild": "^0.28.1",
@@ -87,6 +86,6 @@
   ],
   "patchedDependencies": {
     "@content-collections/core@0.15.2": "patches/@content-collections%2Fcore@0.15.2.patch",
-    "zod@4.3.6": "patches/zod@4.3.6.patch"
+    "gray-matter@4.0.3": "patches/gray-matter@4.0.3.patch"
   }
 }
