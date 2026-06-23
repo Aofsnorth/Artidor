@@ -599,7 +599,7 @@ function getNumberParamDefinition({
 }): NumberParamDefinition {
 	const param = definition.params.find((candidate) => candidate.key === key);
 
-	if (!param || param.type !== "number") {
+	if (param?.type !== "number") {
 		throw new Error(`Missing number param definition for mask key "${key}"`);
 	}
 

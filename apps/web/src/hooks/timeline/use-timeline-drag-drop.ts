@@ -544,7 +544,7 @@ export function useTimelineDragDrop({
 				return;
 			} else {
 				const track = tracks[target.trackIndex];
-				if (!track || track.type !== "effect") return;
+				if (track?.type !== "effect") return;
 				trackId = track.id;
 			}
 

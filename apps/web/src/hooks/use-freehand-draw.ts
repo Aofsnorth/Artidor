@@ -225,7 +225,7 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			console.error("[useFreehandDraw] Failed to commit drawing:", error);
 			return false;
 		}
-	}, [drawConfig, editor, addRecentColor]);
+	}, [drawConfig, editor, addRecentColor, viewport.getDisplayScale, viewport.sceneHeight, viewport.sceneWidth]);
 
 	const handlePointerUp = useCallback(
 		(event: React.PointerEvent) => {

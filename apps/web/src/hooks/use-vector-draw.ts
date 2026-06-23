@@ -135,7 +135,7 @@ export function useVectorDraw(): UseVectorDrawResult {
 				element,
 			});
 		},
-		[drawConfig, editor],
+		[drawConfig, editor, viewport.getDisplayScale, viewport.sceneHeight, viewport.sceneWidth],
 	);
 
 	const handlePointerDown = useCallback(

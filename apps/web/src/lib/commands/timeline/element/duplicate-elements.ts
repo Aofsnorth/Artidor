@@ -68,7 +68,7 @@ export class DuplicateElementsCommand extends Command {
 				timeSpans: [],
 				strategy: { type: "alwaysNew", position: "highest" },
 			});
-			if (!placementResult || placementResult.kind !== "newTrack") {
+			if (placementResult?.kind !== "newTrack") {
 				continue;
 			}
 

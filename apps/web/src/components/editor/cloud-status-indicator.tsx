@@ -13,7 +13,7 @@ export function CloudStatusIndicator() {
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const syncState = useEditor((e) => e.project.getDriveSyncState());
 
-	if (!activeProject || !activeProject.metadata.googleDriveFolderId) {
+	if (!activeProject?.metadata.googleDriveFolderId) {
 		return null;
 	}
 
