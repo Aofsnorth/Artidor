@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "next dev --turbopack -H 0.0.0.0",
 		"build": "next build",
+		"build:content": "content-collections build",
 		"start": "next start",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -78,6 +79,7 @@
 		"zustand": "^5.0.2"
 	},
 	"devDependencies": {
+		"@content-collections/cli": "^0.1.9",
 		"@content-collections/core": "^0.15.2",
 		"@content-collections/next": "^0.2.11",
 		"@napi-rs/canvas": "^1.0.0",
