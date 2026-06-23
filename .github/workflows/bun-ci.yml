@@ -74,8 +74,10 @@ jobs:
           key: ${{ runner.os }}-bun-1.2.18-${{ hashFiles('bun.lock') }}
 
       - name: Install dependencies
-        working-directory: apps/web
-        run: bun install
+        # Install at the workspace root so the shared lockfile is used; running
+        # `bun install` inside apps/web re-resolves packages and can drift from
+        # the frozen root lockfile.
+        run: bun install --frozen-lockfile
 
       - name: Build
         working-directory: apps/web
