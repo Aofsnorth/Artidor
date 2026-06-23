@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-23-draw-position-audio-meter-fixes",
+		date: "2026-06-23",
+		tag: "fix",
+		title: "Drawing tools: position matches where you draw + audio meter no longer scrolls",
+		items: [
+			"Freehand and vector draw tools now place the committed shape exactly where you drew it — no more teleporting to the canvas center or stretching to fill a selected video layer.",
+			"The old 'stretch drawing to fill the selected media bounding box' behavior (which caused small strokes to blow up and jump to the video's center) has been removed. Both tools now use normalizeStandaloneFreehand to center the path in the source buffer and compute the correct position/scale offset.",
+			"Audio meter column in the properties panel can no longer scroll vertically — the channel bars and dB labels now stay clipped within the panel height.",
+		],
+	},
+	{
 		id: "2026-06-23-ai-disclaimer-banner",
 		date: "2026-06-23",
 		tag: "improvement",
