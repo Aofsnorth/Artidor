@@ -190,7 +190,7 @@ export function VerticalAudioMeter() {
 		<div
 			title="Peak audio meter: L/R levels. Click VIS to switch to the audio visualizer."
 			className={cn(
-				"relative flex shrink-0 flex-col items-stretch gap-1.5 rounded-lg",
+				"relative flex h-full min-h-0 shrink-0 flex-col items-stretch gap-1.5 overflow-hidden rounded-lg",
 				"border border-white/[0.08] bg-black/40 p-1.5 select-none",
 				"transition-opacity duration-200",
 				dimmed ? "opacity-25 hover:opacity-70" : "opacity-100",
