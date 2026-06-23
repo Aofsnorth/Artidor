@@ -154,9 +154,20 @@ export function useFreehandDraw(): UseFreehandDrawResult {
 			}
 
 			const project = editor.project.getActive();
-			const canvasSize = project?.settings.canvasSize;
-			const canvasWidth = canvasSize?.width ?? 0;
-			const canvasHeight = canvasSize?.height ?? 0;
+			const settingsCanvas = project?.settings.canvasSize;
+			// Fall back to the viewport-derived dims so the contain-scale
+			// used by normalize always matches the one the source
+			// conversion used (eventToSourceCoords). Otherwise a zero
+			// or undefined project canvas size silently collapses
+			// containScale to 1 and the committed element renders at
+			// a wildly off position.
+			const viewportScale = viewport.getDisplayScale();
+			const fallbackCanvasWidth =
+				viewportScale.x > 0 ? viewport.sceneWidth / viewportScale.x : 0;
+			const fallbackCanvasHeight =
+				viewportScale.y > 0 ? viewport.sceneHeight / viewportScale.y : 0;
+			const canvasWidth = settingsCanvas?.width ?? fallbackCanvasWidth;
+			const canvasHeight = settingsCanvas?.height ?? fallbackCanvasHeight;
 
 			// Always use the standalone normalize path. The drawn points are in
 			// 512² source coords via contain-fit; recenter the path into the

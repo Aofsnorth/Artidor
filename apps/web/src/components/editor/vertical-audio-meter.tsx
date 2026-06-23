@@ -390,8 +390,12 @@ function ChannelBar({
 				}}
 			/>
 
-			{/* dB scale ticks. */}
-			<div className="pointer-events-none absolute inset-0 flex flex-col justify-between py-px text-[0.42rem] font-semibold text-white/25">
+			{/* dB scale ticks. Reduced to 7 major labels (0 / -10 / … / -60)
+			   and shrunk to 0.38rem so the full range fits even in a
+			   short meter column (was 11 every-6dB labels, which the
+			   previous build was clipping at the top — the user
+				   experienced it as "the meter can be scrolled"). */}
+			<div className="pointer-events-none absolute inset-0 flex flex-col justify-between text-[0.38rem] font-semibold text-white/25">
 				{DB_LABELS.map((label) => (
 					<span key={label} className="px-0.5 text-right tabular-nums">
 						{label}
@@ -404,15 +408,11 @@ function ChannelBar({
 
 const DB_LABELS = [
 	"0",
-	"-6",
-	"-12",
-	"-18",
-	"-24",
+	"-10",
+	"-20",
 	"-30",
-	"-36",
-	"-42",
-	"-48",
-	"-54",
+	"-40",
+	"-50",
 	"-60",
 ];
 
