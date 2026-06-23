@@ -30,7 +30,7 @@ MCP client ──stdio──▶ @artidor/mcp-server ──ws://127.0.0.1:8765─
    ```
 2. **Run the editor with the relay enabled.** Set the relay URL so the editor
    tab connects to this server, then open the editor (use `http://localhost`
-   so the browser allows the `ws://` localhost connection):
+   so the browser allows the local-only relay connection):
    ```bash
    # apps/web/.env.local
    NEXT_PUBLIC_MCP_RELAY_URL=ws://127.0.0.1:8765
@@ -50,5 +50,5 @@ MCP client ──stdio──▶ @artidor/mcp-server ──ws://127.0.0.1:8765─
 - **A tab must be open.** This relays into a live editor; it does not render
   headlessly (server-side / headless rendering is a separate roadmap item).
 - **Localhost only.** The relay binds to `127.0.0.1`; the editor must reach it
-  over `ws://` (works from `http://localhost` dev; `https://` pages may block
-  mixed-content `ws://localhost` depending on the browser).
+  over the local WebSocket URL (works from `http://localhost` dev; `https://`
+  pages may block mixed-content localhost sockets depending on the browser).

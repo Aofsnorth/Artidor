@@ -981,7 +981,8 @@ export class ProjectManager {
 							}
 						} catch (assetErr) {
 							console.error(
-								`Failed to download/process media ${file.name}:`,
+								"Failed to download/process media:",
+								file.name,
 								assetErr,
 							);
 						}
@@ -1052,7 +1053,7 @@ export class ProjectManager {
 				try {
 					await uploadMediaToDrive(folderId, asset.file);
 				} catch (uploadErr) {
-					console.error(`Failed to upload asset ${asset.name}:`, uploadErr);
+					console.error("Failed to upload asset:", asset.name, uploadErr);
 				}
 			}
 

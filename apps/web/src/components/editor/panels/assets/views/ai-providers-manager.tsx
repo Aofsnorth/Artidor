@@ -118,13 +118,14 @@ export function AIProvidersManager({
 					// only updates the dot, this updates the inline notice
 					// via the provider card re-render.
 					console.warn(
-						`[AI Provider] test failed for ${provider.name}:`,
+						"[AI Provider] test failed for provider:",
+						provider.name,
 						result.error,
 					);
 				}
 			} catch (err) {
 				markTestResult(provider.id, false);
-				console.warn(`[AI Provider] test errored for ${provider.name}:`, err);
+				console.warn("[AI Provider] test errored for provider:", provider.name, err);
 			} finally {
 				setTestingId(null);
 			}

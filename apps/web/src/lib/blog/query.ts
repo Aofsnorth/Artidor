@@ -76,7 +76,7 @@ async function fetchFromMarble<T>({
 		}
 		return (await response.json()) as T;
 	} catch (error) {
-		console.error(`Error fetching ${endpoint}:`, error);
+		console.error("Error fetching endpoint:", endpoint, error);
 		return fallback;
 	}
 }

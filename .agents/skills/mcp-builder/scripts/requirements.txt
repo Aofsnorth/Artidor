@@ -2,3 +2,4 @@ anthropic>=0.39.0
 mcp>=1.23.0
 idna>=3.11
 python-multipart>=0.0.20
+defusedxml>=0.7.1
