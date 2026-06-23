@@ -94,7 +94,7 @@ function InspectorView() {
 						Drawing
 					</div>
 				</div>
-				<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
+				<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
 					<DrawToolConfigPanel />
 				</ScrollArea>
 			</>
@@ -286,7 +286,7 @@ function InspectorView() {
 				</div>
 			}
 
-			<ScrollArea className="flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
+			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
 				{activeTab.content({
 					trackId: track.id,
 					trackName: track.name,
