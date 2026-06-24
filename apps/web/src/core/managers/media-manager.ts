@@ -11,6 +11,7 @@ export class MediaManager {
 	private folders: MediaFolder[] = [];
 	private isLoading = false;
 	private listeners = new Set<() => void>();
+	private notifyScheduled = false;
 
 	constructor(private editor: EditorCore) {}
 
@@ -105,6 +106,7 @@ export class MediaManager {
 			this.editor.project.ratchetFpsForImportedMedia({
 				importedAssets: [newAsset],
 			});
+			window.dispatchEvent(new CustomEvent("artidor:storage-changed"));
 			return newAsset;
 		} catch (error) {
 			console.error("Failed to save media asset:", error);
@@ -145,6 +147,7 @@ export class MediaManager {
 					);
 
 		this.editor.command.execute({ command });
+		window.dispatchEvent(new CustomEvent("artidor:storage-changed"));
 	}
 
 	async loadProjectMedia({ projectId }: { projectId: string }): Promise<void> {
@@ -188,6 +191,7 @@ export class MediaManager {
 		} catch (error) {
 			console.error("Failed to clear media assets from storage:", error);
 		}
+		window.dispatchEvent(new CustomEvent("artidor:storage-changed"));
 	}
 
 	clearAllAssets(): void {
@@ -225,8 +229,13 @@ export class MediaManager {
 	}
 
 	private notify(): void {
-		this.listeners.forEach((fn) => {
-			fn();
+		if (this.notifyScheduled) return;
+		this.notifyScheduled = true;
+		queueMicrotask(() => {
+			this.notifyScheduled = false;
+			this.listeners.forEach((fn) => {
+				fn();
+			});
 		});
 	}
 }

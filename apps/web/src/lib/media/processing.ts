@@ -185,91 +185,99 @@ export async function processMediaAssets({
 	const total = fileArray.length;
 	let completed = 0;
 
-	for (const file of fileArray) {
-		const fileType = getMediaTypeFromFile({ file });
-
-		if (!fileType) {
-			toast.error(`Unsupported file type: ${file.name}`);
-			continue;
-		}
-
-		const storageCheck = await storageService.canStoreFile({
-			size: file.size,
+	// Single quota check for total batch size instead of per-file
+	const totalSize = fileArray.reduce((sum, f) => sum + f.size, 0);
+	const batchQuota = await storageService.canStoreFile({ size: totalSize });
+	if (!batchQuota.canStore) {
+		toast.error("Not enough browser storage for these files", {
+			description: getStorageLimitDescription({
+				fileSize: totalSize,
+				availableBytes: batchQuota.availableBytes,
+			}),
 		});
-
-		if (!storageCheck.canStore) {
-			toast.error(`Not enough browser storage for ${file.name}`, {
-				description: getStorageLimitDescription({
-					fileSize: file.size,
-					availableBytes: storageCheck.availableBytes,
-				}),
-			});
-			continue;
-		}
-
-		const url = URL.createObjectURL(file);
-		let thumbnailUrl: string | undefined;
-		let duration: number | undefined;
-		let width: number | undefined;
-		let height: number | undefined;
-		let fps: number | undefined;
-		let hasAudio: boolean | undefined;
-
-		try {
-			if (fileType === "image") {
-				const result = await generateImageThumbnail({ imageFile: file });
-				thumbnailUrl = result.thumbnailUrl;
-				width = result.width;
-				height = result.height;
-			} else if (fileType === "video") {
-				try {
-					const videoInfo = await getVideoInfo({ videoFile: file });
-					duration = videoInfo.duration;
-					width = videoInfo.width;
-					height = videoInfo.height;
-					fps = Number.isFinite(videoInfo.fps)
-						? Math.round(videoInfo.fps)
-						: undefined;
-					hasAudio = videoInfo.hasAudio;
-
-					thumbnailUrl = await generateThumbnail({
-						videoFile: file,
-						timeInSeconds: 1,
-					});
-				} catch (error) {
-					console.warn("Video processing failed", error);
-				}
-			} else if (fileType === "audio") {
-				// For audio, we don't set width/height/fps (they'll be undefined)
-				duration = await getMediaDuration({ file });
-			}
-
-			processedAssets.push({
-				name: file.name,
-				type: fileType,
-				file,
-				url,
-				thumbnailUrl,
-				duration,
-				width,
-				height,
-				fps,
-				hasAudio,
-			});
-
-			await new Promise((resolve) => setTimeout(resolve, 0));
-
-			completed += 1;
-			if (onProgress) {
-				const percent = Math.round((completed / total) * 100);
-				onProgress({ progress: percent });
-			}
-		} catch (error) {
-			console.error("Error processing file:", file.name, error);
-			toast.error(`Failed to process ${file.name}`);
-			URL.revokeObjectURL(url); // Clean up on error
-		}
+		return [];
 	}
+
+	const CONCURRENCY = 4;
+	let index = 0;
+
+	const worker = async () => {
+		while (index < fileArray.length) {
+			const file = fileArray[index++];
+			const fileType = getMediaTypeFromFile({ file });
+
+			if (!fileType) {
+				toast.error(`Unsupported file type: ${file.name}`);
+				completed += 1;
+				continue;
+			}
+
+			let thumbnailUrl: string | undefined;
+			let duration: number | undefined;
+			let width: number | undefined;
+			let height: number | undefined;
+			let fps: number | undefined;
+			let hasAudio: boolean | undefined;
+
+			try {
+				if (fileType === "image") {
+					const result = await generateImageThumbnail({ imageFile: file });
+					thumbnailUrl = result.thumbnailUrl;
+					width = result.width;
+					height = result.height;
+				} else if (fileType === "video") {
+					try {
+						const videoInfo = await getVideoInfo({ videoFile: file });
+						duration = videoInfo.duration;
+						width = videoInfo.width;
+						height = videoInfo.height;
+						fps = Number.isFinite(videoInfo.fps)
+							? Math.round(videoInfo.fps)
+							: undefined;
+						hasAudio = videoInfo.hasAudio;
+
+						thumbnailUrl = await generateThumbnail({
+							videoFile: file,
+							timeInSeconds: 1,
+						});
+					} catch (error) {
+						console.warn("Video processing failed", error);
+					}
+				} else if (fileType === "audio") {
+					duration = await getMediaDuration({ file });
+				}
+
+				processedAssets.push({
+					name: file.name,
+					type: fileType,
+					file,
+					url: URL.createObjectURL(file),
+					thumbnailUrl,
+					duration,
+					width,
+					height,
+					fps,
+					hasAudio,
+				});
+
+				completed += 1;
+				if (onProgress) {
+					const percent = Math.round((completed / total) * 100);
+					onProgress({ progress: percent });
+				}
+			} catch (error) {
+				console.error("Error processing file:", file.name, error);
+				toast.error(`Failed to process ${file.name}`);
+				completed += 1;
+			}
+		}
+	};
+
+	const workers = Array.from(
+		{ length: Math.min(CONCURRENCY, fileArray.length) },
+		() => worker(),
+	);
+	await Promise.all(workers);
 
 	return processedAssets;
 }

@@ -39,7 +39,7 @@ import { SpeedRampTab } from "./tabs/speed-ramp-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
 import { AnimationsTab } from "./tabs/animations-tab";
 import { ParentingTab } from "./tabs/parenting-tab";
-import { CameraTab } from "./tabs/camera-tab";
+import { CameraTab, CameraInspectTab } from "./tabs/camera-tab";
 import { ElementTab } from "./tabs/element-tab";
 import { ImageTab } from "./tabs/image-tab";
 import { GraphicsStyleTab } from "./tabs/graphics-style-tab";
@@ -304,6 +304,21 @@ function buildCameraTab(): PropertiesTabDef {
 	};
 }
 
+function buildCameraInspectTab({
+	element,
+}: {
+	element: CameraElement;
+}): PropertiesTabDef {
+	return {
+		id: "camera-inspect",
+		label: "Camera Properties",
+		icon: <HugeiconsIcon icon={Camera01Icon} size={16} />,
+		content: ({ trackId }) => (
+			<CameraInspectTab element={element} trackId={trackId} />
+		),
+	};
+}
+
 /**
  * Element-level summary tab — shows the element's identity, source media,
  * timeline position and structural relationships. Surfaces only when a
@@ -506,10 +521,10 @@ function getCameraConfig({
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	return {
-		defaultTab: "element-info",
+		defaultTab: "camera-inspect",
 		tabs: [
+			buildCameraInspectTab({ element }),
 			buildElementTab({ element, mediaAssets }),
-			buildCameraTab(),
 		],
 	};
 }

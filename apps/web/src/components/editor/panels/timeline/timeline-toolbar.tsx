@@ -17,12 +17,13 @@ import { invokeAction } from "@/lib/actions";
 import { cn } from "@/utils/ui";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { ScenesView } from "@/components/editor/scenes-view";
+import { canDeleteScene } from "@/lib/scenes";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import { getElementKeyframes } from "@/lib/animation";
-import type { TimelineTrack } from "@/lib/timeline";
+import type { TimelineTrack, TScene } from "@/lib/timeline";
 import { getPropertyLabel } from "./expanded-layout";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
@@ -47,7 +48,6 @@ import {
 	ScissorIcon,
 	SnowIcon,
 	Square01Icon,
-	TimelineIcon,
 	GitMergeIcon,
 	Target01Icon,
 	Tick01Icon,
@@ -62,7 +62,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
-import { Plus, StretchHorizontal } from "lucide-react";
+import { Plus, Pencil, Trash2, StretchHorizontal } from "lucide-react";
 import { useGraphEditorController } from "./graph-editor/use-controller";
 import { GraphEditorPopover } from "./graph-editor/popover";
 import {
@@ -94,7 +94,7 @@ export function TimelineToolbar({
 			<div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-transparent px-3.5 py-0.5 z-20">
 				{/* Left Section: + Track, Separator, Action Buttons */}
 				<div className="flex min-w-0 items-center gap-2 justify-start">
-					<AddTrackDropdown />
+					<AddSceneButton />
 					<div className="h-5 w-px bg-white/10 mx-1" />
 					<ToolbarLeftSection />
 				</div>
@@ -116,9 +116,36 @@ export function TimelineToolbar({
 	);
 }
 
-function AddTrackDropdown() {
+function AddSceneButton() {
 	const editor = useEditor();
-	const options = [
+
+	const handleAddScene = async () => {
+		const scenes = editor.scenes.getScenes();
+		const nextNumber = scenes.length + 1;
+		const sceneId = await editor.scenes.createScene({
+			name: `Scene ${nextNumber}`,
+			isMain: false,
+		});
+		await editor.scenes.switchToScene({ sceneId });
+	};
+
+	return (
+		<Button
+			variant="ghost"
+			size="sm"
+			className="h-7 gap-1.5 px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
+			aria-label="Add new scene"
+			onClick={handleAddScene}
+		>
+			<Plus className="size-3" />
+			Add scene
+		</Button>
+	);
+}
+
+function AddTrackSubmenu() {
+	const editor = useEditor();
+	const trackOptions = [
 		{ label: "Video track", type: "video" as const },
 		{ label: "Audio track", type: "audio" as const },
 		{ label: "Camera track", type: "camera" as const },
@@ -130,32 +157,117 @@ function AddTrackDropdown() {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-7 gap-1.5 px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
-					aria-label="Add timeline track"
+				<DropdownMenuItem
+					onSelect={(e) => e.preventDefault()}
+					className="gap-2"
 				>
-					<Plus className="size-3" />
-					Add timeline
-				</Button>
+					<Plus className="size-3.5" />
+					Add track
+				</DropdownMenuItem>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="start" className="z-100 w-40">
-				{options.map((option) => (
+			<DropdownMenuContent side="right" align="start" className="z-100 w-40">
+				{trackOptions.map((option) => (
 					<DropdownMenuItem
 						key={option.type}
-						onClick={() => {
-							// CapCut-style: just add the track lane. No
-							// implicit element drop, no built-in text/camera
-							// placeholder — the user picks what to put on it.
-							editor.timeline.addTrack({ type: option.type });
-						}}
+						onClick={() => editor.timeline.addTrack({ type: option.type })}
 					>
 						{option.label}
 					</DropdownMenuItem>
 				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
+	);
+}
+
+function SceneItem({
+	scene,
+	isActive,
+	onSwitch,
+}: {
+	scene: TScene;
+	isActive: boolean;
+	index: number;
+	onSwitch: () => void;
+}) {
+	const editor = useEditor();
+	const [isRenaming, setIsRenaming] = useState(false);
+	const [renameValue, setRenameValue] = useState(scene.name);
+	const inputRef = useRef<HTMLInputElement>(null);
+	const { canDelete } = canDeleteScene({ scene });
+
+	useEffect(() => {
+		if (isRenaming && inputRef.current) {
+			inputRef.current.focus();
+			inputRef.current.select();
+		}
+	}, [isRenaming]);
+
+	const handleRename = async () => {
+		const trimmed = renameValue.trim();
+		if (trimmed && trimmed !== scene.name) {
+			await editor.scenes.renameScene({ sceneId: scene.id, name: trimmed });
+		}
+		setIsRenaming(false);
+	};
+
+	const handleDelete = async () => {
+		if (!canDelete) return;
+		await editor.scenes.deleteScene({ sceneId: scene.id });
+	};
+
+	return (
+		<button
+			type="button"
+			className={cn(
+				"flex w-full items-center gap-1 px-2 py-1.5 text-xs cursor-pointer rounded-sm transition text-left",
+				isActive
+					? "bg-white/10 text-white"
+					: "text-white/70 hover:bg-white/5 hover:text-white",
+			)}
+			onClick={onSwitch}
+		>
+			{isRenaming ? (
+				<input
+					ref={inputRef}
+					value={renameValue}
+					onChange={(e) => setRenameValue(e.target.value)}
+					onBlur={handleRename}
+					onKeyDown={(e) => {
+						if (e.key === "Enter") handleRename();
+						if (e.key === "Escape") setIsRenaming(false);
+					}}
+					onClick={(e) => e.stopPropagation()}
+					className="flex-1 min-w-0 bg-black/30 border border-white/15 rounded px-1.5 py-0.5 text-xs text-white outline-none"
+				/>
+			) : (
+				<span className="flex-1 min-w-0 truncate">{scene.name}</span>
+			)}
+			<button
+				type="button"
+				onClick={(e) => {
+					e.stopPropagation();
+					setRenameValue(scene.name);
+					setIsRenaming(true);
+				}}
+				className="shrink-0 p-0.5 rounded hover:bg-white/10 text-white/50 hover:text-white transition"
+				aria-label={`Rename ${scene.name}`}
+			>
+				<Pencil className="size-3" />
+			</button>
+			{canDelete && (
+				<button
+					type="button"
+					onClick={(e) => {
+						e.stopPropagation();
+						handleDelete();
+					}}
+					className="shrink-0 p-0.5 rounded hover:bg-red-500/20 text-white/50 hover:text-red-400 transition"
+					aria-label={`Delete ${scene.name}`}
+				>
+					<Trash2 className="size-3" />
+				</button>
+			)}
+		</button>
 	);
 }
 
@@ -406,17 +518,6 @@ function SceneSelector() {
 	}, [currentScene, keyframeLayerNames, keyframeLayerSearch, selectedElements]);
 	const hasKeyframeLayers = keyframeLayers.length > 0;
 
-	const [mode, setMode] = useState<"scene" | "timeline">("scene");
-	const timelineIndex = Math.max(
-		1,
-		scenes.findIndex((s) => s.id === currentScene?.id) + 1,
-	);
-
-	// Icon mirrors the active mode — no text in the toolbar slot.
-	// The chevron/manage-scenes icon swaps the same way so both buttons
-	// stay in sync with the dropdown.
-	const modeIcon = mode === "timeline" ? TimelineIcon : ClapperboardIcon;
-
 	return (
 		<div className="flex items-center z-20 gap-1.5">
 			<DropdownMenu>
@@ -425,13 +526,11 @@ function SceneSelector() {
 						type="button"
 						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
 					>
-						<span className="tracking-wide select-none">
-							{hasKeyframeLayers
-								? "Keyframes"
-								: mode === "timeline"
-									? `Timeline ${timelineIndex}`
-									: currentScene?.name || "Main scene"}
-						</span>
+					<span className="tracking-wide select-none">
+						{hasKeyframeLayers
+							? "Keyframes"
+							: currentScene?.name || "Main scene"}
+					</span>
 						<div className="h-3 w-px bg-white/15" />
 						<HugeiconsIcon
 							icon={Layers01Icon}
@@ -497,49 +596,19 @@ function SceneSelector() {
 						</>
 					) : (
 						<>
-							{/* Mode switcher inline at the top of the dropdown.
-							    Same Scene | Timeline toggle as before, just
-							    moved inside so the toolbar stays compact. */}
-							<div className="px-1.5 pb-1.5 pt-1">
-								<div className="flex h-7 items-center rounded-full border border-white/[0.08] bg-black/40 p-0.5 text-[0.6rem] font-bold uppercase tracking-[0.1em]">
-									<button
-										type="button"
-										onClick={() => setMode("scene")}
-										className={cn(
-											"h-6 flex-1 rounded-full transition focus:outline-none",
-											mode === "scene"
-												? "bg-white text-black"
-												: "text-white/55 hover:text-white",
-										)}
-									>
-										Scene
-									</button>
-									<button
-										type="button"
-										onClick={() => setMode("timeline")}
-										className={cn(
-											"h-6 flex-1 rounded-full transition focus:outline-none",
-											mode === "timeline"
-												? "bg-white text-black"
-												: "text-white/55 hover:text-white",
-										)}
-									>
-										Timeline
-									</button>
-								</div>
-							</div>
-							{scenes.map((scene, idx) => (
-								<DropdownMenuItem
-									key={scene.id}
-									onClick={() =>
-										editor.scenes.switchToScene({ sceneId: scene.id })
-									}
-								>
-									{mode === "timeline" ? `Timeline ${idx + 1}` : scene.name}
-								</DropdownMenuItem>
-							))}
-						</>
-					)}
+						{scenes.map((scene, idx) => (
+							<SceneItem
+								key={scene.id}
+								scene={scene}
+								isActive={currentScene?.id === scene.id}
+								index={idx}
+								onSwitch={() => editor.scenes.switchToScene({ sceneId: scene.id })}
+							/>
+						))}
+						<div className="my-1 h-px bg-white/10" />
+						<AddTrackSubmenu />
+					</>
+				)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 
@@ -551,12 +620,12 @@ function SceneSelector() {
 				<button
 					type="button"
 					className="group relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-					title={mode === "timeline" ? "Manage timelines" : "Manage scenes"}
-					aria-label={mode === "timeline" ? "Manage timelines" : "Manage scenes"}
+					title="Manage scenes"
+					aria-label="Manage scenes"
 				>
-					<HugeiconsIcon icon={modeIcon} className="size-3.5" />
+					<HugeiconsIcon icon={ClapperboardIcon} className="size-3.5" />
 					<span className="pointer-events-none absolute -bottom-6 whitespace-nowrap rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[0.6rem] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-						{mode === "timeline" ? "Manage timelines" : "Manage scenes"}
+						Manage scenes
 					</span>
 				</button>
 			</ScenesView>

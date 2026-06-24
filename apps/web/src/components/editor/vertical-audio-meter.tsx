@@ -52,6 +52,8 @@ export function VerticalAudioMeter() {
 	const rightPeakRef = useRef<HTMLDivElement>(null);
 	const leftClipRef = useRef<HTMLDivElement>(null);
 	const rightClipRef = useRef<HTMLDivElement>(null);
+	const leftContainerRef = useRef<HTMLDivElement>(null);
+	const rightContainerRef = useRef<HTMLDivElement>(null);
 
 	// Visualizer card refs (only updated when isVisualizerOpen is true).
 	const visBarRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -155,11 +157,23 @@ export function VerticalAudioMeter() {
 			}
 
 			// Direct DOM write — no React re-render in either view.
+			// Bar is now a dark mask: height = (100 - level)%, so level 100% → mask 0% (fully revealed).
+			// Gradient layer only visible when there's actual audio signal.
 			if (leftBarRef.current) {
-				leftBarRef.current.style.height = `${state.left}%`;
+				leftBarRef.current.style.height = `${100 - state.left}%`;
 			}
 			if (rightBarRef.current) {
-				rightBarRef.current.style.height = `${state.right}%`;
+				rightBarRef.current.style.height = `${100 - state.right}%`;
+			}
+			if (leftContainerRef.current) {
+				const grad = leftContainerRef.current
+					.firstElementChild as HTMLDivElement | null;
+				if (grad) grad.style.opacity = state.left > 1 ? "1" : "0";
+			}
+			if (rightContainerRef.current) {
+				const grad = rightContainerRef.current
+					.firstElementChild as HTMLDivElement | null;
+				if (grad) grad.style.opacity = state.right > 1 ? "1" : "0";
 			}
 			if (leftPeakRef.current) {
 				leftPeakRef.current.style.transform = `translateY(-${state.peakLeft}%)`;
@@ -215,6 +229,8 @@ export function VerticalAudioMeter() {
 					rightPeakRef={rightPeakRef}
 					leftClipRef={leftClipRef}
 					rightClipRef={rightClipRef}
+					leftContainerRef={leftContainerRef}
+					rightContainerRef={rightContainerRef}
 					dimmed={dimmed}
 					onToggleDim={() => setDimmed((value) => !value)}
 				/>
@@ -234,6 +250,8 @@ function MeterView({
 	rightPeakRef,
 	leftClipRef,
 	rightClipRef,
+	leftContainerRef,
+	rightContainerRef,
 	dimmed,
 	onToggleDim,
 }: {
@@ -243,6 +261,8 @@ function MeterView({
 	rightPeakRef: React.RefObject<HTMLDivElement | null>;
 	leftClipRef: React.RefObject<HTMLDivElement | null>;
 	rightClipRef: React.RefObject<HTMLDivElement | null>;
+	leftContainerRef: React.RefObject<HTMLDivElement | null>;
+	rightContainerRef: React.RefObject<HTMLDivElement | null>;
 	dimmed: boolean;
 	onToggleDim: () => void;
 }) {
@@ -256,12 +276,14 @@ function MeterView({
 					barRef={leftBarRef}
 					peakRef={leftPeakRef}
 					clipRef={leftClipRef}
+					containerRef={leftContainerRef}
 					label="L"
 				/>
 				<ChannelBar
 					barRef={rightBarRef}
 					peakRef={rightPeakRef}
 					clipRef={rightClipRef}
+					containerRef={rightContainerRef}
 					label="R"
 				/>
 			</div>
@@ -353,37 +375,41 @@ function ChannelBar({
 	barRef,
 	peakRef,
 	clipRef,
+	containerRef,
 	label: _label,
 }: {
 	barRef: React.RefObject<HTMLDivElement | null>;
 	peakRef: React.RefObject<HTMLDivElement | null>;
 	clipRef: React.RefObject<HTMLDivElement | null>;
+	containerRef: React.RefObject<HTMLDivElement | null>;
 	label: string;
 }) {
 	return (
-		<div className="relative flex-1 overflow-hidden rounded-[1.5px] border border-white/5 bg-black/70">
-			{/* The level fill. Three-stop broadcast gradient. */}
+		<div
+			ref={containerRef}
+			className="relative flex-1 overflow-hidden rounded-md border border-white/5 bg-black/70"
+		>
+			{/* Gradient layer — hidden when idle, revealed by mask when audio plays */}
+			<div className="absolute inset-0 z-0 rounded-md bg-gradient-to-t from-emerald-500 via-yellow-400 to-red-500 opacity-0 transition-opacity duration-200" />
+
+			{/* Dark mask that covers the unrevealed portion, sliding up as level rises */}
 			<div
 				ref={barRef}
-				className="absolute inset-x-0 bottom-0 transition-[height] duration-75 ease-out"
-				style={{
-					height: "0%",
-					background:
-						"linear-gradient(to top, #22c55e 0%, #22c55e 55%, #eab308 78%, #ef4444 100%)",
-				}}
+				className="absolute inset-x-0 top-0 z-10 bg-black/70 transition-[height] duration-75 ease-out"
+				style={{ height: "100%" }}
 			/>
 
 			{/* Clip indicator: latches red at 0dB for ~1.5s, then decays. */}
 			<div
 				ref={clipRef}
 				aria-hidden="true"
-				className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1.5 bg-red-500 opacity-0 transition-opacity duration-75 shadow-[0_0_6px_2px_rgba(239,68,68,0.7)]"
+				className="pointer-events-none absolute inset-x-0 top-0 z-20 h-1.5 bg-red-500 opacity-0 transition-opacity duration-75 shadow-[0_0_6px_2px_rgba(239,68,68,0.7)]"
 			/>
 
 			{/* Peak tick: latches at the highest recent value. */}
 			<div
 				ref={peakRef}
-				className="pointer-events-none absolute inset-x-0 h-px bg-white/65 transition-transform duration-75"
+				className="pointer-events-none absolute inset-x-0 z-20 h-px bg-white/65 transition-transform duration-75"
 				style={{
 					transform: "translateY(0%)",
 					bottom: 0,
@@ -391,7 +417,7 @@ function ChannelBar({
 			/>
 
 			{/* dB scale ticks. */}
-			<div className="pointer-events-none absolute inset-0 flex flex-col justify-between py-px text-[0.42rem] font-semibold text-white/25">
+			<div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-between py-px text-[0.42rem] font-semibold text-white/25">
 				{DB_LABELS.map((label) => (
 					<span key={label} className="px-0.5 text-right tabular-nums">
 						{label}

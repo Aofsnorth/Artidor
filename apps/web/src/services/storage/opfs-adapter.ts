@@ -2,16 +2,22 @@ import type { StorageAdapter } from "./types";
 
 export class OPFSAdapter implements StorageAdapter<File> {
 	private directoryName: string;
+	private directoryPromise: Promise<FileSystemDirectoryHandle> | null = null;
 
 	constructor(directoryName = "media") {
 		this.directoryName = directoryName;
 	}
 
-	private async getDirectory(): Promise<FileSystemDirectoryHandle> {
-		const opfsRoot = await navigator.storage.getDirectory();
-		return await opfsRoot.getDirectoryHandle(this.directoryName, {
-			create: true,
-		});
+	private getDirectory(): Promise<FileSystemDirectoryHandle> {
+		if (!this.directoryPromise) {
+			this.directoryPromise = (async () => {
+				const opfsRoot = await navigator.storage.getDirectory();
+				return await opfsRoot.getDirectoryHandle(this.directoryName, {
+					create: true,
+				});
+			})();
+		}
+		return this.directoryPromise;
 	}
 
 	async get(key: string): Promise<File | null> {
@@ -34,6 +40,30 @@ export class OPFSAdapter implements StorageAdapter<File> {
 
 		await writable.write(file);
 		await writable.close();
+	}
+
+	async setBatch(
+		entries: Array<{ key: string; file: File }>,
+		{ concurrency = 4 }: { concurrency?: number } = {},
+	): Promise<void> {
+		const directory = await this.getDirectory();
+		let index = 0;
+		const worker = async () => {
+			while (index < entries.length) {
+				const { key, file } = entries[index++];
+				const fileHandle = await directory.getFileHandle(key, {
+					create: true,
+				});
+				const writable = await fileHandle.createWritable();
+				await writable.write(file);
+				await writable.close();
+			}
+		};
+		const workers = Array.from(
+			{ length: Math.min(concurrency, entries.length) },
+			() => worker(),
+		);
+		await Promise.all(workers);
 	}
 
 	async remove(key: string): Promise<void> {
@@ -66,7 +96,6 @@ export class OPFSAdapter implements StorageAdapter<File> {
 		}
 	}
 
-	// Helper method to check OPFS support
 	static isSupported(): boolean {
 		return "storage" in navigator && "getDirectory" in navigator.storage;
 	}
