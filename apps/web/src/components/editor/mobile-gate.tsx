@@ -20,21 +20,22 @@ export function MobileGate({ children }: MobileGateProps) {
 	const [gate, setGate] = useState<GateState>("loading");
 
 	useEffect(() => {
+		const ua = navigator.userAgent || "";
+
 		// Android is hard-locked out of the editor. The touch + small-screen
 		// combination makes the timeline genuinely unusable, so — unlike the
 		// soft gate below — there is no "take a look anyway" escape hatch.
-		const isAndroid = /android/i.test(navigator.userAgent || "");
+		const isAndroid = /android/i.test(ua);
 		if (isAndroid) {
 			setGate("locked");
 			return;
 		}
 
-		// Every other narrow viewport (iPad, small desktop windows) gets the
-		// dismissible heads-up so power users can still poke around at their
-		// own risk.
-		const isSmall = window.innerWidth < 1024;
+		// Detect actual mobile/tablet devices — not small desktop windows.
+		const isMobile = /iphone|ipod/i.test(ua);
+		const isTablet = /ipad/i.test(ua) || (navigator.maxTouchPoints > 1 && /macintosh/i.test(ua));
 		const acknowledged = localStorage.getItem(STORAGE_KEY) === "true";
-		setGate(isSmall && !acknowledged ? "soft" : "open");
+		setGate((isMobile || isTablet) && !acknowledged ? "soft" : "open");
 	}, []);
 
 	if (gate === "loading") return null;

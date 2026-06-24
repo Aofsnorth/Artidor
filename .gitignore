@@ -27,6 +27,8 @@ out/
 dist/
 build/
 
+database.db
+
 # Rust
 target/
 .cargo-tools/
