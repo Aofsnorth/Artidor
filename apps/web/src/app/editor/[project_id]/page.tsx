@@ -400,15 +400,9 @@ function EditorPanels() {
 							{floatingPanels.properties ? (
 								<DockPlaceholder id="properties" title="Properties" />
 							) : (
-								<div className="group/panel-slot relative size-full overflow-hidden">
-									<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
-										{/* PropertiesPanel wrapper: `self-start` overrides the
-										    parent flex-row's `items-stretch` so the panel sizes
-										    to its content (the project details card is short —
-										    stretching it would leave empty space below the
-										    info rows). The audio meter sibling still stretches
-										    to the row's full height. */}
-										<div className="flex min-h-0 max-h-full flex-1 min-w-0 self-start overflow-hidden">
+								<div className="group/panel-slot relative size-full">
+									<div className="flex h-full min-h-0 items-stretch gap-2">
+										<div className="flex-1 min-w-0">
 											<PropertiesPanel />
 										</div>
 										<VerticalAudioMeter />

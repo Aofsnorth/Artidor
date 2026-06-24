@@ -18,6 +18,82 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-beat-markers-left",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Timeline toolbar: beat markers moved back to left section",
+		items: [
+			"Moved Add beat markers back to the left toolbar section (after Ungroup) while keeping Link/Unlink on the right side next to bookmarks.",
+		],
+	},
+	{
+		id: "2026-06-24-toolbar-rebalance",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Timeline toolbar: 3 tools moved to right side for better balance",
+		items: [
+			"Moved Link parent, Unlink parent, and Add beat markers from the left toolbar section to the right section (next to bookmarks) for better visual balance across the toolbar.",
+		],
+	},
+	{
+		id: "2026-06-24-dropdown-icon-fixed",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Timeline toolbar: dropdown trigger and manage button now use different icons",
+		items: [
+			"The dropdown trigger (Main scene / Timeline 1) now uses Layers icon instead of the mode-specific icon, so it no longer duplicates the Manage button's Clapperboard/Timeline icon.",
+		],
+	},
+	{
+		id: "2026-06-24-toolbar-spacing",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Timeline toolbar: increased horizontal padding for better balance",
+		items: [
+			"Added more horizontal padding to the timeline toolbar (px-2.5 → px-3.5) so the left-side tools don't sit flush against the edge, creating better visual balance across the toolbar.",
+		],
+	},
+	{
+		id: "2026-06-24-scene-timeline-icons",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Scene/Timeline mode: unique icons that don't collide with toolbar",
+		items: [
+			"Scene mode now uses a Clapperboard icon and Timeline mode uses a Timeline icon — both are unique to the mode toggle and don't repeat any other icon already in the editor toolbar.",
+		],
+	},
+	{
+		id: "2026-06-24-details-panel-restored",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Project details panel: restore original card height and layout",
+		items: [
+			"Restored the original panel wrapper structure by removing extra `overflow-hidden`, `max-h-full`, and `min-h-0` constraints that were compressing the Details card vertically. The Project and Activity sections now display at their natural height again.",
+			"Removed `min-h-[120px]` from Section component — cards flex naturally within the scrollable panel without forced minimum heights.",
+		],
+	},
+	{
+		id: "2026-06-24-details-panel-stretch-thumbnail-fallback",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Project details panel + thumbnail fallback on Linux/ANGLE",
+		items: [
+			"Removed `self-start` from the Properties panel slot so the Details card now stretches to fill the right column instead of shrinking to its content height.",
+			"Project thumbnail generation now falls back to a solid background fill when the WebGPU swapchain can't present to a 2D context (the 'output surface does not support the required texture format' error some Linux/ANGLE adapters hit). The card shows the project's background color instead of the empty thumbnail glyph.",
+		],
+	},
+	{
+		id: "2026-06-24-timeline-toolbar-compact",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Timeline toolbar: Scene/Timeline mode lives inside the dropdown",
+		items: [
+			"The Scene | Timeline pill that used to sit in the toolbar center is now a switcher inside the active-timeline dropdown. The toolbar slot itself is icon-only: a layered chevron button that mirrors the current mode and shows its label on hover.",
+			"Add timeline no longer drops a built-in text or camera placeholder onto the new lane — it adds an empty track ready for you to drop media onto, matching CapCut.",
+			"The TRACKS header now has a layered + button on the right that opens the same track-type dropdown used by Add timeline.",
+		],
+	},
+	{
 		id: "2026-06-24-desktop-gate-fix",
 		date: "2026-06-24",
 		tag: "fix",

@@ -793,11 +793,29 @@ export class ProjectManager {
 		tempCanvas.width = canvasSize.width;
 		tempCanvas.height = canvasSize.height;
 
-		await renderer.renderToCanvas({
-			node: scene,
-			time: 0,
-			targetCanvas: tempCanvas,
-		});
+		try {
+			await renderer.renderToCanvas({
+				node: scene,
+				time: 0,
+				targetCanvas: tempCanvas,
+			});
+		} catch (error) {
+			// WebGPU's `present()` can fail on adapters that can't copy
+			// their swapchain texture into a 2D context (Linux/ANGLE and
+			// some iGPUs hit "output surface does not support the required
+			// texture format"). Render the project's background as a
+			// solid-color fallback so the thumbnail card still shows
+			// something sensible instead of the "no thumbnail" glyph.
+			console.warn("Thumbnail render fell back to background fill:", error);
+			const ctx = tempCanvas.getContext("2d");
+			if (!ctx) return false;
+			if (background.type === "color") {
+				ctx.fillStyle = background.color;
+			} else {
+				ctx.fillStyle = "#0a0a0c";
+			}
+			ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+		}
 
 		const thumbnailDataUrl = tempCanvas.toDataURL("image/png");
 

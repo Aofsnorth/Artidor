@@ -85,7 +85,7 @@ export function ProjectDetailsView() {
 	};
 
 	return (
-		<div className="flex w-full flex-col">
+		<div className="flex h-full w-full flex-col flex-1 min-h-0">
 			<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
 				<div className="flex items-center justify-between">
 					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
@@ -269,12 +269,12 @@ function Section({
 	children: React.ReactNode;
 }) {
 	return (
-		<section className="flex flex-col rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5 shadow-inner shadow-white/[0.015]">
+		<section className="flex flex-1 flex-col rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5 shadow-inner shadow-white/[0.015]">
 			<header className="mb-1.5 flex shrink-0 items-center gap-1.5 border-b border-white/[0.05] pb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/40">
 				<HugeiconsIcon icon={icon} className="size-3" />
 				<span>{title}</span>
 			</header>
-			<dl className="flex flex-col gap-1">{children}</dl>
+			<dl className="flex flex-1 flex-col gap-1">{children}</dl>
 		</section>
 	);
 }

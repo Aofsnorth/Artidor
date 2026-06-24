@@ -209,6 +209,13 @@ import { TimelineToolbar } from "./timeline-toolbar";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { useTimelineSeek } from "@/hooks/timeline/use-timeline-seek";
 import { useTimelineDragDrop } from "@/hooks/timeline/use-timeline-drag-drop";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus } from "lucide-react";
 import { TimelineRuler } from "./timeline-ruler";
 import { TimelineBookmarksRow } from "./bookmarks";
 import { useBookmarkDrag } from "@/hooks/timeline/use-bookmark-drag";
@@ -958,6 +965,7 @@ function TrackLabelsPanel({
 				style={{ height: timelineHeaderHeight || 48 }}
 			>
 				<span>Tracks</span>
+				<AddTimelineTrackButton />
 			</div>
 			<div ref={trackLabelsRef} className="flex-1 overflow-hidden">
 				<div ref={trackLabelsScrollRef} className="size-full overflow-hidden">
@@ -1621,6 +1629,54 @@ function TrackLabelsResizeHandle({
 
 function _TrackIcon({ track }: { track: TimelineTrack }) {
 	return <>{TRACK_ICONS[track.type]}</>;
+}
+
+/**
+ * Layered "+" button shown in the Tracks header. CapCut-style: the
+ * button sits on top of a slightly larger background card, giving the
+ * stack-of-lanes affordance without taking up a separate row.
+ * Clicking it opens a dropdown with the available track types.
+ */
+function AddTimelineTrackButton() {
+	const editor = useEditor();
+	const options = [
+		{ label: "Video track", type: "video" as const },
+		{ label: "Audio track", type: "audio" as const },
+		{ label: "Camera track", type: "camera" as const },
+		{ label: "Text track", type: "text" as const },
+		{ label: "Image track", type: "image" as const },
+		{ label: "Effect track", type: "effect" as const },
+	];
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					aria-label="Add track"
+					title="Add track"
+					className="relative grid h-6 w-6 cursor-pointer place-items-center rounded-md border border-white/[0.08] bg-[#161618]/70 text-white/65 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none"
+				>
+					{/* Backplate card — the "layered" affordance */}
+					<span
+						aria-hidden
+						className="pointer-events-none absolute inset-x-0 bottom-0 h-[5px] rounded-b-md border-x border-b border-white/[0.06] bg-[#1c1c1f]"
+					/>
+					<Plus className="relative size-3" />
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="z-100 w-40">
+				{options.map((option) => (
+					<DropdownMenuItem
+						key={option.type}
+						onClick={() => editor.timeline.addTrack({ type: option.type })}
+					>
+						{option.label}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
 }
 
 function _TrackToggleIcon({

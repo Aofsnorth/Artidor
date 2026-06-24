@@ -46,11 +46,29 @@ pub struct GpuContext {
 impl GpuContext {
     pub async fn new() -> Result<Self, GpuError> {
         let (instance, adapter, device, queue) = Self::acquire_device().await?;
-        let texture_format = if adapter.get_info().backend == wgpu::Backend::Gl {
+        let mut texture_format = if adapter.get_info().backend == wgpu::Backend::Gl {
             wgpu::TextureFormat::Rgba8Unorm
         } else {
             wgpu::TextureFormat::Bgra8Unorm
         };
+
+        #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+        {
+            if let Some(window) = web_sys::window() {
+                if let Some(document) = window.document() {
+                    if let Ok(canvas) = document.create_element("canvas") {
+                        if let Ok(canvas) = canvas.dyn_into::<web_sys::HtmlCanvasElement>() {
+                            if let Ok(surface) = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas)) {
+                                let caps = surface.get_capabilities(&adapter);
+                                if !caps.formats.is_empty() {
+                                    texture_format = caps.formats[0];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         let fullscreen_quad = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("gpu-fullscreen-quad-buffer"),
             contents: bytemuck::cast_slice(&FULLSCREEN_QUAD_POSITIONS),
@@ -332,12 +350,16 @@ impl GpuContext {
         width: u32,
         height: u32,
     ) -> Result<(), GpuError> {
-        let Some(config) = surface.get_default_config(&self.adapter, width, height) else {
-            return Err(GpuError::UnsupportedSurfaceFormat);
-        };
-        if config.format != self.texture_format {
+        let mut config = surface.get_default_config(&self.adapter, width, height)
+            .ok_or(GpuError::UnsupportedSurfaceFormat)?;
+            
+        let capabilities = surface.get_capabilities(&self.adapter);
+        if capabilities.formats.contains(&self.texture_format) {
+            config.format = self.texture_format;
+        } else {
             return Err(GpuError::UnsupportedSurfaceFormat);
         }
+        
         surface.configure(&self.device, &config);
         Ok(())
     }
