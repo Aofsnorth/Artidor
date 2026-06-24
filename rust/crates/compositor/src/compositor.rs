@@ -20,8 +20,6 @@ const BLEND_SHADER_SOURCE: &str = include_str!("shaders/blend.wgsl");
 const MASK_SHADER_SOURCE: &str = include_str!("shaders/mask.wgsl");
 
 pub struct RenderFrameOptions<'a, 'surface> {
-Silakan Anda Refresh (F5) kembali halamannya. Fitur thumbnail generation dan render layer-nya sekarang seharusnya bisa mendeteksi secara otomatis format kanvas milik GPU browser Anda dan berjalan dengan lancar tanpa ada error surface format lagi.
-
     pub frame: &'a FrameDescriptor,
     pub surface: &'a wgpu::Surface<'surface>,
 }
