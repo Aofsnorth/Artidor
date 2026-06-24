@@ -216,15 +216,20 @@ function SceneItem({
 	};
 
 	return (
-		<button
-			type="button"
+		// biome-ignore lint/a11y/useSemanticElements: outer element contains nested interactive buttons, so <button> would be invalid HTML
+		<div
+			role="button"
+			tabIndex={0}
 			className={cn(
-				"flex w-full items-center gap-1 px-2 py-1.5 text-xs cursor-pointer rounded-sm transition text-left",
+				"flex w-full items-center gap-1 px-2 py-1.5 text-xs cursor-pointer rounded-sm transition",
 				isActive
 					? "bg-white/10 text-white"
 					: "text-white/70 hover:bg-white/5 hover:text-white",
 			)}
 			onClick={onSwitch}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") onSwitch();
+			}}
 		>
 			{isRenaming ? (
 				<input
@@ -267,7 +272,7 @@ function SceneItem({
 					<Trash2 className="size-3" />
 				</button>
 			)}
-		</button>
+		</div>
 	);
 }
 
