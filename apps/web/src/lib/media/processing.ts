@@ -185,17 +185,27 @@ export async function processMediaAssets({
 	const total = fileArray.length;
 	let completed = 0;
 
-	// Single quota check for total batch size instead of per-file
+	// Quick check: if total batch size fits, skip per-file quota checks entirely.
+	// If it doesn't fit, fall back to per-file checks so the user can still
+	// import SOME of the files instead of being rejected wholesale.
 	const totalSize = fileArray.reduce((sum, f) => sum + f.size, 0);
 	const batchQuota = await storageService.canStoreFile({ size: totalSize });
-	if (!batchQuota.canStore) {
-		toast.error("Not enough browser storage for these files", {
+	const checkPerFile = !batchQuota.canStore;
+
+	if (checkPerFile) {
+		toast.warning("Not enough storage for all files — importing what fits", {
 			description: getStorageLimitDescription({
 				fileSize: totalSize,
 				availableBytes: batchQuota.availableBytes,
 			}),
+			action: {
+				label: "Manage storage",
+				onClick: () => {
+					window.location.href = "/projects";
+				},
+			},
+			duration: 15000,
 		});
-		return [];
 	}
 
 	const CONCURRENCY = 4;
@@ -210,6 +220,28 @@ export async function processMediaAssets({
 				toast.error(`Unsupported file type: ${file.name}`);
 				completed += 1;
 				continue;
+			}
+
+			if (checkPerFile) {
+				const storageCheck = await storageService.canStoreFile({
+					size: file.size,
+				});
+				if (!storageCheck.canStore) {
+					toast.error(`Not enough storage for ${file.name}`, {
+						description: getStorageLimitDescription({
+							fileSize: file.size,
+							availableBytes: storageCheck.availableBytes,
+						}),
+						action: {
+							label: "Manage storage",
+							onClick: () => {
+								window.location.href = "/projects";
+							},
+						},
+					});
+					completed += 1;
+					continue;
+				}
 			}
 
 			let thumbnailUrl: string | undefined;
