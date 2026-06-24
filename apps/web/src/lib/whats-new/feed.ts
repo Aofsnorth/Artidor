@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-completion-overlay",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Export completion overlay — CapCut-style full-screen preview",
+		items: [
+			"When export finishes, a full-screen overlay now appears with a large video preview (auto-play, muted), project filename, format/size/source info, and Download/Close buttons. Click outside or press Escape to dismiss.",
+			"The existing export popover still works as an export history — the overlay is for the initial "just finished" celebration moment.",
+		],
+	},
+	{
 		id: "2026-06-25-playhead-drag-export-pause",
 		date: "2026-06-25",
 		tag: "fix",
