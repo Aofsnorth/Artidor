@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-desktop-gate-fix",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Editor no longer blocked on small desktop browser windows",
+		items: [
+			"The 'Desktop only (for now)' gate was triggering on desktop browsers with viewport width under 1024px. Now only actual mobile devices (iPhone, iPad, Android) see the gate — small desktop windows are no longer blocked.",
+		],
+	},
+	{
 		id: "2026-06-24-env-modal-lint-fix",
 		date: "2026-06-24",
 		tag: "fix",
