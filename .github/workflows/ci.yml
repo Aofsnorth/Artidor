@@ -41,7 +41,7 @@ jobs:
       - run: cd apps/web && bun run build:content
       - run: cd apps/web && bunx tsc --noEmit
       - run: bun run test
-      - run: cd apps/web && npx next build
+      - run: cd apps/web && bunx next build
 
   rust:
     name: Rust checks
