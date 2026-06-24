@@ -38,10 +38,11 @@ export function EnvWarningModal({ isMissing }: EnvWarningModalProps) {
 						<div className="absolute inset-0 bg-gradient-to-br from-red-500/10 via-transparent to-transparent pointer-events-none" />
 						
 						<div className="relative p-6 sm:p-8">
-							<button
-								onClick={() => setIsOpen(false)}
-								className="absolute right-4 top-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
-							>
+						<button
+							type="button"
+							onClick={() => setIsOpen(false)}
+							className="absolute right-4 top-4 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+						>
 								<X className="h-5 w-5" />
 							</button>
 
@@ -68,10 +69,11 @@ export function EnvWarningModal({ isMissing }: EnvWarningModalProps) {
 							</div>
 
 							<div className="flex items-center justify-end">
-								<button
-									onClick={() => setIsOpen(false)}
-									className="group flex items-center gap-2 rounded-xl bg-zinc-100 px-5 py-2.5 text-sm font-medium text-zinc-900 transition-all hover:bg-white hover:shadow-lg hover:shadow-white/10 active:scale-95"
-								>
+							<button
+								type="button"
+								onClick={() => setIsOpen(false)}
+								className="group flex items-center gap-2 rounded-xl bg-zinc-100 px-5 py-2.5 text-sm font-medium text-zinc-900 transition-all hover:bg-white hover:shadow-lg hover:shadow-white/10 active:scale-95"
+							>
 									Acknowledge
 									<ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
 								</button>
