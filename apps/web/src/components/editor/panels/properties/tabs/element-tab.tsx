@@ -209,6 +209,49 @@ export function ElementTab({
 								value: media.type,
 							}}
 						/>
+						{media.type === "video" && media.width && media.height && (
+							<SummaryRow
+								item={{
+									icon: InformationCircleIcon,
+									label: "Resolution",
+									value: `${media.width} × ${media.height}`,
+								}}
+							/>
+						)}
+						{media.type === "video" && media.fps && (
+							<SummaryRow
+								item={{
+									icon: InformationCircleIcon,
+									label: "FPS",
+									value: `${media.fps} fps`,
+								}}
+							/>
+						)}
+						{media.duration && (
+							<SummaryRow
+								item={{
+									icon: Time01Icon,
+									label: "Duration",
+									value: formatMediaDuration({ seconds: media.duration }),
+								}}
+							/>
+						)}
+						{media.type === "video" && media.hasAudio !== undefined && (
+							<SummaryRow
+								item={{
+									icon: InformationCircleIcon,
+									label: "Audio",
+									value: media.hasAudio ? "Yes" : "No",
+								}}
+							/>
+						)}
+						<SummaryRow
+							item={{
+								icon: InformationCircleIcon,
+								label: "File size",
+								value: formatFileSize(media.file.size),
+							}}
+						/>
 						<SummaryRow
 							item={{
 								icon: Copy01Icon,
@@ -439,4 +482,31 @@ function toggleMuted({
 			},
 		],
 	});
+}
+
+function formatMediaDuration({ seconds }: { seconds: number }): string {
+	if (seconds < 1) {
+		return `${(seconds * 1000).toFixed(0)} ms`;
+	}
+	const totalSeconds = Math.round(seconds);
+	const minutes = Math.floor(totalSeconds / 60);
+	const secs = totalSeconds % 60;
+	if (minutes === 0) {
+		return `${secs}s`;
+	}
+	return `${minutes}m ${secs.toString().padStart(2, "0")}s`;
+}
+
+function formatFileSize(bytes: number): string {
+	const units = ["B", "KB", "MB", "GB"] as const;
+	let value = Math.max(0, bytes);
+	let unitIndex = 0;
+	while (value >= 1024 && unitIndex < units.length - 1) {
+		value /= 1024;
+		unitIndex++;
+	}
+	const maximumFractionDigits = value >= 10 || unitIndex === 0 ? 0 : 1;
+	return `${new Intl.NumberFormat(undefined, {
+		maximumFractionDigits,
+	}).format(value)} ${units[unitIndex]}`;
 }
