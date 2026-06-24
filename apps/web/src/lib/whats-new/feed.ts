@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-drag-z-order-fix",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Timeline: dragged clip now stays on top when crossing tracks",
+		items: [
+			"Dragging a clip from one track to another now keeps the clip visually above all other tracks during the drag. Previously the dragged clip could appear behind the destination track's content when you moved it down.",
+		],
+	},
+	{
 		id: "2026-06-24-import-storage-hydration-fixes",
 		date: "2026-06-24",
 		tag: "fix",
