@@ -1378,7 +1378,13 @@ function TimelineTrackRows({
 							<div
 								className={cn(
 									"group absolute left-0 right-0 rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
-									hasDraggedElement ? "overflow-visible" : "overflow-hidden",
+									// Make ALL tracks overflow-visible during a drag so the
+									// dragged element can float above any target track, not
+									// just the source track. Without this, the dragged clip
+									// appears behind other tracks when crossing track boundaries.
+									dragState.isDragging || hasDraggedElement
+										? "overflow-visible"
+										: "overflow-hidden",
 									tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
 								)}
 								style={{
