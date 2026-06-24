@@ -20,19 +20,17 @@ import { ScenesView } from "@/components/editor/scenes-view";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import { getElementKeyframes } from "@/lib/animation";
-import type { TimelineTrack, TimelineElement } from "@/lib/timeline";
-import { buildTextElement } from "@/lib/timeline/element-utils";
-import { DEFAULTS } from "@/lib/timeline/defaults";
+import type { TimelineTrack } from "@/lib/timeline";
 import { getPropertyLabel } from "./expanded-layout";
 import { useEffect, useMemo, useState } from "react";
 import {
 	AlignLeftIcon,
 	AlignRightIcon,
 	AlignHorizontalCenterIcon,
-	ArrowDown01Icon,
 	Bookmark01Icon,
 	Bookmark02Icon,
 	Camera01Icon,
+	ClapperboardIcon,
 	ClipboardIcon,
 	Copy01Icon,
 	Copy02Icon,
@@ -49,6 +47,7 @@ import {
 	ScissorIcon,
 	SnowIcon,
 	Square01Icon,
+	TimelineIcon,
 	GitMergeIcon,
 	Target01Icon,
 	Tick01Icon,
@@ -92,9 +91,9 @@ export function TimelineToolbar({
 
 	return (
 		<ScrollArea className="scrollbar-hidden">
-			<div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-transparent px-2.5 py-0.5 z-20">
+			<div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-transparent px-3.5 py-0.5 z-20">
 				{/* Left Section: + Track, Separator, Action Buttons */}
-				<div className="flex min-w-0 items-center gap-2">
+				<div className="flex min-w-0 items-center gap-2 justify-start">
 					<AddTrackDropdown />
 					<div className="h-5 w-px bg-white/10 mx-1" />
 					<ToolbarLeftSection />
@@ -146,34 +145,10 @@ function AddTrackDropdown() {
 					<DropdownMenuItem
 						key={option.type}
 						onClick={() => {
-							const trackId = editor.timeline.addTrack({ type: option.type });
-							if (option.type === "camera") {
-								const { buildCameraElement } =
-									require("@/lib/camera") as typeof import("@/lib/camera");
-								const { TICKS_PER_SECOND } =
-									require("@/lib/wasm") as typeof import("@/lib/wasm");
-								editor.timeline.insertElement({
-									placement: { mode: "explicit", trackId },
-									element: buildCameraElement({
-										trackId,
-										startTime: editor.playback.getCurrentTime(),
-										duration: Math.round(5 * TICKS_PER_SECOND),
-									}) as unknown as TimelineElement,
-								});
-								return;
-							}
-							if (option.type !== "text") return;
-							editor.timeline.insertElement({
-								placement: { mode: "explicit", trackId },
-								element: buildTextElement({
-									raw: {
-										name: "Text",
-										content: "Text",
-										fontFamily: DEFAULTS.text.element.fontFamily,
-									},
-									startTime: editor.playback.getCurrentTime(),
-								}),
-							});
+							// CapCut-style: just add the track lane. No
+							// implicit element drop, no built-in text/camera
+							// placeholder — the user picks what to put on it.
+							editor.timeline.addTrack({ type: option.type });
 						}}
 					>
 						{option.label}
@@ -217,28 +192,17 @@ function ToolbarLeftSection() {
 		[editor],
 	);
 
-	const selectedTimelineElements = useMemo(
-		() =>
-			selectedElements.flatMap((ref) => {
-				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
-				const element = track?.elements.find((el) => el.id === ref.elementId);
-				return element ? [element] : [];
-			}),
-		[editor, selectedElements],
-	);
 	const hasSelection = selectedElements.length > 0;
 	const singleSelection = selectedElements.length === 1;
 	const canSelectAll = allTimelineElements.length > selectedElements.length;
 	const canAlignToPlayhead = alignDirection !== "center";
-	const canLinkParent = selectedElements.length === 2;
-	const canUnlinkParent = selectedTimelineElements.some(
-		(element) => (element as { parentId?: string }).parentId,
-	);
 	const canAddBeatMarkers =
 		singleSelection &&
-		selectedTimelineElements.some(
-			(element) => element.type === "audio" || element.type === "video",
-		);
+		selectedElements.some((ref) => {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((el) => el.id === ref.elementId);
+			return element?.type === "audio" || element?.type === "video";
+		});
 	const alignIcon =
 		alignDirection === "left"
 			? AlignLeftIcon
@@ -372,22 +336,10 @@ function ToolbarLeftSection() {
 					disabled={!hasSelection}
 					onClick={() => invokeAction("ungroup-selected")}
 				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Link01Icon} />}
-					tooltip="Link parent"
-					disabled={!canLinkParent}
-					onClick={() => invokeAction("link-parent")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Unlink01Icon} />}
-					tooltip="Unlink parent"
-					disabled={!canUnlinkParent}
-					onClick={() => invokeAction("unlink-parent")}
-				/>
 
 				<SectionDivider />
 
-				{/* Audio workflow */}
+				{/* Audio */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
 					tooltip="Add beat markers"
@@ -455,47 +407,18 @@ function SceneSelector() {
 	const hasKeyframeLayers = keyframeLayers.length > 0;
 
 	const [mode, setMode] = useState<"scene" | "timeline">("scene");
+	const timelineIndex = Math.max(
+		1,
+		scenes.findIndex((s) => s.id === currentScene?.id) + 1,
+	);
+
+	// Icon mirrors the active mode — no text in the toolbar slot.
+	// The chevron/manage-scenes icon swaps the same way so both buttons
+	// stay in sync with the dropdown.
+	const modeIcon = mode === "timeline" ? TimelineIcon : ClapperboardIcon;
 
 	return (
 		<div className="flex items-center z-20 gap-1.5">
-			{/* Mode toggle: Scene | Timeline. Visually-only switch — the
-			    underlying data is the same (scenes == timelines in this
-			    app's data model); only the label and the modal trigger
-			    change. Hover the pill for a tooltip explaining the
-			    active mode. */}
-			<div
-				className="flex h-7 items-center rounded-full border border-white/[0.08] bg-[#161618]/70 p-0.5 text-[0.6rem] font-bold uppercase tracking-[0.1em] shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-				title={`${mode === "scene" ? "Scene" : "Timeline"} mode — click to switch`}
-			>
-				<button
-					type="button"
-					onClick={() => setMode("scene")}
-					className={cn(
-						"h-6 rounded-full px-2.5 transition focus:outline-none",
-						mode === "scene"
-							? "bg-white text-black"
-							: "text-white/55 hover:text-white",
-					)}
-					aria-label="Scene mode"
-					aria-pressed={mode === "scene"}
-				>
-					Scene
-				</button>
-				<button
-					type="button"
-					onClick={() => setMode("timeline")}
-					className={cn(
-						"h-6 rounded-full px-2.5 transition focus:outline-none",
-						mode === "timeline"
-							? "bg-white text-black"
-							: "text-white/55 hover:text-white",
-					)}
-					aria-label="Timeline mode"
-					aria-pressed={mode === "timeline"}
-				>
-					Timeline
-				</button>
-			</div>
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<button
@@ -506,7 +429,7 @@ function SceneSelector() {
 							{hasKeyframeLayers
 								? "Keyframes"
 								: mode === "timeline"
-									? `Timeline ${scenes.findIndex((s) => s.id === currentScene?.id) + 1 || 1}`
+									? `Timeline ${timelineIndex}`
 									: currentScene?.name || "Main scene"}
 						</span>
 						<div className="h-3 w-px bg-white/15" />
@@ -573,44 +496,68 @@ function SceneSelector() {
 							))}
 						</>
 					) : (
-						scenes.map((scene) => (
-							<DropdownMenuItem
-								key={scene.id}
-								onClick={() =>
-									editor.scenes.switchToScene({ sceneId: scene.id })
-								}
-							>
-								{scene.name}
-							</DropdownMenuItem>
-						))
+						<>
+							{/* Mode switcher inline at the top of the dropdown.
+							    Same Scene | Timeline toggle as before, just
+							    moved inside so the toolbar stays compact. */}
+							<div className="px-1.5 pb-1.5 pt-1">
+								<div className="flex h-7 items-center rounded-full border border-white/[0.08] bg-black/40 p-0.5 text-[0.6rem] font-bold uppercase tracking-[0.1em]">
+									<button
+										type="button"
+										onClick={() => setMode("scene")}
+										className={cn(
+											"h-6 flex-1 rounded-full transition focus:outline-none",
+											mode === "scene"
+												? "bg-white text-black"
+												: "text-white/55 hover:text-white",
+										)}
+									>
+										Scene
+									</button>
+									<button
+										type="button"
+										onClick={() => setMode("timeline")}
+										className={cn(
+											"h-6 flex-1 rounded-full transition focus:outline-none",
+											mode === "timeline"
+												? "bg-white text-black"
+												: "text-white/55 hover:text-white",
+										)}
+									>
+										Timeline
+									</button>
+								</div>
+							</div>
+							{scenes.map((scene, idx) => (
+								<DropdownMenuItem
+									key={scene.id}
+									onClick={() =>
+										editor.scenes.switchToScene({ sceneId: scene.id })
+									}
+								>
+									{mode === "timeline" ? `Timeline ${idx + 1}` : scene.name}
+								</DropdownMenuItem>
+							))}
+						</>
 					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 
 			{/* Layered chevron button — opens the ScenesView sheet (matches
 			    screenshot #2: select scenes, cancel / delete N, main
-			    scene dropdown). Sits next to the SceneSelector so the
-			    primary action (switch) and the secondary action (manage
-			    scenes) are visually grouped. */}
+			    scene dropdown). Icon swaps with mode; tooltip only on
+			    hover so the toolbar stays compact. */}
 			<ScenesView>
 				<button
 					type="button"
-					className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-					title={
-						mode === "timeline"
-							? "Manage timelines"
-							: "Manage scenes"
-					}
-					aria-label={
-						mode === "timeline"
-							? "Manage timelines"
-							: "Manage scenes"
-					}
+					className="group relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
+					title={mode === "timeline" ? "Manage timelines" : "Manage scenes"}
+					aria-label={mode === "timeline" ? "Manage timelines" : "Manage scenes"}
 				>
-					<HugeiconsIcon
-						icon={ArrowDown01Icon}
-						className="size-3.5"
-					/>
+					<HugeiconsIcon icon={modeIcon} className="size-3.5" />
+					<span className="pointer-events-none absolute -bottom-6 whitespace-nowrap rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[0.6rem] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+						{mode === "timeline" ? "Manage timelines" : "Manage scenes"}
+					</span>
 				</button>
 			</ScenesView>
 		</div>
@@ -645,6 +592,22 @@ function ToolbarRightSection({
 		e.scenes.isBookmarked({ time: e.playback.getCurrentTime() }),
 	);
 
+	const editor = useEditor();
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const selectedTimelineElements = useMemo(
+		() =>
+			selectedElements.flatMap((ref) => {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				return element ? [element] : [];
+			}),
+		[editor, selectedElements],
+	);
+	const canLinkParent = selectedElements.length === 2;
+	const canUnlinkParent = selectedTimelineElements.some(
+		(element) => (element as { parentId?: string }).parentId,
+	);
+
 	return (
 		<div className="flex items-center gap-1.5 p-0.5 z-20">
 			<TooltipProvider delayDuration={400}>
@@ -659,6 +622,22 @@ function ToolbarRightSection({
 					icon={<HugeiconsIcon icon={Bookmark01Icon} />}
 					tooltip="Toggle bookmark on selected element"
 					onClick={() => invokeAction("toggle-element-bookmark")}
+				/>
+
+				<SectionDivider />
+
+				{/* Linking (moved from left for balance) */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Link01Icon} />}
+					tooltip="Link parent"
+					disabled={!canLinkParent}
+					onClick={() => invokeAction("link-parent")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Unlink01Icon} />}
+					tooltip="Unlink parent"
+					disabled={!canUnlinkParent}
+					onClick={() => invokeAction("unlink-parent")}
 				/>
 
 				<SectionDivider />
