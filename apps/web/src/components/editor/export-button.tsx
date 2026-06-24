@@ -270,6 +270,11 @@ function ExportPopover({
 	const handleExport = async () => {
 		if (!activeProject) return;
 
+		// Auto-pause playback before starting export
+		if (editor.playback.getIsPlaying()) {
+			editor.playback.pause();
+		}
+
 		const result = await editor.project.export({
 			options: {
 				format,

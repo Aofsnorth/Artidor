@@ -110,6 +110,7 @@ export function TimelinePlayhead({
 
 	const handleHandleMouseDown = (event: React.MouseEvent) => {
 		downPosRef.current = { x: event.clientX, y: event.clientY };
+		setShowTimeBubble(true);
 		// Start the normal scrub-drag; if it turns out to be a click we toggle on mouseup.
 		handlePlayheadMouseDown(event);
 	};
@@ -121,6 +122,9 @@ export function TimelinePlayhead({
 		const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y);
 		if (moved <= PLAYHEAD_CLICK_SLOP_PX) {
 			setShowTimeBubble((prev) => !prev);
+		} else {
+			// After scrub, hide bubble after a short delay
+			setTimeout(() => setShowTimeBubble(false), 1500);
 		}
 	};
 
@@ -218,14 +222,14 @@ export function TimelinePlayhead({
 				<button
 					type="button"
 					aria-label="Drag playhead (click to show time)"
-					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-primary bg-primary" : "border-primary/70 bg-primary/90"}`}
+					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-cyan-400 bg-cyan-500" : "border-cyan-500/70 bg-cyan-600/90"}`}
 					onMouseDown={handleHandleMouseDown}
 					onMouseUp={handleHandleMouseUp}
 				/>
 
 				{showTimeBubble && (
 					<div
-						className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 select-none whitespace-nowrap border border-primary/40 bg-primary px-2 py-1 font-mono text-[11px] font-medium text-primary-foreground shadow-lg"
+						className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 select-none whitespace-nowrap border border-cyan-500/40 bg-cyan-600 px-2 py-1 font-mono text-[11px] font-medium text-white shadow-lg"
 						style={{
 							// Asymmetric "ticket" corners: sharp top-right + bottom-left,
 							// rounded top-left + bottom-right.
@@ -233,7 +237,7 @@ export function TimelinePlayhead({
 						}}
 					>
 						{formatPlayheadTime({ ticks: bubbleTicks, fps: fpsFloat })}
-						<span className="ml-1.5 text-primary-foreground/70">
+						<span className="ml-1.5 text-white/70">
 							Tab = marker
 						</span>
 					</div>
