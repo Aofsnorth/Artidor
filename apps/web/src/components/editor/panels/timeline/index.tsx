@@ -3,19 +3,20 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Camera01Icon,
+	CameraVideoIcon,
 	Delete02Icon,
-	Image01Icon,
+	ImageIcon,
 	MagicWand05Icon,
-	MusicNote03Icon,
+	ParagraphIcon,
 	RefreshIcon,
+	Speaker01Icon,
 	TaskAdd02Icon,
-	TextIcon,
 	ViewIcon,
 	ViewOffSlashIcon,
 	VolumeHighIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
-import { OcShapesIcon, OcVideoIcon } from "@/components/icons";
+import { OcShapesIcon } from "@/components/icons";
 import { toast } from "sonner";
 import {
 	ContextMenu,
@@ -227,36 +228,41 @@ const TRACKS_CONTAINER_MAX_HEIGHT = 800;
 const FALLBACK_CONTAINER_WIDTH = 1000;
 const TRACKS_CONTAINER_HEIGHT = { min: 0, max: TRACKS_CONTAINER_MAX_HEIGHT };
 const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
-	video: <OcVideoIcon className="text-muted-foreground size-4 shrink-0" />,
+	video: (
+		<HugeiconsIcon
+			icon={CameraVideoIcon}
+			className="text-muted-foreground size-3.5 shrink-0"
+		/>
+	),
 	text: (
 		<HugeiconsIcon
-			icon={TextIcon}
-			className="text-muted-foreground size-4 shrink-0"
+			icon={ParagraphIcon}
+			className="text-muted-foreground size-3.5 shrink-0"
 		/>
 	),
 	audio: (
 		<HugeiconsIcon
-			icon={MusicNote03Icon}
-			className="text-muted-foreground size-4 shrink-0"
+			icon={Speaker01Icon}
+			className="text-muted-foreground size-3.5 shrink-0"
 		/>
 	),
-	graphic: <OcShapesIcon className="text-muted-foreground size-4 shrink-0" />,
+	graphic: <OcShapesIcon className="text-muted-foreground size-3.5 shrink-0" />,
 	effect: (
 		<HugeiconsIcon
 			icon={MagicWand05Icon}
-			className="text-muted-foreground size-4 shrink-0"
+			className="text-muted-foreground size-3.5 shrink-0"
 		/>
 	),
 	image: (
 		<HugeiconsIcon
-			icon={Image01Icon}
-			className="text-muted-foreground size-4 shrink-0"
+			icon={ImageIcon}
+			className="text-muted-foreground size-3.5 shrink-0"
 		/>
 	),
 	camera: (
 		<HugeiconsIcon
 			icon={Camera01Icon}
-			className="text-muted-foreground size-4 shrink-0"
+			className="text-muted-foreground size-3.5 shrink-0"
 		/>
 	),
 };
@@ -1096,8 +1102,11 @@ function TrackLabelsPanel({
 														/>
 													</button>
 													<TrackColorPicker track={track} />
-													<span className="w-6 shrink-0 select-none rounded-md border border-white/[0.08] bg-black/25 px-1 py-0.5 text-center text-[0.6rem] font-bold text-white/50">
-														{trackPrefixes.get(track.id) || "V"}
+													<span
+														className="grid size-5 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-black/25 text-white/55"
+														title={`${trackPrefixes.get(track.id) ?? track.type} track`}
+													>
+														{TRACK_ICONS[track.type]}
 													</span>
 													<TrackNameInput track={track} />
 												</div>

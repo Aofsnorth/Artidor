@@ -402,7 +402,13 @@ function EditorPanels() {
 							) : (
 								<div className="group/panel-slot relative size-full overflow-hidden">
 									<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden">
-										<div className="flex min-h-0 flex-1 min-w-0 overflow-hidden">
+										{/* PropertiesPanel wrapper: `self-start` overrides the
+										    parent flex-row's `items-stretch` so the panel sizes
+										    to its content (the project details card is short —
+										    stretching it would leave empty space below the
+										    info rows). The audio meter sibling still stretches
+										    to the row's full height. */}
+										<div className="flex min-h-0 max-h-full flex-1 min-w-0 self-start overflow-hidden">
 											<PropertiesPanel />
 										</div>
 										<VerticalAudioMeter />
@@ -464,7 +470,7 @@ function EditorPanels() {
 					state={floatingPanels.properties}
 				>
 					<div className="flex h-full min-h-0 items-stretch gap-2 overflow-hidden p-1">
-						<div className="flex min-h-0 flex-1 min-w-0 overflow-hidden">
+						<div className="flex min-h-0 max-h-full flex-1 min-w-0 self-start overflow-hidden">
 							<PropertiesPanel />
 						</div>
 						<VerticalAudioMeter />

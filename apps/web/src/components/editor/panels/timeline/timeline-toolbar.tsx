@@ -16,6 +16,7 @@ import { sliderToZoom, zoomToSlider } from "@/lib/timeline/zoom-utils";
 import { invokeAction } from "@/lib/actions";
 import { cn } from "@/utils/ui";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { ScenesView } from "@/components/editor/scenes-view";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import { getElementKeyframes } from "@/lib/animation";
@@ -28,6 +29,7 @@ import {
 	AlignLeftIcon,
 	AlignRightIcon,
 	AlignHorizontalCenterIcon,
+	ArrowDown01Icon,
 	Bookmark01Icon,
 	Bookmark02Icon,
 	Camera01Icon,
@@ -133,10 +135,10 @@ function AddTrackDropdown() {
 					variant="ghost"
 					size="sm"
 					className="h-7 gap-1.5 px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
-					aria-label="Add track"
+					aria-label="Add timeline track"
 				>
 					<Plus className="size-3" />
-					Add track
+					Add timeline
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="z-100 w-40">
@@ -452,8 +454,48 @@ function SceneSelector() {
 	}, [currentScene, keyframeLayerNames, keyframeLayerSearch, selectedElements]);
 	const hasKeyframeLayers = keyframeLayers.length > 0;
 
+	const [mode, setMode] = useState<"scene" | "timeline">("scene");
+
 	return (
-		<div className="flex items-center z-20">
+		<div className="flex items-center z-20 gap-1.5">
+			{/* Mode toggle: Scene | Timeline. Visually-only switch — the
+			    underlying data is the same (scenes == timelines in this
+			    app's data model); only the label and the modal trigger
+			    change. Hover the pill for a tooltip explaining the
+			    active mode. */}
+			<div
+				className="flex h-7 items-center rounded-full border border-white/[0.08] bg-[#161618]/70 p-0.5 text-[0.6rem] font-bold uppercase tracking-[0.1em] shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
+				title={`${mode === "scene" ? "Scene" : "Timeline"} mode — click to switch`}
+			>
+				<button
+					type="button"
+					onClick={() => setMode("scene")}
+					className={cn(
+						"h-6 rounded-full px-2.5 transition focus:outline-none",
+						mode === "scene"
+							? "bg-white text-black"
+							: "text-white/55 hover:text-white",
+					)}
+					aria-label="Scene mode"
+					aria-pressed={mode === "scene"}
+				>
+					Scene
+				</button>
+				<button
+					type="button"
+					onClick={() => setMode("timeline")}
+					className={cn(
+						"h-6 rounded-full px-2.5 transition focus:outline-none",
+						mode === "timeline"
+							? "bg-white text-black"
+							: "text-white/55 hover:text-white",
+					)}
+					aria-label="Timeline mode"
+					aria-pressed={mode === "timeline"}
+				>
+					Timeline
+				</button>
+			</div>
 			<DropdownMenu>
 				<DropdownMenuTrigger asChild>
 					<button
@@ -463,7 +505,9 @@ function SceneSelector() {
 						<span className="tracking-wide select-none">
 							{hasKeyframeLayers
 								? "Keyframes"
-								: currentScene?.name || "Main scene"}
+								: mode === "timeline"
+									? `Timeline ${scenes.findIndex((s) => s.id === currentScene?.id) + 1 || 1}`
+									: currentScene?.name || "Main scene"}
 						</span>
 						<div className="h-3 w-px bg-white/15" />
 						<HugeiconsIcon
@@ -542,6 +586,33 @@ function SceneSelector() {
 					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
+
+			{/* Layered chevron button — opens the ScenesView sheet (matches
+			    screenshot #2: select scenes, cancel / delete N, main
+			    scene dropdown). Sits next to the SceneSelector so the
+			    primary action (switch) and the secondary action (manage
+			    scenes) are visually grouped. */}
+			<ScenesView>
+				<button
+					type="button"
+					className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
+					title={
+						mode === "timeline"
+							? "Manage timelines"
+							: "Manage scenes"
+					}
+					aria-label={
+						mode === "timeline"
+							? "Manage timelines"
+							: "Manage scenes"
+					}
+				>
+					<HugeiconsIcon
+						icon={ArrowDown01Icon}
+						className="size-3.5"
+					/>
+				</button>
+			</ScenesView>
 		</div>
 	);
 }

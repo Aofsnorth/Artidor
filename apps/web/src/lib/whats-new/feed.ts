@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-timeline-p1-ui-wins",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Timeline toolbar: track icons, mode toggle, scenes sheet (CapCut-style)",
+		items: [
+			"Each track header now shows a type-specific icon instead of the V1/A1/T1 text badge. New icons picked from Hugeicons (CameraVideo, Speaker01, Paragraph, ImageIcon) — none of them collide with icons already in use elsewhere in the editor. The text prefix is preserved as a tooltip so V1/V2/A1/T1/C1 numbering stays readable on hover.",
+			"The 'Add track' button is now 'Add timeline' (CapCut naming). The dropdown options — Video / Audio / Camera / Text / Image / Effect — are unchanged; they now describe the track types within the active timeline.",
+			"Timeline toolbar center: a Scene | Timeline pill toggle sits to the left of the active-timeline button. It is a visual label switch — Scene mode shows the scene name ('Main scene'), Timeline mode shows 'Timeline 1/2/3' indexed by scene position. Hover any pill for the mode description.",
+			"A layered chevron button next to the active-timeline pill opens the Scenes sheet (matches screenshot #2: 'Select scenes (N)' header, 'Select scenes to delete' description, Cancel + Delete (N) buttons, Main scene dropdown to switch). The sheet's title and aria-label switch to 'Manage timelines' when the toolbar is in Timeline mode.",
+		],
+	},
+	{
 		id: "2026-06-24-properties-scroll-isolation",
 		date: "2026-06-24",
 		tag: "fix",
