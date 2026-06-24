@@ -46,6 +46,7 @@ pub struct GpuContext {
 impl GpuContext {
     pub async fn new() -> Result<Self, GpuError> {
         let (instance, adapter, device, queue) = Self::acquire_device().await?;
+        #[allow(unused_mut)]
         let mut texture_format = if adapter.get_info().backend == wgpu::Backend::Gl {
             wgpu::TextureFormat::Rgba8Unorm
         } else {
