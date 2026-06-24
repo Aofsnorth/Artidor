@@ -658,6 +658,15 @@ export function Timeline() {
 						headerHeight={timelineHeaderHeight}
 					/>
 
+					{dragState.isDragging && tracksContainerRef.current && (
+						<DragGhost
+							tracks={tracks}
+							dragState={dragState}
+							zoomLevel={zoomLevel}
+							scrollRef={tracksScrollRef}
+						/>
+					)}
+
 					<div ref={rulerScrollRef} className="shrink-0 overflow-hidden">
 						<div
 							ref={timelineHeaderRef}
@@ -1808,4 +1817,68 @@ function TrackHeightHandle({
 			)}
 		/>
 	);
+}
+
+import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+
+function DragGhost({
+	tracks,
+	dragState,
+	zoomLevel,
+	scrollRef,
+}: {
+	tracks: TimelineTrack[];
+	dragState: ElementDragState;
+	zoomLevel: number;
+	scrollRef: React.RefObject<HTMLDivElement | null>;
+}) {
+	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
+	const scrollTop = scrollRef.current?.scrollTop ?? 0;
+
+	const ghosts: React.ReactNode[] = [];
+
+	for (const track of tracks) {
+		const trackIndex = tracks.indexOf(track);
+		for (const element of track.elements) {
+			if (!dragState.dragElementIds.includes(element.id)) continue;
+
+			const timeOffset = dragState.dragTimeOffsets[element.id] ?? 0;
+			const elementTime =
+				dragState.currentTime + timeOffset;
+			const left = elementTime * pixelsPerSecond;
+			const width = element.duration * pixelsPerSecond;
+			const top =
+				TIMELINE_CONTENT_TOP_PADDING_PX +
+				getCumulativeHeightBefore({
+					tracks,
+					trackIndex,
+					getExtraHeight: () => 0,
+					overrideHeights: {},
+				}) +
+				(dragState.currentMouseY - dragState.startMouseY) -
+				scrollTop;
+
+			ghosts.push(
+				<div
+					key={element.id}
+					className="pointer-events-none absolute rounded-lg border border-primary/60 bg-primary/10 shadow-[0_4px_24px_rgba(34,211,238,0.15)]"
+					style={{
+						top: `${top}px`,
+						left: `${left}px`,
+						width: `${width}px`,
+						height: "48px",
+						zIndex: TIMELINE_LAYERS.dragLine + 10,
+					}}
+				>
+					<div className="flex h-full items-center px-2 text-[0.62rem] font-medium text-white/80 truncate">
+						{element.name || element.type}
+					</div>
+				</div>,
+			);
+		}
+	}
+
+	if (ghosts.length === 0) return null;
+
+	return <>{ghosts}</>;
 }

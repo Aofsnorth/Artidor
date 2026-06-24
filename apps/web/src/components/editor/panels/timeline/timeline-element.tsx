@@ -686,6 +686,8 @@ export function TimelineElement({
 									: undefined,
 							pointerEvents:
 								isBeingDragged && dragState.isDragging ? "none" : undefined,
+							opacity:
+								isBeingDragged && dragState.isDragging ? 0 : undefined,
 						}}
 					>
 						<ElementInner

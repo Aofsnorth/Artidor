@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-media-info-drag-ghost",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Element inspector: media info + drag clip z-order fix",
+		items: [
+			"Element tab now shows source media details: resolution (WxH), FPS, duration, file size, and whether the video has audio.",
+			"Dragging a clip between tracks now renders a floating ghost element above all tracks, so it never gets stuck behind other tracks during cross-track drags.",
+		],
+	},
+	{
 		id: "2026-06-24-drag-z-order-fix",
 		date: "2026-06-24",
 		tag: "fix",
