@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-import-storage-hydration-fixes",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Import storage handling and dropdown hydration fix",
+		items: [
+			"Import no longer rejects the entire batch when total size exceeds available storage — it now imports what fits and shows a 'Manage storage' link that takes you straight to the projects page so you can free up space by deleting old projects.",
+			"Per-file storage errors also get the 'Manage storage' shortcut, so you can clear space without leaving the import flow.",
+			"Fixed a hydration error in the scene selector dropdown — the outer clickable element no longer contains nested buttons, which was invalid HTML and would have broken SSR in some setups.",
+		],
+	},
+	{
 		id: "2026-06-24-scene-management-perf-layout-camera",
 		date: "2026-06-24",
 		tag: "feature",
