@@ -32,7 +32,7 @@ export type WebEnv = z.infer<typeof webEnvSchema>;
 const parsed = webEnvSchema.safeParse(process.env);
 
 export const isEnvMissing = !parsed.success;
-if (isEnvMissing) {
+if (isEnvMissing && parsed.error) {
 	console.warn("⚠️  Missing or invalid environment variables. Some features may not work properly.");
 	for (const issue of parsed.error.issues) {
 		console.warn(`  - ${issue.path.join(".")}: ${issue.message}`);
