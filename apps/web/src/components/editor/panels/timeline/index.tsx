@@ -49,6 +49,7 @@ import {
 	KEYFRAME_LANE_HEIGHT_PX,
 } from "./layout";
 import { usePanelStore } from "@/stores/panel-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useElementInteraction } from "@/hooks/timeline/element/use-element-interaction";
 import {
 	canTrackHaveAudio,
@@ -1830,6 +1831,7 @@ function DragGhost({
 	zoomLevel: number;
 }) {
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
+	const isHd = useSettingsStore((s) => s.hdDragPreview);
 
 	const ghosts: React.ReactNode[] = [];
 
@@ -1861,7 +1863,11 @@ function DragGhost({
 			ghosts.push(
 				<div
 					key={element.id}
-					className="pointer-events-none absolute rounded-lg border border-primary/60 bg-primary/10 shadow-[0_4px_24px_rgba(34,211,238,0.15)] backdrop-blur-sm"
+					className={`pointer-events-none absolute rounded-lg shadow-[0_4px_24px_rgba(34,211,238,0.15)] backdrop-blur-sm ${
+						isHd
+							? "border border-cyan-400/50 bg-[#161618]/90"
+							: "border border-cyan-500/60 bg-cyan-500/10"
+					}`}
 					style={{
 						top: `${top}px`,
 						left: `${left}px`,
@@ -1870,8 +1876,15 @@ function DragGhost({
 						zIndex: TIMELINE_LAYERS.dragLine + 10,
 					}}
 				>
-					<div className="flex h-full items-center px-2 text-[0.62rem] font-medium text-white/80 truncate">
-						{element.name || element.type}
+					<div className="flex h-full items-center gap-1.5 px-2">
+						{isHd && (
+							<div className="shrink-0 rounded bg-cyan-500/20 px-1 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider text-cyan-300">
+								{element.type}
+							</div>
+						)}
+						<span className={`truncate ${isHd ? "text-[0.62rem] font-medium text-white/90" : "text-[0.62rem] font-medium text-white/80"}`}>
+							{element.name || element.type}
+						</span>
 					</div>
 				</div>,
 			);

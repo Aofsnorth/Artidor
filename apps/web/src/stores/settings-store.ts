@@ -40,6 +40,14 @@ interface SettingsState {
 	 */
 	showFpsMonitor: boolean;
 	setShowFpsMonitor: (value: boolean) => void;
+
+	/**
+	 * When true, drag preview ghosts show a detailed, opaque preview with
+	 * element name and track color. When false (default), ghosts are
+	 * transparent outlines for a lighter visual.
+	 */
+	hdDragPreview: boolean;
+	setHdDragPreview: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -59,6 +67,9 @@ export const useSettingsStore = create<SettingsState>()(
 
 			showFpsMonitor: true,
 			setShowFpsMonitor: (value) => set({ showFpsMonitor: value }),
+
+			hdDragPreview: false,
+			setHdDragPreview: (value) => set({ hdDragPreview: value }),
 		}),
 		{
 			name: "app-settings",
