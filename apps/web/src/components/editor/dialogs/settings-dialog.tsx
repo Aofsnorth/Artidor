@@ -85,6 +85,8 @@ function GeneralSettings() {
 	);
 	const showFpsMonitor = useSettingsStore((s) => s.showFpsMonitor);
 	const setShowFpsMonitor = useSettingsStore((s) => s.setShowFpsMonitor);
+	const hdDragPreview = useSettingsStore((s) => s.hdDragPreview);
+	const setHdDragPreview = useSettingsStore((s) => s.setHdDragPreview);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -122,6 +124,16 @@ function GeneralSettings() {
 				<Switch
 					checked={showFpsMonitor}
 					onCheckedChange={setShowFpsMonitor}
+				/>
+			</SettingRow>
+
+			<SettingRow
+				title="HD drag preview"
+				description="Show detailed, opaque preview when dragging clips on the timeline. When off, drag previews are lightweight transparent outlines."
+			>
+				<Switch
+					checked={hdDragPreview}
+					onCheckedChange={setHdDragPreview}
 				/>
 			</SettingRow>
 

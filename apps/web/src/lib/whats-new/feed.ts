@@ -18,13 +18,22 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-hd-drag-preview-setting",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "HD drag preview setting",
+		items: [
+			"New 'HD drag preview' toggle in Settings > General. When enabled, drag ghosts on the timeline show a detailed, opaque preview with element type badge and name. When off (default), ghosts are lightweight transparent outlines.",
+		],
+	},
+	{
 		id: "2026-06-25-export-completion-overlay",
 		date: "2026-06-25",
 		tag: "feature",
 		title: "Export completion overlay — CapCut-style full-screen preview",
 		items: [
 			"When export finishes, a full-screen overlay now appears with a large video preview (auto-play, muted), project filename, format/size/source info, and Download/Close buttons. Click outside or press Escape to dismiss.",
-			"The existing export popover still works as an export history — the overlay is for the initial "just finished" celebration moment.",
+			"The existing export popover still works as an export history — the overlay is for the initial 'just finished' celebration moment.",
 		],
 	},
 	{
