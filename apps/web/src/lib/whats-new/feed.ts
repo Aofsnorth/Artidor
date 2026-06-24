@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-env-modal-lint-fix",
+		date: "2026-06-24",
+		tag: "fix",
+		title: "Environment warning modal: explicit button types for accessibility",
+		items: [
+			"Added explicit type=\"button\" to dismiss and acknowledge buttons in the environment warning modal to fix biome lint a11y/useButtonType warnings. Buttons now correctly default to non-submit behavior instead of inheriting the browser's default submit type.",
+		],
+	},
+	{
 		id: "2026-06-24-timeline-p1-ui-wins",
 		date: "2026-06-24",
 		tag: "improvement",
