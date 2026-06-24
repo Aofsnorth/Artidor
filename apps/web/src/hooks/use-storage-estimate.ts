@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface StorageEstimate {
 	usedBytes: number;
@@ -8,36 +8,66 @@ interface StorageEstimate {
 	freeBytes: number;
 }
 
-export function useStorageEstimate(): StorageEstimate | null {
-	const [estimate, setEstimate] = useState<StorageEstimate | null>(null);
+export function useStorageEstimate(): StorageEstimate & { refresh: () => void } {
+	const [estimate, setEstimate] = useState<StorageEstimate>({
+		usedBytes: 0,
+		totalBytes: 0,
+		freeBytes: 0,
+	});
+	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const cancelledRef = useRef(false);
+
+	const read = useCallback(async () => {
+		if (!navigator.storage?.estimate) return;
+		try {
+			const { usage, quota } = await navigator.storage.estimate();
+			if (cancelledRef.current || usage == null || quota == null) return;
+			setEstimate({
+				usedBytes: usage,
+				totalBytes: quota,
+				freeBytes: Math.max(0, quota - usage),
+			});
+		} catch {
+			// Storage API unavailable (e.g. private browsing).
+		}
+	}, []);
 
 	useEffect(() => {
-		let cancelled = false;
+		cancelledRef.current = false;
+		read();
 
-		const read = async () => {
-			if (!navigator.storage?.estimate) return;
-			try {
-				const { usage, quota } = await navigator.storage.estimate();
-				if (cancelled || usage == null || quota == null) return;
-				setEstimate({
-					usedBytes: usage,
-					totalBytes: quota,
-					freeBytes: Math.max(0, quota - usage),
-				});
-			} catch {
-				// Storage API unavailable (e.g. private browsing) — keep null.
+		const startInterval = () => {
+			if (intervalRef.current) clearInterval(intervalRef.current);
+			intervalRef.current = setInterval(read, 120_000);
+		};
+
+		const stopInterval = () => {
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+				intervalRef.current = null;
 			}
 		};
 
-		read();
-		const interval = setInterval(read, 30_000);
-		return () => {
-			cancelled = true;
-			clearInterval(interval);
+		const handleVisibility = () => {
+			if (document.visibilityState === "hidden") {
+				stopInterval();
+			} else {
+				read();
+				startInterval();
+			}
 		};
-	}, []);
 
-	return estimate;
+		startInterval();
+		document.addEventListener("visibilitychange", handleVisibility);
+
+		return () => {
+			cancelledRef.current = true;
+			stopInterval();
+			document.removeEventListener("visibilitychange", handleVisibility);
+		};
+	}, [read]);
+
+	return { ...estimate, refresh: read };
 }
 
 export function formatStorageSize(bytes: number): string {

@@ -25,6 +25,7 @@ import {
 	Logout05Icon,
 	ArrowDown01Icon,
 	Settings01Icon,
+	DashboardSquareSettingIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
@@ -34,6 +35,7 @@ import { cn } from "@/utils/ui";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
 import { useViewerStore } from "@/stores/viewer-store";
 import { ViewIcon } from "@hugeicons/core-free-icons";
+import { LAYOUT_PRESETS, usePanelStore } from "@/stores/panel-store";
 
 import { CloudStatusIndicator } from "./cloud-status-indicator";
 
@@ -109,6 +111,7 @@ export function EditorHeader() {
 				) : (
 					<>
 						<CloudStatusIndicator />
+						<LayoutPresetsDropdown />
 						<SettingsButton />
 						{/* Theme toggle removed — the editor is pinned to dark, so a
 							light/dark switch did nothing visible here. */}
@@ -415,5 +418,38 @@ function SettingsButton() {
 		>
 			<HugeiconsIcon icon={Settings01Icon} className="size-4" />
 		</button>
+	);
+}
+
+function LayoutPresetsDropdown() {
+	const activePreset = usePanelStore((s) => s.activePreset);
+	const setPreset = usePanelStore((s) => s.setPreset);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					className="grid size-8 cursor-pointer place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+					title="Layout presets"
+					aria-label="Switch layout preset"
+				>
+					<HugeiconsIcon icon={DashboardSquareSettingIcon} className="size-4" />
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-48">
+				{LAYOUT_PRESETS.map((preset) => (
+					<DropdownMenuItem
+						key={preset.id}
+						onClick={() => setPreset(preset.id)}
+						className={cn(
+							activePreset === preset.id && "bg-white/10 text-white",
+						)}
+					>
+						{preset.name}
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }

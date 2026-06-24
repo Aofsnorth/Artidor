@@ -16,6 +16,7 @@ import {
 	formatStorageSize,
 	useStorageEstimate,
 } from "@/hooks/use-storage-estimate";
+import { useEffect } from "react";
 import { useAIStore } from "@/stores/ai-store";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import {
@@ -116,6 +117,16 @@ export function TabBar() {
 
 function StorageCard() {
 	const storage = useStorageEstimate();
+
+	useEffect(() => {
+		const handleStorageChanged = () => storage.refresh();
+		window.addEventListener("artidor:storage-changed", handleStorageChanged);
+		return () =>
+			window.removeEventListener(
+				"artidor:storage-changed",
+				handleStorageChanged,
+			);
+	}, [storage.refresh]);
 
 	const usedLabel = storage ? formatStorageSize(storage.usedBytes) : "—";
 	const totalLabel = storage ? formatStorageSize(storage.totalBytes) : "—";

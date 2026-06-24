@@ -12,6 +12,45 @@ export interface PanelSizes {
 
 export type PanelId = keyof PanelSizes;
 
+export interface LayoutPreset {
+	id: string;
+	name: string;
+	sizes: PanelSizes;
+}
+
+export const LAYOUT_PRESETS: LayoutPreset[] = [
+	{
+		id: "default",
+		name: "Default",
+		sizes: { tools: 28, preview: 47, properties: 25, mainContent: 64, timeline: 36 },
+	},
+	{
+		id: "compact",
+		name: "Compact",
+		sizes: { tools: 20, preview: 55, properties: 25, mainContent: 70, timeline: 30 },
+	},
+	{
+		id: "color-grading",
+		name: "Color Grading",
+		sizes: { tools: 15, preview: 50, properties: 35, mainContent: 60, timeline: 40 },
+	},
+	{
+		id: "effects-focus",
+		name: "Effects Focus",
+		sizes: { tools: 35, preview: 40, properties: 25, mainContent: 64, timeline: 36 },
+	},
+	{
+		id: "audio-mix",
+		name: "Audio Mix",
+		sizes: { tools: 20, preview: 40, properties: 20, mainContent: 45, timeline: 55 },
+	},
+	{
+		id: "fullscreen-preview",
+		name: "Fullscreen Preview",
+		sizes: { tools: 15, preview: 65, properties: 20, mainContent: 80, timeline: 20 },
+	},
+];
+
 /**
  * Bounds for the user-resizable track labels column. The lower bound
  * keeps the track name readable; the upper bound prevents the labels
@@ -24,9 +63,11 @@ export const TRACK_LABELS_WIDTH_DEFAULT_PX = 230;
 
 interface PanelState {
 	panels: PanelSizes;
+	activePreset: string | null;
 	setPanel: (panel: PanelId, size: number) => void;
 	setPanels: (sizes: Partial<PanelSizes>) => void;
 	resetPanels: () => void;
+	setPreset: (presetId: string) => void;
 
 	/* Track labels column width (the leftmost column inside the timeline
 	   that shows track name, mute/lock toggles, etc.). */
@@ -39,12 +80,14 @@ export const usePanelStore = create<PanelState>()(
 	persist(
 		(set) => ({
 			...PANEL_CONFIG,
+			activePreset: "default" as string | null,
 			setPanel: (panel, size) =>
 				set((state) => ({
 					panels: {
 						...state.panels,
 						[panel]: size,
 					},
+					activePreset: null,
 				})),
 			setPanels: (sizes) =>
 				set((state) => ({
@@ -52,8 +95,15 @@ export const usePanelStore = create<PanelState>()(
 						...state.panels,
 						...sizes,
 					},
+					activePreset: null,
 				})),
-			resetPanels: () => set({ ...PANEL_CONFIG }),
+			resetPanels: () => set({ ...PANEL_CONFIG, activePreset: "default" }),
+			setPreset: (presetId) => {
+				const preset = LAYOUT_PRESETS.find((p) => p.id === presetId);
+				if (preset) {
+					set({ panels: { ...preset.sizes }, activePreset: presetId });
+				}
+			},
 
 			trackLabelsWidth: TRACK_LABELS_WIDTH_DEFAULT_PX,
 			setTrackLabelsWidth: (widthPx) => {
@@ -123,6 +173,7 @@ export const usePanelStore = create<PanelState>()(
 			},
 			partialize: (state) => ({
 				panels: state.panels,
+				activePreset: state.activePreset,
 			}),
 		},
 	),

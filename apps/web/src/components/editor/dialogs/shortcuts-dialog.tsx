@@ -22,7 +22,7 @@ export function ShortcutsDialog({
 				<DialogHeader>
 					<DialogTitle>Keyboard shortcuts</DialogTitle>
 				</DialogHeader>
-				<DialogBody className="grow overflow-hidden p-4">
+				<DialogBody className="grow overflow-y-auto p-4">
 					<ShortcutsEditor />
 				</DialogBody>
 			</DialogContent>

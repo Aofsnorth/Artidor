@@ -41,11 +41,11 @@ export function SettingsDialog({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-3xl">
+			<DialogContent className="flex max-h-[85vh] max-w-3xl flex-col">
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
 				</DialogHeader>
-				<DialogBody className="grid grid-cols-[10rem_1fr] gap-4 p-4">
+				<DialogBody className="grid min-h-0 flex-1 grid-cols-[10rem_1fr] gap-4 overflow-hidden p-4">
 					<nav className="flex flex-col gap-1">
 						{TABS.map((tab) => (
 							<button
@@ -63,7 +63,7 @@ export function SettingsDialog({
 							</button>
 						))}
 					</nav>
-					<div className="min-h-[20rem] rounded-lg border border-white/[0.06] bg-white/[0.015] p-4">
+					<div className="min-h-0 overflow-y-auto rounded-lg border border-white/[0.06] bg-white/[0.015] p-4">
 						{activeTab === "general" && <GeneralSettings />}
 						{activeTab === "ai" && <AISettings />}
 						{activeTab === "shortcuts" && <ShortcutsSettings />}

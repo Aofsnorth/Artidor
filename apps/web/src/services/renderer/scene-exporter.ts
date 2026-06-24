@@ -41,7 +41,7 @@ const qualityMap = {
 // render/encode work is otherwise all microtasks, which would starve paints and
 // macrotask timers — freezing the progress bar and the cancel interval. Yielding
 // a real macrotask lets React repaint and the cancel check fire.
-const YIELD_EVERY_FRAMES = 30;
+const YIELD_EVERY_FRAMES = 60;
 
 // Stage-1 export profiling. Render and encode are pipelined, so the only number
 // that tells us *what* is slow is how main-thread wall-clock per frame splits:
