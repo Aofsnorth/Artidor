@@ -5,7 +5,8 @@ import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 import { BotIdClient } from "botid/client";
-import { webEnv } from "@/lib/env/web";
+import { isEnvMissing, webEnv } from "@/lib/env/web";
+import { EnvWarningModal } from "@/components/env-warning-modal";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -69,6 +70,7 @@ export default function RootLayout({
 							data-track-web-vitals={false}
 							data-track-sessions={false}
 						/>
+						<EnvWarningModal isMissing={isEnvMissing} />
 						{children}
 						<Analytics />
 						<SpeedInsights />
