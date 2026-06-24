@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-gpu-context-compositor",
+		date: "2026-06-24",
+		tag: "improvement",
+		title: "Rust GPU context and compositor: cross-platform wgpu rendering",
+		items: [
+			"New GpuContext in rust/crates/gpu manages wgpu instance, adapter, device, and queue acquisition with automatic texture format detection — including a WASM path that probes the browser's canvas surface capabilities so the correct format is chosen without manual configuration.",
+			"Compositor in rust/crates/compositor now uses GpuContext for surface configuration, ensuring the render pipeline's texture format matches the GPU adapter on every platform (native and web).",
+		],
+	},
+	{
 		id: "2026-06-24-beat-markers-left",
 		date: "2026-06-24",
 		tag: "improvement",
