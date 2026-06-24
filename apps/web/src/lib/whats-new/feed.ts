@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-playhead-drag-export-pause",
+		date: "2026-06-25",
+		tag: "fix",
+		title: "Playhead time bubble, drag ghost position, and export auto-pause",
+		items: [
+			"Playhead time bubble now appears automatically when you start dragging the playhead handle, and stays visible briefly after scrub. Uses cyan colors for better visibility on dark backgrounds.",
+			"Drag ghost now follows the cursor correctly during cross-track drags — no longer appears above or below the expected position.",
+			"Playback auto-pauses when you click Export, so the export starts from a clean state.",
+			"Element inspector now shows source media details: resolution, FPS, duration, file size, and audio track presence.",
+		],
+	},
+	{
 		id: "2026-06-25-media-info-drag-ghost",
 		date: "2026-06-25",
 		tag: "feature",

@@ -663,7 +663,6 @@ export function Timeline() {
 							tracks={tracks}
 							dragState={dragState}
 							zoomLevel={zoomLevel}
-							scrollRef={tracksScrollRef}
 						/>
 					)}
 
@@ -1825,15 +1824,12 @@ function DragGhost({
 	tracks,
 	dragState,
 	zoomLevel,
-	scrollRef,
 }: {
 	tracks: TimelineTrack[];
 	dragState: ElementDragState;
 	zoomLevel: number;
-	scrollRef: React.RefObject<HTMLDivElement | null>;
 }) {
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
-	const scrollTop = scrollRef.current?.scrollTop ?? 0;
 
 	const ghosts: React.ReactNode[] = [];
 
@@ -1843,30 +1839,34 @@ function DragGhost({
 			if (!dragState.dragElementIds.includes(element.id)) continue;
 
 			const timeOffset = dragState.dragTimeOffsets[element.id] ?? 0;
-			const elementTime =
-				dragState.currentTime + timeOffset;
+			const elementTime = dragState.currentTime + timeOffset;
 			const left = elementTime * pixelsPerSecond;
 			const width = element.duration * pixelsPerSecond;
+			const dragOffsetY = dragState.currentMouseY - dragState.startMouseY;
+			const trackTop = getCumulativeHeightBefore({
+				tracks,
+				trackIndex,
+				getExtraHeight: () => 0,
+				overrideHeights: {},
+			});
+			const trackHeight = getTrackHeight({
+				type: track.type,
+				overrideHeight: undefined,
+			});
 			const top =
 				TIMELINE_CONTENT_TOP_PADDING_PX +
-				getCumulativeHeightBefore({
-					tracks,
-					trackIndex,
-					getExtraHeight: () => 0,
-					overrideHeights: {},
-				}) +
-				(dragState.currentMouseY - dragState.startMouseY) -
-				scrollTop;
+				trackTop +
+				dragOffsetY;
 
 			ghosts.push(
 				<div
 					key={element.id}
-					className="pointer-events-none absolute rounded-lg border border-primary/60 bg-primary/10 shadow-[0_4px_24px_rgba(34,211,238,0.15)]"
+					className="pointer-events-none absolute rounded-lg border border-primary/60 bg-primary/10 shadow-[0_4px_24px_rgba(34,211,238,0.15)] backdrop-blur-sm"
 					style={{
 						top: `${top}px`,
 						left: `${left}px`,
 						width: `${width}px`,
-						height: "48px",
+						height: `${trackHeight}px`,
 						zIndex: TIMELINE_LAYERS.dragLine + 10,
 					}}
 				>
