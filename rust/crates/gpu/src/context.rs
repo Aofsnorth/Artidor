@@ -59,7 +59,9 @@ impl GpuContext {
                 if let Some(document) = window.document() {
                     if let Ok(canvas) = document.create_element("canvas") {
                         if let Ok(canvas) = canvas.dyn_into::<web_sys::HtmlCanvasElement>() {
-                            if let Ok(surface) = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas)) {
+                            if let Ok(surface) =
+                                instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas))
+                            {
                                 let caps = surface.get_capabilities(&adapter);
                                 if !caps.formats.is_empty() {
                                     texture_format = caps.formats[0];
@@ -351,16 +353,17 @@ impl GpuContext {
         width: u32,
         height: u32,
     ) -> Result<(), GpuError> {
-        let mut config = surface.get_default_config(&self.adapter, width, height)
+        let mut config = surface
+            .get_default_config(&self.adapter, width, height)
             .ok_or(GpuError::UnsupportedSurfaceFormat)?;
-            
+
         let capabilities = surface.get_capabilities(&self.adapter);
         if capabilities.formats.contains(&self.texture_format) {
             config.format = self.texture_format;
         } else {
             return Err(GpuError::UnsupportedSurfaceFormat);
         }
-        
+
         surface.configure(&self.device, &config);
         Ok(())
     }
