@@ -18,6 +18,22 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-24-scene-management-perf-layout-camera",
+		date: "2026-06-24",
+		tag: "feature",
+		title: "Scene management, performance, camera inspector, and layout presets",
+		items: [
+			"Add Scene button replaces Add Timeline — creates a new empty scene and switches to it automatically. Each scene in the dropdown now has inline rename and delete buttons.",
+			"Audio meter is now black when idle — the green-yellow-red gradient only appears when audio is playing. Bar radius smoothed to rounded-md.",
+			"Settings shortcuts list and dialog are now scrollable when content exceeds screen height.",
+			"Storage estimate polling stops when the browser tab is hidden (saves CPU), interval increased from 30s to 120s, and storage card auto-refreshes after media import.",
+			"300+ video import optimized: parallel processing (4 concurrent workers), OPFS directory handle caching, batched UI updates via queueMicrotask.",
+			"Camera inspector now has full property editors: Position XYZ, Target XYZ, FOV, Roll, Near/Far clip, Depth of Field (strength + focus), and Fog (strength + start + end).",
+			"Export yield frequency increased from 30 to 60 frames for smoother progress bar on low-end PCs.",
+			"6 layout presets added (Default, Compact, Color Grading, Effects Focus, Audio Mix, Fullscreen Preview) — switch via the grid icon in the editor header.",
+		],
+	},
+	{
 		id: "2026-06-24-gpu-context-compositor",
 		date: "2026-06-24",
 		tag: "improvement",
