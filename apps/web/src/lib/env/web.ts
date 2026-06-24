@@ -29,4 +29,14 @@ const webEnvSchema = z.object({
 
 export type WebEnv = z.infer<typeof webEnvSchema>;
 
-export const webEnv = webEnvSchema.parse(process.env);
+const parsed = webEnvSchema.safeParse(process.env);
+
+export const isEnvMissing = !parsed.success;
+if (isEnvMissing) {
+	console.warn("⚠️  Missing or invalid environment variables. Some features may not work properly.");
+	for (const issue of parsed.error.issues) {
+		console.warn(`  - ${issue.path.join(".")}: ${issue.message}`);
+	}
+}
+
+export const webEnv = (parsed.success ? parsed.data : process.env) as WebEnv;
