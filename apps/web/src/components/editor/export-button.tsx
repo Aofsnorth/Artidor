@@ -88,10 +88,12 @@ const CustomEmblem = () => (
 
 export function ExportButton() {
 	const [isExportPopoverOpen, setIsExportPopoverOpen] = useState(false);
+	const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const exportState = useEditor((e) => e.project.getExportState());
 	const hasProject = !!activeProject;
+	const { result: exportResult } = exportState;
 
 	// Check for pending export from /project page
 	useEffect(() => {
@@ -123,6 +125,24 @@ export function ExportButton() {
 			setIsExportPopoverOpen(false);
 		}
 	}, [exportState.isExporting, isExportPopoverOpen]);
+
+	// Show completion overlay when export finishes with a buffer
+	useEffect(() => {
+		if (exportResult?.success && exportResult.buffer && !exportState.isExporting) {
+			setShowCompletionOverlay(true);
+		}
+	}, [exportResult, exportState.isExporting]);
+
+	const handleDownloadFromOverlay = () => {
+		if (!exportResult?.buffer || !activeProject) return;
+		const ext = getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format });
+		const mime = getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format });
+		downloadBuffer({
+			buffer: exportResult.buffer,
+			filename: `${activeProject.metadata.name}${ext}`,
+			mimeType: mime,
+		});
+	};
 
 	const handlePopoverOpenChange = ({ open }: { open: boolean }) => {
 		// Don't allow closing the popover during export (modal is shown instead)
@@ -216,6 +236,19 @@ export function ExportButton() {
 					isOpen={exportState.isExporting}
 					progress={exportState.progress}
 					onCancel={() => editor.project.cancelExport()}
+				/>
+			)}
+			{/* CapCut-style completion overlay */}
+			{showCompletionOverlay && exportResult?.success && exportResult.buffer && activeProject && (
+				<ExportCompletionOverlay
+					result={exportResult}
+					filename={`${activeProject.metadata.name}${getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format })}`}
+					mimeType={getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format })}
+					onClose={() => {
+						setShowCompletionOverlay(false);
+						editor.project.clearExportState();
+					}}
+					onDownload={handleDownloadFromOverlay}
 				/>
 			)}
 		</>
@@ -604,6 +637,150 @@ function formatBytes(bytes: number): string {
 		units.length - 1,
 	);
 	return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+}
+
+function ExportCompletionOverlay({
+	result,
+	filename,
+	mimeType,
+	onClose,
+	onDownload,
+}: {
+	result: ExportResult;
+	filename: string;
+	mimeType: string;
+	onClose: () => void;
+	onDownload: () => void;
+}) {
+	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+	const [isVisible, setIsVisible] = useState(false);
+
+	useEffect(() => {
+		if (!result.buffer) return;
+		const url = URL.createObjectURL(
+			new Blob([result.buffer], { type: mimeType }),
+		);
+		setPreviewUrl(url);
+		// Trigger entrance animation
+		requestAnimationFrame(() => setIsVisible(true));
+		return () => URL.revokeObjectURL(url);
+	}, [result.buffer, mimeType]);
+
+	const handleClose = () => {
+		setIsVisible(false);
+		setTimeout(onClose, 300);
+	};
+
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: overlay backdrop needs click-to-dismiss
+		<div
+			role="button"
+			tabIndex={0}
+			className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`}
+			onClick={handleClose}
+			onKeyDown={(e) => {
+				if (e.key === "Escape") handleClose();
+			}}
+		>
+			{/* biome-ignore lint/a11y/useSemanticElements: inner card stops click propagation */}
+			<div
+				role="button"
+				tabIndex={0}
+				className={`relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#111114] to-[#0a0a0a] shadow-[0_24px_80px_rgba(0,0,0,0.6)] transition-all duration-300 ${isVisible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}
+				onClick={(e) => e.stopPropagation()}
+				onKeyDown={(e) => e.stopPropagation()}
+			>
+				{/* Header glow */}
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 bg-gradient-to-b from-emerald-500/20 to-transparent blur-2xl pointer-events-none" />
+
+				{/* Video preview */}
+				<div className="relative overflow-hidden border-b border-white/[0.06]">
+					{previewUrl ? (
+						<video
+							controls
+							autoPlay
+							muted
+							className="aspect-video w-full bg-black"
+							src={previewUrl}
+						>
+							<track kind="captions" />
+						</video>
+					) : (
+						<div className="flex aspect-video items-center justify-center bg-black text-white/30">
+							<Play className="size-8" />
+						</div>
+					)}
+					{/* Top-right close button */}
+					<button
+						type="button"
+						onClick={handleClose}
+						className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-black/50 text-white/70 backdrop-blur-sm transition hover:bg-black/70 hover:text-white"
+					>
+						✕
+					</button>
+				</div>
+
+				{/* Info section */}
+				<div className="flex flex-col gap-3 p-5">
+					<div className="flex items-center gap-3">
+						<div className="grid size-10 place-items-center rounded-full bg-emerald-500/15 text-emerald-400">
+							<Check className="size-5" />
+						</div>
+						<div className="flex-1 min-w-0">
+							<p className="text-sm font-semibold text-white">
+								Export complete
+							</p>
+							<p className="truncate text-xs text-white/50">{filename}</p>
+						</div>
+					</div>
+
+					<div className="grid grid-cols-3 gap-2">
+						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
+								Format
+							</p>
+							<p className="text-xs font-medium text-white/80">
+								{mimeType.split("/")[1]?.toUpperCase() || "MP4"}
+							</p>
+						</div>
+						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
+								Size
+							</p>
+							<p className="text-xs font-medium text-white/80">
+								{formatBytes(result.buffer?.byteLength ?? 0)}
+							</p>
+						</div>
+						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
+								Source
+							</p>
+							<p className="text-xs font-medium text-white/80">
+								{result.cached ? "History" : "Rendered"}
+							</p>
+						</div>
+					</div>
+
+					<div className="flex gap-2 mt-1">
+						<Button
+							variant="outline"
+							className="h-9 flex-1 border-white/10 text-xs text-white/70 hover:bg-white/5"
+							onClick={handleClose}
+						>
+							Close
+						</Button>
+						<Button
+							className="h-9 flex-1 gap-2 bg-emerald-600 text-xs text-white hover:bg-emerald-500"
+							onClick={onDownload}
+						>
+							<Download className="size-3.5" />
+							Download
+						</Button>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }
 
 function ExportToDriveButton({ onDone }: { onDone: () => void }) {
