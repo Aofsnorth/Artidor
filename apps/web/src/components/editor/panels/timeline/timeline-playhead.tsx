@@ -222,14 +222,14 @@ export function TimelinePlayhead({
 				<button
 					type="button"
 					aria-label="Drag playhead (click to show time)"
-					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-cyan-400 bg-cyan-500" : "border-cyan-500/70 bg-cyan-600/90"}`}
+					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-gray-300 bg-white" : "border-gray-300 bg-white"}`}
 					onMouseDown={handleHandleMouseDown}
 					onMouseUp={handleHandleMouseUp}
 				/>
 
 				{showTimeBubble && (
 					<div
-						className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 select-none whitespace-nowrap border border-cyan-500/40 bg-cyan-600 px-2 py-1 font-mono text-[11px] font-medium text-white shadow-lg"
+						className="pointer-events-none absolute top-6 left-1/2 -translate-x-1/2 select-none whitespace-nowrap border border-gray-200 bg-white px-2 py-1 font-mono text-[11px] font-medium text-black shadow-lg"
 						style={{
 							// Asymmetric "ticket" corners: sharp top-right + bottom-left,
 							// rounded top-left + bottom-right.
@@ -237,9 +237,6 @@ export function TimelinePlayhead({
 						}}
 					>
 						{formatPlayheadTime({ ticks: bubbleTicks, fps: fpsFloat })}
-						<span className="ml-1.5 text-white/70">
-							Tab = marker
-						</span>
 					</div>
 				)}
 			</div>

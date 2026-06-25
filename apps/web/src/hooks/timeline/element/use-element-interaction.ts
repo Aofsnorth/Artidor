@@ -403,7 +403,7 @@ export function useElementInteraction({
 					snappedTime,
 					verticalDragDirection,
 				});
-				setDragDropTarget(dropTarget?.isNewTrack ? dropTarget : null);
+				setDragDropTarget(dropTarget ?? null);
 			}
 		};
 

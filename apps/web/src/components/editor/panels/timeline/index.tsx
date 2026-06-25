@@ -1820,7 +1820,7 @@ function TrackHeightHandle({
 	);
 }
 
-import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+
 
 function DragGhost({
 	tracks,
@@ -1833,7 +1833,6 @@ function DragGhost({
 	zoomLevel: number;
 	containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
-	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
 	const isHd = useSettingsStore((s) => s.hdDragPreview);
 
 	// Container offset for converting client coords to container coords
@@ -1848,8 +1847,8 @@ function DragGhost({
 
 			const timeOffset = dragState.dragTimeOffsets[element.id] ?? 0;
 			const elementTime = dragState.currentTime + timeOffset;
-			const left = elementTime * pixelsPerSecond;
-			const width = element.duration * pixelsPerSecond;
+			const left = timelineTimeToPixels({ time: elementTime, zoomLevel });
+			const width = timelineTimeToPixels({ time: element.duration, zoomLevel });
 			const trackHeight = getTrackHeight({
 				type: track.type,
 				overrideHeight: undefined,
