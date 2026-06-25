@@ -11,6 +11,7 @@ import {
 	isExportWorkerSupported,
 	runExportInWorker,
 } from "@/services/renderer/export-worker-bridge";
+import { runParallelExport } from "@/services/renderer/parallel-export";
 import { serializeSceneTree } from "@/services/renderer/scene-serializer";
 
 type SnapshotResult =
@@ -198,14 +199,61 @@ export class RendererManager {
 
 			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
 			if (isExportWorkerSupported()) {
+				const { tree, files } = serializeSceneTree(scene);
+				const fileEntries = Array.from(files.entries()).map(
+					([mediaId, file]) => ({ mediaId, file }),
+				);
+				// Progress maps the worker's 0..1 onto 0.05..1 when audio mixing
+				// already consumed the first 5%.
+				const mapProgress = (p: number) => (includeAudio ? 0.05 + p * 0.95 : p);
+
+				// 1. Parallel multi-segment path — splits the timeline across
+				// workers/cores and stitches the encoded segments losslessly.
+				// Quality is identical to a serial export; it's just faster.
+				// Returns `fallback` (or throws) when it isn't worthwhile/safe,
+				// in which case we transparently use the single-worker path.
 				try {
-					const { tree, files } = serializeSceneTree(scene);
+					const parallel = await runParallelExport({
+						sceneTree: tree,
+						files: fileEntries,
+						audioBuffer: audioBuffer || null,
+						width: canvasSize.width,
+						height: canvasSize.height,
+						fps: exportFps,
+						durationTicks: Math.round(duration),
+						format,
+						quality,
+						shouldIncludeAudio: !!includeAudio,
+						onProgress: (p) =>
+							onProgress?.({ progress: mapProgress(p.progress) }),
+						getCancelled: onCancel,
+					});
+
+					if (parallel.success) {
+						return { success: true, buffer: parallel.buffer };
+					}
+					if ("cancelled" in parallel && parallel.cancelled) {
+						return { success: false, cancelled: true };
+					}
+					if ("error" in parallel) {
+						console.warn(
+							"Parallel export failed, falling back to single worker:",
+							parallel.error,
+						);
+					}
+					// `fallback: true` falls through silently (not worthwhile).
+				} catch (parallelError) {
+					console.warn(
+						"Parallel export threw, falling back to single worker:",
+						parallelError,
+					);
+				}
+
+				// 2. Single-worker path (whole timeline on one worker).
+				try {
 					const canvas = new OffscreenCanvas(
 						canvasSize.width,
 						canvasSize.height,
-					);
-					const fileEntries = Array.from(files.entries()).map(
-						([mediaId, file]) => ({ mediaId, file }),
 					);
 
 					const result = await runExportInWorker({
@@ -219,12 +267,8 @@ export class RendererManager {
 						format,
 						quality,
 						shouldIncludeAudio: !!includeAudio,
-						onProgress: (p) => {
-							const adjustedProgress = includeAudio
-								? 0.05 + p.progress * 0.95
-								: p.progress;
-							onProgress?.({ progress: adjustedProgress });
-						},
+						onProgress: (p) =>
+							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
 					});
 
