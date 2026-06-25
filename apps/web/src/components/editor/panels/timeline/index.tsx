@@ -11,9 +11,11 @@ import {
 	RefreshIcon,
 	Speaker01Icon,
 	TaskAdd02Icon,
+	TransparencyIcon,
 	ViewIcon,
 	ViewOffSlashIcon,
 	VolumeHighIcon,
+	VolumeOffIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { OcShapesIcon } from "@/components/icons";
@@ -1002,6 +1004,14 @@ function TrackLabelsPanel({
 
 								const isHidden =
 									track.type === "audio" ? track.muted : track.hidden;
+								// `muted` only exists on AudioTrack/VideoTrack; compute a
+								// type-safe boolean for the volume slider's mute toggle.
+								const isTrackMuted =
+									track.type === "audio"
+										? track.muted
+										: track.type === "video"
+											? track.muted
+											: false;
 								const toggleVisibility = () => {
 									if (track.type === "audio") {
 										editor.timeline.toggleTrackMute({ trackId: track.id });
@@ -1049,16 +1059,26 @@ function TrackLabelsPanel({
 									const val = Number(e.target.value);
 									setTrackSlider(track.id, val);
 
-									const newVolume = val / 100;
+									// The track slider is a linear percentage (0–100,
+									// default 100). The audio manager multiplies it
+									// (as a 0–1 factor) with the per-element linear
+									// gain (which is derived from the inspector's dB
+									// volume). We deliberately don't write the slider
+									// value into each element's `volume` here — that
+									// would double-count when playback combines them
+									// again.
 									const trackElements = track.elements;
 									if (trackElements && trackElements.length > 0) {
-										const updates = trackElements.map((el) => ({
-											trackId: track.id,
-											elementId: el.id,
-											patch: { volume: newVolume },
-										}));
+										// Touch each element so any reactive
+										// subscribers re-render with the new
+										// effective gain, but the patch itself is
+										// empty.
 										editor.timeline.updateElements({
-											updates,
+											updates: trackElements.map((el) => ({
+												trackId: track.id,
+												elementId: el.id,
+												patch: {},
+											})),
 											pushHistory: false,
 										});
 									}
@@ -1217,13 +1237,46 @@ function TrackLabelsPanel({
 												</div>
 											</div>
 											{/* Bottom rows: Opacity (no fill) and optional Volume (with fill) */}
-											<div className="flex flex-col gap-1 pl-[30px] pr-1 overflow-hidden">
-												{/* Opacity slider — no fill line (not applicable to audio tracks) */}
+											<div className="flex flex-col gap-1 pl-1 pr-1 overflow-hidden">
+												{/* Opacity slider — not applicable to audio tracks.
+													   The transparency icon to the left toggles opacity
+													   between 0 (hidden) and 100 (fully visible). */}
 												{track.type !== "audio" && (
 													<div className="flex w-full items-center gap-2">
-														<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
-															O
-														</span>
+														<div className="flex w-7 shrink-0 items-center">
+															<button
+																type="button"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	const next =
+																		opacityValue === 0 ? 100 : 0;
+																	setTrackOpacity(track.id, next);
+																	const trackElements = track.elements;
+																	if (trackElements && trackElements.length > 0) {
+																		editor.timeline.updateElements({
+																			updates: trackElements.map((el) => ({
+																				trackId: track.id,
+																				elementId: el.id,
+																				patch: { opacity: next / 100 },
+																			})),
+																			pushHistory: false,
+																		});
+																	}
+																}}
+																disabled={isLocked}
+																title={
+																	opacityValue === 0
+																		? "Show track"
+																		: "Hide track"
+																}
+																className="grid size-4 place-items-center rounded text-white/40 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 focus:outline-none"
+															>
+																<HugeiconsIcon
+																	icon={TransparencyIcon}
+																	className={`size-3 ${opacityValue === 0 ? "text-white/20" : ""}`}
+																/>
+															</button>
+														</div>
 														<input
 															type="range"
 															min="0"
@@ -1237,33 +1290,66 @@ function TrackLabelsPanel({
 																background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${opacityValue}%, rgba(255,255,255,0.15) ${opacityValue}%, rgba(255,255,255,0.15) 100%)`,
 															}}
 														/>
-														<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
+														<span className="text-[0.52rem] tabular-nums text-white/30 w-8 shrink-0 text-right">
 															{opacityValue}%
 														</span>
 													</div>
 												)}
-												{/* Volume slider — on audio, video, and main tracks, with fill line */}
+												{/* Volume slider — on audio, video, and main tracks.
+												   The track slider is a linear percentage (0–100, default
+												   100). The speaker icon to the left toggles track mute
+												   (deafen). Final gain = element_linear_gain *
+												   (slider_percent / 100). */}
 												{["audio", "video", "main"].includes(track.type) &&
 													volumeValue !== null && (
 														<div className="flex w-full items-center gap-2">
-															<span className="text-[0.52rem] tabular-nums text-white/30 w-7 shrink-0">
-																V
-															</span>
+															<div className="flex w-7 shrink-0 items-center">
+																<button
+																	type="button"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		editor.timeline.toggleTrackMute({
+																			trackId: track.id,
+																		});
+																	}}
+																	disabled={isLocked}
+																	title={
+																		isTrackMuted
+																			? "Unmute track"
+																			: "Mute track"
+																	}
+																	className="grid size-4 place-items-center rounded text-white/40 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 focus:outline-none"
+																>
+																	<HugeiconsIcon
+																		icon={
+																			isTrackMuted
+																				? VolumeOffIcon
+																				: VolumeHighIcon
+																		}
+																		className="size-3"
+																	/>
+																</button>
+															</div>
 															<input
 																type="range"
 																min="0"
 																max="100"
-																value={volumeValue}
+																step="1"
+																value={
+																	isTrackMuted ? 0 : volumeValue
+																}
 																onChange={handleVolumeChange}
-																disabled={isLocked}
-																title={`Track volume: ${volumeValue}%`}
+																disabled={isLocked || isTrackMuted}
+																title={`Track volume: ${isTrackMuted ? "muted" : `${Math.round(volumeValue)}%`}`}
 																className="flex-1 min-w-0 h-px bg-white/10 appearance-none cursor-pointer accent-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-30 transition-all focus:outline-none [&::-webkit-slider-runnable-track]:bg-transparent [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_0_1px_rgba(0,0,0,0.35)] [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:hover:scale-125 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-moz-range-track]:bg-transparent"
 																style={{
-																	background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${volumeValue}%, rgba(255,255,255,0.15) ${volumeValue}%, rgba(255,255,255,0.15) 100%)`,
+																	background: `linear-gradient(to right, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.85) ${isTrackMuted ? 0 : volumeValue}%, rgba(255,255,255,0.15) ${isTrackMuted ? 0 : volumeValue}%, rgba(255,255,255,0.15) 100%)`,
 																}}
 															/>
-															<span className="text-[0.52rem] tabular-nums text-white/30 w-6 shrink-0 text-right">
-																{volumeValue}%
+															<span className="text-[0.52rem] tabular-nums text-white/30 w-8 shrink-0 text-right">
+																{isTrackMuted
+																	? "muted"
+																	: `${Math.round(volumeValue)}%`}
 															</span>
 														</div>
 													)}

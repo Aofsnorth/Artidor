@@ -1827,16 +1827,22 @@ function AudioElementContent({
 			Math.max(0, trackIndex) % TIMELINE_TRACK_THEME.audio.variants.length
 		];
 
-	const trackVolume =
-		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
-	const elementVolume = dBToLinear(element.volume ?? 0);
-	const effectiveVolume = trackVolume * elementVolume;
+	const trackSliderPercent =
+		useTimelineStore((s) => s.trackSliders[track.id] ?? 100);
+	const elementDb = (element as AudioElement | VideoElement).volume ?? 0;
+	// Track slider is a linear percentage (0–100, default 100). The
+	// element's volume is in dB; convert to linear, then multiply by the
+	// slider percentage so visual scaling matches what the audio engine
+	// plays back.
+	const elementLinear = dBToLinear(elementDb);
+	const effectiveVolume = elementLinear * (trackSliderPercent / 100);
 	// Use perceptual (sqrt) scaling for waveform display so the visual
-	// height better matches perceived loudness. -16 dB (0.16 linear)
-	// displays as ~40% height instead of 16%, which feels proportional
-	// to how loud the audio still sounds.
+	// height better matches perceived loudness.
 	const waveformScale = Math.sqrt(effectiveVolume);
-	const trackVolumePercent = Math.max(0, Math.min(100, trackVolume * 100));
+	const trackVolumePercent = Math.max(
+		0,
+		Math.min(100, trackSliderPercent),
+	);
 
 	if (hasAudioSource) {
 		return (
@@ -2108,8 +2114,14 @@ function TiledMediaContent({
 	zoomLevel: number;
 }) {
 	const mediaAssets = useEditor((e) => e.media.getAssets());
-	const trackVolume =
-		useTimelineStore((s) => s.trackSliders[track.id] ?? 100) / 100;
+	const trackSliderPercent = useTimelineStore(
+		(s) => s.trackSliders[track.id] ?? 100,
+	);
+	const elementDb =
+		element.type === "video"
+			? ((element as VideoElement).volume ?? 0)
+			: 0;
+	const effectiveVolume = dBToLinear(elementDb) * (trackSliderPercent / 100);
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
 	const imageUrl =
 		element.type === "video"
@@ -2126,12 +2138,9 @@ function TiledMediaContent({
 
 	const trackHeight = getTrackHeight({ type: track.type });
 	const isVideo = element.type === "video";
-	const elementVolume = dBToLinear((element as VideoElement).volume ?? 0);
-	const effectiveVolume = trackVolume * elementVolume;
-	// Use perceptual (sqrt) scaling for waveform display so the visual
-	// height better matches perceived loudness. -16 dB (0.16 linear)
-	// displays as ~40% height instead of 16%, which feels proportional
-	// to how loud the audio still sounds.
+	// `effectiveVolume` already combines track slider (dB) + element
+	// volume (dB) above. Just expose the perceptual-scaled version for
+	// the waveform component.
 	const waveformScale = Math.sqrt(effectiveVolume);
 
 	// The track-row is split vertically: top 60% is the thumbnail
