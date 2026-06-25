@@ -149,7 +149,7 @@ function FolderCard({
 	return (
 		<div
 			className={cn(
-				"group relative aspect-square overflow-hidden rounded-lg border border-white/[0.08]",
+				"group relative aspect-square rounded-lg border border-white/[0.08]",
 				"bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.06),transparent_70%)]",
 				"transition hover:border-white/15",
 			)}

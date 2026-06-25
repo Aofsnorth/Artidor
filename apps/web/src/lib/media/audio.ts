@@ -168,6 +168,7 @@ export async function collectAudioElements({
 							element,
 							trackMuted: false,
 							localTime: 0,
+							ignoreFades: true,
 						}),
 						muted: element.muted === true,
 						retime: element.retime,
@@ -200,6 +201,7 @@ export async function collectAudioElements({
 							element,
 							trackMuted: false,
 							localTime: 0,
+							ignoreFades: true,
 						}),
 						muted: element.muted ?? false,
 						retime: element.retime,
@@ -602,6 +604,7 @@ export async function collectAudioClips({
 				element,
 				trackMuted: isTrackMuted,
 				localTime: 0,
+				ignoreFades: true,
 			});
 
 			if (element.type === "audio") {

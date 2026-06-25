@@ -19,7 +19,8 @@
 import { motion } from "motion/react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, Command, GitBranch, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Command, Sparkles, Star } from "lucide-react";
+import { FaGithub } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useGitHubRepo } from "@/hooks/use-github-repo";
@@ -94,7 +95,7 @@ export function Hero() {
 							variant="outline"
 							className="h-11 rounded-full border-white/15 bg-white/[0.04] px-5 text-sm font-medium text-white/90 backdrop-blur hover:bg-white/[0.08]"
 						>
-							<GitBranch className="mr-1.5 size-4" />
+							<FaGithub className="mr-1.5 size-4" />
 							Star on GitHub
 							<Star className="ml-1.5 size-3.5 text-amber-300" />
 							{repoStats?.stars ? (
