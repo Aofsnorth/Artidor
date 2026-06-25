@@ -39,9 +39,20 @@ const PERMISSION_GATES: Record<string, PluginPermission> = {
  * already prevents `window`/`document`/`localStorage` access; this
  * prevents privilege escalation within the plugin API itself.
  *
- * This is a lightweight sandbox for robustness, not a perfect security
- * sandbox (which would require Web Workers or cross-origin iframes).
- * Plugins should only be installed from trusted sources.
+ * SECURITY LIMITATION: This is a lightweight sandbox for robustness,
+ * not a perfect security sandbox. The `new Function` wrapper shadows
+ * dangerous globals (`globalThis`, `self`, `Function`, `eval`, etc.)
+ * but cannot prevent the constructor-chain escape
+ * (`(()=>{}).constructor("return globalThis")()`) — any function
+ * object's `.constructor` is `Function`, and we must pass function
+ * objects (the `artidor` API) into the sandbox.
+ *
+ * A complete fix requires migrating plugin execution to a Web Worker
+ * or cross-origin sandboxed iframe (like the scripting worker does).
+ * Until then: **plugins should only be installed from trusted sources**,
+ * and the install UI must surface a prominent warning.
+ *
+ * TODO(security): migrate to Web Worker for true isolation.
  */
 export function createPluginSandbox({
 	plugin,
@@ -158,8 +169,12 @@ export function createPluginSandbox({
 
 	try {
 		// Wrap the plugin source in a self-executing function that takes
-		// the `artidor` API object and shadows globals.
-		// Uses strict mode.
+		// the `artidor` API object and shadows dangerous globals.
+		// Uses strict mode. Shadowing `globalThis`, `self`, `Function`,
+		// `eval`, `Reflect`, `Proxy`, timers, and DOM/storage APIs
+		// blocks the most common escape vectors. NOTE: this does NOT
+		// block the constructor-chain escape — see SECURITY LIMITATION
+		// in the file-level doc above.
 		const wrapper = new Function(
 			"artidor",
 			"window",
@@ -167,6 +182,20 @@ export function createPluginSandbox({
 			"localStorage",
 			"sessionStorage",
 			"fetch",
+			"globalThis",
+			"self",
+			"global",
+			"Function",
+			"eval",
+			"Reflect",
+			"Proxy",
+			"setTimeout",
+			"setInterval",
+			"queueMicrotask",
+			"navigator",
+			"location",
+			"history",
+			"indexedDB",
 			`
 "use strict";
 try {
@@ -177,9 +206,30 @@ try {
 			`,
 		);
 
-		// Execute with undefined shadows for globals to prevent DOM manipulation.
-		// `fetch` is replaced with the permission-gated plugin API wrapper.
-		wrapper(api, undefined, undefined, undefined, undefined, api.fetch);
+		// Execute with undefined shadows for dangerous globals, and the
+		// permission-gated `fetch` wrapper from the plugin API.
+		wrapper(
+			api,
+			undefined, // window
+			undefined, // document
+			undefined, // localStorage
+			undefined, // sessionStorage
+			api.fetch, // fetch (permission-gated)
+			undefined, // globalThis
+			undefined, // self
+			undefined, // global
+			undefined, // Function
+			undefined, // eval
+			undefined, // Reflect
+			undefined, // Proxy
+			undefined, // setTimeout
+			undefined, // setInterval
+			undefined, // queueMicrotask
+			undefined, // navigator
+			undefined, // location
+			undefined, // history
+			undefined, // indexedDB
+		);
 	} catch (err) {
 		console.error("Plugin initialization failed:", logPrefix, err);
 	}

@@ -6,13 +6,15 @@
  * return `{ ok: true }` on success or `{ ok: false, error: "..." }`
  * with a human-readable reason on failure.
  *
- * This endpoint is intentionally exempt from `AI_FEATURE_ENABLED`
- * because it doesn't bill anything (single-token response we never
- * read) and it doesn't return any LLM output — it only checks
+ * This endpoint is gated behind `AI_FEATURE_ENABLED` (same as
+ * /api/ai/chat) to prevent unauthenticated use as an arbitrary-URL
+ * fetch proxy. It doesn't bill anything (single-token response we
+ * never read) and doesn't return LLM output — it only checks
  * authentication, model availability, and reachability.
  */
 
 import { z } from "zod";
+import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 
@@ -80,6 +82,17 @@ interface TestResult {
 }
 
 export async function POST(request: Request): Promise<Response> {
+	// Gate behind the same master switch as /api/ai/chat. Without this,
+	// an unauthenticated caller could use this endpoint as an arbitrary
+	// public-URL fetch proxy (SSRF to external hosts, latency probing).
+	// See @/lib/ai/config for the hardening checklist before enabling.
+	if (!AI_FEATURE_ENABLED) {
+		return Response.json(
+			{ ok: false, error: "Not Found" } satisfies TestResult,
+			{ status: 404 },
+		);
+	}
+
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return Response.json(
