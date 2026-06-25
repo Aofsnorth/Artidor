@@ -71,16 +71,17 @@ describe("snapElementEdge — external drop snap to adjacent", () => {
 		expect(result.snappedTime).toBe(2 * ONE_SEC);
 	});
 
-	test("snaps new clip end to existing clip start (snapToStart: false)", () => {
+	test("snaps new clip end to existing clip end (snapToStart: false)", () => {
 		const tracks = makeScene({
 			elements: [{ startTime: 5 * ONE_SEC, duration: ONE_SEC }],
 		});
 
-		// Cursor exactly at the existing clip's start (5s). The new clip's
-		// END should snap to the existing clip's start so they touch
-		// end-to-start.
+		// New clip is 2s long. We want its END to snap to the existing
+		// clip's END (6s). effectiveTarget = targetTime + elementDuration,
+		// so targetTime = 6s - 2s = 4s. Place cursor 1 tick before so
+		// effectiveTarget = 6s - 1 (within the 24_000-tick threshold).
 		const result = snapElementEdge({
-			targetTime: 5 * ONE_SEC,
+			targetTime: 4 * ONE_SEC - 1,
 			elementDuration: 2 * ONE_SEC,
 			tracks,
 			playheadTime: 0,
@@ -88,8 +89,7 @@ describe("snapElementEdge — external drop snap to adjacent", () => {
 			snapToStart: false,
 		});
 
-		// effectiveTarget = targetTime + elementDuration = 5s + 2s = 7s.
-		// Closest edge: existing clip end (6s). Distance = 1s.
+		// effectiveTarget = 4s - 1 + 2s = 6s - 1. Snaps to 6s (element-end).
 		// snappedTime = 6s - 2s = 4s.
 		expect(result.snapPoint?.type).toBe("element-end");
 		expect(result.snappedTime).toBe(4 * ONE_SEC);
