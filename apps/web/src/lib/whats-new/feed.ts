@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-ai-providers-dialog-redesign",
+		date: "2026-06-25",
+		tag: "improvement",
+		title: "AI Providers dialog redesign",
+		items: [
+			"Providers dialog now uses a standard header with visible title and description instead of a screen-reader-only header that caused the X close button to overlap the Add Provider button.",
+			"Provider cards use a two-zone layout: info on top, flat action bar on the bottom separated by a border — no more cramped button grid.",
+			"Add Provider moved to a dashed-border button at the bottom of the list, so it no longer collides with the dialog's X close button.",
+			"Add/Edit provider form dialog has more breathing room (gap-4 between fields), larger type selector cards, and a standard footer layout.",
+		],
+	},
+	{
 		id: "2026-06-25-ai-edit-panel-redesign",
 		date: "2026-06-25",
 		tag: "improvement",
