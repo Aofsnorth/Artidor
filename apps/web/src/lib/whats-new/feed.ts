@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-camera-switcher-transitions",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Camera Switcher: multi-camera visibility toggle",
+		items: [
+			"New Camera Switcher panel in the camera inspector when multiple cameras exist. Shows all cameras with active/hidden status and lets you toggle visibility to switch between them.",
+			"The highest visible camera is the active camera (Alight Motion style). Toggling a camera's visibility instantly switches the active camera.",
+			"Added findActiveCameraAtTime helper for time-aware camera resolution in the rendering pipeline.",
+			"Added camera transition presets (Cut, Fade, Slide, Zoom) for future use in the rendering pipeline.",
+		],
+	},
+	{
 		id: "2026-06-25-playhead-drag-scrub",
 		date: "2026-06-25",
 		tag: "improvement",
