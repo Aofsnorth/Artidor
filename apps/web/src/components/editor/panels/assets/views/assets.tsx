@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { MediaDragOverlay } from "@/components/editor/panels/assets/drag-overlay";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -432,6 +432,8 @@ export function MediaView() {
 									</SelectableSurface>
 								)}
 							</div>
+						) : assetSource === "stock" ? (
+							<StockVideoSearch />
 						) : (
 							<RemoteAssetPlaceholder source={assetSource} />
 						)}
@@ -640,6 +642,135 @@ function RemoteAssetPlaceholder({
 			<p className="text-[0.6rem] font-medium uppercase tracking-[0.16em] text-white/[0.32]">
 				Local imports stay in the header action
 			</p>
+		</div>
+	);
+}
+
+interface StockVideoResult {
+	id: number;
+	title: string;
+	thumbnail: string;
+	duration: number;
+	width: number;
+	height: number;
+	downloadUrl: string;
+	author: string;
+}
+
+function StockVideoSearch() {
+	const [query, setQuery] = useState("");
+	const [results, setResults] = useState<StockVideoResult[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [searched, setSearched] = useState(false);
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const search = useCallback(async (q: string) => {
+		if (!q.trim()) {
+			setResults([]);
+			setSearched(false);
+			return;
+		}
+		setLoading(true);
+		setError(null);
+		try {
+			const res = await fetch(
+				`/api/stock/videos?q=${encodeURIComponent(q)}&per_page=12`,
+			);
+			if (!res.ok) {
+				const data = await res.json().catch(() => ({}));
+				throw new Error(data.error ?? `HTTP ${res.status}`);
+			}
+			const data = (await res.json()) as {
+				results: StockVideoResult[];
+			};
+			setResults(data.results);
+			setSearched(true);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Search failed");
+			setResults([]);
+		} finally {
+			setLoading(false);
+		}
+	}, []);
+
+	const handleQueryChange = (value: string) => {
+		setQuery(value);
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => search(value), 400);
+	};
+
+	return (
+		<div className="flex flex-col gap-3 p-3">
+			<div className="relative">
+				<input
+					type="text"
+					value={query}
+					onChange={(e) => handleQueryChange(e.target.value)}
+					placeholder="Search stock videos..."
+					className="h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
+				/>
+				{loading && (
+					<div className="absolute right-3 top-1/2 -translate-y-1/2">
+						<div className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+					</div>
+				)}
+			</div>
+
+			{error && (
+				<p className="text-xs text-red-400/80">{error}</p>
+			)}
+
+			{!loading && !error && searched && results.length === 0 && (
+				<p className="py-8 text-center text-xs text-white/40">
+					No videos found. Try a different search term.
+				</p>
+			)}
+
+			{results.length > 0 && (
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+					{results.map((video) => (
+						<a
+							key={video.id}
+							href={video.downloadUrl}
+							download
+							target="_blank"
+							rel="noopener noreferrer"
+							className="group relative overflow-hidden rounded-lg border border-white/10 bg-black/40 transition-colors hover:border-white/20"
+						>
+							{video.thumbnail && (
+								<Image
+									src={video.thumbnail}
+									alt={video.title}
+									width={320}
+									height={180}
+									unoptimized
+									className="aspect-video w-full object-cover transition-opacity group-hover:opacity-80"
+								/>
+							)}
+							<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+								<p className="truncate text-[0.65rem] text-white/70">
+									{video.duration}s · {video.width}×{video.height}
+								</p>
+								<p className="truncate text-[0.6rem] text-white/40">
+									by {video.author}
+								</p>
+							</div>
+						</a>
+					))}
+				</div>
+			)}
+
+			{!loading && !error && !searched && (
+				<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+					<p className="text-sm font-semibold text-white/70">
+						Search Pexels stock videos
+					</p>
+					<p className="max-w-[16rem] text-xs text-white/40">
+						Free, licensed stock footage. Search for nature, city, abstract, or any topic.
+					</p>
+				</div>
+			)}
 		</div>
 	);
 }

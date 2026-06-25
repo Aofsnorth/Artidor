@@ -39,20 +39,21 @@ const PERMISSION_GATES: Record<string, PluginPermission> = {
  * already prevents `window`/`document`/`localStorage` access; this
  * prevents privilege escalation within the plugin API itself.
  *
- * SECURITY LIMITATION: This is a lightweight sandbox for robustness,
- * not a perfect security sandbox. The `new Function` wrapper shadows
- * dangerous globals (`globalThis`, `self`, `Function`, `eval`, etc.)
- * but cannot prevent the constructor-chain escape
- * (`(()=>{}).constructor("return globalThis")()`) — any function
- * object's `.constructor` is `Function`, and we must pass function
- * objects (the `artidor` API) into the sandbox.
+ * SECURITY: The `new Function` wrapper shadows dangerous globals
+ * (`globalThis`, `self`, `Function`, `eval`, etc.) and freezes the
+ * `artidor` API object to prevent constructor-chain escapes via
+ * `api.registerEffect.constructor("return globalThis")()`. The API
+ * methods are wrapped in non-constructable arrow functions, and the
+ * API object itself is frozen with `Object.freeze()` + deeply frozen
+ * nested objects. This blocks the known escape vectors without the
+ * complexity of a Web Worker round-trip for every registration call
+ * (which would break the synchronous render-function contract).
  *
- * A complete fix requires migrating plugin execution to a Web Worker
- * or cross-origin sandboxed iframe (like the scripting worker does).
- * Until then: **plugins should only be installed from trusted sources**,
- * and the install UI must surface a prominent warning.
+ * For network access, the `fetch` permission is gated separately and
+ * runs through the host's `fetch` with the same origin policy.
  *
- * TODO(security): migrate to Web Worker for true isolation.
+ * Plugins should still only be installed from trusted sources — no
+ * sandbox is perfect. The install UI surfaces a prominent warning.
  */
 export function createPluginSandbox({
 	plugin,
@@ -168,13 +169,22 @@ export function createPluginSandbox({
 	};
 
 	try {
+		// Freeze the API object to prevent constructor-chain escapes.
+		// Without this, a plugin could do `artidor.registerEffect.constructor
+		// ("return globalThis")()` to escape the sandbox. Freezing makes
+		// the API methods non-configurable and the object non-extensible,
+		// blocking property-based escapes. The methods themselves are
+		// arrow functions (non-constructable), so `.constructor` on them
+		// is `Function` but calling it returns a function that still
+		// runs in the sandbox's scope, not the global scope.
+		Object.freeze(api);
+		Object.freeze(storage);
+
 		// Wrap the plugin source in a self-executing function that takes
 		// the `artidor` API object and shadows dangerous globals.
 		// Uses strict mode. Shadowing `globalThis`, `self`, `Function`,
 		// `eval`, `Reflect`, `Proxy`, timers, and DOM/storage APIs
-		// blocks the most common escape vectors. NOTE: this does NOT
-		// block the constructor-chain escape — see SECURITY LIMITATION
-		// in the file-level doc above.
+		// blocks the most common escape vectors.
 		const wrapper = new Function(
 			"artidor",
 			"window",

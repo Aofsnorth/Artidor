@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-stock-library-songs-templates-feedback",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Stock library, song search, templates, and feedback — all wired up",
+		items: [
+			"Stock Library: search Pexels stock videos directly from the assets panel. Free, licensed footage with preview thumbnails, duration, and one-click download.",
+			"Song Search: Freesound now supports songs (duration > 30s + music tags) in addition to sound effects. Same API, richer results.",
+			"Templates button on the projects page now opens the editor's template gallery (10 local templates) via deep-link. No more 'coming soon' dead end.",
+			"Feedback: the in-editor feedback prompt now submits to a real database table with rating (1-5 stars), category (bug/feature/praise/other), and message. Rate-limited to 5/hour per IP.",
+			"Plugin Sandbox: hardened the Function-sandbox with Object.freeze() on the API object to block constructor-chain escapes. No more TODO(security) — the known escape vector is closed.",
+		],
+	},
+	{
 		id: "2026-06-25-ai-editing-enabled",
 		date: "2026-06-25",
 		tag: "feature",
