@@ -13,6 +13,15 @@ interface TimelineStore {
 	toggleAutoScroll: () => void;
 	autoPlayWhileScrubbing: boolean;
 	toggleAutoPlayWhileScrubbing: () => void;
+	/**
+	 * Playhead drag mode:
+	 * - "auto": current behavior — always play when dragging (if
+	 *   autoPlayWhileScrubbing is true) or always pause (if false).
+	 * - "smart": preserve the current play state during drag. If
+	 *   playing, stay playing; if paused, stay paused.
+	 */
+	scrubDragMode: "auto" | "smart";
+	setScrubDragMode: (mode: "auto" | "smart") => void;
 	focusedKeyframePropertyPath: string | null;
 	focusedKeyframePropertyPaths: string[];
 	setFocusedKeyframePropertyPath: (propertyPath: string | null) => void;
@@ -66,6 +75,12 @@ export const useTimelineStore = create<TimelineStore>()(
 				set((state) => ({
 					autoPlayWhileScrubbing: !state.autoPlayWhileScrubbing,
 				}));
+			},
+
+			scrubDragMode: "auto",
+
+			setScrubDragMode: (mode) => {
+				set({ scrubDragMode: mode });
 			},
 
 			focusedKeyframePropertyPath: null,
@@ -195,6 +210,7 @@ export const useTimelineStore = create<TimelineStore>()(
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
 				autoPlayWhileScrubbing: state.autoPlayWhileScrubbing,
+				scrubDragMode: state.scrubDragMode,
 				keyframeLayerNames: state.keyframeLayerNames,
 			}),
 		},

@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-scrub-drag-mode-dropdown",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Playhead drag mode: Auto vs Smart",
+		items: [
+			"The playhead drag button is now a dropdown with two modes: Auto and Smart.",
+			"Auto mode preserves the existing behavior — always play or always pause when dragging the playhead (toggleable via the sub-menu).",
+			"Smart mode preserves the current play state during drag: if you're playing, it stays playing; if you're paused, it stays paused. No more accidental play/pause transitions while scrubbing.",
+		],
+	},
+	{
 		id: "2026-06-25-stock-library-songs-templates-feedback",
 		date: "2026-06-25",
 		tag: "feature",
