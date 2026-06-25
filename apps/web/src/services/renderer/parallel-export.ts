@@ -44,7 +44,8 @@ import {
 import type { FrameRate } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
-import type { ExportFormat, ExportQuality } from "@/lib/export";
+import type { ExportFormat, ExportMode, ExportQuality } from "@/lib/export";
+import { detectHardware, hardwareSummary, recommendWorkerCount } from "@/lib/export/hardware";
 import type { SerializedNode } from "./scene-serializer";
 import {
 	audioBitrateFor,
@@ -56,7 +57,7 @@ import {
 	runExportInWorker,
 	type ExportWorkerResult,
 } from "./export-worker-bridge";
-import { buildSegmentPlans, planSegmentCount } from "./segment-plan";
+import { buildSegmentPlans, MIN_FRAMES_PER_SEGMENT } from "./segment-plan";
 
 export type ParallelExportResult =
 	| ExportWorkerResult
@@ -80,6 +81,8 @@ export async function runParallelExport({
 	format,
 	quality,
 	shouldIncludeAudio,
+	mode = "auto",
+	workerCount,
 	onProgress,
 	getCancelled,
 }: {
@@ -93,6 +96,10 @@ export async function runParallelExport({
 	format: ExportFormat;
 	quality: ExportQuality;
 	shouldIncludeAudio: boolean;
+	/** Export mode: "auto" (GPU+CPU), "gpu", or "cpu". */
+	mode?: ExportMode;
+	/** Override auto-detected worker count. */
+	workerCount?: number;
 	onProgress?: ({ progress }: { progress: number }) => void;
 	getCancelled?: () => boolean;
 }): Promise<ParallelExportResult> {
@@ -102,17 +109,30 @@ export async function runParallelExport({
 	);
 	const totalFrames = Math.floor(durationTicks / ticksPerFrame);
 
-	const cores =
-		typeof navigator !== "undefined" && navigator.hardwareConcurrency
-			? navigator.hardwareConcurrency
-			: 4;
-	const segmentCount = planSegmentCount(totalFrames, cores);
+	// Determine segment count: explicit override > auto-detect from hardware.
+	let segmentCount: number;
+	if (workerCount && workerCount > 0) {
+		segmentCount = workerCount;
+	} else {
+		const hardware = await detectHardware();
+		segmentCount = recommendWorkerCount(hardware, mode);
+		console.info(
+			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers (mode: ${mode})`,
+		);
+	}
+	// Still cap by timeline length — tiny timelines don't benefit from many workers.
+	segmentCount = Math.min(
+		segmentCount,
+		Math.floor(totalFrames / MIN_FRAMES_PER_SEGMENT),
+	);
 	if (segmentCount < 2) {
+		console.info("[parallel-export] skipping (segmentCount < 2), falling back to single worker");
 		return { success: false, fallback: true };
 	}
 
 	// Pin one codec for every segment up-front so the bitstreams are mutually
 	// compatible and can be stitched without a re-encode.
+	console.info("[parallel-export] negotiating video codec");
 	const videoCodec = await negotiateVideoCodec({
 		format,
 		quality,
@@ -120,6 +140,11 @@ export async function runParallelExport({
 		height,
 		fpsFloat,
 	});
+	console.info(`[parallel-export] codec: ${videoCodec}`);
+
+	console.info(
+		`[parallel-export] starting ${segmentCount} segments, ${totalFrames} frames total`,
+	);
 
 	const plans = buildSegmentPlans({
 		totalFrames,
@@ -139,13 +164,19 @@ export async function runParallelExport({
 		onProgress({ progress: totalFrames > 0 ? done / totalFrames : 0 });
 	};
 
-	// Launch every segment worker concurrently. Each gets its own OffscreenCanvas
-	// and a cloned (not transferred) copy of the shared media Files.
-	const segmentResults = await Promise.all(
-		plans.map((plan) => {
-			const canvas = new OffscreenCanvas(width, height);
-			return runExportInWorker({
-				canvas,
+	// Launch segment workers with a small delay between each launch to avoid
+	// GPU adapter request deadlocks on Windows. `navigator.gpu.requestAdapter()`
+	// can deadlock when called simultaneously from multiple workers — a 3s gap
+	// gives each worker time to acquire its adapter before the next one tries.
+	// The render/encode phase still runs fully in parallel once all workers are
+	// past GPU init.
+	console.info(`[parallel-export] launching ${plans.length} segment workers (staggered launch)`);
+
+	const workerPromises: Promise<ExportWorkerResult>[] = [];
+	for (let i = 0; i < plans.length; i++) {
+		const plan = plans[i];
+		workerPromises.push(
+			runExportInWorker({
 				sceneTree,
 				files,
 				audioBuffer: null,
@@ -157,17 +188,33 @@ export async function runParallelExport({
 				shouldIncludeAudio: false,
 				videoOnly: true,
 				videoCodec,
+				mode,
 				startFrame: plan.startFrame,
 				endFrame: plan.endFrame,
-				transferFiles: false,
+				// 60s no-activity timeout. Segments that are just slow keep
+				// sending progress messages, so this only fires when a worker is
+				// truly stuck.
+				timeoutMs: 60_000,
 				onProgress: ({ progress }) => {
 					segmentProgress[plan.index] = progress;
 					reportProgress();
 				},
 				getCancelled,
-			});
-		}),
-	);
+			}),
+		);
+
+		// Wait before launching the next worker to avoid GPU adapter request
+		// deadlocks. Turbo mode uses a shorter delay (1s) since throughput is
+		// the priority; auto/gpu/cpu modes use 3s for safety.
+		const staggerDelay = mode === "turbo" ? 1000 : 3000;
+		if (i < plans.length - 1) {
+			console.info(`[parallel-export] worker ${plan.index} launched, waiting ${staggerDelay / 1000}s before next`);
+			await new Promise((r) => setTimeout(r, staggerDelay));
+		}
+	}
+
+	console.info("[parallel-export] all workers launched, waiting for completion");
+	const segmentResults = await Promise.all(workerPromises);
 
 	// Any cancellation → bubble up as cancelled.
 	if (segmentResults.some((r) => !r.success && "cancelled" in r)) {
@@ -191,6 +238,7 @@ export async function runParallelExport({
 		return { success: false, cancelled: true };
 	}
 
+	console.info("[parallel-export] all segment workers completed, concatenating");
 	const buffer = await concatenateSegments({
 		segmentBuffers,
 		segmentStartSeconds: plans.map((p) => p.startSeconds),

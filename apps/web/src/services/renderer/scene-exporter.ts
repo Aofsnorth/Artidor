@@ -211,7 +211,24 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			output.addAudioTrack(audioSource);
 		}
 
-		await output.start();
+		// Short-circuit if the user cancelled during track setup. Starting a
+		// canceled output throws "Output has been canceled."
+		if (this.isCancelled) {
+			await output.cancel().catch(() => {});
+			this.emit("cancelled");
+			return null;
+		}
+
+		try {
+			await output.start();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "";
+			if (message === "Output has been canceled.") {
+				this.emit("cancelled");
+				return null;
+			}
+			throw error;
+		}
 
 		const audioEncode =
 			audioSource && this.audioBuffer

@@ -57,31 +57,83 @@ export async function applyAudioMasteringToBuffer({
 }: {
 	audioBuffer: AudioBuffer;
 }): Promise<AudioBuffer> {
-	if (getAudioBufferPeak({ audioBuffer }) <= MASTER_OUTPUT_HEADROOM) {
+	const peak = getAudioBufferPeak({ audioBuffer });
+	if (peak <= MASTER_OUTPUT_HEADROOM) {
 		return audioBuffer;
 	}
 
-	const offlineContext = new OfflineAudioContext(
-		audioBuffer.numberOfChannels,
-		Math.max(1, audioBuffer.length),
-		audioBuffer.sampleRate,
-	);
-	const source = offlineContext.createBufferSource();
-	source.buffer = audioBuffer;
+	// If the only issue is clipping, a fast JS clamp is sufficient and avoids
+	// the (sometimes hanging) OfflineAudioContext render path entirely.
+	if (peak > MASTER_OUTPUT_HEADROOM && peak <= 1.0) {
+		clampAudioBufferPeak({
+			audioBuffer,
+			maxPeak: MASTER_OUTPUT_HEADROOM,
+		});
+		return audioBuffer;
+	}
 
-	const { input } = createAudioMasteringChain({
-		audioContext: offlineContext,
-		destination: offlineContext.destination,
-	});
-	source.connect(input);
-	source.start(0);
+	// Peak > 1.0 means hard digital clipping. Run the full limiter chain via
+	// OfflineAudioContext, but with a timeout — some browsers hang on
+	// startRendering() for long buffers with a DynamicsCompressorNode.
+	try {
+		const offlineContext = new OfflineAudioContext(
+			audioBuffer.numberOfChannels,
+			Math.max(1, audioBuffer.length),
+			audioBuffer.sampleRate,
+		);
+		const source = offlineContext.createBufferSource();
+		source.buffer = audioBuffer;
 
-	const renderedBuffer = await offlineContext.startRendering();
-	clampAudioBufferPeak({
-		audioBuffer: renderedBuffer,
-		maxPeak: MASTER_OUTPUT_HEADROOM,
+		const { input } = createAudioMasteringChain({
+			audioContext: offlineContext,
+			destination: offlineContext.destination,
+		});
+		source.connect(input);
+		source.start(0);
+
+		const renderedBuffer = await withRenderTimeout(offlineContext, 30_000);
+		clampAudioBufferPeak({
+			audioBuffer: renderedBuffer,
+			maxPeak: MASTER_OUTPUT_HEADROOM,
+		});
+		return renderedBuffer;
+	} catch (error) {
+		console.warn(
+			"Audio mastering render failed/timed out, falling back to JS clamp:",
+			error,
+		);
+		clampAudioBufferPeak({
+			audioBuffer,
+			maxPeak: MASTER_OUTPUT_HEADROOM,
+		});
+		return audioBuffer;
+	}
+}
+
+/**
+ * Race `startRendering()` against a timeout. Some browsers hang indefinitely
+ * on OfflineAudioContext renders with DynamicsCompressorNode for long buffers.
+ */
+function withRenderTimeout(
+	ctx: OfflineAudioContext,
+	timeoutMs: number,
+): Promise<AudioBuffer> {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => {
+			reject(new Error(`OfflineAudioContext render timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+
+		ctx.startRendering().then(
+			(buffer) => {
+				clearTimeout(timer);
+				resolve(buffer);
+			},
+			(err) => {
+				clearTimeout(timer);
+				reject(err);
+			},
+		);
 	});
-	return renderedBuffer;
 }
 
 function clampAudioBufferPeak({
