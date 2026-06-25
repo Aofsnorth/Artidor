@@ -132,6 +132,9 @@ function PreviewCanvas({
 	const pendingRenderRef = useRef(false);
 	const renderTokenRef = useRef(0);
 	const renderStartRef = useRef(0);
+	// Track whether playback was playing before a render froze it,
+	// so we can resume after the render completes.
+	const wasPlayingBeforeRenderRef = useRef(false);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
 	const [isLoading, setIsLoading] = useState(false);
 	// Cache scale inputs to skip recalculation for manual quality tiers.
@@ -273,9 +276,16 @@ function PreviewCanvas({
 			pendingRenderRef.current = false;
 			renderStartRef.current = performance.now();
 			const token = ++renderTokenRef.current;
-			// Show the loading overlay only if the render exceeds 80 ms
-			// (5 frames at 60 fps). Checked on each rAF tick via the
-			// separate effect below so we don't block the render promise.
+
+			// Freeze: if playback is playing, pause it while the render
+			// is in-flight so the video stays on the current frame
+			// instead of advancing with a stale visual. Resume after.
+			const isCurrentlyPlaying = editor.playback.getIsPlaying();
+			if (isCurrentlyPlaying) {
+				wasPlayingBeforeRenderRef.current = true;
+				editor.playback.pause();
+			}
+
 			renderer
 				.renderToCanvas({
 					node: renderTree,
@@ -299,6 +309,11 @@ function PreviewCanvas({
 					perfTrackerRef.current.recordRender(duration);
 					renderingRef.current = false;
 					setIsLoading(false);
+					// Resume playback if we froze it for this render.
+					if (wasPlayingBeforeRenderRef.current) {
+						wasPlayingBeforeRenderRef.current = false;
+						editor.playback.play();
+					}
 				});
 		}
 	}, [
