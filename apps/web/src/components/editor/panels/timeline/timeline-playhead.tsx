@@ -74,9 +74,10 @@ export function TimelinePlayhead({
 	const playheadRef = externalPlayheadRef || internalPlayheadRef;
 
 	const [showTimeBubble, setShowTimeBubble] = useState(false);
-	// Track pointer-down position so a near-stationary release reads as a click
-	// (toggle the bubble) and a real drag still scrubs.
+	const [isHandlePressed, setIsHandlePressed] = useState(false);
 	const downPosRef = useRef<{ x: number; y: number } | null>(null);
+	const wasDragRef = useRef(false);
+	const preDragBubbleRef = useRef(false);
 
 	const { handlePlayheadMouseDown } = useTimelinePlayhead({
 		zoomLevel,
@@ -110,23 +111,46 @@ export function TimelinePlayhead({
 
 	const handleHandleMouseDown = (event: React.MouseEvent) => {
 		downPosRef.current = { x: event.clientX, y: event.clientY };
-		setShowTimeBubble(true);
-		// Start the normal scrub-drag; if it turns out to be a click we toggle on mouseup.
+		wasDragRef.current = false;
+		preDragBubbleRef.current = showTimeBubble;
+		setIsHandlePressed(true);
 		handlePlayheadMouseDown(event);
 	};
 
-	const handleHandleMouseUp = (event: React.MouseEvent) => {
-		const down = downPosRef.current;
-		downPosRef.current = null;
-		if (!down) return;
-		const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y);
-		if (moved <= PLAYHEAD_CLICK_SLOP_PX) {
-			setShowTimeBubble((prev) => !prev);
-		} else {
-			// After scrub, hide bubble after a short delay
-			setTimeout(() => setShowTimeBubble(false), 1500);
-		}
-	};
+	// Global listeners to distinguish click (toggle) from drag (hold).
+	useEffect(() => {
+		if (!isHandlePressed) return;
+
+		const onMove = (e: MouseEvent) => {
+			const down = downPosRef.current;
+			if (!down || wasDragRef.current) return;
+			const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+			if (moved > PLAYHEAD_CLICK_SLOP_PX) {
+				wasDragRef.current = true;
+				setShowTimeBubble(true);
+			}
+		};
+
+		const onUp = () => {
+			setIsHandlePressed(false);
+			downPosRef.current = null;
+			if (!wasDragRef.current) {
+				// Click — toggle persistent bubble state
+				setShowTimeBubble((prev) => !prev);
+			} else {
+				// Drag ended — restore pre-drag state
+				setShowTimeBubble(preDragBubbleRef.current);
+			}
+			wasDragRef.current = false;
+		};
+
+		document.addEventListener("mousemove", onMove);
+		document.addEventListener("mouseup", onUp);
+		return () => {
+			document.removeEventListener("mousemove", onMove);
+			document.removeEventListener("mouseup", onUp);
+		};
+	}, [isHandlePressed]);
 
 	// While the bubble is shown, Tab drops a marker (bookmark) at the playhead
 	// instead of moving focus. Restores default Tab behaviour when hidden.
@@ -224,7 +248,7 @@ export function TimelinePlayhead({
 					aria-label="Drag playhead (click to show time)"
 					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-gray-300 bg-white" : "border-gray-300 bg-white"}`}
 					onMouseDown={handleHandleMouseDown}
-					onMouseUp={handleHandleMouseUp}
+
 				/>
 
 				{showTimeBubble && (
