@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
 	ResizablePanelGroup,
 	ResizablePanel,
@@ -115,6 +115,7 @@ export default function Editor() {
 								<MigrationDialog />
 								<FeedbackPrompt />
 								<LazyOverlays />
+								<DialogAutoOpener />
 							</Suspense>
 						</div>
 					</div>
@@ -126,6 +127,11 @@ export default function Editor() {
 
 function FeedbackPrompt() {
 	const [open, setOpen] = useState(false);
+	const [message, setMessage] = useState("");
+	const [rating, setRating] = useState(0);
+	const [category, setCategory] = useState<"bug" | "feature" | "praise" | "other">("other");
+	const [submitting, setSubmitting] = useState(false);
+	const [submitted, setSubmitted] = useState(false);
 
 	useEffect(() => {
 		if (sessionStorage.getItem("artidor-feedback-prompt-shown") === "true") {
@@ -141,28 +147,114 @@ function FeedbackPrompt() {
 		return () => window.clearTimeout(timeoutId);
 	}, []);
 
+	const handleSubmit = async () => {
+		if (!message.trim()) return;
+		setSubmitting(true);
+		try {
+			const res = await fetch("/api/feedback", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ message, rating: rating || undefined, category }),
+			});
+			if (res.ok) {
+				setSubmitted(true);
+				setTimeout(() => setOpen(false), 1500);
+			}
+		} catch {
+			// Silent fail — feedback is non-critical
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent className="border-white/10 bg-[#0c0c0e]/95 text-white">
 				<DialogHeader>
-					<DialogTitle>Please give a feedback</DialogTitle>
+					<DialogTitle>Please give feedback</DialogTitle>
 					<DialogDescription>
 						Help us improve the editor after trying it for a few minutes.
 					</DialogDescription>
 				</DialogHeader>
-				<DialogFooter>
-					<Button variant="ghost" onClick={() => setOpen(false)}>
-						Later
-					</Button>
-					<Button asChild>
-						<a href="baru place holder" target="_blank" rel="noreferrer">
-							Open form
-						</a>
-					</Button>
-				</DialogFooter>
+				{submitted ? (
+					<p className="py-4 text-center text-sm text-white/70">
+						Thank you for your feedback!
+					</p>
+				) : (
+					<div className="flex flex-col gap-3 py-2">
+						<div className="flex gap-2">
+							{(["bug", "feature", "praise", "other"] as const).map((cat) => (
+								<button
+									key={cat}
+									type="button"
+									onClick={() => setCategory(cat)}
+									className={`rounded-lg border px-3 py-1 text-xs capitalize transition-colors ${
+										category === cat
+											? "border-white/20 bg-white/10 text-white"
+											: "border-white/10 text-white/50 hover:text-white/70"
+									}`}
+								>
+									{cat}
+								</button>
+							))}
+						</div>
+						<div className="flex gap-1">
+							{[1, 2, 3, 4, 5].map((star) => (
+								<button
+									key={star}
+									type="button"
+									onClick={() => setRating(star)}
+									className={`text-lg transition-colors ${
+										star <= rating ? "text-yellow-400" : "text-white/20 hover:text-white/40"
+									}`}
+								>
+									★
+								</button>
+							))}
+						</div>
+						<textarea
+							value={message}
+							onChange={(e) => setMessage(e.target.value)}
+							placeholder="Tell us what you think..."
+							rows={4}
+							className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
+						/>
+					</div>
+				)}
+				{!submitted && (
+					<DialogFooter>
+						<Button variant="ghost" onClick={() => setOpen(false)}>
+							Later
+						</Button>
+						<Button onClick={handleSubmit} disabled={!message.trim() || submitting}>
+							{submitting ? "Sending..." : "Send feedback"}
+						</Button>
+					</DialogFooter>
+				)}
 			</DialogContent>
 		</Dialog>
 	);
+}
+
+function DialogAutoOpener() {
+	// Opens a dialog automatically based on ?dialog= query param.
+	// Used by the projects page "Templates" button to deep-link into
+	// the editor's templates dialog.
+	const searchParams = useSearchParams();
+	const setOpen = useOpenDialogsStore((state) => state.setOpen);
+
+	useEffect(() => {
+		const dialog = searchParams.get("dialog");
+		if (dialog === "templates" || dialog === "teleprompter" || dialog === "settings") {
+			setOpen(dialog, true);
+			// Clean the URL so the dialog doesn't re-open on refresh.
+			const url = new URL(window.location.href);
+			url.searchParams.delete("dialog");
+			window.history.replaceState({}, "", url.toString());
+		}
+	}, [searchParams, setOpen]);
+
+	return null;
 }
 
 function PluginRegistryBootstrap() {

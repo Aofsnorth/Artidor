@@ -1046,23 +1046,21 @@ function NewPresetDialog({
 }
 
 function TemplatesButton() {
-	// Online templates aren't shipped yet. We surface the entry point so the
-	// feature is discoverable, but keep it locked: non-interactive, dimmed, and
-	// badged "Soon". Wire up navigation here once the template gallery exists.
+	// Links to the editor's templates dialog. The editor has a full
+	// template gallery with 10 local templates (intro, outro, lower-third,
+	// etc.). Online template browsing will be added in a future iteration.
+	const router = useRouter();
 	return (
 		<Button
 			type="button"
 			size="sm"
 			variant="outline"
-			aria-disabled
-			title="Online templates — coming soon"
-			className="relative hidden h-9 cursor-not-allowed items-center gap-1.5 rounded-full border-white/[0.08] bg-white/[0.03] px-3 text-[12px] opacity-60 hover:bg-white/[0.05] lg:flex"
+			title="Browse templates"
+			onClick={() => router.push("/editor?dialog=templates")}
+			className="relative hidden h-9 cursor-pointer items-center gap-1.5 rounded-full border-white/[0.08] bg-white/[0.03] px-3 text-[12px] hover:bg-white/[0.05] lg:flex"
 		>
 			<HugeiconsIcon icon={LayoutGridIcon} className="size-3.5" />
 			<span className="hidden font-medium xl:block">Templates</span>
-			<span className="rounded-full border border-white/15 bg-white/[0.08] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/60">
-				Soon
-			</span>
 		</Button>
 	);
 }

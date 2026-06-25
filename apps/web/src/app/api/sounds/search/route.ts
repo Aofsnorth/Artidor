@@ -186,14 +186,81 @@ export async function GET(request: NextRequest) {
 		} = validationResult.data;
 
 		if (type === "songs") {
-			return NextResponse.json(
-				{
-					error: "Songs are not available yet",
-					message:
-						"Song search functionality is coming soon. Try searching for sound effects instead.",
-				},
-				{ status: 501 },
+			// Songs = longer audio with music tags. Freesound doesn't have
+			// a dedicated "songs" endpoint, but we can filter for music
+			// content: duration > 30s + music-related tags.
+			const baseUrl = "https://freesound.org/apiv2/search/text/";
+			const sortParam = buildSortParameter({ query, sort });
+			const params = new URLSearchParams({
+				query: query || "",
+				token: webEnv.FREESOUND_API_KEY,
+				page: page.toString(),
+				page_size: pageSize.toString(),
+				sort: sortParam,
+				fields:
+					"id,name,description,url,previews,download,duration,filesize,type,channels,bitrate,bitdepth,samplerate,username,tags,license,created,num_downloads,avg_rating,num_ratings",
+			});
+
+			// Songs filter: duration > 30s + music tags
+			params.append("filter", "duration:[30.0 TO *]");
+			if (min_rating > 0) {
+				params.append("filter", `avg_rating:[${min_rating} TO *]`);
+			}
+			if (commercial_only) {
+				params.append(
+					"filter",
+					'license:("Attribution" OR "Creative Commons 0" OR "Attribution Noncommercial" OR "Attribution Commercial")',
+				);
+			}
+			params.append(
+				"filter",
+				"tag:music OR tag:song OR tag:track OR tag:loop OR tag:beat OR tag:melody OR tag:instrumental OR tag:ambient-music",
 			);
+
+			try {
+				const url = new URL(baseUrl);
+				url.search = params.toString();
+
+				const response = await fetch(url, {
+					signal: AbortSignal.timeout(10_000),
+				});
+
+				if (!response.ok) {
+					return NextResponse.json(
+						{
+							error: `Freesound API error: ${response.status}`,
+							message: "Failed to search songs. Please try again.",
+						},
+						{ status: 502 },
+					);
+				}
+
+				const data = (await response.json()) as z.infer<
+					typeof freesoundResponseSchema
+				>;
+				const transformed = data.results.map(transformFreesoundResult);
+
+				return NextResponse.json({
+					count: data.count,
+					next: data.next,
+					previous: data.previous,
+					results: transformed,
+					query,
+					type: "songs",
+					page,
+					pageSize: pageSize,
+					sort,
+					minRating: min_rating,
+				});
+			} catch (err) {
+				return NextResponse.json(
+					{
+						error: "Failed to search songs",
+						message: err instanceof Error ? err.message : "Unknown error",
+					},
+					{ status: 500 },
+				);
+			}
 		}
 
 		const baseUrl = "https://freesound.org/apiv2/search/text/";

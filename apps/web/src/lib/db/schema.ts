@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
 	id: text("id").primaryKey(),
@@ -48,19 +48,22 @@ export const accounts = pgTable("accounts", {
 	updatedAt: timestamp("updated_at").notNull(),
 }).enableRLS();
 
-// TODO: re-add a `feedback` table here once a migration is generated for it.
-// The original Drizzle migration (`apps/web/migrations/0000_*.sql`) only
-// declares the `waitlist` table, so the schema is intentionally kept in
-// sync with the migration. Once feedback collection is wired up, generate
-// a new migration via `bun run db:generate` and re-introduce the table.
-//
-// export const feedback = pgTable("feedback", {
-// 	id: text("id").primaryKey(),
-// 	message: text("message").notNull(),
-// 	createdAt: timestamp("created_at")
-// 		.$defaultFn(() => new Date())
-// 		.notNull(),
-// });
+/**
+ * User feedback table. Stores feedback submitted from the in-editor
+ * feedback prompt and the help menu. Each entry includes an optional
+ * rating (1-5), category, and the user's email if authenticated.
+ */
+export const feedback = pgTable("feedback", {
+	id: text("id").primaryKey(),
+	userId: text("user_id"),
+	email: text("email"),
+	message: text("message").notNull(),
+	rating: integer("rating"),
+	category: text("category"),
+	createdAt: timestamp("created_at")
+		.$defaultFn(() => new Date())
+		.notNull(),
+});
 
 // Mirror the `waitlist` table from the SQL migration so Drizzle clients can
 // query it. It is not yet referenced from any feature code, but defining
