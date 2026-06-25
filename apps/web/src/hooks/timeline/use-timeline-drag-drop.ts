@@ -6,6 +6,8 @@ import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { roundToFrame } from "artidor-wasm";
+import { snapElementEdge } from "@/lib/timeline/snap-utils";
+import { useTimelineStore } from "@/stores/timeline-store";
 import {
 	buildTextElement,
 	buildGraphicElement,
@@ -75,6 +77,7 @@ export function useTimelineDragDrop({
 	zoomLevel,
 }: UseTimelineDragDropProps) {
 	const editor = useEditor();
+	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const [isDragOver, setIsDragOver] = useState(false);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 	const [dragElementType, setElementType] = useState<ElementType | null>(null);
@@ -201,6 +204,38 @@ export function useTimelineDragDrop({
 				targetElementTypes,
 			});
 
+			// Magnet snap for external drops (file drops from OS, library
+			// tiles): when snapping is enabled, snap the new clip's start
+			// OR end edge to the nearest existing clip edge within the
+			// default snap threshold. Mirrors the behaviour used by the
+			// internal drag interaction so the magnet toggle behaves
+			// consistently regardless of drag source.
+			if (isExternal && snappingEnabled) {
+				const startSnap = snapElementEdge({
+					targetTime: target.xPosition,
+					elementDuration: duration,
+					tracks: sceneTracks,
+					playheadTime: currentTime,
+					zoomLevel,
+					snapToStart: true,
+				});
+				const endSnap = snapElementEdge({
+					targetTime: target.xPosition,
+					elementDuration: duration,
+					tracks: sceneTracks,
+					playheadTime: currentTime,
+					zoomLevel,
+					snapToStart: false,
+				});
+				const best =
+					startSnap.snapDistance <= endSnap.snapDistance
+						? startSnap
+						: endSnap;
+				if (best.snapPoint) {
+					target.xPosition = best.snappedTime;
+				}
+			}
+
 			target.xPosition = getSnappedTime({ time: target.xPosition });
 
 			if (
@@ -234,6 +269,7 @@ export function useTimelineDragDrop({
 			getElementDuration,
 			getSnappedTime,
 			editor,
+			snappingEnabled,
 		],
 	);
 
@@ -631,7 +667,7 @@ export function useTimelineDragDrop({
 							sceneTracks.main.elements.length === 0
 								? sceneTracks.main.id
 								: null;
-						const dropTarget = reuseMainTrackId
+						let dropTarget = reuseMainTrackId
 							? null
 							: computeDropTarget({
 									elementType: createdAsset.type,
@@ -644,6 +680,37 @@ export function useTimelineDragDrop({
 									pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
 									zoomLevel,
 								});
+
+						// Magnet snap for OS file drops: this path runs after
+						// the user releases the mouse, so it can't reuse the
+						// drag-over `dropTarget` state. Re-apply the same
+						// snap-to-adjacent logic that handleDragOver uses
+						// for library-asset drags.
+						if (dropTarget && snappingEnabled) {
+							const startSnap = snapElementEdge({
+								targetTime: dropTarget.xPosition,
+								elementDuration: duration,
+								tracks: sceneTracks,
+								playheadTime: currentTime,
+								zoomLevel,
+								snapToStart: true,
+							});
+							const endSnap = snapElementEdge({
+								targetTime: dropTarget.xPosition,
+								elementDuration: duration,
+								tracks: sceneTracks,
+								playheadTime: currentTime,
+								zoomLevel,
+								snapToStart: false,
+							});
+							const best =
+								startSnap.snapDistance <= endSnap.snapDistance
+									? startSnap
+									: endSnap;
+							if (best.snapPoint) {
+								dropTarget = { ...dropTarget, xPosition: best.snappedTime };
+							}
+						}
 
 						const trackType: TrackType =
 							createdAsset.type === "audio" ? "audio" : "video";
@@ -697,7 +764,7 @@ export function useTimelineDragDrop({
 				},
 			});
 		},
-		[editor, zoomLevel],
+		[editor, zoomLevel, snappingEnabled],
 	);
 
 	const handleDrop = useCallback(

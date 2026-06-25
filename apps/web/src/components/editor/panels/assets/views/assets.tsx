@@ -30,6 +30,16 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEditor } from "@/hooks/use-editor";
@@ -253,15 +263,19 @@ export function MediaView() {
 		await editor.media.renameFolder({ id: folderId, name });
 	};
 
-	const handleDeleteFolder = async ({ folderId }: { folderId: string }) => {
-		const folder = folders.find((f) => f.id === folderId);
-		if (!folder) return;
-		const ok = window.confirm(
-			`Delete "${folder.name}"? Assets inside will be moved to the library root.`,
-		);
-		if (!ok) return;
+	const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
+
+	const confirmDeleteFolder = async () => {
+		if (!deleteFolderId) return;
+		const folderId = deleteFolderId;
+		setDeleteFolderId(null);
+		
 		if (currentFolderId === folderId) setCurrentFolderId(null);
 		await editor.media.deleteFolder({ id: folderId });
+	};
+
+	const handleDeleteFolder = ({ folderId }: { folderId: string }) => {
+		setDeleteFolderId(folderId);
 	};
 
 	const assetCountByFolder = useMemo(() => {
@@ -328,12 +342,12 @@ export function MediaView() {
 	}, [filteredMediaItems]);
 	const mediaStats = useMemo(() => {
 		return {
-			all: filteredMediaItems.length,
-			video: filteredMediaItems.filter((item) => item.type === "video").length,
-			audio: filteredMediaItems.filter((item) => item.type === "audio").length,
-			image: filteredMediaItems.filter((item) => item.type === "image").length,
+			all: mediaFiles.length,
+			video: mediaFiles.filter((item) => item.type === "video").length,
+			audio: mediaFiles.filter((item) => item.type === "audio").length,
+			image: mediaFiles.filter((item) => item.type === "image").length,
 		};
-	}, [filteredMediaItems]);
+	}, [mediaFiles]);
 
 	return (
 		<>
@@ -359,7 +373,9 @@ export function MediaView() {
 				scrollClassName={cn(
 					(isDragOver ||
 						showCancelHint ||
-						(assetSource === "library" && filteredMediaItems.length === 0)) &&
+						(assetSource === "library" &&
+							filteredMediaItems.length === 0 &&
+							(currentFolderId !== null || folders.length === 0))) &&
 						"overflow-y-hidden",
 				)}
 				className={cn(isDragOver && "bg-accent/30")}
@@ -396,7 +412,8 @@ export function MediaView() {
 									}
 									onExitFolder={() => setCurrentFolderId(null)}
 								/>
-								{filteredMediaItems.length === 0 ? (
+								{filteredMediaItems.length === 0 &&
+								(currentFolderId !== null || folders.length === 0) ? (
 									<EmptyLibraryState onImport={openFilePicker} />
 								) : (
 									<SelectableSurface
@@ -420,6 +437,25 @@ export function MediaView() {
 						)}
 					</div>
 				)}
+				<AlertDialog open={!!deleteFolderId} onOpenChange={(open) => !open && setDeleteFolderId(null)}>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>Delete folder?</AlertDialogTitle>
+							<AlertDialogDescription>
+								Assets inside this folder will be moved back to the library root. This action cannot be undone.
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogAction
+								onClick={confirmDeleteFolder}
+								className="bg-red-500 hover:bg-red-600 text-white"
+							>
+								Delete
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
 			</PanelView>
 
 			<FolderNameDialog

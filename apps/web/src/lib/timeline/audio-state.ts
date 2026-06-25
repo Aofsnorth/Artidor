@@ -21,6 +21,13 @@ export function dBToLinear(db: number): number {
 	return 10 ** (clampDb(db) / 20);
 }
 
+export function linearToDb(linear: number): number {
+	if (!Number.isFinite(linear) || linear <= 0) {
+		return VOLUME_DB_MIN;
+	}
+	return clampDb(20 * Math.log10(linear));
+}
+
 export function hasAnimatedVolume({
 	element,
 }: {
@@ -38,10 +45,12 @@ export function resolveEffectiveAudioGain({
 	element,
 	trackMuted = false,
 	localTime,
+	ignoreFades = false,
 }: {
 	element: AudioCapableElement;
 	trackMuted?: boolean;
 	localTime: number;
+	ignoreFades?: boolean;
 }): number {
 	if (trackMuted || element.muted === true) {
 		return 0;
@@ -56,19 +65,21 @@ export function resolveEffectiveAudioGain({
 
 	let gain = dBToLinear(resolvedDb);
 
-	// Apply Fade In
-	const fadeIn = element.fadeInDuration ?? 0;
-	if (fadeIn > 0 && localTime < fadeIn) {
-		gain *= localTime / fadeIn;
-	}
+	if (!ignoreFades) {
+		// Apply Fade In
+		const fadeIn = element.fadeInDuration ?? 0;
+		if (fadeIn > 0 && localTime < fadeIn) {
+			gain *= localTime / fadeIn;
+		}
 
-	// Apply Fade Out
-	const fadeOut = element.fadeOutDuration ?? 0;
-	const elementDuration = element.duration / TICKS_PER_SECOND;
-	if (fadeOut > 0) {
-		const timeFromEnd = elementDuration - localTime;
-		if (timeFromEnd < fadeOut) {
-			gain *= Math.max(0, timeFromEnd / fadeOut);
+		// Apply Fade Out
+		const fadeOut = element.fadeOutDuration ?? 0;
+		const elementDuration = element.duration / TICKS_PER_SECOND;
+		if (fadeOut > 0) {
+			const timeFromEnd = elementDuration - localTime;
+			if (timeFromEnd < fadeOut) {
+				gain *= Math.max(0, timeFromEnd / fadeOut);
+			}
 		}
 	}
 

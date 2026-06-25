@@ -90,7 +90,7 @@ export function TimelineToolbar({
 	};
 
 	return (
-		<ScrollArea className="scrollbar-hidden">
+		<ScrollArea className="scrollbar-hidden overflow-x-auto overflow-y-hidden">
 			<div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-transparent px-3.5 py-0.5 z-20">
 				{/* Left Section: + Track, Separator, Action Buttons */}
 				<div className="flex min-w-0 items-center gap-2 justify-start">
