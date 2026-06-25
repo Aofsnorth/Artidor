@@ -21,6 +21,13 @@ export function dBToLinear(db: number): number {
 	return 10 ** (clampDb(db) / 20);
 }
 
+export function linearToDb(linear: number): number {
+	if (!Number.isFinite(linear) || linear <= 0) {
+		return VOLUME_DB_MIN;
+	}
+	return clampDb(20 * Math.log10(linear));
+}
+
 export function hasAnimatedVolume({
 	element,
 }: {

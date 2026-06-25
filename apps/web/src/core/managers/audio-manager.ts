@@ -232,13 +232,16 @@ export class AudioManager {
 			const nextWrapper = currentElements.get(oldClip.id);
 			if (!nextWrapper) continue;
 			const next = nextWrapper.element;
-			const trackSlider =
+			const trackSliderPercent =
 				useTimelineStore.getState().trackSliders[nextWrapper.trackId] ?? 100;
 			const elementGain = resolveEffectiveAudioGain({
 				element: next,
 				localTime: Math.max(0, playbackTime - oldClip.startTime),
 			});
-			const newGain = elementGain * (trackSlider / 100);
+			// Track slider is a linear percentage (0–100, default 100). The
+			// element's effective gain (from its dB volume + fades) is
+			// multiplied by slider/100 to get the final linear gain.
+			const newGain = elementGain * (trackSliderPercent / 100);
 			const newMuted = next.muted === true;
 
 			if (oldClip.lastAppliedGain === newGain && oldClip.muted === newMuted)
@@ -523,9 +526,12 @@ export class AudioManager {
 					node.playbackRate.value = playbackRate;
 				}
 				const clipGain = audioContext.createGain();
-				const trackSlider =
+				const trackSliderPercent =
 					useTimelineStore.getState().trackSliders[clip.trackId] ?? 100;
-				clipGain.gain.value = clip.volume * (trackSlider / 100);
+				// Track slider is a linear percentage (0–100, default 100).
+				// clip.volume is the element's linear gain (derived from its
+				// dB volume). Final gain = clip.volume * (slider / 100).
+				clipGain.gain.value = clip.volume * (trackSliderPercent / 100);
 				node.connect(clipGain);
 				clipGain.connect(this.masterGain ?? audioContext.destination);
 				this.registerClipGain({ clipId: clip.id, gain: clipGain });
