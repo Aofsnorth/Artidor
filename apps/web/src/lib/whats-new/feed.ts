@@ -20,7 +20,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 	{
 		id: "2026-06-25-ai-edit-panel-redesign",
 		date: "2026-06-25",
-		tag: "design",
+		tag: "improvement",
 		title: "AI Edit panel redesign",
 		items: [
 			"StatusBar now uses the same glassmorphism language as the export and feedback dialogs: gradient background, top accent line, ambient glow, and a serif title.",
