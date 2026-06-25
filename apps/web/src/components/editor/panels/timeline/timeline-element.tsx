@@ -510,12 +510,12 @@ export function TimelineElement({
 
 	const isBeingDragged = dragState.dragElementIds.includes(element.id);
 	const dragOffsetY =
-		isBeingDragged && dragState.isDragging
+		isBeingDragged && dragState.dragElementIds.length > 0
 			? dragState.currentMouseY - dragState.startMouseY
 			: 0;
 	const dragTimeOffset = dragState.dragTimeOffsets[element.id] ?? 0;
 	const elementStartTime =
-		isBeingDragged && dragState.isDragging
+		isBeingDragged && dragState.dragElementIds.length > 0
 			? dragState.currentTime + dragTimeOffset
 			: isResizing
 				? currentStartTime
@@ -677,17 +677,17 @@ export function TimelineElement({
 									? `${baseTrackHeight + expansionHeight}px`
 									: "100%",
 							transform:
-								isBeingDragged && dragState.isDragging
+								isBeingDragged && dragState.dragElementIds.length > 0
 									? `translate3d(0, ${dragOffsetY}px, 0)`
 									: undefined,
 							zIndex:
-								isBeingDragged && dragState.isDragging
+								isBeingDragged && dragState.dragElementIds.length > 0
 									? TIMELINE_LAYERS.dragLine + 2
 									: undefined,
 							pointerEvents:
-								isBeingDragged && dragState.isDragging ? "none" : undefined,
+								isBeingDragged && dragState.dragElementIds.length > 0 ? "none" : undefined,
 							opacity:
-								isBeingDragged && dragState.isDragging ? 0 : undefined,
+								isBeingDragged && dragState.dragElementIds.length > 0 ? 0 : undefined,
 						}}
 					>
 						<ElementInner
