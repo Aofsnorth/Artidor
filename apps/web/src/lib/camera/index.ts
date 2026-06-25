@@ -242,3 +242,48 @@ export function applyDof({
 	const diff = Math.abs(distance - camera.focusDistance);
 	return diff * camera.dofStrength;
 }
+
+/**
+ * Find the active camera from a list of camera elements.
+ *
+ * Multi-camera logic (Alight Motion style):
+ * - The highest (earliest in track order) VISIBLE camera is the active camera.
+ * - Hidden cameras are inactive.
+ * - If no camera is visible, return null (use default viewport).
+ *
+ * @param cameras - All camera elements in the scene, ordered by track position
+ * @returns The active camera, or null if no visible camera exists
+ */
+export function findActiveCamera({
+	cameras,
+}: {
+	cameras: CameraElement[];
+}): CameraElement | null {
+	// Cameras are ordered by track position (highest first).
+	// The first visible camera is the active camera.
+	for (const camera of cameras) {
+		if (!camera.hidden) {
+			return camera;
+		}
+	}
+	return null;
+}
+
+/**
+ * Get all cameras in the scene, ordered by track position (highest first).
+ */
+export function getSceneCameras({
+	tracks,
+}: {
+	tracks: { overlay: Array<{ elements: Array<{ type: string; hidden?: boolean }> }> };
+}): CameraElement[] {
+	const cameras: CameraElement[] = [];
+	for (const track of tracks.overlay) {
+		for (const element of track.elements) {
+			if (element.type === "camera") {
+				cameras.push(element as unknown as CameraElement);
+			}
+		}
+	}
+	return cameras;
+}
