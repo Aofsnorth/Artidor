@@ -134,36 +134,47 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			target: new BufferTarget(),
 		});
 
-		// Pick the right video codec for the requested format. HEVC is the
-		// H.265 codec (smaller files, modern devices); AVC is the broadly
-		// compatible H.264 codec; VP9 is the WebM default.
-		let videoCodec: "avc" | "vp9" | "hevc" =
-			this.format === "webm" ? "vp9" : this.format === "hevc" ? "hevc" : "avc";
+		// Pick the right video codec for the requested format.
+		// AV1 (best compression, ~88% encode support) > HEVC (H.265) > AVC (H.264).
+		// VP9 is the WebM default (99.99% support).
+		let videoCodec: "avc" | "vp9" | "hevc" | "av1" =
+			this.format === "webm"
+				? "vp9"
+				: this.format === "hevc"
+					? "hevc"
+					: this.format === "av1"
+						? "av1"
+						: "avc";
 
+		// Codec fallback chain: AV1 → VP9 → AVC, or HEVC → AVC.
 		// Check codec support and fall back to more compatible options.
-		// HEVC (H.265) is not supported on all browsers (e.g., Edge, Firefox).
-		// AVC (H.264) has the broadest support across browsers and devices.
 		// Some browsers throw a TypeError instead of returning {supported:false}
 		// when the bitrate isn't a valid unsigned long long, so wrap in try/catch.
-		if (videoCodec === "hevc" && typeof VideoEncoder !== "undefined") {
+		if (
+			(videoCodec === "hevc" || videoCodec === "av1") &&
+			typeof VideoEncoder !== "undefined"
+		) {
 			try {
-				const hevcBitrate = Math.max(
+				const codecString =
+					videoCodec === "av1" ? "av01.0.16M.08" : "hev1.1.6.L93.B0";
+				const bitrate = Math.max(
 					1,
 					Math.floor(Number(qualityMap[this.quality])),
 				);
 				const { supported } = await VideoEncoder.isConfigSupported({
-					codec: "hev1.1.6.L93.B0",
+					codec: codecString,
 					width: this.renderer.width,
 					height: this.renderer.height,
-					bitrate: hevcBitrate,
+					bitrate,
 					framerate: fpsFloat,
 				});
 				if (!supported) {
-					videoCodec = "avc";
+					// AV1 falls back to VP9 (for WebM) or AVC (for MP4).
+					// HEVC falls back to AVC.
+					videoCodec = this.format === "webm" ? "vp9" : "avc";
 				}
 			} catch {
-				// Browser threw on isConfigSupported — assume HEVC unsupported and fall back.
-				videoCodec = "avc";
+				videoCodec = this.format === "webm" ? "vp9" : "avc";
 			}
 		}
 

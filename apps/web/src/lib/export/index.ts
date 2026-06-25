@@ -8,7 +8,7 @@ export const EXPORT_QUALITY_VALUES = [
 	"very_high",
 ] as const;
 
-export const EXPORT_FORMAT_VALUES = ["mp4", "webm", "hevc"] as const;
+export const EXPORT_FORMAT_VALUES = ["mp4", "webm", "hevc", "av1"] as const;
 
 export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
 export type ExportQuality = (typeof EXPORT_QUALITY_VALUES)[number];
@@ -41,6 +41,7 @@ export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
 	mp4: "MP4 (H.264) - Better compatibility",
 	webm: "WebM (VP9) - Smaller file size",
 	hevc: "MP4 (H.265) - Best compression",
+	av1: "MP4 (AV1) - Best compression (modern)",
 };
 
 /**
@@ -52,6 +53,7 @@ export const EXPORT_FORMAT_EXTENSIONS: Record<ExportFormat, string> = {
 	mp4: "mp4",
 	webm: "webm",
 	hevc: "mp4",
+	av1: "mp4",
 };
 
 export function getExportMimeType({
