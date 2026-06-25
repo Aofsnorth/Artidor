@@ -661,6 +661,8 @@ function ToolbarRightSection({
 	const toggleAutoPlayWhileScrubbing = useTimelineStore(
 		(s) => s.toggleAutoPlayWhileScrubbing,
 	);
+	const scrubDragMode = useTimelineStore((s) => s.scrubDragMode);
+	const setScrubDragMode = useTimelineStore((s) => s.setScrubDragMode);
 
 	const isCurrentlyBookmarked = useEditor((e) =>
 		e.scenes.isBookmarked({ time: e.playback.getCurrentTime() }),
@@ -737,19 +739,87 @@ function ToolbarRightSection({
 						/>
 					)}
 				</ToolbarButton>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={PlayIcon} />}
-					isActive={autoPlayWhileScrubbing}
-					tooltip="Auto-play while dragging playhead"
-					onClick={() => toggleAutoPlayWhileScrubbing()}
-				>
-					{autoPlayWhileScrubbing && (
-						<span
-							aria-hidden="true"
-							className="pointer-events-none absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_rgba(103,232,249,0.85)]"
-						/>
-					)}
-				</ToolbarButton>
+				<DropdownMenu>
+					<Tooltip delayDuration={200}>
+						<TooltipTrigger asChild>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="text"
+									size="icon"
+									className={cn(
+										"relative size-6 rounded transition",
+										scrubDragMode === "smart" || autoPlayWhileScrubbing
+											? "bg-white text-black hover:bg-white/90 hover:text-black"
+											: "text-white/60 hover:bg-white/[0.08] hover:text-white",
+									)}
+								>
+									<HugeiconsIcon icon={PlayIcon} />
+									{(scrubDragMode === "smart" || autoPlayWhileScrubbing) && (
+										<span
+											aria-hidden="true"
+											className="pointer-events-none absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_rgba(103,232,249,0.85)]"
+										/>
+									)}
+								</Button>
+							</DropdownMenuTrigger>
+						</TooltipTrigger>
+						<TooltipContent>Playhead drag mode</TooltipContent>
+					</Tooltip>
+					<DropdownMenuContent align="start" className="z-100 w-44">
+						<DropdownMenuItem
+							className={cn(
+								scrubDragMode === "auto" && "bg-white/[0.08] text-white",
+							)}
+							onClick={() => setScrubDragMode("auto")}
+						>
+							<div className="flex flex-col gap-0.5">
+								<span className="text-xs font-medium">Auto</span>
+								<span className="text-[0.65rem] text-white/40">
+									{autoPlayWhileScrubbing
+										? "Always play while dragging"
+										: "Always pause while dragging"}
+								</span>
+							</div>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							className={cn(
+								scrubDragMode === "smart" && "bg-white/[0.08] text-white",
+							)}
+							onClick={() => setScrubDragMode("smart")}
+						>
+							<div className="flex flex-col gap-0.5">
+								<span className="text-xs font-medium">Smart</span>
+								<span className="text-[0.65rem] text-white/40">
+									Preserve play state while dragging
+								</span>
+							</div>
+						</DropdownMenuItem>
+						{scrubDragMode === "auto" && (
+							<>
+								<div className="my-1 h-px bg-white/[0.06]" />
+								<DropdownMenuItem
+									onClick={() => toggleAutoPlayWhileScrubbing()}
+								>
+									<div className="flex items-center gap-2">
+										<span
+											className={cn(
+												"size-2 rounded-full",
+												autoPlayWhileScrubbing
+													? "bg-cyan-300"
+													: "bg-white/20",
+											)}
+										/>
+										<span className="text-xs">
+											{autoPlayWhileScrubbing
+												? "Play on drag"
+												: "Pause on drag"}
+										</span>
+									</div>
+								</DropdownMenuItem>
+							</>
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
 
 				<ToolbarButton
 					icon={<OcRippleIcon size={20} className="scale-110" />}

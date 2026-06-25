@@ -48,6 +48,7 @@ export function useTimelinePlayhead({
 	const isShiftHeldRef = useShiftKey();
 	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
 	const autoPlayWhileScrubbing = useTimelineStore((s) => s.autoPlayWhileScrubbing);
+	const scrubDragMode = useTimelineStore((s) => s.scrubDragMode);
 	// The "Magnet" toolbar toggle. When off, the playhead must not snap to
 	// nearby keyframes/clip edges/bookmarks while scrubbing. Held in a ref
 	// because `handleScrub` is a long-lived callback that reads it at drag time.
@@ -59,6 +60,7 @@ export function useTimelinePlayhead({
 	const isPlayingRef = useRef(isPlaying);
 	const autoScrollEnabledRef = useRef(autoScrollEnabled);
 	const autoPlayWhileScrubbingRef = useRef(autoPlayWhileScrubbing);
+	const scrubDragModeRef = useRef(scrubDragMode);
 	const magnetEnabledRef = useRef(magnetEnabled);
 
 	useEffect(() => {
@@ -68,8 +70,9 @@ export function useTimelinePlayhead({
 		isPlayingRef.current = isPlaying;
 		autoScrollEnabledRef.current = autoScrollEnabled;
 		autoPlayWhileScrubbingRef.current = autoPlayWhileScrubbing;
+		scrubDragModeRef.current = scrubDragMode;
 		magnetEnabledRef.current = magnetEnabled;
-	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled, autoPlayWhileScrubbing, magnetEnabled]);
+	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled, autoPlayWhileScrubbing, scrubDragMode, magnetEnabled]);
 
 	const seek = useCallback(
 		({ time }: { time: number }) => editor.playback.seek({ time }),
@@ -250,7 +253,10 @@ export function useTimelinePlayhead({
 			event.preventDefault();
 			event.stopPropagation();
 
-			if (autoPlayWhileScrubbingRef.current) {
+			if (scrubDragModeRef.current === "smart") {
+				// Smart mode: preserve current play state. If playing,
+				// stay playing; if paused, stay paused. No action needed.
+			} else if (autoPlayWhileScrubbingRef.current) {
 				if (!editor.playback.getIsPlaying()) editor.playback.play();
 			} else if (editor.playback.getIsPlaying()) {
 				editor.playback.pause();
@@ -271,7 +277,9 @@ export function useTimelinePlayhead({
 			isDraggingRulerRef.current = true;
 			hasDraggedRulerRef.current = false;
 
-			if (autoPlayWhileScrubbingRef.current) {
+			if (scrubDragModeRef.current === "smart") {
+				// Smart mode: preserve current play state.
+			} else if (autoPlayWhileScrubbingRef.current) {
 				if (!editor.playback.getIsPlaying()) editor.playback.play();
 			} else if (editor.playback.getIsPlaying()) {
 				editor.playback.pause();
