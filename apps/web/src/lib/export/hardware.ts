@@ -74,11 +74,15 @@ export async function detectHardware(): Promise<HardwareInfo> {
  * Recommend a number of parallel segment workers based on hardware and mode.
  *
  * Heuristics:
- * - CPU mode: one worker per logical core (up to 8). No GPU contention.
- * - GPU/Auto mode: 1 worker per 2 cores (GPU is shared, so more workers
- *   means more GPU context switching). Capped at 4.
+ * - CPU mode: one worker per logical core (up to 16). No GPU contention.
+ * - GPU/Auto mode: all cores up to 8 (GPU shared but can handle multiple
+ *   contexts). With 16GB+ RAM, there's plenty of memory for 8 workers.
+ * - Turbo mode: all cores up to 16. Maximum utilization for capable machines.
  * - Low-memory machines (≤4GB): cap at 2 workers regardless.
  * - Single-core machines: always 1 (no parallelism benefit).
+ *
+ * Note: navigator.deviceMemory is capped at 8GB by browsers for privacy,
+ * so a 16GB machine reports 8. The memory cap uses this conservatively.
  */
 export function recommendWorkerCount(
 	hardware: HardwareInfo,
@@ -89,36 +93,27 @@ export function recommendWorkerCount(
 	// Single-core or unknown → no parallelism.
 	if (cpuCores <= 1) return 1;
 
-	// Low-memory machines can't sustain many workers (each ~50-200MB).
+	// navigator.deviceMemory caps at 8, so "8" could mean 8GB or 16GB+.
+	// Treat 8 as "plenty of RAM" — no memory cap beyond the mode cap.
 	const memoryCap = deviceMemoryGb <= 2 ? 1 : deviceMemoryGb <= 4 ? 2 : 16;
 
 	if (mode === "cpu") {
-		// CPU-only: no GPU contention, so one worker per core is fine.
-		// Use all available cores (up to memory cap) for maximum CPU utilization.
+		// CPU-only: no GPU contention, one worker per core.
 		return Math.min(cpuCores, memoryCap, 16);
 	}
 
 	if (mode === "turbo") {
-		// Turbo: maximum utilization. Use all cores + GPU. No cap below 16
-		// (memory cap still applies). This will push both CPU and GPU to
-		// ~100% by having many workers feeding the GPU render queue while
-		// CPU encoders are busy.
+		// Turbo: maximum utilization. All cores + GPU.
 		return Math.min(cpuCores, memoryCap, 16);
 	}
 
-	// GPU/Auto mode: More workers = more render work queued to GPU = higher
-	// GPU utilization. Each worker also keeps a CPU encoder busy. The key
-	// insight: GPU compositing is fast (~5ms/frame) but encoding is slow
-	// (~50ms/frame), so we need many workers to keep the GPU fed while CPU
-	// encoders are busy. Use 1 worker per core (not per 2 cores) to maximize
-	// both GPU and CPU utilization.
+	// Auto/GPU mode: use all cores up to 8. With 16GB RAM (reported as 8),
+	// 8 workers (~1.4GB) is well within budget and keeps GPU fed.
 	if (!gpuAdapter) {
 		// No GPU available — treat as CPU mode.
 		return Math.min(cpuCores, memoryCap, 16);
 	}
 
-	// GPU available: use all cores. GPU can handle multiple render contexts
-	// (the overhead is small compared to the benefit of keeping it fed).
 	return Math.min(cpuCores, memoryCap, 8);
 }
 

@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-engine-modes",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Choose your export engine: Auto, GPU, CPU, or Turbo",
+		items: [
+			"New Engine selector in the export dialog lets you pick how your machine renders the final video: Auto (balanced), GPU (hardware accelerated), CPU (most compatible), or Turbo (maximum utilization).",
+			"Worker count now auto-detects from your PC specs — CPU cores, GPU, and RAM — so exports use the right amount of parallelism without thrashing low-end machines or under-utilizing high-end ones.",
+			"Turbo mode pushes both GPU and CPU to ~100% by using all cores with a deep render queue, cutting export time significantly on capable hardware (16GB+ RAM recommended).",
+			"Deep render/encode pipelining: the renderer now feeds up to 16 frames to the encoder before applying backpressure, keeping the GPU busy while the CPU encodes in the background.",
+		],
+	},
+	{
 		id: "2026-06-25-faster-export-and-preview",
 		date: "2026-06-25",
 		tag: "performance",
