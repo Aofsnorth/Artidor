@@ -155,7 +155,7 @@ export function AIEditView() {
 
 	return (
 		<>
-			<div className="flex h-full min-h-0 flex-col gap-3 px-1.5 pb-1.5 pt-1.5">
+			<div className="flex h-full min-h-0 flex-col gap-2 px-1.5 pb-1.5 pt-1.5">
 				<StatusBar
 					referenceVideoName={ai.referenceVideoName}
 					styleProfile={ai.styleProfile}
@@ -167,17 +167,21 @@ export function AIEditView() {
 					onClearConversation={() => ai.clearConversation()}
 				/>
 
-				<div className="flex flex-wrap gap-1.5">
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-7 gap-1 rounded-full border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-white/85 hover:bg-white/[0.08]"
+				{/* Quick actions */}
+				<div className="flex flex-wrap gap-1">
+					<button
+						type="button"
 						onClick={() => fileInputRef.current?.click()}
 						disabled={isExtracting}
+						className={cn(
+							"flex h-6 items-center gap-1 rounded-md border px-2 text-[10.5px] font-medium transition-all",
+							"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
+							isExtracting && "cursor-wait opacity-60",
+						)}
 					>
-						<HugeiconsIcon icon={Upload01Icon} className="size-3.5" />
-						{isExtracting ? "Analysing…" : "Reference video"}
-					</Button>
+						<HugeiconsIcon icon={Upload01Icon} className="size-3" />
+						{isExtracting ? "Analysing…" : "Reference"}
+					</button>
 					<input
 						ref={fileInputRef}
 						type="file"
@@ -190,20 +194,24 @@ export function AIEditView() {
 						}}
 					/>
 					{QUICK_ACTIONS.map((qa) => (
-						<Button
+						<button
 							key={qa.label}
-							variant="outline"
-							size="sm"
-							className="h-7 gap-1 rounded-full border-white/10 bg-white/[0.04] px-2.5 text-[11px] text-white/85 hover:bg-white/[0.08]"
+							type="button"
 							onClick={() => handleQuickAction(qa.prompt)}
 							disabled={isStreaming}
+							className={cn(
+								"flex h-6 items-center gap-1 rounded-md border px-2 text-[10.5px] font-medium transition-all",
+								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
+								isStreaming && "cursor-not-allowed opacity-50",
+							)}
 						>
-							<HugeiconsIcon icon={qa.icon} className="size-3.5" />
+							<HugeiconsIcon icon={qa.icon} className="size-3" />
 							{qa.label}
-						</Button>
+						</button>
 					))}
 				</div>
 
+				{/* Messages */}
 				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
 					{ai.messages.length === 0 ? (
 						<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
@@ -219,16 +227,17 @@ export function AIEditView() {
 						</div>
 					)}
 					{ai.error && (
-						<div className="rounded-md border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
+						<div className="rounded-md border border-red-400/30 bg-red-500/[0.08] px-2.5 py-1.5 text-[11px] text-red-300">
 							{ai.error}
 						</div>
 					)}
 					<div ref={messagesEndRef} />
 				</div>
 
+				{/* Composer */}
 				<form
 					onSubmit={handleSubmit}
-					className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-white/[0.03] p-2 backdrop-blur"
+					className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-2.5 backdrop-blur"
 				>
 					<textarea
 						ref={composerRef}
@@ -237,9 +246,9 @@ export function AIEditView() {
 						onKeyDown={handleKeyDown}
 						placeholder="Ask the AI to edit, plan a motion graphic, or describe what you want…"
 						rows={2}
-						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/35"
+						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/30"
 					/>
-					<div className="flex items-center justify-between text-[10.5px] text-white/40">
+					<div className="flex items-center justify-between text-[10px] text-white/35">
 						<span className="flex items-center gap-1">
 							<HugeiconsIcon icon={AttachmentIcon} className="size-3" />
 							Enter to send · Shift+Enter for newline
@@ -248,7 +257,7 @@ export function AIEditView() {
 							<button
 								type="button"
 								onClick={handleCancel}
-								className="flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/80 hover:bg-white/[0.08]"
+								className="flex items-center gap-1 rounded-md border border-white/15 bg-white/[0.04] px-2 py-1 text-white/80 transition-colors hover:bg-white/[0.08]"
 							>
 								<HugeiconsIcon icon={StopIcon} className="size-3" />
 								Stop
@@ -258,10 +267,10 @@ export function AIEditView() {
 								type="submit"
 								disabled={!draft.trim()}
 								className={cn(
-									"flex items-center gap-1 rounded-md px-2 py-1 transition-colors",
+									"flex items-center gap-1 rounded-md px-2.5 py-1 text-[10.5px] font-medium transition-all",
 									draft.trim()
-										? "bg-white text-[#0a0a0c] hover:bg-white/90"
-										: "bg-white/10 text-white/30",
+										? "bg-white text-[#0a0a0c] hover:bg-white/90 hover:shadow-[0_0_20px_-4px_rgba(255,255,255,0.3)]"
+										: "cursor-not-allowed bg-white/[0.08] text-white/25",
 								)}
 							>
 								Send
@@ -345,95 +354,137 @@ function StatusBar({
 	onClearConversation: () => void;
 }) {
 	return (
-		<div className="flex flex-col gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] p-2 text-[11px] text-white/65">
-			<div className="flex items-center justify-between">
-				<span className="flex items-center gap-1.5 font-semibold text-white/85">
-					<HugeiconsIcon
-						icon={isStreaming ? SparklesIcon : MagicWand05Icon}
-						className={cn(
-							"size-3.5",
-							isStreaming ? "text-white animate-pulse" : "text-white/70",
-						)}
-					/>
-					AI Edit
-				</span>
-				<div className="flex items-center gap-1.5">
-					<span className="rounded-full border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wide text-white/55">
-						{isStreaming ? "live" : "ready"}
-					</span>
-					<button
-						type="button"
-						onClick={onClearConversation}
-						aria-label="Clear conversation"
-						title="Clear conversation"
-						className="rounded p-0.5 text-white/45 hover:bg-white/10 hover:text-white"
-					>
-						<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-					</button>
-				</div>
-			</div>
+		<div className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#0c0c10] to-[#08080c] p-0">
+			{/* Top accent line */}
+			<div
+				aria-hidden
+				className="absolute top-0 left-0 right-0 h-px"
+				style={{
+					background:
+						"linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+				}}
+			/>
+			{/* Ambient glow */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0"
+				style={{
+					background:
+						"radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,255,255,0.06), transparent 60%)",
+				}}
+			/>
 
-			{/* Provider chip — click to open the providers manager. Shows
-			   the active default provider; if none is configured, surfaces
-			   a one-tap "Set up AI provider" hint instead of a silent empty
-			   state. */}
-			<button
-				type="button"
-				onClick={onOpenProviders}
-				className={cn(
-					"group flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-left transition",
-					defaultProvider
-						? "border-white/10 bg-white/[0.04] hover:border-white/20 hover:bg-white/[0.06]"
-						: "border-amber-300/30 bg-amber-400/[0.06] hover:border-amber-300/45 hover:bg-amber-400/[0.1]",
-				)}
-				title="Manage AI providers"
-			>
-				<span className="flex min-w-0 items-center gap-1.5">
-					<HugeiconsIcon
-						icon={PlugIcon}
-						className={cn(
-							"size-3 shrink-0",
-							defaultProvider ? "text-white/55" : "text-amber-200",
-						)}
-					/>
-					{defaultProvider ? (
-						<>
-							<span className="truncate text-white/80">
-								{defaultProvider.name}
-							</span>
-							<span className="shrink-0 font-mono text-[10px] text-white/40">
-								{defaultProvider.model}
-							</span>
-						</>
-					) : (
-						<span className="text-amber-100">Set up AI provider</span>
+			<div className="relative flex flex-col gap-2 p-2.5">
+				{/* Header row */}
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="grid size-7 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04]">
+							<HugeiconsIcon
+								icon={isStreaming ? SparklesIcon : MagicWand05Icon}
+								className={cn(
+									"size-4",
+									isStreaming
+										? "text-white animate-pulse"
+										: "text-white/70",
+								)}
+							/>
+						</div>
+						<span className="font-serif text-[13px] text-white">AI Edit</span>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<span
+							className={cn(
+								"rounded-full border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider",
+								isStreaming
+									? "border-white/20 bg-white/[0.08] text-white/80"
+									: "border-white/[0.08] bg-white/[0.03] text-white/40",
+							)}
+						>
+							{isStreaming ? "live" : "ready"}
+						</span>
+						<button
+							type="button"
+							onClick={onClearConversation}
+							aria-label="Clear conversation"
+							title="Clear conversation"
+							className="grid size-5 place-items-center rounded text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+						>
+							<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+						</button>
+					</div>
+				</div>
+
+				{/* Provider chip */}
+				<button
+					type="button"
+					onClick={onOpenProviders}
+					className={cn(
+						"group flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left transition-all",
+						defaultProvider
+							? "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+							: "border-amber-300/25 bg-amber-400/[0.05] hover:border-amber-300/40 hover:bg-amber-400/[0.08]",
 					)}
-				</span>
-				<span className="shrink-0 text-[10px] text-white/45 group-hover:text-white/70">
-					Manage
-				</span>
-			</button>
-
-			<div className="flex items-center gap-1.5 text-white/55">
-				<HugeiconsIcon icon={SparklesIcon} className="size-3" />
-				<span>Learned from {recentCount} of your edits</span>
-			</div>
-			{referenceVideoName && styleProfile ? (
-				<div className="flex items-center justify-between gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-1 text-white/75">
+					title="Manage AI providers"
+				>
 					<span className="flex min-w-0 items-center gap-1.5">
-						<HugeiconsIcon icon={Video01Icon} className="size-3 shrink-0" />
-						<span className="truncate text-[11px]">{referenceVideoName}</span>
+						<HugeiconsIcon
+							icon={PlugIcon}
+							className={cn(
+								"size-3 shrink-0",
+								defaultProvider ? "text-white/50" : "text-amber-200",
+							)}
+						/>
+						{defaultProvider ? (
+							<>
+								<span className="truncate text-[11px] text-white/80">
+									{defaultProvider.name}
+								</span>
+								<span className="shrink-0 font-mono text-[9.5px] text-white/35">
+									{defaultProvider.model}
+								</span>
+							</>
+						) : (
+							<span className="text-[11px] text-amber-100">
+								Set up AI provider
+							</span>
+						)}
 					</span>
-					<button
-						type="button"
-						onClick={onClearReference}
-						className="rounded p-0.5 text-white/55 hover:bg-white/10 hover:text-white"
-						aria-label="Clear reference video"
-					>
-						<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-					</button>
+					<span className="shrink-0 text-[9.5px] text-white/35 transition-colors group-hover:text-white/60">
+						Manage
+					</span>
+				</button>
+
+				{/* Meta row: learned edits + reference video */}
+				<div className="flex flex-col gap-1.5">
+					{recentCount > 0 && (
+						<div className="flex items-center gap-1.5 text-[10px] text-white/40">
+							<HugeiconsIcon icon={SparklesIcon} className="size-2.5" />
+							<span>Learned from {recentCount} edits</span>
+						</div>
+					)}
+					{referenceVideoName && styleProfile ? (
+						<div className="flex items-center justify-between gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1">
+							<span className="flex min-w-0 items-center gap-1.5">
+								<HugeiconsIcon
+									icon={Video01Icon}
+									className="size-3 shrink-0 text-white/50"
+								/>
+								<span className="truncate text-[10.5px] text-white/70">
+									{referenceVideoName}
+								</span>
+							</span>
+							<button
+								type="button"
+								onClick={onClearReference}
+								className="grid size-4 place-items-center rounded text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+								aria-label="Clear reference video"
+							>
+								<HugeiconsIcon icon={Cancel01Icon} className="size-2.5" />
+							</button>
+						</div>
+					) : null}
 				</div>
-			) : null}
+			</div>
 		</div>
 	);
 }
@@ -455,16 +506,19 @@ function EmptyState({
 		[],
 	);
 	return (
-		<div className="flex flex-col gap-2 rounded-lg border border-dashed border-white/10 bg-white/[0.02] p-3 text-[11.5px] text-white/65">
-			<div className="flex items-center gap-1.5 text-white/85 font-semibold">
-				<HugeiconsIcon icon={SparklesIcon} className="size-3.5" />
-				Start a conversation
+		<div className="flex flex-col gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+			<div className="flex items-center gap-1.5">
+				<HugeiconsIcon icon={SparklesIcon} className="size-3.5 text-white/70" />
+				<span className="text-[12px] font-semibold text-white/85">
+					Start a conversation
+				</span>
 			</div>
-			<p className="leading-relaxed text-white/55">
+			<p className="text-[11px] leading-relaxed text-white/45">
 				Describe what you want in plain English. The AI can edit clips, change
-				effects, set the canvas, add motion graphics, or import media — and it
-				learns from how you usually edit
-				{recentCount > 0 ? ` (${recentCount} edits so far)` : ""}.
+				effects, set the canvas, add motion graphics, or import media
+				{recentCount > 0
+					? ` — and it has learned from ${recentCount} of your edits.`
+					: "."}
 			</p>
 			<div className="flex flex-col gap-1">
 				{suggestions.map((s) => (
@@ -472,7 +526,7 @@ function EmptyState({
 						key={s}
 						type="button"
 						onClick={() => onPick(s)}
-						className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1.5 text-left text-[11px] text-white/75 hover:border-white/20 hover:bg-white/[0.08]"
+						className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-left text-[10.5px] text-white/65 transition-all hover:border-white/15 hover:bg-white/[0.05] hover:text-white/85"
 					>
 						{s}
 					</button>
@@ -492,13 +546,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 			animate={{ opacity: 1, y: 0 }}
 			transition={{ duration: 0.2 }}
 			className={cn(
-				"flex flex-col gap-1.5 rounded-lg border p-2 text-[12px] leading-relaxed",
+				"flex flex-col gap-1.5 rounded-xl border p-2.5 text-[12px] leading-relaxed",
 				isUser
-					? "self-end max-w-[95%] border-white/12 bg-white/[0.07] text-white"
-					: "self-start max-w-[95%] border-white/10 bg-white/[0.03] text-white/90",
+					? "self-end max-w-[92%] border-white/[0.1] bg-white/[0.06] text-white"
+					: "self-start max-w-[92%] border-white/[0.06] bg-white/[0.02] text-white/90",
 			)}
 		>
-			<div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-white/45">
+			<div
+				className={cn(
+					"flex items-center gap-1 text-[9px] font-medium uppercase tracking-wider",
+					isUser ? "text-white/40" : "text-white/35",
+				)}
+			>
 				{isUser ? "You" : "AI"}
 			</div>
 			{message.content && (
@@ -507,30 +566,28 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 				</div>
 			)}
 			{message.toolCalls?.length ? (
-				<div className="flex flex-col gap-1 border-t border-white/10 pt-1.5 text-[10.5px] text-white/65">
+				<div className="flex flex-col gap-1 border-t border-white/[0.06] pt-1.5">
 					{message.toolCalls.map((tc) => {
-						// Use the tool name as the key. Tool calls from the
-						// same LLM response are guaranteed-unique by the
-						// model; if collisions happen, fall back to the
-						// args hash to keep React's reconciler happy.
 						const argsHash = tc.result?.message
 							? `${tc.name}-${tc.result.message}`
 							: `${tc.name}-${JSON.stringify(tc.args)}`;
 						return (
 							<div
 								key={argsHash}
-								className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-1"
+								className="flex items-center gap-1.5 rounded-md border border-white/[0.06] bg-white/[0.03] px-2 py-1"
 							>
 								<HugeiconsIcon
 									icon={tc.result?.ok ? MagicWand05Icon : Cancel01Icon}
 									className={cn(
 										"size-3",
-										tc.result?.ok ? "text-white" : "text-white/55",
+										tc.result?.ok ? "text-white/80" : "text-white/45",
 									)}
 								/>
-								<span className="font-mono text-white/85">{tc.name}</span>
+								<span className="font-mono text-[10px] text-white/75">
+									{tc.name}
+								</span>
 								{tc.result?.message ? (
-									<span className="truncate text-white/55">
+									<span className="truncate text-[10px] text-white/45">
 										— {tc.result.message}
 									</span>
 								) : null}

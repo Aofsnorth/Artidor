@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-ai-edit-panel-redesign",
+		date: "2026-06-25",
+		tag: "design",
+		title: "AI Edit panel redesign",
+		items: [
+			"StatusBar now uses the same glassmorphism language as the export and feedback dialogs: gradient background, top accent line, ambient glow, and a serif title.",
+			"Provider chip, reference video, and learned-edits meta are now cleanly separated into distinct rows with consistent spacing.",
+			"Quick action chips are more compact with consistent border/bg tokens.",
+			"Message bubbles use rounded-xl with softer borders; tool call rows are subtler.",
+			"Composer has a subtle gradient and the send button glows on hover.",
+		],
+	},
+	{
 		id: "2026-06-25-preview-freeze-during-render",
 		date: "2026-06-25",
 		tag: "fix",
