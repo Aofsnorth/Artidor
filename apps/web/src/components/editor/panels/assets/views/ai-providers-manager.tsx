@@ -135,53 +135,42 @@ export function AIProvidersManager({
 
 	const containerClass =
 		variant === "panel"
-			? "flex h-full flex-col gap-2 p-2"
+			? "flex h-full flex-col gap-2"
 			: "flex flex-col gap-2";
 
 	return (
 		<div className={containerClass}>
-			{/* Header — pr-12 + pt-8 leaves room for the dialog's built-in
-			    X close button (absolute top-6 right-6, size-5 = 20px).
-			    Without this the Add Provider button overlaps the X. */}
-			<div className="flex shrink-0 items-center justify-between gap-2 pr-12 pt-8">
-				<div className="flex items-center gap-2">
-					<HugeiconsIcon icon={PlugIcon} className="size-3.5 text-white/70" />
-					<span className="text-[11.5px] font-medium text-white/85">
-						AI Providers
-					</span>
-				</div>
-				<Button
-					size="sm"
-					variant="ghost"
-					className="h-7 px-2 text-xs"
-					onClick={handleAdd}
-				>
-					<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-					Add Provider
-				</Button>
-			</div>
-
 			{providers.length === 0 ? (
 				<EmptyState onAdd={handleAdd} />
 			) : (
-				<div className="scrollbar-hidden flex-1 space-y-2 overflow-y-auto">
-					{providers.map((provider) => (
-						<ProviderCard
-							key={provider.id}
-							provider={provider}
-							testing={testingId === provider.id}
-							onEdit={() => handleEdit(provider)}
-							onDelete={() => setConfirmDelete(provider)}
-							onTest={() => void handleTest(provider)}
-							onSetDefault={() => setDefault(provider.id)}
-							onToggleEnabled={() =>
-								updateProvider(provider.id, {
-									enabled: !provider.enabled,
-								})
-							}
-						/>
-					))}
-				</div>
+				<>
+					<div className="scrollbar-hidden flex-1 space-y-2 overflow-y-auto">
+						{providers.map((provider) => (
+							<ProviderCard
+								key={provider.id}
+								provider={provider}
+								testing={testingId === provider.id}
+								onEdit={() => handleEdit(provider)}
+								onDelete={() => setConfirmDelete(provider)}
+								onTest={() => void handleTest(provider)}
+								onSetDefault={() => setDefault(provider.id)}
+								onToggleEnabled={() =>
+									updateProvider(provider.id, {
+										enabled: !provider.enabled,
+									})
+								}
+							/>
+						))}
+					</div>
+					<button
+						type="button"
+						onClick={handleAdd}
+						className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/[0.1] bg-white/[0.02] text-[11.5px] font-medium text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.04] hover:text-white/85"
+					>
+						<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
+						Add Provider
+					</button>
+				</>
 			)}
 
 			<ProviderFormDialog
@@ -211,22 +200,25 @@ export function AIProvidersManager({
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
 	return (
-		<div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/10 bg-white/[0.015] p-6 text-center">
-			<div className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[0.03]">
+		<div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.015] p-8 text-center">
+			<div className="grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 				<HugeiconsIcon icon={PlugIcon} className="size-5 text-white/40" />
 			</div>
-			<div className="space-y-1">
-				<p className="text-sm font-medium text-white/80">No AI providers yet</p>
-				<p className="max-w-[280px] text-[11px] leading-relaxed text-white/45">
+			<div className="space-y-1.5">
+				<p className="text-[13px] font-medium text-white/80">No AI providers yet</p>
+				<p className="max-w-[300px] text-[11px] leading-relaxed text-white/40">
 					Add a provider to use AI features. OpenAI, Together, Groq, OpenRouter,
-					LM Studio, Ollama, and any other OpenAI-compatible endpoint work —
-					just paste the base URL and API key.
+					LM Studio, Ollama, and any other OpenAI-compatible endpoint work.
 				</p>
 			</div>
-			<Button size="sm" onClick={onAdd} className="mt-1">
+			<button
+				type="button"
+				onClick={onAdd}
+				className="mt-1 flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[11.5px] font-medium text-[#0a0a0c] transition hover:bg-white/90"
+			>
 				<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
 				Add your first provider
-			</Button>
+			</button>
 		</div>
 	);
 }
@@ -259,18 +251,19 @@ function ProviderCard({
 	return (
 		<div
 			className={cn(
-				"rounded-lg border p-2.5 transition",
+				"rounded-xl border transition",
 				provider.enabled
-					? "border-white/[0.12] bg-white/[0.03]"
+					? "border-white/[0.1] bg-white/[0.03]"
 					: "border-white/[0.06] bg-white/[0.015] opacity-60",
 			)}
 		>
-			<div className="flex items-start gap-2">
+			{/* Header row: icon + name + badges */}
+			<div className="flex items-start gap-2.5 p-3">
 				<div
 					className={cn(
-						"grid size-8 shrink-0 place-items-center rounded-md border",
+						"grid size-8 shrink-0 place-items-center rounded-lg border",
 						provider.enabled
-							? "border-white/15 bg-white/[0.06] text-white/80"
+							? "border-white/[0.1] bg-white/[0.05] text-white/80"
 							: "border-white/[0.06] bg-white/[0.02] text-white/40",
 					)}
 				>
@@ -280,7 +273,7 @@ function ProviderCard({
 					<div className="flex items-center gap-1.5">
 						<span
 							className={cn(
-								"truncate text-[12px] font-semibold",
+								"truncate text-[12.5px] font-semibold",
 								provider.enabled ? "text-white" : "text-white/70",
 							)}
 						>
@@ -289,87 +282,92 @@ function ProviderCard({
 						{provider.isDefault && (
 							<span
 								title="Default provider — used by AI Edit"
-								className="shrink-0 rounded border border-cyan-300/30 bg-cyan-400/10 px-1 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-100"
+								className="shrink-0 rounded border border-cyan-300/25 bg-cyan-400/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-200"
 							>
 								Default
 							</span>
 						)}
 						{provider.lastTestOk === true && (
-							<span title="Last test passed">
+							<span
+								title="Last test passed"
+								className="grid size-3.5 shrink-0 place-items-center"
+							>
 								<HugeiconsIcon
 									icon={CheckmarkCircle02Icon}
-									className="size-3 shrink-0 text-emerald-400"
+									className="size-3.5 text-emerald-400"
 								/>
 							</span>
 						)}
 						{provider.lastTestOk === false && (
-							<span title="Last test failed — click Edit to fix">
+							<span
+								title="Last test failed — click Edit to fix"
+								className="grid size-3.5 shrink-0 place-items-center"
+							>
 								<HugeiconsIcon
 									icon={AlertCircleIcon}
-									className="size-3 shrink-0 text-red-400"
+									className="size-3.5 text-red-400"
 								/>
 							</span>
 						)}
 					</div>
-					<div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px] text-white/50">
-						<span className="font-mono">{provider.model}</span>
-						<span>·</span>
+					<div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-white/45">
+						<span className="font-mono text-white/60">{provider.model}</span>
+						<span className="text-white/25">·</span>
 						<span className="truncate font-mono">{provider.baseUrl}</span>
-						<span>·</span>
-						<span className="text-white/40">{lastTestLabel}</span>
+					</div>
+					<div className="mt-0.5 text-[9.5px] text-white/35">
+						{lastTestLabel}
 					</div>
 				</div>
 			</div>
 
-			{/* Actions */}
-			<div className="mt-2 flex flex-wrap items-center justify-between gap-1">
-				<div className="flex items-center gap-1">
-					{!provider.isDefault && provider.enabled && (
-						<button
-							type="button"
-							onClick={onSetDefault}
-							className="flex h-7 items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 text-[10.5px] font-medium text-white/65 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-							title="Use this provider for AI Edit"
-						>
-							<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
-							Set default
-						</button>
+			{/* Action bar — separated by border, all actions in one row */}
+			<div className="flex items-center gap-1 border-t border-white/[0.06] px-2 py-1.5">
+				{!provider.isDefault && provider.enabled && (
+					<button
+						type="button"
+						onClick={onSetDefault}
+						className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+						title="Use this provider for AI Edit"
+					>
+						<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
+						Set default
+					</button>
+				)}
+				<button
+					type="button"
+					onClick={onTest}
+					disabled={testing}
+					className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-40"
+					title="Send a tiny test request to verify the connection"
+				>
+					{testing ? (
+						<HugeiconsIcon
+							icon={Loading02Icon}
+							className="size-3 animate-spin"
+						/>
+					) : (
+						<HugeiconsIcon icon={PlugIcon} className="size-3" />
 					)}
-					<button
-						type="button"
-						onClick={onTest}
-						disabled={testing}
-						className="flex h-7 items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 text-[10.5px] font-medium text-white/65 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-wait disabled:opacity-50"
-						title="Send a tiny test request to verify the connection"
-					>
-						{testing ? (
-							<HugeiconsIcon
-								icon={Loading02Icon}
-								className="size-3 animate-spin"
-							/>
-						) : (
-							<HugeiconsIcon icon={PlugIcon} className="size-3" />
-						)}
-						Test
-					</button>
-					<button
-						type="button"
-						onClick={onEdit}
-						className="flex h-7 items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 text-[10.5px] font-medium text-white/65 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-					>
-						<HugeiconsIcon icon={Edit01Icon} className="size-3" />
-						Edit
-					</button>
-				</div>
-				<div className="flex items-center gap-1">
+					Test
+				</button>
+				<button
+					type="button"
+					onClick={onEdit}
+					className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+				>
+					<HugeiconsIcon icon={Edit01Icon} className="size-3" />
+					Edit
+				</button>
+				<div className="ml-auto flex items-center gap-1">
 					<button
 						type="button"
 						onClick={onToggleEnabled}
 						className={cn(
-							"flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium transition",
+							"flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium transition",
 							provider.enabled
-								? "bg-white/[0.06] text-white/80 hover:bg-white/[0.12]"
-								: "bg-white/[0.03] text-white/50 hover:bg-white/[0.08] hover:text-white/80",
+								? "text-white/55 hover:bg-white/[0.06] hover:text-white"
+								: "text-white/40 hover:bg-white/[0.06] hover:text-white/80",
 						)}
 					>
 						{provider.enabled ? "Enabled" : "Disabled"}
@@ -377,7 +375,7 @@ function ProviderCard({
 					<button
 						type="button"
 						onClick={onDelete}
-						className="flex h-7 items-center gap-1 rounded-md bg-white/[0.03] px-2 text-[10.5px] font-medium text-red-300/80 transition hover:bg-red-500/10 hover:text-red-200"
+						className="grid size-6 place-items-center rounded-md text-white/40 transition hover:bg-red-500/10 hover:text-red-300"
 						title="Remove this provider"
 					>
 						<HugeiconsIcon icon={Delete02Icon} className="size-3" />
