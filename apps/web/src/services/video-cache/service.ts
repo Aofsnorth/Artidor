@@ -5,6 +5,11 @@ import {
 	CanvasSink,
 	type WrappedCanvas,
 } from "mediabunny";
+import {
+	buildGOPIndex,
+	findNearestKeyframe,
+	type GOPIndex,
+} from "./gop-index";
 
 /**
  * Maximum decoded frames to retain per video in the LRU frame cache.
@@ -57,6 +62,14 @@ interface VideoSinkData {
 	 * O(1) via `entries().next()`.
 	 */
 	frameCache: Map<number, WrappedCanvas>;
+	/**
+	 * GOP index: sorted keyframe timestamps. Built lazily on first seek
+	 * (or eagerly on import). Used by `seekToTime` to jump directly to
+	 * the nearest preceding keyframe instead of scanning packets.
+	 * Null while building or if the video has no keyframes.
+	 */
+	gopIndex: GOPIndex | null;
+	gopIndexPromise: Promise<void> | null;
 }
 
 /**
@@ -340,11 +353,51 @@ export class VideoCache {
 			}
 
 			sinkData.prefetchBuffer = [];
-			sinkData.iterator = sinkData.sink.canvases(time);
+
+			// Use GOP index to seek directly to the nearest keyframe,
+			// then iterate forward to the target time. This is O(log n)
+			// vs the old O(n) packet scan. For a 15-min video with 5s
+			// GOP, a jump from 1:00 to 13:00 goes from scanning ~180
+			// packets to binary-searching 180 keyframe timestamps.
+			//
+			// If the GOP index isn't ready yet (still building in the
+			// background), fall back to the old path — the first seek
+			// after import may be slow, but subsequent seeks will be
+			// fast once the index is available.
+			const gopIndex = await this.ensureGOPIndex({ sinkData });
+			const seekStartTime =
+				gopIndex && findNearestKeyframe(time, gopIndex);
+
+			// canvases(startTimestamp) starts iteration at the given
+			// time. When we have a GOP index, start from the keyframe
+			// (which is <= target time) so the decoder begins from a
+			// valid I-frame. Without the index, start from the target
+			// time directly (mediabunny handles keyframe finding
+			// internally, but less efficiently for long jumps).
+			sinkData.iterator = sinkData.sink.canvases(
+				seekStartTime ?? time,
+			);
 			sinkData.lastTime = time;
 
 			// Bail out if a newer seek has been requested
 			if (sinkData.seekGeneration !== generation) return null;
+
+			// If we started from a keyframe before the target time,
+			// iterate forward to the target frame. Otherwise the first
+			// frame from the iterator is the target.
+			if (seekStartTime !== null && seekStartTime < time) {
+				const frame = await this.iterateToTime({
+					sinkData,
+					targetTime: time,
+					generation,
+				});
+				if (sinkData.seekGeneration !== generation) return null;
+				if (frame) {
+					sinkData.currentFrame = frame;
+					return frame;
+				}
+				// Fall through to first-frame fetch if iteration failed.
+			}
 
 			// Fetch current frame
 			const { value: frame } = await sinkData.iterator.next();
@@ -488,12 +541,65 @@ export class VideoCache {
 				maxDim,
 				seekGeneration: 0,
 				frameCache: new Map(),
+				gopIndex: null,
+				gopIndexPromise: null,
 			});
+
+			// Build GOP index in the background — don't block sink init.
+			// The index is used to accelerate seeks; until it's ready,
+			// seeks fall back to the existing scan-based path.
+			this.startGOPIndexBuild({ mediaId, file });
 		} catch (error) {
 			input?.dispose();
 			console.error("Failed to initialize video sink:", mediaId, error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Build the GOP index in the background. Called once when the sink
+	 * is initialized. The index is stored on the sink data and used by
+	 * `seekToTime` to jump directly to the nearest keyframe.
+	 */
+	private startGOPIndexBuild({
+		mediaId,
+		file,
+	}: {
+		mediaId: string;
+		file: File;
+	}): void {
+		const sinkData = this.sinks.get(mediaId);
+		if (!sinkData || sinkData.gopIndexPromise) return;
+
+		sinkData.gopIndexPromise = buildGOPIndex({ file, mediaId })
+			.then((index) => {
+				const sd = this.sinks.get(mediaId);
+				if (sd) {
+					sd.gopIndex = index;
+					sd.gopIndexPromise = null;
+				}
+			})
+			.catch((err) => {
+				console.warn("GOP index build failed:", mediaId, err);
+				const sd = this.sinks.get(mediaId);
+				if (sd) sd.gopIndexPromise = null;
+			});
+	}
+
+	/**
+	 * Wait for the GOP index to be built if it's still building.
+	 * Returns the index or null if it's not ready / failed.
+	 */
+	private async ensureGOPIndex({
+		sinkData,
+	}: {
+		sinkData: VideoSinkData;
+	}): Promise<GOPIndex | null> {
+		if (sinkData.gopIndex) return sinkData.gopIndex;
+		if (sinkData.gopIndexPromise) {
+			await sinkData.gopIndexPromise;
+		}
+		return sinkData.gopIndex;
 	}
 
 	clearVideo({ mediaId }: { mediaId: string }): void {
