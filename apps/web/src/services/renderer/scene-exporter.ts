@@ -202,9 +202,11 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				if (!supported) audioCodec = "opus";
 			}
 
+			// Audio bitrate fixed at 128 kbps (AAC) / 64 kbps (Opus) —
+			// transparent for stereo, no need to scale with video quality.
 			audioSource = new AudioBufferSource({
 				codec: audioCodec,
-				bitrate: qualityMap[this.quality],
+				bitrate: audioCodec === "opus" ? 64000 : 128000,
 			});
 			output.addAudioTrack(audioSource);
 		}
