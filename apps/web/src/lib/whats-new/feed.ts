@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-preview-freeze-during-render",
+		date: "2026-06-25",
+		tag: "fix",
+		title: "Preview freezes during render instead of skipping frames",
+		items: [
+			"When a preview render was in-flight (e.g. seeking to a new frame), playback kept advancing while the visual stayed stale — the video appeared to 'jump' after the render finished.",
+			"Now playback automatically pauses when a render starts and resumes when it completes, so the video freezes on the current frame during rendering instead of advancing with a stale visual.",
+		],
+	},
+	{
 		id: "2026-06-25-scrub-drag-mode-dropdown",
 		date: "2026-06-25",
 		tag: "feature",

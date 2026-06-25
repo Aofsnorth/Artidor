@@ -126,11 +126,6 @@ export default function Editor() {
 
 function FeedbackPrompt() {
 	const [open, setOpen] = useState(false);
-	const [message, setMessage] = useState("");
-	const [rating, setRating] = useState(0);
-	const [category, setCategory] = useState<"bug" | "feature" | "praise" | "other">("other");
-	const [submitting, setSubmitting] = useState(false);
-	const [submitted, setSubmitted] = useState(false);
 
 	useEffect(() => {
 		if (sessionStorage.getItem("artidor-feedback-prompt-shown") === "true") {
@@ -145,26 +140,6 @@ function FeedbackPrompt() {
 		);
 		return () => window.clearTimeout(timeoutId);
 	}, []);
-
-	const handleSubmit = async () => {
-		if (!message.trim()) return;
-		setSubmitting(true);
-		try {
-			const res = await fetch("/api/feedback", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ message, rating: rating || undefined, category }),
-			});
-			if (res.ok) {
-				setSubmitted(true);
-				setTimeout(() => setOpen(false), 1500);
-			}
-		} catch {
-			// Silent fail — feedback is non-critical
-		} finally {
-			setSubmitting(false);
-		}
-	};
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
@@ -197,166 +172,59 @@ function FeedbackPrompt() {
 					}}
 				/>
 
-				{submitted ? (
-					<div className="relative flex flex-col items-center gap-4 px-8 py-12">
-						<div className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.06]">
-							<svg
-								viewBox="0 0 24 24"
-								className="size-6 text-white/80"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth={2.5}
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								role="img"
-								aria-label="Checkmark"
-							>
-								<title>Feedback submitted</title>
-								<path d="M20 6L9 17l-5-5" />
-							</svg>
+				<div className="relative">
+					{/* Header */}
+					<div className="flex items-center gap-3 px-6 pt-6 pb-4">
+						<div className="grid size-10 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+							<HugeiconsIcon
+								icon={SparklesIcon}
+								className="size-5 text-white/70"
+							/>
 						</div>
-						<div className="text-center">
-							<p className="font-serif text-lg text-white">Thank you</p>
-							<p className="mt-1 text-xs text-white/40">
-								Your feedback helps us build a better editor.
-							</p>
+						<div>
+							<DialogTitle className="font-serif text-base text-white">
+								How&apos;s the editor?
+							</DialogTitle>
+							<DialogDescription className="text-[0.7rem] text-white/40">
+								We&apos;d love to hear what you think.
+							</DialogDescription>
 						</div>
 					</div>
-				) : (
-					<div className="relative">
-						{/* Header */}
-						<div className="flex items-center gap-3 px-6 pt-6 pb-4">
-							<div className="grid size-10 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
-								<HugeiconsIcon
-									icon={SparklesIcon}
-									className="size-5 text-white/70"
-								/>
-							</div>
-							<div>
-								<DialogTitle className="font-serif text-base text-white">
-									How&apos;s the editor?
-								</DialogTitle>
-								<DialogDescription className="text-[0.7rem] text-white/40">
-									We read every piece of feedback.
-								</DialogDescription>
-							</div>
-						</div>
 
-						{/* Divider */}
-						<div className="mx-6 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+					{/* Divider */}
+					<div className="mx-6 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
-						{/* Body */}
-						<div className="flex flex-col gap-4 px-6 py-5">
-							{/* Category chips */}
-							<div className="flex flex-wrap gap-1.5">
-								{(["bug", "feature", "praise", "other"] as const).map((cat) => (
-									<button
-										key={cat}
-										type="button"
-										onClick={() => setCategory(cat)}
-										className={cn(
-											"rounded-full border px-3 py-1 text-[0.7rem] font-medium capitalize transition-all",
-											category === cat
-												? "border-white/20 bg-white/[0.1] text-white shadow-[0_0_20px_-5px_rgba(255,255,255,0.15)]"
-												: "border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/10 hover:text-white/60",
-										)}
-									>
-										{cat}
-									</button>
-								))}
-							</div>
-
-							{/* Rating stars */}
-							<div className="flex items-center gap-1">
-								{[1, 2, 3, 4, 5].map((star) => (
-									<button
-										key={star}
-										type="button"
-										onClick={() => setRating(star)}
-										className={cn(
-											"grid size-8 place-items-center rounded-lg transition-all",
-											star <= rating
-												? "text-amber-300"
-												: "text-white/15 hover:text-white/30",
-										)}
-										aria-label={`${star} star${star > 1 ? "s" : ""}`}
-									>
-										<svg
-											viewBox="0 0 24 24"
-											className={cn(
-												"size-5 transition-transform",
-												star <= rating && "scale-110",
-											)}
-											fill={star <= rating ? "currentColor" : "none"}
-											stroke="currentColor"
-											strokeWidth={1.5}
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											role="img"
-											aria-label={`${star} star${star > 1 ? "s" : ""}`}
-										>
-											<title>{`${star} star${star > 1 ? "s" : ""}`}</title>
-											<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-										</svg>
-									</button>
-								))}
-								{rating > 0 && (
-									<span className="ml-2 text-[0.65rem] font-medium uppercase tracking-wider text-white/30">
-										{["", "Poor", "Fair", "Good", "Great", "Excellent"][rating]}
-									</span>
-								)}
-							</div>
-
-							{/* Message textarea */}
-							<div className="relative">
-								<textarea
-									value={message}
-									onChange={(e) => setMessage(e.target.value)}
-									placeholder="Tell us what you think..."
-									rows={3}
-									className={cn(
-										"w-full resize-none rounded-xl border border-white/[0.08] bg-black/30 px-4 py-3 text-sm text-white outline-none transition-colors",
-										"placeholder:text-white/25 focus:border-white/20 focus:bg-black/40",
-									)}
-								/>
-								<span className="pointer-events-none absolute bottom-2 right-3 text-[0.6rem] text-white/20">
-									{message.length}/5000
-								</span>
-							</div>
-						</div>
-
-						{/* Footer */}
-						<div className="flex items-center justify-between border-t border-white/[0.06] px-6 py-4">
-							<button
-								type="button"
-								onClick={() => setOpen(false)}
-								className="text-[0.7rem] font-medium text-white/40 transition-colors hover:text-white/60"
-							>
-								Maybe later
-							</button>
-							<button
-								type="button"
-								onClick={handleSubmit}
-								disabled={!message.trim() || submitting}
-								className={cn(
-									"flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all",
-									!message.trim() || submitting
-										? "cursor-not-allowed border border-white/[0.06] bg-white/[0.02] text-white/30"
-										: "border border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.12] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
-								)}
-							>
-								{submitting ? (
-									<>
-										<div className="size-3 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
-										Sending...
-									</>
-								) : (
-									"Send feedback"
-								)}
-							</button>
-						</div>
+					{/* Body */}
+					<div className="px-6 py-5">
+						<p className="text-sm leading-relaxed text-white/60">
+							Your feedback helps us shape the future of Artidor. It only takes
+							a minute.
+						</p>
 					</div>
-				)}
+
+					{/* Footer */}
+					<div className="flex items-center justify-between border-t border-white/[0.06] px-6 py-4">
+						<button
+							type="button"
+							onClick={() => setOpen(false)}
+							className="text-[0.7rem] font-medium text-white/40 transition-colors hover:text-white/60"
+						>
+							Maybe later
+						</button>
+						<a
+							href="https://forms.gle/vxnmr1goxkLVAB3w9"
+							target="_blank"
+							rel="noreferrer"
+							onClick={() => setOpen(false)}
+							className={cn(
+								"flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.08] px-4 py-2 text-xs font-medium text-white transition-all",
+								"hover:bg-white/[0.12] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
+							)}
+						>
+							Open form
+						</a>
+					</div>
+				</div>
 			</DialogContent>
 		</Dialog>
 	);
