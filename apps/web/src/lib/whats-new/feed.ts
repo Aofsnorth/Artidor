@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-history-overlay-fix",
+		date: "2026-06-25",
+		tag: "fix",
+		title: "Export: history re-exports no longer show full-screen overlay",
+		items: [
+			"The large completion overlay now only appears once — after the first fresh export. Re-exporting from history shows a lightweight toast notification instead.",
+		],
+	},
+	{
 		id: "2026-06-25-camera-switcher-transitions",
 		date: "2026-06-25",
 		tag: "feature",
