@@ -9,8 +9,8 @@
 - [x] Run `bun run lint:web` — clean
 - [x] Run `bunx tsc --noEmit` (in `apps/web`) — clean
 - [x] Run `bun run test` — 203 pass, 0 fail
-- [ ] Commit the uncommitted dB + snap changes
-- [ ] Push branch and open PR (RULES.md #10 / PERMISSIONS.md)
+- [x] Commit the uncommitted dB + snap changes
+- [x] Push branch and open PR (RULES.md #10 / PERMISSIONS.md)
 - [ ] Request review (CODEOWNERS)
 - [ ] Run `bun run build:web` post-commit
 - [ ] Run `cargo check` + `cargo test` (rust/ untouched but SOP gate)

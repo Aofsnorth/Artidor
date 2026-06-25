@@ -20,9 +20,10 @@
 
 ## Remaining (not in this feature)
 
-- [ ] Commit all changes on `feat/snap-external-drop-and-audio-db-fix`
-- [ ] Push branch
-- [ ] Open PR
+- [x] Commit all changes on `feat/snap-external-drop-and-audio-db-fix`
+- [x] Push branch
+- [ ] Open PR (gh not authenticated — user can open via:
+      https://github.com/Aofsnorth/Artidor/pull/new/feat/snap-external-drop-and-audio-db-fix)
 - [ ] Manual QA with real large video files (see QA.md checklist)
 - [ ] Consider proxy/preview-file system for very large files
       (separate feature, requires roadmap approval)
