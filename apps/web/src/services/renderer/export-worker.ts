@@ -247,6 +247,19 @@ async function handleExport(msg: WorkerInMessage) {
 	const videoSource = new CanvasSource(compositorCanvas as OffscreenCanvas, {
 		codec: videoCodec,
 		bitrate: EXPORT_QUALITY_MAP[quality],
+		// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
+		// This is the single biggest performance lever — hardware encoding
+		// is 10-100x faster than software encoding.
+		hardwareAcceleration: mode === "cpu" ? "prefer-software" : "prefer-hardware",
+		// Realtime mode for turbo — encoder prioritizes throughput over
+		// quality. For auto/gpu/cpu, keep 'quality' for best output.
+		latencyMode: mode === "turbo" ? "realtime" : "quality",
+		// Log the actual encoder config so we can verify hardware accel.
+		onEncoderConfig: (config) => {
+			console.info(
+				`[export-worker] encoder config: hardwareAcceleration=${config.hardwareAcceleration}, codec=${config.codec}`,
+			);
+		},
 	});
 	output.addVideoTrack(videoSource, { frameRate: fpsFloat });
 
