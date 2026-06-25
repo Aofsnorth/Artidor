@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-preview-perf-loading-and-track-slider-ui",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Adaptive preview quality + loading indicator + track slider UI",
+		items: [
+			"Preview quality now adapts to actual render performance in Auto mode — if frames are consistently slower than the frame budget, the render scale drops one tier and recovers when performance improves. Manual tiers (High/Medium/Low) are unchanged.",
+			"A subtle loading overlay appears on the preview canvas when a frame render takes longer than 80 ms, so you see why the preview is momentarily frozen instead of perceiving a hang. The overlay never blocks interaction, playback, or audio.",
+			"Track volume slider is now a 0–100% percentage (was decibels). A speaker icon next to the slider toggles track mute. The opacity slider gets a transparency icon that toggles opacity 0/100. Both sliders are now aligned and start further left for a longer slider range.",
+		],
+	},
+	{
 		id: "2026-06-25-timeline-toolbar-no-vertical-scroll",
 		date: "2026-06-25",
 		tag: "fix",

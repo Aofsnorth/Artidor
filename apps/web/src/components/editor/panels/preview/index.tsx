@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useDeepCompareEffect from "use-deep-compare-effect";
 import { useEditor } from "@/hooks/use-editor";
 import { useRafLoop } from "@/hooks/use-raf-loop";
@@ -29,11 +29,14 @@ import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { usePreviewStore } from "@/stores/preview-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
+	resolveAdaptiveScale,
 	resolveDecodeMaxDim,
 	resolvePreviewScale,
 } from "@/lib/perf/preview-quality";
+import { RenderPerfTracker } from "@/lib/perf/render-perf-tracker";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
+import { PreviewLoadingOverlay } from "./preview-loading-overlay";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -128,6 +131,9 @@ function PreviewCanvas({
 	const renderingRef = useRef(false);
 	const pendingRenderRef = useRef(false);
 	const renderTokenRef = useRef(0);
+	const renderStartRef = useRef(0);
+	const perfTrackerRef = useRef(new RenderPerfTracker());
+	const [isLoading, setIsLoading] = useState(false);
 	const previewQuality = useSettingsStore((s) => s.previewQuality);
 	const gpuDegraded = useEditor((e) => e.renderer.isDegraded);
 	const { width: nativeWidth, height: nativeHeight } = usePreviewSize();
@@ -189,10 +195,16 @@ function PreviewCanvas({
 		// scales coherently. Decode cap follows the *idle* tier so play/pause
 		// never rebuilds the video decoder.
 		const isPlaying = editor.playback.getIsPlaying();
-		const scale = resolvePreviewScale({
+		const fps =
+			renderer.fps.numerator / renderer.fps.denominator || 30;
+		const frameBudgetMs = 1000 / fps;
+		const avgRenderMs = perfTrackerRef.current.getAverageRenderMs();
+		const scale = resolveAdaptiveScale({
 			quality: previewQuality,
 			isPlaying,
 			gpuDegraded,
+			avgRenderMs: avgRenderMs || undefined,
+			frameBudgetMs,
 		});
 		const idleScale = resolvePreviewScale({
 			quality: previewQuality,
@@ -222,7 +234,11 @@ function PreviewCanvas({
 		) {
 			renderingRef.current = true;
 			pendingRenderRef.current = false;
+			renderStartRef.current = performance.now();
 			const token = ++renderTokenRef.current;
+			// Show the loading overlay only if the render exceeds 80 ms
+			// (5 frames at 60 fps). Checked on each rAF tick via the
+			// separate effect below so we don't block the render promise.
 			renderer
 				.renderToCanvas({
 					node: renderTree,
@@ -242,7 +258,10 @@ function PreviewCanvas({
 					// retries instead of leaving the preview permanently stuck.
 				})
 				.finally(() => {
+					const duration = performance.now() - renderStartRef.current;
+					perfTrackerRef.current.recordRender(duration);
 					renderingRef.current = false;
+					setIsLoading(false);
 				});
 		}
 	}, [
@@ -257,6 +276,29 @@ function PreviewCanvas({
 	]);
 
 	useRafLoop(render);
+
+	// Loading overlay threshold check: while a render is in flight, check
+	// each rAF tick whether it has exceeded the 80 ms threshold. This is a
+	// separate lightweight rAF so it doesn't interfere with the render
+	// loop's scheduling. The overlay fades in via CSS transition so
+	// sub-threshold renders never flash it.
+	useEffect(() => {
+		let rafId: ReturnType<typeof requestAnimationFrame> | null = null;
+		const LOADING_THRESHOLD_MS = 80;
+		const check = () => {
+			if (
+				renderingRef.current &&
+				performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
+			) {
+				setIsLoading(true);
+			}
+			rafId = requestAnimationFrame(check);
+		};
+		rafId = requestAnimationFrame(check);
+		return () => {
+			if (rafId !== null) cancelAnimationFrame(rafId);
+		};
+	}, []);
 
 	// Register the live canvas with the global scope sampler so the
 	// Scopes sub-tab in the Advanced card can read pixels from it.
@@ -400,6 +442,7 @@ function PreviewCanvas({
 												: activeProject?.settings.background.color,
 									}}
 								/>
+								<PreviewLoadingOverlay isVisible={isLoading} />
 								<GuideOverlay />
 								<MediaAssetPreview />
 								<PreviewInteractionOverlay />
