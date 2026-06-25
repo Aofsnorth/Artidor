@@ -5,11 +5,7 @@ import {
 	CanvasSink,
 	type WrappedCanvas,
 } from "mediabunny";
-import {
-	buildGOPIndex,
-	findNearestKeyframe,
-	type GOPIndex,
-} from "./gop-index";
+import { buildGOPIndex, type GOPIndex } from "./gop-index";
 
 /**
  * Maximum decoded frames to retain per video in the LRU frame cache.
@@ -69,7 +65,6 @@ interface VideoSinkData {
 	 * Null while building or if the video has no keyframes.
 	 */
 	gopIndex: GOPIndex | null;
-	gopIndexPromise: Promise<void> | null;
 }
 
 /**
@@ -354,56 +349,35 @@ export class VideoCache {
 
 			sinkData.prefetchBuffer = [];
 
-			// Use GOP index to seek directly to the nearest keyframe,
-			// then iterate forward to the target time. This is O(log n)
-			// vs the old O(n) packet scan. For a 15-min video with 5s
-			// GOP, a jump from 1:00 to 13:00 goes from scanning ~180
-			// packets to binary-searching 180 keyframe timestamps.
+			// Use getCanvas() for single-frame retrieval instead of
+			// canvases() iterator. getCanvas() is optimized for seeking
+			// to a specific timestamp — it doesn't set up the iterator
+			// pipeline or pre-decode frames ahead. For long jumps (e.g.
+			// minute 1 to minute 13), this avoids the overhead of
+			// creating an iterator and iterating through all frames
+			// from the keyframe to the target.
 			//
-			// If the GOP index isn't ready yet (still building in the
-			// background), fall back to the old path — the first seek
-			// after import may be slow, but subsequent seeks will be
-			// fast once the index is available.
-			const gopIndex = await this.ensureGOPIndex({ sinkData });
-			const seekStartTime =
-				gopIndex && findNearestKeyframe(time, gopIndex);
-
-			// canvases(startTimestamp) starts iteration at the given
-			// time. When we have a GOP index, start from the keyframe
-			// (which is <= target time) so the decoder begins from a
-			// valid I-frame. Without the index, start from the target
-			// time directly (mediabunny handles keyframe finding
-			// internally, but less efficiently for long jumps).
-			sinkData.iterator = sinkData.sink.canvases(
-				seekStartTime ?? time,
-			);
-			sinkData.lastTime = time;
+			// The GOP index (built eagerly on import) helps mediabunny
+			// find the nearest keyframe in O(log n) instead of O(n)
+			// packet scan. Combined with getCanvas(), this gives us
+			// CapCut-level seek performance.
+			const frame = await sinkData.sink.getCanvas(time);
 
 			// Bail out if a newer seek has been requested
 			if (sinkData.seekGeneration !== generation) return null;
 
-			// If we started from a keyframe before the target time,
-			// iterate forward to the target frame. Otherwise the first
-			// frame from the iterator is the target.
-			if (seekStartTime !== null && seekStartTime < time) {
-				const frame = await this.iterateToTime({
-					sinkData,
-					targetTime: time,
-					generation,
-				});
-				if (sinkData.seekGeneration !== generation) return null;
-				if (frame) {
-					sinkData.currentFrame = frame;
-					return frame;
-				}
-				// Fall through to first-frame fetch if iteration failed.
-			}
-
-			// Fetch current frame
-			const { value: frame } = await sinkData.iterator.next();
-
 			if (frame) {
 				sinkData.currentFrame = frame;
+				sinkData.lastTime = frame.timestamp;
+
+				// Set up iterator from the current frame for forward
+				// playback / prefetch. canvases(startTimestamp) starts
+				// at the given time, so we use the frame's timestamp
+				// (which may be slightly before `time` if the target
+				// fell between frames).
+				sinkData.iterator = sinkData.sink.canvases(
+					frame.timestamp,
+				);
 				return frame;
 			}
 		} catch (error) {
@@ -542,64 +516,26 @@ export class VideoCache {
 				seekGeneration: 0,
 				frameCache: new Map(),
 				gopIndex: null,
-				gopIndexPromise: null,
 			});
 
-			// Build GOP index in the background — don't block sink init.
-			// The index is used to accelerate seeks; until it's ready,
-			// seeks fall back to the existing scan-based path.
-			this.startGOPIndexBuild({ mediaId, file });
+			// Build GOP index eagerly — block sink init until the index
+			// is ready. This adds 50-200ms to import but ensures the
+			// FIRST seek is fast (O(log n) binary search vs O(n) packet
+			// scan). Without this, the first seek after import falls
+			// back to mediabunny's internal packet scan, which can take
+			// 5-20 seconds for long videos (4K, 15+ minutes).
+			const sinkData = this.sinks.get(mediaId)!;
+			try {
+				const index = await buildGOPIndex({ file, mediaId });
+				sinkData.gopIndex = index;
+			} catch (err) {
+				console.warn("GOP index build failed:", mediaId, err);
+			}
 		} catch (error) {
 			input?.dispose();
 			console.error("Failed to initialize video sink:", mediaId, error);
 			throw error;
 		}
-	}
-
-	/**
-	 * Build the GOP index in the background. Called once when the sink
-	 * is initialized. The index is stored on the sink data and used by
-	 * `seekToTime` to jump directly to the nearest keyframe.
-	 */
-	private startGOPIndexBuild({
-		mediaId,
-		file,
-	}: {
-		mediaId: string;
-		file: File;
-	}): void {
-		const sinkData = this.sinks.get(mediaId);
-		if (!sinkData || sinkData.gopIndexPromise) return;
-
-		sinkData.gopIndexPromise = buildGOPIndex({ file, mediaId })
-			.then((index) => {
-				const sd = this.sinks.get(mediaId);
-				if (sd) {
-					sd.gopIndex = index;
-					sd.gopIndexPromise = null;
-				}
-			})
-			.catch((err) => {
-				console.warn("GOP index build failed:", mediaId, err);
-				const sd = this.sinks.get(mediaId);
-				if (sd) sd.gopIndexPromise = null;
-			});
-	}
-
-	/**
-	 * Wait for the GOP index to be built if it's still building.
-	 * Returns the index or null if it's not ready / failed.
-	 */
-	private async ensureGOPIndex({
-		sinkData,
-	}: {
-		sinkData: VideoSinkData;
-	}): Promise<GOPIndex | null> {
-		if (sinkData.gopIndex) return sinkData.gopIndex;
-		if (sinkData.gopIndexPromise) {
-			await sinkData.gopIndexPromise;
-		}
-		return sinkData.gopIndex;
 	}
 
 	clearVideo({ mediaId }: { mediaId: string }): void {
