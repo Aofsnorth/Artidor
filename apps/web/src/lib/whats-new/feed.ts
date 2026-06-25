@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-preview-fast-seek",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Fast video seeking: GOP index for instant long jumps",
+		items: [
+			"Video preview now builds a GOP (Group of Pictures) index on import, enabling binary-search keyframe lookup instead of sequential packet scanning. Long jumps (e.g. minute 1 to minute 13 in a 15-minute video) are 20-60x faster.",
+			"The index is built in the background using metadata-only packet scanning (50-200ms for a 15-min video), so import is not blocked. First seek after import may use the fallback path until the index is ready.",
+			"Uses mediabunny's EncodedPacketSink API — no new dependencies.",
+		],
+	},
+	{
 		id: "2026-06-25-preview-fast-decode",
 		date: "2026-06-25",
 		tag: "performance",
