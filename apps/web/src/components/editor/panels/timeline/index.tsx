@@ -645,21 +645,8 @@ export function Timeline() {
 						containerRef={tracksContainerRef}
 						isActive={selectionBox?.isActive || false}
 					/>
-					<DragLine
-						dropTarget={dropTarget}
-						tracks={tracks}
-						isVisible={isDragOver && !dropTarget?.targetElement}
-						headerHeight={timelineHeaderHeight}
-						dragElementType={dragElementType}
-					/>
-					<DragLine
-						dropTarget={dragDropTarget}
-						tracks={tracks}
-						isVisible={dragState.isDragging}
-						headerHeight={timelineHeaderHeight}
-					/>
 
-					{dragState.isDragging && tracksContainerRef.current && (
+					{dragState.dragElementIds.length > 0 && (
 						<DragGhost
 							tracks={tracks}
 							dragState={dragState}
@@ -767,6 +754,19 @@ export function Timeline() {
 										dropTarget={dropTarget}
 									/>
 								)}
+								<DragLine
+									dropTarget={dropTarget}
+									tracks={tracks}
+									isVisible={isDragOver && !dropTarget?.targetElement}
+									headerHeight={0}
+									dragElementType={dragElementType}
+								/>
+								<DragLine
+									dropTarget={dragDropTarget}
+									tracks={tracks}
+									isVisible={dragState.isDragging}
+									headerHeight={0}
+								/>
 							</div>
 							<TimelineGutter
 								onMouseDown={(event) => {
@@ -1863,10 +1863,10 @@ function DragGhost({
 			ghosts.push(
 				<div
 					key={element.id}
-					className={`pointer-events-none absolute rounded-lg shadow-[0_4px_24px_rgba(34,211,238,0.15)] backdrop-blur-sm ${
+					className={`pointer-events-none absolute rounded-lg shadow-[0_4px_24px_rgba(255,255,255,0.15)] backdrop-blur-sm ${
 						isHd
-							? "border border-cyan-400/50 bg-[#161618]/90"
-							: "border border-cyan-500/60 bg-cyan-500/10"
+							? "border border-white/50 bg-[#161618]/90"
+							: "border border-white/60 bg-white/10"
 					}`}
 					style={{
 						top: `${top}px`,
@@ -1878,7 +1878,7 @@ function DragGhost({
 				>
 					<div className="flex h-full items-center gap-1.5 px-2">
 						{isHd && (
-							<div className="shrink-0 rounded bg-cyan-500/20 px-1 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider text-cyan-300">
+							<div className="shrink-0 rounded bg-white/20 px-1 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider text-white">
 								{element.type}
 							</div>
 						)}
