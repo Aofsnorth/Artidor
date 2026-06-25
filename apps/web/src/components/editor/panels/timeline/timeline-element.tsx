@@ -1667,6 +1667,23 @@ function TextElementContent({
 	);
 }
 
+function NullLayerContent({
+	element,
+}: {
+	element: Extract<TimelineElementType, { type: "text" }>;
+}) {
+	return (
+		<div className="flex size-full items-center justify-start gap-1.5 pl-2">
+			<div className="flex size-4 shrink-0 items-center justify-center rounded border border-dashed border-white/40">
+				<div className="size-1.5 rounded-full bg-white/50" />
+			</div>
+			<span className="truncate text-xs text-white/70 font-medium">
+				{getElementDisplayName({ element })}
+			</span>
+		</div>
+	);
+}
+
 function CameraElementContent({
 	element,
 }: {
@@ -2230,6 +2247,10 @@ function MediaElementHeader({
 }
 
 function ElementContent({ element, track, zoomLevel }: ElementContentProps) {
+	// Null layers are text elements with nullLayer flag — render as null
+	if (element.type === "text" && (element as { nullLayer?: boolean }).nullLayer) {
+		return <NullLayerContent element={element} />;
+	}
 	switch (element.type) {
 		case "text":
 			return <TextElementContent element={element} />;
