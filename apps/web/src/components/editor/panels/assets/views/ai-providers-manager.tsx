@@ -140,8 +140,10 @@ export function AIProvidersManager({
 
 	return (
 		<div className={containerClass}>
-			{/* Header — pr-10 leaves room for the dialog's built-in X close button */}
-			<div className="flex shrink-0 items-center justify-between gap-2 pr-10 pt-1">
+			{/* Header — pr-12 + pt-8 leaves room for the dialog's built-in
+			    X close button (absolute top-6 right-6, size-5 = 20px).
+			    Without this the Add Provider button overlaps the X. */}
+			<div className="flex shrink-0 items-center justify-between gap-2 pr-12 pt-8">
 				<div className="flex items-center gap-2">
 					<HugeiconsIcon icon={PlugIcon} className="size-3.5 text-white/70" />
 					<span className="text-[11.5px] font-medium text-white/85">
