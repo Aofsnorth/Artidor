@@ -23,22 +23,18 @@ import {
 	BufferTarget,
 	CanvasSource,
 	AudioBufferSource,
-	QUALITY_LOW,
-	QUALITY_MEDIUM,
-	QUALITY_HIGH,
-	QUALITY_VERY_HIGH,
 } from "mediabunny";
 import { CanvasRenderer } from "./canvas-renderer";
 import { deserializeSceneTree } from "./scene-deserializer";
 import type { SerializedNode } from "./scene-serializer";
-
-// ── Quality map ──────────────────────────────────────────────────────
-const qualityMap = {
-	low: QUALITY_LOW,
-	medium: QUALITY_MEDIUM,
-	high: QUALITY_HIGH,
-	very_high: QUALITY_VERY_HIGH,
-};
+import {
+	EXPORT_QUALITY_MAP,
+	audioBitrateFor,
+	negotiateAudioCodec,
+	negotiateVideoCodec,
+	type ExportAudioCodec,
+	type ExportVideoCodec,
+} from "./export-codec";
 
 // ── Message types ────────────────────────────────────────────────────
 type WorkerInMessage = {
@@ -53,6 +49,30 @@ type WorkerInMessage = {
 	format: ExportFormat;
 	quality: ExportQuality;
 	shouldIncludeAudio: boolean;
+	/**
+	 * Optional inclusive-start frame index for *segment* exports (parallel
+	 * pipeline). Defaults to 0 — the start of the timeline.
+	 */
+	startFrame?: number;
+	/**
+	 * Optional exclusive-end frame index for segment exports. Defaults to the
+	 * full frame count derived from the scene duration.
+	 */
+	endFrame?: number;
+	/**
+	 * When true, the worker encodes video only and skips audio entirely. The
+	 * parallel pipeline uses this so audio is muxed once during concatenation
+	 * rather than duplicated across every segment.
+	 */
+	videoOnly?: boolean;
+	/**
+	 * Pinned video codec. When provided (parallel pipeline), the worker uses it
+	 * verbatim instead of negotiating, guaranteeing every segment shares a
+	 * bitstream-compatible codec so they can be stitched without re-encoding.
+	 */
+	videoCodec?: ExportVideoCodec;
+	/** Pinned audio codec (parallel single-worker-with-audio case). */
+	audioCodec?: ExportAudioCodec;
 };
 
 type WorkerOutMessage =
@@ -75,7 +95,10 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Unknown worker error";
-		self.postMessage({ type: "error", error: message } satisfies WorkerOutMessage);
+		self.postMessage({
+			type: "error",
+			error: message,
+		} satisfies WorkerOutMessage);
 	}
 };
 
@@ -105,6 +128,7 @@ async function handleExport(msg: WorkerInMessage) {
 		format,
 		quality,
 		shouldIncludeAudio,
+		videoOnly = false,
 	} = msg;
 
 	// ── 1. Initialize WASM GPU + compositor in the worker ──
@@ -131,7 +155,13 @@ async function handleExport(msg: WorkerInMessage) {
 	const durationTicks = Math.round(
 		(rootNode.params as { duration?: number }).duration ?? 0,
 	);
-	const frameCount = Math.floor(durationTicks / ticksPerFrame);
+	const totalFrameCount = Math.floor(durationTicks / ticksPerFrame);
+
+	// Frame range for this (possibly segmented) export. The non-segmented path
+	// passes neither bound, so this is the full [0, totalFrameCount) range.
+	const startFrame = Math.max(0, msg.startFrame ?? 0);
+	const endFrame = Math.min(totalFrameCount, msg.endFrame ?? totalFrameCount);
+	const segmentFrameCount = Math.max(0, endFrame - startFrame);
 
 	const outputFormat =
 		format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
@@ -141,78 +171,40 @@ async function handleExport(msg: WorkerInMessage) {
 		target: new BufferTarget(),
 	});
 
-	// Codec negotiation: AV1 → VP9/AVC, or HEVC → AVC
-	let videoCodec: "avc" | "vp9" | "hevc" | "av1" =
-		format === "webm"
-			? "vp9"
-			: format === "hevc"
-				? "hevc"
-				: format === "av1"
-					? "av1"
-					: "avc";
-
-	if (
-		(videoCodec === "hevc" || videoCodec === "av1") &&
-		typeof VideoEncoder !== "undefined"
-	) {
-		try {
-			const codecString =
-				videoCodec === "av1" ? "av01.0.16M.08" : "hev1.1.6.L93.B0";
-			const bitrate = Math.max(
-				1,
-				Math.floor(Number(qualityMap[quality])),
-			);
-			const { supported } = await VideoEncoder.isConfigSupported({
-				codec: codecString,
-				width,
-				height,
-				bitrate,
-				framerate: fpsFloat,
-			});
-			if (!supported) {
-				videoCodec = format === "webm" ? "vp9" : "avc";
-			}
-		} catch {
-			videoCodec = format === "webm" ? "vp9" : "avc";
-		}
-	}
+	// Use the pinned codec when provided (parallel pipeline — every segment must
+	// share an identical codec to stitch losslessly), else negotiate.
+	const videoCodec: ExportVideoCodec =
+		msg.videoCodec ??
+		(await negotiateVideoCodec({ format, quality, width, height, fpsFloat }));
 
 	// The compositor canvas is now an OffscreenCanvas
 	const compositorCanvas = wasmCompositor.getCanvas();
 	const videoSource = new CanvasSource(compositorCanvas as OffscreenCanvas, {
 		codec: videoCodec,
-		bitrate: qualityMap[quality],
+		bitrate: EXPORT_QUALITY_MAP[quality],
 	});
 	output.addVideoTrack(videoSource, { frameRate: fpsFloat });
 
 	let audioSource: AudioBufferSource | null = null;
 	const audioBuffer: AudioBuffer | null = audioBufferTransfer;
 
-	if (shouldIncludeAudio && audioBuffer) {
-		let audioCodec: "aac" | "opus" = format === "webm" ? "opus" : "aac";
-
-		if (audioCodec === "aac" && typeof AudioEncoder !== "undefined") {
-			try {
-				const { supported } = await AudioEncoder.isConfigSupported({
-					codec: "mp4a.40.2",
-					sampleRate: audioBuffer.sampleRate,
-					numberOfChannels: audioBuffer.numberOfChannels,
-					bitrate: 192000,
-				});
-				if (!supported) audioCodec = "opus";
-			} catch {
-				audioCodec = "opus";
-			}
-		}
+	// Segment workers (videoOnly) skip audio — it is muxed once during
+	// concatenation so it is never encoded redundantly per segment.
+	if (!videoOnly && shouldIncludeAudio && audioBuffer) {
+		const audioCodec: ExportAudioCodec =
+			msg.audioCodec ??
+			(await negotiateAudioCodec({
+				format,
+				sampleRate: audioBuffer.sampleRate,
+				numberOfChannels: audioBuffer.numberOfChannels,
+			}));
 
 		// Audio bitrate is fixed at 128 kbps (AAC) / 64 kbps (Opus) —
 		// these are transparent for stereo music/speech and don't need
-		// to scale with the video quality factor. Using QUALITY_HIGH
-		// (factor 2.0) for audio was wasteful (256 kbps AAC for stereo
-		// is overkill) and contributed to file-size bloat.
+		// to scale with the video quality factor.
 		audioSource = new AudioBufferSource({
 			codec: audioCodec,
-			bitrate: audioCodec === "opus" ? 64000 : 128000,
+			bitrate: audioBitrateFor(audioCodec),
 		});
 		output.addAudioTrack(audioSource);
 	}
@@ -228,8 +220,9 @@ async function handleExport(msg: WorkerInMessage) {
 	// ── 5. Render loop ──
 	let pendingEncode: Promise<void> | null = null;
 	const frameDuration = 1 / fpsFloat;
+	const progressDenominator = Math.max(1, segmentFrameCount);
 
-	for (let i = 0; i < frameCount; i++) {
+	for (let i = startFrame; i < endFrame; i++) {
 		if (isCancelled) {
 			if (pendingEncode) await pendingEncode.catch(() => {});
 			await output.cancel();
@@ -237,8 +230,15 @@ async function handleExport(msg: WorkerInMessage) {
 			return;
 		}
 
-		const timeTicks = i * ticksPerFrame;
-		const timeSeconds = mediaTimeToSeconds({ time: timeTicks });
+		// The scene is composited at the *global* timeline time so the rendered
+		// pixels are correct, but the frame is encoded at a segment-*local*
+		// (0-based) timestamp. Each segment is therefore a standalone clip; the
+		// concatenator offsets it back to its global position. For the
+		// non-segmented path startFrame is 0, so local == global as before.
+		const globalTimeTicks = i * ticksPerFrame;
+		const localTimeSeconds = mediaTimeToSeconds({
+			time: (i - startFrame) * ticksPerFrame,
+		});
 
 		// Backpressure: wait for previous frame's encoder to be ready
 		if (pendingEncode) {
@@ -246,15 +246,15 @@ async function handleExport(msg: WorkerInMessage) {
 		}
 
 		// Composite frame
-		await renderer.render({ node: rootNode, time: timeTicks });
+		await renderer.render({ node: rootNode, time: globalTimeTicks });
 
 		// Snapshot canvas → VideoFrame → encoder
-		pendingEncode = videoSource.add(timeSeconds, frameDuration);
+		pendingEncode = videoSource.add(localTimeSeconds, frameDuration);
 
-		// Report progress
+		// Report progress (relative to this segment's own frame range)
 		self.postMessage({
 			type: "progress",
-			progress: i / frameCount,
+			progress: (i - startFrame) / progressDenominator,
 		} satisfies WorkerOutMessage);
 	}
 
@@ -284,8 +284,7 @@ async function handleExport(msg: WorkerInMessage) {
 	}
 
 	// Transfer the buffer back to main thread
-	self.postMessage(
-		{ type: "complete", buffer } satisfies WorkerOutMessage,
-		{ transfer: [buffer] },
-	);
+	self.postMessage({ type: "complete", buffer } satisfies WorkerOutMessage, {
+		transfer: [buffer],
+	});
 }

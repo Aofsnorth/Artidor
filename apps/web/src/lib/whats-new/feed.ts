@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-faster-export-and-preview",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Much faster exports and snappier preview",
+		items: [
+			"Export now renders and encodes the timeline across multiple CPU cores in parallel, then stitches the pieces back together — typically several times faster on multi-core machines for longer videos.",
+			"This is lossless: every segment uses the exact same resolution, codec, and bitrate, so the output quality is identical to before — just produced much faster.",
+			"It falls back automatically to the regular single-core export for short clips or unsupported browsers, so exports always complete.",
+			"Preview now shows the first frame of a clip immediately instead of waiting on a keyframe scan first — a noticeable difference when scrubbing to or playing long videos.",
+			"Smoother playback: the preview keeps a larger buffer of decoded frames ahead of the playhead, so brief decode hitches no longer stall the picture.",
+		],
+	},
+	{
 		id: "2026-06-25-ai-providers-dialog-redesign",
 		date: "2026-06-25",
 		tag: "improvement",
@@ -295,7 +308,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-24-scene-management-perf-layout-camera",
 		date: "2026-06-24",
 		tag: "feature",
-		title: "Scene management, performance, camera inspector, and layout presets",
+		title:
+			"Scene management, performance, camera inspector, and layout presets",
 		items: [
 			"Add Scene button replaces Add Timeline — creates a new empty scene and switches to it automatically. Each scene in the dropdown now has inline rename and delete buttons.",
 			"Audio meter is now black when idle — the green-yellow-red gradient only appears when audio is playing. Bar radius smoothed to rounded-md.",
@@ -339,7 +353,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-24-dropdown-icon-fixed",
 		date: "2026-06-24",
 		tag: "fix",
-		title: "Timeline toolbar: dropdown trigger and manage button now use different icons",
+		title:
+			"Timeline toolbar: dropdown trigger and manage button now use different icons",
 		items: [
 			"The dropdown trigger (Main scene / Timeline 1) now uses Layers icon instead of the mode-specific icon, so it no longer duplicates the Manage button's Clapperboard/Timeline icon.",
 		],
@@ -408,14 +423,15 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "fix",
 		title: "Environment warning modal: explicit button types for accessibility",
 		items: [
-			"Added explicit type=\"button\" to dismiss and acknowledge buttons in the environment warning modal to fix biome lint a11y/useButtonType warnings. Buttons now correctly default to non-submit behavior instead of inheriting the browser's default submit type.",
+			'Added explicit type="button" to dismiss and acknowledge buttons in the environment warning modal to fix biome lint a11y/useButtonType warnings. Buttons now correctly default to non-submit behavior instead of inheriting the browser\'s default submit type.',
 		],
 	},
 	{
 		id: "2026-06-24-timeline-p1-ui-wins",
 		date: "2026-06-24",
 		tag: "improvement",
-		title: "Timeline toolbar: track icons, mode toggle, scenes sheet (CapCut-style)",
+		title:
+			"Timeline toolbar: track icons, mode toggle, scenes sheet (CapCut-style)",
 		items: [
 			"Each track header now shows a type-specific icon instead of the V1/A1/T1 text badge. New icons picked from Hugeicons (CameraVideo, Speaker01, Paragraph, ImageIcon) — none of them collide with icons already in use elsewhere in the editor. The text prefix is preserved as a tooltip so V1/V2/A1/T1/C1 numbering stays readable on hover.",
 			"The 'Add track' button is now 'Add timeline' (CapCut naming). The dropdown options — Video / Audio / Camera / Text / Image / Effect — are unchanged; they now describe the track types within the active timeline.",
@@ -427,9 +443,10 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-24-properties-scroll-isolation",
 		date: "2026-06-24",
 		tag: "fix",
-		title: "Properties panel: scroll isolation so meter no longer follows the card",
+		title:
+			"Properties panel: scroll isolation so meter no longer follows the card",
 		items: [
-			"Freehand / vector card scrolling no longer drags the audio meter along with it. react-resizable-panels v4 wraps every Panel in an inner div with overflow: auto for touch-action handling, which was creating a secondary scroll context that moved the whole PropertiesPanel + Meter row when the card scrolled. The properties Panel now passes style={{ overflow: \"hidden\" }} to clip that secondary scroll, the panel-slot adds overflow-hidden as a safety net, and the PropertiesPanel wrapper inside the flex row gets min-h-0 + overflow-hidden so it can't grow past its slot either.",
+			'Freehand / vector card scrolling no longer drags the audio meter along with it. react-resizable-panels v4 wraps every Panel in an inner div with overflow: auto for touch-action handling, which was creating a secondary scroll context that moved the whole PropertiesPanel + Meter row when the card scrolled. The properties Panel now passes style={{ overflow: "hidden" }} to clip that secondary scroll, the panel-slot adds overflow-hidden as a safety net, and the PropertiesPanel wrapper inside the flex row gets min-h-0 + overflow-hidden so it can\'t grow past its slot either.',
 			"Net effect: scrolling the card moves the card content only; the meter is pinned to its slot regardless of scroll state. The card itself still scrolls cleanly inside its own ScrollArea — the fix only removes the unintended outer scroll context.",
 		],
 	},
@@ -447,7 +464,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-24-renderer-pipeline-canvas-coords",
 		date: "2026-06-24",
 		tag: "fix",
-		title: "Renderer pipeline: transform coords in canvas space, not preview-buffer space",
+		title:
+			"Renderer pipeline: transform coords in canvas space, not preview-buffer space",
 		items: [
 			"Element transforms (centerX/centerY/width/height), blur sigma resolution, and effect-layer dimensions now use the project's canvas size instead of the preview-quality-scaled output buffer. Previously, when preview quality was 'Low' or 'Medium' (e.g. 40% on a 1920x1080 canvas, so the buffer was 768x432), the contain-scale used to size and position every element was based on 768/512 instead of 1920/512, causing freehand/vector/imported shapes to appear shifted to the right and down on render. The fix splits the pipeline cleanly: transforms live in canvas coordinates, the scale pass at the boundary of CanvasRenderer.render() downscales them to the output buffer for the compositor, and the compositor blits source-size textures to the scaled positions.",
 			"No visual change at preview quality 'High' (where buffer == canvas size) and no change to export, which already runs at canvas size. The fix is invisible in normal cases — it only corrects the position when the preview is rendered at a lower resolution than the project canvas. The defensive guard in the freehand/vector hooks (added in the previous entry) is no longer the primary defense; it stays as a safety net for projects with missing canvasSize.",
@@ -477,7 +495,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-23-draw-position-audio-meter-fixes",
 		date: "2026-06-23",
 		tag: "fix",
-		title: "Drawing tools: position matches where you draw + audio meter no longer scrolls",
+		title:
+			"Drawing tools: position matches where you draw + audio meter no longer scrolls",
 		items: [
 			"Freehand and vector draw tools now place the committed shape exactly where you drew it — no more teleporting to the canvas center or stretching to fill a selected video layer.",
 			"The old 'stretch drawing to fill the selected media bounding box' behavior (which caused small strokes to blow up and jump to the video's center) has been removed. Both tools now use normalizeStandaloneFreehand to center the path in the source buffer and compute the correct position/scale offset.",

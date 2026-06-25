@@ -9,30 +9,34 @@ import { buildGOPIndex, type GOPIndex } from "./gop-index";
 
 /**
  * Maximum decoded frames to retain per video in the LRU frame cache.
- * At 60 fps this is ~0.5 s of video — enough to make backward scrubbing
- * and short-range re-seeks instant without excessive memory use.
- * Each frame wraps a canvas (GPU-backed when available), so the cost
- * is dominated by canvas backing-store, not JS heap.
+ * At 60 fps this is ~0.8 s of video — enough to make backward scrubbing
+ * and short-range re-seeks instant on long clips (the common case where a
+ * far seek is followed by small back-and-forth nudges) without excessive
+ * memory use. Each frame wraps a canvas (GPU-backed when available) decoded
+ * at the *preview* resolution (capped by `maxDim`), so the cost is dominated
+ * by the downscaled canvas backing-store, not full-res JS heap.
  */
-const MAX_CACHED_FRAMES_PER_MEDIA = 30;
+const MAX_CACHED_FRAMES_PER_MEDIA = 48;
 
 /**
  * Number of frames to prefetch ahead of the playhead during forward
- * playback. The previous value of 1 gave only ~16 ms of buffer at 60 fps
+ * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps
  * (one frame), which meant any decode jitter caused an immediate stall.
- * 3 frames gives ~50 ms of buffer — enough to absorb single-frame
- * decode spikes without stalling the preview.
+ * 6 frames gives ~100 ms of buffer — enough to absorb multi-frame decode
+ * spikes (common on long/high-GOP clips where a single decode can hitch)
+ * without stalling the preview, while staying well within the decoder's
+ * pipeline depth.
  */
-const PREFETCH_BUFFER_SIZE = 3;
+const PREFETCH_BUFFER_SIZE = 6;
 
 /**
- * CanvasSink pool size. The previous value of 3 meant only 3 decoded
- * canvases were recycled. With a prefetch buffer of 3 plus the current
- * frame, we need at least 4-5 to avoid allocation churn. 6 gives
- * headroom for the compositor to hold a reference while the next batch
- * decodes.
+ * CanvasSink pool size. Must comfortably exceed the prefetch buffer plus the
+ * current frame plus any frame the compositor is still holding a reference to,
+ * otherwise the sink recycles a canvas that is still in use and we pay an
+ * allocation. With a prefetch buffer of 6 + current + compositor hold, 10
+ * gives headroom for the next batch to decode without churn.
  */
-const SINK_POOL_SIZE = 6;
+const SINK_POOL_SIZE = 10;
 
 interface VideoSinkData {
 	input: Input;
@@ -189,7 +193,11 @@ export class VideoCache {
 			time >= sinkData.lastTime &&
 			time < sinkData.lastTime + FORWARD_ITERATE_WINDOW_SECONDS
 		) {
-			const frame = await this.iterateToTime({ sinkData, targetTime: time, generation: myGeneration });
+			const frame = await this.iterateToTime({
+				sinkData,
+				targetTime: time,
+				generation: myGeneration,
+			});
 			// Bail out if stale
 			if (sinkData.seekGeneration !== myGeneration) return null;
 			if (frame) {
@@ -202,7 +210,11 @@ export class VideoCache {
 		}
 
 		// 5. Fall back to a full seek.
-		const frame = await this.seekToTime({ sinkData, time, generation: myGeneration });
+		const frame = await this.seekToTime({
+			sinkData,
+			time,
+			generation: myGeneration,
+		});
 		// Bail out if stale
 		if (sinkData.seekGeneration !== myGeneration) return null;
 		if (frame) {
@@ -297,10 +309,7 @@ export class VideoCache {
 
 				// Check if the prefetch buffer has the frame we need
 				const buffered = sinkData.prefetchBuffer[0];
-				if (
-					buffered &&
-					buffered.timestamp <= targetTime + 0.05
-				) {
+				if (buffered && buffered.timestamp <= targetTime + 0.05) {
 					const shifted = sinkData.prefetchBuffer.shift();
 					if (shifted) sinkData.currentFrame = shifted;
 				} else {
@@ -375,9 +384,7 @@ export class VideoCache {
 				// at the given time, so we use the frame's timestamp
 				// (which may be slightly before `time` if the target
 				// fell between frames).
-				sinkData.iterator = sinkData.sink.canvases(
-					frame.timestamp,
-				);
+				sinkData.iterator = sinkData.sink.canvases(frame.timestamp);
 				return frame;
 			}
 		} catch (error) {
@@ -518,18 +525,29 @@ export class VideoCache {
 				gopIndex: null,
 			});
 
-			// Build GOP index eagerly — block sink init until the index
-			// is ready. This adds 50-200ms to import but ensures the
-			// FIRST seek is fast (O(log n) binary search vs O(n) packet
-			// scan). Without this, the first seek after import falls
-			// back to mediabunny's internal packet scan, which can take
-			// 5-20 seconds for long videos (4K, 15+ minutes).
-			const sinkData = this.sinks.get(mediaId)!;
-			try {
-				const index = await buildGOPIndex({ file, mediaId });
-				sinkData.gopIndex = index;
-			} catch (err) {
-				console.warn("GOP index build failed:", mediaId, err);
+			// Build the GOP index in the BACKGROUND (do NOT await it here).
+			// It used to be awaited during sink init, which blocked the very
+			// first frame of a clip behind a full keyframe-table scan
+			// (50-200ms, and substantially worse on long/4K clips) — a visible
+			// stall the first time you scrub to or play a long video. The seek
+			// path relies on mediabunny's own efficient internal seek
+			// (`sink.getCanvas(time)`), so the index is advisory and does not
+			// need to gate sink readiness. Building it off the critical path
+			// lets the first frame display as soon as it can be decoded.
+			const sinkData = this.sinks.get(mediaId);
+			if (sinkData) {
+				void buildGOPIndex({ file, mediaId })
+					.then((index) => {
+						// The sink may have been cleared/rebuilt (e.g. a preview
+						// quality change) while we were scanning; only attach the
+						// index if this exact sink is still the current one.
+						if (this.sinks.get(mediaId) === sinkData) {
+							sinkData.gopIndex = index;
+						}
+					})
+					.catch((err) => {
+						console.warn("GOP index build failed:", mediaId, err);
+					});
 			}
 		} catch (error) {
 			input?.dispose();

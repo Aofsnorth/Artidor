@@ -9,6 +9,7 @@
 import type { FrameRate } from "artidor-wasm";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
 import type { SerializedNode } from "./scene-serializer";
+import type { ExportAudioCodec, ExportVideoCodec } from "./export-codec";
 
 export type ExportWorkerProgress = {
 	progress: number;
@@ -60,6 +61,12 @@ export async function runExportInWorker({
 	format,
 	quality,
 	shouldIncludeAudio,
+	startFrame,
+	endFrame,
+	videoOnly,
+	videoCodec,
+	audioCodec,
+	transferFiles = true,
 	onProgress,
 	getCancelled,
 }: {
@@ -73,22 +80,43 @@ export async function runExportInWorker({
 	format: ExportFormat;
 	quality: ExportQuality;
 	shouldIncludeAudio: boolean;
+	/** Inclusive start frame for segment exports (parallel pipeline). */
+	startFrame?: number;
+	/** Exclusive end frame for segment exports (parallel pipeline). */
+	endFrame?: number;
+	/** Encode video only and skip audio (parallel segments). */
+	videoOnly?: boolean;
+	/** Pinned video codec so all segments stay bitstream-compatible. */
+	videoCodec?: ExportVideoCodec;
+	/** Pinned audio codec. */
+	audioCodec?: ExportAudioCodec;
+	/**
+	 * Whether to *transfer* the media File objects into the worker. The
+	 * single-worker path transfers them (cheapest). The parallel path shares
+	 * the same Files across many workers, so they must be cloned (structured
+	 * clone shares the underlying Blob data cheaply) rather than transferred —
+	 * a transferred File would be detached for every subsequent worker.
+	 */
+	transferFiles?: boolean;
 	onProgress?: ({ progress }: { progress: number }) => void;
 	getCancelled?: () => boolean;
 }): Promise<ExportWorkerResult> {
 	return new Promise((resolve) => {
-		const worker = new Worker(
-			new URL("./export-worker.ts", import.meta.url),
-			{ type: "module" },
-		);
+		const worker = new Worker(new URL("./export-worker.ts", import.meta.url), {
+			type: "module",
+		});
 
-		// Build transferables: OffscreenCanvas + media Files + audio ArrayBuffer
+		// Build transferables: OffscreenCanvas is always transferred. Files and
+		// the audio buffer are only transferred for the single-worker path; the
+		// parallel path clones them so they can be reused across workers.
 		const transferables: Transferable[] = [canvas];
-		for (const { file } of files) {
-			transferables.push(file);
-		}
-		if (audioBuffer) {
-			transferables.push(audioBuffer);
+		if (transferFiles) {
+			for (const { file } of files) {
+				transferables.push(file);
+			}
+			if (audioBuffer) {
+				transferables.push(audioBuffer);
+			}
 		}
 
 		// Cancel polling
@@ -168,6 +196,11 @@ export async function runExportInWorker({
 				format,
 				quality,
 				shouldIncludeAudio,
+				startFrame,
+				endFrame,
+				videoOnly,
+				videoCodec,
+				audioCodec,
 			},
 			transferables,
 		);
