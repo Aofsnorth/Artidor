@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-playhead-drag-scrub",
+		date: "2026-06-25",
+		tag: "improvement",
+		title: "Timeline playhead: drag-to-scrub with toggleable time display",
+		items: [
+			"Playhead handle now supports drag-to-scrub: click and drag the handle to seek through the timeline.",
+			"Clicking the playhead handle toggles a timecode bubble that shows the current position in MM:SS:FF format.",
+			"Time bubble uses cyan colors for better visibility on dark backgrounds.",
+		],
+	},
+	{
 		id: "2026-06-25-av1-codec-performance-research",
 		date: "2026-06-25",
 		tag: "performance",
