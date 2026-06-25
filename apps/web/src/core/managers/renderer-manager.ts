@@ -7,6 +7,11 @@ import { buildScene } from "@/services/renderer/scene-builder";
 import { createTimelineAudioBuffer } from "@/lib/media/audio";
 import { formatTimecode } from "artidor-wasm";
 import { downloadBlob } from "@/utils/browser";
+import {
+	isExportWorkerSupported,
+	runExportInWorker,
+} from "@/services/renderer/export-worker-bridge";
+import { serializeSceneTree } from "@/services/renderer/scene-serializer";
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -191,6 +196,58 @@ export class RendererManager {
 
 			const audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
 
+			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
+			if (isExportWorkerSupported()) {
+				try {
+					const { tree, files } = serializeSceneTree(scene);
+					const canvas = new OffscreenCanvas(
+						canvasSize.width,
+						canvasSize.height,
+					);
+					const fileEntries = Array.from(files.entries()).map(
+						([mediaId, file]) => ({ mediaId, file }),
+					);
+
+					const result = await runExportInWorker({
+						canvas,
+						sceneTree: tree,
+						files: fileEntries,
+						audioBuffer: audioBuffer || null,
+						width: canvasSize.width,
+						height: canvasSize.height,
+						fps: exportFps,
+						format,
+						quality,
+						shouldIncludeAudio: !!includeAudio,
+						onProgress: (p) => {
+							const adjustedProgress = includeAudio
+								? 0.05 + p.progress * 0.95
+								: p.progress;
+							onProgress?.({ progress: adjustedProgress });
+						},
+						getCancelled: onCancel,
+					});
+
+					if (result.success) {
+						return { success: true, buffer: result.buffer };
+					}
+					if ("cancelled" in result && result.cancelled) {
+						return { success: false, cancelled: true };
+					}
+					// Worker failed — fall through to main-thread path
+					console.warn(
+						"Worker export failed, falling back to main thread:",
+						"error" in result ? result.error : "unknown",
+					);
+				} catch (workerError) {
+					console.warn(
+						"Worker export threw, falling back to main thread:",
+						workerError,
+					);
+				}
+			}
+
+			// Main-thread fallback path
 			const exporter = new SceneExporter({
 				width: canvasSize.width,
 				height: canvasSize.height,

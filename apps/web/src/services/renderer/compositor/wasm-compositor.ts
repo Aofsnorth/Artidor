@@ -1,6 +1,7 @@
 import {
 	getCompositorCanvas,
 	initCompositor,
+	initCompositorWithCanvas,
 	releaseTexture,
 	renderFrame,
 	resizeCompositor,
@@ -45,7 +46,7 @@ export type TextureUploadDescriptor = {
 };
 
 class WasmCompositor {
-	private canvas: HTMLCanvasElement | null = null;
+	private canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
 	private initializedSize: { width: number; height: number } | null = null;
 	private retainedTextureIds = new Set<string>();
 	private uploadedTextures = new Map<
@@ -71,7 +72,37 @@ class WasmCompositor {
 		}
 	}
 
-	getCanvas(): HTMLCanvasElement {
+	/**
+	 * Initialize with an external OffscreenCanvas (Worker path).
+	 * The canvas is typically transferred from the main thread.
+	 */
+	ensureInitializedWithCanvas({
+		canvas,
+		width,
+		height,
+	}: {
+		canvas: OffscreenCanvas;
+		width: number;
+		height: number;
+	}) {
+		if (!this.canvas) {
+			initCompositorWithCanvas(canvas);
+			this.canvas = canvas;
+			this.initializedSize = { width, height };
+			return;
+		}
+
+		if (
+			!this.initializedSize ||
+			this.initializedSize.width !== width ||
+			this.initializedSize.height !== height
+		) {
+			resizeCompositor(width, height);
+			this.initializedSize = { width, height };
+		}
+	}
+
+	getCanvas(): HTMLCanvasElement | OffscreenCanvas {
 		if (!this.canvas) {
 			throw new Error("Compositor is not initialized");
 		}

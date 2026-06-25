@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-worker-drag-fixes",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Export pipeline offloaded to Web Worker + drag ghost fixes",
+		items: [
+			"Export rendering and encoding now run in a Web Worker with OffscreenCanvas when the browser supports it. The main thread stays 100% unblocked during exports — progress bar and cancel button remain responsive. Falls back to the existing main-thread path on older browsers.",
+			"Drag ghost is now centered on the mouse cursor instead of floating above it.",
+			"Video/visual clips can no longer be dragged below the main track onto audio tracks (and vice versa). The drop indicator snaps to the main track boundary as a visual wall.",
+			"Drag ghost no longer flickers or disappears during cross-track drags. The rendering now uses a stable state check instead of one that can briefly flicker during React re-renders.",
+			"Rust/WASM compositor now uses OffscreenCanvas uniformly for both main-thread and Worker paths, enabling zero-copy texture transfers.",
+		],
+	},
+	{
 		id: "2026-06-25-hd-drag-preview-setting",
 		date: "2026-06-25",
 		tag: "feature",
