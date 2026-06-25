@@ -768,16 +768,27 @@ function ToolbarRightSection({
 					<DropdownMenuContent align="start" className="z-100 w-44">
 						<DropdownMenuItem
 							className={cn(
-								scrubDragMode === "auto" && "bg-white/[0.08] text-white",
+								scrubDragMode === "auto" &&
+									autoPlayWhileScrubbing &&
+									"bg-white/[0.08] text-white",
 							)}
-							onClick={() => setScrubDragMode("auto")}
+							onClick={() => {
+								setScrubDragMode("auto");
+								// Toggle: if already Auto+on, turn off.
+								// If Auto+off or Smart, turn on.
+								if (scrubDragMode === "auto" && autoPlayWhileScrubbing) {
+									toggleAutoPlayWhileScrubbing();
+								} else if (!autoPlayWhileScrubbing) {
+									toggleAutoPlayWhileScrubbing();
+								}
+							}}
 						>
 							<div className="flex flex-col gap-0.5">
 								<span className="text-xs font-medium">Auto</span>
 								<span className="text-[0.65rem] text-white/40">
-									{autoPlayWhileScrubbing
-										? "Always play while dragging"
-										: "Always pause while dragging"}
+									{scrubDragMode === "auto" && autoPlayWhileScrubbing
+										? "On — play while dragging"
+										: "Off — press to enable"}
 								</span>
 							</div>
 						</DropdownMenuItem>
@@ -794,30 +805,6 @@ function ToolbarRightSection({
 								</span>
 							</div>
 						</DropdownMenuItem>
-						{scrubDragMode === "auto" && (
-							<>
-								<div className="my-1 h-px bg-white/[0.06]" />
-								<DropdownMenuItem
-									onClick={() => toggleAutoPlayWhileScrubbing()}
-								>
-									<div className="flex items-center gap-2">
-										<span
-											className={cn(
-												"size-2 rounded-full",
-												autoPlayWhileScrubbing
-													? "bg-cyan-300"
-													: "bg-white/20",
-											)}
-										/>
-										<span className="text-xs">
-											{autoPlayWhileScrubbing
-												? "Play on drag"
-												: "Pause on drag"}
-										</span>
-									</div>
-								</DropdownMenuItem>
-							</>
-						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 
