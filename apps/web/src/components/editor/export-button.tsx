@@ -126,9 +126,16 @@ export function ExportButton() {
 		}
 	}, [exportState.isExporting, isExportPopoverOpen]);
 
-	// Show completion overlay when export finishes with a buffer
+	// Show completion overlay only for fresh (non-cached) exports.
+	// Cached/history exports already show a toast via handleExport, so the
+	// large center overlay should only appear once — the first time.
 	useEffect(() => {
-		if (exportResult?.success && exportResult.buffer && !exportState.isExporting) {
+		if (
+			exportResult?.success &&
+			exportResult.buffer &&
+			!exportState.isExporting &&
+			!exportResult.cached
+		) {
 			setShowCompletionOverlay(true);
 		}
 	}, [exportResult, exportState.isExporting]);
