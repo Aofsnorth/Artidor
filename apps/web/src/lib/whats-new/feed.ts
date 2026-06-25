@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-timeline-toolbar-no-vertical-scroll",
+		date: "2026-06-25",
+		tag: "fix",
+		title: "Timeline toolbar no longer scrolls vertically",
+		items: [
+			"The timeline toolbar wrapper used the generic ScrollArea which allowed both horizontal and vertical scroll. The toolbar is a fixed 40px row, so vertical scroll made no sense — fixed by switching the wrapper to `overflow-x-auto overflow-y-hidden`. Horizontal scroll remains so wide tool sets still fit on narrow viewports.",
+		],
+	},
+	{
 		id: "2026-06-25-timeline-virtualization-rerender",
 		date: "2026-06-25",
 		tag: "performance",

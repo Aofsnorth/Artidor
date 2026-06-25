@@ -775,6 +775,48 @@ export class AudioManager {
 			return;
 		}
 
+		if (!hasKeyframedVolume && hasFade) {
+			// Fast path for static volume + fade (no keyframes).
+			// Avoid generating thousands of points which can cause WebAudio to drop events or mute.
+			const baseGain = clip.volume;
+			const clipDuration = clip.duration;
+
+			// Helper to schedule a point, ensuring we don't schedule in the past
+			const schedulePoint = (localTime: number, gainValue: number) => {
+				const pointTime = startTimestamp + (localTime - startLocalTime);
+				if (pointTime < audioContext.currentTime) return;
+				
+				// Set initial value if this is the very first scheduled point
+				if (localTime === startLocalTime) {
+					clipGain.gain.setValueAtTime(gainValue, pointTime);
+				} else {
+					clipGain.gain.linearRampToValueAtTime(gainValue, pointTime);
+				}
+			};
+
+			// Start point
+			let startGain = baseGain;
+			if (startLocalTime < fadeIn) {
+				startGain = baseGain * (startLocalTime / fadeIn);
+			} else if (startLocalTime > clipDuration - fadeOut) {
+				const timeFromEnd = clipDuration - startLocalTime;
+				startGain = baseGain * Math.max(0, timeFromEnd / fadeOut);
+			}
+			clipGain.gain.setValueAtTime(startGain, Math.max(startTimestamp, audioContext.currentTime));
+
+			if (startLocalTime < fadeIn) {
+				schedulePoint(fadeIn, baseGain);
+			}
+			
+			const fadeOutStart = clipDuration - fadeOut;
+			if (startLocalTime < fadeOutStart) {
+				schedulePoint(fadeOutStart, baseGain);
+			}
+			
+			schedulePoint(clipDuration, 0);
+			return;
+		}
+
 		const points = buildAudioGainAutomation({
 			element: clip.timelineElement,
 			fromLocalTime: startLocalTime,
