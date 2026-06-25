@@ -135,7 +135,7 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 						</svg>
 						<div className="absolute flex flex-col items-center">
 							<span className="font-sans text-3xl font-bold tabular-nums text-white">
-								{Math.round(progress * 100)}
+								{(progress * 100).toFixed(1)}
 								<span className="text-lg font-medium text-white/50">%</span>
 							</span>
 						</div>

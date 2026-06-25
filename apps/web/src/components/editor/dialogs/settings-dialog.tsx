@@ -7,6 +7,7 @@ import {
 	Shield01Icon,
 	KeyboardIcon,
 	SparklesIcon,
+	MusicNote03Icon,
 } from "@hugeicons/core-free-icons";
 import {
 	Dialog,
@@ -21,13 +22,14 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/ui";
 import { ShortcutsEditor } from "./shortcuts-editor";
 
-type SettingsTab = "general" | "ai" | "shortcuts";
+type SettingsTab = "general" | "ai" | "shortcuts" | "audio";
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Settings01Icon }[] =
 	[
 		{ id: "general", label: "General", icon: Settings01Icon },
 		{ id: "ai", label: "AI", icon: SparklesIcon },
 		{ id: "shortcuts", label: "Shortcuts", icon: KeyboardIcon },
+		{ id: "audio", label: "Audio", icon: MusicNote03Icon },
 	];
 
 export function SettingsDialog({
@@ -67,6 +69,7 @@ export function SettingsDialog({
 						{activeTab === "general" && <GeneralSettings />}
 						{activeTab === "ai" && <AISettings />}
 						{activeTab === "shortcuts" && <ShortcutsSettings />}
+						{activeTab === "audio" && <AudioSettings />}
 					</div>
 				</DialogBody>
 			</DialogContent>
@@ -268,6 +271,80 @@ function ShortcutsSettings() {
 			</header>
 			<div className="min-h-0 flex-1">
 				<ShortcutsEditor />
+			</div>
+		</div>
+	);
+}
+
+function AudioSettings() {
+	return (
+		<div className="flex flex-col gap-5">
+			<header>
+				<h2 className="text-sm font-semibold text-white/85">
+					Audio Waveform
+				</h2>
+				<p className="mt-0.5 text-[12px] text-white/50">
+					Configure how audio waveforms appear on the timeline.
+				</p>
+			</header>
+
+			<SettingRow
+				title="Default waveform style"
+				description="Choose the default waveform display style for audio clips on the timeline."
+			>
+				<select
+					className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-white/85"
+					defaultValue="waveform"
+				>
+					<option value="waveform" className="bg-[#0b0b0d]">
+						Waveform (default)
+					</option>
+					<option value="lines" className="bg-[#0b0b0d]">
+						Lines (dense)
+					</option>
+					<option value="liquid" className="bg-[#0b0b0d]">
+						Liquid (smooth)
+					</option>
+					<option value="beats" className="bg-[#0b0b0d]">
+						Beats
+					</option>
+					<option value="graph" className="bg-[#0b0b0d]">
+						Graph
+					</option>
+				</select>
+			</SettingRow>
+
+			<SettingRow
+				title="Symmetric mode"
+				description="Show waveform mirrored above and below the center line."
+			>
+				<Switch defaultChecked={false} />
+			</SettingRow>
+
+			<div className="rounded-md border border-white/[0.06] bg-white/[0.02] p-3 text-[11.5px] leading-relaxed text-white/45">
+				<p className="font-medium text-white/65">Waveform styles</p>
+				<ul className="mt-1 list-disc pl-4 space-y-1">
+					<li>
+						<strong className="text-white/70">Waveform</strong> — Standard
+						vertical bars, default style
+					</li>
+					<li>
+						<strong className="text-white/70">Lines</strong> — Dense thin
+						lines, more detail
+					</li>
+					<li>
+						<strong className="text-white/70">Liquid</strong> — Smooth bezier
+						wave with gradient fill
+					</li>
+					<li>
+						<strong className="text-white/70">Beats</strong> — Beat-detected
+						peaks with accent markers
+					</li>
+					<li>
+						<strong className="text-white/70">Graph</strong> — Continuous
+						smooth line (DAW-style)
+					</li>
+				</ul>
 			</div>
 		</div>
 	);
