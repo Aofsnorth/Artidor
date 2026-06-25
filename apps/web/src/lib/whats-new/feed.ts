@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-progress-clip-radius-waveform",
+		date: "2026-06-25",
+		tag: "improvement",
+		title: "Export progress detail, clip radius, waveform settings",
+		items: [
+			"Export progress now shows one decimal place (e.g. 10.1% instead of 10%) for more precise progress tracking.",
+			"Adjacent clips on the timeline now have reduced corner radius where they touch, creating a cleaner visual connection between clips.",
+			"New Audio Waveform settings tab in Settings with 5 waveform styles: Waveform (default), Lines (dense), Liquid (smooth), Beats, and Graph.",
+		],
+	},
+	{
 		id: "2026-06-25-export-history-overlay-fix",
 		date: "2026-06-25",
 		tag: "fix",

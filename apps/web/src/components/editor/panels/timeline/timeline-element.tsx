@@ -1097,6 +1097,23 @@ function ElementInner({
 		type: track.type,
 		customColor: track.color,
 	});
+
+	// Detect adjacent clips for adaptive corner radius
+	const SNAP_THRESHOLD = 2; // ticks tolerance for adjacency
+	const hasAdjacentLeft = track.elements.some(
+		(el) =>
+			el.id !== element.id &&
+			Math.abs(el.startTime + el.duration - element.startTime) < SNAP_THRESHOLD,
+	);
+	const hasAdjacentRight = track.elements.some(
+		(el) =>
+			el.id !== element.id &&
+			Math.abs(el.startTime - (element.startTime + element.duration)) < SNAP_THRESHOLD,
+	);
+	// Full radius = 12px (rounded-xl), adjacent radius = 4px
+	const ADJACENT_RADIUS = "4px";
+	const FULL_RADIUS = "12px";
+	const borderRadius = `${hasAdjacentLeft ? ADJACENT_RADIUS : FULL_RADIUS} ${hasAdjacentRight ? ADJACENT_RADIUS : FULL_RADIUS} ${hasAdjacentRight ? ADJACENT_RADIUS : FULL_RADIUS} ${hasAdjacentLeft ? ADJACENT_RADIUS : FULL_RADIUS}`;
 	const palette = TRACK_TYPE_PALETTE[track.type];
 	const hasFx = hasElementEffects({ element });
 	const groupColor = getGroupColor(element.groupId);
@@ -1109,20 +1126,22 @@ function ElementInner({
 			}}
 		>
 			<div
-				className="absolute inset-0 rounded-xl shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
-				style={
-					isSelected
+				className="absolute inset-0 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
+				style={{
+					...(isSelected
 						? {
 								boxShadow: `0 0 0 ${ELEMENT_RING_WIDTH_PX}px var(--primary)`,
 							}
-						: undefined
-				}
+						: undefined),
+					borderRadius,
+				}}
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden rounded-xl border border-white/[0.04]",
+						"absolute inset-0 overflow-hidden border border-white/[0.04]",
 						isExpanded && "bg-background",
 					)}
+					style={{ borderRadius }}
 				>
 					{/* biome-ignore lint/a11y/useSemanticElements: timeline clips contain nested controls, so this cannot be a native button */}
 					{/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard actions are handled by global timeline shortcuts */}
@@ -1142,15 +1161,15 @@ function ElementInner({
 						{/* Top accent stripe (1.5px) */}
 						<div
 							aria-hidden="true"
-							className="pointer-events-none absolute inset-0 z-10 rounded-xl"
-							style={{ borderTop: `1.5px solid ${accent.accent}` }}
+							className="pointer-events-none absolute inset-0 z-10"
+							style={{ borderTop: `1.5px solid ${accent.accent}`, borderRadius }}
 						/>
 						{/* Group visual indicator: left edge stripe */}
 						{groupColor && (
 							<div
 								aria-hidden="true"
-								className="pointer-events-none absolute inset-0 z-20 rounded-xl"
-								style={{ borderLeft: `3px solid ${groupColor}` }}
+								className="pointer-events-none absolute inset-0 z-20"
+								style={{ borderLeft: `3px solid ${groupColor}`, borderRadius }}
 							/>
 						)}
 						{/* "fx" badge: a small monospace pill anchored to the
