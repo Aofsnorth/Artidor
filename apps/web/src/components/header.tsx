@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ArrowRight, Command, Sparkles, Menu } from "lucide-react";
+import { ArrowRight, Sparkles, Menu } from "lucide-react";
+import { FaGithub } from "react-icons/fa6";
 import { Button } from "./ui/button";
 import { cn } from "@/utils/ui";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
@@ -93,7 +94,7 @@ export function Header() {
 							className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/80 transition-colors hover:bg-white/[0.08]"
 							aria-label={`Artidor on GitHub, ${repoStats?.stars ?? ""} stars`}
 						>
-							<Command className="size-3" />
+							<FaGithub className="size-3" />
 							{starsLabel}
 						</Link>
 					</div>
