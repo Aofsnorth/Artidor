@@ -277,11 +277,20 @@ function PreviewCanvas({
 			renderStartRef.current = performance.now();
 			const token = ++renderTokenRef.current;
 
-			// Freeze: if playback is playing, pause it while the render
-			// is in-flight so the video stays on the current frame
-			// instead of advancing with a stale visual. Resume after.
+			// Freeze: if playback is playing AND this is a scene/scale
+			// change (not a routine frame advance), pause playback so the
+			// video stays on the current frame instead of advancing with a
+			// stale visual. Resume after.
+			//
+			// Only freeze for scene/scale changes — not for every frame
+			// during normal playback. Freezing on every frame causes rapid
+			// pause/play cycles that stutter audio (each pause stops audio
+			// playback, each play re-inits the audio context + re-decodes).
+			const isSceneChange =
+				renderTree !== lastSceneRef.current ||
+				scale !== lastScaleRef.current;
 			const isCurrentlyPlaying = editor.playback.getIsPlaying();
-			if (isCurrentlyPlaying) {
+			if (isCurrentlyPlaying && isSceneChange) {
 				wasPlayingBeforeRenderRef.current = true;
 				editor.playback.pause();
 			}
