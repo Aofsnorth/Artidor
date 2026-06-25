@@ -374,6 +374,24 @@ function getTextConfig({
 	};
 }
 
+function getNullLayerConfig({
+	element,
+	mediaAssets,
+}: {
+	element: TimelineElement;
+	mediaAssets: MediaAsset[];
+}): ElementPropertiesConfig {
+	return {
+		defaultTab: "transform",
+		tabs: [
+			buildElementTab({ element, mediaAssets }),
+			buildTransformTab({ element: element as VisualElement }),
+			buildParentingTab({ element: element as VisualElement }),
+			buildAnimationsTab(),
+		],
+	};
+}
+
 function getVideoConfig({
 	element,
 	mediaAsset,
@@ -537,8 +555,13 @@ export function getPropertiesConfig({
 	mediaAssets: MediaAsset[];
 }): ElementPropertiesConfig {
 	switch (element.type) {
-		case "text":
+		case "text": {
+			// Null layers are text elements with nullLayer flag — show transform only
+			if ((element as { nullLayer?: boolean }).nullLayer) {
+				return getNullLayerConfig({ element, mediaAssets });
+			}
 			return getTextConfig({ element, mediaAssets });
+		}
 		case "video": {
 			const mediaAsset = mediaAssets.find((a) => a.id === element.mediaId);
 			return getVideoConfig({ element, mediaAsset, mediaAssets });
