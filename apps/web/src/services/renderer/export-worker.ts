@@ -141,26 +141,39 @@ async function handleExport(msg: WorkerInMessage) {
 		target: new BufferTarget(),
 	});
 
-	// Codec negotiation
-	let videoCodec: "avc" | "vp9" | "hevc" =
-		format === "webm" ? "vp9" : format === "hevc" ? "hevc" : "avc";
+	// Codec negotiation: AV1 → VP9/AVC, or HEVC → AVC
+	let videoCodec: "avc" | "vp9" | "hevc" | "av1" =
+		format === "webm"
+			? "vp9"
+			: format === "hevc"
+				? "hevc"
+				: format === "av1"
+					? "av1"
+					: "avc";
 
-	if (videoCodec === "hevc" && typeof VideoEncoder !== "undefined") {
+	if (
+		(videoCodec === "hevc" || videoCodec === "av1") &&
+		typeof VideoEncoder !== "undefined"
+	) {
 		try {
-			const hevcBitrate = Math.max(
+			const codecString =
+				videoCodec === "av1" ? "av01.0.16M.08" : "hev1.1.6.L93.B0";
+			const bitrate = Math.max(
 				1,
 				Math.floor(Number(qualityMap[quality])),
 			);
 			const { supported } = await VideoEncoder.isConfigSupported({
-				codec: "hev1.1.6.L93.B0",
+				codec: codecString,
 				width,
 				height,
-				bitrate: hevcBitrate,
+				bitrate,
 				framerate: fpsFloat,
 			});
-			if (!supported) videoCodec = "avc";
+			if (!supported) {
+				videoCodec = format === "webm" ? "vp9" : "avc";
+			}
 		} catch {
-			videoCodec = "avc";
+			videoCodec = format === "webm" ? "vp9" : "avc";
 		}
 	}
 

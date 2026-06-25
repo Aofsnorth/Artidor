@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-av1-codec-performance-research",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "AV1 codec support + rendering performance research",
+		items: [
+			"New AV1 export format (MP4 container) with best-in-class compression. AV1 has ~88% browser encode support (2026 data). Falls back to VP9/AVC automatically if hardware encoder is unavailable.",
+			"Improved codec fallback chain: AV1 → VP9/AVC, or HEVC → AVC. All fallbacks are now wrapped in try/catch for browsers that throw on isConfigSupported.",
+			"Based on industry research (WebCodecsFundamentals, Chrome best practices): VideoFrame lifecycle management, optimal encoder configuration, and export pipeline architecture documented for future optimization.",
+		],
+	},
+	{
 		id: "2026-06-25-camera-fog-dof-toggles",
 		date: "2026-06-25",
 		tag: "feature",
