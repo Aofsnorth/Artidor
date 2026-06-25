@@ -1,6 +1,6 @@
 # State
 
-## Status: Implemented — all SOP checks green
+## Status: Implemented + committed + pushed — PR pending (gh not authenticated)
 
 ## Branch
 
