@@ -45,7 +45,8 @@ export class RenderPerfTracker {
 		if (this.count === 0) return 0;
 		let sum = 0;
 		for (let i = 0; i < this.count; i++) {
-			sum += this.buffer[i]!;
+			const v = this.buffer[i];
+			if (v !== undefined) sum += v;
 		}
 		return sum / this.count;
 	}
