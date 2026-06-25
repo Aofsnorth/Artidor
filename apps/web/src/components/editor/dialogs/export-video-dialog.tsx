@@ -48,7 +48,7 @@ export function ExportVideoDialog({
 }: ExportVideoDialogProps) {
 	const router = useRouter();
 	const [format, setFormat] = useState<ExportFormat>("mp4");
-	const [quality, setQuality] = useState<"low" | "medium" | "high" | "very_high">("high");
+	const [quality, setQuality] = useState<"low" | "medium" | "high" | "very_high">("medium");
 	const [includeAudio, setIncludeAudio] = useState(true);
 	const [saveToDrive, setSaveToDrive] = useState(false);
 	const [busy, setBusy] = useState(false);

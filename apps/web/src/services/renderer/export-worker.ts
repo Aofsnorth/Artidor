@@ -205,9 +205,14 @@ async function handleExport(msg: WorkerInMessage) {
 			}
 		}
 
+		// Audio bitrate is fixed at 128 kbps (AAC) / 64 kbps (Opus) —
+		// these are transparent for stereo music/speech and don't need
+		// to scale with the video quality factor. Using QUALITY_HIGH
+		// (factor 2.0) for audio was wasteful (256 kbps AAC for stereo
+		// is overkill) and contributed to file-size bloat.
 		audioSource = new AudioBufferSource({
 			codec: audioCodec,
-			bitrate: qualityMap[quality],
+			bitrate: audioCodec === "opus" ? 64000 : 128000,
 		});
 		output.addAudioTrack(audioSource);
 	}
