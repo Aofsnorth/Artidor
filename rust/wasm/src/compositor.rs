@@ -63,9 +63,7 @@ pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
 /// Initialize compositor with an external OffscreenCanvas (Worker path).
 /// The canvas is typically transferred from the main thread via postMessage.
 #[wasm_bindgen(js_name = initCompositorWithCanvas)]
-pub fn init_compositor_with_canvas(
-    canvas: web_sys::OffscreenCanvas,
-) -> Result<(), JsValue> {
+pub fn init_compositor_with_canvas(canvas: web_sys::OffscreenCanvas) -> Result<(), JsValue> {
     with_gpu_runtime(|gpu_runtime| {
         let compositor = Compositor::new(&gpu_runtime.context);
 
