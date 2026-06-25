@@ -651,6 +651,7 @@ export function Timeline() {
 							tracks={tracks}
 							dragState={dragState}
 							zoomLevel={zoomLevel}
+							containerRef={tracksContainerRef}
 						/>
 					)}
 
@@ -1825,18 +1826,23 @@ function DragGhost({
 	tracks,
 	dragState,
 	zoomLevel,
+	containerRef,
 }: {
 	tracks: TimelineTrack[];
 	dragState: ElementDragState;
 	zoomLevel: number;
+	containerRef: React.RefObject<HTMLDivElement | null>;
 }) {
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
 	const isHd = useSettingsStore((s) => s.hdDragPreview);
 
+	// Container offset for converting client coords to container coords
+	const containerTop =
+		containerRef.current?.getBoundingClientRect().top ?? 0;
+
 	const ghosts: React.ReactNode[] = [];
 
 	for (const track of tracks) {
-		const trackIndex = tracks.indexOf(track);
 		for (const element of track.elements) {
 			if (!dragState.dragElementIds.includes(element.id)) continue;
 
@@ -1844,21 +1850,13 @@ function DragGhost({
 			const elementTime = dragState.currentTime + timeOffset;
 			const left = elementTime * pixelsPerSecond;
 			const width = element.duration * pixelsPerSecond;
-			const dragOffsetY = dragState.currentMouseY - dragState.startMouseY;
-			const trackTop = getCumulativeHeightBefore({
-				tracks,
-				trackIndex,
-				getExtraHeight: () => 0,
-				overrideHeights: {},
-			});
 			const trackHeight = getTrackHeight({
 				type: track.type,
 				overrideHeight: undefined,
 			});
-			const top =
-				TIMELINE_CONTENT_TOP_PADDING_PX +
-				trackTop +
-				dragOffsetY;
+			// Center ghost on mouse cursor: mouse position in container - half track height
+			const mouseYInContainer = dragState.currentMouseY - containerTop;
+			const top = mouseYInContainer - trackHeight / 2;
 
 			ghosts.push(
 				<div

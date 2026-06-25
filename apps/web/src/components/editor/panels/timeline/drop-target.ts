@@ -189,6 +189,32 @@ export function computeDropTarget({
 	const { trackIndex, relativeY } = trackAtMouse;
 	const track = orderedTracks[trackIndex];
 
+	// Track type wall: video/visual elements can't drop on audio tracks,
+	// and audio elements can't drop on visual tracks.
+	const mainTrackIndex = tracks.overlay.length;
+	const isTargetAudio = trackIndex > mainTrackIndex;
+	const isElementAudio = elementType === "audio";
+	if (isTargetAudio && !isElementAudio) {
+		// Video/visual dragged onto audio track — wall: snap to main track
+		return {
+			trackIndex: mainTrackIndex,
+			isNewTrack: false,
+			insertPosition: null,
+			xPosition,
+			targetElement: EMPTY_TARGET_ELEMENT,
+		};
+	}
+	if (!isTargetAudio && isElementAudio && trackIndex !== mainTrackIndex) {
+		// Audio dragged onto overlay track — wall: snap to main track
+		return {
+			trackIndex: mainTrackIndex,
+			isNewTrack: false,
+			insertPosition: null,
+			xPosition,
+			targetElement: EMPTY_TARGET_ELEMENT,
+		};
+	}
+
 	if (targetElementTypes && targetElementTypes.length > 0) {
 		const targetElement = findElementAtPosition({
 			mouseX,
