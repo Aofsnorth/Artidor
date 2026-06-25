@@ -140,8 +140,8 @@ export function AIProvidersManager({
 
 	return (
 		<div className={containerClass}>
-			{/* Header */}
-			<div className="flex shrink-0 items-center justify-between gap-2">
+			{/* Header — pr-10 leaves room for the dialog's built-in X close button */}
+			<div className="flex shrink-0 items-center justify-between gap-2 pr-10 pt-1">
 				<div className="flex items-center gap-2">
 					<HugeiconsIcon icon={PlugIcon} className="size-3.5 text-white/70" />
 					<span className="text-[11.5px] font-medium text-white/85">
