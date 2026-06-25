@@ -134,6 +134,9 @@ function PreviewCanvas({
 	const renderStartRef = useRef(0);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
 	const [isLoading, setIsLoading] = useState(false);
+	// Cache scale inputs to skip recalculation for manual quality tiers.
+	const lastScaleInputsRef = useRef("");
+	const idleScaleRef = useRef(0);
 	const previewQuality = useSettingsStore((s) => s.previewQuality);
 	const gpuDegraded = useEditor((e) => e.renderer.isDegraded);
 	const { width: nativeWidth, height: nativeHeight } = usePreviewSize();
@@ -173,6 +176,20 @@ function PreviewCanvas({
 
 	const render = useCallback(() => {
 		if (!canvasRef.current || !renderTree) return;
+
+		// Loading overlay check: if a render is in flight and has exceeded
+		// the 80 ms threshold, show the overlay. This is checked here in
+		// the main render callback instead of a separate rAF loop to
+		// eliminate the second rAF overhead.
+		const LOADING_THRESHOLD_MS = 80;
+		if (
+			renderingRef.current &&
+			renderStartRef.current > 0 &&
+			performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
+		) {
+			setIsLoading(true);
+		}
+
 		if (renderingRef.current) {
 			pendingRenderRef.current = true;
 			return;
@@ -199,18 +216,38 @@ function PreviewCanvas({
 			renderer.fps.numerator / renderer.fps.denominator || 30;
 		const frameBudgetMs = 1000 / fps;
 		const avgRenderMs = perfTrackerRef.current.getAverageRenderMs();
-		const scale = resolveAdaptiveScale({
-			quality: previewQuality,
-			isPlaying,
-			gpuDegraded,
-			avgRenderMs: avgRenderMs || undefined,
-			frameBudgetMs,
-		});
-		const idleScale = resolvePreviewScale({
-			quality: previewQuality,
-			isPlaying: false,
-			gpuDegraded,
-		});
+		// For manual quality tiers, the scale is deterministic from
+		// (quality, isPlaying, gpuDegraded) — skip the recalculation when
+		// those inputs haven't changed. Auto mode always recalculates
+		// because avgRenderMs changes every frame.
+		const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+		let scale: number;
+		if (
+			previewQuality !== "auto" &&
+			scaleInputs === lastScaleInputsRef.current
+		) {
+			scale = lastScaleRef.current;
+		} else {
+			scale = resolveAdaptiveScale({
+				quality: previewQuality,
+				isPlaying,
+				gpuDegraded,
+				avgRenderMs: avgRenderMs || undefined,
+				frameBudgetMs,
+			});
+			lastScaleInputsRef.current = scaleInputs;
+		}
+		// idleScale only depends on (quality, gpuDegraded) — cache it too.
+		if (previewQuality !== "auto" && idleScaleRef.current > 0) {
+			// idleScale is deterministic and doesn't change for manual tiers.
+		} else {
+			idleScaleRef.current = resolvePreviewScale({
+				quality: previewQuality,
+				isPlaying: false,
+				gpuDegraded,
+			});
+		}
+		const idleScale = idleScaleRef.current;
 		renderer.setSize({
 			width: Math.max(2, Math.round(nativeWidth * scale)),
 			height: Math.max(2, Math.round(nativeHeight * scale)),
@@ -277,28 +314,10 @@ function PreviewCanvas({
 
 	useRafLoop(render);
 
-	// Loading overlay threshold check: while a render is in flight, check
-	// each rAF tick whether it has exceeded the 80 ms threshold. This is a
-	// separate lightweight rAF so it doesn't interfere with the render
-	// loop's scheduling. The overlay fades in via CSS transition so
-	// sub-threshold renders never flash it.
-	useEffect(() => {
-		let rafId: ReturnType<typeof requestAnimationFrame> | null = null;
-		const LOADING_THRESHOLD_MS = 80;
-		const check = () => {
-			if (
-				renderingRef.current &&
-				performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
-			) {
-				setIsLoading(true);
-			}
-			rafId = requestAnimationFrame(check);
-		};
-		rafId = requestAnimationFrame(check);
-		return () => {
-			if (rafId !== null) cancelAnimationFrame(rafId);
-		};
-	}, []);
+	// Loading overlay threshold check is now merged into the main render
+	// callback (see the LOADING_THRESHOLD_MS check below). This eliminates
+	// the second rAF loop that ran alongside the render loop, reducing
+	// per-frame overhead by one rAF callback + one performance.now() call.
 
 	// Register the live canvas with the global scope sampler so the
 	// Scopes sub-tab in the Advanced card can read pixels from it.

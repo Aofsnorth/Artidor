@@ -33,9 +33,21 @@ const parsed = webEnvSchema.safeParse(process.env);
 
 export const isEnvMissing = !parsed.success;
 if (isEnvMissing && parsed.error) {
-	console.warn("⚠️  Missing or invalid environment variables. Some features may not work properly.");
+	const isProduction = process.env.NODE_ENV === "production";
+	const level = isProduction ? "error" : "warn";
+	const message = isProduction
+		? "Refusing to boot: missing or invalid environment variables in production. Set them and restart."
+		: "Missing or invalid environment variables. Some features may not work properly.";
+	console[level](`⚠️  ${message}`);
 	for (const issue of parsed.error.issues) {
-		console.warn(`  - ${issue.path.join(".")}: ${issue.message}`);
+		console[level](`  - ${issue.path.join(".")}: ${issue.message}`);
+	}
+	// Fail-hard in production: booting without a real BETTER_AUTH_SECRET or
+	// DATABASE_URL is a security risk (forgeable sessions, broken auth).
+	if (isProduction) {
+		throw new Error(
+			"Missing required environment variables in production. See logs above.",
+		);
 	}
 }
 
