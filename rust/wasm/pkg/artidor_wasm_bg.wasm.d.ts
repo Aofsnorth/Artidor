@@ -1,15 +1,16 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const initializeGpu: () => any;
+export const applyMaskFeather: (a: any) => [number, number, number];
+export const applyEffectPasses: (a: any) => [number, number, number];
 export const getCompositorCanvas: () => [number, number, number];
 export const initCompositor: (a: number, b: number) => [number, number];
+export const initCompositorWithCanvas: (a: any) => [number, number];
 export const releaseTexture: (a: number, b: number) => [number, number];
 export const renderFrame: (a: any) => [number, number];
 export const resizeCompositor: (a: number, b: number) => [number, number];
 export const uploadTexture: (a: any) => [number, number];
-export const initializeGpu: () => any;
-export const applyEffectPasses: (a: any) => [number, number, number];
-export const applyMaskFeather: (a: any) => [number, number, number];
 export const formatTimecode: (a: any) => [number, number];
 export const guessTimecodeFormat: (a: any) => any;
 export const parseTimecode: (a: any) => any;
@@ -28,9 +29,9 @@ export const mediaTimeToFrame: (a: any) => [number, bigint];
 export const mediaTimeToSeconds: (a: any) => number;
 export const roundToFrame: (a: any) => any;
 export const snappedSeekTime: (a: any) => any;
-export const wasm_bindgen__convert__closures_____invoke__hc2e77d926aafbb76: (a: number, b: number, c: any) => [number, number];
-export const wasm_bindgen__convert__closures_____invoke__h0bfeb1132045a61c: (a: number, b: number, c: any, d: any) => void;
-export const wasm_bindgen__convert__closures_____invoke__h6b50897c5a911105: (a: number, b: number, c: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h6c25144d5ae393cd: (a: number, b: number, c: any) => [number, number];
+export const wasm_bindgen__convert__closures_____invoke__h193aabdc3d7c65f4: (a: number, b: number, c: any, d: any) => void;
+export const wasm_bindgen__convert__closures_____invoke__h520279ff82b23738: (a: number, b: number, c: any) => void;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
 export const __wbindgen_exn_store: (a: number) => void;

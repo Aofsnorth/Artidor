@@ -106,11 +106,21 @@ export function floorToFrame(arg0: FloorToFrameOptions): MediaTime | undefined;
 
 export function formatTimecode(arg0: FormatTimecodeOptions): string | undefined;
 
-export function getCompositorCanvas(): HTMLCanvasElement;
+export function getCompositorCanvas(): OffscreenCanvas;
 
 export function guessTimecodeFormat(arg0: GuessTimecodeFormatOptions): TimeCodeFormat | undefined;
 
+/**
+ * Initialize compositor with a new canvas (main-thread fallback).
+ * Creates an HTMLCanvasElement and transfers it to an OffscreenCanvas.
+ */
 export function initCompositor(width: number, height: number): void;
+
+/**
+ * Initialize compositor with an external OffscreenCanvas (Worker path).
+ * The canvas is typically transferred from the main thread via postMessage.
+ */
+export function initCompositorWithCanvas(canvas: OffscreenCanvas): void;
 
 export function initializeGpu(): Promise<void>;
 

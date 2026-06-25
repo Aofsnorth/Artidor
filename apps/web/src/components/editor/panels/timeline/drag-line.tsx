@@ -38,10 +38,10 @@ export function DragLine({
 		return (
 			<>
 				<div
-					className="pointer-events-none absolute right-3 left-3 h-10 -translate-y-1/2 rounded-lg border border-primary/60 bg-primary/5 shadow-[0_0_24px_rgba(34,211,238,0.12)]"
+					className="pointer-events-none absolute right-3 left-3 h-10 -translate-y-1/2 rounded-lg border border-white/60 bg-white/5 shadow-[0_0_24px_rgba(255,255,255,0.12)]"
 					style={{ top: `${lineTop}px`, zIndex: TIMELINE_LAYERS.dragLine }}
 				>
-					<div className="absolute inset-1 rounded-md border border-dashed border-primary/50 bg-black/30" />
+					<div className="absolute inset-1 rounded-md border border-dashed border-white/50 bg-black/30" />
 				</div>
 				{centerLabel}
 			</>
