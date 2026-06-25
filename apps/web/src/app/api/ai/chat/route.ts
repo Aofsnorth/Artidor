@@ -21,7 +21,9 @@
  * (image / video sampling), which the server cannot do.
  */
 import { z } from "zod";
+import { headers } from "next/headers";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
+import { auth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 import {
@@ -117,6 +119,19 @@ export async function POST(request: Request) {
 	// to drain the server-side LLM key. See @/lib/ai/config.
 	if (!AI_FEATURE_ENABLED) {
 		return new Response("Not Found", { status: 404 });
+	}
+
+	// Auth check: reject anonymous callers. The AI route proxies a
+	// server-side LLM key, so unauthenticated access is a direct
+	// cost-abuse risk (anyone could drain API credits).
+	const session = await auth.api.getSession({
+		headers: await headers(),
+	});
+	if (!session) {
+		return new Response(
+			JSON.stringify({ error: "unauthorized", message: "Sign in to use AI." }),
+			{ status: 401, headers: { "content-type": "application/json" } },
+		);
 	}
 
 	const { limited } = await checkRateLimit({ request });

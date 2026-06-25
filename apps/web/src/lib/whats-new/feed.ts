@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-ai-editing-enabled",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "AI Editing is now live",
+		items: [
+			"The AI Edit panel is now enabled with security hardening: authenticated-session checks on /api/ai/chat and /api/ai/test, IP-based rate limiting via Upstash, and SSRF protection on provider URLs.",
+			"50+ AI tools across 14 categories (project, scene, track, element, effect, mask, keyframe, transition, playback, asset, style, export, history, clipboard), 3 provider backends (OpenAI-compatible, Anthropic, Ollama), streaming chat, style profile extraction, and privacy-first telemetry.",
+			"Configure your AI provider in the AI Edit panel's provider manager. Supports OpenAI, Together, Groq, OpenRouter, LM Studio, Ollama, and any OpenAI-compatible endpoint.",
+		],
+	},
+	{
 		id: "2026-06-25-export-size-fix",
 		date: "2026-06-25",
 		tag: "fix",

@@ -14,7 +14,9 @@
  */
 
 import { z } from "zod";
+import { headers } from "next/headers";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
+import { auth as serverAuth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 
@@ -90,6 +92,17 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json(
 			{ ok: false, error: "Not Found" } satisfies TestResult,
 			{ status: 404 },
+		);
+	}
+
+	// Auth check: reject anonymous callers (same as /api/ai/chat).
+	const session = await serverAuth.api.getSession({
+		headers: await headers(),
+	});
+	if (!session) {
+		return Response.json(
+			{ ok: false, error: "Sign in to test providers." } satisfies TestResult,
+			{ status: 401 },
 		);
 	}
 
