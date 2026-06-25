@@ -54,7 +54,7 @@ export function formatTimecode(arg0) {
 }
 
 /**
- * @returns {HTMLCanvasElement}
+ * @returns {OffscreenCanvas}
  */
 export function getCompositorCanvas() {
     const ret = wasm.getCompositorCanvas();
@@ -74,11 +74,25 @@ export function guessTimecodeFormat(arg0) {
 }
 
 /**
+ * Initialize compositor with a new canvas (main-thread fallback).
+ * Creates an HTMLCanvasElement and transfers it to an OffscreenCanvas.
  * @param {number} width
  * @param {number} height
  */
 export function initCompositor(width, height) {
     const ret = wasm.initCompositor(width, height);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * Initialize compositor with an external OffscreenCanvas (Worker path).
+ * The canvas is typically transferred from the main thread via postMessage.
+ * @param {OffscreenCanvas} canvas
+ */
+export function initCompositorWithCanvas(canvas) {
+    const ret = wasm.initCompositorWithCanvas(canvas);
     if (ret[1]) {
         throw takeFromExternrefTable0(ret[0]);
     }
@@ -1361,7 +1375,7 @@ export function __wbg_new_typed_00a409eb4ec4f2d9(arg0, arg1) {
             const a = state0.a;
             state0.a = 0;
             try {
-                return wasm_bindgen__convert__closures_____invoke__h0bfeb1132045a61c(a, state0.b, arg0, arg1);
+                return wasm_bindgen__convert__closures_____invoke__h193aabdc3d7c65f4(a, state0.b, arg0, arg1);
             } finally {
                 state0.a = a;
             }
@@ -2188,6 +2202,10 @@ export function __wbg_then_591b6b3a75ee817a(arg0, arg1) {
     const ret = arg0.then(arg1);
     return ret;
 }
+export function __wbg_transferControlToOffscreen_0d5602a41dfef27f() { return handleError(function (arg0) {
+    const ret = arg0.transferControlToOffscreen();
+    return ret;
+}, arguments); }
 export function __wbg_uniform1f_3acd3f3eb50b5e11(arg0, arg1, arg2) {
     arg0.uniform1f(arg1, arg2);
 }
@@ -2359,13 +2377,13 @@ export function __wbg_writeTexture_acb28796746826c8() { return handleError(funct
     arg0.writeTexture(arg1, getArrayU8FromWasm0(arg2, arg3), arg4, arg5);
 }, arguments); }
 export function __wbindgen_cast_0000000000000001(arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2533, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
-    const ret = makeMutClosure(arg0, arg1, wasm_bindgen__convert__closures_____invoke__hc2e77d926aafbb76);
+    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2514, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+    const ret = makeMutClosure(arg0, arg1, wasm_bindgen__convert__closures_____invoke__h6c25144d5ae393cd);
     return ret;
 }
 export function __wbindgen_cast_0000000000000002(arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 769, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-    const ret = makeMutClosure(arg0, arg1, wasm_bindgen__convert__closures_____invoke__h6b50897c5a911105);
+    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 483, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+    const ret = makeMutClosure(arg0, arg1, wasm_bindgen__convert__closures_____invoke__h520279ff82b23738);
     return ret;
 }
 export function __wbindgen_cast_0000000000000003(arg0) {
@@ -2432,19 +2450,19 @@ export function __wbindgen_init_externref_table() {
     table.set(offset + 2, true);
     table.set(offset + 3, false);
 }
-function wasm_bindgen__convert__closures_____invoke__h6b50897c5a911105(arg0, arg1, arg2) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h6b50897c5a911105(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures_____invoke__h520279ff82b23738(arg0, arg1, arg2) {
+    wasm.wasm_bindgen__convert__closures_____invoke__h520279ff82b23738(arg0, arg1, arg2);
 }
 
-function wasm_bindgen__convert__closures_____invoke__hc2e77d926aafbb76(arg0, arg1, arg2) {
-    const ret = wasm.wasm_bindgen__convert__closures_____invoke__hc2e77d926aafbb76(arg0, arg1, arg2);
+function wasm_bindgen__convert__closures_____invoke__h6c25144d5ae393cd(arg0, arg1, arg2) {
+    const ret = wasm.wasm_bindgen__convert__closures_____invoke__h6c25144d5ae393cd(arg0, arg1, arg2);
     if (ret[1]) {
         throw takeFromExternrefTable0(ret[0]);
     }
 }
 
-function wasm_bindgen__convert__closures_____invoke__h0bfeb1132045a61c(arg0, arg1, arg2, arg3) {
-    wasm.wasm_bindgen__convert__closures_____invoke__h0bfeb1132045a61c(arg0, arg1, arg2, arg3);
+function wasm_bindgen__convert__closures_____invoke__h193aabdc3d7c65f4(arg0, arg1, arg2, arg3) {
+    wasm.wasm_bindgen__convert__closures_____invoke__h193aabdc3d7c65f4(arg0, arg1, arg2, arg3);
 }
 
 
