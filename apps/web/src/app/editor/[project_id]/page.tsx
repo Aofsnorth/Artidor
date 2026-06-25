@@ -29,15 +29,14 @@ import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
 import { usePluginsStore } from "@/lib/plugins/store";
 import { useViewerStore } from "@/stores/viewer-store";
-import { Cancel01Icon, ViewIcon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, ViewIcon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { cn } from "@/utils/ui";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
-	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -169,67 +168,194 @@ function FeedbackPrompt() {
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent className="border-white/10 bg-[#0c0c0e]/95 text-white">
-				<DialogHeader>
-					<DialogTitle>Please give feedback</DialogTitle>
-					<DialogDescription>
-						Help us improve the editor after trying it for a few minutes.
-					</DialogDescription>
-				</DialogHeader>
-				{submitted ? (
-					<p className="py-4 text-center text-sm text-white/70">
-						Thank you for your feedback!
-					</p>
-				) : (
-					<div className="flex flex-col gap-3 py-2">
-						<div className="flex gap-2">
-							{(["bug", "feature", "praise", "other"] as const).map((cat) => (
-								<button
-									key={cat}
-									type="button"
-									onClick={() => setCategory(cat)}
-									className={`rounded-lg border px-3 py-1 text-xs capitalize transition-colors ${
-										category === cat
-											? "border-white/20 bg-white/10 text-white"
-											: "border-white/10 text-white/50 hover:text-white/70"
-									}`}
-								>
-									{cat}
-								</button>
-							))}
-						</div>
-						<div className="flex gap-1">
-							{[1, 2, 3, 4, 5].map((star) => (
-								<button
-									key={star}
-									type="button"
-									onClick={() => setRating(star)}
-									className={`text-lg transition-colors ${
-										star <= rating ? "text-yellow-400" : "text-white/20 hover:text-white/40"
-									}`}
-								>
-									★
-								</button>
-							))}
-						</div>
-						<textarea
-							value={message}
-							onChange={(e) => setMessage(e.target.value)}
-							placeholder="Tell us what you think..."
-							rows={4}
-							className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
-						/>
-					</div>
+			<DialogContent
+				className={cn(
+					"sm:max-w-[440px] p-0 overflow-hidden",
+					"bg-gradient-to-b from-[#0c0c10] to-[#08080c]",
+					"border border-white/[0.07]",
+					"shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75),0_0_80px_-20px_rgba(255,255,255,0.06)]",
 				)}
-				{!submitted && (
-					<DialogFooter>
-						<Button variant="ghost" onClick={() => setOpen(false)}>
-							Later
-						</Button>
-						<Button onClick={handleSubmit} disabled={!message.trim() || submitting}>
-							{submitting ? "Sending..." : "Send feedback"}
-						</Button>
-					</DialogFooter>
+			>
+				{/* Ambient glow */}
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0"
+					style={{
+						background: [
+							"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%)",
+							"radial-gradient(ellipse 50% 40% at 50% 100%, rgba(255, 255, 255, 0.04), transparent 55%)",
+						].join(", "),
+					}}
+				/>
+				{/* Top accent line */}
+				<div
+					aria-hidden
+					className="absolute top-0 left-0 right-0 h-px"
+					style={{
+						background:
+							"linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)",
+					}}
+				/>
+
+				{submitted ? (
+					<div className="relative flex flex-col items-center gap-4 px-8 py-12">
+						<div className="grid size-14 place-items-center rounded-full border border-white/10 bg-white/[0.06]">
+							<svg
+								viewBox="0 0 24 24"
+								className="size-6 text-white/80"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth={2.5}
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								role="img"
+								aria-label="Checkmark"
+							>
+								<title>Feedback submitted</title>
+								<path d="M20 6L9 17l-5-5" />
+							</svg>
+						</div>
+						<div className="text-center">
+							<p className="font-serif text-lg text-white">Thank you</p>
+							<p className="mt-1 text-xs text-white/40">
+								Your feedback helps us build a better editor.
+							</p>
+						</div>
+					</div>
+				) : (
+					<div className="relative">
+						{/* Header */}
+						<div className="flex items-center gap-3 px-6 pt-6 pb-4">
+							<div className="grid size-10 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+								<HugeiconsIcon
+									icon={SparklesIcon}
+									className="size-5 text-white/70"
+								/>
+							</div>
+							<div>
+								<DialogTitle className="font-serif text-base text-white">
+									How&apos;s the editor?
+								</DialogTitle>
+								<DialogDescription className="text-[0.7rem] text-white/40">
+									We read every piece of feedback.
+								</DialogDescription>
+							</div>
+						</div>
+
+						{/* Divider */}
+						<div className="mx-6 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
+						{/* Body */}
+						<div className="flex flex-col gap-4 px-6 py-5">
+							{/* Category chips */}
+							<div className="flex flex-wrap gap-1.5">
+								{(["bug", "feature", "praise", "other"] as const).map((cat) => (
+									<button
+										key={cat}
+										type="button"
+										onClick={() => setCategory(cat)}
+										className={cn(
+											"rounded-full border px-3 py-1 text-[0.7rem] font-medium capitalize transition-all",
+											category === cat
+												? "border-white/20 bg-white/[0.1] text-white shadow-[0_0_20px_-5px_rgba(255,255,255,0.15)]"
+												: "border-white/[0.06] bg-white/[0.02] text-white/40 hover:border-white/10 hover:text-white/60",
+										)}
+									>
+										{cat}
+									</button>
+								))}
+							</div>
+
+							{/* Rating stars */}
+							<div className="flex items-center gap-1">
+								{[1, 2, 3, 4, 5].map((star) => (
+									<button
+										key={star}
+										type="button"
+										onClick={() => setRating(star)}
+										className={cn(
+											"grid size-8 place-items-center rounded-lg transition-all",
+											star <= rating
+												? "text-amber-300"
+												: "text-white/15 hover:text-white/30",
+										)}
+										aria-label={`${star} star${star > 1 ? "s" : ""}`}
+									>
+										<svg
+											viewBox="0 0 24 24"
+											className={cn(
+												"size-5 transition-transform",
+												star <= rating && "scale-110",
+											)}
+											fill={star <= rating ? "currentColor" : "none"}
+											stroke="currentColor"
+											strokeWidth={1.5}
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											role="img"
+											aria-label={`${star} star${star > 1 ? "s" : ""}`}
+										>
+											<title>{`${star} star${star > 1 ? "s" : ""}`}</title>
+											<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+										</svg>
+									</button>
+								))}
+								{rating > 0 && (
+									<span className="ml-2 text-[0.65rem] font-medium uppercase tracking-wider text-white/30">
+										{["", "Poor", "Fair", "Good", "Great", "Excellent"][rating]}
+									</span>
+								)}
+							</div>
+
+							{/* Message textarea */}
+							<div className="relative">
+								<textarea
+									value={message}
+									onChange={(e) => setMessage(e.target.value)}
+									placeholder="Tell us what you think..."
+									rows={3}
+									className={cn(
+										"w-full resize-none rounded-xl border border-white/[0.08] bg-black/30 px-4 py-3 text-sm text-white outline-none transition-colors",
+										"placeholder:text-white/25 focus:border-white/20 focus:bg-black/40",
+									)}
+								/>
+								<span className="pointer-events-none absolute bottom-2 right-3 text-[0.6rem] text-white/20">
+									{message.length}/5000
+								</span>
+							</div>
+						</div>
+
+						{/* Footer */}
+						<div className="flex items-center justify-between border-t border-white/[0.06] px-6 py-4">
+							<button
+								type="button"
+								onClick={() => setOpen(false)}
+								className="text-[0.7rem] font-medium text-white/40 transition-colors hover:text-white/60"
+							>
+								Maybe later
+							</button>
+							<button
+								type="button"
+								onClick={handleSubmit}
+								disabled={!message.trim() || submitting}
+								className={cn(
+									"flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-all",
+									!message.trim() || submitting
+										? "cursor-not-allowed border border-white/[0.06] bg-white/[0.02] text-white/30"
+										: "border border-white/15 bg-white/[0.08] text-white hover:bg-white/[0.12] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
+								)}
+							>
+								{submitting ? (
+									<>
+										<div className="size-3 animate-spin rounded-full border-2 border-white/20 border-t-white/60" />
+										Sending...
+									</>
+								) : (
+									"Send feedback"
+								)}
+							</button>
+						</div>
+					</div>
 				)}
 			</DialogContent>
 		</Dialog>
