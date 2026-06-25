@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-export-size-fix",
+		date: "2026-06-25",
+		tag: "fix",
+		title: "Export file size: 200MB → ~100MB (halved)",
+		items: [
+			"Export was producing larger files than the source (135MB input → 200MB output). The root cause was the default quality set to 'high' (mediabunny factor 2.0), which doubled the baseline video bitrate.",
+			"Fixed: default export quality changed from 'high' to 'medium' (factor 1.0). Audio bitrate fixed at 128kbps AAC / 64kbps Opus instead of scaling with video quality factor.",
+			"Users can still manually select 'high' or 'very high' in the export dialog for higher quality when needed.",
+		],
+	},
+	{
 		id: "2026-06-25-preview-fast-seek-v2",
 		date: "2026-06-25",
 		tag: "performance",
