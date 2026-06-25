@@ -110,24 +110,30 @@ export function findNearestKeyframe(
 	if (times.length === 0) return null;
 
 	// Before the first keyframe — no valid keyframe to start from.
-	if (targetTime < times[0]!) return null;
+	const first = times[0];
+	if (first === undefined) return null;
+	if (targetTime < first) return null;
 
 	// At or after the last keyframe — use the last one.
-	if (targetTime >= times[times.length - 1]!) {
-		return times[times.length - 1]!;
-	}
+	const last = times[times.length - 1];
+	if (last === undefined) return null;
+	if (targetTime >= last) return last;
 
 	// Binary search: find the largest keyframe time <= targetTime.
 	let lo = 0;
 	let hi = times.length - 1;
 	while (lo < hi) {
 		const mid = Math.ceil((lo + hi) / 2);
-		if (times[mid]! <= targetTime) {
+		const midTime = times[mid];
+		if (midTime === undefined) break;
+		if (midTime <= targetTime) {
 			lo = mid;
 		} else {
 			hi = mid - 1;
 		}
 	}
 
-	return times[lo]!;
+	const result = times[lo];
+	if (result === undefined) return null;
+	return result;
 }

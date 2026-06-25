@@ -21,7 +21,8 @@ describe("planSegmentCount", () => {
 		const longTimeline = MIN_FRAMES_PER_SEGMENT * 100;
 		expect(planSegmentCount(longTimeline, 2)).toBe(2);
 		expect(planSegmentCount(longTimeline, 3)).toBe(3);
-		expect(planSegmentCount(longTimeline, 4)).toBe(MAX_SEGMENTS);
+		expect(planSegmentCount(longTimeline, 4)).toBe(4);
+		expect(planSegmentCount(longTimeline, 8)).toBe(8);
 		// Never exceeds the cap, even with many cores.
 		expect(planSegmentCount(longTimeline, 32)).toBe(MAX_SEGMENTS);
 	});
@@ -33,8 +34,9 @@ describe("planSegmentCount", () => {
 
 	test("falls back to a safe core count for bad inputs", () => {
 		const longTimeline = MIN_FRAMES_PER_SEGMENT * 100;
-		expect(planSegmentCount(longTimeline, 0)).toBe(MAX_SEGMENTS);
-		expect(planSegmentCount(longTimeline, Number.NaN)).toBe(MAX_SEGMENTS);
+		// Bad core counts fall back to 4 (capped by MAX_SEGMENTS).
+		expect(planSegmentCount(longTimeline, 0)).toBe(4);
+		expect(planSegmentCount(longTimeline, Number.NaN)).toBe(4);
 	});
 });
 

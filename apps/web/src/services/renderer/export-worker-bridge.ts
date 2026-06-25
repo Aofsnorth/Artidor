@@ -7,7 +7,7 @@
  */
 
 import type { FrameRate } from "artidor-wasm";
-import type { ExportFormat, ExportQuality } from "@/lib/export";
+import type { ExportFormat, ExportMode, ExportQuality } from "@/lib/export";
 import type { SerializedNode } from "./scene-serializer";
 import type { ExportAudioCodec, ExportVideoCodec } from "./export-codec";
 
@@ -51,7 +51,6 @@ export function isExportWorkerSupported(): boolean {
  * @returns The final export buffer, or null if cancelled/failed
  */
 export async function runExportInWorker({
-	canvas,
 	sceneTree,
 	files,
 	audioBuffer,
@@ -66,11 +65,12 @@ export async function runExportInWorker({
 	videoOnly,
 	videoCodec,
 	audioCodec,
-	transferFiles = true,
+	mode = "auto",
 	onProgress,
+	onReady,
 	getCancelled,
+	timeoutMs = 0,
 }: {
-	canvas: OffscreenCanvas;
 	sceneTree: SerializedNode;
 	files: Array<{ mediaId: string; file: File }>;
 	audioBuffer: AudioBuffer | null;
@@ -90,46 +90,110 @@ export async function runExportInWorker({
 	videoCodec?: ExportVideoCodec;
 	/** Pinned audio codec. */
 	audioCodec?: ExportAudioCodec;
-	/**
-	 * Whether to *transfer* the media File objects into the worker. The
-	 * single-worker path transfers them (cheapest). The parallel path shares
-	 * the same Files across many workers, so they must be cloned (structured
-	 * clone shares the underlying Blob data cheaply) rather than transferred —
-	 * a transferred File would be detached for every subsequent worker.
-	 */
-	transferFiles?: boolean;
+	/** Export mode: "auto", "gpu", or "cpu". */
+	mode?: ExportMode;
 	onProgress?: ({ progress }: { progress: number }) => void;
+	/** Called when the worker signals it has finished GPU init. */
+	onReady?: () => void;
 	getCancelled?: () => boolean;
+	/**
+	 * No-activity timeout. If the worker does not send any message for this
+	 * many milliseconds, the worker is terminated and the promise resolves with
+	 * an error. Useful for the parallel pipeline, where a stuck segment worker
+	 * should fall back to the single-worker path instead of blocking forever.
+	 * A value of 0 (default) disables the timeout.
+	 */
+	timeoutMs?: number;
 }): Promise<ExportWorkerResult> {
 	return new Promise((resolve) => {
 		const worker = new Worker(new URL("./export-worker.ts", import.meta.url), {
 			type: "module",
 		});
 
-		// Build transferables: OffscreenCanvas is always transferred. Files and
-		// the audio buffer are only transferred for the single-worker path; the
-		// parallel path clones them so they can be reused across workers.
-		const transferables: Transferable[] = [canvas];
-		if (transferFiles) {
-			for (const { file } of files) {
-				transferables.push(file);
+		// Build transferables. The OffscreenCanvas is created INSIDE the worker
+		// (not transferred) because transferring OffscreenCanvas via postMessage
+		// can silently fail in some browser/dev-server combinations. The worker
+		// creates its own canvas from the width/height params.
+		const transferables: Transferable[] = [];
+
+		// Serialize AudioBuffer → transferable PCM data
+		let audioData: {
+			channels: Float32Array[];
+			sampleRate: number;
+			numberOfChannels: number;
+			length: number;
+		} | null = null;
+		if (audioBuffer) {
+			const numberOfChannels = audioBuffer.numberOfChannels;
+			const channels: Float32Array[] = [];
+			for (let ch = 0; ch < numberOfChannels; ch++) {
+				// copyToChannel/getChannelData return Float32Array views; we need
+				// to copy because the underlying buffer gets detached on transfer.
+				const data = audioBuffer.getChannelData(ch);
+				channels.push(new Float32Array(data)); // copy
+				transferables.push(channels[ch].buffer);
 			}
-			if (audioBuffer) {
-				transferables.push(audioBuffer);
-			}
+			audioData = {
+				channels,
+				sampleRate: audioBuffer.sampleRate,
+				numberOfChannels,
+				length: audioBuffer.length,
+			};
 		}
 
 		// Cancel polling
 		let cancelInterval: ReturnType<typeof setInterval> | null = null;
+		let cancelled = false;
 		if (getCancelled) {
 			cancelInterval = setInterval(() => {
 				if (getCancelled()) {
-					worker.postMessage("cancel");
+					if (cancelled) return;
+					cancelled = true;
+					// Terminate the worker immediately. If the worker is stuck in
+					// a blocking operation (e.g. GPU init), it can't process a
+					// "cancel" message — so we must terminate from this side.
+					cleanup();
+					resolve({ success: false, cancelled: true });
 				}
 			}, 100);
 		}
 
+		// No-activity timeout: terminate a stuck worker instead of waiting
+		// forever (e.g. deadlocked GPU init or encoder configuration).
+		let timeout: ReturnType<typeof setTimeout> | null = null;
+		let lastActivity = Date.now();
+		let hasReceivedMessage = false;
+		const resetActivity = () => {
+			lastActivity = Date.now();
+			hasReceivedMessage = true;
+		};
+		const scheduleTimeout = () => {
+			if (timeoutMs <= 0) return;
+			if (timeout) clearTimeout(timeout);
+			// Use a shorter timeout for the first message — if the worker hasn't
+			// sent anything at all, it's likely broken (e.g. dev server serving
+			// HTML instead of the worker module). Once we know the worker is
+			// alive, use the full timeout.
+			const effectiveTimeout = hasReceivedMessage ? timeoutMs : Math.min(timeoutMs, 10_000);
+			timeout = setTimeout(() => {
+				const elapsed = Date.now() - lastActivity;
+				if (elapsed < effectiveTimeout) {
+					// Timer fired early because of a reset race; reschedule.
+					scheduleTimeout();
+					return;
+				}
+				cleanup();
+				resolve({
+					success: false,
+					error: hasReceivedMessage
+						? `Export worker timed out (no activity for ${timeoutMs}ms)`
+						: `Export worker sent no messages within ${effectiveTimeout / 1000}s (worker may have failed to load)`,
+				});
+			}, timeoutMs);
+		};
+
 		const cleanup = () => {
+			if (timeout) clearTimeout(timeout);
 			if (cancelInterval) clearInterval(cancelInterval);
 			worker.terminate();
 		};
@@ -140,11 +204,26 @@ export async function runExportInWorker({
 				| { type: "complete"; buffer: ArrayBuffer }
 				| { type: "error"; error: string }
 				| { type: "cancelled" }
+				| { type: "ready" }
 			>,
 		) => {
 			const data = event.data;
+			resetActivity();
+			scheduleTimeout();
 
 			switch (data.type) {
+				case "ready":
+					onReady?.();
+					// Worker is ready to receive the init message. In ESM workers
+					// (especially under Turbopack/Next.js dev), sending init before
+					// the worker has registered its onmessage handler causes the
+					// message to be silently lost.
+					if (!initSent) {
+						initSent = true;
+						sendInit();
+					}
+					break;
+
 				case "progress":
 					onProgress?.({ progress: data.progress });
 					break;
@@ -182,27 +261,39 @@ export async function runExportInWorker({
 			});
 		};
 
-		// Send init message with all data
-		worker.postMessage(
-			{
-				type: "init",
-				canvas,
-				sceneTree,
-				files,
-				audioBuffer,
-				width,
-				height,
-				fps,
-				format,
-				quality,
-				shouldIncludeAudio,
-				startFrame,
-				endFrame,
-				videoOnly,
-				videoCodec,
-				audioCodec,
-			},
-			transferables,
-		);
+		// Start the no-activity timer once the worker is spawned.
+		scheduleTimeout();
+
+		// Track whether we've sent the init message. In ESM workers, the
+		// worker sends a "ready" signal after registering its onmessage
+		// handler. We wait for that before sending init to avoid the message
+		// being silently lost during module evaluation.
+		let initSent = false;
+
+		const sendInit = () => {
+			worker.postMessage(
+				{
+					type: "init",
+					sceneTree,
+					files,
+					audioData,
+					width,
+					height,
+					fps,
+					format,
+					quality,
+					shouldIncludeAudio,
+					startFrame,
+					endFrame,
+					videoOnly,
+					videoCodec,
+					audioCodec,
+					mode,
+				},
+				transferables,
+			);
+		};
+
+		// Don't send init immediately — wait for the worker's "ready" signal.
 	});
 }

@@ -8,11 +8,13 @@
 
 /**
  * Hard cap on parallel segments. Each segment spins up its own WebGPU device
- * and hardware decoder/encoder; beyond ~4 the GPU/codec contention and memory
- * (N decoded pipelines + N in-flight segment buffers) outweigh the throughput
- * gain on typical consumer hardware.
+ * and hardware decoder/encoder. GPU init is staggered across workers (see
+ * parallel-export.ts) to avoid adapter-request deadlocks. With modern GPUs
+ * supporting multiple contexts, 16 workers provides near-100% utilization on
+ * 16+ core machines (turbo mode). Memory is the real limiter (each worker
+ * ~50-200MB).
  */
-export const MAX_SEGMENTS = 4;
+export const MAX_SEGMENTS = 16;
 
 /**
  * Minimum frames a segment must contain to be worth a dedicated worker. Worker

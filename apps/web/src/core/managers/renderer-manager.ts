@@ -155,7 +155,7 @@ export class RendererManager {
 		onProgress?: ({ progress }: { progress: number }) => void;
 		onCancel?: () => boolean;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio } = options;
+		const { format, quality, fps, includeAudio, mode = "auto", workerCount } = options;
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -179,11 +179,13 @@ export class RendererManager {
 			// below instead of running strictly before it.
 			let audioBufferPromise: Promise<AudioBuffer | null> | null = null;
 			if (includeAudio) {
-				onProgress?.({ progress: 0.05 });
 				audioBufferPromise = createTimelineAudioBuffer({
 					tracks,
 					mediaAssets,
 					duration,
+					// Audio mixing consumes the first 5% of the export bar.
+					onProgress: (audioProgress) =>
+						onProgress?.({ progress: audioProgress * 0.05 }),
 				});
 			}
 
@@ -195,14 +197,22 @@ export class RendererManager {
 				background: activeProject.settings.background,
 			});
 
-			const audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
+			// Wait for audio mixing to complete. No timeout — if the user enabled
+			// audio, we must deliver audio. A timeout that silently drops audio is
+			// worse than a slow export. If audio mixing genuinely hangs, the user
+			// can cancel the export.
+			const audioBuffer = audioBufferPromise
+				? await audioBufferPromise
+				: null;
 
 			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
 			if (isExportWorkerSupported()) {
+				console.info("[export] worker path supported, serializing scene tree");
 				const { tree, files } = serializeSceneTree(scene);
 				const fileEntries = Array.from(files.entries()).map(
 					([mediaId, file]) => ({ mediaId, file }),
 				);
+				console.info(`[export] scene serialized: ${fileEntries.length} files`);
 				// Progress maps the worker's 0..1 onto 0.05..1 when audio mixing
 				// already consumed the first 5%.
 				const mapProgress = (p: number) => (includeAudio ? 0.05 + p * 0.95 : p);
@@ -224,6 +234,8 @@ export class RendererManager {
 						format,
 						quality,
 						shouldIncludeAudio: !!includeAudio,
+						mode,
+						workerCount,
 						onProgress: (p) =>
 							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
@@ -251,13 +263,7 @@ export class RendererManager {
 
 				// 2. Single-worker path (whole timeline on one worker).
 				try {
-					const canvas = new OffscreenCanvas(
-						canvasSize.width,
-						canvasSize.height,
-					);
-
 					const result = await runExportInWorker({
-						canvas,
 						sceneTree: tree,
 						files: fileEntries,
 						audioBuffer: audioBuffer || null,
@@ -267,6 +273,11 @@ export class RendererManager {
 						format,
 						quality,
 						shouldIncludeAudio: !!includeAudio,
+						mode,
+						// 30s no-activity timeout for the single-worker fallback. Long
+						// exports keep sending progress messages, so this only fires
+						// when the worker is truly stuck.
+						timeoutMs: 30_000,
 						onProgress: (p) =>
 							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
@@ -320,7 +331,19 @@ export class RendererManager {
 			const cancelInterval = setInterval(checkCancel, 100);
 
 			try {
-				const buffer = await exporter.export({ rootNode: scene });
+				const buffer = await Promise.race([
+					exporter.export({ rootNode: scene }),
+					new Promise<never>((_, reject) =>
+						setTimeout(() => {
+							exporter.cancel();
+							reject(
+								new Error(
+									"Main-thread export timed out after 120s",
+								),
+							);
+						}, 120_000),
+					),
+				]);
 				clearInterval(cancelInterval);
 
 				if (cancelled) {
