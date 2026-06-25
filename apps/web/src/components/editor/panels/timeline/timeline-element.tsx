@@ -1198,7 +1198,7 @@ function ElementInner({
 								}),
 								(isReducedOpacity || isTrackLocked) && "opacity-50",
 							)}
-							style={{ height: `${baseTrackHeight}px` }}
+							style={{ height: isExpanded ? `${baseTrackHeight}px` : "100%" }}
 						>
 							<div className="flex h-full flex-1 min-h-0 items-center overflow-hidden">
 								<ElementContent
