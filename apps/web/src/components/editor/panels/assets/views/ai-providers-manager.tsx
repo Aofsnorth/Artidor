@@ -571,18 +571,15 @@ function ProviderFormDialog({
 						{isEditing ? "Edit provider" : "Add AI provider"}
 					</DialogTitle>
 					<DialogDescription>
-						OpenAI-compatible endpoints — OpenAI itself, Together, Groq,
-						OpenRouter, LM Studio, vLLM, llama.cpp&apos;s server, or local
-						Ollama — all work via this dialog.
+						Works with OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM,
+						llama.cpp, or local Ollama.
 					</DialogDescription>
 				</DialogHeader>
 
-				<DialogBody className="gap-3">
+				<DialogBody className="gap-4">
+					{/* Name */}
 					<div className="space-y-1.5">
-						<Label
-							htmlFor="provider-name"
-							className="text-[11px] text-white/70"
-						>
+						<Label htmlFor="provider-name" className="text-[11px] text-white/70">
 							Name
 						</Label>
 						<Input
@@ -597,27 +594,29 @@ function ProviderFormDialog({
 						)}
 					</div>
 
+					{/* Type selector */}
 					<div className="space-y-1.5">
 						<Label className="text-[11px] text-white/70">Type</Label>
-						<div className="grid grid-cols-2 gap-1">
+						<div className="grid grid-cols-2 gap-2">
 							{(Object.keys(KIND_LABELS) as ProviderKind[]).map((k) => {
 								const meta = KIND_LABELS[k];
+								const isActive = kind === k;
 								return (
 									<button
 										key={k}
 										type="button"
 										onClick={() => handleKindChange(k)}
 										className={cn(
-											"flex flex-col items-start gap-0.5 rounded-md border px-2.5 py-1.5 text-left transition",
-											kind === k
-												? "border-white/30 bg-white/[0.08] text-white"
-												: "border-white/[0.08] bg-white/[0.02] text-white/65 hover:border-white/15 hover:bg-white/[0.04] hover:text-white/85",
+											"flex flex-col gap-0.5 rounded-lg border px-3 py-2 text-left transition-all",
+											isActive
+												? "border-white/25 bg-white/[0.06] text-white"
+												: "border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/15 hover:bg-white/[0.04] hover:text-white/85",
 										)}
 									>
-										<span className="text-[0.72rem] font-medium">
+										<span className="text-[11px] font-medium">
 											{meta.label}
 										</span>
-										<span className="text-[0.6rem] leading-snug text-white/40">
+										<span className="text-[9.5px] leading-snug text-white/40">
 											{meta.hint}
 										</span>
 									</button>
@@ -626,10 +625,11 @@ function ProviderFormDialog({
 						</div>
 					</div>
 
+					{/* Base URL */}
 					<div className="space-y-1.5">
 						<Label
 							htmlFor="provider-base-url"
-							className="flex items-center gap-1 text-[11px] text-white/70"
+							className="flex items-center gap-1.5 text-[11px] text-white/70"
 						>
 							<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
 							Base URL
@@ -646,10 +646,11 @@ function ProviderFormDialog({
 						)}
 					</div>
 
+					{/* API Key */}
 					<div className="space-y-1.5">
 						<Label
 							htmlFor="provider-api-key"
-							className="flex items-center gap-1 text-[11px] text-white/70"
+							className="flex items-center gap-1.5 text-[11px] text-white/70"
 						>
 							<HugeiconsIcon icon={Key01Icon} className="size-3" />
 							API Key
@@ -673,10 +674,11 @@ function ProviderFormDialog({
 						)}
 					</div>
 
+					{/* Model */}
 					<div className="space-y-1.5">
 						<Label
 							htmlFor="provider-model"
-							className="flex items-center gap-1 text-[11px] text-white/70"
+							className="flex items-center gap-1.5 text-[11px] text-white/70"
 						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-3" />
 							Model
@@ -693,62 +695,53 @@ function ProviderFormDialog({
 						)}
 					</div>
 
-					{testError && (
-						<div className="flex items-start gap-2 rounded-md border border-red-400/30 bg-red-500/10 p-2 text-[11px] text-red-200">
+					{/* Test result / hint */}
+					{testError ? (
+						<div className="flex items-start gap-2 rounded-lg border border-red-400/25 bg-red-500/[0.08] p-2.5 text-[11px] text-red-200">
 							<HugeiconsIcon
 								icon={AlertCircleIcon}
 								className="mt-0.5 size-3.5 shrink-0"
 							/>
-							<span>{testError}</span>
+							<span className="leading-relaxed">{testError}</span>
 						</div>
+					) : (
+						!testing && (
+							<p className="text-[10px] leading-relaxed text-white/35">
+								Click <span className="text-white/55">Test</span> to verify the
+								connection before saving — one tiny prompt, max_tokens=1.
+							</p>
+						)
 					)}
-					{!testError && testing === false && (
-						<div className="text-[10.5px] text-white/40">
-							Click <strong>Test</strong> to verify the connection before saving
-							— the request is one tiny prompt (max_tokens=1), nothing is billed
-							beyond that.
-						</div>
-					)}
-					{/* re-mount form when switching add/edit so the key= above
-					   triggers a fresh useState init via React's key reset. */}
 					<FormKeyBridge key={key} />
 				</DialogBody>
 
-				<DialogFooter className="border-t-0 p-0">
-					<div className="flex w-full items-center justify-between gap-2">
-						<Button
-							size="sm"
-							variant="ghost"
-							onClick={() => void handleTestFromDialog()}
-							disabled={testing}
-						>
-							{testing ? (
-								<HugeiconsIcon
-									icon={Loading02Icon}
-									className="size-3.5 animate-spin"
-								/>
-							) : (
-								<HugeiconsIcon icon={PlugIcon} className="size-3.5" />
-							)}
-							Test
-						</Button>
-						<div className="flex items-center gap-2">
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={() => onOpenChange(false)}
-							>
-								Cancel
-							</Button>
-							<Button size="sm" onClick={handleSave}>
-								<HugeiconsIcon
-									icon={isEditing ? Edit01Icon : Add01Icon}
-									className="size-3.5"
-								/>
-								{isEditing ? "Save changes" : "Add provider"}
-							</Button>
-						</div>
-					</div>
+				<DialogFooter>
+					<Button
+						size="sm"
+						variant="ghost"
+						onClick={() => void handleTestFromDialog()}
+						disabled={testing}
+					>
+						{testing ? (
+							<HugeiconsIcon
+								icon={Loading02Icon}
+								className="size-3.5 animate-spin"
+							/>
+						) : (
+							<HugeiconsIcon icon={PlugIcon} className="size-3.5" />
+						)}
+						Test
+					</Button>
+					<Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button size="sm" onClick={handleSave}>
+						<HugeiconsIcon
+							icon={isEditing ? Edit01Icon : Add01Icon}
+							className="size-3.5"
+						/>
+						{isEditing ? "Save changes" : "Add provider"}
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
