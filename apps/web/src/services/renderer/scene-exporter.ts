@@ -181,6 +181,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: videoCodec,
 			bitrate: qualityMap[this.quality],
+			// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
+			// 10-100x faster than software encoding.
+			hardwareAcceleration: "prefer-hardware",
 		});
 
 		output.addVideoTrack(videoSource, { frameRate: fpsFloat });
