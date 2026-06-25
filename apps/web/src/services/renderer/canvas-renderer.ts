@@ -62,7 +62,7 @@ export class CanvasRenderer {
 			| CanvasRenderingContext2D;
 	}
 
-	getOutputCanvas(): HTMLCanvasElement {
+	getOutputCanvas(): HTMLCanvasElement | OffscreenCanvas {
 		wasmCompositor.ensureInitialized({
 			width: this.width,
 			height: this.height,

@@ -12,8 +12,14 @@ use crate::gpu::{
     with_gpu_runtime,
 };
 
+/// Canvas type used by the compositor. Both main-thread and Worker paths
+/// use OffscreenCanvas for uniform surface creation.
+enum CompositorCanvas {
+    Offscreen(web_sys::OffscreenCanvas),
+}
+
 struct CompositorRuntime {
-    canvas: web_sys::HtmlCanvasElement,
+    canvas: CompositorCanvas,
     compositor: Compositor,
 }
 
@@ -21,23 +27,53 @@ thread_local! {
     static COMPOSITOR_RUNTIME: RefCell<Option<CompositorRuntime>> = const { RefCell::new(None) };
 }
 
+/// Initialize compositor with a new canvas (main-thread fallback).
+/// Creates an HTMLCanvasElement and transfers it to an OffscreenCanvas.
 #[wasm_bindgen(js_name = initCompositor)]
 pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
     with_gpu_runtime(|gpu_runtime| {
         let document = web_sys::window()
             .and_then(|window| window.document())
             .ok_or_else(|| JsValue::from_str("Document is not available"))?;
-        let canvas: web_sys::HtmlCanvasElement = document
+        let html_canvas: web_sys::HtmlCanvasElement = document
             .create_element("canvas")?
             .dyn_into()
             .map_err(|_| JsValue::from_str("Failed to create compositor canvas"))?;
-        canvas.set_width(width);
-        canvas.set_height(height);
+        html_canvas.set_width(width);
+        html_canvas.set_height(height);
+
+        // Transfer to OffscreenCanvas for uniform surface creation
+        let canvas: web_sys::OffscreenCanvas = html_canvas
+            .transfer_control_to_offscreen()
+            .map_err(|e| JsValue::from_str(&format!("transferControlToOffscreen failed: {e:?}")))?;
 
         let compositor = Compositor::new(&gpu_runtime.context);
 
         COMPOSITOR_RUNTIME.with(|runtime| {
-            runtime.replace(Some(CompositorRuntime { canvas, compositor }));
+            runtime.replace(Some(CompositorRuntime {
+                canvas: CompositorCanvas::Offscreen(canvas),
+                compositor,
+            }));
+        });
+
+        Ok(())
+    })
+}
+
+/// Initialize compositor with an external OffscreenCanvas (Worker path).
+/// The canvas is typically transferred from the main thread via postMessage.
+#[wasm_bindgen(js_name = initCompositorWithCanvas)]
+pub fn init_compositor_with_canvas(
+    canvas: web_sys::OffscreenCanvas,
+) -> Result<(), JsValue> {
+    with_gpu_runtime(|gpu_runtime| {
+        let compositor = Compositor::new(&gpu_runtime.context);
+
+        COMPOSITOR_RUNTIME.with(|runtime| {
+            runtime.replace(Some(CompositorRuntime {
+                canvas: CompositorCanvas::Offscreen(canvas),
+                compositor,
+            }));
         });
 
         Ok(())
@@ -53,14 +89,18 @@ pub fn resize_compositor(width: u32, height: u32) -> Result<(), JsValue> {
                 "Compositor is not initialized. Call initCompositor() first.",
             ));
         };
-        runtime.canvas.set_width(width);
-        runtime.canvas.set_height(height);
+        match &runtime.canvas {
+            CompositorCanvas::Offscreen(canvas) => {
+                canvas.set_width(width);
+                canvas.set_height(height);
+            }
+        }
         Ok(())
     })
 }
 
 #[wasm_bindgen(js_name = getCompositorCanvas)]
-pub fn get_compositor_canvas() -> Result<web_sys::HtmlCanvasElement, JsValue> {
+pub fn get_compositor_canvas() -> Result<web_sys::OffscreenCanvas, JsValue> {
     COMPOSITOR_RUNTIME.with(|runtime| {
         let borrow = runtime.borrow();
         let Some(runtime) = borrow.as_ref() else {
@@ -68,7 +108,9 @@ pub fn get_compositor_canvas() -> Result<web_sys::HtmlCanvasElement, JsValue> {
                 "Compositor is not initialized. Call initCompositor() first.",
             ));
         };
-        Ok(runtime.canvas.clone())
+        match &runtime.canvas {
+            CompositorCanvas::Offscreen(canvas) => Ok(canvas.clone()),
+        }
     })
 }
 
@@ -131,11 +173,14 @@ pub fn render_frame(options: JsValue) -> Result<(), JsValue> {
                 ));
             };
 
-            let surface = gpu_runtime
-                .context
-                .instance()
-                .create_surface(wgpu::SurfaceTarget::Canvas(runtime.canvas.clone()))
-                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+            // Both main-thread and Worker paths use OffscreenCanvas for surface creation
+            let surface = match &runtime.canvas {
+                CompositorCanvas::Offscreen(canvas) => gpu_runtime
+                    .context
+                    .instance()
+                    .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas.clone()))
+                    .map_err(|error| JsValue::from_str(&error.to_string()))?,
+            };
 
             runtime
                 .compositor
