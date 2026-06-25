@@ -304,28 +304,24 @@ function ProvidersDialog({
 }) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[85vh] max-w-xl overflow-hidden p-0">
-				<DialogHeader className="border-b-0 p-0">
-					<div className="sr-only">
-						<DialogTitle>AI providers</DialogTitle>
-						<DialogDescription>
-							Configure the AI endpoint used by the AI Edit panel.
-						</DialogDescription>
-					</div>
+			<DialogContent className="max-h-[85vh] max-w-xl overflow-hidden">
+				<DialogHeader>
+					<DialogTitle>AI Providers</DialogTitle>
+					<DialogDescription>
+						Configure the AI endpoints used by the AI Edit panel.
+					</DialogDescription>
 				</DialogHeader>
-				<DialogBody className="max-h-[75vh] gap-0 overflow-y-auto p-0">
-					<AIProvidersManager variant="panel" />
+				<DialogBody className="max-h-[60vh] gap-3 overflow-y-auto">
+					<AIProvidersManager variant="inline" />
 				</DialogBody>
-				<DialogFooter className="border-t border-white/[0.06] bg-black/20 p-0">
-					<div className="flex w-full items-center justify-end px-4 py-3">
-						<Button
-							size="sm"
-							variant="ghost"
-							onClick={() => onOpenChange(false)}
-						>
-							Done
-						</Button>
-					</div>
+				<DialogFooter className="border-t border-white/[0.06] bg-black/20">
+					<Button
+						size="sm"
+						variant="ghost"
+						onClick={() => onOpenChange(false)}
+					>
+						Done
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
