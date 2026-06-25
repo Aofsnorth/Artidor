@@ -283,8 +283,14 @@ export function Timeline() {
 		setElementSelection,
 		mergeElementsIntoSelection,
 	} = useElementSelection();
+	// Use bare useEditor() — this does NOT subscribe to any
+	// subsystem (subscribeNone), so it never triggers re-renders.
+	// We only use it for stable method calls (seek, addTrack, etc).
 	const editor = useEditor();
 	const timeline = editor.timeline;
+	// Subscribe ONLY to scenes — not playback, not media, not selection.
+	// This prevents the entire timeline tree from re-rendering on every
+	// playback tick (which fires 60fps during playback).
 	const scene = useEditor((currentEditor) =>
 		currentEditor.scenes.getActiveSceneOrNull(),
 	);
@@ -753,6 +759,7 @@ export function Timeline() {
 										shouldIgnoreClick={shouldIgnoreClick}
 										isDragOver={isDragOver}
 										dropTarget={dropTarget}
+										tracks={tracks}
 									/>
 								)}
 								<DragLine
@@ -1298,6 +1305,7 @@ function TimelineTrackRows({
 	shouldIgnoreClick,
 	isDragOver,
 	dropTarget,
+	tracks: tracksProp,
 }: {
 	mainTrackId: string | null;
 	zoomLevel: number;
@@ -1317,22 +1325,20 @@ function TimelineTrackRows({
 	shouldIgnoreClick: () => boolean;
 	isDragOver: boolean;
 	dropTarget: DropTarget | null;
+	tracks: TimelineTrack[];
 }) {
-	const timeline = useEditor((e) => e.timeline);
-	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
+	// Use bare useEditor() for stable method calls — no subscriptions.
+	const editor = useEditor();
+	const timeline = editor.timeline;
+	// Use passed tracks instead of fetching independently
+	// to avoid redundant useEditor subscriptions.
+	const tracks = tracksProp;
 	// Per-track height overrides live in the timeline store; reading
 	// them here (and passing them to getTrackHeight + getCumulativeHeightBefore)
 	// keeps every track row vertically aligned with its track-label
 	// counterpart when the user drags a row to resize.
 	const trackHeights = useTimelineStore((s) => s.trackHeights);
 	const resetTrackHeight = useTimelineStore((s) => s.resetTrackHeight);
-	const tracks = useMemo<TimelineTrack[]>(
-		() =>
-			scene
-				? [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio]
-				: [],
-		[scene],
-	);
 	const { selectedElements } = useElementSelection();
 	const tracksWithSelection = useMemo(
 		() => new Set(selectedElements.map((el) => el.trackId)),
@@ -1367,9 +1373,65 @@ function TimelineTrackRows({
 			});
 	}, [tracks, dragState.dragElementIds]);
 
+	// ── Track-level virtualization ──────────────────────────────────
+	// Only render tracks whose vertical position overlaps with the
+	// current scroll viewport (+ overscan). This keeps the DOM small
+	// when the timeline has many tracks.
+	const OVERSCAN_PX = 120; // render 120px extra above/below viewport
+	const [scrollViewport, setScrollViewport] = useState({
+		top: 0,
+		height: 800,
+	});
+
+	// Listen to scroll events on the tracks container
+	useEffect(() => {
+		const el = tracksScrollRef.current;
+		if (!el) return;
+		const update = () => {
+			setScrollViewport({ top: el.scrollTop, height: el.clientHeight });
+		};
+		update();
+		el.addEventListener("scroll", update, { passive: true });
+		return () => el.removeEventListener("scroll", update);
+	}, [tracksScrollRef]);
+
+	// Filter to only visible tracks (during non-drag operations)
+	const visibleTrackIndices = useMemo(() => {
+		// During drag, render all tracks so drop targets work everywhere
+		if (dragState.isDragging) return null; // null = render all
+
+		const visibleTop = Math.max(0, scrollViewport.top - OVERSCAN_PX);
+		const visibleBottom = scrollViewport.top + scrollViewport.height + OVERSCAN_PX;
+
+		const indices = new Set<number>();
+		for (const { index } of sortedTracks) {
+			const trackTop = getCumulativeHeightBefore({
+				tracks,
+				trackIndex: index,
+				getExtraHeight: getTrackExpansionHeight,
+				overrideHeights: trackHeights,
+			});
+			const trackHeight =
+				getTrackHeight({
+					type: tracks[index].type,
+					overrideHeight: trackHeights[tracks[index].id],
+				}) + getTrackExpansionHeight(index);
+
+			if (trackTop + trackHeight >= visibleTop && trackTop <= visibleBottom) {
+				indices.add(index);
+			}
+		}
+		return indices;
+	}, [sortedTracks, scrollViewport, tracks, trackHeights, getTrackExpansionHeight, dragState.isDragging]);
+
 	return (
 		<>
-			{sortedTracks.map(({ track, index }) => {
+			{sortedTracks
+				.filter(
+					({ index }) =>
+						visibleTrackIndices === null || visibleTrackIndices.has(index),
+				)
+				.map(({ track, index }) => {
 				const hasDraggedElement = track.elements.some((element) =>
 					dragState.dragElementIds.includes(element.id),
 				);

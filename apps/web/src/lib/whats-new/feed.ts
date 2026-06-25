@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-timeline-virtualization-rerender",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Timeline virtualization + reduced re-renders during playback",
+		items: [
+			"Timeline tracks are now virtualized — only tracks visible in the scroll viewport (+ 120px overscan) are rendered in the DOM. Off-screen tracks are not mounted, reducing DOM nodes and hook overhead for projects with many tracks.",
+			"TimelineTrackRows no longer subscribes to the entire editor state. It receives tracks as props from the parent, eliminating redundant useEditor subscriptions that caused re-renders on every playback tick.",
+		],
+	},
+	{
 		id: "2026-06-25-export-progress-clip-radius-waveform",
 		date: "2026-06-25",
 		tag: "improvement",
