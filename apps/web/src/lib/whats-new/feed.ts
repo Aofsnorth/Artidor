@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-camera-fog-dof-toggles",
+		date: "2026-06-25",
+		tag: "feature",
+		title: "Camera layer: Focus Blur and Fog toggles with color picker",
+		items: [
+			"Focus Blur now has an enable/disable toggle. When enabled, shows Focus Distance, Depth of Field range, and Blur Strength sliders. When disabled, no DOF processing occurs.",
+			"Fog now has an enable/disable toggle with a color picker, Strength, Near Distance, and Far Distance controls. Fog color can be customized (defaults to white).",
+			"Both features follow Alight Motion's UI pattern: toggle group with sub-properties that only appear when enabled.",
+		],
+	},
+	{
 		id: "2026-06-25-export-worker-drag-fixes",
 		date: "2026-06-25",
 		tag: "performance",

@@ -17,6 +17,7 @@ import {
 	ViewIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { Switch } from "@/components/ui/switch";
 
 export function CameraTab() {
 	const editor = useEditor();
@@ -43,8 +44,8 @@ export function CameraTab() {
 					<h3 className="text-sm font-medium">3D Camera</h3>
 				</header>
 				<p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-					Add a Blurrr-style camera layer. Camera layers can be keyframed and
-					used as global scene controls for 3D motion workflows.
+					Add a camera layer for 3D motion, depth of field, and fog effects.
+					All properties are keyframeable.
 				</p>
 				<Button
 					className="mt-3 w-full"
@@ -62,8 +63,7 @@ export function CameraTab() {
 					<h3 className="text-sm font-medium">Null Objects</h3>
 				</header>
 				<p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-					Create invisible parent anchors for rigging, grouping, and camera
-					movement.
+					Invisible parent anchors for rigging, grouping, and camera movement.
 				</p>
 				<Button
 					variant="outline"
@@ -133,6 +133,28 @@ function CameraNumberInput({
 				step={step}
 				className="h-7 w-24 rounded-md border border-white/10 bg-white/[0.04] px-2 text-right text-xs text-white outline-none focus:border-white/25"
 			/>
+		</div>
+	);
+}
+
+function CameraToggle({
+	label,
+	description,
+	enabled,
+	onToggle,
+}: {
+	label: string;
+	description: string;
+	enabled: boolean;
+	onToggle: (v: boolean) => void;
+}) {
+	return (
+		<div className="flex items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+			<div className="min-w-0">
+				<p className="text-xs font-medium text-white/80">{label}</p>
+				<p className="text-[0.65rem] text-white/40">{description}</p>
+			</div>
+			<Switch checked={enabled} onCheckedChange={onToggle} />
 		</div>
 	);
 }
@@ -282,30 +304,49 @@ export function CameraInspectTab({
 
 			<Section sectionKey="camera-dof">
 				<SectionHeader>
-					<SectionTitle>Depth of Field</SectionTitle>
+					<SectionTitle>Focus Blur</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
-					<SectionFields>
-						<SectionField label="Strength">
-							<CameraNumberInput
-								label="Strength"
-								value={element.dofStrength}
-								onChange={(v) => update({ dofStrength: v })}
-								min={0}
-								max={1}
-								step={0.01}
-							/>
-						</SectionField>
-						<SectionField label="Focus">
-							<CameraNumberInput
-								label="Focus"
-								value={element.focusDistance}
-								onChange={(v) => update({ focusDistance: v })}
-								min={0.1}
-								step={0.5}
-							/>
-						</SectionField>
-					</SectionFields>
+					<div className="px-3 pb-2">
+						<CameraToggle
+							label="Enable Focus Blur"
+							description="Blur layers based on distance from focus plane"
+							enabled={element.focusBlurEnabled}
+							onToggle={(v) => update({ focusBlurEnabled: v })}
+						/>
+					</div>
+					{element.focusBlurEnabled && (
+						<SectionFields>
+							<SectionField label="Focus Distance">
+								<CameraNumberInput
+									label="Focus"
+									value={element.focusDistance}
+									onChange={(v) => update({ focusDistance: v })}
+									min={0.1}
+									step={0.5}
+								/>
+							</SectionField>
+							<SectionField label="Depth of Field">
+								<CameraNumberInput
+									label="DOF"
+									value={element.depthOfField}
+									onChange={(v) => update({ depthOfField: v })}
+									min={0.1}
+									step={0.5}
+								/>
+							</SectionField>
+							<SectionField label="Blur Strength">
+								<CameraNumberInput
+									label="Strength"
+									value={element.dofStrength}
+									onChange={(v) => update({ dofStrength: v })}
+									min={0}
+									max={1}
+									step={0.01}
+								/>
+							</SectionField>
+						</SectionFields>
+					)}
 				</SectionContent>
 			</Section>
 
@@ -314,36 +355,59 @@ export function CameraInspectTab({
 					<SectionTitle>Fog</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
-					<SectionFields>
-						<SectionField label="Strength">
-							<CameraNumberInput
-								label="Strength"
-								value={element.fogStrength}
-								onChange={(v) => update({ fogStrength: v })}
-								min={0}
-								max={1}
-								step={0.01}
-							/>
-						</SectionField>
-						<SectionField label="Start">
-							<CameraNumberInput
-								label="Start"
-								value={element.fogStart}
-								onChange={(v) => update({ fogStart: v })}
-								min={0}
-								step={1}
-							/>
-						</SectionField>
-						<SectionField label="End">
-							<CameraNumberInput
-								label="End"
-								value={element.fogEnd}
-								onChange={(v) => update({ fogEnd: v })}
-								min={0}
-								step={1}
-							/>
-						</SectionField>
-					</SectionFields>
+					<div className="px-3 pb-2">
+						<CameraToggle
+							label="Enable Fog"
+							description="Atmospheric depth haze based on distance"
+							enabled={element.fogEnabled}
+							onToggle={(v) => update({ fogEnabled: v })}
+						/>
+					</div>
+					{element.fogEnabled && (
+						<SectionFields>
+							<SectionField label="Color">
+								<div className="flex items-center gap-2">
+									<input
+										type="color"
+										value={element.fogColor}
+										onChange={(e) => update({ fogColor: e.target.value })}
+										className="h-7 w-10 cursor-pointer rounded border border-white/10 bg-transparent"
+									/>
+									<span className="text-xs text-white/50">
+										{element.fogColor}
+									</span>
+								</div>
+							</SectionField>
+							<SectionField label="Strength">
+								<CameraNumberInput
+									label="Strength"
+									value={element.fogStrength}
+									onChange={(v) => update({ fogStrength: v })}
+									min={0}
+									max={1}
+									step={0.01}
+								/>
+							</SectionField>
+							<SectionField label="Near">
+								<CameraNumberInput
+									label="Near"
+									value={element.fogStart}
+									onChange={(v) => update({ fogStart: v })}
+									min={0}
+									step={1}
+								/>
+							</SectionField>
+							<SectionField label="Far">
+								<CameraNumberInput
+									label="Far"
+									value={element.fogEnd}
+									onChange={(v) => update({ fogEnd: v })}
+									min={0}
+									step={1}
+								/>
+							</SectionField>
+						</SectionFields>
+					)}
 				</SectionContent>
 			</Section>
 		</div>

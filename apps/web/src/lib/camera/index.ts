@@ -36,18 +36,28 @@ export interface CameraElement extends BaseTimelineElement {
 	near: number;
 	/** Far clip plane. */
 	far: number;
+	/** Camera roll (rotation around view axis). */
+	roll: number;
+
+	/** Whether depth of field blur is enabled. */
+	focusBlurEnabled: boolean;
 	/** Depth of field strength (0 = no DOF, 1 = strong). */
 	dofStrength: number;
 	/** Focus distance (in world units). */
 	focusDistance: number;
+	/** Range around focus distance that remains in focus. */
+	depthOfField: number;
+
+	/** Whether fog is enabled. */
+	fogEnabled: boolean;
 	/** Fog strength (0 = no fog, 1 = full fog). */
 	fogStrength: number;
 	/** Fog start distance. */
 	fogStart: number;
 	/** Fog end distance. */
 	fogEnd: number;
-	/** Camera roll (rotation around view axis). */
-	roll: number;
+	/** Fog color. */
+	fogColor: string;
 
 	transform: Transform;
 	animations?: ElementAnimations;
@@ -74,15 +84,19 @@ export const DEFAULT_CAMERA_ELEMENT = {
 	fov: 60,
 	near: 0.1,
 	far: 1000,
-	dofStrength: 0,
-	focusDistance: 5,
-	fogStrength: 0,
-	fogStart: 10,
-	fogEnd: 100,
 	roll: 0,
 	position3D: { x: 0, y: 0, z: 5 },
 	target3D: { x: 0, y: 0, z: 0 },
 	up3D: { x: 0, y: 1, z: 0 },
+	focusBlurEnabled: false,
+	dofStrength: 0,
+	focusDistance: 5,
+	depthOfField: 2,
+	fogEnabled: false,
+	fogStrength: 0,
+	fogStart: 10,
+	fogEnd: 100,
+	fogColor: "#ffffff",
 } as const;
 
 export function buildCameraElement({
@@ -207,7 +221,7 @@ export function applyFog({
 	distance: number;
 	camera: CameraElement;
 }): number {
-	if (camera.fogStrength <= 0) return 1;
+	if (!camera.fogEnabled || camera.fogStrength <= 0) return 1;
 	if (distance < camera.fogStart) return 1;
 	if (distance > camera.fogEnd) return 1 - camera.fogStrength;
 	const t = (distance - camera.fogStart) / (camera.fogEnd - camera.fogStart);
@@ -224,7 +238,7 @@ export function applyDof({
 	distance: number;
 	camera: CameraElement;
 }): number {
-	if (camera.dofStrength <= 0) return 0;
+	if (!camera.focusBlurEnabled || camera.dofStrength <= 0) return 0;
 	const diff = Math.abs(distance - camera.focusDistance);
 	return diff * camera.dofStrength;
 }
