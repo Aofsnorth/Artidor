@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-25-preview-fast-decode",
+		date: "2026-06-25",
+		tag: "performance",
+		title: "Faster video preview: LRU frame cache + 3-frame prefetch buffer",
+		items: [
+			"Video preview now caches up to 30 decoded frames per video clip in an LRU cache — backward scrubbing and short-range re-seeks are instant (cache hit: 0ms vs 5-80ms decode).",
+			"Prefetch buffer increased from 1 to 3 frames ahead, giving ~50ms of decode buffer at 60fps. Single-frame decode spikes no longer stall the preview.",
+			"CanvasSink pool size doubled from 3 to 6, reducing canvas allocation churn during playback.",
+			"Adaptive scale calculation cached for manual quality tiers — skips redundant math every frame when quality is set to High/Medium/Low.",
+			"Loading overlay check merged into the main render loop, eliminating a redundant second requestAnimationFrame loop.",
+		],
+	},
+	{
 		id: "2026-06-25-preview-perf-loading-and-track-slider-ui",
 		date: "2026-06-25",
 		tag: "performance",
