@@ -27,6 +27,7 @@ jobs:
       MARBLE_WORKSPACE_KEY: "placeholder"
       FREESOUND_CLIENT_ID: "placeholder"
       FREESOUND_API_KEY: "placeholder"
+      PEXELS_API_KEY: "placeholder"
     steps:
       - uses: actions/checkout@v7
 
