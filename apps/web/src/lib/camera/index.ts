@@ -287,3 +287,71 @@ export function getSceneCameras({
 	}
 	return cameras;
 }
+
+/**
+ * Find the active camera at a specific time.
+ *
+ * Multi-camera logic (Alight Motion style):
+ * - Multiple cameras can exist on the timeline.
+ * - The highest (earliest in track order) VISIBLE camera whose time range
+ *   covers the given time is the active camera.
+ * - If no camera covers the time, return the highest visible camera.
+ * - If no visible camera exists, return null.
+ *
+ * @param cameras - All camera elements in the scene, ordered by track position
+ * @param time - Current playback time in ticks
+ * @returns The active camera, or null if no visible camera exists
+ */
+export function findActiveCameraAtTime({
+	cameras,
+	time,
+}: {
+	cameras: CameraElement[];
+	time: number;
+}): CameraElement | null {
+	// First pass: find a visible camera whose time range covers the current time
+	for (const camera of cameras) {
+		if (camera.hidden) continue;
+		const cameraEnd = camera.startTime + camera.duration;
+		if (time >= camera.startTime && time < cameraEnd) {
+			return camera;
+		}
+	}
+
+	// Second pass: if no camera covers the time, return the first visible camera
+	for (const camera of cameras) {
+		if (!camera.hidden) {
+			return camera;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Camera transition presets for smooth switching between cameras.
+ */
+export const CAMERA_TRANSITION_PRESETS = {
+	cut: {
+		name: "Cut",
+		description: "Instant switch between cameras",
+		duration: 0,
+	},
+	fade: {
+		name: "Fade",
+		description: "Cross-fade between cameras",
+		duration: 1000, // ms
+	},
+	slide: {
+		name: "Slide",
+		description: "Slide transition between cameras",
+		duration: 800,
+	},
+	zoom: {
+		name: "Zoom",
+		description: "Zoom transition between cameras",
+		duration: 600,
+	},
+} as const;
+
+export type CameraTransitionPreset = keyof typeof CAMERA_TRANSITION_PRESETS;

@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
 import type { CameraElement } from "@/lib/camera";
+import { findActiveCamera } from "@/lib/camera";
 import {
 	Section,
 	SectionContent,
@@ -83,6 +84,10 @@ export function CameraTab() {
 				<LayerSummary label="Cameras" count={cameraLayers.length} />
 				<LayerSummary label="Nulls" count={nullLayers.length} />
 			</section>
+
+			{cameraLayers.length > 1 && (
+				<CameraSwitcher cameras={cameraLayers as unknown as CameraElement[]} />
+			)}
 		</div>
 	);
 }
@@ -93,6 +98,75 @@ function LayerSummary({ label, count }: { label: string; count: number }) {
 			<span>{label}</span>
 			<span className="text-muted-foreground tabular-nums">{count}</span>
 		</div>
+	);
+}
+
+function CameraSwitcher({ cameras }: { cameras: CameraElement[] }) {
+	const editor = useEditor();
+	const activeCamera = findActiveCamera({ cameras });
+
+	const toggleCameraVisibility = (camera: CameraElement) => {
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId: camera.trackId,
+					elementId: camera.id,
+					patch: { hidden: !camera.hidden },
+				},
+			],
+		});
+	};
+
+	return (
+		<section className="glass rounded-lg p-3">
+			<header className="flex items-center gap-2 mb-2">
+				<HugeiconsIcon icon={Camera01Icon} size={14} />
+				<h3 className="text-sm font-medium">Camera Switcher</h3>
+			</header>
+			<p className="text-muted-foreground mb-3 text-xs leading-relaxed">
+				The highest visible camera is the active camera. Toggle visibility to
+				switch between cameras.
+			</p>
+			<div className="flex flex-col gap-1.5">
+				{cameras.map((camera, idx) => {
+					const isActive = activeCamera?.id === camera.id;
+					return (
+						<button
+							key={camera.id}
+							type="button"
+							onClick={() => toggleCameraVisibility(camera)}
+							className={`flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs transition ${
+								isActive
+									? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300"
+									: camera.hidden
+										? "border-white/[0.04] bg-white/[0.02] text-white/40"
+										: "border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.06]"
+							}`}
+						>
+							<div className="flex items-center gap-2 min-w-0">
+								<div
+									className={`size-2 rounded-full ${
+										isActive
+											? "bg-cyan-400"
+											: camera.hidden
+												? "bg-white/20"
+												: "bg-white/40"
+									}`}
+								/>
+								<span className="truncate">
+									{camera.name || `Camera ${idx + 1}`}
+								</span>
+							</div>
+							{isActive && (
+								<span className="shrink-0 rounded bg-cyan-500/20 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-cyan-300">
+									Active
+								</span>
+							)}
+						</button>
+					);
+				})}
+			</div>
+		</section>
 	);
 }
 
