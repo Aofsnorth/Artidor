@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { extractClipAudio } from "@/lib/media/mediabunny";
 import { decodeAudioToFloat32 } from "@/lib/media/audio";
-import { detectBeats } from "@/lib/media/beat-detection";
+import { detectBeatsAsync } from "@/lib/media/beat-detection";
 import { toast } from "sonner";
 import type { DetectedBeat } from "@/lib/media/beat-detection";
 import type { AudioElement, VideoElement } from "@/lib/timeline";
@@ -62,7 +62,7 @@ export function useBeatSync(): {
 				audioBlob: blob,
 				sampleRate: 22050,
 			});
-			const beats = detectBeats({ samples, sampleRate });
+			const beats = await detectBeatsAsync({ samples, sampleRate });
 			setState({
 				isAnalyzing: false,
 				beats,

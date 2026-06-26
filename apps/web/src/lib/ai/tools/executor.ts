@@ -1591,7 +1591,7 @@ const HANDLERS: Record<string, Handler> = {
 		// we only need when beat detection is actually requested.
 		const { extractClipAudio } = await import("@/lib/media/mediabunny");
 		const { decodeAudioToFloat32 } = await import("@/lib/media/audio");
-		const { detectBeats } = await import("@/lib/media/beat-detection");
+		const { detectBeatsAsync } = await import("@/lib/media/beat-detection");
 
 		try {
 			const blob = await extractClipAudio({
@@ -1602,7 +1602,7 @@ const HANDLERS: Record<string, Handler> = {
 				audioBlob: blob,
 				sampleRate: 22050,
 			});
-			const beats = detectBeats({ samples, sampleRate });
+			const beats = await detectBeatsAsync({ samples, sampleRate });
 			if (beats.length === 0) {
 				return {
 					ok: true,

@@ -24,7 +24,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		title: "AI takeover aurora border and screen freeze fixes",
 		items: [
 			"The aurora border is now built from an animated box-shadow ring with a flowing gradient sheen on top — always visible regardless of browser mask support, with no risk of the screen turning black.",
-			"The editor no longer freezes when you switch away from the tab during AI generation. Streaming re-renders are now batched to one per animation frame instead of firing on every character, so the main thread stays responsive.",
+			"The editor no longer freezes during AI generation or beat detection. Streaming re-renders are batched to one per animation frame, and beat detection now yields to the event loop periodically so the UI stays responsive on long audio files.",
 		],
 	},
 	{
