@@ -18,6 +18,20 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-ai-chat-redesign",
+		date: "2026-06-27",
+		tag: "improvement",
+		title: "AI chat panel redesigned — avatars, animations, better hierarchy",
+		items: [
+			"Message bubbles now have avatars (user = edit icon, AI = sparkles), asymmetric rounded corners, and gradient backgrounds for AI messages.",
+			"Tool call results are shown as color-coded cards: green for success, red for failure — with a summary line showing 'N actions completed'.",
+			"Empty state replaced with a centered hero greeting, ambient glow, and labeled suggestion cards with icons.",
+			"Streaming indicator changed from a spinner to animated typing dots inside an AI-style bubble, matching the message layout.",
+			"Composer border glows when you have text ready to send. Error messages now have icons and better readability.",
+			"StatusBar header now shows 'Arth' with a 'AI copilot' subtitle, and the provider chip has a settings gear icon instead of 'Manage' text.",
+		],
+	},
+	{
 		id: "2026-06-27-vision-capture-media-tools",
 		date: "2026-06-27",
 		tag: "feature",
