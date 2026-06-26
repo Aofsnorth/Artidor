@@ -135,6 +135,12 @@ export class AIManager {
 	 */
 	private abortController: AbortController | null = null;
 	/**
+	 * Whether processMessage is currently running. Used by stopCurrent()
+	 * and steer() to wait for the current loop to exit before draining
+	 * the queue, preventing two concurrent processMessage calls.
+	 */
+	private isProcessing = false;
+	/**
 	 * Maps a user message id → the command-history length at the moment
 	 * before the AI started processing that message. Used by `revert()`
 	 * to undo all editor changes the AI made in response to that message.
@@ -225,6 +231,8 @@ export class AIManager {
 	 * The loop runs up to MAX_TOOL_ROUNDS to prevent infinite cycles.
 	 */
 	private async processMessage(text: string): Promise<void> {
+		this.isProcessing = true;
+		try {
 		const ai = useAIStore.getState();
 
 		// Create a fresh AbortController for this message cycle. The
@@ -376,6 +384,9 @@ export class AIManager {
 
 		// If there are queued messages, send the next one.
 		this.drainQueue();
+		} finally {
+			this.isProcessing = false;
+		}
 	}
 
 	/**
@@ -1274,6 +1285,29 @@ export class AIManager {
 	}
 
 	/**
+	 * Stop the current in-flight request WITHOUT clearing the queue.
+	 * The AI finishes the current tool-call round (if any) and then
+	 * the queue continues with the next message. Use this when the
+	 * user wants to stop the current generation but keep queued
+	 * messages.
+	 */
+	stopCurrent(): void {
+		// Abort any in-flight fetch + break the tool-call loop.
+		if (this.abortController) {
+			this.abortController.abort();
+			this.abortController = null;
+		}
+		this.clearRetryTimer();
+		const ai = useAIStore.getState();
+		ai.clearRetry();
+		ai.setStatus("idle");
+		ai.setError(null);
+		this.notify();
+		// Wait for the current processMessage to exit, then drain.
+		void this.waitForIdleAndDrain();
+	}
+
+	/**
 	 * Cancel an in-flight request, clear the retry timer, and flush
 	 * the queue. The user explicitly wants to stop everything.
 	 */
@@ -1290,6 +1324,59 @@ export class AIManager {
 		ai.setStatus("idle");
 		ai.setError(null);
 		this.notify();
+	}
+
+	/**
+	 * Clear only the queued messages without stopping the current
+	 * in-flight request. Use this when the user wants to remove
+	 * pending messages but let the current generation finish.
+	 */
+	clearQueueOnly(): void {
+		useAIStore.getState().clearQueue();
+		this.notify();
+	}
+
+	/**
+	 * Steer the AI by sending a message immediately, interrupting
+	 * the current generation. The current in-flight request is
+	 * aborted, the message is prepended to the queue (so it goes
+	 * next), and the queue is drained immediately.
+	 */
+	steer(text: string): void {
+		const trimmed = text.trim();
+		if (!trimmed) return;
+		// Abort the current in-flight request.
+		if (this.abortController) {
+			this.abortController.abort();
+			this.abortController = null;
+		}
+		this.clearRetryTimer();
+		const ai = useAIStore.getState();
+		ai.clearRetry();
+		// Prepend the steer message to the front of the queue.
+		ai.enqueueSteer(trimmed);
+		ai.setStatus("idle");
+		ai.setError(null);
+		this.notify();
+		// Wait for the current processMessage to exit, then drain.
+		void this.waitForIdleAndDrain();
+	}
+
+	/**
+	 * Wait for isProcessing to become false, then drain the queue.
+	 * Polls every 50ms up to 5 seconds. This prevents two concurrent
+	 * processMessage calls when stopCurrent() or steer() is called
+	 * while the tool-call loop is still exiting.
+	 */
+	private async waitForIdleAndDrain(): Promise<void> {
+		const maxWait = 5000;
+		const interval = 50;
+		let waited = 0;
+		while (this.isProcessing && waited < maxWait) {
+			await new Promise((r) => setTimeout(r, interval));
+			waited += interval;
+		}
+		await this.drainQueue();
 	}
 
 	/**
