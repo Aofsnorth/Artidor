@@ -507,6 +507,12 @@ function ProviderFormDialog({
 	const [model, setModel] = useState(
 		provider?.model ?? defaultModelForKind("openai-compatible"),
 	);
+	// Optional media generation models. When empty, the corresponding
+	// generation tools are hidden from the LLM.
+	const [videoModel, setVideoModel] = useState(provider?.videoModel ?? "");
+	const [imageModel, setImageModel] = useState(provider?.imageModel ?? "");
+	const [audioModel, setAudioModel] = useState(provider?.audioModel ?? "");
+	const [mediaModel, setMediaModel] = useState(provider?.mediaModel ?? "");
 	const [errors, setErrors] = useState<{
 		baseUrl?: string;
 		apiKey?: string;
@@ -634,6 +640,10 @@ function ProviderFormDialog({
 					: baseUrl.trim().replace(/\/+$/, ""),
 			apiKey: kind === "puter" ? "" : apiKey.trim(),
 			model: model.trim(),
+			videoModel: videoModel.trim() || undefined,
+			imageModel: imageModel.trim() || undefined,
+			audioModel: audioModel.trim() || undefined,
+			mediaModel: mediaModel.trim() || undefined,
 			enabled: true,
 		};
 		if (provider) {
@@ -650,8 +660,11 @@ function ProviderFormDialog({
 	}, [
 		apiKey,
 		addProvider,
+		audioModel,
 		baseUrl,
+		imageModel,
 		kind,
+		mediaModel,
 		model,
 		name,
 		onSaved,
@@ -659,6 +672,7 @@ function ProviderFormDialog({
 		puterAcknowledged,
 		updateProvider,
 		validate,
+		videoModel,
 	]);
 
 	const handlePuterConfirm = useCallback(() => {
@@ -671,6 +685,10 @@ function ProviderFormDialog({
 			baseUrl: "",
 			apiKey: "",
 			model: model.trim(),
+			videoModel: videoModel.trim() || undefined,
+			imageModel: imageModel.trim() || undefined,
+			audioModel: audioModel.trim() || undefined,
+			mediaModel: mediaModel.trim() || undefined,
 			enabled: true,
 		};
 		if (provider) {
@@ -681,7 +699,7 @@ function ProviderFormDialog({
 			onSaved({ id, ...trimmed, isDefault: false });
 		}
 		onOpenChange(false);
-	}, [name, model, provider, addProvider, updateProvider, onSaved, onOpenChange]);
+	}, [name, model, videoModel, imageModel, audioModel, mediaModel, provider, addProvider, updateProvider, onSaved, onOpenChange]);
 
 	const handlePuterCancel = useCallback(() => {
 		setShowPuterWarning(false);
@@ -941,6 +959,83 @@ function ProviderFormDialog({
 						{errors.model && (
 							<p className="text-[10.5px] text-red-300/90">{errors.model}</p>
 						)}
+					</div>
+
+					{/* Media generation models (optional) */}
+					<div className="flex flex-col gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-3">
+						<div className="flex items-center gap-1.5">
+							<HugeiconsIcon icon={SparklesIcon} className="size-3 text-white/40" />
+							<span className="text-[11px] font-medium text-white/60">
+								Media generation models
+							</span>
+							<span className="text-[9.5px] text-white/30">(optional)</span>
+						</div>
+						<p className="text-[10px] leading-relaxed text-white/30">
+							Fill in only the models your provider supports. When a field is
+							empty, the AI cannot call that type of generation tool.
+						</p>
+						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+							<div className="flex flex-col gap-1">
+								<label
+									htmlFor="provider-video-model"
+									className="text-[10px] text-white/45"
+								>
+									Video model
+								</label>
+								<Input
+									id="provider-video-model"
+									value={videoModel}
+									placeholder="e.g. sora-2, seedance-1.0-pro"
+									onChange={(e) => setVideoModel(e.target.value)}
+									className="h-8 font-mono text-[11px]"
+								/>
+							</div>
+							<div className="flex flex-col gap-1">
+								<label
+									htmlFor="provider-image-model"
+									className="text-[10px] text-white/45"
+								>
+									Image model
+								</label>
+								<Input
+									id="provider-image-model"
+									value={imageModel}
+									placeholder="e.g. dall-e-3, flux-1"
+									onChange={(e) => setImageModel(e.target.value)}
+									className="h-8 font-mono text-[11px]"
+								/>
+							</div>
+							<div className="flex flex-col gap-1">
+								<label
+									htmlFor="provider-audio-model"
+									className="text-[10px] text-white/45"
+								>
+									Audio model
+								</label>
+								<Input
+									id="provider-audio-model"
+									value={audioModel}
+									placeholder="e.g. tts-1, bark"
+									onChange={(e) => setAudioModel(e.target.value)}
+									className="h-8 font-mono text-[11px]"
+								/>
+							</div>
+							<div className="flex flex-col gap-1">
+								<label
+									htmlFor="provider-media-model"
+									className="text-[10px] text-white/45"
+								>
+									Media model
+								</label>
+								<Input
+									id="provider-media-model"
+									value={mediaModel}
+									placeholder="e.g. music-gen, audio-lm"
+									onChange={(e) => setMediaModel(e.target.value)}
+									className="h-8 font-mono text-[11px]"
+								/>
+							</div>
+						</div>
 					</div>
 
 					{/* Test result / hint */}

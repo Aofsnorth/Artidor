@@ -36,7 +36,7 @@ import { AnthropicProvider } from "@/lib/ai/providers/anthropic";
 import { OllamaProvider } from "@/lib/ai/providers/ollama";
 import type { LLMProvider } from "@/lib/ai/provider";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
-import { getToolDefinitions } from "@/lib/ai/tools/registry";
+import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import type { ToolDefinition } from "@/lib/ai/provider";
 import type { StyleProfile } from "@/lib/ai/style/extractor";
 import type { TelemetryEvent } from "@/lib/ai/telemetry/store";
@@ -112,6 +112,12 @@ const bodySchema = z.object({
 					"puter",
 				])
 				.default("openai-compatible"),
+			// Optional media generation models. When empty, the
+			// corresponding generation tools are filtered out.
+			videoModel: z.string().optional(),
+			imageModel: z.string().optional(),
+			audioModel: z.string().optional(),
+			mediaModel: z.string().optional(),
 		})
 		.optional(),
 	/**
@@ -299,7 +305,12 @@ export async function POST(request: Request) {
 	})) as TelemetryEvent[] | undefined;
 
 	const tools: ToolDefinition[] = [
-		...getToolDefinitions(),
+		...getFilteredToolDefinitions({
+			videoModel: body.provider?.videoModel,
+			imageModel: body.provider?.imageModel,
+			audioModel: body.provider?.audioModel,
+			mediaModel: body.provider?.mediaModel,
+		}),
 		...((body.externalTools ?? []) as unknown as ToolDefinition[]),
 	];
 	const system = buildSystemPrompt({

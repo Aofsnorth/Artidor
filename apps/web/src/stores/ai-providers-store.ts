@@ -51,6 +51,26 @@ export interface AIProvider {
 	apiKey: string;
 	/** Model name sent in the request body (e.g. `gpt-4o-mini`, `llama3.1`). */
 	model: string;
+	/**
+	 * Optional model for video generation (e.g. `sora-2`, `seedance-1.0-pro`).
+	 * When empty, the AI cannot call video generation tools.
+	 */
+	videoModel?: string;
+	/**
+	 * Optional model for image generation (e.g. `dall-e-3`, `flux-1`).
+	 * When empty, the AI cannot call image generation tools.
+	 */
+	imageModel?: string;
+	/**
+	 * Optional model for audio generation (e.g. `tts-1`, `bark`).
+	 * When empty, the AI cannot call audio generation tools.
+	 */
+	audioModel?: string;
+	/**
+	 * Optional model for general media generation (e.g. music, SFX).
+	 * When empty, the AI cannot call media generation tools.
+	 */
+	mediaModel?: string;
 	/** Disabled providers stay in the list but are skipped by the picker. */
 	enabled: boolean;
 	/** True for at most one provider — the one used by AI Edit. */
