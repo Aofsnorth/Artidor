@@ -208,6 +208,7 @@ export function AIProvidersManager({
 			)}
 
 			<ProviderFormDialog
+				key={editing.provider?.id ?? "new"}
 				open={editing.open}
 				provider={editing.provider}
 				onOpenChange={(open) => setEditing((prev) => ({ ...prev, open }))}
