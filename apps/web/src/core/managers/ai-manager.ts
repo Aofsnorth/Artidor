@@ -1143,6 +1143,14 @@ export class AIManager {
 
 		for (const tc of toolCalls) {
 			if (signal.aborted) return;
+			// Yield to the event loop (macrotask) before each tool so
+			// pending UI events — especially the Revoke click on the
+			// aurora overlay — can be processed. Without this, the
+			// `await executeTool` only yields microtasks (the handler
+			// resolves synchronously), so click events stay queued and
+			// the screen appears frozen until the entire batch finishes.
+			await new Promise((r) => setTimeout(r, 0));
+			if (signal.aborted) return;
 			// Planning tools — these modify the AI store directly, not
 			// the editor. Handle them here before falling through to the
 			// executor / MCP paths.

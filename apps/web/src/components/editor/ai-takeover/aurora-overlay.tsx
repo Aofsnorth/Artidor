@@ -65,10 +65,11 @@ export function AuroraOverlay() {
 			style={{ cursor: coEditMode ? "default" : "not-allowed" }}
 		>
 			{/* Animated border — thin white glow around the editor area.
-			    Center is transparent; only the border shimmer is visible. */}
-			<div className="ai-aurora-border absolute inset-0 p-px">
-				<div className="ai-aurora-border-inner size-full" />
-			</div>
+			    Center is transparent; only the border shimmer is visible.
+			    The mask is applied directly via CSS (.ai-aurora-border)
+			    so there is no separate dark layer that could cover the
+			    editor if the mask fails. */}
+			<div className="ai-aurora-border absolute inset-0" />
 
 			{/* Status badge — top center, shows what the AI is doing */}
 			<div className="absolute top-3 left-1/2 -translate-x-1/2">

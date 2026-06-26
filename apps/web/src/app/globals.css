@@ -818,15 +818,15 @@ body::-webkit-scrollbar,
 	);
 	background-size: 200% 100%;
 	animation: ai-aurora-border-flow 6s linear infinite;
-}
-
-.ai-aurora-border-inner {
-	/* Mask out the center so only the 1px border shimmer shows. */
-	background: #0a0a0f;
+	/* Mask out the center so only the 1px border shimmer shows.
+	   The mask is applied directly to the gradient element — if it
+	   fails (older browser), the fallback is a subtle white gradient,
+	   NOT a destructive black overlay. */
+	-webkit-mask: linear-gradient(#000, #000) content-box,
+		linear-gradient(#000, #000);
+	-webkit-mask-composite: xor;
 	mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
 	mask-composite: exclude;
-	-webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
-	-webkit-mask-composite: xor;
 	padding: 1px;
 }
 

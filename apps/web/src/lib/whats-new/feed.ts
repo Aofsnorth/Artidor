@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-05-ai-takeover-aurora-border-freeze-fix",
+		date: "2026-07-05",
+		tag: "fix",
+		title: "AI takeover aurora border and screen freeze fixes",
+		items: [
+			"The aurora overlay no longer turns the whole screen black — the border mask is now applied directly to the gradient element so the editor center stays visible, with a safe white-gradient fallback if the browser doesn't support masking.",
+			"The Revoke button is now always clickable during AI takeover. The tool execution loop now yields to the event loop between each tool call, so pending click events are processed instead of being blocked until the whole batch finishes.",
+		],
+	},
+	{
 		id: "2026-07-04-ai-takeover-redesign-co-edit-mode",
 		date: "2026-07-04",
 		tag: "improvement",
