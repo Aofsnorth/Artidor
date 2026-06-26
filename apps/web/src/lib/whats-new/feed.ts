@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-ai-signin-fix-and-chat-improvements",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "AI works without sign-in + smarter long conversations",
+		items: [
+			"You no longer need to sign in to use AI when you've added your own provider in the AI Edit panel (BYOK). Sign-in is only required when using the server's built-in key.",
+			"New Chat button in the AI Edit panel starts a fresh conversation with one click — clears history and any compacted summary.",
+			"Auto-compaction: when a conversation gets long, older messages are automatically summarized into a compact note so the AI keeps full context without hitting context-window limits. A 'N compacted' indicator shows when this has happened.",
+			"Auto-learning toggle: the AI's ability to learn from your edits can now be turned on or off from the AI Edit status bar. A green dot shows when it's active.",
+		],
+	},
+	{
 		id: "2026-06-26-main-track-label-spacing",
 		date: "2026-06-26",
 		tag: "improvement",
