@@ -695,6 +695,22 @@ const HANDLERS: Record<string, Handler> = {
 			startTime,
 		});
 
+		// Snapshot element count before insertion so we can verify
+		// the command actually placed the element (InsertElementCommand
+		// can silently fail validation without throwing).
+		const sceneBefore = editor.scenes.getActiveSceneOrNull();
+		const countBefore = sceneBefore
+			? sceneBefore.tracks.main.elements.length +
+				sceneBefore.tracks.overlay.reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				) +
+				sceneBefore.tracks.audio.reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				)
+			: 0;
+
 		const trackId = asString(args.trackId);
 		if (trackId) {
 			editor.timeline.insertElement({
@@ -710,6 +726,29 @@ const HANDLERS: Record<string, Handler> = {
 				},
 			});
 		}
+
+		// Verify the element was actually inserted — InsertElementCommand
+		// can return undefined (silent validation failure) without throwing.
+		const sceneAfter = editor.scenes.getActiveSceneOrNull();
+		const countAfter = sceneAfter
+			? sceneAfter.tracks.main.elements.length +
+				sceneAfter.tracks.overlay.reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				) +
+				sceneAfter.tracks.audio.reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				)
+			: 0;
+
+		if (countAfter <= countBefore) {
+			return {
+				ok: false,
+				message: `Failed to add "${asset.name}" to timeline — the element may be incompatible with the target track. Try a different track or check the asset type.`,
+			};
+		}
+
 		return {
 			ok: true,
 			message: `Added "${asset.name}" to timeline at ${startTime} ticks`,
