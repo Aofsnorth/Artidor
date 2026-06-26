@@ -31,6 +31,9 @@ import {
 	ArrowUp02Icon,
 	AttachmentIcon,
 	Cancel01Icon,
+	Chat01Icon,
+	Delete02Icon,
+	Edit01Icon,
 	Image01Icon,
 	MagicWand05Icon,
 	PaintBrushIcon,
@@ -56,6 +59,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AIProvidersManager } from "./ai-providers-manager";
 
 const QUICK_ACTIONS: {
@@ -166,10 +176,14 @@ export function AIEditView() {
 					defaultProvider={defaultProvider}
 					compactedSummary={ai.compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
+					conversations={ai.conversations}
 					onToggleAutoLearn={() => telemetry.setEnabled(!autoLearnEnabled)}
 					onOpenProviders={() => setProvidersOpen(true)}
 					onClearReference={() => editor.ai.clearReference()}
 					onNewChat={() => ai.clearConversation()}
+					onLoadConversation={(id) => ai.loadConversation(id)}
+					onRenameConversation={(id, name) => ai.renameConversation(id, name)}
+					onDeleteConversation={(id) => ai.deleteConversation(id)}
 				/>
 
 				{/* Quick actions */}
@@ -320,16 +334,146 @@ function ProvidersDialog({
 					<AIProvidersManager variant="inline" />
 				</DialogBody>
 				<DialogFooter className="border-t border-white/[0.06] bg-black/20">
-					<Button
-						size="sm"
-						variant="ghost"
-						onClick={() => onOpenChange(false)}
-					>
+					<Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
 						Done
 					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
+	);
+}
+
+/**
+ * Dropdown listing saved chat conversations. Lets the user switch back to
+ * an older chat, rename it, delete it, or start a new one.
+ */
+function ChatHistoryDropdown({
+	conversations,
+	onLoad,
+	onRename,
+	onDelete,
+	onNew,
+}: {
+	conversations: { id: string; name: string; updatedAt: number }[];
+	onLoad: (id: string) => void;
+	onRename: (id: string, name: string) => void;
+	onDelete: (id: string) => void;
+	onNew: () => void;
+}) {
+	const [editingId, setEditingId] = useState<string | null>(null);
+	const [draftName, setDraftName] = useState("");
+	const editInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		if (editingId) {
+			editInputRef.current?.focus();
+		}
+	}, [editingId]);
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					aria-label="Chat history"
+					title="Chat history"
+					className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
+				>
+					<HugeiconsIcon icon={Chat01Icon} className="size-2.5" />
+					History
+					{conversations.length > 0 && (
+						<span className="ml-0.5 rounded-full bg-white/15 px-1 text-[8px]">
+							{conversations.length}
+						</span>
+					)}
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align="end"
+				className="w-56 border-white/[0.08] bg-[#09090b]/95 text-white/95 backdrop-blur-md"
+			>
+				<DropdownMenuItem
+					onClick={onNew}
+					className="gap-2 text-[11px] hover:bg-white/[0.08] focus:bg-white/[0.08]"
+				>
+					<HugeiconsIcon
+						icon={ChatAdd01Icon}
+						className="size-3.5 text-white/60"
+					/>
+					New chat
+				</DropdownMenuItem>
+				<DropdownMenuSeparator className="bg-white/[0.08]" />
+				{conversations.length === 0 ? (
+					<div className="px-2 py-2 text-[10px] text-white/40">
+						No saved conversations yet.
+					</div>
+				) : (
+					conversations.map((c) => (
+						<div
+							key={c.id}
+							className="group flex items-center justify-between px-2 py-1.5 hover:bg-white/[0.06]"
+						>
+							{editingId === c.id ? (
+								<input
+									ref={editInputRef}
+									type="text"
+									value={draftName}
+									onChange={(e) => setDraftName(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											onRename(c.id, draftName);
+											setEditingId(null);
+										}
+										if (e.key === "Escape") {
+											setEditingId(null);
+										}
+									}}
+									onBlur={() => {
+										onRename(c.id, draftName);
+										setEditingId(null);
+									}}
+									className="h-5 flex-1 rounded border border-white/20 bg-white/[0.05] px-1 text-[10px] text-white/90"
+								/>
+							) : (
+								<button
+									type="button"
+									onClick={() => onLoad(c.id)}
+									className="flex-1 truncate text-left text-[10.5px] text-white/70 transition-colors hover:text-white"
+									title={c.name}
+								>
+									{c.name}
+								</button>
+							)}
+							<div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+								<button
+									type="button"
+									onClick={(e) => {
+										e.stopPropagation();
+										setEditingId(c.id);
+										setDraftName(c.name);
+									}}
+									aria-label="Rename"
+									className="grid size-5 place-items-center rounded text-white/40 hover:bg-white/10 hover:text-white"
+								>
+									<HugeiconsIcon icon={Edit01Icon} className="size-3" />
+								</button>
+								<button
+									type="button"
+									onClick={(e) => {
+										e.stopPropagation();
+										onDelete(c.id);
+									}}
+									aria-label="Delete"
+									className="grid size-5 place-items-center rounded text-white/40 hover:bg-red-500/20 hover:text-red-300"
+								>
+									<HugeiconsIcon icon={Delete02Icon} className="size-3" />
+								</button>
+							</div>
+						</div>
+					))
+				)}
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 
@@ -341,10 +485,14 @@ function StatusBar({
 	defaultProvider,
 	compactedSummary,
 	autoLearnEnabled,
+	conversations,
 	onToggleAutoLearn,
 	onOpenProviders,
 	onClearReference,
 	onNewChat,
+	onLoadConversation,
+	onRenameConversation,
+	onDeleteConversation,
 }: {
 	referenceVideoName: string | null;
 	styleProfile: ChatMessage extends never
@@ -355,10 +503,14 @@ function StatusBar({
 	defaultProvider: { name: string; model: string; kind: string } | undefined;
 	compactedSummary: ReturnType<typeof useAIStore.getState>["compactedSummary"];
 	autoLearnEnabled: boolean;
+	conversations: { id: string; name: string; updatedAt: number }[];
 	onToggleAutoLearn: () => void;
 	onOpenProviders: () => void;
 	onClearReference: () => void;
 	onNewChat: () => void;
+	onLoadConversation: (id: string) => void;
+	onRenameConversation: (id: string, name: string) => void;
+	onDeleteConversation: (id: string) => void;
 }) {
 	return (
 		<div className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#0c0c10] to-[#08080c] p-0">
@@ -390,9 +542,7 @@ function StatusBar({
 								icon={isStreaming ? SparklesIcon : MagicWand05Icon}
 								className={cn(
 									"size-4",
-									isStreaming
-										? "text-white animate-pulse"
-										: "text-white/70",
+									isStreaming ? "text-white animate-pulse" : "text-white/70",
 								)}
 							/>
 						</div>
@@ -409,6 +559,13 @@ function StatusBar({
 						>
 							{isStreaming ? "live" : "ready"}
 						</span>
+						<ChatHistoryDropdown
+							conversations={conversations}
+							onLoad={onLoadConversation}
+							onRename={onRenameConversation}
+							onDelete={onDeleteConversation}
+							onNew={onNewChat}
+						/>
 						<button
 							type="button"
 							onClick={onNewChat}

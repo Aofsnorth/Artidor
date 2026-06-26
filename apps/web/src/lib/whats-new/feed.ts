@@ -18,6 +18,26 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-ai-chat-history",
+		date: "2026-06-26",
+		tag: "feature",
+		title: "AI chat history — save and switch conversations",
+		items: [
+			"The AI Edit panel now keeps a history of conversations. Click 'History' next to 'New' to see saved chats, switch back to an older one, rename it, or delete it.",
+			"Starting a new chat automatically archives the current conversation (if it has messages) so you can return to it later.",
+			"Conversations are stored locally in your browser and persist across reloads.",
+		],
+	},
+	{
+		id: "2026-06-26-ai-provider-test-500",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "AI provider test no longer crashes with HTTP 500",
+		items: [
+			"Wrapped the provider test endpoint in a global error handler so any unexpected failure returns a clear JSON error instead of a blank HTTP 500 page.",
+		],
+	},
+	{
 		id: "2026-06-26-ai-provider-edit-fields-persist",
 		date: "2026-06-26",
 		tag: "fix",
@@ -39,7 +59,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-26-varied-preview-backgrounds",
 		date: "2026-06-26",
 		tag: "improvement",
-		title: "Varied preview backgrounds across Transitions, Effects, Motion, and Templates",
+		title:
+			"Varied preview backgrounds across Transitions, Effects, Motion, and Templates",
 		items: [
 			"Transition previews now show 6 distinct scene backgrounds (landscape, cityscape, portrait, abstract, ocean, sunset) instead of the same two gradients for every transition. Each card picks its scene pair deterministically from its type hash, so the A→B crossfade reads as an actual scene change.",
 			"Effect previews that use the gradient source pattern now cycle through 6 colour palettes (warm sunset, cool ocean, forest, plum, amber, slate) instead of always using the same orange-pink-indigo-cyan gradient. Effects hashing to the same pattern now get visually distinct source images.",

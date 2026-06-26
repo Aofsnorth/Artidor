@@ -56,6 +56,22 @@ export interface CompactedSummary {
 	createdAt: number;
 }
 
+/**
+ * A saved conversation the user can switch back to. The currently active
+ * conversation is still stored as `messages` + `compactedSummary` for
+ * backward compatibility; the history array keeps archived conversations.
+ */
+export interface Conversation {
+	id: string;
+	/** User-editable name, falls back to a generated title. */
+	name: string;
+	/** ISO timestamps for sorting. */
+	createdAt: number;
+	updatedAt: number;
+	messages: ChatMessage[];
+	compactedSummary: CompactedSummary | null;
+}
+
 interface AIState {
 	messages: ChatMessage[];
 	status: ChatStatus;
@@ -64,10 +80,16 @@ interface AIState {
 	referenceVideoName: string | null;
 	/** Summary of older messages that were compacted away, or null. */
 	compactedSummary: CompactedSummary | null;
+	/**
+	 * Archived conversations. The active conversation is NOT in this list
+	 * until the user starts a new chat or switches to another one.
+	 */
+	conversations: Conversation[];
 
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
 	updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
+	/** Start a fresh chat, archiving the current conversation if it has messages. */
 	clearConversation: () => void;
 	/**
 	 * Replace older messages with a compact summary, keeping the most
@@ -78,9 +100,35 @@ interface AIState {
 	setStatus: (status: ChatStatus) => void;
 	setError: (error: string | null) => void;
 	setStyleProfile: (profile: StyleProfile | null, name?: string | null) => void;
+	/** Switch to a saved conversation. */
+	loadConversation: (id: string) => void;
+	/** Rename a saved conversation. */
+	renameConversation: (id: string, name: string) => void;
+	/** Delete a saved conversation. */
+	deleteConversation: (id: string) => void;
 }
 
 const MAX_PERSISTED_MESSAGES = 50;
+const MAX_ARCHIVED_CONVERSATIONS = 30;
+
+function generateConversationName(messages: ChatMessage[]): string {
+	const firstUser = messages.find((m) => m.role === "user");
+	if (firstUser?.content) {
+		const text = firstUser.content.trim();
+		if (text.length > 0) {
+			// Use the first line, capped at ~40 chars.
+			const line = text.split(/\n/)[0] ?? text;
+			return line.length > 40 ? `${line.slice(0, 40).trim()}…` : line;
+		}
+	}
+	const date = new Date().toLocaleString(undefined, {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	});
+	return `Chat ${date}`;
+}
 
 export const useAIStore = create<AIState>()(
 	persist(
@@ -91,6 +139,7 @@ export const useAIStore = create<AIState>()(
 			styleProfile: null,
 			referenceVideoName: null,
 			compactedSummary: null,
+			conversations: [],
 
 			appendMessage: (m) => {
 				const id = crypto.randomUUID();
@@ -111,8 +160,31 @@ export const useAIStore = create<AIState>()(
 				});
 			},
 
-			clearConversation: () =>
-				set({ messages: [], error: null, compactedSummary: null }),
+			clearConversation: () => {
+				const state = get();
+				const hasMessages = state.messages.length > 0;
+				let conversations = state.conversations;
+				if (hasMessages) {
+					const now = Date.now();
+					conversations = [
+						{
+							id: crypto.randomUUID(),
+							name: generateConversationName(state.messages),
+							createdAt: now,
+							updatedAt: now,
+							messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
+							compactedSummary: state.compactedSummary,
+						},
+						...conversations,
+					].slice(0, MAX_ARCHIVED_CONVERSATIONS);
+				}
+				set({
+					messages: [],
+					error: null,
+					compactedSummary: null,
+					conversations,
+				});
+			},
 
 			compactConversation: (summary, keepLast) => {
 				const all = get().messages;
@@ -133,6 +205,55 @@ export const useAIStore = create<AIState>()(
 
 			setStyleProfile: (profile, name) =>
 				set({ styleProfile: profile, referenceVideoName: name ?? null }),
+
+			loadConversation: (id) => {
+				const state = get();
+				const target = state.conversations.find((c) => c.id === id);
+				if (!target) return;
+				// Archive the current active conversation first, then load.
+				let conversations = state.conversations.filter((c) => c.id !== id);
+				if (state.messages.length > 0) {
+					const now = Date.now();
+					conversations = [
+						{
+							id: crypto.randomUUID(),
+							name: generateConversationName(state.messages),
+							createdAt: now,
+							updatedAt: now,
+							messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
+							compactedSummary: state.compactedSummary,
+						},
+						...conversations,
+					].slice(0, MAX_ARCHIVED_CONVERSATIONS);
+				}
+				set({
+					messages: target.messages.slice(-MAX_PERSISTED_MESSAGES),
+					compactedSummary: target.compactedSummary,
+					error: null,
+					conversations,
+					status: "idle",
+				});
+			},
+
+			renameConversation: (id, name) => {
+				set({
+					conversations: get().conversations.map((c) =>
+						c.id === id
+							? {
+									...c,
+									name: name.trim() || generateConversationName(c.messages),
+									updatedAt: Date.now(),
+								}
+							: c,
+					),
+				});
+			},
+
+			deleteConversation: (id) => {
+				set({
+					conversations: get().conversations.filter((c) => c.id !== id),
+				});
+			},
 		}),
 		{
 			name: "artidor-ai-chat",
@@ -141,6 +262,10 @@ export const useAIStore = create<AIState>()(
 				styleProfile: state.styleProfile,
 				referenceVideoName: state.referenceVideoName,
 				compactedSummary: state.compactedSummary,
+				conversations: state.conversations.map((c) => ({
+					...c,
+					messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
+				})),
 			}),
 		},
 	),
