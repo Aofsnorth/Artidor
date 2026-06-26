@@ -29,7 +29,7 @@ import {
 import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
 import { streamPuterChat } from "@/lib/ai/puter-client";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
-import { getToolDefinitions } from "@/lib/ai/tools/registry";
+import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
 import type { FrameRate } from "artidor-wasm";
@@ -81,6 +81,10 @@ function getDefaultProvider(): {
 	apiKey: string;
 	model: string;
 	kind: ProviderKind;
+	videoModel?: string;
+	imageModel?: string;
+	audioModel?: string;
+	mediaModel?: string;
 } | null {
 	const state = useAIProvidersStore.getState();
 	const provider = state.getDefault();
@@ -90,6 +94,10 @@ function getDefaultProvider(): {
 		apiKey: provider.apiKey,
 		model: provider.model,
 		kind: provider.kind,
+		videoModel: provider.videoModel,
+		imageModel: provider.imageModel,
+		audioModel: provider.audioModel,
+		mediaModel: provider.mediaModel,
 	};
 }
 
@@ -420,7 +428,12 @@ export class AIManager {
 		if (providerConfig?.kind === "puter") {
 			// Build the system prompt client-side (the server route
 			// normally does this, but Puter bypasses the server).
-			const builtInTools = getToolDefinitions().map((t) => ({
+			const builtInTools = getFilteredToolDefinitions({
+				videoModel: providerConfig.videoModel,
+				imageModel: providerConfig.imageModel,
+				audioModel: providerConfig.audioModel,
+				mediaModel: providerConfig.mediaModel,
+			}).map((t) => ({
 				name: t.function.name,
 				category: t.function.name.split("_")[0] ?? "misc",
 				description: t.function.description,
@@ -468,6 +481,10 @@ export class AIManager {
 								apiKey: providerConfig.apiKey,
 								model: providerConfig.model,
 								kind: providerConfig.kind,
+								videoModel: providerConfig.videoModel,
+								imageModel: providerConfig.imageModel,
+								audioModel: providerConfig.audioModel,
+								mediaModel: providerConfig.mediaModel,
 							}
 						: undefined,
 				}),

@@ -1016,3 +1016,61 @@ export function getToolDefinitions(): ToolDefinition[] {
 export function getToolsByCategory(category: ToolCategory): ToolDefinition[] {
 	return ALL_TOOLS.filter((t) => t.category === category).map((t) => t.def);
 }
+
+/**
+ * Tool names that require a specific media generation model to be
+ * configured on the provider. When the corresponding model field is
+ * empty, these tools are filtered out so the LLM cannot call them.
+ *
+ * This is the gating mechanism: the AI can only call generation tools
+ * for media types the user has explicitly configured a model for.
+ */
+const VIDEO_GEN_TOOLS = new Set<string>([
+	"generate_video",
+	"generate_clip",
+]);
+
+const IMAGE_GEN_TOOLS = new Set<string>([
+	"generate_image",
+	"generate_thumbnail",
+]);
+
+const AUDIO_GEN_TOOLS = new Set<string>([
+	"generate_audio",
+	"generate_voiceover",
+]);
+
+const MEDIA_GEN_TOOLS = new Set<string>([
+	"generate_media",
+	"generate_music",
+]);
+
+/**
+ * Filter the built-in tool definitions based on which media
+ * generation models the provider has configured. Tools whose
+ * corresponding model field is empty are excluded so the LLM
+ * never sees (and therefore never calls) a generation tool it
+ * can't actually use.
+ *
+ * Non-generation tools (editing, timeline, playback, etc.) are
+ * always included regardless of media model configuration.
+ */
+export function getFilteredToolDefinitions(mediaModels: {
+	videoModel?: string;
+	imageModel?: string;
+	audioModel?: string;
+	mediaModel?: string;
+}): ToolDefinition[] {
+	return ALL_TOOLS.filter((t) => {
+		const name = t.def.function.name;
+		if (VIDEO_GEN_TOOLS.has(name) && !mediaModels.videoModel?.trim())
+			return false;
+		if (IMAGE_GEN_TOOLS.has(name) && !mediaModels.imageModel?.trim())
+			return false;
+		if (AUDIO_GEN_TOOLS.has(name) && !mediaModels.audioModel?.trim())
+			return false;
+		if (MEDIA_GEN_TOOLS.has(name) && !mediaModels.mediaModel?.trim())
+			return false;
+		return true;
+	}).map((t) => t.def);
+}

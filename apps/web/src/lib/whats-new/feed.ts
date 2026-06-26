@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-media-model-config",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Optional media generation models per provider",
+		items: [
+			"Add/Edit Provider dialog now has an optional 'Media generation models' section with four fields: Video model, Image model, Audio model, and Media model. Fill in only the models your provider supports.",
+			"When a media model field is empty, the AI cannot call generation tools for that media type — the tools are filtered out from the LLM's tool list so it never sees (and never calls) a generation tool it can't actually use. Non-generation tools (editing, timeline, playback) are always available regardless.",
+			"This is the foundation for upcoming AI generation features (video, image, audio). The gating mechanism ensures the AI only attempts generation when a compatible model is configured.",
+		],
+	},
+	{
 		id: "2026-06-27-puter-csp-ws-test-fix",
 		date: "2026-06-27",
 		tag: "fix",
