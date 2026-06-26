@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-puter-model-fast",
+		date: "2026-06-28",
+		tag: "fix",
+		title: "Puter model selection is now instant after first load",
+		items: [
+			"Fixed slow Puter model selection — was calling listModels() twice (once for chat models, once for media models). Now uses a single call.",
+			"Added 5-minute in-memory cache for the Puter model list, so reopening the provider dialog is instant instead of re-fetching every time.",
+		],
+	},
+	{
 		id: "2026-06-28-docs-page",
 		date: "2026-06-28",
 		tag: "feature",

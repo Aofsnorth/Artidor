@@ -37,7 +37,7 @@ import {
 	type AIProvider,
 	type ProviderKind,
 } from "@/stores/ai-providers-store";
-import { fetchPuterModels, fetchPuterMediaModels } from "@/lib/ai/puter-client";
+import { fetchPuterModelsAndMedia } from "@/lib/ai/puter-client";
 import { cn } from "@/utils/ui";
 
 interface AIProvidersManagerProps {
@@ -578,14 +578,10 @@ function ProviderFormDialog({
 			setPuterModelsLoading(true);
 			setPuterModelsError(null);
 			try {
-				const [models, mediaModels] = await Promise.all([
-					fetchPuterModels(),
-					fetchPuterMediaModels().catch(() => ({
-						video: [],
-						image: [],
-						audio: [],
-					})),
-				]);
+				// Single listModels() call — fetchPuterModelsAndMedia
+				// derives both chat models and media models from one
+				// response, avoiding the double-fetch delay.
+				const { models, mediaModels } = await fetchPuterModelsAndMedia();
 				if (cancelled) return;
 				setPuterModels(models);
 				setPuterMediaModels(mediaModels);
