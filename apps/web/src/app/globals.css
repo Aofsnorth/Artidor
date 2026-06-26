@@ -783,50 +783,9 @@ body::-webkit-scrollbar,
 }
 
 /* ── AI takeover aurora overlay ────────────────────────────────── */
-/* A thin full-screen aurora gradient that drifts slowly while the AI
-   is "taking control" of the editor. The overlay sits above the editor
-   chrome but below the AI chat panel, so the chat stays interactive. */
-
-@keyframes ai-aurora-drift {
-	0% {
-		background-position:
-			0% 0%,
-			100% 100%,
-			50% 50%;
-		opacity: 0.55;
-	}
-	50% {
-		background-position:
-			100% 50%,
-			0% 50%,
-			75% 25%;
-		opacity: 0.8;
-	}
-	100% {
-		background-position:
-			0% 0%,
-			100% 100%,
-			50% 50%;
-		opacity: 0.55;
-	}
-}
-
-@keyframes ai-aurora-scanline {
-	0% {
-		transform: translateY(-100%);
-		opacity: 0;
-	}
-	10% {
-		opacity: 0.6;
-	}
-	90% {
-		opacity: 0.6;
-	}
-	100% {
-		transform: translateY(100vh);
-		opacity: 0;
-	}
-}
+/* A thin animated border glow (white) shown while the AI is "taking
+   control" of the editor. The center is transparent — only the border
+   shimmer is visible. */
 
 @keyframes ai-aurora-border-flow {
 	0%,
@@ -838,45 +797,37 @@ body::-webkit-scrollbar,
 	}
 }
 
-.ai-aurora-overlay {
-	background-image:
-		radial-gradient(
-			ellipse 80% 50% at 20% 30%,
-			rgba(99, 179, 237, 0.12),
-			transparent 60%
-		),
-		radial-gradient(
-			ellipse 70% 60% at 80% 70%,
-			rgba(167, 139, 250, 0.1),
-			transparent 60%
-		),
-		radial-gradient(
-			ellipse 60% 40% at 50% 50%,
-			rgba(52, 211, 153, 0.06),
-			transparent 70%
-		);
-	background-size:
-		200% 200%,
-		200% 200%,
-		150% 150%;
-	animation: ai-aurora-drift 8s ease-in-out infinite;
-}
-
-.ai-aurora-scanline {
-	animation: ai-aurora-scanline 4s linear infinite;
+@keyframes ai-aurora-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 0.8;
+	}
 }
 
 .ai-aurora-border {
 	background: linear-gradient(
 		90deg,
 		transparent,
-		rgba(99, 179, 237, 0.5),
-		rgba(167, 139, 250, 0.5),
-		rgba(52, 211, 153, 0.4),
+		rgba(255, 255, 255, 0.5),
+		rgba(255, 255, 255, 0.7),
+		rgba(255, 255, 255, 0.5),
 		transparent
 	);
 	background-size: 200% 100%;
 	animation: ai-aurora-border-flow 6s linear infinite;
+}
+
+.ai-aurora-border-inner {
+	/* Mask out the center so only the 1px border shimmer shows. */
+	background: #0a0a0f;
+	mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+	mask-composite: exclude;
+	-webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+	-webkit-mask-composite: xor;
+	padding: 1px;
 }
 
 /* AI takeover highlight for timeline elements being modified. */

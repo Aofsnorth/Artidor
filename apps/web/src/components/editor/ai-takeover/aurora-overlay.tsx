@@ -1,26 +1,39 @@
 "use client";
 
 /**
- * Aurora overlay — a thin, full-screen animated gradient shown while the
- * AI is "taking control" of the editor. Sits above the editor chrome
- * (header, panels, timeline, preview) but below the AI chat panel and
- * any dialogs, so the chat remains interactive and the permission dialog
- * stays visible.
+ * Aurora overlay — a thin animated border glow shown while the AI is
+ * "taking control" of the editor. Only the border is visible; the
+ * center is fully transparent so the editor content stays readable.
  *
- * The overlay also acts as a pointer-events catcher on the editor area,
- * locking out clicks on everything except the AI chat. The chat panel
- * itself is rendered with a higher z-index in the editor page so it
- * stays above this overlay.
+ * When co-edit mode is enabled (Settings → AI), the overlay does NOT
+ * capture pointer events, so the user can edit alongside the AI.
+ * When co-edit is off (default), the overlay locks the editor chrome.
+ *
+ * The overlay sits above the editor chrome (z-200) but below the AI
+ * chat panel (z-210), so the chat always stays interactive.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAIControlStore } from "@/stores/ai-control-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 
 export function AuroraOverlay() {
 	const takeoverState = useAIControlStore((s) => s.takeoverState);
 	const activeToolCall = useAIControlStore((s) => s.activeToolCall);
 	const revokeApproval = useAIControlStore((s) => s.revokeApproval);
+	const coEditMode = useSettingsStore((s) => s.aiCoEditMode);
+	const editor = useEditor();
+
+	// Revoke: stop the AI manager's current processing AND clear the
+	// session approval. Without cancelling the AI manager, the tool
+	// execution loop keeps running because the abort signal is never
+	// triggered — the store state change alone doesn't stop it.
+	const handleRevoke = useCallback(() => {
+		editor.ai.cancel();
+		revokeApproval();
+	}, [editor, revokeApproval]);
 
 	// Mount/unmount fade — avoids a hard pop when the overlay appears.
 	const [mounted, setMounted] = useState(false);
@@ -39,60 +52,45 @@ export function AuroraOverlay() {
 		<div
 			aria-hidden
 			className={cn(
-				"pointer-events-auto fixed inset-0 z-[200]",
+				"fixed inset-0 z-[200]",
 				"transition-opacity duration-300",
 				mounted ? "opacity-100" : "opacity-0",
+				// Only lock the editor when co-edit mode is OFF.
+				coEditMode ? "pointer-events-none" : "pointer-events-auto",
 			)}
-			// Catch clicks on the editor area but let the chat panel
-			// (rendered at z-[210] in the editor page) stay interactive.
+			// When locking, catch clicks so they don't reach the editor.
 			onClick={(e) => {
-				// Clicking the overlay itself does nothing — the editor is
-				// locked. But we surface a hint via cursor.
-				e.stopPropagation();
+				if (!coEditMode) e.stopPropagation();
 			}}
-			style={{ cursor: "not-allowed" }}
+			style={{ cursor: coEditMode ? "default" : "not-allowed" }}
 		>
-			{/* Aurora gradient layer — thin, doesn't fully obscure content */}
-			<div className="ai-aurora-overlay absolute inset-0" />
-
-			{/* Subtle darkening so the aurora reads against any background */}
-			<div className="absolute inset-0 bg-black/[0.18]" />
-
-			{/* Moving scanline — gives a "scanning/working" feel */}
-			<div
-				className="ai-aurora-scanline absolute inset-x-0 top-0 h-px"
-				style={{
-					background:
-						"linear-gradient(90deg, transparent, rgba(99,179,237,0.6), rgba(167,139,250,0.6), transparent)",
-				}}
-			/>
-
-			{/* Animated border around the whole editor area */}
-			<div className="ai-aurora-border absolute inset-0 rounded-none p-px">
-				<div className="size-full rounded-none" />
+			{/* Animated border — thin white glow around the editor area.
+			    Center is transparent; only the border shimmer is visible. */}
+			<div className="ai-aurora-border absolute inset-0 p-px">
+				<div className="ai-aurora-border-inner size-full" />
 			</div>
 
 			{/* Status badge — top center, shows what the AI is doing */}
 			<div className="absolute top-3 left-1/2 -translate-x-1/2">
 				<div
 					className={cn(
-						"flex items-center gap-2 rounded-full border border-cyan-400/25",
+						"flex items-center gap-2 rounded-full border border-white/20",
 						"bg-[#0a0a0f]/85 px-3.5 py-1.5 backdrop-blur-md",
-						"shadow-[0_8px_32px_-8px_rgba(99,179,237,0.35)]",
+						"shadow-[0_8px_32px_-8px_rgba(255,255,255,0.15)]",
 					)}
 				>
 					<span className="relative flex size-2">
-						<span className="absolute inline-flex size-full animate-ping rounded-full bg-cyan-400/70" />
-						<span className="relative inline-flex size-2 rounded-full bg-cyan-300" />
+						<span className="absolute inline-flex size-full animate-ping rounded-full bg-white/60" />
+						<span className="relative inline-flex size-2 rounded-full bg-white/90" />
 					</span>
-					<span className="font-mono text-[10px] uppercase tracking-wider text-cyan-100/90">
+					<span className="font-mono text-[10px] uppercase tracking-wider text-white/80">
 						{activeToolCall?.label ?? "AI in control"}
 					</span>
 					<button
 						type="button"
 						onClick={(e) => {
 							e.stopPropagation();
-							revokeApproval();
+							handleRevoke();
 						}}
 						className={cn(
 							"ml-1 rounded-full border border-white/15 px-2 py-0.5",

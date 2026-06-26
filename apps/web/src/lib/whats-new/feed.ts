@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-04-ai-takeover-redesign-co-edit-mode",
+		date: "2026-07-04",
+		tag: "improvement",
+		title: "AI takeover: cleaner overlay, inline permission, and co-edit mode",
+		items: [
+			"The aurora overlay is now a thin white border glow instead of a full-screen gradient — the editor center stays fully visible while the AI is in control.",
+			"The takeover permission request moved from a popup dialog to an inline card inside the AI chat, so it no longer interrupts your flow with a modal.",
+			"New setting: Co-edit mode (Settings → AI). When enabled, you can keep editing the timeline, preview, and properties while the AI is active — the editor stays interactive instead of being locked.",
+		],
+	},
+	{
 		id: "2026-07-03-puter-claude-acts-instead-of-announcing",
 		date: "2026-07-03",
 		tag: "fix",

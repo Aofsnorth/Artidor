@@ -176,6 +176,8 @@ function AISettings() {
 	const setAiName = useSettingsStore((s) => s.setAiName);
 	const aiPersonality = useSettingsStore((s) => s.aiPersonality);
 	const setAiPersonality = useSettingsStore((s) => s.setAiPersonality);
+	const aiCoEditMode = useSettingsStore((s) => s.aiCoEditMode);
+	const setAiCoEditMode = useSettingsStore((s) => s.setAiCoEditMode);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -216,6 +218,16 @@ function AISettings() {
 					</p>
 				</div>
 			</div>
+
+			<SettingRow
+				title="Co-edit mode"
+				description="When enabled, you can keep editing the timeline, preview, and properties while the AI is in control. The editor stays interactive instead of being locked. A thin border glow still shows the AI is active."
+			>
+				<Switch
+					checked={aiCoEditMode}
+					onCheckedChange={setAiCoEditMode}
+				/>
+			</SettingRow>
 
 			<SettingRow
 				title="Supported providers"

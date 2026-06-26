@@ -49,7 +49,6 @@ import { PageTransition } from "@/components/page-transition";
 
 import { EditorFooter } from "@/components/editor/editor-footer";
 import { AuroraOverlay } from "@/components/editor/ai-takeover/aurora-overlay";
-import { AITakeoverPermissionDialog } from "@/components/editor/ai-takeover/permission-dialog";
 import { useAIControlStore as useAIControlStoreSafe } from "@/stores/ai-control-store";
 
 // Lazy-loaded dialogs/overlays. These are only mounted when their
@@ -112,7 +111,6 @@ export default function Editor() {
 							   AITakeoverChatBoost when takeover is active) so the
 							   chat stays interactive while the editor is locked. */}
 							<AuroraOverlay />
-							<AITakeoverPermissionDialog />
 							{/* Lazy overlays — Suspense keeps a render-time safety net
 							   in case the dynamic chunks fail to load. The fallback
 							   is null because each dialog manages its own visibility
