@@ -298,9 +298,9 @@ export class AIManager {
 			// progress from previous rounds.
 			let result:
 				| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-				| { kind: "error" }
+				| { kind: "error"; message: string }
 				| null = null;
-			const lastError = "Connection error";
+			let lastError = "Connection error";
 			for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
 				if (signal.aborted) return;
 				result = await this.streamLLMResponse(
@@ -310,6 +310,7 @@ export class AIManager {
 					learningScope,
 				);
 				if (result.kind === "ok") break;
+				lastError = result.message;
 				// If aborted, don't retry.
 				if (signal.aborted) return;
 				// On the first attempt's error, streamLLMResponse may
@@ -322,7 +323,7 @@ export class AIManager {
 					const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
 					useAIStore.getState().setStatus("retrying");
 					useAIStore.getState().setError(
-						`Connection issue — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES})…`,
+						`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES})…`,
 					);
 					this.notify();
 					// Wait before retrying (exponential backoff).
@@ -404,7 +405,7 @@ export class AIManager {
 		learningScope: "project" | "global" | "off" = "project",
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-		| { kind: "error" }
+		| { kind: "error"; message: string }
 	> {
 		const storeState = useAIStore.getState();
 		const messages: ChatMessage[] = [];
@@ -571,13 +572,11 @@ export class AIManager {
 			// User aborted — don't schedule a retry, just return error
 			// so the loop can check signal.aborted and exit cleanly.
 			if (signal.aborted || err instanceof DOMException) {
-				return { kind: "error" };
+				return { kind: "error", message: "Aborted" };
 			}
-			this.scheduleRetry(
-				text,
-				err instanceof Error ? err.message : "Network error",
-			);
-			return { kind: "error" };
+			const message = err instanceof Error ? err.message : "Network error";
+			this.scheduleRetry(text, message);
+			return { kind: "error", message };
 		}
 
 		if (!res.ok) {
@@ -592,7 +591,7 @@ export class AIManager {
 				message = `${message} — open the AI providers manager to add one.`;
 			}
 			this.scheduleRetry(text, message);
-			return { kind: "error" };
+			return { kind: "error", message };
 		}
 
 		// Reserve an assistant bubble; we'll stream into it.
@@ -605,7 +604,7 @@ export class AIManager {
 		const reader = res.body?.getReader();
 		if (!reader) {
 			this.scheduleRetry(text, "No response body");
-			return { kind: "error" };
+			return { kind: "error", message: "No response body" };
 		}
 
 		const decoder = new TextDecoder();
@@ -640,7 +639,7 @@ export class AIManager {
 					if (parsed.error) {
 						useAIStore.getState().removeMessage(assistantId);
 						this.scheduleRetry(text, parsed.error);
-						return { kind: "error" };
+						return { kind: "error", message: parsed.error };
 					}
 					if (parsed.delta) {
 						assembledText += parsed.delta;
@@ -659,11 +658,9 @@ export class AIManager {
 				}
 			}
 		} catch (err) {
-			this.scheduleRetry(
-				text,
-				err instanceof Error ? err.message : "Stream error",
-			);
-			return { kind: "error" };
+			const message = err instanceof Error ? err.message : "Stream error";
+			this.scheduleRetry(text, message);
+			return { kind: "error", message };
 		}
 
 		return { kind: "ok", assistantId, toolCalls };
@@ -771,7 +768,7 @@ export class AIManager {
 		signal: AbortSignal,
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-		| { kind: "error" }
+		| { kind: "error"; message: string }
 	> {
 		// Reserve an assistant bubble; we'll stream into it.
 		const assistantId = useAIStore.getState().appendMessage({
@@ -790,12 +787,12 @@ export class AIManager {
 				externalTools,
 				signal,
 			)) {
-				if (signal.aborted) return { kind: "error" };
+				if (signal.aborted) return { kind: "error", message: "Aborted" };
 
 				if (chunk.error) {
 					useAIStore.getState().removeMessage(assistantId);
 					this.scheduleRetry("", chunk.error);
-					return { kind: "error" };
+					return { kind: "error", message: chunk.error };
 				}
 				if (chunk.delta) {
 					assembledText += chunk.delta;
@@ -817,14 +814,13 @@ export class AIManager {
 		} catch (err) {
 			// User aborted — don't schedule retry.
 			if (signal.aborted || err instanceof DOMException) {
-				return { kind: "error" };
+				return { kind: "error", message: "Aborted" };
 			}
 			useAIStore.getState().removeMessage(assistantId);
-			this.scheduleRetry(
-				"",
-				err instanceof Error ? err.message : "Puter.js stream error",
-			);
-			return { kind: "error" };
+			const message =
+				err instanceof Error ? err.message : "Puter.js stream error";
+			this.scheduleRetry("", message);
+			return { kind: "error", message };
 		}
 
 		return { kind: "ok", assistantId, toolCalls };
