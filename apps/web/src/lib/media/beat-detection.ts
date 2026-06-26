@@ -20,6 +20,22 @@ const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	minBeatGapMs: 200,
 };
 
+/**
+ * Yield to the event loop (macrotask) so pending UI events — clicks,
+ * animation frames, etc. — can be processed. Without this, the tight
+ * nested loops in beat detection block the main thread for seconds on
+ * long audio files, freezing the editor and making the Revoke button
+ * unclickable.
+ */
+function yieldToEventLoop(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Synchronous beat detection. Kept for backward compatibility and tests,
+ * but should NOT be called on the main thread for long audio files —
+ * use {@link detectBeatsAsync} instead, which yields periodically.
+ */
 export function detectBeats({
 	samples,
 	sampleRate,
@@ -43,6 +59,80 @@ export function detectBeats({
 			sum += sample * sample;
 		}
 		energies.push(Math.sqrt(sum / windowSize));
+	}
+
+	if (energies.length === 0) return [];
+
+	const minGapSamples = Math.floor(
+		(opts.minBeatGapMs / 1000) * (sampleRate / hopSize),
+	);
+	const threshold = average(energies) * opts.thresholdRatio;
+
+	const beats: DetectedBeat[] = [];
+	let lastIndex = -minGapSamples;
+
+	for (let i = 1; i < energies.length - 1; i++) {
+		const e = energies[i] ?? 0;
+		const prev = energies[i - 1] ?? 0;
+		const next = energies[i + 1] ?? 0;
+		if (e < threshold) continue;
+		if (e <= prev || e < next) continue;
+		if (i - lastIndex < minGapSamples) continue;
+
+		const timeSeconds = (i * hopSize) / sampleRate;
+		beats.push({
+			timeSeconds,
+			ticks: Math.round(timeSeconds * TICKS_PER_SECOND),
+			energy: e,
+		});
+		lastIndex = i;
+	}
+
+	return beats;
+}
+
+/**
+ * Async beat detection — same algorithm as {@link detectBeats} but yields
+ * to the event loop every `yieldInterval` iterations so the UI stays
+ * responsive (clicks, animation frames, revoke buttons) during analysis
+ * of long audio files.
+ *
+ * The energy computation (the expensive nested loop) is chunked: after
+ * every `yieldInterval` hops we `await` a macrotask. The peak-picking
+ * pass over the energies array is fast enough to run synchronously.
+ */
+export async function detectBeatsAsync({
+	samples,
+	sampleRate,
+	options = {},
+	yieldInterval = 500,
+}: {
+	samples: Float32Array;
+	sampleRate: number;
+	options?: BeatDetectionOptions;
+	/** Number of hop iterations between event-loop yields. */
+	yieldInterval?: number;
+}): Promise<DetectedBeat[]> {
+	const opts = { ...DEFAULT_OPTIONS, ...options };
+	if (samples.length === 0 || sampleRate <= 0) return [];
+
+	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
+	const hopSize = Math.max(64, Math.floor(windowSize / 2));
+	const energies: number[] = [];
+
+	for (let i = 0; i < samples.length - windowSize; i += hopSize) {
+		let sum = 0;
+		for (let j = 0; j < windowSize; j++) {
+			const sample = samples[i + j] ?? 0;
+			sum += sample * sample;
+		}
+		energies.push(Math.sqrt(sum / windowSize));
+
+		// Yield periodically so the main thread can process pending
+		// UI events (clicks, rAF, etc.) instead of freezing.
+		if (energies.length % yieldInterval === 0) {
+			await yieldToEventLoop();
+		}
 	}
 
 	if (energies.length === 0) return [];
