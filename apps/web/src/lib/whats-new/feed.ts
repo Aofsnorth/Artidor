@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-29-small-screen-overflow-dropdowns",
+		date: "2026-06-29",
+		tag: "improvement",
+		title: "Small screen / high-DPI overflow handling",
+		items: [
+			"AI panel toolbar items that don't fit on small screens or high display scaling now collapse into a \"More\" dropdown instead of getting cut off. On PCs with adequate screen space, the layout stays exactly as before.",
+			"Added min-w-0 and truncate to the AI panel header so long assistant names shrink gracefully instead of pushing buttons off-screen.",
+		],
+	},
+	{
 		id: "2026-06-29-per-project-chat-history",
 		date: "2026-06-29",
 		tag: "feature",
