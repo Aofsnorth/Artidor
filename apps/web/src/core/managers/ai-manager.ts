@@ -162,6 +162,44 @@ export class AIManager {
 	}
 
 	/**
+	 * Throttled notify for streaming. Batches re-renders to at most one
+	 * per animation frame (~16ms) instead of firing on every delta chunk.
+	 *
+	 * Without this, switching away from the tab causes the browser to
+	 * buffer incoming SSE chunks; when the tab regains focus, hundreds
+	 * of chunks are processed in a tight synchronous loop, each calling
+	 * notify() → React re-render, freezing the main thread. The store
+	 * is still updated on every chunk (so the latest text is always
+	 * available), but the UI only re-renders once per frame.
+	 *
+	 * rAF naturally pauses in background tabs and resumes on focus,
+	 * so the coalesced update fires exactly once when the user returns.
+	 */
+	private notifyPending = false;
+	private notifyRafId: number | null = null;
+	private scheduleNotify(): void {
+		// If a frame is already scheduled, the trailing call will carry
+		// the latest store state — no need to schedule another.
+		if (this.notifyPending) return;
+		this.notifyPending = true;
+		this.notifyRafId = requestAnimationFrame(() => {
+			this.notifyPending = false;
+			this.notifyRafId = null;
+			this.notify();
+		});
+	}
+
+	/** Flush any pending throttled notify immediately. */
+	private flushNotify(): void {
+		if (this.notifyRafId !== null) {
+			cancelAnimationFrame(this.notifyRafId);
+			this.notifyRafId = null;
+		}
+		this.notifyPending = false;
+		this.notify();
+	}
+
+	/**
 	 * Tools that modify the editor document (timeline, scene, project
 	 * settings, media library). These require the user's takeover
 	 * approval before the AI can execute them. Read-only tools
@@ -916,7 +954,7 @@ export class AIManager {
 						useAIStore.getState().updateMessage(assistantId, {
 							content: sanitized,
 						});
-						this.notify();
+						this.scheduleNotify();
 					}
 					if (parsed.toolCalls?.length) {
 						toolCalls = parsed.toolCalls;
@@ -932,6 +970,9 @@ export class AIManager {
 			return { kind: "error", message };
 		}
 
+		// Flush any pending throttled notify so the final state is
+		// rendered before the caller proceeds.
+		this.flushNotify();
 		return { kind: "ok", assistantId, toolCalls };
 	}
 
@@ -1069,7 +1110,7 @@ export class AIManager {
 					useAIStore.getState().updateMessage(assistantId, {
 						content: sanitized,
 					});
-					this.notify();
+					this.scheduleNotify();
 				}
 				if (chunk.toolCalls?.length) {
 					toolCalls = chunk.toolCalls.map((tc) => ({
@@ -1092,6 +1133,9 @@ export class AIManager {
 			return { kind: "error", message };
 		}
 
+		// Flush any pending throttled notify so the final state is
+		// rendered before the caller proceeds.
+		this.flushNotify();
 		return { kind: "ok", assistantId, toolCalls };
 	}
 

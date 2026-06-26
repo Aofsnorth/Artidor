@@ -23,8 +23,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "fix",
 		title: "AI takeover aurora border and screen freeze fixes",
 		items: [
-			"The aurora overlay no longer turns the whole screen black — the border mask is now applied directly to the gradient element so the editor center stays visible, with a safe white-gradient fallback if the browser doesn't support masking.",
-			"The Revoke button is now always clickable during AI takeover. The tool execution loop now yields to the event loop between each tool call, so pending click events are processed instead of being blocked until the whole batch finishes.",
+			"The aurora border is now built from an animated box-shadow ring with a flowing gradient sheen on top — always visible regardless of browser mask support, with no risk of the screen turning black.",
+			"The editor no longer freezes when you switch away from the tab during AI generation. Streaming re-renders are now batched to one per animation frame instead of firing on every character, so the main thread stays responsive.",
 		],
 	},
 	{
