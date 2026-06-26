@@ -31,40 +31,75 @@ import {
 	ArrowDown03Icon,
 	AlertCircleIcon,
 	ArrowTurnBackwardIcon,
+	ArrowTurnForwardIcon,
 	ArrowUp02Icon,
 	AttachmentIcon,
+	BackgroundIcon,
+	Bookmark01Icon,
+	Bookmark02Icon,
 	Cancel01Icon,
 	Chat01Icon,
 	CheckmarkCircle02Icon,
 	CheckmarkSquare01Icon,
+	ColorsIcon,
+	CombineIcon,
+	Copy01Icon,
 	Copy02Icon,
+	Delete01Icon,
 	Delete02Icon,
+	Delete03Icon,
 	Edit01Icon,
+	EyeIcon,
+	Film01Icon,
+	FileImportIcon,
+	Grid02Icon,
 	Image01Icon,
+	Key01Icon,
+	Link01Icon,
+	Move01Icon,
 	MagicWand05Icon,
 	MusicNote03Icon,
 	PaintBrushIcon,
 	PuzzleIcon,
+	SaveIcon,
+	ScissorIcon,
+	Search01Icon,
 	SlidersHorizontalIcon,
+	SlidersVerticalIcon,
 	SparklesIcon,
 	StopIcon,
+	Settings01Icon,
+	Settings02Icon,
+	SourceCodeIcon,
+	TextIcon,
+	TransitionLeftIcon,
+	Unlink01Icon,
+	Unlink02Icon,
 	Upload01Icon,
 	Video01Icon,
+	VolumeHighIcon,
+	VolumeMute01Icon,
+	Globe02Icon,
+	Group01Icon,
+	Camera01Icon,
 	PlugIcon,
 	ChatAdd01Icon,
-	Settings02Icon,
 	FilmIcon,
 	LayersIcon,
 	CropIcon,
-	PlayCircleIcon,
+	PlayIcon,
 	Folder01Icon,
 	PaintBoardIcon,
 	FileExportIcon,
 	Clock01Icon,
 	Cursor02Icon,
 	ClipboardCheckIcon,
+	ClipboardPasteIcon,
 	CheckListIcon,
-	CloudIcon,
+	CaptionsIcon,
+	AdjustPositionIcon,
+	Target01Icon,
+	FilterIcon,
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
@@ -2121,7 +2156,7 @@ function OverflowRow({
 					<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
 						{children.slice(1).map((child, i) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position
-							<div key={i} onClick={() => setDropdownOpen(false)}>
+							<div key={i} onClick={() => setDropdownOpen(false)} onKeyDown={(e) => { if (e.key === "Enter") setDropdownOpen(false); }} role="button" tabIndex={0}>
 								{child}
 							</div>
 						))}
@@ -2938,7 +2973,7 @@ interface ToolVisual {
 }
 
 function getToolVisual(toolName: string): ToolVisual {
-	// MCP tools
+	// MCP tools — all share the puzzle icon since they're external.
 	if (toolName.startsWith("mcp__")) {
 		return {
 			icon: PuzzleIcon,
@@ -2948,170 +2983,230 @@ function getToolVisual(toolName: string): ToolVisual {
 			glow: "shadow-[0_0_12px_-4px_rgba(139,92,246,0.3)]",
 		};
 	}
-	// Generation tools
-	if (toolName.startsWith("generate_")) {
-		const sub = toolName.slice(9);
-		if (sub === "video")
-			return {
-				icon: Video01Icon,
-				color: "text-rose-300",
-				bg: "bg-rose-500/10",
-				border: "border-rose-400/20",
-				glow: "shadow-[0_0_12px_-4px_rgba(244,63,94,0.3)]",
-			};
-		if (sub === "image")
-			return {
-				icon: Image01Icon,
-				color: "text-cyan-300",
-				bg: "bg-cyan-500/10",
-				border: "border-cyan-400/20",
-				glow: "shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)]",
-			};
-		if (sub === "audio" || sub === "media")
-			return {
-				icon: MusicNote03Icon,
-				color: "text-amber-300",
-				bg: "bg-amber-500/10",
-				border: "border-amber-400/20",
-				glow: "shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)]",
-			};
-		return {
-			icon: SparklesIcon,
-			color: "text-fuchsia-300",
-			bg: "bg-fuchsia-500/10",
-			border: "border-fuchsia-400/20",
-			glow: "shadow-[0_0_12px_-4px_rgba(217,70,239,0.3)]",
-		};
-	}
-	// Category-based mapping
+
+	// Per-tool-name icon overrides. Each tool gets a distinct icon so
+	// the user can tell at a glance which tool was called. Colors still
+	// come from the category map below.
+	const TOOL_ICONS: Record<string, typeof SparklesIcon> = {
+		// project
+		set_project_fps: SlidersVerticalIcon,
+		set_project_canvas: ColorsIcon,
+		set_project_background: BackgroundIcon,
+		save_project: SaveIcon,
+		// scene
+		create_scene: Film01Icon,
+		rename_scene: Edit01Icon,
+		add_bookmark: Bookmark01Icon,
+		remove_bookmark: Bookmark02Icon,
+		delete_scene: Delete01Icon,
+		switch_scene: FilmIcon,
+		// track
+		add_track: LayersIcon,
+		remove_track: Delete02Icon,
+		set_track_muted: VolumeMute01Icon,
+		set_track_visible: EyeIcon,
+		// element
+		insert_text_element: TextIcon,
+		insert_camera_layer: Camera01Icon,
+		insert_null_layer: Grid02Icon,
+		move_element: Move01Icon,
+		split_element: ScissorIcon,
+		delete_elements: Delete03Icon,
+		update_element: AdjustPositionIcon,
+		group_elements: Group01Icon,
+		ungroup_elements: Unlink02Icon,
+		duplicate_elements: Copy01Icon,
+		toggle_source_audio_separation: CaptionsIcon,
+		set_parent: Link01Icon,
+		unlink_parent: Unlink01Icon,
+		combine_elements: CombineIcon,
+		// effect
+		add_clip_effect: PaintBoardIcon,
+		remove_clip_effect: Delete01Icon,
+		update_clip_effect_params: SlidersVerticalIcon,
+		toggle_effect_enabled: Settings01Icon,
+		reorder_effects: Settings02Icon,
+		// mask
+		remove_mask: Delete02Icon,
+		toggle_mask_inverted: PaintBrushIcon,
+		// keyframe
+		upsert_keyframe: Key01Icon,
+		remove_keyframe: Delete03Icon,
+		retime_keyframe: Clock01Icon,
+		upsert_effect_param_keyframe: Key01Icon,
+		remove_effect_param_keyframe: Delete03Icon,
+		// transition
+		add_transition: TransitionLeftIcon,
+		remove_transition: Delete01Icon,
+		update_transition: SlidersHorizontalIcon,
+		// playback
+		play: PlayIcon,
+		seek: Target01Icon,
+		set_volume: VolumeHighIcon,
+		capture_frame: Camera01Icon,
+		// asset
+		import_asset_from_url: Upload01Icon,
+		list_assets: Search01Icon,
+		add_media_to_timeline: CropIcon,
+		import_and_add_to_timeline: FileImportIcon,
+		create_folder: Folder01Icon,
+		move_asset_to_folder: Move01Icon,
+		delete_asset: Delete02Icon,
+		rename_folder: Edit01Icon,
+		delete_folder: Delete03Icon,
+		// style
+		apply_preset: MagicWand05Icon,
+		// export
+		export_project: FileExportIcon,
+		// history
+		undo: ArrowTurnBackwardIcon,
+		redo: ArrowTurnForwardIcon,
+		// selection
+		select_elements: Target01Icon,
+		clear_selection: Cancel01Icon,
+		// clipboard
+		copy: Copy02Icon,
+		paste: ClipboardPasteIcon,
+		"copy-style": SourceCodeIcon,
+		"paste-style": SourceCodeIcon,
+		"copy-effect": FilterIcon,
+		"paste-effect": FilterIcon,
+		paste_keyframes: ClipboardCheckIcon,
+		// plan
+		create_plan: CheckListIcon,
+		update_todo: CheckmarkSquare01Icon,
+		// web
+		web_fetch: Globe02Icon,
+		// generate
+		generate_video: Video01Icon,
+		generate_image: Image01Icon,
+		generate_audio: MusicNote03Icon,
+		generate_media: SparklesIcon,
+	};
+
+	// Category-based color mapping (icon is overridden per-tool above).
 	const prefix = toolName.split("_")[0] ?? "misc";
-	const map: Record<string, ToolVisual> = {
+	const categoryColors: Record<string, { color: string; bg: string; border: string; glow: string }> = {
 		project: {
-			icon: Folder01Icon,
 			color: "text-blue-300",
 			bg: "bg-blue-500/10",
 			border: "border-blue-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(59,130,246,0.3)]",
 		},
 		scene: {
-			icon: FilmIcon,
 			color: "text-indigo-300",
 			bg: "bg-indigo-500/10",
 			border: "border-indigo-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(99,102,241,0.3)]",
 		},
 		track: {
-			icon: LayersIcon,
 			color: "text-teal-300",
 			bg: "bg-teal-500/10",
 			border: "border-teal-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(20,184,166,0.3)]",
 		},
 		element: {
-			icon: CropIcon,
 			color: "text-emerald-300",
 			bg: "bg-emerald-500/10",
 			border: "border-emerald-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]",
 		},
 		effect: {
-			icon: PaintBoardIcon,
 			color: "text-purple-300",
 			bg: "bg-purple-500/10",
 			border: "border-purple-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(168,85,247,0.3)]",
 		},
 		mask: {
-			icon: PaintBrushIcon,
 			color: "text-pink-300",
 			bg: "bg-pink-500/10",
 			border: "border-pink-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(236,72,153,0.3)]",
 		},
 		keyframe: {
-			icon: SlidersHorizontalIcon,
 			color: "text-orange-300",
 			bg: "bg-orange-500/10",
 			border: "border-orange-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(249,115,22,0.3)]",
 		},
 		transition: {
-			icon: FilmIcon,
 			color: "text-lime-300",
 			bg: "bg-lime-500/10",
 			border: "border-lime-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(132,204,22,0.3)]",
 		},
 		playback: {
-			icon: PlayCircleIcon,
 			color: "text-green-300",
 			bg: "bg-green-500/10",
 			border: "border-green-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(34,197,94,0.3)]",
 		},
 		asset: {
-			icon: CloudIcon,
 			color: "text-sky-300",
 			bg: "bg-sky-500/10",
 			border: "border-sky-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(14,165,233,0.3)]",
 		},
 		web: {
-			icon: CloudIcon,
 			color: "text-violet-300",
 			bg: "bg-violet-500/10",
 			border: "border-violet-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(139,92,246,0.3)]",
 		},
 		style: {
-			icon: PaintBrushIcon,
 			color: "text-fuchsia-300",
 			bg: "bg-fuchsia-500/10",
 			border: "border-fuchsia-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(217,70,239,0.3)]",
 		},
 		export: {
-			icon: FileExportIcon,
 			color: "text-red-300",
 			bg: "bg-red-500/10",
 			border: "border-red-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(239,68,68,0.3)]",
 		},
 		history: {
-			icon: Clock01Icon,
 			color: "text-stone-300",
 			bg: "bg-stone-500/10",
 			border: "border-stone-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(120,113,108,0.3)]",
 		},
 		selection: {
-			icon: Cursor02Icon,
 			color: "text-yellow-300",
 			bg: "bg-yellow-500/10",
 			border: "border-yellow-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(234,179,8,0.3)]",
 		},
 		clipboard: {
-			icon: ClipboardCheckIcon,
 			color: "text-cyan-300",
 			bg: "bg-cyan-500/10",
 			border: "border-cyan-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)]",
 		},
 		plan: {
-			icon: CheckListIcon,
 			color: "text-indigo-300",
 			bg: "bg-indigo-500/10",
 			border: "border-indigo-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(99,102,241,0.3)]",
 		},
+		generate: {
+			color: "text-fuchsia-300",
+			bg: "bg-fuchsia-500/10",
+			border: "border-fuchsia-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(217,70,239,0.3)]",
+		},
 	};
-	return map[prefix] ?? {
-		icon: MagicWand05Icon,
+
+	const colors = categoryColors[prefix] ?? {
 		color: "text-white/60",
 		bg: "bg-white/[0.04]",
 		border: "border-white/[0.08]",
 		glow: "",
+	};
+
+	return {
+		icon: TOOL_ICONS[toolName] ?? MagicWand05Icon,
+		...colors,
 	};
 }
 

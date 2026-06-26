@@ -339,43 +339,69 @@ const HANDLERS: Record<string, Handler> = {
 				)
 			: undefined;
 		const isCompatible = targetTrack?.type === "text";
-		editor.timeline.insertElement({
+		const placed = editor.timeline.insertElement({
 			element,
 			placement: isCompatible
 				? { mode: "explicit", trackId: requestedTrackId }
 				: { mode: "auto" },
 		});
-		// After insertion, find the element the command actually placed
-		// (the command may regenerate `id` to avoid collisions, and
-		// "auto" mode may have inserted onto a different track than
-		// the caller asked for). Return the real, on-timeline id so
-		// downstream callers can address it.
-		const afterTracks = editor.scenes.getActiveScene().tracks;
-		const placed = [
-			afterTracks.main,
-			...afterTracks.overlay,
-			...afterTracks.audio,
-		]
-			.flatMap((track) => track.elements as readonly TimelineElement[])
-			.find(
-				(candidate): candidate is TextElement =>
-					candidate.type === "text" && candidate.id !== element.id,
+		// insertElement returns the real on-timeline id + trackId the
+		// command assigned (it regenerates the id and "auto" mode may
+		// place on a different track than requested). Prefer those; fall
+		// back to a post-insertion scan only if the command didn't report
+		// them (defensive — should not normally happen).
+		let elementId = placed?.elementId;
+		let placedTrackId = placed?.trackId;
+		if (!elementId) {
+			const afterTracks = editor.scenes.getActiveScene().tracks;
+			const found = [
+				afterTracks.main,
+				...afterTracks.overlay,
+				...afterTracks.audio,
+			]
+				.flatMap((track) => track.elements as readonly TimelineElement[])
+				.find(
+					(candidate): candidate is TextElement =>
+						candidate.type === "text" && candidate.id !== element.id,
+				);
+			elementId = found?.id ?? element.id;
+		}
+		if (!placedTrackId) {
+			const afterTracks = editor.scenes.getActiveScene().tracks;
+			const foundTrack = [
+				afterTracks.main,
+				...afterTracks.overlay,
+				...afterTracks.audio,
+			].find((track) =>
+				track.elements.some((el) => el.id === elementId),
 			);
+			placedTrackId = foundTrack?.id;
+		}
 		return {
 			ok: true,
-			message: `Inserted text "${element.name}"`,
-			data: { id: placed?.id ?? element.id },
+			message: `Inserted text "${element.name}". elementId=${elementId}, trackId=${placedTrackId ?? "(unknown)"}. Use these IDs for follow-up edits.`,
+			data: { id: elementId, elementId, trackId: placedTrackId },
 		};
 	},
 
 	insert_camera_layer: async (editor) => {
-		editor.timeline.insertCameraLayer();
-		return { ok: true, message: "Inserted 3D camera layer" };
+		const placed = editor.timeline.insertCameraLayer();
+		if (!placed) return { ok: false, message: "Failed to insert camera layer" };
+		return {
+			ok: true,
+			message: `Inserted 3D camera layer. elementId=${placed.elementId}, trackId=${placed.trackId}.`,
+			data: { elementId: placed.elementId, trackId: placed.trackId },
+		};
 	},
 
 	insert_null_layer: async (editor) => {
-		editor.timeline.insertNullLayer();
-		return { ok: true, message: "Inserted null layer" };
+		const placed = editor.timeline.insertNullLayer();
+		if (!placed) return { ok: false, message: "No overlay track available" };
+		return {
+			ok: true,
+			message: `Inserted null layer. elementId=${placed.elementId}, trackId=${placed.trackId}.`,
+			data: { elementId: placed.elementId, trackId: placed.trackId },
+		};
 	},
 
 	move_element: async (editor, args) => {
@@ -389,7 +415,7 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	split_element: async (editor, args) => {
-		const result = editor.timeline.splitElements({
+		const rightSide = editor.timeline.splitElements({
 			elements: [
 				{
 					trackId: asString(args.trackId),
@@ -402,7 +428,14 @@ const HANDLERS: Record<string, Handler> = {
 				| "left"
 				| "right",
 		});
-		return { ok: true, message: "Split", data: { result } };
+		const right = rightSide[0];
+		return {
+			ok: true,
+			message: right
+				? `Split at ${asNumber(args.time, 0)} ticks. Right half → elementId=${right.elementId}, trackId=${right.trackId}. Left half keeps the original elementId. Use these IDs for further trim/delete/move.`
+				: `Split at ${asNumber(args.time, 0)} ticks (retainSide=${asString(args.retainSide, "both")}).`,
+			data: { rightSide: rightSide },
+		};
 	},
 
 	delete_elements: async (editor, args) => {
@@ -432,6 +465,74 @@ const HANDLERS: Record<string, Handler> = {
 			pushHistory: true,
 		});
 		return { ok: true, message: "Updated element" };
+	},
+
+	list_elements: async (editor) => {
+		const scene = editor.scenes.getActiveSceneOrNull();
+		if (!scene) {
+			return { ok: false, message: "No active scene" };
+		}
+		type ElSummary = {
+			trackId: string;
+			trackType: string;
+			elementId: string;
+			type: string;
+			name: string;
+			startTime: number;
+			duration: number;
+			trimStart: number;
+			trimEnd: number;
+			mediaId?: string;
+		};
+		const out: ElSummary[] = [];
+		const collect = (
+			trackId: string,
+			trackType: string,
+			elements: readonly TimelineElement[],
+		) => {
+			for (const el of elements) {
+				out.push({
+					trackId,
+					trackType,
+					elementId: el.id,
+					type: el.type,
+					name:
+						(el as { customName?: string }).customName ??
+						(el as { name?: string }).name ??
+						"",
+					startTime: el.startTime,
+					duration: el.duration,
+					trimStart: el.trimStart ?? 0,
+					trimEnd: el.trimEnd ?? 0,
+					mediaId: (el as { mediaId?: string }).mediaId,
+				});
+			}
+		};
+		collect(scene.tracks.main.id, scene.tracks.main.type, scene.tracks.main.elements);
+		for (const t of scene.tracks.overlay) {
+			collect(t.id, t.type, t.elements);
+		}
+		for (const t of scene.tracks.audio) {
+			collect(t.id, t.type, t.elements);
+		}
+		if (out.length === 0) {
+			return {
+				ok: true,
+				message: "Timeline is empty — no elements yet.",
+				data: { elements: [] },
+			};
+		}
+		const summary = out
+			.map(
+				(e) =>
+					`${e.type} "${e.name}" elementId=${e.elementId} trackId=${e.trackId} (${e.trackType}) start=${e.startTime} dur=${e.duration} trim=${e.trimStart}-${e.trimEnd}`,
+			)
+			.join("\n");
+		return {
+			ok: true,
+			message: `${out.length} element(s) on timeline:\n${summary}`,
+			data: { elements: out },
+		};
 	},
 
 	/* -------------------------------- effect ----------------------------- */
@@ -712,20 +813,19 @@ const HANDLERS: Record<string, Handler> = {
 			: 0;
 
 		const trackId = asString(args.trackId);
-		if (trackId) {
-			editor.timeline.insertElement({
-				element,
-				placement: { mode: "explicit", trackId },
-			});
-		} else {
-			editor.timeline.insertElement({
-				element,
-				placement: {
-					mode: "auto",
-					trackType: asset.type === "audio" ? "audio" : "video",
-				},
-			});
-		}
+		const placed =
+			trackId
+				? editor.timeline.insertElement({
+						element,
+						placement: { mode: "explicit", trackId },
+					})
+				: editor.timeline.insertElement({
+						element,
+						placement: {
+							mode: "auto",
+							trackType: asset.type === "audio" ? "audio" : "video",
+						},
+					});
 
 		// Verify the element was actually inserted — InsertElementCommand
 		// can return undefined (silent validation failure) without throwing.
@@ -742,16 +842,30 @@ const HANDLERS: Record<string, Handler> = {
 				)
 			: 0;
 
-		if (countAfter <= countBefore) {
+		if (countAfter <= countBefore || !placed) {
 			return {
 				ok: false,
 				message: `Failed to add "${asset.name}" to timeline — the element may be incompatible with the target track. Try a different track or check the asset type.`,
 			};
 		}
 
+		// Return the placed element's id + trackId so the LLM can chain
+		// follow-up operations (trim, split, move, update) on the exact
+		// clip it just added, plus the resolved timing fields it needs to
+		// reason about trimming the "climax" portion etc.
 		return {
 			ok: true,
-			message: `Added "${asset.name}" to timeline at ${startTime} ticks`,
+			message: `Added "${asset.name}" to timeline at ${startTime} ticks (duration ${duration}). elementId=${placed.elementId}, trackId=${placed.trackId}. Use these IDs for follow-up trim/split/move/update calls.`,
+			data: {
+				elementId: placed.elementId,
+				trackId: placed.trackId,
+				startTime,
+				duration,
+				trimStart: 0,
+				trimEnd: 0,
+				assetId: asset.id,
+				assetType: asset.type,
+			},
 		};
 	},
 
@@ -803,24 +917,35 @@ const HANDLERS: Record<string, Handler> = {
 			});
 
 			const trackId = asString(args.trackId);
-			if (trackId) {
-				editor.timeline.insertElement({
-					element,
-					placement: { mode: "explicit", trackId },
-				});
-			} else {
-				editor.timeline.insertElement({
-					element,
-					placement: {
-						mode: "auto",
-						trackType: asset.type === "audio" ? "audio" : "video",
-					},
-				});
+			const placed =
+				trackId
+					? editor.timeline.insertElement({
+							element,
+							placement: { mode: "explicit", trackId },
+						})
+					: editor.timeline.insertElement({
+							element,
+							placement: {
+								mode: "auto",
+								trackType: asset.type === "audio" ? "audio" : "video",
+							},
+						});
+			if (!placed) {
+				return {
+					ok: false,
+					message: `Imported "${asset.name}" but failed to place it on the timeline.`,
+				};
 			}
 			return {
 				ok: true,
-				message: `Imported and added "${asset.name}" to timeline`,
-				data: { assetId: asset.id },
+				message: `Imported and added "${asset.name}" to timeline at ${startTime} ticks (duration ${duration}). elementId=${placed.elementId}, trackId=${placed.trackId}. Use these IDs for follow-up trim/split/move/update calls.`,
+				data: {
+					assetId: asset.id,
+					elementId: placed.elementId,
+					trackId: placed.trackId,
+					startTime,
+					duration,
+				},
 			};
 		} catch (err) {
 			return {

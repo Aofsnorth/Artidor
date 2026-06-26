@@ -355,6 +355,13 @@ export const ALL_TOOLS: RegisteredTool[] = [
 			["trackId", "elementId"],
 		),
 	),
+	tool(
+		"element",
+		"list_elements",
+		"list_elements",
+		"List every element currently on the active scene's timeline. Returns each element's trackId, elementId, type, name, startTime, duration, trimStart, trimEnd (all time fields in ticks). Call this when you need an elementId/trackId you don't already have (e.g. the user added a clip manually, or you lost track of an ID from a previous step) instead of asking the user.",
+		objectSchema({}),
+	),
 
 	/* --------------------------------- Effect -------------------------------- */
 	tool(

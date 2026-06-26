@@ -18,6 +18,27 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-30-ai-tool-chaining-element-ids",
+		date: "2026-06-30",
+		tag: "fix",
+		title: "AI can now chain edits and find clips on its own",
+		items: [
+			"Adding media to the timeline now returns the clip's elementId and trackId to the AI, so it can immediately trim, split, move, or update that same clip without stopping to ask you for an ID. Multi-step requests like \"add my video then cut the climax\" now execute end-to-end.",
+			"New list_elements tool lets the AI enumerate every clip on the timeline (with IDs, type, timing, and trim) when it needs to reference a clip you added manually or lost track of — no more \"please click the clip and paste the ID\" dead-ends.",
+			"split_element now reports the right half's elementId and trackId, and the system prompt teaches the AI to chain insert → trim/split using returned IDs instead of giving up after one tool.",
+			"Empty/blank assistant bubbles left over after streaming (e.g. when only thinking tags were emitted) are now removed so the chat no longer shows mysterious empty cards.",
+		],
+	},
+	{
+		id: "2026-06-29-distinct-tool-icons",
+		date: "2026-06-29",
+		tag: "improvement",
+		title: "Distinct icons for every AI tool",
+		items: [
+			"Each AI tool call now shows a unique icon in the chat — split gets scissors, keyframes get a key, undo/redo get curved arrows, web fetch gets a globe, and so on. Previously many tools shared the same category icon, making it hard to tell at a glance which tool was called.",
+		],
+	},
+	{
 		id: "2026-06-29-small-screen-overflow-dropdowns",
 		date: "2026-06-29",
 		tag: "improvement",

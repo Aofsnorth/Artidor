@@ -98,9 +98,21 @@ export class TimelineManager {
 		this.editor.command.execute({ command });
 	}
 
-	insertElement({ element, placement }: InsertElementParams): void {
+	insertElement({
+		element,
+		placement,
+	}: InsertElementParams): { elementId: string; trackId: string } | null {
 		const command = new InsertElementCommand({ element, placement });
 		this.editor.command.execute({ command });
+		// InsertElementCommand assigns the element id and resolves the
+		// target track internally; expose both so callers (especially the
+		// AI tool executor) can chain follow-up operations on the exact
+		// element that landed on the timeline. Returns null when the
+		// command silently failed validation (no track resolved).
+		const elementId = command.getElementId();
+		const trackId = command.getTrackId();
+		if (!trackId) return null;
+		return { elementId, trackId };
 	}
 	updateElementTrim({
 		elementId,
@@ -276,7 +288,7 @@ export class TimelineManager {
 		this.editor.command.execute({ command });
 	}
 
-	insertCameraLayer(): void {
+	insertCameraLayer(): { elementId: string; trackId: string } | null {
 		const { buildCameraElement } =
 			require("@/lib/camera") as typeof import("@/lib/camera");
 		const playhead = this.editor.playback.getCurrentTime();
@@ -288,17 +300,17 @@ export class TimelineManager {
 			startTime: playhead,
 			duration: Math.round(5 * TICKS_PER_SECOND),
 		});
-		this.insertElement({
+		return this.insertElement({
 			element: camera as unknown as TimelineElement,
 			placement: { mode: "explicit", trackId },
 		});
 	}
 
-	insertNullLayer(): void {
+	insertNullLayer(): { elementId: string; trackId: string } | null {
 		const playhead = this.editor.playback.getCurrentTime();
 		const tracks = this.editor.scenes.getActiveScene().tracks;
 		const overlayTrack = tracks.overlay[0];
-		if (!overlayTrack) return;
+		if (!overlayTrack) return null;
 		const { generateUUID } =
 			require("@/utils/id") as typeof import("@/utils/id");
 		const element = {
@@ -338,7 +350,7 @@ export class TimelineManager {
 			opacity: 1,
 			nullLayer: true,
 		} as unknown as TimelineElement;
-		this.insertElement({
+		return this.insertElement({
 			element,
 			placement: { mode: "explicit", trackId: overlayTrack.id },
 		});
