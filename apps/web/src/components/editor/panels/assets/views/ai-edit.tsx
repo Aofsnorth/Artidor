@@ -448,6 +448,9 @@ export function AIEditView() {
 					onSelectProvider={(id) => {
 						const project = editor.project.getActive();
 						if (!project) return;
+						// Update the project in-memory first (instant UI update),
+						// then save in the background so the dropdown doesn't
+						// block on serialization.
 						editor.project.setActiveProject({
 							project: {
 								...project,
@@ -457,7 +460,7 @@ export function AIEditView() {
 								},
 							},
 						});
-						editor.project.saveCurrentProject();
+						void editor.project.saveCurrentProject();
 					}}
 					aiName={aiName}
 					compactedSummary={ai.compactedSummary}
