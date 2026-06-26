@@ -28,6 +28,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Empty assistant placeholder bubbles above the 'Thinking…' indicator are now hidden, removing the confusing dark card that appeared while streaming.",
 			"The provider dropdown now updates immediately when you select a different provider, instead of lagging until the next re-render.",
 			"Quick-action suggestion chips at the top of the AI panel now use icons that are visually distinct from the tool-call category icons.",
+			"Tool-call history for text-based Puter models no longer appends redundant 'I called these tools' text into the chat bubble.",
 		],
 	},
 	{

@@ -344,18 +344,10 @@ function toPuterMessages(messages: unknown[], model: string): unknown[] {
 				arguments: unknown;
 			}>;
 			if (textBased) {
-				// Convert the assistant's tool calls into plain text in the
-				// assistant message, then the tool results are user messages.
-				const toolLines = toolCalls
-					.map(
-						(tc) =>
-							`- ${tc.name}: ${typeof tc.arguments === "string" ? tc.arguments : JSON.stringify(tc.arguments)}`,
-					)
-					.join("\n");
-				const content = [m.content, `I called these tools:\n${toolLines}`]
-					.filter(Boolean)
-					.join("\n\n");
-				out.push({ role: "assistant", content });
+				// Text-based models don't accept native tool_calls. Keep the
+				// assistant's visible text as-is; the tool results are sent
+				// as user messages so the model can see the outcomes.
+				out.push({ role: "assistant", content: m.content });
 				continue;
 			}
 			// Assistant messages with tool calls: map toolCalls → tool_calls
