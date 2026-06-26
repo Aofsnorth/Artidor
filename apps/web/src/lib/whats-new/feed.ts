@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-29-codeql-security-fixes",
+		date: "2026-06-29",
+		tag: "security",
+		title: "CodeQL security findings resolved",
+		items: [
+			"Fixed incomplete multi-character sanitization in the Puter.js XML stripper — replacement now loops until stable to prevent residual <script> tags.",
+			"Hardened font-family quoting in text measurement, subtitle building, and Google Fonts loading to escape backslashes in addition to double quotes.",
+			"Documented the scripting worker's isolated Web Worker sandbox as a safe code execution boundary, and clarified that the artidor.run() dispatch is validated on the main thread.",
+			"Annotated blob URL assignments to media elements as safe (same-origin, no HTML payload).",
+			"Dismissed two Dependabot alerts for transitive Rust dependencies (time, grid) that are pinned by upstream crates and not exposed to untrusted input.",
+		],
+	},
+	{
 		id: "2026-06-29-ai-harness-webfetch-questions",
 		date: "2026-06-29",
 		tag: "feature",
