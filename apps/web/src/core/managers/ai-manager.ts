@@ -428,7 +428,7 @@ export class AIManager {
 						// assistant messages whose tool_calls don't have matching
 						// tool messages with the same tool_call_id.
 						toolCalls: m.toolCalls.map((tc) => ({
-							id: tc.id,
+							id: tc.id ?? crypto.randomUUID(),
 							name: tc.name,
 							arguments: tc.args,
 						})),
