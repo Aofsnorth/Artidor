@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-mcp-chip-collapsed",
+		date: "2026-06-27",
+		tag: "improvement",
+		title: "MCP server chip collapsed by default",
+		items: [
+			"The MCP servers chip in the AI copilot status bar is now collapsed to a compact icon by default, freeing up status bar space. A green count badge appears on the icon when servers are connected.",
+			"Click the icon to open the management popover — add, toggle, and remove MCP servers as before.",
+		],
+	},
+	{
 		id: "2026-06-27-projects-minimal-bg-prod",
 		date: "2026-06-27",
 		tag: "performance",

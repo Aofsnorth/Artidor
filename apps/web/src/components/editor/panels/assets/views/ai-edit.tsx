@@ -841,31 +841,30 @@ function McpServerChip() {
 				<button
 					type="button"
 					aria-label="MCP servers"
-					title="MCP servers — external tools"
+					title={
+						connectedCount > 0
+							? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""} connected — click to manage`
+							: "MCP servers — external tools (click to manage)"
+					}
 					className={cn(
-						"group flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left transition-all",
+						"group relative flex size-6 items-center justify-center rounded-md border transition-all",
 						connectedCount > 0
 							? "border-green-400/20 bg-green-400/[0.05] hover:border-green-400/30"
 							: "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
 					)}
 				>
-					<span className="flex min-w-0 items-center gap-1.5">
-						<HugeiconsIcon
-							icon={PlugIcon}
-							className={cn(
-								"size-3 shrink-0",
-								connectedCount > 0 ? "text-green-300" : "text-white/50",
-							)}
-						/>
-						<span className="truncate text-[11px] text-white/80">
-							{connectedCount > 0
-								? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""}`
-								: "MCP servers"}
+					<HugeiconsIcon
+						icon={PlugIcon}
+						className={cn(
+							"size-3 shrink-0",
+							connectedCount > 0 ? "text-green-300" : "text-white/50",
+						)}
+					/>
+					{connectedCount > 0 && (
+						<span className="absolute -right-1 -top-1 flex size-2.5 items-center justify-center rounded-full bg-green-400 text-[7px] font-bold text-[#09090b]">
+							{connectedCount}
 						</span>
-					</span>
-					<span className="shrink-0 text-[9.5px] text-white/35 transition-colors group-hover:text-white/60">
-						Manage
-					</span>
+					)}
 				</button>
 			</PopoverTrigger>
 			<PopoverContent
