@@ -1494,6 +1494,56 @@ function McpAddDialog({
 	);
 }
 
+/**
+ * Model ID text with overflow detection. When the model id is too
+ * long to fit in the available space, it scrolls horizontally
+ * (marquee effect). When it fits, it displays statically.
+ */
+function ModelIdText({ model }: { model: string }) {
+	const containerRef = useRef<HTMLSpanElement>(null);
+	const textRef = useRef<HTMLSpanElement>(null);
+	const [overflows, setOverflows] = useState(false);
+
+	useEffect(() => {
+		const c = containerRef.current;
+		const t = textRef.current;
+		if (!c || !t) return;
+		const check = () => setOverflows(t.scrollWidth > c.clientWidth + 1);
+		check();
+		const ro = new ResizeObserver(check);
+		ro.observe(c);
+		return () => ro.disconnect();
+	}, []);
+
+	return (
+		<span
+			ref={containerRef}
+			className="min-w-0 max-w-[90px] shrink overflow-hidden font-mono text-[9px] text-white/35"
+		>
+			<span
+				ref={textRef}
+				className={cn(
+					"inline-block whitespace-nowrap",
+					overflows && "animate-[marquee_8s_linear_infinite]",
+				)}
+				style={
+					overflows
+						? { animation: "marquee 8s linear infinite" }
+						: undefined
+				}
+			>
+				{overflows ? `${model}  ·  ${model}  ·  ` : model}
+			</span>
+			<style>{`
+				@keyframes marquee {
+					0% { transform: translateX(0); }
+					100% { transform: translateX(-33.33%); }
+				}
+			`}</style>
+		</span>
+	);
+}
+
 function StatusBar({
 	referenceVideoName,
 	styleProfile,
@@ -1679,12 +1729,10 @@ function StatusBar({
 							/>
 							{defaultProvider ? (
 								<>
-									<span className="truncate text-[11px] text-white/80">
-										{defaultProvider.name}
+									<span className="min-w-0 shrink text-[11px] text-white/80">
+										<span className="truncate block">{defaultProvider.name}</span>
 									</span>
-									<span className="shrink-0 font-mono text-[9.5px] text-white/35">
-										{defaultProvider.model}
-									</span>
+									<ModelIdText model={defaultProvider.model} />
 								</>
 							) : (
 								<span className="text-[11px] text-amber-100">
