@@ -34,7 +34,7 @@ const FEATURES: Feature[] = [
 	{
 		icon: Sparkles,
 		title: "AI that you control",
-		body: "The co-pilot speaks to a local LLM by default (Ollama). Wire up OpenAI or Anthropic if you want frontier models — your keys, your data, your rules.",
+		body: "Arth speaks to a local LLM by default (Ollama). Wire up OpenAI or Anthropic if you want frontier models — your keys, your data, your rules.",
 		tone: "violet",
 	},
 	{
@@ -80,7 +80,7 @@ export function FeaturesSection() {
 					<span className="text-white/55"> for — yours for free.</span>
 				</h2>
 				<p className="text-pretty mt-4 text-[15px] font-light leading-relaxed text-white/65">
-					Every feature below is in the public repo today. The co-pilot, the
+					Every feature below is in the public repo today. Arth, the
 					compositor, the masking system, the timeline, the autosave.
 					MIT-licensed. Forks welcome.
 				</p>

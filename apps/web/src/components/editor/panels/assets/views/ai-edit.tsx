@@ -110,6 +110,15 @@ export function AIEditView() {
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const composerRef = useRef<HTMLTextAreaElement>(null);
 	const [draft, setDraft] = useState("");
+	const mediaAssets = useEditor((e) => e.media.getAssets());
+
+	// @-mention state: when the user types "@" followed by non-whitespace,
+	// we show a dropdown of media assets filtered by the query. The query
+	// range is tracked so we can replace it on selection.
+	const [mentionQuery, setMentionQuery] = useState<{
+		start: number;
+		text: string;
+	} | null>(null);
 
 	// Auto-scroll to the latest message when the chat updates.
 	useEffect(() => {
@@ -131,6 +140,7 @@ export function AIEditView() {
 			const trimmed = text.trim();
 			if (!trimmed || isStreaming) return;
 			setDraft("");
+			setMentionQuery(null);
 			await editor.ai.send({ text: trimmed });
 		},
 		[editor.ai, isStreaming],
@@ -146,6 +156,64 @@ export function AIEditView() {
 			event.preventDefault();
 			void handleSend(draft);
 		}
+		// Escape closes the mention dropdown without inserting anything.
+		if (event.key === "Escape" && mentionQuery) {
+			setMentionQuery(null);
+			event.preventDefault();
+		}
+	};
+
+	/**
+	 * Detect "@query" in the textarea. When the cursor is right after an
+	 * "@" that's preceded by whitespace or the start of the input, we
+	 * treat the text from "@" to the cursor as a mention query and show
+	 * the asset dropdown.
+	 */
+	const handleDraftChange = (value: string) => {
+		setDraft(value);
+		const el = composerRef.current;
+		if (!el) return;
+		const cursor = el.selectionStart ?? value.length;
+		// Find the last "@" before the cursor.
+		const before = value.slice(0, cursor);
+		const atIdx = before.lastIndexOf("@");
+		if (atIdx === -1) {
+			setMentionQuery(null);
+			return;
+		}
+		// The "@" must be at the start of the input or preceded by whitespace.
+		const charBefore = atIdx > 0 ? before[atIdx - 1] : " ";
+		if (charBefore !== " " && charBefore !== "\n" && atIdx !== 0) {
+			setMentionQuery(null);
+			return;
+		}
+		// The query text (after "@") must not contain whitespace — once the
+		// user types a space, the mention is "closed".
+		const queryText = before.slice(atIdx + 1);
+		if (/\s/.test(queryText)) {
+			setMentionQuery(null);
+			return;
+		}
+		setMentionQuery({ start: atIdx, text: queryText });
+	};
+
+	/**
+	 * Replace the current "@query" with "@assetName" and close the dropdown.
+	 */
+	const handleSelectAsset = (assetName: string) => {
+		if (!mentionQuery) return;
+		const before = draft.slice(0, mentionQuery.start);
+		const after = draft.slice(mentionQuery.start + 1 + mentionQuery.text.length);
+		const insertion = `@${assetName} `;
+		const next = `${before}${insertion}${after}`;
+		setDraft(next);
+		setMentionQuery(null);
+		// Move cursor right after the inserted mention + space.
+		const newCursorPos = before.length + insertion.length;
+		requestAnimationFrame(() => {
+			composerRef.current?.focus();
+			composerRef.current?.setSelectionRange(newCursorPos, newCursorPos);
+		});
 	};
 
 	const handleQuickAction = (prompt: string) => {
@@ -256,14 +324,22 @@ export function AIEditView() {
 				{/* Composer */}
 				<form
 					onSubmit={handleSubmit}
-					className="flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-2.5 backdrop-blur"
+					className="relative flex flex-col gap-1.5 rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.02] p-2.5 backdrop-blur"
 				>
+					{mentionQuery && (
+						<AssetMentionDropdown
+							assets={mediaAssets}
+							query={mentionQuery.text}
+							onSelect={handleSelectAsset}
+							onClose={() => setMentionQuery(null)}
+						/>
+					)}
 					<textarea
 						ref={composerRef}
 						value={draft}
-						onChange={(e) => setDraft(e.target.value)}
+						onChange={(e) => handleDraftChange(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="Ask the AI to edit, plan a motion graphic, or describe what you want…"
+						placeholder="Ask Arth to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset"
 						rows={2}
 						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/30"
 					/>
@@ -310,6 +386,82 @@ export function AIEditView() {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Dropdown that appears when the user types "@" in the composer. Shows
+ * media assets from the current project filtered by the query text.
+ * Clicking an asset inserts "@assetName" into the draft so the user can
+ * reference a specific clip/image/audio by name in their prompt.
+ */
+function AssetMentionDropdown({
+	assets,
+	query,
+	onSelect,
+	onClose,
+}: {
+	assets: { id: string; name: string; type: string }[];
+	query: string;
+	onSelect: (name: string) => void;
+	onClose: () => void;
+}) {
+	const filtered = useMemo(() => {
+		const q = query.toLowerCase();
+		const base = q
+			? assets.filter((a) => a.name.toLowerCase().includes(q))
+			: assets;
+		return base.slice(0, 8);
+	}, [assets, query]);
+
+	// Close on outside click.
+	useEffect(() => {
+		if (filtered.length === 0) {
+			onClose();
+			return;
+		}
+		const handler = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			if (!target.closest("[data-mention-dropdown]")) onClose();
+		};
+		document.addEventListener("mousedown", handler);
+		return () => document.removeEventListener("mousedown", handler);
+	}, [filtered.length, onClose]);
+
+	if (filtered.length === 0) return null;
+
+	return (
+		<div
+			data-mention-dropdown
+			className="absolute bottom-full left-0 right-0 mb-1 max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a1e] shadow-xl z-50"
+		>
+			<div className="px-2 py-1 text-[9.5px] uppercase tracking-wider text-white/35 border-b border-white/[0.06]">
+				Assets · click to mention
+			</div>
+			{filtered.map((asset) => (
+				<button
+					key={asset.id}
+					type="button"
+					onClick={() => onSelect(asset.name)}
+					className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[11.5px] text-white/80 transition-colors hover:bg-white/[0.06]"
+				>
+					<HugeiconsIcon
+						icon={
+							asset.type === "video"
+								? Video01Icon
+								: asset.type === "audio"
+									? Video01Icon
+									: Image01Icon
+						}
+						className="size-3 shrink-0 text-white/40"
+					/>
+					<span className="truncate">{asset.name}</span>
+					<span className="ml-auto shrink-0 text-[9px] uppercase text-white/25">
+						{asset.type}
+					</span>
+				</button>
+			))}
+		</div>
+	);
+}
+
+/**
  * Modal that hosts the AIProvidersManager inside a glass dialog so the
  * AI Edit tab stays focused on the chat. Opening this is the entry point
  * for adding / editing / removing / testing providers.
@@ -327,7 +479,7 @@ function ProvidersDialog({
 				<DialogHeader>
 					<DialogTitle>AI Providers</DialogTitle>
 					<DialogDescription>
-						Configure the AI endpoints used by the AI Edit panel.
+						Configure the AI endpoints used by Arth.
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="max-h-[60vh] gap-3 overflow-y-auto">
@@ -546,7 +698,7 @@ function StatusBar({
 								)}
 							/>
 						</div>
-						<span className="font-serif text-[13px] text-white">AI Edit</span>
+						<span className="font-serif text-[13px] text-white">Arth</span>
 					</div>
 					<div className="flex items-center gap-1.5">
 						<span

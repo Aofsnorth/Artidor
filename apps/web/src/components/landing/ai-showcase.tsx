@@ -1,5 +1,5 @@
 /**
- * AI Co-Pilot showcase section — the marquee feature for the new
+ * Arth showcase section — the marquee feature for the new
  * AI Edit panel. Built as a side-by-side: copy on the left, an
  * animated chat mockup on the right.
  *
@@ -32,7 +32,7 @@ export function AIShowcaseSection() {
 				<div>
 					<div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10.5px] uppercase tracking-[0.18em] text-white/65 backdrop-blur">
 						<Sparkles className="size-3 text-amber-200" />
-						AI Co-Pilot
+						Arth — AI Co-Pilot
 					</div>
 					<h2 className="text-balance font-serif text-4xl font-medium italic leading-[1.05] tracking-[-0.01em] md:text-5xl">
 						Edit in plain English.
@@ -40,7 +40,7 @@ export function AIShowcaseSection() {
 						<span className="text-white/55">The editor does the rest.</span>
 					</h2>
 					<p className="text-pretty mt-5 max-w-md text-[15px] font-light leading-relaxed text-white/65">
-						Artidor&apos;s co-pilot speaks every command the editor speaks:
+						Arth speaks every command the editor speaks:
 						split, trim, retime, keyframe, transition, color-grade, import,
 						export. You describe the intent. It issues the tool calls.
 					</p>
@@ -50,7 +50,7 @@ export function AIShowcaseSection() {
 							{
 								icon: Scissors,
 								title: "Self-improving",
-								body: "Every cut, split, keyframe and effect you apply is logged. The co-pilot reads your last 20 edits and matches your pacing, easing, and pacing.",
+								body: "Every cut, split, keyframe and effect you apply is logged. Arth reads your last 20 edits and matches your pacing, easing, and pacing.",
 							},
 							{
 								icon: Film,
@@ -96,7 +96,7 @@ function ChatMockup() {
 				<span className="size-2.5 rounded-full bg-[#28c840]/70" />
 				<div className="ml-4 flex items-center gap-1.5 text-[10.5px] text-white/50">
 					<Command className="size-3" />
-					Artidor · AI Edit
+					Artidor · Arth
 				</div>
 				<div className="ml-auto flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9.5px] text-white/55">
 					<Sparkles className="size-2.5 text-amber-200" />
@@ -212,7 +212,7 @@ function ChatMockup() {
 				>
 					<Sparkles className="size-3.5 text-white/45" />
 					<span className="text-[12px] text-white/45">
-						Ask Artidor to edit, plan a motion graphic, or describe what you
+						Ask Arth to edit, plan a motion graphic, or describe what you
 						want…
 					</span>
 					<span className="ml-auto flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-medium text-[#0a0a0c]">

@@ -54,7 +54,7 @@ export function buildSystemPrompt({
 				)
 			: "";
 
-	return `You are the Artidor AI video-editing assistant.
+	return `You are Arth, the Artidor AI video-editing assistant.
 
 # Role
 You have full control over the user's Artidor project. The user speaks in

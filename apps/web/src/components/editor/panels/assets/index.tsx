@@ -38,7 +38,7 @@ function AIEditFallback() {
 		<div className="flex h-full items-center justify-center text-[11.5px] text-white/45">
 			<div className="flex flex-col items-center gap-2">
 				<div className="size-5 animate-spin rounded-full border-2 border-white/15 border-t-white/70" />
-				<span>Loading AI Edit…</span>
+				<span>Loading Arth…</span>
 			</div>
 		</div>
 	);
