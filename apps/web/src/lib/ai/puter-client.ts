@@ -93,7 +93,6 @@ export function loadPuterSDK(): Promise<PuterSDK> {
 		const script = document.createElement("script");
 		script.src = PUTER_SDK_URL;
 		script.async = true;
-		script.crossOrigin = "anonymous";
 		script.onload = () => {
 			if (window.puter) {
 				resolve(window.puter);
