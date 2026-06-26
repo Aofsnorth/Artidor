@@ -41,12 +41,32 @@ import type { ToolDefinition } from "@/lib/ai/provider";
 import type { StyleProfile } from "@/lib/ai/style/extractor";
 import type { TelemetryEvent } from "@/lib/ai/telemetry/store";
 
+/**
+ * Multimodal content part schema. Mirrors `ChatMessageContent` from
+ * `@/lib/ai/provider` — a message content is either a plain string
+ * (text-only) or an array of text/image_url/video_url parts for
+ * vision/video-capable models. The server passes the validated shape
+ * straight through to the provider, so it doesn't need to understand
+ * the parts beyond structural validation.
+ */
+const contentPartSchema = z.discriminatedUnion("type", [
+	z.object({ type: z.literal("text"), text: z.string() }),
+	z.object({
+		type: z.literal("image_url"),
+		image_url: z.object({ url: z.string() }),
+	}),
+	z.object({
+		type: z.literal("video_url"),
+		video_url: z.object({ url: z.string() }),
+	}),
+]);
+
 const bodySchema = z.object({
 	messages: z
 		.array(
 			z.object({
 				role: z.enum(["system", "user", "assistant", "tool"]),
-				content: z.string(),
+				content: z.union([z.string(), z.array(contentPartSchema)]),
 				toolCallId: z.string().optional(),
 				name: z.string().optional(),
 				toolCalls: z

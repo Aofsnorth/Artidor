@@ -203,9 +203,9 @@ export class AIManager {
 	 * Tools that modify the editor document (timeline, scene, project
 	 * settings, media library). These require the user's takeover
 	 * approval before the AI can execute them. Read-only tools
-	 * (list_assets, list_elements, capture_frame, web_fetch, plan tools,
-	 * generate_* — generation doesn't touch the document directly) are
-	 * exempt.
+	 * (list_assets, view_asset, list_elements, capture_frame, web_fetch,
+	 * plan tools, generate_* — generation doesn't touch the document
+	 * directly) are exempt.
 	 */
 	private static readonly EDITOR_MODIFYING_TOOLS = new Set<string>([
 		"set_project_fps",
@@ -277,6 +277,40 @@ export class AIManager {
 		"copy-effect",
 		"paste-effect",
 	]);
+
+	/**
+	 * Heuristic: does this chat model accept native video input (as a
+	 * `video_url` content part)? Currently only Gemini-family models are
+	 * known to support inline video through the OpenAI-compatible / Puter.js
+	 * content shape. When false, `view_asset` falls back to attaching
+	 * sample frames as `image_url` parts, which every vision model accepts.
+	 *
+	 * The match is intentionally broad (substring on the lowercased model
+	 * id) so new Gemini variants don't need a code change here.
+	 */
+	private static modelSupportsVideo(model: string | undefined): boolean {
+		if (!model) return false;
+		const id = model.toLowerCase();
+		return id.includes("gemini");
+	}
+
+	/**
+	 * Heuristic: does this chat model accept image/vision input at all?
+	 * Used to decide whether attaching `image_url` parts is worthwhile.
+	 * Most modern chat models are vision-capable; we only exclude known
+	 * text-only model families to avoid sending unsupported parts that
+	 * could cause provider errors.
+	 */
+	private static modelSupportsVision(model: string | undefined): boolean {
+		if (!model) return true; // assume capable unless known otherwise
+		const id = model.toLowerCase();
+		// Known text-only families that reject image_url parts.
+		const textOnly = [
+			"gpt-3.5", "deepseek-r1", "deepseek-v3", "o1-mini", "o1-preview",
+			"llama-3", "llama3", "mistral-7b", "qwen-2", "qwen2",
+		];
+		return !textOnly.some((p) => id.includes(p));
+	}
 
 	/**
 	 * Map a tool name + args to an {@link ActiveToolCall} descriptor for
@@ -365,6 +399,11 @@ export class AIManager {
 	 * session, resolves immediately. Otherwise triggers the permission
 	 * dialog and waits for the user's decision.
 	 *
+	 * When the user has enabled "bypass" permission mode (Settings → AI),
+	 * the dialog is skipped entirely and takeover is auto-approved for
+	 * the session. The aurora overlay still renders so the user can see
+	 * the AI is active and revoke at any time.
+	 *
 	 * @returns true if approved, false if denied.
 	 */
 	private async requestTakeoverApproval(signal: AbortSignal): Promise<boolean> {
@@ -374,6 +413,15 @@ export class AIManager {
 			if (control.takeoverState !== "active") {
 				useAIControlStore.getState().requestTakeover();
 			}
+			return true;
+		}
+		// Bypass mode: skip the permission dialog entirely. Mark the
+		// session as approved so subsequent batches in the same session
+		// also skip, and flip straight to "active" so the aurora overlay
+		// shows the AI is in control.
+		if (useSettingsStore.getState().aiPermissionMode === "bypass") {
+			useAIControlStore.getState().approveTakeover();
+			this.notify();
 			return true;
 		}
 		// Request — this flips state to "requesting" which shows the dialog.
@@ -743,46 +791,83 @@ export class AIManager {
 			}),
 		);
 
-		// Attach pending captured frames as vision inputs to the last
-		// user message. This lets the LLM "see" what capture_frame
-		// captured when it processes the next turn.
-		const pendingImages = storeState.pendingImages;
-		if (pendingImages.length > 0) {
-			const lastUserIdx = [...messages]
-				.reverse()
-				.findIndex((m) => m.role === "user");
-			if (lastUserIdx >= 0) {
-				const realIdx = messages.length - 1 - lastUserIdx;
-				const userMsg = messages[realIdx];
-				const userText =
-					typeof userMsg.content === "string"
-						? userMsg.content
-						: Array.isArray(userMsg.content)
-							? userMsg.content
-									.filter((p) => p.type === "text")
-									.map((p) => (p as { type: "text"; text: string }).text)
-									.join("")
-							: "";
-				messages[realIdx] = {
-					role: "user",
-					content: [
-						{ type: "text", text: userText },
-						...pendingImages.map((url) => ({
-							type: "image_url" as const,
-							image_url: { url },
-						})),
-					],
-				};
-			}
-			useAIStore.getState().clearPendingImages();
-		}
-
 		// Make the request. Include the user's selected provider config so
 		// the server uses the client-managed endpoint rather than env vars.
 		// Pass the project's per-project provider override if set.
 		const projectProviderId =
 			this.editor.project.getActive()?.metadata.aiProviderId ?? null;
 		const providerConfig = getDefaultProvider(projectProviderId);
+
+		// Attach pending captured frames / video as vision inputs to the
+		// last user message. This lets the LLM "see" what capture_frame or
+		// view_asset captured when it processes the next turn. Video data
+		// URLs are only attached as `video_url` parts when the active chat
+		// model supports native video input (e.g. Gemini); otherwise the
+		// sample frames (already in pendingImages) are used instead.
+		const pendingImages = storeState.pendingImages;
+		const pendingVideos = storeState.pendingVideos;
+		const activeModel = providerConfig?.model;
+		const attachVideo =
+			pendingVideos.length > 0 &&
+			AIManager.modelSupportsVideo(activeModel);
+		// Skip attaching image parts when the active model is known to be
+		// text-only — sending image_url parts to such models causes provider
+		// errors. The pending media is still cleared so we don't retry
+		// forever. Video parts are already gated by modelSupportsVideo.
+		const visionCapable = AIManager.modelSupportsVision(activeModel);
+		const attachImages = pendingImages.length > 0 && visionCapable;
+		const hasPendingMedia =
+			pendingImages.length > 0 || pendingVideos.length > 0;
+		if (hasPendingMedia) {
+			if (attachImages || attachVideo) {
+				const lastUserIdx = [...messages]
+					.reverse()
+					.findIndex((m) => m.role === "user");
+				if (lastUserIdx >= 0) {
+					const realIdx = messages.length - 1 - lastUserIdx;
+					const userMsg = messages[realIdx];
+					const userText =
+						typeof userMsg.content === "string"
+							? userMsg.content
+							: Array.isArray(userMsg.content)
+								? userMsg.content
+										.filter((p) => p.type === "text")
+										.map((p) => (p as { type: "text"; text: string }).text)
+										.join("")
+								: "";
+					// When the model supports native video, skip the sample
+					// frames and send the video directly — the frames were
+					// only a fallback for non-video-capable models.
+					// `attachImages` already accounts for vision capability,
+					// so we never send image parts to a text-only model.
+					const imageParts = (attachImages && !attachVideo
+						? pendingImages
+						: []
+					).map((url) => ({
+						type: "image_url" as const,
+						image_url: { url },
+					}));
+					const videoParts = attachVideo
+						? pendingVideos.map((url) => ({
+								type: "video_url" as const,
+								video_url: { url },
+							}))
+						: [];
+					messages[realIdx] = {
+						role: "user",
+						content: [
+							{ type: "text", text: userText },
+							...imageParts,
+							...videoParts,
+						],
+					};
+				}
+			}
+			// Always clear pending media after attempting to attach — even
+			// when the active model can't accept vision/video parts, we
+			// don't want stale media accumulating across requests.
+			useAIStore.getState().clearPendingMedia();
+		}
 		// Collect MCP external tools so the LLM can call them alongside
 		// the built-in editor tools. Each MCP tool is namespaced as
 		// `mcp__<serverId>__<toolName>` to avoid collisions.
@@ -1398,6 +1483,37 @@ export class AIManager {
 					if (data?.dataUrl) {
 						useAIStore.getState().addPendingImage(data.dataUrl);
 					}
+				}
+				// view_asset returns visual content to attach as vision
+				// inputs for the next LLM turn. Images go straight to
+				// pendingImages. Videos provide both sample frames AND a
+				// native video data URL — the manager picks which to send
+				// based on the active model's video capability (see
+				// streamLLMResponse). Audio has no visual content.
+				if (tc.name === "view_asset" && r.ok) {
+					const data = r.data as
+						| {
+								kind: "image" | "video-frames" | "audio";
+								dataUrl?: string;
+								frames?: Array<{ dataUrl: string; timeSeconds: number }>;
+								videoDataUrl?: string;
+						  }
+						| undefined;
+					if (!data) continue;
+					if (data.kind === "image" && data.dataUrl) {
+						useAIStore.getState().addPendingImage(data.dataUrl);
+					} else if (data.kind === "video-frames") {
+						// Queue the native video URL — it's only attached if
+						// the active model supports video; otherwise the
+						// frames below are used as the fallback.
+						if (data.videoDataUrl) {
+							useAIStore.getState().addPendingVideo(data.videoDataUrl);
+						}
+						for (const f of data.frames ?? []) {
+							useAIStore.getState().addPendingImage(f.dataUrl);
+						}
+					}
+					// kind === "audio": nothing to attach visually.
 				}
 				// Notify after each tool so the editor UI re-renders
 				// immediately (e.g. timeline shows the new element).

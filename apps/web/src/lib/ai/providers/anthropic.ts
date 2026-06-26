@@ -171,6 +171,13 @@ export class AnthropicProvider implements LLMProvider {
 			if (p.type === "text") {
 				return { type: "text", text: p.text };
 			}
+			if (p.type === "video_url") {
+				// Anthropic doesn't support native video input. The AI
+				// manager only sends video_url parts to video-capable
+				// models (Gemini), so this branch is a defensive fallback
+				// — it should not normally be reached for Claude models.
+				return { type: "text", text: `[video attached — Anthropic models cannot view video. Use a Gemini model for video analysis.]` };
+			}
 			// image_url → Anthropic base64 image block.
 			const url = p.image_url.url;
 			const match = url.match(/^data:(image\/[a-z]+);base64,(.+)$/i);

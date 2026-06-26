@@ -166,6 +166,12 @@ interface AIState {
 	 */
 	pendingImages: string[];
 	/**
+	 * Video data URLs captured by `view_asset` that should be attached as
+	 * `video_url` vision inputs to the next LLM request, when the active
+	 * model supports native video input. Cleared after each request.
+	 */
+	pendingVideos: string[];
+	/**
 	 * Messages queued while the AI is busy (streaming/awaiting-tools).
 	 * Each entry is the raw user text. When the current request
 	 * finishes, the queue is drained FIFO — the first queued message
@@ -238,6 +244,17 @@ interface AIState {
 	addPendingImage: (dataUrl: string) => void;
 	/** Clear pending images (called after they've been sent to the LLM). */
 	clearPendingImages: () => void;
+	/**
+	 * Add a video data URL to be sent as a `video_url` vision input with
+	 * the next request. Only attached when the active chat model supports
+	 * native video input (e.g. Gemini); otherwise the AI manager falls
+	 * back to the sample-frame images already in `pendingImages`.
+	 */
+	addPendingVideo: (dataUrl: string) => void;
+	/** Clear pending videos (called after they've been sent or skipped). */
+	clearPendingVideos: () => void;
+	/** Clear both pending images and pending videos at once. */
+	clearPendingMedia: () => void;
 	/** Enqueue a user message to be sent when the current request finishes. */
 	enqueue: (text: string) => void;
 	/** Prepend a message to the front of the queue (used by steer). */
@@ -299,6 +316,7 @@ export const useAIStore = create<AIState>()(
 			referenceVideoName: null,
 			compactedSummary: null,
 			pendingImages: [],
+			pendingVideos: [],
 			queue: [],
 			retryCount: 0,
 			retryIn: 0,
@@ -350,6 +368,7 @@ export const useAIStore = create<AIState>()(
 					retryIn: 0,
 					status: "idle",
 					pendingImages: [],
+					pendingVideos: [],
 					projectChats,
 				});
 			},
@@ -430,6 +449,12 @@ export const useAIStore = create<AIState>()(
 			addPendingImage: (dataUrl) =>
 				set({ pendingImages: [...get().pendingImages, dataUrl] }),
 			clearPendingImages: () => set({ pendingImages: [] }),
+
+			addPendingVideo: (dataUrl) =>
+				set({ pendingVideos: [...get().pendingVideos, dataUrl] }),
+			clearPendingVideos: () => set({ pendingVideos: [] }),
+			clearPendingMedia: () =>
+				set({ pendingImages: [], pendingVideos: [] }),
 
 			enqueue: (text) => set({ queue: [...get().queue, text] }),
 			enqueueSteer: (text) => set({ queue: [text, ...get().queue] }),

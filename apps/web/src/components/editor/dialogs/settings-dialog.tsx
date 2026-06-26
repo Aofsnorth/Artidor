@@ -178,6 +178,10 @@ function AISettings() {
 	const setAiPersonality = useSettingsStore((s) => s.setAiPersonality);
 	const aiCoEditMode = useSettingsStore((s) => s.aiCoEditMode);
 	const setAiCoEditMode = useSettingsStore((s) => s.setAiCoEditMode);
+	const aiPermissionMode = useSettingsStore((s) => s.aiPermissionMode);
+	const setAiPermissionMode = useSettingsStore(
+		(s) => s.setAiPermissionMode,
+	);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -227,6 +231,42 @@ function AISettings() {
 					checked={aiCoEditMode}
 					onCheckedChange={setAiCoEditMode}
 				/>
+			</SettingRow>
+
+			<SettingRow
+				title="AI takeover permission"
+				description={
+					aiPermissionMode === "bypass"
+						? "Bypass mode: the AI executes ALL editor-modifying tools (including delete) without asking for approval. The aurora overlay still shows while the AI is active and you can revoke at any time. Use only if you trust the AI to operate autonomously."
+						: "Normal mode (default): the AI asks for your approval before executing editor-modifying tools. Once approved, it can run tools freely for the rest of the session until you revoke."
+				}
+			>
+				<div className="flex items-center gap-1.5">
+					<button
+						type="button"
+						onClick={() => setAiPermissionMode("normal")}
+						className={cn(
+							"rounded-md px-2.5 py-1 text-[11.5px] font-medium transition",
+							aiPermissionMode === "normal"
+								? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30"
+								: "bg-white/[0.04] text-white/55 hover:bg-white/[0.08]",
+						)}
+					>
+						Normal
+					</button>
+					<button
+						type="button"
+						onClick={() => setAiPermissionMode("bypass")}
+						className={cn(
+							"rounded-md px-2.5 py-1 text-[11.5px] font-medium transition",
+							aiPermissionMode === "bypass"
+								? "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/30"
+								: "bg-white/[0.04] text-white/55 hover:bg-white/[0.08]",
+						)}
+					>
+						Bypass
+					</button>
+				</div>
 			</SettingRow>
 
 			<SettingRow

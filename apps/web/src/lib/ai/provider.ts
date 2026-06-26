@@ -21,12 +21,15 @@ export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
 /**
  * Content part for multimodal messages. Text-only messages use a plain
  * string; vision-capable providers accept an array of text + image parts.
+ * Video-capable providers (e.g. Gemini) additionally accept `video_url`
+ * parts carrying a base64 data URL.
  */
 export type ChatMessageContent =
 	| string
 	| Array<
 			| { type: "text"; text: string }
 			| { type: "image_url"; image_url: { url: string } }
+			| { type: "video_url"; video_url: { url: string } }
 	>;
 
 export interface ChatMessage {

@@ -16,6 +16,7 @@
 import type { EditorCore } from "@/core";
 import type { TextElement, TimelineElement } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { captureFrameFromVideo } from "@/lib/media/frame-capture";
 import { TOOLS_BY_EXECUTOR_KEY } from "./registry";
 
 export interface ToolExecutionResult {
@@ -48,6 +49,87 @@ function secondsToTicks(seconds: unknown, fallbackTicks = 0): number {
 }
 function asArray<T>(v: unknown): T[] {
 	return Array.isArray(v) ? (v as T[]) : [];
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Helper: file → data URL                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Read a `File` (or `Blob`) into a base64 data URL. Used by `view_asset`
+ * to attach media as vision inputs — the AI manager detects the `dataUrl`
+ * field in the tool result and attaches it to the next LLM request.
+ */
+function blobToDataUrl(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
+		reader.readAsDataURL(blob);
+	});
+}
+
+/**
+ * Extract `count` sample frames evenly spaced across a video file.
+ * Returns PNG data URLs. Reuses the canvas-based frame capture utility
+ * so we don't duplicate video decoding logic.
+ */
+async function extractVideoFrameDataUrls(
+	file: File,
+	count: number,
+): Promise<{ dataUrl: string; timeSeconds: number }[]> {
+	// Probe duration with a lightweight metadata load first so we can
+	// space the samples evenly. Fall back to a single mid-point frame.
+	const duration = await probeVideoDuration(file);
+	if (!duration || !Number.isFinite(duration)) {
+		const frame = await captureFrameFromVideo({
+			file,
+			timeSeconds: 0,
+			fileName: "frame",
+		});
+		if (!frame) return [];
+		return [{ dataUrl: await blobToDataUrl(frame.blob), timeSeconds: 0 }];
+	}
+
+	const samples: { dataUrl: string; timeSeconds: number }[] = [];
+	for (let i = 0; i < count; i++) {
+		// Evenly space across [0, duration), avoiding the very last tick
+		// which some codecs can't seek to.
+		const t = count === 1 ? duration / 2 : (duration * i) / count;
+		const frame = await captureFrameFromVideo({
+			file,
+			timeSeconds: Math.min(t, Math.max(0, duration - 0.05)),
+			fileName: `frame-${i}`,
+		});
+		if (frame) {
+			samples.push({ dataUrl: await blobToDataUrl(frame.blob), timeSeconds: t });
+		}
+	}
+	return samples;
+}
+
+/** Load just enough of a video to read its duration without decoding frames. */
+function probeVideoDuration(file: File): Promise<number> {
+	return new Promise((resolve) => {
+		const url = URL.createObjectURL(file);
+		const video = document.createElement("video");
+		video.preload = "metadata";
+		video.muted = true;
+		video.src = url;
+		const cleanup = () => {
+			URL.revokeObjectURL(url);
+			video.remove();
+		};
+		video.onloadedmetadata = () => {
+			const d = video.duration;
+			cleanup();
+			resolve(Number.isFinite(d) ? d : 0);
+		};
+		video.onerror = () => {
+			cleanup();
+			resolve(0);
+		};
+	});
 }
 
 interface ElementRef {
@@ -820,6 +902,87 @@ const HANDLERS: Record<string, Handler> = {
 					duration: a.duration,
 				})),
 			},
+		};
+	},
+
+	view_asset: async (editor, args) => {
+		const assetId = asString(args.assetId);
+		if (!assetId) return { ok: false, message: "assetId is required" };
+		const assets = editor.media.getAssets();
+		const asset = assets.find((a) => a.id === assetId);
+		if (!asset) return { ok: false, message: "Asset not found" };
+
+		const meta = {
+			id: asset.id,
+			name: asset.name,
+			type: asset.type,
+			duration: asset.duration,
+			width: asset.width,
+			height: asset.height,
+			hasAudio: asset.hasAudio,
+		};
+
+		// ── Image: attach the raw image as a vision input ──────────────
+		if (asset.type === "image") {
+			try {
+				const dataUrl = await blobToDataUrl(asset.file);
+				return {
+					ok: true,
+					message: `Image "${asset.name}" attached for visual analysis`,
+					data: { ...meta, kind: "image", dataUrl, mimeType: asset.file.type || "image/png" },
+				};
+			} catch (err) {
+				return {
+					ok: false,
+					message: err instanceof Error ? err.message : "Failed to read image asset",
+				};
+			}
+		}
+
+		// ── Video: extract sample frames as image vision inputs ────────
+		// True native video input is handled by the AI manager, which
+		// checks whether the active chat model supports video and, if so,
+		// attaches the video data URL as a `video_url` part instead of
+		// these frames. The executor always returns frames here as the
+		// universally-compatible fallback; the manager decides which to
+		// send based on model capability.
+		if (asset.type === "video") {
+			const sampleCount = Math.min(8, Math.max(1, asInt(args.sampleFrames, 3)));
+			try {
+				const frames = await extractVideoFrameDataUrls(asset.file, sampleCount);
+				if (frames.length === 0) {
+					return {
+						ok: false,
+						message: `Could not extract frames from video "${asset.name}". The file may be corrupted or in an unsupported codec.`,
+					};
+				}
+				return {
+					ok: true,
+					message: `Extracted ${frames.length} sample frame(s) from video "${asset.name}" (${meta.duration?.toFixed(1) ?? "?"}s)`,
+					data: {
+						...meta,
+						kind: "video-frames",
+						frames: frames.map((f) => ({ dataUrl: f.dataUrl, timeSeconds: f.timeSeconds })),
+						// Also provide the raw video data URL so the AI
+						// manager can attach it natively when the model
+						// supports video input.
+						videoDataUrl: await blobToDataUrl(asset.file),
+						videoMimeType: asset.file.type || "video/mp4",
+					},
+				};
+			} catch (err) {
+				return {
+					ok: false,
+					message: err instanceof Error ? err.message : "Failed to analyze video asset",
+				};
+			}
+		}
+
+		// ── Audio: cannot be viewed visually — return metadata only ────
+		return {
+			ok: true,
+			message: `Audio asset "${asset.name}" — no visual content (audio cannot be viewed). Metadata returned.`,
+			data: { ...meta, kind: "audio" },
 		};
 	},
 

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { validateWhatsNewFeed, type WhatsNewEntry } from "../feed";
+import {
+	WHATS_NEW,
+	validateWhatsNewFeed,
+	getLatestWhatsNewId,
+	type WhatsNewEntry,
+} from "../feed";
 
 const baseEntry = (id: string, date: string): WhatsNewEntry => ({
 	id,
@@ -35,5 +40,26 @@ describe("validateWhatsNewFeed", () => {
 				baseEntry("new", "2026-06-20"),
 			]),
 		).toThrow("What's New entries must be newest first");
+	});
+});
+
+describe("WHATS_NEW feed (real entries)", () => {
+	test("the real feed validates without throwing", () => {
+		// The module self-validates on import in non-production, but
+		// re-run explicitly so a regression is caught with a clear label.
+		expect(() => validateWhatsNewFeed()).not.toThrow();
+	});
+
+	test("all entries have unique ids", () => {
+		const ids = WHATS_NEW.map((e) => e.id);
+		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	test("the newest entry is the view-media / permission-bypass feature", () => {
+		// Guards against accidentally pushing a newer entry above this
+		// one without updating the assertion.
+		expect(getLatestWhatsNewId()).toBe(
+			"2026-07-06-ai-view-media-permission-bypass",
+		);
 	});
 });

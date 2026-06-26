@@ -18,13 +18,23 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-06-ai-view-media-permission-bypass",
+		date: "2026-07-06",
+		tag: "feature",
+		title: "AI can now view your media, plus bypass permission mode",
+		items: [
+			"New tool: view_asset lets the AI actually see what's in your media library. For images, the image is attached as a vision input so the AI can reason about composition, colors, and subjects. For videos, sample frames are extracted — or the video is sent natively when the active chat model supports video input (e.g. Gemini). Audio assets return metadata only.",
+			"New setting: AI takeover permission (Settings → AI). Normal mode (default) asks for approval before the AI edits the timeline. Bypass mode skips the permission dialog entirely so the AI can operate autonomously — the aurora overlay still shows while it's active and you can revoke at any time.",
+		],
+	},
+	{
 		id: "2026-07-05-ai-takeover-aurora-border-freeze-fix",
 		date: "2026-07-05",
 		tag: "fix",
 		title: "AI takeover aurora border and screen freeze fixes",
 		items: [
 			"The aurora border is now built from an animated box-shadow ring with a flowing gradient sheen on top — always visible regardless of browser mask support, with no risk of the screen turning black.",
-			"The editor no longer freezes during AI generation or beat detection. Streaming re-renders are batched to one per animation frame, and beat detection now yields to the event loop periodically so the UI stays responsive on long audio files.",
+			"The editor no longer freezes during AI generation, beat detection, or audio processing. Streaming re-renders are batched to one per animation frame, and all heavy audio loops (decoding, interleaving, WAV encoding, beat detection) now yield to the event loop periodically so the UI stays responsive on long audio files.",
 		],
 	},
 	{
