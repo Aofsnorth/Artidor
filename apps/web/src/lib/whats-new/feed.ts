@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-30-fix-puter-builtin-tools",
+		date: "2026-06-30",
+		tag: "fix",
+		title: "Fix: Puter.js models couldn't call built-in AI tools",
+		items: [
+			"Built-in tools (list_assets, add_media_to_timeline, split_element, etc.) were only listed in the system prompt text but never passed as native function definitions to the Puter.js chat API. This meant Claude, GPT-4o, and other models could see the tool names but couldn't actually call them. Now both built-in and MCP tools are passed as native tool definitions, so all Puter.js models can call any tool.",
+		],
+	},
+	{
 		id: "2026-06-30-searchable-puter-models",
 		date: "2026-06-30",
 		tag: "improvement",
