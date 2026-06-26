@@ -353,6 +353,23 @@ export class AIManager {
 			if (signal.aborted) return;
 			if (result.toolCalls.length === 0) {
 				// No tool calls — the LLM produced a final text answer.
+				// If the model returned an empty/whitespace-only message
+				// (e.g. only thinking tags that got stripped, or a bare
+				// end-of-turn token), drop it so the chat doesn't show a
+				// blank "card box" bubble and the empty assistant turn
+				// doesn't confuse the next LLM request.
+				const store = useAIStore.getState();
+				const last = store.messages.at(-1);
+				if (
+					last &&
+					last.id === result.assistantId &&
+					last.role === "assistant" &&
+					!last.content?.trim() &&
+					!last.toolCalls?.length
+				) {
+					store.removeMessage(result.assistantId);
+					this.notify();
+				}
 				break;
 			}
 
