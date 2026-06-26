@@ -30,14 +30,11 @@ import { Check, Copy, Download, RotateCcw, Play } from "lucide-react";
 import {
 	EXPORT_FORMAT_LABELS,
 	EXPORT_FORMAT_VALUES,
-	EXPORT_MODE_LABELS,
-	EXPORT_MODE_VALUES,
 	EXPORT_QUALITY_VALUES,
 	getExportFileExtension,
 	getExportMimeType,
 	downloadBuffer,
 	type ExportFormat,
-	type ExportMode,
 	type ExportQuality,
 	type ExportResult,
 } from "@/lib/export";
@@ -56,10 +53,6 @@ function isExportFormat(value: string): value is ExportFormat {
 
 function isExportQuality(value: string): value is ExportQuality {
 	return EXPORT_QUALITY_VALUES.some((qualityValue) => qualityValue === value);
-}
-
-function isExportMode(value: string): value is ExportMode {
-	return EXPORT_MODE_VALUES.some((modeValue) => modeValue === value);
 }
 
 const CustomEmblem = () => (
@@ -290,7 +283,6 @@ function ExportPopover({
 				return JSON.parse(raw) as {
 					format?: ExportFormat;
 					quality?: ExportQuality;
-					mode?: ExportMode;
 					includeAudio?: boolean;
 					saveToDrive?: boolean;
 				};
@@ -312,11 +304,6 @@ function ExportPopover({
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
 		storedPrefs?.includeAudio ?? DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
-	const [exportMode, setExportMode] = useState<ExportMode>(
-		storedPrefs?.mode && isExportMode(storedPrefs.mode)
-			? storedPrefs.mode
-			: DEFAULT_EXPORT_OPTIONS.mode ?? "auto",
-	);
 	const filename = `${activeProject.metadata.name}${getExportFileExtension({ format })}`;
 	const mimeType = getExportMimeType({ format });
 
@@ -334,7 +321,6 @@ function ExportPopover({
 				quality,
 				fps: activeProject.settings.fps,
 				includeAudio: shouldIncludeAudio,
-				mode: exportMode,
 			},
 		});
 
@@ -515,48 +501,6 @@ function ExportPopover({
 												Very high - Largest file size
 											</Label>
 										</div>
-									</RadioGroup>
-								</SectionContent>
-							</Section>
-
-							<Section
-								collapsible
-								defaultOpen={false}
-								className="border-b border-stone-950 hover:bg-stone-900/20 transition-colors"
-							>
-								<SectionHeader>
-									<SectionTitle className="font-sans text-xs uppercase tracking-wider text-stone-300">
-										engine
-									</SectionTitle>
-								</SectionHeader>
-								<SectionContent>
-									<RadioGroup
-										value={exportMode}
-										onValueChange={(value) => {
-											if (isExportMode(value)) {
-												setExportMode(value);
-											}
-										}}
-										className="gap-2.5 pt-1"
-									>
-										{EXPORT_MODE_VALUES.map((modeValue) => (
-											<div
-												key={modeValue}
-												className="flex items-center space-x-2.5 cursor-pointer"
-											>
-												<RadioGroupItem
-													value={modeValue}
-													id={`mode-${modeValue}`}
-													className="border-stone-700 text-stone-300"
-												/>
-												<Label
-													htmlFor={`mode-${modeValue}`}
-													className="text-stone-300 text-xs font-light cursor-pointer select-none"
-												>
-													{EXPORT_MODE_LABELS[modeValue]}
-												</Label>
-											</div>
-										))}
 									</RadioGroup>
 								</SectionContent>
 							</Section>

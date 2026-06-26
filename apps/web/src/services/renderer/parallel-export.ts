@@ -44,7 +44,7 @@ import {
 import type { FrameRate } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
-import type { ExportFormat, ExportMode, ExportQuality } from "@/lib/export";
+import type { ExportFormat, ExportQuality } from "@/lib/export";
 import { detectHardware, hardwareSummary, recommendWorkerCount } from "@/lib/export/hardware";
 import type { SerializedNode } from "./scene-serializer";
 import {
@@ -81,7 +81,6 @@ export async function runParallelExport({
 	format,
 	quality,
 	shouldIncludeAudio,
-	mode = "auto",
 	workerCount,
 	onProgress,
 	getCancelled,
@@ -96,8 +95,6 @@ export async function runParallelExport({
 	format: ExportFormat;
 	quality: ExportQuality;
 	shouldIncludeAudio: boolean;
-	/** Export mode: "auto" (GPU+CPU), "gpu", or "cpu". */
-	mode?: ExportMode;
 	/** Override auto-detected worker count. */
 	workerCount?: number;
 	onProgress?: ({ progress }: { progress: number }) => void;
@@ -115,9 +112,9 @@ export async function runParallelExport({
 		segmentCount = workerCount;
 	} else {
 		const hardware = await detectHardware();
-		segmentCount = recommendWorkerCount(hardware, mode);
+		segmentCount = recommendWorkerCount(hardware);
 		console.info(
-			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers (mode: ${mode})`,
+			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers`,
 		);
 	}
 	// Still cap by timeline length — tiny timelines don't benefit from many workers.
@@ -188,7 +185,6 @@ export async function runParallelExport({
 				shouldIncludeAudio: false,
 				videoOnly: true,
 				videoCodec,
-				mode,
 				startFrame: plan.startFrame,
 				endFrame: plan.endFrame,
 				// 60s no-activity timeout. Segments that are just slow keep
@@ -204,9 +200,8 @@ export async function runParallelExport({
 		);
 
 		// Wait before launching the next worker to avoid GPU adapter request
-		// deadlocks. Turbo mode uses a shorter delay (1s) since throughput is
-		// the priority; auto/gpu/cpu modes use 3s for safety.
-		const staggerDelay = mode === "turbo" ? 1000 : 3000;
+		// deadlocks on machines with multiple workers.
+		const staggerDelay = 3000;
 		if (i < plans.length - 1) {
 			console.info(`[parallel-export] worker ${plan.index} launched, waiting ${staggerDelay / 1000}s before next`);
 			await new Promise((r) => setTimeout(r, staggerDelay));
@@ -214,14 +209,22 @@ export async function runParallelExport({
 	}
 
 	console.info("[parallel-export] all workers launched, waiting for completion");
+	const workersStart = performance.now();
 	const segmentResults = await Promise.all(workerPromises);
+	console.info(
+		`[parallel-export] all workers finished in ${((performance.now() - workersStart) / 1000).toFixed(1)}s`,
+	);
+	console.info(`[parallel-export] segment results:`, segmentResults.map(r => ({ success: r.success, hasBuffer: "buffer" in r, cancelled: "cancelled" in r, error: "error" in r })));
 
 	// Any cancellation → bubble up as cancelled.
+	console.info(`[parallel-export] checking cancellation...`);
 	if (segmentResults.some((r) => !r.success && "cancelled" in r)) {
+		console.info(`[parallel-export] cancelled detected, returning`);
 		return { success: false, cancelled: true };
 	}
 
 	// Any segment failure → throw so the caller falls back to single-worker.
+	console.info(`[parallel-export] collecting segment buffers...`);
 	const segmentBuffers: ArrayBuffer[] = [];
 	for (const result of segmentResults) {
 		if (!result.success || !("buffer" in result)) {
@@ -233,12 +236,16 @@ export async function runParallelExport({
 		}
 		segmentBuffers.push(result.buffer);
 	}
+	console.info(`[parallel-export] collected ${segmentBuffers.length} buffers, sizes: ${segmentBuffers.map(b => b.byteLength)}`);
 
+	console.info(`[parallel-export] checking cancelled flag...`);
 	if (getCancelled?.()) {
+		console.info(`[parallel-export] cancelled flag set, returning`);
 		return { success: false, cancelled: true };
 	}
 
 	console.info("[parallel-export] all segment workers completed, concatenating");
+	const concatStart = performance.now();
 	const buffer = await concatenateSegments({
 		segmentBuffers,
 		segmentStartSeconds: plans.map((p) => p.startSeconds),
@@ -247,6 +254,9 @@ export async function runParallelExport({
 		fpsFloat,
 		audioBuffer: shouldIncludeAudio ? audioBuffer : null,
 	});
+	console.info(
+		`[parallel-export] concatenation took ${((performance.now() - concatStart) / 1000).toFixed(1)}s`,
+	);
 
 	onProgress?.({ progress: 1 });
 	return { success: true, buffer };
@@ -299,18 +309,27 @@ async function concatenateSegments({
 	await output.start();
 
 	// Encode the audio once, concurrently with the video packet copy.
+	const audioEncodeStart = performance.now();
 	const audioEncode =
 		audioSource && audioBuffer
-			? audioSource.add(audioBuffer).finally(() => audioSource?.close())
+			? audioSource.add(audioBuffer).finally(() => {
+					audioSource?.close();
+					console.info(
+						`[parallel-export] audio encode took ${((performance.now() - audioEncodeStart) / 1000).toFixed(1)}s`,
+					);
+				})
 			: null;
 
 	// The decoder config from the first segment applies to all segments (they
 	// share an identical encoder config); it must be supplied on the first
 	// `add()` so the muxer can write the track's codec metadata.
 	let isFirstPacket = true;
+	let totalPackets = 0;
+	const packetCopyStart = performance.now();
 
 	for (const [s, segmentBuffer] of segmentBuffers.entries()) {
 		const offset = segmentStartSeconds[s] ?? 0;
+		const segStart = performance.now();
 		const input = new Input({
 			source: new BlobSource(new Blob([segmentBuffer])),
 			formats: ALL_FORMATS,
@@ -338,16 +357,28 @@ async function concatenateSegments({
 						: undefined,
 				);
 				isFirstPacket = false;
+				totalPackets++;
 				packet = await sink.getNextPacket(packet);
 			}
+			console.info(
+				`[parallel-export] segment ${s}: ${((performance.now() - segStart) / 1000).toFixed(1)}s`,
+			);
 		} finally {
 			input.dispose();
 		}
 	}
 
+	console.info(
+		`[parallel-export] packet copy: ${totalPackets} packets in ${((performance.now() - packetCopyStart) / 1000).toFixed(1)}s`,
+	);
+
 	videoSource.close();
 	if (audioEncode) await audioEncode;
+	const finalizeStart = performance.now();
 	await output.finalize();
+	console.info(
+		`[parallel-export] finalize took ${((performance.now() - finalizeStart) / 1000).toFixed(1)}s`,
+	);
 
 	const buffer = output.target.buffer;
 	if (!buffer) {

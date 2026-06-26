@@ -155,7 +155,11 @@ export class RendererManager {
 		onProgress?: ({ progress }: { progress: number }) => void;
 		onCancel?: () => boolean;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio, mode = "auto", workerCount } = options;
+		const { format, quality, fps, includeAudio, workerCount } = options;
+
+		// Top-level export timing. Logs a phase breakdown (audio mix vs render)
+		// so we can see where the wall-clock time actually goes.
+		const exportStart = performance.now();
 
 		try {
 			const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -205,6 +209,13 @@ export class RendererManager {
 				? await audioBufferPromise
 				: null;
 
+			if (includeAudio) {
+				console.info(
+					`[export] audio mixing took ${((performance.now() - exportStart) / 1000).toFixed(1)}s`,
+				);
+			}
+			const renderPhaseStart = performance.now();
+
 			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
 			if (isExportWorkerSupported()) {
 				console.info("[export] worker path supported, serializing scene tree");
@@ -234,7 +245,6 @@ export class RendererManager {
 						format,
 						quality,
 						shouldIncludeAudio: !!includeAudio,
-						mode,
 						workerCount,
 						onProgress: (p) =>
 							onProgress?.({ progress: mapProgress(p.progress) }),
@@ -242,6 +252,10 @@ export class RendererManager {
 					});
 
 					if (parallel.success) {
+						console.info(
+							`[export] render phase took ${((performance.now() - renderPhaseStart) / 1000).toFixed(1)}s, ` +
+								`total export ${((performance.now() - exportStart) / 1000).toFixed(1)}s`,
+						);
 						return { success: true, buffer: parallel.buffer };
 					}
 					if ("cancelled" in parallel && parallel.cancelled) {
@@ -273,7 +287,6 @@ export class RendererManager {
 						format,
 						quality,
 						shouldIncludeAudio: !!includeAudio,
-						mode,
 						// 30s no-activity timeout for the single-worker fallback. Long
 						// exports keep sending progress messages, so this only fires
 						// when the worker is truly stuck.

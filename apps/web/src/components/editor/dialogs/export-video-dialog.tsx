@@ -30,10 +30,7 @@ import {
 import {
 	EXPORT_FORMAT_LABELS,
 	EXPORT_FORMAT_VALUES,
-	EXPORT_MODE_LABELS,
-	EXPORT_MODE_VALUES,
 	type ExportFormat,
-	type ExportMode,
 } from "@/lib/export";
 
 interface ExportVideoDialogProps {
@@ -52,7 +49,6 @@ export function ExportVideoDialog({
 	const router = useRouter();
 	const [format, setFormat] = useState<ExportFormat>("mp4");
 	const [quality, setQuality] = useState<"low" | "medium" | "high" | "very_high">("medium");
-	const [exportMode, setExportMode] = useState<ExportMode>("auto");
 	const [includeAudio, setIncludeAudio] = useState(true);
 	const [saveToDrive, setSaveToDrive] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -84,7 +80,6 @@ export function ExportVideoDialog({
 			JSON.stringify({
 				format,
 				quality,
-				mode: exportMode,
 				includeAudio,
 				saveToDrive,
 			}),
@@ -217,33 +212,6 @@ export function ExportVideoDialog({
 													: q === "high"
 														? "High — Recommended"
 														: "Very High — Largest file"}
-										</Label>
-									</div>
-								))}
-							</RadioGroup>
-						</Section>
-
-						<Section label="Engine">
-							<RadioGroup
-								value={exportMode}
-								onValueChange={(v) => {
-									if (EXPORT_MODE_VALUES.includes(v as ExportMode))
-										setExportMode(v as ExportMode);
-								}}
-								className="gap-2"
-							>
-								{EXPORT_MODE_VALUES.map((m) => (
-									<div key={m} className="flex items-center gap-2.5">
-										<RadioGroupItem
-											value={m}
-											id={`ev-mode-${m}`}
-											className="border-white/20 text-white"
-										/>
-										<Label
-											htmlFor={`ev-mode-${m}`}
-											className="text-xs text-white/70 cursor-pointer select-none"
-										>
-											{EXPORT_MODE_LABELS[m]}
 										</Label>
 									</div>
 								))}
