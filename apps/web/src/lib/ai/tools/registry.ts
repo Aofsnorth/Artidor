@@ -35,6 +35,7 @@ export type ToolCategory =
 	| "transition"
 	| "playback"
 	| "asset"
+	| "web"
 	| "style"
 	| "export"
 	| "history"
@@ -942,6 +943,23 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				time: numberSchema(0),
 			},
 			["trackId", "elementId", "time"],
+		),
+	),
+
+	/* --------------------------------- Web ---------------------------------- */
+	tool(
+		"web",
+		"web_fetch",
+		"web_fetch",
+		"Fetch a public web page and return its text content. Use this when the user asks about something online, references a URL, or needs current facts from a specific page. The URL must be public (http/https) and not a private/internal address.",
+		objectSchema(
+			{
+				url: {
+					type: "string",
+					description: "Full public URL to fetch (e.g. https://example.com/article)",
+				},
+			},
+			["url"],
 		),
 	),
 

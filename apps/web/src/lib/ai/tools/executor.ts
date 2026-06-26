@@ -634,6 +634,40 @@ const HANDLERS: Record<string, Handler> = {
 		};
 	},
 
+	web_fetch: async (_editor, args) => {
+		const url = asString(args.url);
+		if (!url) return { ok: false, message: "url is required" };
+		try {
+			const res = await fetch("/api/web/fetch", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ url }),
+			});
+			const data = await res.json();
+			if (!data.ok) {
+				return {
+					ok: false,
+					message: data.error ?? "Failed to fetch page",
+				};
+			}
+			return {
+				ok: true,
+				message: `Fetched ${url}`,
+				data: {
+					url: data.url,
+					contentType: data.contentType,
+					text: data.text,
+					truncated: data.truncated,
+				},
+			};
+		} catch (err) {
+			return {
+				ok: false,
+				message: err instanceof Error ? err.message : "Fetch failed",
+			};
+		}
+	},
+
 	add_media_to_timeline: async (editor, args) => {
 		const assetId = asString(args.assetId);
 		if (!assetId) return { ok: false, message: "assetId required" };

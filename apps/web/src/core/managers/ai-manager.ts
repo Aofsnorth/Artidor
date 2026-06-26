@@ -423,8 +423,12 @@ export class AIManager {
 					return {
 						role: "assistant",
 						content: m.content,
+						// Preserve the original tool call IDs so they match the
+						// tool-role messages that follow. OpenAI rejects
+						// assistant messages whose tool_calls don't have matching
+						// tool messages with the same tool_call_id.
 						toolCalls: m.toolCalls.map((tc) => ({
-							id: crypto.randomUUID(),
+							id: tc.id,
 							name: tc.name,
 							arguments: tc.args,
 						})),

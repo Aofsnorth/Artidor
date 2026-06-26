@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-29-ai-harness-webfetch-questions",
+		date: "2026-06-29",
+		tag: "feature",
+		title: "AI safety harness, native web fetch, and question cards",
+		items: [
+			"AI now asks for confirmation before large-batch or risky operations (e.g. adding 100+ clips, deleting 10+ elements, replacing all media) instead of silently executing them.",
+			"New native web_fetch tool lets the AI read public web pages directly — no MCP server needed for basic web browsing.",
+			"Assistant questions are now rendered as a distinct cyan question card so they stand out from regular replies.",
+			"Fixed OpenAI 400 Bad Request after tool calls: the assistant's tool_call IDs are now preserved instead of regenerated, so they match the tool result messages.",
+		],
+	},
+	{
 		id: "2026-06-29-puter-minimax-followup-icons",
 		date: "2026-06-29",
 		tag: "fix",
