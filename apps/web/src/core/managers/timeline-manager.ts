@@ -102,7 +102,6 @@ export class TimelineManager {
 		const command = new InsertElementCommand({ element, placement });
 		this.editor.command.execute({ command });
 	}
-
 	updateElementTrim({
 		elementId,
 		trimStart,

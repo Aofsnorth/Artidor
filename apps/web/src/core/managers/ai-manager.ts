@@ -1021,6 +1021,9 @@ export class AIManager {
 						useAIStore.getState().addPendingImage(data.dataUrl);
 					}
 				}
+				// Notify after each tool so the editor UI re-renders
+				// immediately (e.g. timeline shows the new element).
+				this.notify();
 			}
 		}
 
