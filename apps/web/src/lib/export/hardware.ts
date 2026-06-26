@@ -6,8 +6,6 @@
  * ensure low-end machines don't thrash.
  */
 
-import type { ExportMode } from "./index";
-
 export interface HardwareInfo {
 	/** Logical CPU cores (navigator.hardwareConcurrency). */
 	cpuCores: number;
@@ -46,19 +44,39 @@ export async function detectHardware(): Promise<HardwareInfo> {
 		if (typeof navigator !== "undefined" && navigator.gpu) {
 			const adapter = await navigator.gpu.requestAdapter();
 			if (adapter) {
-				// requestAdapterInfo is not yet in all TS DOM lib versions.
+				// requestAdapterInfo() is the older API; adapter.info is the
+				// newer property. Try both for cross-browser compatibility.
 				const info = await (adapter as GPUAdapter & {
 					requestAdapterInfo?: () => Promise<{
 						description?: string;
 						vendor?: string;
 						architecture?: string;
 					}>;
+					info?: {
+						description?: string;
+						vendor?: string;
+						architecture?: string;
+					};
 				}).requestAdapterInfo?.();
-				if (info) {
+				const adapterInfo = info ?? (adapter as GPUAdapter & {
+					info?: {
+						description?: string;
+						vendor?: string;
+						architecture?: string;
+					};
+				}).info;
+				if (adapterInfo) {
 					gpuAdapter = {
-						description: info.description || "Unknown GPU",
-						vendor: info.vendor || "unknown",
-						architecture: info.architecture || "",
+						description: adapterInfo.description || "Unknown GPU",
+						vendor: adapterInfo.vendor || "unknown",
+						architecture: adapterInfo.architecture || "",
+					};
+				} else {
+					// Adapter exists but no info available — still report a GPU.
+					gpuAdapter = {
+						description: "GPU (info unavailable)",
+						vendor: "unknown",
+						architecture: "",
 					};
 				}
 			}
@@ -71,48 +89,33 @@ export async function detectHardware(): Promise<HardwareInfo> {
 }
 
 /**
- * Recommend a number of parallel segment workers based on hardware and mode.
+ * Recommend a number of parallel segment workers based on hardware.
  *
  * Heuristics:
- * - CPU mode: one worker per logical core (up to 16). No GPU contention.
- * - GPU/Auto mode: all cores up to 8 (GPU shared but can handle multiple
- *   contexts). With 16GB+ RAM, there's plenty of memory for 8 workers.
- * - Turbo mode: all cores up to 16. Maximum utilization for capable machines.
+ * - 1-2 core machines: always 1 worker. The main thread (React/UI/concat)
+ *   needs a core too — 2 workers + main thread = 3 threads on 2 cores causes
+ *   heavy context switching, making exports ~2x slower than a single worker.
+ * - 3+ cores: one worker per core, capped by available memory.
  * - Low-memory machines (≤4GB): cap at 2 workers regardless.
- * - Single-core machines: always 1 (no parallelism benefit).
  *
  * Note: navigator.deviceMemory is capped at 8GB by browsers for privacy,
  * so a 16GB machine reports 8. The memory cap uses this conservatively.
  */
-export function recommendWorkerCount(
-	hardware: HardwareInfo,
-	mode: ExportMode,
-): number {
-	const { cpuCores, deviceMemoryGb, gpuAdapter } = hardware;
+export function recommendWorkerCount(hardware: HardwareInfo): number {
+	const { cpuCores, deviceMemoryGb } = hardware;
 
 	// Single-core or unknown → no parallelism.
 	if (cpuCores <= 1) return 1;
 
+	// 2-core machines: always 1 worker. The main thread (React/UI/concat)
+	// needs a core too — 2 workers + main thread = 3 threads on 2 cores
+	// causes heavy context switching and memory pressure, making exports
+	// ~2x slower than a single worker. Measured: 1 worker=18.8s vs 2 workers=32.9s.
+	if (cpuCores <= 2) return 1;
+
 	// navigator.deviceMemory caps at 8, so "8" could mean 8GB or 16GB+.
-	// Treat 8 as "plenty of RAM" — no memory cap beyond the mode cap.
+	// Treat 8 as "plenty of RAM" — no memory cap beyond the core cap.
 	const memoryCap = deviceMemoryGb <= 2 ? 1 : deviceMemoryGb <= 4 ? 2 : 16;
-
-	if (mode === "cpu") {
-		// CPU-only: no GPU contention, one worker per core.
-		return Math.min(cpuCores, memoryCap, 16);
-	}
-
-	if (mode === "turbo") {
-		// Turbo: maximum utilization. All cores + GPU.
-		return Math.min(cpuCores, memoryCap, 16);
-	}
-
-	// Auto/GPU mode: use all cores up to 8. With 16GB RAM (reported as 8),
-	// 8 workers (~1.4GB) is well within budget and keeps GPU fed.
-	if (!gpuAdapter) {
-		// No GPU available — treat as CPU mode.
-		return Math.min(cpuCores, memoryCap, 16);
-	}
 
 	return Math.min(cpuCores, memoryCap, 8);
 }

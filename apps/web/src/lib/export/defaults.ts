@@ -4,5 +4,4 @@ export const DEFAULT_EXPORT_OPTIONS = {
 	format: "mp4",
 	quality: "medium",
 	includeAudio: true,
-	mode: "auto",
 } satisfies ExportOptions;

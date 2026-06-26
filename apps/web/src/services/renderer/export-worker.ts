@@ -14,7 +14,7 @@
 // Top-level log to confirm the worker module loaded successfully.
 console.info("[export-worker] module loaded");
 
-import type { ExportFormat, ExportMode, ExportQuality } from "@/lib/export";
+import type { ExportFormat, ExportQuality } from "@/lib/export";
 import type { FrameRate } from "artidor-wasm";
 import { mediaTimeToSeconds } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -57,8 +57,6 @@ type WorkerInMessage = {
 	format: ExportFormat;
 	quality: ExportQuality;
 	shouldIncludeAudio: boolean;
-	/** Export mode: "auto" (GPU+CPU), "gpu", or "cpu". */
-	mode?: ExportMode;
 	/**
 	 * Optional inclusive-start frame index for *segment* exports (parallel
 	 * pipeline). Defaults to 0 — the start of the timeline.
@@ -167,7 +165,6 @@ async function handleExport(msg: WorkerInMessage) {
 		format,
 		quality,
 		shouldIncludeAudio,
-		mode = "auto",
 		videoOnly = false,
 	} = msg;
 
@@ -178,16 +175,12 @@ async function handleExport(msg: WorkerInMessage) {
 
 	// ── 1. Initialize WASM GPU + compositor in the worker ──
 	// Dynamic import the WASM module (artidor-wasm)
-	console.info(`[export-worker] importing wasm module (mode: ${mode})`);
+	console.info("[export-worker] importing wasm module");
 	const wasm = await import("artidor-wasm");
 
-	if (mode === "cpu") {
-		console.info("[export-worker] CPU mode — skipping GPU init");
-	} else {
-		console.info("[export-worker] initializing GPU");
-		await wasm.initializeGpu();
-		console.info("[export-worker] GPU initialized");
-	}
+	console.info("[export-worker] initializing GPU");
+	await wasm.initializeGpu();
+	console.info("[export-worker] GPU initialized");
 
 	// Initialize compositor with the worker's OffscreenCanvas
 	const { wasmCompositor } = await import("./compositor/wasm-compositor");
@@ -250,10 +243,7 @@ async function handleExport(msg: WorkerInMessage) {
 		// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
 		// This is the single biggest performance lever — hardware encoding
 		// is 10-100x faster than software encoding.
-		hardwareAcceleration: mode === "cpu" ? "prefer-software" : "prefer-hardware",
-		// Realtime mode for turbo — encoder prioritizes throughput over
-		// quality. For auto/gpu/cpu, keep 'quality' for best output.
-		latencyMode: mode === "turbo" ? "realtime" : "quality",
+		hardwareAcceleration: "prefer-hardware",
 		// Log the actual encoder config so we can verify hardware accel.
 		onEncoderConfig: (config) => {
 			console.info(
@@ -347,14 +337,20 @@ async function handleExport(msg: WorkerInMessage) {
 	//
 	//   Depth 8 (new):  [render][render][render]...[render][wait oldest]
 	//   GPU renders continuously while encoder processes the queue.
-	const RENDER_QUEUE_DEPTH = mode === "turbo" ? 16 : 8;
+	const RENDER_QUEUE_DEPTH = 8;
 	const pendingEncodes: Promise<void>[] = [];
 	const frameDuration = 1 / fpsFloat;
 	const progressDenominator = Math.max(1, segmentFrameCount);
 
-	console.info(
-		`[export-worker] render queue depth: ${RENDER_QUEUE_DEPTH} (mode: ${mode})`,
-	);
+	console.info(`[export-worker] render queue depth: ${RENDER_QUEUE_DEPTH}`);
+
+	// ── Timing instrumentation ──
+	// Measures where time actually goes so we can identify the real
+	// bottleneck (compositor render vs encoder backpressure). Logged every
+	// 500 frames and as a final summary.
+	let renderMs = 0;
+	let encodeWaitMs = 0;
+	const loopStart = performance.now();
 
 	for (let i = startFrame; i < endFrame; i++) {
 		if (isCancelled) {
@@ -379,15 +375,21 @@ async function handleExport(msg: WorkerInMessage) {
 		// pending encode to finish. This is the only point where the GPU
 		// might stall — and it only happens when the encoder is slower than
 		// the renderer (which is the normal case, so the queue stays full
-		// and both GPU and CPU stay busy).
+		// and both GPU and CPU stay busy). Time spent here = encoder is the
+		// bottleneck.
 		if (pendingEncodes.length >= RENDER_QUEUE_DEPTH) {
+			const waitStart = performance.now();
 			const oldest = pendingEncodes.shift()!;
 			await oldest;
+			encodeWaitMs += performance.now() - waitStart;
 		}
 
 		// Composite frame (GPU) — runs continuously while encoder processes
-		// the queue in the background.
+		// the queue in the background. Time spent here = compositor is the
+		// bottleneck.
+		const renderStart = performance.now();
 		await renderer.render({ node: rootNode, time: globalTimeTicks });
+		renderMs += performance.now() - renderStart;
 
 		// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
 		pendingEncodes.push(videoSource.add(localTimeSeconds, frameDuration));
@@ -401,16 +403,36 @@ async function handleExport(msg: WorkerInMessage) {
 			} satisfies WorkerOutMessage);
 		}
 
-		// Log every 500 frames for debugging (less overhead than every 100)
-		if (localFrame % 500 === 0) {
+		// Log timing breakdown every 500 frames so we can see the bottleneck
+		// live (and roughly the encode FPS).
+		if (localFrame > 0 && localFrame % 500 === 0) {
+			const elapsed = performance.now() - loopStart;
+			const fps = (localFrame / elapsed) * 1000;
 			console.info(
-				`[export-worker] frame ${localFrame}/${segmentFrameCount}`,
+				`[export-worker] frame ${localFrame}/${segmentFrameCount} | ` +
+					`${fps.toFixed(1)} fps | render ${renderMs.toFixed(0)}ms ` +
+					`(${(renderMs / localFrame).toFixed(1)}ms/f) | ` +
+					`encodeWait ${encodeWaitMs.toFixed(0)}ms ` +
+					`(${(encodeWaitMs / localFrame).toFixed(1)}ms/f)`,
 			);
 		}
 	}
 
 	// Drain all pending encodes
+	const drainStart = performance.now();
 	await Promise.all(pendingEncodes);
+	const drainMs = performance.now() - drainStart;
+
+	// Final timing summary — this is the key diagnostic. Compare renderMs
+	// (compositor) vs encodeWaitMs + drainMs (encoder) to find the bottleneck.
+	const totalMs = performance.now() - loopStart;
+	console.info(
+		`[export-worker] DONE ${segmentFrameCount} frames in ${(totalMs / 1000).toFixed(1)}s ` +
+			`(${((segmentFrameCount / totalMs) * 1000).toFixed(1)} fps) | ` +
+			`render ${(renderMs / 1000).toFixed(1)}s | ` +
+			`encodeWait ${(encodeWaitMs / 1000).toFixed(1)}s | ` +
+			`drain ${(drainMs / 1000).toFixed(1)}s`,
+	);
 
 	if (isCancelled) {
 		await output.cancel();

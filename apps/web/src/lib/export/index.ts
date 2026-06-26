@@ -10,29 +10,17 @@ export const EXPORT_QUALITY_VALUES = [
 
 export const EXPORT_FORMAT_VALUES = ["mp4", "webm", "hevc", "av1"] as const;
 
-/**
- * Which hardware to use for rendering/encoding.
- * - "auto" — GPU for compositing + hardware encoder if available (default)
- * - "gpu"  — GPU for compositing, force hardware video encoder
- * - "cpu"  — CPU-only compositing + software encoder (most compatible)
- * - "turbo" — Maximum utilization: all CPU cores + GPU, maximum workers
- */
-export const EXPORT_MODE_VALUES = ["auto", "gpu", "cpu", "turbo"] as const;
-
 export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
 export type ExportQuality = (typeof EXPORT_QUALITY_VALUES)[number];
-export type ExportMode = (typeof EXPORT_MODE_VALUES)[number];
 
 export interface ExportOptions {
 	format: ExportFormat;
 	quality: ExportQuality;
 	fps?: FrameRate;
 	includeAudio?: boolean;
-	/** Which hardware to use. Defaults to "auto". */
-	mode?: ExportMode;
 	/**
 	 * Override the number of parallel segment workers. Defaults to auto-detect
-	 * based on CPU cores and GPU memory. Set to 1 to force single-worker.
+	 * based on CPU cores and available memory. Set to 1 to force single-worker.
 	 */
 	workerCount?: number;
 }
@@ -59,16 +47,6 @@ export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
 	webm: "WebM (VP9) - Smaller file size",
 	hevc: "MP4 (H.265) - Best compression",
 	av1: "MP4 (AV1) - Best compression (modern)",
-};
-
-/**
- * Human-readable label for each export mode. Used in the export dialog.
- */
-export const EXPORT_MODE_LABELS: Record<ExportMode, string> = {
-	auto: "Auto — GPU + CPU (recommended)",
-	gpu: "GPU — Hardware accelerated",
-	cpu: "CPU — Most compatible",
-	turbo: "Turbo — Maximum utilization (all cores + GPU)",
 };
 
 /**

@@ -7,7 +7,7 @@
  */
 
 import type { FrameRate } from "artidor-wasm";
-import type { ExportFormat, ExportMode, ExportQuality } from "@/lib/export";
+import type { ExportFormat, ExportQuality } from "@/lib/export";
 import type { SerializedNode } from "./scene-serializer";
 import type { ExportAudioCodec, ExportVideoCodec } from "./export-codec";
 
@@ -65,7 +65,6 @@ export async function runExportInWorker({
 	videoOnly,
 	videoCodec,
 	audioCodec,
-	mode = "auto",
 	onProgress,
 	onReady,
 	getCancelled,
@@ -90,8 +89,6 @@ export async function runExportInWorker({
 	videoCodec?: ExportVideoCodec;
 	/** Pinned audio codec. */
 	audioCodec?: ExportAudioCodec;
-	/** Export mode: "auto", "gpu", or "cpu". */
-	mode?: ExportMode;
 	onProgress?: ({ progress }: { progress: number }) => void;
 	/** Called when the worker signals it has finished GPU init. */
 	onReady?: () => void;
@@ -288,7 +285,6 @@ export async function runExportInWorker({
 					videoOnly,
 					videoCodec,
 					audioCodec,
-					mode,
 				},
 				transferables,
 			);

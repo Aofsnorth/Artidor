@@ -18,16 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
-		id: "2026-06-25-export-engine-modes",
+		id: "2026-06-25-export-perf-tuning",
 		date: "2026-06-25",
 		tag: "performance",
-		title: "Choose your export engine: Auto, GPU, CPU, or Turbo",
+		title: "Faster exports: hardware encoding + smart worker sizing",
 		items: [
-			"New Engine selector in the export dialog lets you pick how your machine renders the final video: Auto (balanced), GPU (hardware accelerated), CPU (most compatible), or Turbo (maximum utilization).",
-			"Worker count now auto-detects from your PC specs — CPU cores, GPU, and RAM — so exports use the right amount of parallelism without thrashing low-end machines or under-utilizing high-end ones.",
-			"Turbo mode pushes both GPU and CPU to ~100% by using all cores with a deep render queue, cutting export time significantly on capable hardware (16GB+ RAM recommended).",
-			"Deep render/encode pipelining: the renderer now feeds up to 16 frames to the encoder before applying backpressure, keeping the GPU busy while the CPU encodes in the background.",
 			"Hardware video encoding is now explicitly requested via WebCodecs `prefer-hardware` — uses NVENC, Intel Quick Sync, AMD VCE, or Apple VideoToolbox when available, giving 10-100x faster encoding than software.",
+			"Worker count now auto-detects from your PC specs — CPU cores and RAM — so exports use the right amount of parallelism without thrashing low-end machines or under-utilizing high-end ones.",
+			"2-core machines now use a single worker instead of two, avoiding context-switching overhead that was making exports ~2x slower.",
+			"Deep render/encode pipelining: the renderer feeds up to 8 frames to the encoder before applying backpressure, keeping the GPU busy while the CPU encodes in the background.",
 		],
 	},
 	{
