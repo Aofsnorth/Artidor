@@ -70,6 +70,12 @@ export function buildSystemPrompt({
 - Match user editing style from recent edits below. Fast cutter → fast. Slow → slow.
 - Ambiguous request? Pick most common interpretation. Proceed. No clarification unless truly impossible.
 
+# Planning
+- Multi-step task (3+ steps)? Call create_plan FIRST with the steps. Then execute each step, calling update_todo to mark progress: in_progress when starting, done when complete.
+- Simple task (1-2 steps)? Skip the plan, just do it.
+- Plan steps should be user-readable: short title + 1-line description.
+- After each tool call, you will see the result in the next turn. Use it to decide the next step.
+
 # Tools
 ${toolsTable}
 

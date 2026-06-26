@@ -39,7 +39,8 @@ export type ToolCategory =
 	| "export"
 	| "history"
 	| "selection"
-	| "clipboard";
+	| "clipboard"
+	| "plan";
 
 /** Reusable schema for an array of {trackId, elementId} element refs. */
 function elementRefArraySchema(minItems: number): unknown {
@@ -940,6 +941,59 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				time: numberSchema(0),
 			},
 			["trackId", "elementId", "time"],
+		),
+	),
+
+	/* ------------------------------- Planning -------------------------------- */
+	tool(
+		"plan",
+		"create_plan",
+		"create_plan",
+		"Create a step-by-step plan before executing a complex task. Each step has a short title and description. Call this FIRST when the user's request involves multiple steps (e.g. 'make a 60s reel' or 'add captions and color grade'). The plan is shown to the user as a visual checklist. After creating the plan, proceed to execute each step using the appropriate tools.",
+		objectSchema(
+			{
+				title: { type: "string", description: "Short title for the overall plan" },
+				steps: {
+					type: "array",
+					description: "Ordered list of steps",
+					items: {
+						type: "object",
+						properties: {
+							title: { type: "string", description: "Short step title" },
+							description: {
+								type: "string",
+								description: "What this step involves",
+							},
+						},
+						required: ["title", "description"],
+						additionalProperties: false,
+					},
+					minItems: 1,
+				},
+			},
+			["title", "steps"],
+		),
+	),
+	tool(
+		"plan",
+		"update_todo",
+		"update_todo",
+		"Update the status of a plan step. Mark steps as 'in_progress' when you start them, 'done' when complete, or 'skipped' if no longer needed. The user sees the checklist update in real time.",
+		objectSchema(
+			{
+				stepIndex: {
+					type: "number",
+					description: "0-based index of the step to update",
+					minimum: 0,
+				},
+				status: {
+					type: "string",
+					enum: ["pending", "in_progress", "done", "skipped"],
+					description:
+						"New status: pending (not started), in_progress (working on it), done (complete), skipped (abandoned)",
+				},
+			},
+			["stepIndex", "status"],
 		),
 	),
 ];

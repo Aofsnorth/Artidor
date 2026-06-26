@@ -47,7 +47,25 @@ const COMPACTION_KEEP_LAST = 6;
  */
 const RETRY_COOLDOWN_BASE_SECONDS = 5;
 /** Max retry attempts before giving up and showing the error to the user. */
-const MAX_RETRY_ATTEMPTS = 5;
+const MAX_RETRY_ATTEMPTS = 10;
+
+/**
+ * Maximum number of tool-call rounds in a single message processing
+ * cycle. Each round = one LLM request + tool execution. The loop exits
+ * early when the LLM stops requesting tools. This cap prevents infinite
+ * tool-call cycles (e.g. a model stuck calling list_assets repeatedly).
+ */
+const MAX_TOOL_ROUNDS = 500;
+
+/**
+ * A tool call as received from the LLM stream, with a stable id for
+ * pairing with the subsequent `tool`-role result message.
+ */
+interface ToolCallRound {
+	id: string;
+	name: string;
+	arguments: Record<string, unknown>;
+}
 
 /**
  * Rough token estimate: ~4 characters per token. This is intentionally
@@ -175,6 +193,11 @@ export class AIManager {
 	 * Core message processing: appends the user message, builds the
 	 * request, streams the response, and dispatches tool calls.
 	 * On error, schedules an auto-retry with progressive cooldown.
+	 *
+	 * Tool-call loop: after executing tools, the results are fed back
+	 * to the LLM as `tool`-role messages so the model can continue
+	 * reasoning and either call more tools or produce a final answer.
+	 * The loop runs up to MAX_TOOL_ROUNDS to prevent infinite cycles.
 	 */
 	private async processMessage(text: string): Promise<void> {
 		const ai = useAIStore.getState();
@@ -196,10 +219,59 @@ export class AIManager {
 		// messages so the request itself stays small.
 		await this.maybeAutoCompact();
 
-		// Build the wire-format messages from the local store. If there's a
-		// compacted summary, prepend it as a system message so the LLM
-		// retains context from the compacted-away portion of the conversation.
-		const recent = telemetry.recent(20);
+		// Tool-call loop: keep sending requests until the LLM stops
+		// requesting tool calls (or we hit the round limit).
+		for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+			const result = await this.streamLLMResponse(text, telemetry.recent(20));
+			if (result.kind === "error") {
+				// streamLLMResponse already scheduled the retry.
+				return;
+			}
+			if (result.toolCalls.length === 0) {
+				// No tool calls — the LLM produced a final text answer.
+				break;
+			}
+
+			// Execute the tool calls and append tool-role messages with
+			// the results so the next LLM round can see them.
+			await this.executeAndRecordToolCalls(result.assistantId, result.toolCalls);
+
+			// If this was the last round, append a note so the LLM knows
+			// it hit the limit.
+			if (round === MAX_TOOL_ROUNDS - 1) {
+				useAIStore.getState().appendMessage({
+					role: "assistant",
+					content:
+						"(Reached the maximum number of tool-call rounds. Please continue with a new message if you need more steps.)",
+				});
+			}
+		}
+
+		// Success — reset retry state and drain the queue.
+		this.clearRetryTimer();
+		useAIStore.getState().clearRetry();
+		useAIStore.getState().setStatus("idle");
+		this.notify();
+
+		// If there are queued messages, send the next one.
+		this.drainQueue();
+	}
+
+	/**
+	 * Build wire-format messages from the store, send them to the API,
+	 * and stream the response into a new assistant bubble.
+	 *
+	 * Returns the assistant message id, the assembled text, and any tool
+	 * calls the model requested. On error, schedules a retry and returns
+	 * `{ kind: "error" }`.
+	 */
+	private async streamLLMResponse(
+		text: string,
+		recent: ReturnType<ReturnType<typeof useTelemetryStore.getState>["recent"]>,
+	): Promise<
+		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
+		| { kind: "error" }
+	> {
 		const storeState = useAIStore.getState();
 		const messages: ChatMessage[] = [];
 
@@ -223,6 +295,14 @@ export class AIManager {
 						})),
 					};
 				}
+				if (m.role === "tool") {
+					return {
+						role: "tool",
+						content: m.content,
+						toolCallId: m.toolCallId,
+						name: m.toolName,
+					};
+				}
 				return { role: m.role, content: m.content };
 			}),
 		);
@@ -238,7 +318,7 @@ export class AIManager {
 			if (lastUserIdx >= 0) {
 				const realIdx = messages.length - 1 - lastUserIdx;
 				const userMsg = messages[realIdx];
-				const text =
+				const userText =
 					typeof userMsg.content === "string"
 						? userMsg.content
 						: Array.isArray(userMsg.content)
@@ -250,7 +330,7 @@ export class AIManager {
 				messages[realIdx] = {
 					role: "user",
 					content: [
-						{ type: "text", text },
+						{ type: "text", text: userText },
 						...pendingImages.map((url) => ({
 							type: "image_url" as const,
 							image_url: { url },
@@ -285,10 +365,8 @@ export class AIManager {
 					messages,
 					context: this.snapshotContext(),
 					recentEvents: recent,
-					styleProfile: ai.styleProfile,
+					styleProfile: storeState.styleProfile,
 					externalTools,
-					// Pass the provider config only when there is one — when
-					// absent the server falls back to env-var resolution.
 					provider: providerConfig
 						? {
 								baseUrl: providerConfig.baseUrl,
@@ -304,7 +382,7 @@ export class AIManager {
 				text,
 				err instanceof Error ? err.message : "Network error",
 			);
-			return;
+			return { kind: "error" };
 		}
 
 		if (!res.ok) {
@@ -315,17 +393,15 @@ export class AIManager {
 			} catch {
 				/* noop */
 			}
-			// Distinguish "no provider" (status 501) with a clearer hint —
-			// the user might just need to add one via the providers manager.
 			if (res.status === 501) {
 				message = `${message} — open the AI providers manager to add one.`;
 			}
 			this.scheduleRetry(text, message);
-			return;
+			return { kind: "error" };
 		}
 
 		// Reserve an assistant bubble; we'll stream into it.
-		const assistantId = ai.appendMessage({
+		const assistantId = useAIStore.getState().appendMessage({
 			role: "assistant",
 			content: "",
 		});
@@ -334,17 +410,13 @@ export class AIManager {
 		const reader = res.body?.getReader();
 		if (!reader) {
 			this.scheduleRetry(text, "No response body");
-			return;
+			return { kind: "error" };
 		}
 
 		const decoder = new TextDecoder();
 		let buffer = "";
 		let assembledText = "";
-		let toolCalls: Array<{
-			id: string;
-			name: string;
-			arguments: Record<string, unknown>;
-		}> = [];
+		let toolCalls: ToolCallRound[] = [];
 		let finished = false;
 
 		try {
@@ -361,7 +433,7 @@ export class AIManager {
 					if (!payload) continue;
 					let parsed: {
 						delta?: string;
-						toolCalls?: typeof toolCalls;
+						toolCalls?: ToolCallRound[];
 						done?: boolean;
 						error?: string;
 					};
@@ -371,15 +443,12 @@ export class AIManager {
 						continue;
 					}
 					if (parsed.error) {
-						// Remove the empty assistant bubble we reserved, then retry.
 						useAIStore.getState().removeMessage(assistantId);
 						this.scheduleRetry(text, parsed.error);
-						return;
+						return { kind: "error" };
 					}
 					if (parsed.delta) {
 						assembledText += parsed.delta;
-						// Defensive strip: some models emit reasoning tags like
-						//  thinking or <thinking> in the visible stream. Hide them.
 						const sanitized = sanitizeAssistantText(assembledText);
 						useAIStore.getState().updateMessage(assistantId, {
 							content: sanitized,
@@ -399,55 +468,139 @@ export class AIManager {
 				text,
 				err instanceof Error ? err.message : "Stream error",
 			);
-			return;
+			return { kind: "error" };
 		}
 
-		// Execute the tool calls in order. Each call's result is
-		// appended to the assistant message so the user can see what
-		// happened. MCP tools (prefixed `mcp__<serverId>__<toolName>`)
-		// are routed to the MCP connection manager instead of the
-		// built-in executor.
-		const results: Array<{ name: string; ok: boolean; message?: string }> = [];
-		if (toolCalls.length > 0) {
-			ai.setStatus("awaiting-tools");
-			this.notify();
-			const mcpManager = getMcpConnectionManager();
-			for (const tc of toolCalls) {
-				if (tc.name.startsWith("mcp__")) {
-					// Parse: mcp__<serverId>__<toolName>
-					const rest = tc.name.slice(5);
-					const sep = rest.indexOf("__");
-					if (sep < 0) {
-						results.push({ name: tc.name, ok: false, message: "Invalid MCP tool name" });
-						continue;
-					}
-					const serverId = rest.slice(0, sep);
-					const toolName = rest.slice(sep + 2);
-					try {
-						const mcpResult = await mcpManager.callTool(serverId, toolName, tc.arguments);
-						results.push({ name: tc.name, ok: true, message: "MCP tool executed", data: mcpResult } as never);
-					} catch (err) {
-						results.push({
-							name: tc.name,
-							ok: false,
-							message: err instanceof Error ? err.message : "MCP tool failed",
-						});
-					}
-				} else {
-					const r = await executeTool({
-						editor: this.editor,
-						toolName: tc.name,
-						arguments: tc.arguments,
-						source: "ai",
+		return { kind: "ok", assistantId, toolCalls };
+	}
+
+	/**
+	 * Execute a batch of tool calls, record the results on the assistant
+	 * message, and append `tool`-role messages with the results so the
+	 * next LLM round can see what each tool returned.
+	 */
+	private async executeAndRecordToolCalls(
+		assistantId: string,
+		toolCalls: ToolCallRound[],
+	): Promise<void> {
+		useAIStore.getState().setStatus("awaiting-tools");
+		this.notify();
+
+		const mcpManager = getMcpConnectionManager();
+		const results: Array<{
+			name: string;
+			ok: boolean;
+			message?: string;
+			data?: unknown;
+		}> = [];
+
+		for (const tc of toolCalls) {
+			// Planning tools — these modify the AI store directly, not
+			// the editor. Handle them here before falling through to the
+			// executor / MCP paths.
+			if (tc.name === "create_plan") {
+				const title = String(tc.arguments.title ?? "Plan");
+				const steps = Array.isArray(tc.arguments.steps)
+					? (tc.arguments.steps as Array<{ title?: unknown; description?: unknown }>)
+							.filter((s) => s && typeof s === "object")
+							.map((s) => ({
+								title: String(s.title ?? "Step"),
+								description: String(s.description ?? ""),
+							}))
+					: [];
+				if (steps.length === 0) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: "Plan must have at least one step",
 					});
-					results.push({ name: tc.name, ok: r.ok, message: r.message });
-					// If this was a frame capture, store the image so it
-					// gets attached as a vision input to the next request.
-					if (tc.name === "capture_frame" && r.ok) {
-						const data = r.data as { dataUrl?: string } | undefined;
-						if (data?.dataUrl) {
-							useAIStore.getState().addPendingImage(data.dataUrl);
-						}
+				} else {
+					useAIStore.getState().createPlan(title, steps);
+					results.push({
+						name: tc.name,
+						ok: true,
+						message: `Plan created: "${title}" with ${steps.length} step${steps.length > 1 ? "s" : ""}`,
+					});
+				}
+				continue;
+			}
+			if (tc.name === "update_todo") {
+				const stepIndex = Number(tc.arguments.stepIndex);
+				const status = String(tc.arguments.status) as
+					| "pending"
+					| "in_progress"
+					| "done"
+					| "skipped";
+				if (
+					!Number.isInteger(stepIndex) ||
+					stepIndex < 0 ||
+					!["pending", "in_progress", "done", "skipped"].includes(status)
+				) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: "Invalid stepIndex or status",
+					});
+				} else {
+					useAIStore.getState().updatePlanStep(stepIndex, status);
+					results.push({
+						name: tc.name,
+						ok: true,
+						message: `Step ${stepIndex} → ${status}`,
+					});
+				}
+				continue;
+			}
+			if (tc.name.startsWith("mcp__")) {
+				const rest = tc.name.slice(5);
+				const sep = rest.indexOf("__");
+				if (sep < 0) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: "Invalid MCP tool name",
+					});
+					continue;
+				}
+				const serverId = rest.slice(0, sep);
+				const toolName = rest.slice(sep + 2);
+				try {
+					const mcpResult = await mcpManager.callTool(
+						serverId,
+						toolName,
+						tc.arguments,
+					);
+					results.push({
+						name: tc.name,
+						ok: true,
+						message: "MCP tool executed",
+						data: mcpResult,
+					});
+				} catch (err) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message:
+							err instanceof Error ? err.message : "MCP tool failed",
+					});
+				}
+			} else {
+				const r = await executeTool({
+					editor: this.editor,
+					toolName: tc.name,
+					arguments: tc.arguments,
+					source: "ai",
+				});
+				results.push({
+					name: tc.name,
+					ok: r.ok,
+					message: r.message,
+					data: r.data,
+				});
+				if (tc.name === "capture_frame" && r.ok) {
+					const data = r.data as { dataUrl?: string } | undefined;
+					if (data?.dataUrl) {
+						useAIStore.getState().addPendingImage(data.dataUrl);
 					}
 				}
 			}
@@ -463,14 +616,26 @@ export class AIManager {
 			toolCalls: finalToolCalls,
 		});
 
-		// Success — reset retry state and drain the queue.
-		this.clearRetryTimer();
-		useAIStore.getState().clearRetry();
-		ai.setStatus("idle");
-		this.notify();
+		// Append a `tool`-role message for each tool call result so the
+		// next LLM round can see what each tool returned. The content is
+		// a JSON string (per the OpenAI tool message schema).
+		for (let i = 0; i < toolCalls.length; i++) {
+			const tc = toolCalls[i];
+			const result = results[i];
+			const toolContent = JSON.stringify({
+				ok: result.ok,
+				message: result.message,
+				data: result.data,
+			});
+			useAIStore.getState().appendMessage({
+				role: "tool",
+				content: toolContent,
+				toolCallId: tc.id,
+				toolName: tc.name,
+			});
+		}
 
-		// If there are queued messages, send the next one.
-		this.drainQueue();
+		this.notify();
 	}
 
 	/**

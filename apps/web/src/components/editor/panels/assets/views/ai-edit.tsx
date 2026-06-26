@@ -46,7 +46,7 @@ import {
 	ChatAdd01Icon,
 	Settings02Icon,
 } from "@hugeicons/core-free-icons";
-import { useAIStore, type ChatMessage } from "@/stores/ai-store";
+import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
 import { useEditor } from "@/hooks/use-editor";
@@ -363,7 +363,12 @@ export function AIEditView() {
 					{ai.messages.length === 0 ? (
 						<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
 					) : (
-						ai.messages.map((m) => <MessageBubble key={m.id} message={m} />)
+						<>
+							{ai.plan && <PlanCard plan={ai.plan} />}
+							{ai.messages.map((m) => (
+								<MessageBubble key={m.id} message={m} />
+							))}
+						</>
 					)}
 					{isStreaming && ai.status !== "retrying" && (
 						<div className="flex items-center gap-2.5">
@@ -1310,6 +1315,202 @@ function EmptyState({
 				))}
 			</div>
 		</div>
+	);
+}
+
+/**
+ * Plan card — a visual checklist showing the AI's current plan.
+ * Each step shows its status (pending, in_progress, done, skipped)
+ * with a color-coded icon. The card animates in when the plan is
+ * created and updates in real time as the AI progresses through steps.
+ */
+function PlanCard({ plan }: { plan: Plan }) {
+	const doneCount = plan.steps.filter((s) => s.status === "done").length;
+	const skippedCount = plan.steps.filter(
+		(s) => s.status === "skipped",
+	).length;
+	const activeCount = plan.steps.length - skippedCount;
+	const progress =
+		activeCount > 0 ? Math.round((doneCount / activeCount) * 100) : 0;
+	const allDone = doneCount === activeCount && activeCount > 0;
+
+	return (
+		<motion.div
+			initial={{ opacity: 0, y: -8, scale: 0.97 }}
+			animate={{ opacity: 1, y: 0, scale: 1 }}
+			transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+			className={cn(
+				"overflow-hidden rounded-2xl border",
+				allDone
+					? "border-emerald-400/20 bg-gradient-to-br from-emerald-400/[0.06] to-emerald-400/[0.01]"
+					: "border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-white/[0.01]",
+			)}
+		>
+			{/* Header */}
+			<div className="flex items-center gap-2.5 border-b border-white/[0.06] px-3.5 py-2.5">
+				<div
+					className={cn(
+						"grid size-6 shrink-0 place-items-center rounded-lg border transition-all",
+						allDone
+							? "border-emerald-400/20 bg-emerald-400/10"
+							: "border-white/[0.08] bg-white/[0.04]",
+					)}
+				>
+					<HugeiconsIcon
+						icon={allDone ? CheckmarkCircle02Icon : MagicWand05Icon}
+						className={cn(
+							"size-3.5",
+							allDone
+								? "text-emerald-300"
+								: "text-white/60",
+						)}
+					/>
+				</div>
+				<div className="flex min-w-0 flex-1 flex-col">
+					<span className="truncate text-[12px] font-semibold text-white/90">
+						{plan.title}
+					</span>
+					<span className="text-[9.5px] text-white/40">
+						{doneCount}/{activeCount} steps
+						{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
+					</span>
+				</div>
+				{/* Progress ring */}
+				<div className="relative grid size-7 shrink-0 place-items-center">
+					<svg
+						className="size-7 -rotate-90"
+						viewBox="0 0 28 28"
+						role="img"
+						aria-label={`Plan progress: ${progress}%`}
+					>
+						<circle
+							cx="14"
+							cy="14"
+							r="11"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2.5"
+							className="text-white/[0.06]"
+						/>
+						<circle
+							cx="14"
+							cy="14"
+							r="11"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2.5"
+							strokeLinecap="round"
+							strokeDasharray={`${(progress / 100) * 69.12} 69.12`}
+							className={cn(
+								"transition-all duration-500",
+								allDone ? "text-emerald-400" : "text-white/50",
+							)}
+						/>
+					</svg>
+					<span
+						className={cn(
+							"absolute text-[8px] font-bold tabular-nums",
+							allDone ? "text-emerald-300" : "text-white/50",
+						)}
+					>
+						{progress}
+					</span>
+				</div>
+			</div>
+
+			{/* Steps */}
+			<div className="flex flex-col gap-0.5 p-2">
+				{plan.steps.map((step, idx) => (
+					<motion.div
+						key={step.title}
+						initial={{ opacity: 0, x: -4 }}
+						animate={{ opacity: 1, x: 0 }}
+						transition={{ delay: idx * 0.04 }}
+						className={cn(
+							"flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-all",
+							step.status === "in_progress" &&
+								"bg-white/[0.04] ring-1 ring-white/[0.06]",
+							step.status === "done" && "opacity-50",
+							step.status === "skipped" && "opacity-30",
+						)}
+					>
+						{/* Status icon */}
+						<div
+							className={cn(
+								"mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border transition-all",
+								step.status === "done" &&
+									"border-emerald-400/30 bg-emerald-400/15",
+								step.status === "in_progress" &&
+									"border-white/20 bg-white/[0.06]",
+								step.status === "pending" &&
+									"border-white/[0.08] bg-transparent",
+								step.status === "skipped" &&
+									"border-white/[0.06] bg-transparent",
+							)}
+						>
+							{step.status === "done" && (
+								<HugeiconsIcon
+									icon={CheckmarkCircle02Icon}
+									className="size-2.5 text-emerald-300"
+								/>
+							)}
+							{step.status === "in_progress" && (
+								<motion.div
+									animate={{ rotate: 360 }}
+									transition={{
+										duration: 1.5,
+										repeat: Number.POSITIVE_INFINITY,
+										ease: "linear",
+									}}
+								>
+									<HugeiconsIcon
+										icon={SparklesIcon}
+										className="size-2 text-white/60"
+									/>
+								</motion.div>
+							)}
+							{step.status === "skipped" && (
+								<HugeiconsIcon
+									icon={Cancel01Icon}
+									className="size-2 text-white/30"
+								/>
+							)}
+							{step.status === "pending" && (
+								<span className="size-1 rounded-full bg-white/20" />
+							)}
+						</div>
+
+						{/* Step text */}
+						<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+							<span
+								className={cn(
+									"text-[11px] font-medium leading-tight",
+									step.status === "done"
+										? "text-white/50 line-through decoration-white/20"
+										: step.status === "in_progress"
+											? "text-white/90"
+											: step.status === "skipped"
+												? "text-white/30 line-through decoration-white/10"
+												: "text-white/70",
+								)}
+							>
+								{step.title}
+							</span>
+							{step.description && step.status !== "done" && (
+								<span className="text-[9.5px] leading-tight text-white/35">
+									{step.description}
+								</span>
+							)}
+						</div>
+
+						{/* Step number */}
+						<span className="mt-0.5 shrink-0 text-[8px] font-mono text-white/20">
+							{idx + 1}
+						</span>
+					</motion.div>
+				))}
+			</div>
+		</motion.div>
 	);
 }
 
