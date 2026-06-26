@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-01-provider-card-redesign",
+		date: "2026-07-01",
+		tag: "improvement",
+		title: "Provider cards get a visual refresh",
+		items: [
+			"Each AI provider card now has a colored left rail and icon tile keyed to its type (OpenAI = emerald, Anthropic = orange, Ollama = sky, Puter = violet), so you can tell providers apart at a glance.",
+			"Default provider is now highlighted with a cyan ring. Status row shows the test result inline with an icon, and disabled providers show a clear badge instead of just dimming.",
+		],
+	},
+	{
 		id: "2026-06-30-fix-puter-builtin-tools",
 		date: "2026-06-30",
 		tag: "fix",

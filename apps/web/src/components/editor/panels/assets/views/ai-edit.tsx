@@ -2759,7 +2759,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 			>
 				<div
 					className={cn(
-						"rounded-2xl border px-3 py-2 text-[12px] leading-relaxed transition-all",
+						"rounded-2xl border px-3 py-2 text-[12px] leading-relaxed transition-all [&:empty]:hidden",
 						isUser
 							? "rounded-tr-md border-white/[0.12] bg-white/[0.07] text-white"
 							: "rounded-tl-md border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] text-white/90",
@@ -2818,7 +2818,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								</Markdown>
 							</div>
 						</div>
-					) : message.content ? (
+					) : message.content?.trim() ? (
 						<div className="prose prose-invert prose-sm max-w-none text-white/90 [&_a]:text-white/80 [&_a]:underline [&_code]:rounded [&_code]:bg-white/[0.08] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[10.5px] [&_code]:font-mono [&_pre]:rounded-lg [&_pre]:bg-black/30 [&_pre]:px-2.5 [&_pre]:py-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_strong]:text-white">
 							<Markdown
 								allowedElements={[

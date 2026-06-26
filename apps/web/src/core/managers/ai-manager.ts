@@ -340,8 +340,23 @@ export class AIManager {
 					this.clearRetryTimer();
 					useAIStore.getState().clearRetry();
 					useAIStore.getState().setStatus("error");
+					// Build a clear, actionable error message. Distinguish a real
+					// network problem from a model/provider error so the user isn't
+					// told "connection failed" when the underlying issue is the LLM
+					// itself (e.g. Puter.js model error).
+					const isConnectionError =
+						/connection|network|fetch|abort|timeout|unreachable/i.test(
+							lastError,
+						);
+					const projectProviderId =
+						this.editor.project.getActive()?.metadata.aiProviderId ?? null;
+					const provider = getDefaultProvider(projectProviderId);
+					const providerName = provider?.kind === "puter" ? "Puter.js" : "AI provider";
+					const summary = isConnectionError
+						? `The connection to ${providerName} could not be recovered after ${MAX_IN_ROUND_RETRIES} attempts. Check your network and try again.`
+						: `The active provider (${providerName}) returned an error after ${MAX_IN_ROUND_RETRIES} attempts: ${lastError}`;
 					useAIStore.getState().setError(
-						`AI stopped after completing ${round} round${round > 1 ? "s" : ""} of actions. ${lastError} — the connection could not be recovered after ${MAX_IN_ROUND_RETRIES} attempts. Send a new message to continue.`,
+						`AI stopped after completing ${round} round${round > 1 ? "s" : ""} of actions. ${summary} Send a new message to continue.`,
 					);
 					this.notify();
 					return;
@@ -844,8 +859,8 @@ export class AIManager {
 				return { kind: "error", message: "Aborted" };
 			}
 			useAIStore.getState().removeMessage(assistantId);
-			const message =
-				err instanceof Error ? err.message : "Puter.js stream error";
+			const baseMessage = err instanceof Error ? err.message : "Puter.js stream error";
+			const message = `Puter.js (${model}): ${baseMessage}`;
 			this.scheduleRetry("", message);
 			return { kind: "error", message };
 		}
@@ -912,15 +927,37 @@ export class AIManager {
 					| "in_progress"
 					| "done"
 					| "skipped";
-				if (
-					!Number.isInteger(stepIndex) ||
-					stepIndex < 0 ||
-					!["pending", "in_progress", "done", "skipped"].includes(status)
-				) {
+				const plan = useAIStore.getState().plan;
+				const validStatuses = ["pending", "in_progress", "done", "skipped"];
+				if (!Number.isInteger(stepIndex)) {
 					results.push({
 						name: tc.name,
 						ok: false,
-						message: "Invalid stepIndex or status",
+						message: `stepIndex must be an integer (0-based), got ${JSON.stringify(tc.arguments.stepIndex)}`,
+					});
+				} else if (stepIndex < 0) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: `stepIndex must be >= 0, got ${stepIndex}`,
+					});
+				} else if (!validStatuses.includes(status)) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: `status must be one of ${validStatuses.join("|")}, got ${JSON.stringify(tc.arguments.status)}`,
+					});
+				} else if (!plan) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: "No active plan — call create_plan before update_todo",
+					});
+				} else if (stepIndex >= plan.steps.length) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message: `stepIndex ${stepIndex} is out of range; the current plan has ${plan.steps.length} step${plan.steps.length === 1 ? "" : "s"} (0-based). Use index 0..${plan.steps.length - 1}.`,
 					});
 				} else {
 					useAIStore.getState().updatePlanStep(stepIndex, status);
