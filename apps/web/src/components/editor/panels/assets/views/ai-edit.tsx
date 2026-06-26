@@ -1983,65 +1983,153 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								? `${toolCallCount} action${toolCallCount > 1 ? "s" : ""} completed`
 								: `${successCount}/${toolCallCount} actions done`}
 						</div>
-						{message.toolCalls?.map((tc, idx) => {
-							const toolKey = `${tc.name}-${idx}`;
-							return (
-								<motion.div
-									key={toolKey}
-									initial={{ opacity: 0, x: -4 }}
-									animate={{ opacity: 1, x: 0 }}
-									transition={{ delay: idx * 0.05 }}
-									className={cn(
-										"flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
-										tc.result?.ok
-											? "border-emerald-400/15 bg-emerald-400/[0.04]"
-											: tc.result
-												? "border-red-400/15 bg-red-400/[0.04]"
-												: "border-white/[0.06] bg-white/[0.02]",
-									)}
-								>
-									<div
-										className={cn(
-											"grid size-4 shrink-0 place-items-center rounded-full",
-											tc.result?.ok
-												? "bg-emerald-400/15"
-												: tc.result
-													? "bg-red-400/15"
-													: "bg-white/[0.06]",
-										)}
-									>
-										<HugeiconsIcon
-											icon={
-												tc.result?.ok
-													? CheckmarkCircle02Icon
-													: tc.result
-														? Cancel01Icon
-														: MagicWand05Icon
-											}
-											className={cn(
-												"size-2.5",
-												tc.result?.ok
-													? "text-emerald-300"
-													: tc.result
-														? "text-red-300"
-														: "text-white/50",
-											)}
-										/>
-									</div>
-									<span className="shrink-0 font-mono text-[10px] font-medium text-white/80">
-										{tc.name}
-									</span>
-									{tc.result?.message && (
-										<span className="truncate text-[10px] text-white/40">
-											{tc.result.message}
-										</span>
-									)}
-								</motion.div>
-							);
-						})}
+						{message.toolCalls?.map((tc, i) => (
+							<ToolCallRow
+								key={`${tc.name}-${JSON.stringify(tc.args).slice(0, 20)}-${tc.result?.ok ? "ok" : "pending"}`}
+								tc={tc}
+								idx={i}
+							/>
+						))}
 					</div>
 				)}
 			</div>
+		</motion.div>
+	);
+}
+
+/**
+ * Expandable tool-call row. Click to expand and see the arguments
+ * the AI passed, the result message, and any structured data the
+ * tool returned. Collapsed state shows just the tool name + status.
+ */
+function ToolCallRow({
+	tc,
+	idx,
+}: {
+	tc: {
+		name: string;
+		args: Record<string, unknown>;
+		result?: { ok: boolean; message?: string; data?: unknown };
+	};
+	idx: number;
+}) {
+	const [expanded, setExpanded] = useState(false);
+
+	const hasDetails =
+		Object.keys(tc.args).length > 0 ||
+		tc.result?.data !== undefined ||
+		(tc.result?.message && tc.result.message.length > 40);
+
+	return (
+		<motion.div
+			initial={{ opacity: 0, x: -4 }}
+			animate={{ opacity: 1, x: 0 }}
+			transition={{ delay: idx * 0.05 }}
+			className={cn(
+				"overflow-hidden rounded-lg border",
+				tc.result?.ok
+					? "border-emerald-400/15 bg-emerald-400/[0.04]"
+					: tc.result
+						? "border-red-400/15 bg-red-400/[0.04]"
+						: "border-white/[0.06] bg-white/[0.02]",
+			)}
+		>
+			<button
+				type="button"
+				onClick={() => hasDetails && setExpanded((e) => !e)}
+				className={cn(
+					"flex w-full items-center gap-2 px-2.5 py-1.5 text-left",
+					hasDetails && "cursor-pointer hover:bg-white/[0.03]",
+				)}
+				aria-expanded={expanded}
+			>
+				<div
+					className={cn(
+						"grid size-4 shrink-0 place-items-center rounded-full",
+						tc.result?.ok
+							? "bg-emerald-400/15"
+							: tc.result
+								? "bg-red-400/15"
+								: "bg-white/[0.06]",
+					)}
+				>
+					<HugeiconsIcon
+						icon={
+							tc.result?.ok
+								? CheckmarkCircle02Icon
+								: tc.result
+									? Cancel01Icon
+									: MagicWand05Icon
+						}
+						className={cn(
+							"size-2.5",
+							tc.result?.ok
+								? "text-emerald-300"
+								: tc.result
+									? "text-red-300"
+									: "text-white/50",
+						)}
+					/>
+				</div>
+				<span className="shrink-0 font-mono text-[10px] font-medium text-white/80">
+					{tc.name}
+				</span>
+				{tc.result?.message && !expanded && (
+					<span className="min-w-0 flex-1 truncate text-[10px] text-white/40">
+						{tc.result.message}
+					</span>
+				)}
+				{hasDetails && (
+					<HugeiconsIcon
+						icon={ArrowDown03Icon}
+						className={cn(
+							"ml-auto size-3 shrink-0 text-white/30 transition-transform",
+							expanded && "rotate-180",
+						)}
+					/>
+				)}
+			</button>
+			{expanded && hasDetails && (
+				<motion.div
+					initial={{ height: 0, opacity: 0 }}
+					animate={{ height: "auto", opacity: 1 }}
+					className="border-t border-white/[0.06] px-2.5 py-2"
+				>
+					{/* Arguments */}
+					{Object.keys(tc.args).length > 0 && (
+						<div className="mb-2">
+							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
+								Arguments
+							</div>
+							<pre className="overflow-x-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
+								{JSON.stringify(tc.args, null, 2)}
+							</pre>
+						</div>
+					)}
+					{/* Result message (full, not truncated) */}
+					{tc.result?.message && (
+						<div className="mb-2">
+							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
+								Result
+							</div>
+							<p className="text-[10px] leading-relaxed text-white/60">
+								{tc.result.message}
+							</p>
+						</div>
+					)}
+					{/* Structured data */}
+					{tc.result?.data !== undefined && tc.result?.data !== null && (
+						<div>
+							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
+								Data
+							</div>
+							<pre className="max-h-40 overflow-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
+								{JSON.stringify(tc.result.data, null, 2)}
+							</pre>
+						</div>
+					)}
+				</motion.div>
+			)}
 		</motion.div>
 	);
 }

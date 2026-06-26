@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-expandable-tool-calls",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Expandable tool calls in AI chat",
+		items: [
+			"Each tool call in AI chat messages is now expandable. Click a tool call row to see the arguments the AI passed, the full result message, and any structured data the tool returned. Collapsed rows show just the tool name and a short status — expanded rows show everything in a clean JSON view.",
+		],
+	},
+	{
 		id: "2026-06-27-clickable-hashtags",
 		date: "2026-06-27",
 		tag: "feature",
