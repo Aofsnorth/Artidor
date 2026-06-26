@@ -483,65 +483,6 @@ export function AIEditView() {
 					onDeleteConversation={(id) => ai.deleteConversation(id)}
 				/>
 
-				{/* Reference button — sits directly above the chat.
-				    Peeks a sliver when idle, fully reveals on hover. */}
-				<div className="group/ref relative flex items-center gap-1.5">
-					<div className="flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-out max-h-0 opacity-0 group-hover/ref:max-h-12 group-hover/ref:opacity-100">
-						<button
-							type="button"
-							onClick={() => fileInputRef.current?.click()}
-							disabled={isExtracting}
-							className={cn(
-								"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
-								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
-								isExtracting && "cursor-wait opacity-60",
-							)}
-						>
-							<HugeiconsIcon icon={Upload01Icon} className="size-3" />
-							{isExtracting ? "Analysing…" : "Reference"}
-						</button>
-						<input
-							ref={fileInputRef}
-							type="file"
-							accept="video/*"
-							className="hidden"
-							onChange={(e) => {
-								const f = e.target.files?.[0];
-								if (f) void handleFile(f);
-								e.target.value = "";
-							}}
-						/>
-						{ai.referenceVideoName && (
-							<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
-								<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
-								<span className="truncate">{ai.referenceVideoName}</span>
-								<button
-									type="button"
-									onClick={() => editor.ai.clearReference()}
-									className="ml-0.5 text-white/30 hover:text-white/60"
-									aria-label="Clear reference"
-								>
-									<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-								</button>
-							</span>
-						)}
-					</div>
-					{/* Peek sliver — always visible, shows a tiny hint */}
-					{!ai.referenceVideoName && (
-						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/15 transition-opacity group-hover/ref:opacity-0">
-							<HugeiconsIcon icon={Upload01Icon} className="size-2" />
-							ref
-						</span>
-					)}
-					{/* Reference indicator — always visible when a ref is set */}
-					{ai.referenceVideoName && (
-						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/25 transition-opacity group-hover/ref:opacity-0">
-							<HugeiconsIcon icon={Video01Icon} className="size-2" />
-							ref set
-						</span>
-					)}
-				</div>
-
 				{/* Quick actions — collapses to dropdown on narrow screens */}
 				<QuickActionsBar
 					actions={QUICK_ACTIONS}
@@ -653,6 +594,65 @@ export function AIEditView() {
 						>
 							<HugeiconsIcon icon={ArrowDown03Icon} className="size-3" />
 						</button>
+					)}
+				</div>
+
+				{/* Reference button — sits directly above the chat bar.
+				    Peeks a sliver when idle, fully reveals on hover. */}
+				<div className="group/ref relative flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-out max-h-0 opacity-0 group-hover/ref:max-h-12 group-hover/ref:opacity-100">
+						<button
+							type="button"
+							onClick={() => fileInputRef.current?.click()}
+							disabled={isExtracting}
+							className={cn(
+								"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
+								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
+								isExtracting && "cursor-wait opacity-60",
+							)}
+						>
+							<HugeiconsIcon icon={Upload01Icon} className="size-3" />
+							{isExtracting ? "Analysing…" : "Reference"}
+						</button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="video/*"
+							className="hidden"
+							onChange={(e) => {
+								const f = e.target.files?.[0];
+								if (f) void handleFile(f);
+								e.target.value = "";
+							}}
+						/>
+						{ai.referenceVideoName && (
+							<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
+								<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
+								<span className="truncate">{ai.referenceVideoName}</span>
+								<button
+									type="button"
+									onClick={() => editor.ai.clearReference()}
+									className="ml-0.5 text-white/30 hover:text-white/60"
+									aria-label="Clear reference"
+								>
+									<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+								</button>
+							</span>
+						)}
+					</div>
+					{/* Peek sliver — always visible, shows a tiny hint */}
+					{!ai.referenceVideoName && (
+						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/15 transition-opacity group-hover/ref:opacity-0">
+							<HugeiconsIcon icon={Upload01Icon} className="size-2" />
+							ref
+						</span>
+					)}
+					{/* Reference indicator — always visible when a ref is set */}
+					{ai.referenceVideoName && (
+						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/25 transition-opacity group-hover/ref:opacity-0">
+							<HugeiconsIcon icon={Video01Icon} className="size-2" />
+							ref set
+						</span>
 					)}
 				</div>
 

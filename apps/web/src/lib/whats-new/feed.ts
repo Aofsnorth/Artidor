@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-ref-button-above-chatbar",
+		date: "2026-06-28",
+		tag: "fix",
+		title: "Reference button moved above the chat bar",
+		items: [
+			"The Reference video button now sits directly above the chat input bar instead of above the messages list, making it easier to find when composing a prompt.",
+		],
+	},
+	{
 		id: "2026-06-28-puter-model-fast",
 		date: "2026-06-28",
 		tag: "fix",
