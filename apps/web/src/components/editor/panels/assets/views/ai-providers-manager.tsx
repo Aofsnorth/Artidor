@@ -553,7 +553,8 @@ function ProviderFormDialog({
 		video: Array<{ id: string; provider: string; name?: string }>;
 		image: Array<{ id: string; provider: string; name?: string }>;
 		audio: Array<{ id: string; provider: string; name?: string }>;
-	}>({ video: [], image: [], audio: [] });
+		media: Array<{ id: string; provider: string; name?: string }>;
+	}>({ video: [], image: [], audio: [], media: [] });
 
 	// Countdown timer for the Puter warning popup. The popup cannot be
 	// dismissed until the countdown reaches 0.
@@ -1019,21 +1020,14 @@ function ProviderFormDialog({
 								onChange={setAudioModel}
 								options={kind === "puter" ? puterMediaModels.audio : []}
 							/>
-							<div className="flex flex-col gap-1">
-								<label
-									htmlFor="provider-media-model"
-									className="text-[10px] text-white/45"
-								>
-									Media model
-								</label>
-								<Input
-									id="provider-media-model"
-									value={mediaModel}
-									placeholder="e.g. music-gen, audio-lm"
-									onChange={(e) => setMediaModel(e.target.value)}
-									className="h-8 font-mono text-[11px]"
-								/>
-							</div>
+							<MediaModelField
+								id="provider-media-model"
+								label="Media model"
+								value={mediaModel}
+								placeholder="e.g. music-gen, audio-lm"
+								onChange={setMediaModel}
+								options={kind === "puter" ? puterMediaModels.media : []}
+							/>
 						</div>
 					</div>
 

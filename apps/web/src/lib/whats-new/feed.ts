@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-puter-toolcall-errorcard-media",
+		date: "2026-06-28",
+		tag: "fix",
+		title: "Puter.js tool call parsing, dismissible errors, media model dropdown",
+		items: [
+			"Fixed Puter.js models (like minimax) that emit XML-based tool calls (<tool_call>/<invoke> tags) instead of using native function calling — these are now parsed and executed properly instead of showing as raw text in the chat.",
+			"Error cards in the chat can now be dismissed with the X button — previously the icon was decorative and couldn't be clicked.",
+			"Media model field in the Add/Edit provider dialog now uses a dropdown for Puter.js providers instead of free text, matching the video/image/audio model fields.",
+		],
+	},
+	{
 		id: "2026-06-28-autolearn-settings-sync",
 		date: "2026-06-28",
 		tag: "fix",

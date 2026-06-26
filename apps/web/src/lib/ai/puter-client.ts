@@ -191,7 +191,11 @@ const IMAGE_PATTERNS = [
 ];
 const AUDIO_PATTERNS = [
 	"tts", "speech", "polly", "bark", "elevenlabs",
-	"whisper", "audio", "music", "suno", "udio",
+	"whisper", "audio", "suno", "udio",
+];
+const MEDIA_PATTERNS = [
+	"music", "suno", "udio", "stable-audio",
+	"media", "generate", "gen",
 ];
 
 function matchAny(id: string, patterns: string[]): boolean {
@@ -199,18 +203,20 @@ function matchAny(id: string, patterns: string[]): boolean {
 }
 
 /**
- * Filter a list of Puter models into video/image/audio categories.
+ * Filter a list of Puter models into video/image/audio/media categories.
  * This is a pure function — no network calls.
  */
 function filterMediaModels(all: PuterModel[]): {
 	video: PuterModel[];
 	image: PuterModel[];
 	audio: PuterModel[];
+	media: PuterModel[];
 } {
 	return {
 		video: all.filter((m) => matchAny(m.id, VIDEO_PATTERNS)),
 		image: all.filter((m) => matchAny(m.id, IMAGE_PATTERNS)),
 		audio: all.filter((m) => matchAny(m.id, AUDIO_PATTERNS)),
+		media: all.filter((m) => matchAny(m.id, MEDIA_PATTERNS)),
 	};
 }
 
@@ -226,6 +232,7 @@ export async function fetchPuterMediaModels(): Promise<{
 	video: PuterModel[];
 	image: PuterModel[];
 	audio: PuterModel[];
+	media: PuterModel[];
 }> {
 	const all = await fetchPuterModels();
 	return filterMediaModels(all);
@@ -245,6 +252,7 @@ export async function fetchPuterModelsAndMedia(): Promise<{
 		video: PuterModel[];
 		image: PuterModel[];
 		audio: PuterModel[];
+		media: PuterModel[];
 	};
 }> {
 	// Use the cached fetch — avoids a redundant listModels() call
@@ -326,6 +334,179 @@ function toPuterMessages(messages: unknown[]): unknown[] {
  * @param tools - Optional array of tool definitions (OpenAI function format).
  * @param signal - Optional AbortSignal to cancel the stream.
  */
+/**
+ * Parse text-based tool calls from models that don't support native
+ * function calling (e.g. minimax via Puter.js). These models emit
+ * XML-like tags in their text output instead of using the tool_use
+ * stream event.
+ *
+ * Supported formats:
+ *   <tool_call>
+ *   <invoke name="tool_name">
+ *   <parameter name="param_name">value</parameter>
+ *   </invoke>
+ *   </tool_call>
+ *
+ * Also handles the simpler:
+ *   <tool_call name="tool_name">{"arg": "value"}</tool_call>
+ *
+ * @returns An array of parsed tool calls. The caller is responsible
+ *          for stripping the matched XML from the displayed text.
+ */
+function parseTextToolCalls(text: string): Array<{
+	id: string;
+	name: string;
+	arguments: Record<string, unknown>;
+}> {
+	const calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
+
+	// Match <invoke name="...">...<parameter name="...">...</parameter>...</invoke>
+	const invokeRegex = /<invoke\s+name="([^"]+)">([\s\S]*?)<\/invoke>/g;
+	let match: RegExpExecArray | null;
+	// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
+	while ((match = invokeRegex.exec(text)) !== null) {
+		const name = match[1];
+		const body = match[2];
+		const args: Record<string, unknown> = {};
+		const paramRegex = /<parameter\s+name="([^"]+)">([\s\S]*?)<\/parameter>/g;
+		let paramMatch: RegExpExecArray | null;
+		// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
+		while ((paramMatch = paramRegex.exec(body)) !== null) {
+			const paramName = paramMatch[1];
+			let paramValue: unknown = paramMatch[2].trim();
+			// Try to parse as JSON for non-string types (numbers, booleans, arrays, objects)
+			try {
+				paramValue = JSON.parse(paramValue as string);
+			} catch {
+				// Keep as string if it's not valid JSON
+			}
+			args[paramName] = paramValue;
+		}
+		calls.push({
+			id: crypto.randomUUID(),
+			name,
+			arguments: args,
+		});
+	}
+
+	// Also match the simpler <tool_call name="...">{json}</tool_call>
+	if (calls.length === 0) {
+		const simpleRegex = /<tool_call\s+name="([^"]+)">([\s\S]*?)<\/tool_call>/g;
+		// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
+		while ((match = simpleRegex.exec(text)) !== null) {
+			const name = match[1];
+			let args: Record<string, unknown> = {};
+			try {
+				args = JSON.parse(match[2].trim());
+			} catch {
+				// Keep empty args if JSON parse fails
+			}
+			calls.push({
+				id: crypto.randomUUID(),
+				name,
+				arguments: args,
+			});
+		}
+	}
+
+	return calls;
+}
+
+/**
+ * Strip text-based tool call XML tags from the displayed text.
+ * Removes <tool_call>, <invoke>, <parameter>, and their closing tags.
+ */
+function stripToolCallXml(text: string): string {
+	return text
+		.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")
+		.replace(/<tool_call\s+name="[^"]+">[\s\S]*?<\/tool_call>/g, "")
+		.replace(/<invoke\s+name="[^"]+">[\s\S]*?<\/invoke>/g, "")
+		.replace(/<parameter\s+name="[^"]+">[\s\S]*?<\/parameter>/g, "")
+		.replace(/<\/?(?:tool_call|invoke|parameter)[^>]*>/g, "")
+		.trim();
+}
+
+/**
+ * Buffered text stream parser. Accumulates text chunks and detects
+ * tool call XML tags that may span multiple chunks. Yields clean
+ * text deltas (with XML stripped) and tool calls when complete.
+ */
+class TextToolCallParser {
+	private buffer = "";
+	private yieldedLength = 0;
+
+	/** Feed a new text chunk. Returns text to yield and/or tool calls. */
+	feed(text: string): { delta?: string; toolCalls?: PuterStreamChunk["toolCalls"] } {
+		this.buffer += text;
+
+		// Check if we have complete tool_call blocks
+		const hasOpenTag = this.buffer.includes("<tool_call") || this.buffer.includes("<invoke");
+		const hasCloseTag = this.buffer.includes("</tool_call>") || this.buffer.includes("</invoke>");
+
+		if (hasOpenTag && !hasCloseTag) {
+			// Tool call is still being streamed — don't yield the partial XML.
+			// Yield any text before the opening tag.
+			const openIdx = this.buffer.search(/<tool_call|<invoke/);
+			if (openIdx > this.yieldedLength) {
+				const safeText = this.buffer.slice(this.yieldedLength, openIdx);
+				this.yieldedLength = openIdx;
+				if (safeText) return { delta: safeText };
+			}
+			return {};
+		}
+
+		if (hasOpenTag && hasCloseTag) {
+			// Complete tool call(s) found — parse them
+			const toolCalls = parseTextToolCalls(this.buffer);
+			// Yield any text before the tool call
+			const openIdx = this.buffer.search(/<tool_call|<invoke/);
+			let beforeText = "";
+			if (openIdx > this.yieldedLength) {
+				beforeText = this.buffer.slice(this.yieldedLength, openIdx);
+			}
+			// Strip all tool call XML from the buffer
+			const cleanText = stripToolCallXml(this.buffer);
+			// Yield the clean text minus what we already yielded
+			const newText = cleanText.slice(
+				Math.min(this.yieldedLength, cleanText.length),
+			);
+			this.buffer = cleanText;
+			this.yieldedLength = cleanText.length;
+
+			const delta = (beforeText + newText).trim();
+			return {
+				delta: delta || undefined,
+				toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+			};
+		}
+
+		// No tool call tags — yield the new text normally
+		const newText = this.buffer.slice(this.yieldedLength);
+		this.yieldedLength = this.buffer.length;
+		return { delta: newText };
+	}
+
+	/** Flush any remaining buffered text at stream end. */
+	flush(): { delta?: string; toolCalls?: PuterStreamChunk["toolCalls"] } {
+		if (this.yieldedLength < this.buffer.length) {
+			// Check for any remaining tool calls
+			const toolCalls = parseTextToolCalls(this.buffer);
+			if (toolCalls.length > 0) {
+				const cleanText = stripToolCallXml(this.buffer);
+				const remaining = cleanText.slice(this.yieldedLength).trim();
+				return {
+					delta: remaining || undefined,
+					toolCalls,
+				};
+			}
+			const remaining = this.buffer.slice(this.yieldedLength);
+			this.yieldedLength = this.buffer.length;
+			return { delta: remaining || undefined };
+		}
+		return {};
+	}
+}
+
 export async function* streamPuterChat(
 	messages: unknown[],
 	model: string,
@@ -347,6 +528,10 @@ export async function* streamPuterChat(
 
 	const response = await puter.ai.chat(toPuterMessages(messages), options);
 
+	// Text tool call parser — handles models that emit XML-based tool
+	// calls in text instead of using the native tool_use stream event.
+	const textParser = new TextToolCallParser();
+
 	for await (const part of response) {
 		if (signal?.aborted) {
 			yield { done: true };
@@ -354,7 +539,11 @@ export async function* streamPuterChat(
 		}
 
 		if (part.type === "text" && part.text) {
-			yield { delta: part.text };
+			// Feed through the parser to detect and extract text-based
+			// tool calls (e.g. minimax emits <tool_call> XML tags).
+			const result = textParser.feed(part.text);
+			if (result.delta) yield { delta: result.delta };
+			if (result.toolCalls) yield { toolCalls: result.toolCalls };
 		} else if (part.type === "tool_use" || (part.name && part.input)) {
 			let args: Record<string, unknown>;
 			if (typeof part.input === "string") {
@@ -381,6 +570,11 @@ export async function* streamPuterChat(
 			return;
 		}
 	}
+
+	// Flush any remaining buffered text or incomplete tool calls
+	const flushed = textParser.flush();
+	if (flushed.delta) yield { delta: flushed.delta };
+	if (flushed.toolCalls) yield { toolCalls: flushed.toolCalls };
 
 	yield { done: true };
 }
