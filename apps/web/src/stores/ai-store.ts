@@ -19,6 +19,7 @@ export interface ChatMessage {
 	content: string;
 	/** For assistant messages: tool calls the model asked for. */
 	toolCalls?: Array<{
+		id?: string;
 		name: string;
 		args: Record<string, unknown>;
 		result?: ToolExecutionResultLite;

@@ -1027,7 +1027,7 @@ export class AIManager {
 		// Finalise the assistant message with the tool-call record.
 		const finalToolCalls = toolCalls.map((tc) => {
 			const result = results.find((r) => r.name === tc.name);
-			return { name: tc.name, args: tc.arguments, result };
+			return { id: tc.id, name: tc.name, args: tc.arguments, result };
 		});
 
 		useAIStore.getState().updateMessage(assistantId, {
