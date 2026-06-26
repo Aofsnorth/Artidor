@@ -41,6 +41,7 @@ import {
 	Edit01Icon,
 	Image01Icon,
 	MagicWand05Icon,
+	MusicNote03Icon,
 	PaintBrushIcon,
 	PuzzleIcon,
 	SlidersHorizontalIcon,
@@ -55,6 +56,7 @@ import {
 import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { SUGGESTIONS } from "@/lib/ai/suggestions";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
@@ -1794,6 +1796,24 @@ function StatusBar({
 	);
 }
 
+/**
+ * Pick an icon for a suggestion based on its label keyword.
+ * This keeps the suggestion data file icon-free (compact) while
+ * still showing a relevant icon per card.
+ */
+function iconForSuggestion(label: string): typeof SparklesIcon {
+	const l = label.toLowerCase();
+	if (l.includes("text") || l.includes("caption") || l.includes("title") || l.includes("typography"))
+		return SparklesIcon;
+	if (l.includes("cut") || l.includes("pace") || l.includes("montage") || l.includes("trailer") || l.includes("reel"))
+		return Video01Icon;
+	if (l.includes("color") || l.includes("grade") || l.includes("look") || l.includes("tone") || l.includes("mood"))
+		return PaintBrushIcon;
+	if (l.includes("audio") || l.includes("music") || l.includes("sound") || l.includes("beat") || l.includes("voice"))
+		return MusicNote03Icon;
+	return MagicWand05Icon;
+}
+
 function EmptyState({
 	onPick,
 	recentCount,
@@ -1801,31 +1821,19 @@ function EmptyState({
 	onPick: (text: string) => void;
 	recentCount: number;
 }) {
-	const suggestions = useMemo(
-		() => [
-			{
-				text: "Add a 'Subscribe' text animation at the end of the timeline.",
-				label: "Text animation",
-				icon: SparklesIcon,
-			},
-			{
-				text: "Cut every 2 seconds, alternating between two clips.",
-				label: "Auto-cut",
-				icon: Video01Icon,
-			},
-			{
-				text: "Build a 3-layer parallax intro that resolves in 1.5 seconds.",
-				label: "Parallax intro",
-				icon: MagicWand05Icon,
-			},
-			{
-				text: "Take the audio waveform and turn it into a motion path.",
-				label: "Audio → motion",
-				icon: PaintBrushIcon,
-			},
-		],
-		[],
-	);
+	const suggestions = useMemo(() => {
+		// Pick 4 random suggestions from the 640-entry pool.
+		// Shuffle by sorting on a random key, then take the first 4.
+		const picked = [...SUGGESTIONS]
+			.map((s) => ({ s, r: Math.random() }))
+			.sort((a, b) => a.r - b.r)
+			.slice(0, 4)
+			.map(({ s }) => ({
+				...s,
+				icon: iconForSuggestion(s.label),
+			}));
+		return picked;
+	}, []);
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 px-2 py-6">
 			{/* Hero icon with ambient glow */}
