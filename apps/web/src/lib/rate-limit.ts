@@ -29,6 +29,17 @@ export function clientIpOf(request: Request): string {
 }
 
 export async function checkRateLimit({ request }: { request: Request }) {
-	const { success } = await baseRateLimit.limit(clientIpOf(request));
-	return { success, limited: !success };
+	// Fail open: if the rate-limit store (Upstash Redis) is unreachable
+	// — e.g. missing env vars in local dev, network outage, or Redis
+	// maintenance — we allow the request through instead of crashing the
+	// calling endpoint with a 500. Rate limiting is a secondary abuse
+	// protection, not a critical-path feature, so degrading to "no limit"
+	// is safer than breaking every API route that depends on it.
+	try {
+		const { success } = await baseRateLimit.limit(clientIpOf(request));
+		return { success, limited: !success };
+	} catch (err) {
+		console.warn("[rate-limit] store unreachable, failing open:", err);
+		return { success: true, limited: false };
+	}
 }
