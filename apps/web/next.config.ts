@@ -58,6 +58,9 @@ const cspDirectives: Record<string, string[]> = {
 		// The user adds them manually, so we allow all http/https origins.
 		"http:",
 		"https:",
+		// Puter.js SDK uses WebSocket connections for real-time communication.
+		"ws:",
+		"wss:",
 		"https://www.googleapis.com",
 		"https://accounts.google.com",
 		"https://drive.google.com",

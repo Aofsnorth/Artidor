@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-puter-csp-ws-test-fix",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Puter.js WebSocket CSP + test route fix",
+		items: [
+			"Fixed: Puter.js SDK uses WebSocket connections (ws:/wss:) for real-time communication, which were blocked by CSP. Added ws: and wss: to connect-src directive.",
+			"Fixed: Testing a Puter.js provider via the Test button returned a 400 error because the server-side test route tried to build a URL from an empty baseUrl. Puter.js providers run entirely client-side, so the test route now returns a friendly message instead of failing.",
+		],
+	},
+	{
 		id: "2026-06-27-mcp-csp-fix",
 		date: "2026-06-27",
 		tag: "fix",
