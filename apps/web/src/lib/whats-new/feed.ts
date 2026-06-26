@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-arth-chat-rendering-fix",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "Arth chat now strips reasoning tags and renders bold text",
+		items: [
+			"Arth's system prompt now identifies the assistant as 'the AI assistant inside Artidor' and instructs it to greet as 'Welcome to Artidor' instead of 'Welcome to Arth'.",
+			"Reasoning tags like  thinking and <thinking> are now stripped from the assistant's visible output before they reach the chat history. Some providers emit these tags in the same stream as the assistant text.",
+			"Chat messages now render Markdown formatting (bold, italic, code, lists) so the model's **text** and _emphasis_ actually display correctly instead of showing raw markdown syntax.",
+		],
+	},
+	{
 		id: "2026-06-26-system-prompt-compressed",
 		date: "2026-06-26",
 		tag: "performance",
