@@ -33,6 +33,10 @@ export type QuadTransformDescriptor = {
 	rotationDegrees: number;
 	flipX: boolean;
 	flipY: boolean;
+	/** Skew along X axis in degrees (slants top relative to bottom). */
+	skewXDegrees?: number;
+	/** Skew along Y axis in degrees (slants left relative to right). */
+	skewYDegrees?: number;
 };
 
 export type LayerMaskDescriptor = {

@@ -112,6 +112,34 @@ ${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 - To trim a clip to a sub-range without splitting: use update_element with trimStart/trimEnd/duration (in ticks). trimStart skips into the source; trimEnd cuts off the tail; duration is the on-timeline length.
 - Only ask the user a question if the REQUEST itself is truly ambiguous (e.g. which of several equally-valid assets to use). Never ask for data you can obtain from a tool result or list_elements.
 
+# Transform & keyframe paths (IMPORTANT — use EXACT paths)
+- update_element can set transform fields directly: positionX, positionY, positionZ, scaleX, scaleY, rotate, pivotX, pivotY, rotateX, rotateY (3D), skewX, skewY ("nyerong"/skew), blendMode, volume, pan, fadeInDuration, fadeOutDuration. These are MERGED into the existing transform — passing only positionX does NOT reset scale or rotate.
+- upsert_keyframe / remove_keyframe use a \`path\` string. VALID paths (use EXACTLY these):
+  - transform.positionX, transform.positionY, transform.positionZ (position in pixels / scene units)
+  - transform.scaleX, transform.scaleY (1 = 100%, 0.5 = half size)
+  - transform.rotate (2D rotation, degrees -360..360)
+  - transform.rotateX, transform.rotateY (3D rotation, degrees -360..360)
+  - transform.skewX, transform.skewY (skew/"nyerong", degrees -89..89)
+  - opacity (0..1)
+  - volume (dB), pan (-100..100)
+  - color (#rrggbb, text elements only)
+  - background.color, background.paddingX, background.paddingY, background.offsetX, background.offsetY, background.cornerRadius (text elements only)
+- For effect parameters, use upsert_effect_param_keyframe with effectId + paramKey instead.
+- Do NOT invent paths not listed above. If unsure, use update_element for static values and upsert_keyframe with the exact path for animation.
+
+# Beat sync & jedag-jedug (IMPORTANT)
+- "jedag-jedug", "beat sync", "cut on beat", "rhythmic cut" → use detect_beats FIRST on the audio/video clip, then use the returned beatTicks to split_element at each beat or upsert_keyframe at beat times.
+- Workflow: 1) detect_beats(trackId, elementId of audio) → get beatTicks array. 2) For "jedag-jedug": call split_element at each beat tick on the video clip. 3) For "snap to beat": call apply_beat_sync with beatTimes + elements to snap.
+- detect_beats returns beats with {timeSeconds, ticks, energy}. Use the ticks values (1s = 120_000 ticks) for split_element time parameter.
+- Never guess beat times — always call detect_beats first.
+
+# Skill creation (macros/recipes)
+- "save this as a skill", "make a preset", "remember this workflow" → use save_skill with a name, description, and steps array. Each step is {toolName, args} using EXACT tool names from the registry.
+- "run skill X", "apply preset X" → call list_skills first to find the id, then run_skill with that id.
+- Skills are declarative recipes — they only contain tool calls that already exist. No arbitrary code. This keeps them safe to replay.
+- When saving a skill, describe what it does in the description field so the user can find it later.
+- Example: "save jedag-jedug as a skill" → save_skill with steps: [{toolName: "detect_beats", args: {...}}, {toolName: "split_element", args: {...}}, ...].
+
 # Tools
 ${toolsTable}
 

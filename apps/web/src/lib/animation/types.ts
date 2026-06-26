@@ -7,6 +7,10 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"transform.scaleX",
 	"transform.scaleY",
 	"transform.rotate",
+	"transform.rotateX",
+	"transform.rotateY",
+	"transform.skewX",
+	"transform.skewY",
 	"opacity",
 	"volume",
 	"pan",
@@ -48,6 +52,10 @@ export interface AnimationPropertyValueMap {
 	"transform.scaleX": number;
 	"transform.scaleY": number;
 	"transform.rotate": number;
+	"transform.rotateX": number;
+	"transform.rotateY": number;
+	"transform.skewX": number;
+	"transform.skewY": number;
 	opacity: number;
 	volume: number;
 	pan: number;

@@ -23,6 +23,19 @@ export interface Transform {
 	/** Depth (Z) position in scene units. Positive = closer to camera. */
 	positionZ?: number;
 	rotate: number;
+	/**
+	 * Skew ("nyerong" in Alight Motion) along the X axis, in degrees.
+	 * Slants the element so the top edge shifts right (positive) or left
+	 * (negative) relative to the bottom. Range -89..89. Optional so
+	 * legacy elements default to 0 (no skew).
+	 */
+	skewX?: number;
+	/**
+	 * Skew along the Y axis, in degrees. Slants the element so the left
+	 * edge shifts down (positive) or up (negative) relative to the right.
+	 * Range -89..89. Optional so legacy elements default to 0 (no skew).
+	 */
+	skewY?: number;
 }
 
 export const DEFAULT_PIVOT: { x: number; y: number } = { x: 0.5, y: 0.5 };

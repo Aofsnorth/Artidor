@@ -104,7 +104,7 @@ export function TextEditOverlay({
 			style={{
 				left: posX,
 				top: posY,
-				transform: `translate(-50%, -50%) scale(${transform.scaleX * displayScaleX}, ${transform.scaleY * displayScaleX}) rotate(${transform.rotate}deg)`,
+				transform: `translate(-50%, -50%) scale(${transform.scaleX * displayScaleX}, ${transform.scaleY * displayScaleX}) rotate(${transform.rotate}deg) skew(${transform.skewX ?? 0}deg, ${transform.skewY ?? 0}deg)`,
 				transformOrigin: "center center",
 			}}
 		>

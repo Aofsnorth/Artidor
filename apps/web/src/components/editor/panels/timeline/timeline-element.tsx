@@ -107,6 +107,7 @@ import { cn } from "@/utils/ui";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import { getTrackTypeForElementType } from "@/lib/timeline/placement/compatibility";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useAIControlStore } from "@/stores/ai-control-store";
 import { KEYFRAME_LANE_HEIGHT_PX } from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
 import {
@@ -469,6 +470,18 @@ export function TimelineElement({
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const lockedTrackIds = useTimelineStore((s) => s.lockedTrackIds);
 	const isTrackLocked = lockedTrackIds.has(track.id);
+	// AI takeover: when the AI is executing a tool that touches this
+	// element, apply a highlight pulse + smooth position/size transition
+	// so the user can see the AI "moving" the clip in real time.
+	const aiTakeoverActive = useAIControlStore(
+		(s) => s.takeoverState === "active",
+	);
+	const aiActiveToolCall = useAIControlStore((s) => s.activeToolCall);
+	const isAIActiveOnElement =
+		aiTakeoverActive &&
+		aiActiveToolCall !== null &&
+		(aiActiveToolCall.elementIds.includes(element.id) ||
+			aiActiveToolCall.trackIds.includes(track.id));
 	const { selectedElements } = useElementSelection();
 	const requestRevealMedia = useAssetsPanelStore((s) => s.requestRevealMedia);
 	const { renderElement } = useElementPreview({
@@ -668,7 +681,10 @@ export function TimelineElement({
 			<ContextMenu>
 				<ContextMenuTrigger asChild>
 					<div
-						className="absolute top-0 select-none"
+						className={cn(
+							"absolute top-0 select-none",
+							isAIActiveOnElement && "ai-element-active ai-element-transition",
+						)}
 						style={{
 							left: `${elementLeft}px`,
 							width: `${elementWidth}px`,
@@ -683,7 +699,9 @@ export function TimelineElement({
 							zIndex:
 								isBeingDragged && dragState.dragElementIds.length > 0
 									? TIMELINE_LAYERS.dragLine + 2
-									: undefined,
+									: isAIActiveOnElement
+										? TIMELINE_LAYERS.dragLine + 1
+										: undefined,
 							pointerEvents:
 								isBeingDragged && dragState.dragElementIds.length > 0 ? "none" : undefined,
 							opacity:

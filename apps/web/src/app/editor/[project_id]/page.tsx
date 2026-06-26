@@ -48,6 +48,9 @@ import {
 import { PageTransition } from "@/components/page-transition";
 
 import { EditorFooter } from "@/components/editor/editor-footer";
+import { AuroraOverlay } from "@/components/editor/ai-takeover/aurora-overlay";
+import { AITakeoverPermissionDialog } from "@/components/editor/ai-takeover/permission-dialog";
+import { useAIControlStore as useAIControlStoreSafe } from "@/stores/ai-control-store";
 
 // Lazy-loaded dialogs/overlays. These are only mounted when their
 // internal state decides to show, so defer the JS until first use.
@@ -103,6 +106,13 @@ export default function Editor() {
 								<EditorLayout />
 							</div>
 							<EditorFooterChrome />
+							{/* AI takeover overlay + permission dialog. The aurora
+							   overlay sits above the editor chrome (z-200) but
+							   below the AI chat panel (boosted to z-210 via
+							   AITakeoverChatBoost when takeover is active) so the
+							   chat stays interactive while the editor is locked. */}
+							<AuroraOverlay />
+							<AITakeoverPermissionDialog />
 							{/* Lazy overlays — Suspense keeps a render-time safety net
 							   in case the dynamic chunks fail to load. The fallback
 							   is null because each dialog manages its own visibility
@@ -448,10 +458,12 @@ function EditorPanels() {
 							{floatingPanels.assets ? (
 								<DockPlaceholder id="assets" title="Assets" />
 							) : (
-								<div className="group/panel-slot relative size-full">
-									<AssetsPanel />
-									<PopOutButton id="assets" title="Assets" />
-								</div>
+								<AITakeoverChatBoost>
+									<div className="group/panel-slot relative size-full">
+										<AssetsPanel />
+										<PopOutButton id="assets" title="Assets" />
+									</div>
+								</AITakeoverChatBoost>
 							)}
 						</ResizablePanel>
 
@@ -531,7 +543,9 @@ function EditorPanels() {
 					title="Assets"
 					state={floatingPanels.assets}
 				>
-					<AssetsPanel />
+					<AITakeoverChatBoost>
+						<AssetsPanel />
+					</AITakeoverChatBoost>
 				</FloatingWindow>
 			)}
 			{floatingPanels.preview && (
@@ -639,5 +653,21 @@ function LazyOverlays() {
 				onOpenChange={(open) => setOpen("settings", open)}
 			/>
 		</>
+	);
+}
+
+/**
+ * Boosts the wrapped panel's z-index above the AI takeover aurora overlay
+ * (z-200) so the AI chat stays interactive while the editor is locked.
+ * When takeover is not active, renders children unchanged.
+ */
+function AITakeoverChatBoost({ children }: { children: React.ReactNode }) {
+	const takeoverActive = useAIControlStoreSafe((s) => s.takeoverState === "active");
+	return (
+		<div
+			className={takeoverActive ? "relative z-[210]" : "contents"}
+		>
+			{children}
+		</div>
 	);
 }

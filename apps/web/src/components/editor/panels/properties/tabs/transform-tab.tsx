@@ -250,6 +250,52 @@ export function TransformTab({
 		}),
 	});
 
+	const skewX = useKeyframedNumberProperty({
+		trackId,
+		elementId: element.id,
+		animations: element.animations,
+		propertyPath: "transform.skewX",
+		localTime,
+		isPlayheadWithinElementRange,
+		displayValue: Math.round(resolvedTransform.skewX ?? 0).toString(),
+		parse: (input) => {
+			const parsed = parseNumericInput({ input });
+			if (parsed === null) return null;
+			return clamp({ value: parsed, min: -89, max: 89 });
+		},
+		valueAtPlayhead: resolvedTransform.skewX ?? 0,
+		step: 0.1,
+		buildBaseUpdates: ({ value }) => ({
+			transform: {
+				...element.transform,
+				skewX: value,
+			},
+		}),
+	});
+
+	const skewY = useKeyframedNumberProperty({
+		trackId,
+		elementId: element.id,
+		animations: element.animations,
+		propertyPath: "transform.skewY",
+		localTime,
+		isPlayheadWithinElementRange,
+		displayValue: Math.round(resolvedTransform.skewY ?? 0).toString(),
+		parse: (input) => {
+			const parsed = parseNumericInput({ input });
+			if (parsed === null) return null;
+			return clamp({ value: parsed, min: -89, max: 89 });
+		},
+		valueAtPlayhead: resolvedTransform.skewY ?? 0,
+		step: 0.1,
+		buildBaseUpdates: ({ value }) => ({
+			transform: {
+				...element.transform,
+				skewY: value,
+			},
+		}),
+	});
+
 	const hasPositionKeyframe = hasGroupKeyframeAtTime({
 		animations: element.animations,
 		group: "transform.position",
@@ -393,6 +439,8 @@ export function TransformTab({
 			positionZ: DEFAULTS.element.transform.positionZ ?? 0,
 			rotate: DEFAULTS.element.transform.rotate,
 			pivot: { x: 0.5, y: 0.5 },
+			skewX: 0,
+			skewY: 0,
 		};
 		editor.timeline.updateElements({
 			updates: [
@@ -687,6 +735,58 @@ export function TransformTab({
 											</svg>
 										</Button>
 									</div>
+								</SectionField>
+							</div>
+						</div>
+
+						<div className="h-px bg-white/[0.06]" />
+
+						<div className="flex flex-col gap-2">
+							<div className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
+								Skew (Nyerong)
+							</div>
+							<div className="grid grid-cols-2 gap-2">
+								<SectionField label="X" className="min-w-0">
+									<NumberField
+										icon="X"
+										className="h-8 bg-white/[0.045]"
+										value={skewX.displayValue}
+										onFocus={skewX.onFocus}
+										onChange={skewX.onChange}
+										onBlur={skewX.onBlur}
+										dragSensitivity="slow"
+										onScrub={skewX.scrubTo}
+										onScrubEnd={skewX.commitScrub}
+										onReset={() => skewX.commitValue({ value: 0 })}
+										isDefault={isPropertyAtDefault({
+											hasAnimatedKeyframes: skewX.hasAnimatedKeyframes,
+											isPlayheadWithinElementRange,
+											resolvedValue: resolvedTransform.skewX ?? 0,
+											staticValue: element.transform.skewX ?? 0,
+											defaultValue: 0,
+										})}
+									/>
+								</SectionField>
+								<SectionField label="Y" className="min-w-0">
+									<NumberField
+										icon="Y"
+										className="h-8 bg-white/[0.045]"
+										value={skewY.displayValue}
+										onFocus={skewY.onFocus}
+										onChange={skewY.onChange}
+										onBlur={skewY.onBlur}
+										dragSensitivity="slow"
+										onScrub={skewY.scrubTo}
+										onScrubEnd={skewY.commitScrub}
+										onReset={() => skewY.commitValue({ value: 0 })}
+										isDefault={isPropertyAtDefault({
+											hasAnimatedKeyframes: skewY.hasAnimatedKeyframes,
+											isPlayheadWithinElementRange,
+											resolvedValue: resolvedTransform.skewY ?? 0,
+											staticValue: element.transform.skewY ?? 0,
+											defaultValue: 0,
+										})}
+									/>
 								</SectionField>
 							</div>
 						</div>

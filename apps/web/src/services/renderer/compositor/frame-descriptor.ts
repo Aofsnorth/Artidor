@@ -546,6 +546,8 @@ function computeVisualTransform({
 		rotationDegrees: resolved.transform.rotate,
 		flipX: scaledWidth < 0,
 		flipY: scaledHeight < 0,
+		skewXDegrees: resolved.transform.skewX,
+		skewYDegrees: resolved.transform.skewY,
 	};
 }
 
@@ -730,13 +732,25 @@ function drawTransformedCanvas({
 	const y = transform.centerY - transform.height / 2;
 	const flipX = transform.flipX ? -1 : 1;
 	const flipY = transform.flipY ? -1 : 1;
+	const skewX = transform.skewXDegrees ?? 0;
+	const skewY = transform.skewYDegrees ?? 0;
 	const requiresTransform =
-		transform.rotationDegrees !== 0 || flipX !== 1 || flipY !== 1;
+		transform.rotationDegrees !== 0 ||
+		flipX !== 1 ||
+		flipY !== 1 ||
+		skewX !== 0 ||
+		skewY !== 0;
 
 	ctx.save();
 	if (requiresTransform) {
 		ctx.translate(transform.centerX, transform.centerY);
 		ctx.rotate((transform.rotationDegrees * Math.PI) / 180);
+		// Skew: tan(deg) gives the shear factor. ctx.transform(a, b, c, d, e, f)
+		// applies matrix [a c e; b d f; 0 0 1]. For skewX, b=tan(skewX); for
+		// skewY, c=tan(skewY). Combined with scale via separate ctx.scale call.
+		if (skewX !== 0 || skewY !== 0) {
+			ctx.transform(1, Math.tan((skewX * Math.PI) / 180), Math.tan((skewY * Math.PI) / 180), 1, 0, 0);
+		}
 		ctx.scale(flipX, flipY);
 		ctx.translate(-transform.centerX, -transform.centerY);
 	}

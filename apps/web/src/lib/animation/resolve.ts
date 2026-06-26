@@ -83,6 +83,19 @@ export function resolveTransformAtTime({
 			localTime: safeLocalTime,
 			fallbackValue: baseTransform.rotate,
 		}),
+		pivot: baseTransform.pivot,
+		skewX: resolveAnimationPathValueAtTime({
+			animations,
+			propertyPath: "transform.skewX",
+			localTime: safeLocalTime,
+			fallbackValue: baseTransform.skewX ?? 0,
+		}),
+		skewY: resolveAnimationPathValueAtTime({
+			animations,
+			propertyPath: "transform.skewY",
+			localTime: safeLocalTime,
+			fallbackValue: baseTransform.skewY ?? 0,
+		}),
 	};
 }
 

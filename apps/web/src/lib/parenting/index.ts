@@ -172,6 +172,11 @@ export function composeWorldTransform({
 		scaleX,
 		scaleY,
 		rotate,
+		// Skew is passed through from the leaf only. Parent skew does not
+		// compose into children (skew composition is mathematically complex
+		// and not commonly needed in parent chains).
+		skewX: leaf.transform.skewX,
+		skewY: leaf.transform.skewY,
 		opacity,
 	};
 }

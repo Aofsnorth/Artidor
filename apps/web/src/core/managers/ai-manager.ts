@@ -42,6 +42,7 @@ import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
+import { useAIControlStore, type ActiveToolCall } from "@/stores/ai-control-store";
 import type { FrameRate } from "artidor-wasm";
 
 /**
@@ -158,6 +159,199 @@ export class AIManager {
 		this.listeners.forEach((fn) => {
 			fn();
 		});
+	}
+
+	/**
+	 * Tools that modify the editor document (timeline, scene, project
+	 * settings, media library). These require the user's takeover
+	 * approval before the AI can execute them. Read-only tools
+	 * (list_assets, list_elements, capture_frame, web_fetch, plan tools,
+	 * generate_* — generation doesn't touch the document directly) are
+	 * exempt.
+	 */
+	private static readonly EDITOR_MODIFYING_TOOLS = new Set<string>([
+		"set_project_fps",
+		"set_project_canvas",
+		"set_project_background",
+		"save_project",
+		"create_scene",
+		"rename_scene",
+		"delete_scene",
+		"switch_scene",
+		"add_bookmark",
+		"remove_bookmark",
+		"add_track",
+		"remove_track",
+		"set_track_muted",
+		"set_track_visible",
+		"insert_text_element",
+		"insert_camera_layer",
+		"insert_null_layer",
+		"move_element",
+		"split_element",
+		"delete_elements",
+		"update_element",
+		"duplicate_elements",
+		"group_elements",
+		"ungroup_elements",
+		"combine_elements",
+		"set_parent",
+		"unlink_parent",
+		"add_clip_effect",
+		"remove_clip_effect",
+		"update_clip_effect_params",
+		"remove_mask",
+		"toggle_effect_enabled",
+		"reorder_effects",
+		"toggle_mask_inverted",
+		"upsert_keyframe",
+		"remove_keyframe",
+		"retime_keyframe",
+		"upsert_effect_param_keyframe",
+		"remove_effect_param_keyframe",
+		"paste_keyframes",
+		"add_transition",
+		"remove_transition",
+		"update_transition",
+		"play",
+		"pause",
+		"seek",
+		"set_volume",
+		"toggle_source_audio_separation",
+		"add_media_to_timeline",
+		"import_and_add_to_timeline",
+		"import_asset_from_url",
+		"delete_asset",
+		"create_folder",
+		"rename_folder",
+		"delete_folder",
+		"move_asset_to_folder",
+		"apply_preset",
+		"export_project",
+		"undo",
+		"redo",
+		"select_elements",
+		"clear_selection",
+		"copy",
+		"paste",
+		"copy-style",
+		"paste-style",
+		"copy-effect",
+		"paste-effect",
+	]);
+
+	/**
+	 * Map a tool name + args to an {@link ActiveToolCall} descriptor for
+	 * the takeover UI (label, action verb, affected element/track IDs).
+	 * This is what drives the timeline highlight + animation.
+	 */
+	private describeToolCall(
+		name: string,
+		args: Record<string, unknown>,
+	): Omit<ActiveToolCall, "startedAt"> {
+		const ids = (v: unknown): string[] =>
+			Array.isArray(v)
+				? v
+						.map((x) =>
+							typeof x === "string"
+								? x
+								: x && typeof x === "object" && "elementId" in x
+									? String((x as { elementId: unknown }).elementId)
+									: "",
+						)
+						.filter(Boolean)
+				: typeof v === "string"
+					? [v]
+					: [];
+		const elementIds = ids(args.elementId ?? args.elementIds);
+		const trackIds = ids(args.trackId ?? args.targetTrackId ?? args.sourceTrackId);
+		const labelMap: Record<string, string> = {
+			move_element: "Moving clip",
+			split_element: "Splitting clip",
+			delete_elements: "Deleting clip",
+			update_element: "Updating clip",
+			duplicate_elements: "Duplicating clip",
+			insert_text_element: "Adding text",
+			insert_camera_layer: "Adding camera",
+			insert_null_layer: "Adding null layer",
+			add_media_to_timeline: "Adding media",
+			import_and_add_to_timeline: "Importing media",
+			add_clip_effect: "Adding effect",
+			remove_clip_effect: "Removing effect",
+			update_clip_effect_params: "Tuning effect",
+			add_transition: "Adding transition",
+			remove_transition: "Removing transition",
+			upsert_keyframe: "Adding keyframe",
+			remove_keyframe: "Removing keyframe",
+			add_track: "Adding track",
+			remove_track: "Removing track",
+			seek: "Seeking",
+			play: "Playing",
+			pause: "Pausing",
+			export_project: "Exporting",
+		};
+		const actionMap: Record<string, ActiveToolCall["action"]> = {
+			move_element: "move",
+			split_element: "split",
+			delete_elements: "delete",
+			insert_text_element: "insert",
+			insert_camera_layer: "insert",
+			insert_null_layer: "insert",
+			add_media_to_timeline: "insert",
+			import_and_add_to_timeline: "insert",
+			duplicate_elements: "insert",
+			update_element: "update",
+			update_clip_effect_params: "effect",
+			add_clip_effect: "effect",
+			remove_clip_effect: "effect",
+			toggle_effect_enabled: "effect",
+			reorder_effects: "effect",
+			add_transition: "effect",
+			remove_transition: "effect",
+			update_transition: "effect",
+			upsert_keyframe: "update",
+			remove_keyframe: "update",
+			retime_keyframe: "update",
+		};
+		return {
+			name,
+			label: labelMap[name] ?? "Editing",
+			elementIds,
+			trackIds,
+			action: actionMap[name] ?? "other",
+		};
+	}
+
+	/**
+	 * Request takeover approval. If the user already approved this
+	 * session, resolves immediately. Otherwise triggers the permission
+	 * dialog and waits for the user's decision.
+	 *
+	 * @returns true if approved, false if denied.
+	 */
+	private async requestTakeoverApproval(signal: AbortSignal): Promise<boolean> {
+		const control = useAIControlStore.getState();
+		if (control.sessionApproved) {
+			// Already approved — ensure state is active and proceed.
+			if (control.takeoverState !== "active") {
+				useAIControlStore.getState().requestTakeover();
+			}
+			return true;
+		}
+		// Request — this flips state to "requesting" which shows the dialog.
+		useAIControlStore.getState().requestTakeover();
+		this.notify();
+		// Wait for the user to approve or deny. We poll the store because
+		// zustand doesn't expose a promise-based wait. The poll is cheap
+		// (every 120ms) and stops as soon as the state leaves "requesting".
+		while (!signal.aborted) {
+			await new Promise((r) => setTimeout(r, 120));
+			const s = useAIControlStore.getState();
+			if (s.takeoverState === "active") return true;
+			if (s.takeoverState === "idle") return false;
+			// still "requesting" → keep waiting
+		}
+		return false;
 	}
 
 	/** Snapshot the live project into a ChatContext for the LLM. */
@@ -321,14 +515,40 @@ export class AIManager {
 				// Show a transient retry status to the user.
 				if (attempt < MAX_IN_ROUND_RETRIES - 1) {
 					const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
+					// Populate the countdown so the retry UI shows the real
+					// remaining seconds instead of "0s". The retry block in
+					// the chat panel renders `{retryIn}s` whenever the status
+					// is "retrying"; without setting retryIn the in-round
+					// backoff wait displayed a misleading "0s" countdown.
+					const delaySeconds = Math.max(1, Math.round(delay / 1000));
 					useAIStore.getState().setStatus("retrying");
+					useAIStore.getState().setRetry(attempt + 1, delaySeconds);
 					useAIStore.getState().setError(
-						`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES})…`,
+						`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${delaySeconds}s…`,
 					);
 					this.notify();
+					// Tick the per-second countdown during the backoff wait so
+					// the UI counts down live (mirrors scheduleRetry's timer).
+					this.clearRetryTimer();
+					this.retryTimer = setInterval(() => {
+						const current = useAIStore.getState();
+						current.tickRetry();
+						if (current.retryIn > 0) {
+							current.setError(
+								`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${current.retryIn}s…`,
+							);
+						}
+						this.notify();
+					}, 1000);
 					// Wait before retrying (exponential backoff).
 					await new Promise((resolve) => setTimeout(resolve, delay));
+					this.clearRetryTimer();
 					if (signal.aborted) return;
+					// Transition back to streaming so the "Thinking…" indicator
+					// shows while the next attempt's request is in flight,
+					// rather than leaving the stale retry countdown visible.
+					useAIStore.getState().setStatus("streaming");
+					this.notify();
 				}
 			}
 			if (!result || result.kind === "error") {
@@ -340,6 +560,7 @@ export class AIManager {
 					this.clearRetryTimer();
 					useAIStore.getState().clearRetry();
 					useAIStore.getState().setStatus("error");
+					useAIControlStore.getState().endTakeover();
 					// Build a clear, actionable error message. Distinguish a real
 					// network problem from a model/provider error so the user isn't
 					// told "connection failed" when the underlying issue is the LLM
@@ -413,12 +634,18 @@ export class AIManager {
 		this.clearRetryTimer();
 		useAIStore.getState().clearRetry();
 		useAIStore.getState().setStatus("idle");
+		// End the AI takeover — the editor is interactive again.
+		useAIControlStore.getState().endTakeover();
 		this.notify();
 
 		// If there are queued messages, send the next one.
 		this.drainQueue();
 		} finally {
 			this.isProcessing = false;
+			// Safety net: ensure takeover ends even on early returns.
+			if (useAIControlStore.getState().takeoverState !== "idle") {
+				useAIControlStore.getState().endTakeover();
+			}
 		}
 	}
 
@@ -889,6 +1116,31 @@ export class AIManager {
 			data?: unknown;
 		}> = [];
 
+		// AI takeover gate: if any tool in this batch modifies the editor,
+		// request the user's approval before executing. Once approved for
+		// the session, subsequent batches skip the dialog. If denied, we
+		// record a refusal for every modifying tool and skip execution.
+		const hasModifying = toolCalls.some(
+			(tc) =>
+				AIManager.EDITOR_MODIFYING_TOOLS.has(tc.name) ||
+				tc.name.startsWith("mcp__"),
+		);
+		if (hasModifying && !signal.aborted) {
+			const approved = await this.requestTakeoverApproval(signal);
+			if (!approved) {
+				for (const tc of toolCalls) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message:
+							"User denied AI takeover. The editor is locked until you approve. Ask the user to allow takeover, then retry.",
+					});
+				}
+				this.finalizeToolCallRecords(assistantId, toolCalls, results);
+				return;
+			}
+		}
+
 		for (const tc of toolCalls) {
 			if (signal.aborted) return;
 			// Planning tools — these modify the AI store directly, not
@@ -1063,12 +1315,26 @@ export class AIManager {
 					});
 				}
 			} else {
+				// Track the active tool call so the takeover UI can
+				// highlight/animate the affected elements. Only editor-
+				// modifying tools surface a descriptor; read-only tools
+				// (list_*, capture_frame, web_fetch) skip it.
+				const isModifying = AIManager.EDITOR_MODIFYING_TOOLS.has(tc.name);
+				if (isModifying) {
+					useAIControlStore.getState().setActiveToolCall(
+						this.describeToolCall(tc.name, tc.arguments),
+					);
+					this.notify();
+				}
 				const r = await executeTool({
 					editor: this.editor,
 					toolName: tc.name,
 					arguments: tc.arguments,
 					source: "ai",
 				});
+				if (isModifying) {
+					useAIControlStore.getState().clearActiveToolCall();
+				}
 				results.push({
 					name: tc.name,
 					ok: r.ok,
@@ -1087,6 +1353,25 @@ export class AIManager {
 			}
 		}
 
+		this.finalizeToolCallRecords(assistantId, toolCalls, results);
+	}
+
+	/**
+	 * Finalise the assistant message with the tool-call record and append
+	 * `tool`-role messages with the results so the next LLM round can see
+	 * what each tool returned. Extracted from `executeAndRecordToolCalls`
+	 * so the takeover-denial path can reuse it without duplicating logic.
+	 */
+	private finalizeToolCallRecords(
+		assistantId: string,
+		toolCalls: ToolCallRound[],
+		results: Array<{
+			name: string;
+			ok: boolean;
+			message?: string;
+			data?: unknown;
+		}>,
+	): void {
 		// Finalise the assistant message with the tool-call record.
 		const finalToolCalls = toolCalls.map((tc) => {
 			const result = results.find((r) => r.name === tc.name);
@@ -1365,6 +1650,7 @@ export class AIManager {
 		ai.clearRetry();
 		ai.setStatus("idle");
 		ai.setError(null);
+		useAIControlStore.getState().endTakeover();
 		this.notify();
 		// Wait for the current processMessage to exit, then drain.
 		void this.waitForIdleAndDrain();
@@ -1386,6 +1672,7 @@ export class AIManager {
 		ai.clearQueue();
 		ai.setStatus("idle");
 		ai.setError(null);
+		useAIControlStore.getState().endTakeover();
 		this.notify();
 	}
 
