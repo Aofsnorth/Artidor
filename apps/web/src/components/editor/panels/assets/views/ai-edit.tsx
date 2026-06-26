@@ -84,6 +84,63 @@ import {
 	getMcpConnectionManager,
 	useMcpStore,
 } from "@/stores/mcp-store";
+import {
+	tabs as ASSETS_TABS,
+	useAssetsPanelStore,
+	type Tab as AssetsTab,
+} from "@/stores/assets-panel-store";
+
+/**
+ * Hashtag → tab mapping. Built from the assets-panel tab definitions.
+ * Both the tab key and the tab label (lowercased) are valid hashtags,
+ * plus a few common aliases (e.g. #tools → quicktools, #arth → ai).
+ * When the AI mentions a hashtag like "#transitions" in a chat message,
+ * it renders as a clickable chip that switches the assets panel to
+ * that tab.
+ */
+const HASHTAG_TO_TAB: Map<string, AssetsTab> = (() => {
+	const map = new Map<string, AssetsTab>();
+	for (const [key, def] of Object.entries(ASSETS_TABS)) {
+		// Tab key (e.g. "transitions", "effects")
+		map.set(key.toLowerCase(), key as AssetsTab);
+		// Tab label (e.g. "Adjust" → "adjust")
+		map.set(def.label.toLowerCase(), key as AssetsTab);
+	}
+	// Common aliases that don't match the key or label directly.
+	map.set("arth", "ai");
+	map.set("ai", "ai");
+	map.set("tools", "quicktools");
+	map.set("preset", "presets");
+	map.set("adjust", "adjustment");
+	return map;
+})();
+
+/**
+ * Regex matching hashtag tokens: `#` followed by 2+ word characters.
+ * Requires a non-word character (or start/end of string) before the `#`
+ * so we don't match color hex codes like `#ff0000`.
+ */
+const HASHTAG_REGEX = /(^|[\s(])#([a-zA-Z][a-zA-Z0-9_-]{1,30})/g;
+
+/**
+ * Preprocess chat message content: wrap `#hashtag` tokens that match a
+ * known tab in markdown links of the form `[#hashtag](#tab:tabKey)`.
+ * The custom `a` renderer in the Markdown component intercepts these
+ * and calls `setActiveTab` instead of navigating.
+ *
+ * Unknown hashtags (not matching any tab) are left as plain text.
+ */
+function linkifyHashtags(content: string): string {
+	return content.replace(
+		HASHTAG_REGEX,
+		(match, prefix: string, tag: string) => {
+			const lower = tag.toLowerCase();
+			const tabKey = HASHTAG_TO_TAB.get(lower);
+			if (!tabKey) return match;
+			return `${prefix}[#${tag}](#tab:${tabKey})`;
+		},
+	);
+}
 
 const QUICK_ACTIONS: {
 	label: string;
@@ -1715,6 +1772,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 	const isUser = message.role === "user";
 	const isTool = message.role === "tool";
 	const editor = useEditor();
+	const setActiveTab = useAssetsPanelStore((s) => s.setActiveTab);
 	const [isEditing, setIsEditing] = useState(false);
 	const [editText, setEditText] = useState(message.content);
 	const [copied, setCopied] = useState(false);
@@ -1837,8 +1895,31 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 									"a",
 									"br",
 								]}
+								components={{
+									a: ({ href, children }) => {
+										// Intercept hashtag links of the form
+										// `#tab:tabKey` and switch the assets
+										// panel tab instead of navigating.
+										if (href?.startsWith("#tab:")) {
+											const tabKey = href.slice(5) as AssetsTab;
+											return (
+												<button
+													type="button"
+													onClick={(e) => {
+														e.preventDefault();
+														setActiveTab(tabKey);
+													}}
+													className="inline-flex items-center rounded bg-cyan-400/15 px-1 py-0.5 text-[11px] font-medium text-cyan-300 no-underline transition hover:bg-cyan-400/25 hover:text-cyan-200"
+												>
+													{children}
+												</button>
+											);
+										}
+										return <a href={href}>{children}</a>;
+									},
+								}}
 							>
-								{message.content}
+								{linkifyHashtags(message.content)}
 							</Markdown>
 						</div>
 					) : null}

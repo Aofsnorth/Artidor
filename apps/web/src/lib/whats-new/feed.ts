@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-clickable-hashtags",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Clickable hashtags in AI chat",
+		items: [
+			"Hashtags in AI chat messages are now clickable. When the AI mentions a tab name like #transitions, #effects, #templates, or #audio, it renders as a clickable chip that switches the assets panel to that tab instantly.",
+			"Supports all tab names plus common aliases: #arth → AI tab, #tools → Tools tab, #adjust → Adjust tab, #preset → Presets tab.",
+		],
+	},
+	{
 		id: "2026-06-27-puter-csp-fix",
 		date: "2026-06-27",
 		tag: "fix",
