@@ -64,7 +64,7 @@ export const useTelemetryStore = create<TelemetryState>()(
 	persist(
 		(set, get) => ({
 			events: [],
-			enabled: true,
+			enabled: false,
 			currentProjectId: null,
 			record: (e) => {
 				// Auto-learning toggle: when disabled, don't collect events.
