@@ -1279,7 +1279,7 @@ function McpServerCard({
 
 				{/* Name + status */}
 				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-					<div className="flex items-center gap-2">
+					<div className="flex min-w-0 items-center gap-2">
 						<span className="truncate text-[12px] font-semibold text-white/90">
 							{server.name}
 						</span>
@@ -1708,11 +1708,11 @@ function StatusBar({
 
 			<div className="relative flex flex-col gap-2 p-2.5">
 				{/* Header row */}
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
+				<div className="flex items-center justify-between gap-1.5">
+					<div className="flex min-w-0 items-center gap-2">
 						<div
 							className={cn(
-								"grid size-7 place-items-center rounded-lg border transition-all",
+								"grid size-7 shrink-0 place-items-center rounded-lg border transition-all",
 								isRetrying
 									? "border-amber-400/20 bg-amber-400/[0.06]"
 									: isStreaming
@@ -1732,8 +1732,8 @@ function StatusBar({
 								)}
 							/>
 						</div>
-						<div className="flex flex-col">
-							<span className="font-serif text-[13px] leading-tight text-white">
+						<div className="flex min-w-0 flex-col">
+							<span className="truncate font-serif text-[13px] leading-tight text-white">
 								{aiName}
 							</span>
 							<span
@@ -1754,7 +1754,7 @@ function StatusBar({
 							</span>
 						</div>
 					</div>
-					<div className="flex items-center gap-1.5">
+					<div className="flex shrink-0 items-center gap-1.5">
 						<span
 							className={cn(
 								"rounded-full border px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider transition-all",
@@ -1796,8 +1796,9 @@ function StatusBar({
 					</div>
 				</div>
 
-				{/* Provider + MCP row */}
-				<div className="flex items-center gap-1.5">
+				{/* Provider + MCP row — collapses secondary items into a
+			    "More" dropdown on small screens / high display scaling. */}
+				<OverflowRow className="w-full">
 					<button
 						type="button"
 						onClick={onOpenProviders}
@@ -1868,7 +1869,7 @@ function StatusBar({
 					)}
 					<McpServerChip />
 					<AdvancedSettingsButton />
-				</div>
+				</OverflowRow>
 
 				{/* Meta row: learned edits + compaction + reference video */}
 				<div className="flex flex-col gap-1.5">
@@ -2040,6 +2041,89 @@ function QuickActionsBar({
 								<HugeiconsIcon icon={qa.icon} className="size-3" />
 								{qa.label}
 							</button>
+						))}
+					</div>
+				</>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Overflow-aware row. Renders children inline when they fit, and
+ * collapses the trailing children into a "More" dropdown when the
+ * row overflows (small screens / high display scaling). The first
+ * child is always visible; the rest move into the dropdown.
+ *
+ * On PCs with adequate screen space, everything shows inline —
+ * identical to the current layout.
+ */
+function OverflowRow({
+	children,
+	className,
+	moreLabel = "More",
+}: {
+	children: React.ReactNode[];
+	className?: string;
+	moreLabel?: string;
+}) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const innerRef = useRef<HTMLDivElement>(null);
+	const [overflow, setOverflow] = useState(false);
+	const [dropdownOpen, setDropdownOpen] = useState(false);
+
+	useEffect(() => {
+		const c = containerRef.current;
+		const i = innerRef.current;
+		if (!c || !i) return;
+		const check = () => setOverflow(i.scrollWidth > c.clientWidth + 2);
+		check();
+		const ro = new ResizeObserver(check);
+		ro.observe(c);
+		return () => ro.disconnect();
+	}, []);
+
+	if (!overflow) {
+		return (
+			<div ref={containerRef} className={cn("flex flex-nowrap items-center gap-1.5 overflow-hidden", className)}>
+				<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
+					{children}
+				</div>
+			</div>
+		);
+	}
+
+	// Overflow mode: show first child + a "More" dropdown with the rest.
+	return (
+		<div ref={containerRef} className={cn("relative flex flex-nowrap items-center gap-1.5 overflow-hidden", className)}>
+			<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
+				{children[0]}
+			</div>
+			<button
+				type="button"
+				onClick={() => setDropdownOpen((o) => !o)}
+				className="flex h-6 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 text-[10px] font-medium text-white/60 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
+			>
+				{moreLabel}
+				<HugeiconsIcon
+					icon={ArrowDown03Icon}
+					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
+				/>
+			</button>
+			{dropdownOpen && (
+				<>
+					<button
+						type="button"
+						aria-label="Close menu"
+						className="fixed inset-0 z-40 cursor-default"
+						onClick={() => setDropdownOpen(false)}
+					/>
+					<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
+						{children.slice(1).map((child, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position
+							<div key={i} onClick={() => setDropdownOpen(false)}>
+								{child}
+							</div>
 						))}
 					</div>
 				</>
