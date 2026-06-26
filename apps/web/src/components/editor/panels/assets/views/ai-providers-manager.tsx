@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Add01Icon,
@@ -16,6 +16,7 @@ import {
 	LinkSquareIcon,
 	Loading02Icon,
 	PlugIcon,
+	Search01Icon,
 	Settings02Icon,
 	SparklesIcon,
 	Time01Icon,
@@ -934,27 +935,16 @@ function ProviderFormDialog({
 									</p>
 								</div>
 							) : puterModels.length > 0 ? (
-								<div className="relative">
-									<select
-										id="provider-model"
-										value={model}
-										onChange={(e) => setModel(e.target.value)}
-										className={cn(
-											"h-9 w-full appearance-none rounded-lg border border-white/10 bg-white/[0.02] px-3 pr-9 font-mono text-[12px] text-white/90 outline-none transition-colors focus:border-white/25",
-											errors.model && "border-red-400/40",
-										)}
-									>
-										{puterModels.map((m) => (
-											<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
-												{m.name ?? m.id} ({m.provider})
-											</option>
-										))}
-									</select>
-									<HugeiconsIcon
-										icon={ArrowDown03Icon}
-										className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-white/40"
-									/>
-								</div>
+								<SearchableModelSelect
+									id="provider-model"
+									value={model}
+									onChange={setModel}
+									options={puterModels}
+									placeholder="Select a model…"
+									className={cn(
+										errors.model && "border-red-400/40",
+									)}
+								/>
 							) : (
 								<Input
 									id="provider-model"
@@ -1192,8 +1182,184 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 /**
- * Media model field — shows a dropdown when Puter media models are
- * available, falls back to a text input otherwise. This lets Puter
+ * Searchable model select — a combobox that lets the user type to filter
+ * a list of models and pick one. Used for all Puter.js model selections
+ * (chat model, video/image/audio/media models). Falls back to showing
+ * all options when the query is empty.
+ *
+ * Features:
+ * - Type to filter by model id, name, or provider
+ * - Keyboard navigation (arrow up/down, Enter, Escape)
+ * - Click outside to close
+ * - Shows "(provider)" label next to each model
+ */
+function SearchableModelSelect({
+	id,
+	value,
+	onChange,
+	options,
+	placeholder,
+	className,
+}: {
+	id: string;
+	value: string;
+	onChange: (v: string) => void;
+	options: Array<{ id: string; provider: string; name?: string }>;
+	placeholder?: string;
+	className?: string;
+}) {
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const [highlightedIndex, setHighlightedIndex] = useState(0);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	const filtered = useMemo(() => {
+		const q = query.trim().toLowerCase();
+		if (!q) return options;
+		return options.filter((m) => {
+			const name = (m.name ?? m.id).toLowerCase();
+			return (
+				m.id.toLowerCase().includes(q) ||
+				name.includes(q) ||
+				m.provider.toLowerCase().includes(q)
+			);
+		});
+	}, [options, query]);
+
+	// Reset highlight when filter changes
+	useEffect(() => {
+		setHighlightedIndex(0);
+	}, [filtered]);
+
+	// Close on click outside
+	useEffect(() => {
+		if (!open) return;
+		const handler = (e: MouseEvent) => {
+			if (
+				containerRef.current &&
+				!containerRef.current.contains(e.target as Node)
+			) {
+				setOpen(false);
+				setQuery("");
+			}
+		};
+		document.addEventListener("mousedown", handler);
+		return () => document.removeEventListener("mousedown", handler);
+	}, [open]);
+
+	// Focus input when opening
+	useEffect(() => {
+		if (open) inputRef.current?.focus();
+	}, [open]);
+
+	const selectedModel = options.find((m) => m.id === value);
+
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			setHighlightedIndex((i) => Math.min(i + 1, filtered.length - 1));
+		} else if (e.key === "ArrowUp") {
+			e.preventDefault();
+			setHighlightedIndex((i) => Math.max(i - 1, 0));
+		} else if (e.key === "Enter") {
+			e.preventDefault();
+			if (filtered[highlightedIndex]) {
+				onChange(filtered[highlightedIndex].id);
+				setOpen(false);
+				setQuery("");
+			}
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			setOpen(false);
+			setQuery("");
+		}
+	};
+
+	return (
+		<div ref={containerRef} className="relative">
+			{!open ? (
+				<button
+					type="button"
+					id={id}
+					onClick={() => setOpen(true)}
+					className={cn(
+						"flex h-9 w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 font-mono text-[12px] text-white/90 outline-none transition-colors hover:border-white/20 focus:border-white/25",
+						className,
+					)}
+				>
+					<span className={cn("truncate", !value && "text-white/30")}>
+						{value
+							? `${selectedModel?.name ?? value}${selectedModel ? ` (${selectedModel.provider})` : ""}`
+							: (placeholder ?? "— Select —")}
+					</span>
+					<HugeiconsIcon
+						icon={ArrowDown03Icon}
+						className="ml-2 size-3.5 shrink-0 text-white/40"
+					/>
+				</button>
+			) : (
+				<div className="absolute inset-0 z-50">
+					<div
+						className="flex h-full w-full items-center gap-2 rounded-lg border border-white/25 bg-[#1a1a1e] px-3 shadow-lg"
+						onKeyDown={handleKeyDown}
+					>
+						<HugeiconsIcon
+							icon={Search01Icon}
+							className="size-3.5 shrink-0 text-white/40"
+						/>
+						<input
+							ref={inputRef}
+							value={query}
+							onChange={(e) => setQuery(e.target.value)}
+							placeholder="Search models…"
+							className="h-full w-full bg-transparent font-mono text-[12px] text-white/90 outline-none placeholder:text-white/30"
+						/>
+					</div>
+					{filtered.length > 0 && (
+						<div className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
+							{filtered.map((m, i) => (
+								<button
+									type="button"
+									key={m.id}
+									onClick={() => {
+										onChange(m.id);
+										setOpen(false);
+										setQuery("");
+									}}
+									onMouseEnter={() => setHighlightedIndex(i)}
+									className={cn(
+										"flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-[11px] transition-colors",
+										i === highlightedIndex
+											? "bg-white/10 text-white"
+											: "text-white/70 hover:bg-white/5",
+										m.id === value && "text-white",
+									)}
+								>
+									<span className="truncate">
+										{m.name ?? m.id}
+									</span>
+									<span className="ml-2 shrink-0 text-[9px] text-white/35">
+										{m.provider}
+									</span>
+								</button>
+							))}
+						</div>
+					)}
+					{filtered.length === 0 && (
+						<div className="mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[11px] text-white/40 shadow-xl">
+							No models match "{query}"
+						</div>
+					)}
+				</div>
+			)}
+		</div>
+	);
+}
+
+/**
+ * Media model field — shows a searchable dropdown when Puter media models
+ * are available, falls back to a text input otherwise. This lets Puter
  * users pick from fetched models while still allowing manual entry
  * for non-Puter providers.
  */
@@ -1213,32 +1379,25 @@ function MediaModelField({
 	options: Array<{ id: string; provider: string; name?: string }>;
 }) {
 	if (options.length > 0) {
+		// Build options with a "None" entry prepended so the user can
+		// clear the selection from the searchable dropdown itself.
+		const optsWithNone = [
+			{ id: "", provider: "", name: "— None —" },
+			...options,
+		];
 		return (
 			<div className="flex flex-col gap-1">
 				<label htmlFor={id} className="text-[10px] text-white/45">
 					{label}
 				</label>
-				<div className="relative">
-					<select
-						id={id}
-						value={value}
-						onChange={(e) => onChange(e.target.value)}
-						className="h-8 w-full appearance-none rounded-lg border border-white/10 bg-white/[0.02] px-3 pr-8 font-mono text-[11px] text-white/90 outline-none transition-colors focus:border-white/25"
-					>
-						<option value="" className="bg-[#1a1a1e]">
-							— None —
-						</option>
-						{options.map((m) => (
-							<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
-								{m.name ?? m.id} ({m.provider})
-							</option>
-						))}
-					</select>
-					<HugeiconsIcon
-						icon={ArrowDown03Icon}
-						className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-white/40"
-					/>
-				</div>
+				<SearchableModelSelect
+					id={id}
+					value={value}
+					onChange={onChange}
+					options={optsWithNone}
+					placeholder="— None —"
+					className="h-8 text-[11px]"
+				/>
 			</div>
 		);
 	}

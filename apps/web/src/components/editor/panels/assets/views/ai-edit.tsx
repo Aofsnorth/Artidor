@@ -2156,9 +2156,9 @@ function OverflowRow({
 					<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
 						{children.slice(1).map((child, i) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position
-							<div key={i} onClick={() => setDropdownOpen(false)} onKeyDown={(e) => { if (e.key === "Enter") setDropdownOpen(false); }} role="button" tabIndex={0}>
+							<button type="button" key={i} onClick={() => setDropdownOpen(false)} className="text-left">
 								{child}
-							</div>
+							</button>
 						))}
 					</div>
 				</>

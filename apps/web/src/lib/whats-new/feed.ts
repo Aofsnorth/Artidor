@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-30-searchable-puter-models",
+		date: "2026-06-30",
+		tag: "improvement",
+		title: "Searchable model dropdowns for Puter.js providers",
+		items: [
+			"All Puter.js model selections (chat, video, image, audio, media) are now searchable comboboxes instead of plain dropdowns. Type to filter by model name, id, or provider — especially useful when Puter returns dozens of models.",
+			"Expanded image model detection patterns to catch more model names (dalle, midjourney, leonardo, sd variants, etc.).",
+		],
+	},
+	{
 		id: "2026-06-30-ai-tool-chaining-element-ids",
 		date: "2026-06-30",
 		tag: "fix",

@@ -186,8 +186,10 @@ const VIDEO_PATTERNS = [
 	"runway", "pika", "hunyuan", "vidu", "wan",
 ];
 const IMAGE_PATTERNS = [
-	"dall-e", "flux", "gpt-image", "stable-diffusion",
+	"dall-e", "dalle", "flux", "gpt-image", "stable-diffusion",
 	"ideogram", "recraft", "imagen", "sdxl", "playground",
+	"midjourney", "leonardo", "dream", "diffusion", "sd-",
+	"sd1", "sd2", "sd3", "sd-turbo", "sdxl-turbo",
 ];
 const AUDIO_PATTERNS = [
 	"tts", "speech", "polly", "bark", "elevenlabs",
