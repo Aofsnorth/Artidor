@@ -51,20 +51,20 @@ const KIND_LABELS: Record<ProviderKind, { label: string; hint: string }> = {
 		label: "OpenAI-compatible",
 		hint: "OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM, llama.cpp server, etc.",
 	},
-	ollama: {
-		label: "Ollama (local)",
-		hint: "Local Ollama HTTP server. Same /v1/chat/completions schema, no API key.",
-	},
 	puter: {
 		label: "Puter.js (free, browser-based)",
 		hint: "Uses Puter.js — runs in the browser via your Puter account. No API key needed. WARNING: Puter may use your data for training.",
+	},
+	ollama: {
+		label: "Ollama (local)",
+		hint: "Local Ollama HTTP server. Same /v1/chat/completions schema, no API key.",
 	},
 };
 
 const KIND_ICONS: Record<ProviderKind, typeof PlugIcon> = {
 	"openai-compatible": SparklesIcon,
-	ollama: PlugIcon,
 	puter: CloudIcon,
+	ollama: PlugIcon,
 };
 
 interface TestResult {
@@ -515,6 +515,16 @@ function ProviderFormDialog({
 	const [showPuterWarning, setShowPuterWarning] = useState(false);
 	const [puterCountdown, setPuterCountdown] = useState(5);
 	const [puterAcknowledged, setPuterAcknowledged] = useState(false);
+	// Puter.js model list — fetched from puter.ai.listModels() when the
+	// user selects the Puter provider kind. Each entry has { id, provider,
+	// name, ... } per the Puter.js API.
+	const [puterModels, setPuterModels] = useState<
+		Array<{ id: string; provider: string; name?: string }>
+	>([]);
+	const [puterModelsLoading, setPuterModelsLoading] = useState(false);
+	const [puterModelsError, setPuterModelsError] = useState<string | null>(
+		null,
+	);
 
 	// Countdown timer for the Puter warning popup. The popup cannot be
 	// dismissed until the countdown reaches 0.
@@ -526,6 +536,88 @@ function ProviderFormDialog({
 		}, 1000);
 		return () => clearTimeout(timer);
 	}, [showPuterWarning, puterCountdown]);
+
+	// Load the Puter.js SDK and fetch available models when the user
+	// selects the Puter provider kind. The SDK is loaded once and cached
+	// on window.puter. Models are fetched via puter.ai.listModels().
+	// biome-ignore lint/correctness/useExhaustiveDependencies: we intentionally only re-run on kind change, not on model change
+	useEffect(() => {
+		if (kind !== "puter") return;
+		let cancelled = false;
+
+		async function loadPuterModels() {
+			setPuterModelsLoading(true);
+			setPuterModelsError(null);
+			try {
+				// Load the Puter.js SDK if not already loaded.
+				if (
+					typeof window === "undefined" ||
+					!(window as unknown as { puter?: unknown }).puter
+				) {
+					await new Promise<void>((resolve, reject) => {
+						const existing = document.querySelector(
+							'script[src="https://js.puter.com/v2/"]',
+						);
+						if (existing) {
+							// Script tag exists but puter not ready yet — wait.
+							existing.addEventListener("load", () => resolve());
+							existing.addEventListener("error", () =>
+								reject(new Error("Failed to load Puter.js SDK")),
+							);
+							return;
+						}
+						const script = document.createElement("script");
+						script.src = "https://js.puter.com/v2/";
+						script.async = true;
+						script.onload = () => resolve();
+						script.onerror = () =>
+							reject(new Error("Failed to load Puter.js SDK"));
+						document.head.appendChild(script);
+					});
+				}
+
+				const puter = (
+					window as unknown as {
+						puter?: {
+							ai: {
+								listModels: () => Promise<
+									Array<{
+										id: string;
+										provider: string;
+										name?: string;
+									}>
+								>;
+							};
+						};
+					}
+				).puter;
+
+				if (!puter?.ai?.listModels) {
+					throw new Error("Puter.js SDK loaded but listModels() not available");
+				}
+
+				const models = await puter.ai.listModels();
+				if (cancelled) return;
+				setPuterModels(models);
+				// Auto-select the first model if none is set yet.
+				if (models.length > 0 && !model) {
+					setModel(models[0].id);
+				}
+			} catch (err) {
+				if (cancelled) return;
+				setPuterModelsError(
+					err instanceof Error ? err.message : "Failed to fetch Puter models",
+				);
+			} finally {
+				if (!cancelled) setPuterModelsLoading(false);
+			}
+		}
+
+		void loadPuterModels();
+		return () => {
+			cancelled = true;
+		};
+	}, [kind]);
 
 	const handleKindChange = useCallback(
 		(next: ProviderKind) => {
@@ -808,14 +900,74 @@ function ProviderFormDialog({
 						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-3" />
 							Model
+							{kind === "puter" && puterModelsLoading && (
+								<span className="text-[10px] font-normal text-white/40">
+									— fetching available models…
+								</span>
+							)}
 						</Label>
-						<Input
-							id="provider-model"
-							value={model}
-							placeholder="gpt-4o-mini"
-							onChange={(e) => setModel(e.target.value)}
-							className={cn("font-mono", errors.model && "border-red-400/40")}
-						/>
+						{kind === "puter" ? (
+							puterModelsLoading ? (
+								<div className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 text-[11px] text-white/40">
+									<HugeiconsIcon
+										icon={Loading02Icon}
+										className="size-3.5 animate-spin"
+									/>
+									Loading models from Puter…
+								</div>
+							) : puterModelsError ? (
+								<div className="flex flex-col gap-1.5">
+									<Input
+										id="provider-model"
+										value={model}
+										placeholder="Enter model id manually"
+										onChange={(e) => setModel(e.target.value)}
+										className={cn(
+											"font-mono",
+											errors.model && "border-red-400/40",
+										)}
+									/>
+									<p className="text-[10px] text-amber-300/80">
+										{puterModelsError} — enter model id manually.
+									</p>
+								</div>
+							) : puterModels.length > 0 ? (
+								<select
+									id="provider-model"
+									value={model}
+									onChange={(e) => setModel(e.target.value)}
+									className={cn(
+										"h-9 w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 font-mono text-[12px] text-white/90 outline-none transition-colors focus:border-white/25",
+										errors.model && "border-red-400/40",
+									)}
+								>
+									{puterModels.map((m) => (
+										<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
+											{m.name ?? m.id} ({m.provider})
+										</option>
+									))}
+								</select>
+							) : (
+								<Input
+									id="provider-model"
+									value={model}
+									placeholder="gpt-4o-mini"
+									onChange={(e) => setModel(e.target.value)}
+									className={cn(
+										"font-mono",
+										errors.model && "border-red-400/40",
+									)}
+								/>
+							)
+						) : (
+							<Input
+								id="provider-model"
+								value={model}
+								placeholder="gpt-4o-mini"
+								onChange={(e) => setModel(e.target.value)}
+								className={cn("font-mono", errors.model && "border-red-400/40")}
+							/>
+						)}
 						{errors.model && (
 							<p className="text-[10.5px] text-red-300/90">{errors.model}</p>
 						)}
