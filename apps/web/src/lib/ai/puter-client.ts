@@ -36,6 +36,31 @@ interface PuterAI {
 		options?: Record<string, unknown>,
 	) => Promise<AsyncIterable<PuterChatChunk>>;
 	listModels: () => Promise<PuterModel[]>;
+	txt2vid: (
+		prompt: string,
+		options?: Record<string, unknown>,
+	) => Promise<PuterGenResult>;
+	txt2img: (
+		prompt: string,
+		options?: Record<string, unknown>,
+	) => Promise<PuterGenResult>;
+	txt2speech: (
+		text: string,
+		options?: Record<string, unknown>,
+	) => Promise<PuterGenResult>;
+}
+
+/**
+ * Result shape from Puter.js generation APIs (txt2vid, txt2img, txt2speech).
+ * The SDK returns an object with at least a `src` field (a URL or data URI
+ * to the generated media) and sometimes a `name` / `mimeType`.
+ */
+interface PuterGenResult {
+	src?: string;
+	url?: string;
+	name?: string;
+	mimeType?: string;
+	toString(): string;
 }
 
 interface PuterSDK {
@@ -253,4 +278,89 @@ export async function* streamPuterChat(
 	}
 
 	yield { done: true };
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Media Generation Helpers                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Extract a usable URL/string from a Puter.js generation result.
+ * The SDK may return an object with `src`/`url`, or a plain string.
+ */
+function extractGenUrl(result: PuterGenResult): string {
+	if (result.src) return result.src;
+	if (result.url) return result.url;
+	// Some Puter APIs return the URL directly as a string via toString().
+	const str = String(result);
+	if (str.startsWith("http") || str.startsWith("data:")) return str;
+	throw new Error("Puter.js generation returned no usable URL");
+}
+
+/**
+ * Generate a video clip from a text prompt using `puter.ai.txt2vid()`.
+ *
+ * @param prompt - Text description of the video to generate.
+ * @param model - Video model id (e.g. "sora-2", "seedance-1.0-pro").
+ * @param seconds - Optional clip length in seconds.
+ * @returns The URL of the generated video.
+ * @throws Error if the SDK is not loaded or generation fails.
+ */
+export async function puterTxt2Vid(
+	prompt: string,
+	model: string,
+	seconds?: number,
+): Promise<string> {
+	const puter = await loadPuterSDK();
+	if (!puter.ai?.txt2vid) {
+		throw new Error("Puter.js SDK loaded but txt2vid() is not available");
+	}
+	const options: Record<string, unknown> = { model };
+	if (seconds) options.seconds = seconds;
+	const result = await puter.ai.txt2vid(prompt, options);
+	return extractGenUrl(result);
+}
+
+/**
+ * Generate an image from a text prompt using `puter.ai.txt2img()`.
+ *
+ * @param prompt - Text description of the image to generate.
+ * @param model - Image model id (e.g. "dall-e-3", "gpt-image-1").
+ * @returns The URL of the generated image.
+ * @throws Error if the SDK is not loaded or generation fails.
+ */
+export async function puterTxt2Img(
+	prompt: string,
+	model: string,
+): Promise<string> {
+	const puter = await loadPuterSDK();
+	if (!puter.ai?.txt2img) {
+		throw new Error("Puter.js SDK loaded but txt2img() is not available");
+	}
+	const result = await puter.ai.txt2img(prompt, { model });
+	return extractGenUrl(result);
+}
+
+/**
+ * Convert text to speech using `puter.ai.txt2speech()`.
+ *
+ * @param text - The text to convert to speech (max 3000 characters).
+ * @param model - Audio/TTS model id (e.g. "tts-1", "aws-polly").
+ * @param voice - Optional voice id (provider-specific).
+ * @returns The URL of the generated audio.
+ * @throws Error if the SDK is not loaded or generation fails.
+ */
+export async function puterTxt2Speech(
+	text: string,
+	model: string,
+	voice?: string,
+): Promise<string> {
+	const puter = await loadPuterSDK();
+	if (!puter.ai?.txt2speech) {
+		throw new Error("Puter.js SDK loaded but txt2speech() is not available");
+	}
+	const options: Record<string, unknown> = { model };
+	if (voice) options.voice = voice;
+	const result = await puter.ai.txt2speech(text, options);
+	return extractGenUrl(result);
 }

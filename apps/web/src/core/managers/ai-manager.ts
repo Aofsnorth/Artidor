@@ -27,7 +27,12 @@ import {
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
 import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
-import { streamPuterChat } from "@/lib/ai/puter-client";
+import {
+	streamPuterChat,
+	puterTxt2Vid,
+	puterTxt2Img,
+	puterTxt2Speech,
+} from "@/lib/ai/puter-client";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -600,6 +605,85 @@ export class AIManager {
 	 * consumer logic (assistant bubble, tool calls, error handling)
 	 * stays identical.
 	 */
+	/**
+	 * Execute an AI media generation tool via Puter.js SDK.
+	 *
+	 * Maps tool names to Puter.js APIs:
+	 *  - generate_video  → puter.ai.txt2vid()
+	 *  - generate_image  → puter.ai.txt2img()
+	 *  - generate_audio  → puter.ai.txt2speech()
+	 *  - generate_media  → puter.ai.txt2speech() (reuses TTS for SFX/music)
+	 *
+	 * The corresponding media model must be configured on the provider
+	 * (videoModel, imageModel, audioModel, mediaModel). If not set, the
+	 * tool is filtered out before reaching this point, but we double-check
+	 * here for safety.
+	 *
+	 * @returns The URL of the generated media.
+	 * @throws Error if the model is not configured or generation fails.
+	 */
+	private async executeGenerationTool(
+		toolName: string,
+		args: Record<string, unknown>,
+		provider: {
+			videoModel?: string;
+			imageModel?: string;
+			audioModel?: string;
+			mediaModel?: string;
+		},
+	): Promise<string> {
+		const prompt = String(args.prompt ?? args.text ?? "");
+		if (!prompt) throw new Error("prompt or text is required");
+
+		switch (toolName) {
+			case "generate_video": {
+				if (!provider.videoModel?.trim())
+					throw new Error(
+						"No video model configured. Set a video model in the provider settings.",
+					);
+				const seconds = args.seconds
+					? Number(args.seconds)
+					: undefined;
+				return puterTxt2Vid(prompt, provider.videoModel, seconds);
+			}
+			case "generate_image": {
+				if (!provider.imageModel?.trim())
+					throw new Error(
+						"No image model configured. Set an image model in the provider settings.",
+					);
+				return puterTxt2Img(prompt, provider.imageModel);
+			}
+			case "generate_audio": {
+				if (!provider.audioModel?.trim())
+					throw new Error(
+						"No audio model configured. Set an audio model in the provider settings.",
+					);
+				const voice = args.voice ? String(args.voice) : undefined;
+				return puterTxt2Speech(
+					prompt,
+					provider.audioModel,
+					voice,
+				);
+			}
+			case "generate_media": {
+				if (!provider.mediaModel?.trim())
+					throw new Error(
+						"No media model configured. Set a media model in the provider settings.",
+					);
+				// Reuse TTS for media generation until a dedicated
+				// Puter.js media API is available.
+				const voice = args.voice ? String(args.voice) : undefined;
+				return puterTxt2Speech(
+					prompt,
+					provider.mediaModel,
+					voice,
+				);
+			}
+			default:
+				throw new Error(`Unknown generation tool: ${toolName}`);
+		}
+	}
+
 	private async streamPuterResponse(
 		messages: ChatMessage[],
 		model: string,
@@ -783,6 +867,64 @@ export class AIManager {
 						ok: false,
 						message:
 							err instanceof Error ? err.message : "MCP tool failed",
+					});
+				}
+			} else if (
+				tc.name === "generate_video" ||
+				tc.name === "generate_image" ||
+				tc.name === "generate_audio" ||
+				tc.name === "generate_media"
+			) {
+				// AI media generation tools — these call Puter.js SDK
+				// APIs (txt2vid/txt2img/txt2speech) and import the
+				// result into the media library. They only run when
+				// the active provider is Puter.js and the
+				// corresponding media model is configured.
+				const provider = getDefaultProvider();
+				if (provider?.kind !== "puter") {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message:
+							"Media generation requires a Puter.js provider. Switch to a Puter provider or use import_asset_from_url with a direct URL.",
+					});
+					continue;
+				}
+				try {
+					const genUrl = await this.executeGenerationTool(
+						tc.name,
+						tc.arguments,
+						provider,
+					);
+					// Import the generated media into the library.
+					const importRes = await fetch("/api/drive/import", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ url: genUrl }),
+					});
+					const importData = await importRes.json();
+					if (!importData.ok) {
+						results.push({
+							name: tc.name,
+							ok: false,
+							message: `Generation succeeded but import failed: ${importData.message ?? "unknown error"}`,
+						});
+						continue;
+					}
+					results.push({
+						name: tc.name,
+						ok: true,
+						message: `Generated and imported ${importData.fileName ?? "asset"}`,
+						data: { url: genUrl, ...importData },
+					});
+				} catch (err) {
+					results.push({
+						name: tc.name,
+						ok: false,
+						message:
+							err instanceof Error
+								? err.message
+								: "Generation failed",
 					});
 				}
 			} else {

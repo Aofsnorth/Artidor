@@ -40,7 +40,8 @@ export type ToolCategory =
 	| "history"
 	| "selection"
 	| "clipboard"
-	| "plan";
+	| "plan"
+	| "generate";
 
 /** Reusable schema for an array of {trackId, elementId} element refs. */
 function elementRefArraySchema(minItems: number): unknown {
@@ -994,6 +995,82 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				},
 			},
 			["stepIndex", "status"],
+		),
+	),
+
+	/* ------------------------------- Generate ------------------------------- */
+	// AI media generation tools. These call Puter.js SDK APIs (txt2vid,
+	// txt2img, txt2speech) to generate video, images, and audio from text
+	// prompts. They are gated by the provider's media model configuration —
+	// when the corresponding model field is empty, the tool is filtered out
+	// by getFilteredToolDefinitions() so the LLM never sees it.
+	tool(
+		"generate",
+		"generate_video",
+		"generate_video",
+		"Generate a short video clip from a text prompt using AI. The generated video is automatically imported into the project's media library. Requires a video generation model to be configured on the active provider (e.g. sora-2, seedance-1.0-pro, wan-2.2).",
+		objectSchema(
+			{
+				prompt: {
+					type: "string",
+					description: "Text description of the video to generate",
+				},
+				seconds: {
+					type: "number",
+					description: "Target clip length in seconds (e.g. 4, 8, 12)",
+				},
+			},
+			["prompt"],
+		),
+	),
+	tool(
+		"generate",
+		"generate_image",
+		"generate_image",
+		"Generate an image from a text prompt using AI. The generated image is automatically imported into the project's media library. Requires an image generation model to be configured on the active provider (e.g. dall-e-3, gpt-image-1, flux-1).",
+		objectSchema(
+			{
+				prompt: {
+					type: "string",
+					description: "Text description of the image to generate",
+				},
+			},
+			["prompt"],
+		),
+	),
+	tool(
+		"generate",
+		"generate_audio",
+		"generate_audio",
+		"Convert text to speech using AI, generating an audio file. The generated audio is automatically imported into the project's media library. Requires an audio generation model to be configured on the active provider (e.g. tts-1, aws-polly).",
+		objectSchema(
+			{
+				text: {
+					type: "string",
+					description: "The text to convert to speech (max 3000 characters)",
+				},
+				voice: {
+					type: "string",
+					description:
+						"Voice ID to use (provider-specific, e.g. 'Joanna', 'alloy')",
+				},
+			},
+			["text"],
+		),
+	),
+	tool(
+		"generate",
+		"generate_media",
+		"generate_media",
+		"Generate media (e.g. music, sound effects) from a text prompt using AI. The generated media is automatically imported into the project's media library. Requires a media generation model to be configured on the active provider.",
+		objectSchema(
+			{
+				prompt: {
+					type: "string",
+					description: "Text description of the media to generate",
+				},
+			},
+			["prompt"],
 		),
 	),
 ];
