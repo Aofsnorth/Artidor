@@ -16,7 +16,7 @@
 import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
+import { normalizeProviderBaseUrl } from "@/lib/ai/provider-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,20 +40,12 @@ const TEST_PROMPT = [
 ];
 
 /**
- * Strip a trailing slash, ensure the URL ends with `/v1` (OpenAI
- * standard) if it doesn't already. Returns the URL we'll POST to.
+ * Normalize the base URL using the shared helper, then append `/v1`
+ * since the test endpoint builds the full URL itself (unlike the chat
+ * route where the OpenAI provider class appends `/v1/chat/completions`).
  */
 function normalizeBaseUrl({ baseUrl }: { baseUrl: string }): string {
-	const safeUrl = assertSafeProviderBaseUrl({ baseUrl });
-	const trimmed = safeUrl.toString().replace(/\/+$/, "");
-	if (trimmed.endsWith("/v1")) return trimmed;
-	// If user typed just the host (e.g. `https://api.openai.com`) we
-	// add the /v1 ourselves. If they typed `/chat/completions` we
-	// strip back to /v1.
-	if (trimmed.endsWith("/chat/completions")) {
-		return trimmed.slice(0, -"/chat/completions".length);
-	}
-	return `${trimmed}/v1`;
+	return `${normalizeProviderBaseUrl(baseUrl)}/v1`;
 }
 
 function buildAuthHeader({

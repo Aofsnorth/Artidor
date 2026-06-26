@@ -42,6 +42,35 @@ export function assertSafeProviderBaseUrl({
 	return parsed;
 }
 
+/**
+ * Normalize a provider base URL so it's safe to pass to the OpenAI
+ * provider (which appends `/v1/chat/completions`). Strips trailing
+ * slashes, removes a trailing `/v1` or `/chat/completions` if the user
+ * already included it, and returns the clean host root.
+ *
+ * Examples:
+ *   https://api.openai.com           → https://api.openai.com
+ *   https://api.openai.com/v1        → https://api.openai.com
+ *   https://api.openai.com/v1/       → https://api.openai.com
+ *   https://api.openai.com/chat/completions → https://api.openai.com
+ *   https://api.openai.com/v1/chat/completions → https://api.openai.com
+ */
+export function normalizeProviderBaseUrl(baseUrl: string): string {
+	const safeUrl = assertSafeProviderBaseUrl({ baseUrl });
+	const trimmed = safeUrl.toString().replace(/\/+$/, "");
+	// Strip /v1/chat/completions first (most specific), then /chat/completions,
+	// then /v1 — order matters so we don't leave a dangling path.
+	let result = trimmed;
+	if (result.endsWith("/v1/chat/completions")) {
+		result = result.slice(0, -"/v1/chat/completions".length);
+	} else if (result.endsWith("/chat/completions")) {
+		result = result.slice(0, -"/chat/completions".length);
+	} else if (result.endsWith("/v1")) {
+		result = result.slice(0, -"/v1".length);
+	}
+	return result;
+}
+
 function isPrivateIp(host: string): boolean {
 	const family = isIP(host);
 	if (family === 4) return isPrivateIpv4(host);
