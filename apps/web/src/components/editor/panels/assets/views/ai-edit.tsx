@@ -233,6 +233,11 @@ export function AIEditView() {
 	// is shown.
 	const [isAtBottom, setIsAtBottom] = useState(true);
 	const [isAtTop, setIsAtTop] = useState(true);
+	// Track whether this is the initial mount. We don't want to
+	// auto-scroll to the bottom on the first render — the user should
+	// see the "Welcome to Artidor" message at the top. After the user
+	// has interacted (scrolled or sent a message), we enable auto-scroll.
+	const hasInitializedRef = useRef(false);
 
 	const handleMessagesScroll = useCallback(() => {
 		const el = messagesContainerRef.current;
@@ -266,6 +271,15 @@ export function AIEditView() {
 	const chatTick = `${ai.messages.length}:${ai.messages[ai.messages.length - 1]?.content ?? ""}:${ai.status}`;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick is a proxy for ai.messages changes
 	useEffect(() => {
+		// On initial mount, don't auto-scroll — let the user see the
+		// welcome message at the top. Mark as initialized so subsequent
+		// message changes do auto-scroll.
+		if (!hasInitializedRef.current) {
+			hasInitializedRef.current = true;
+			// Scroll to top on first open so the welcome is visible.
+			messagesContainerRef.current?.scrollTo({ top: 0 });
+			return;
+		}
 		if (isAtBottom) {
 			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 		}
@@ -395,6 +409,25 @@ export function AIEditView() {
 
 	const handleCancel = () => {
 		editor.ai.cancel();
+	};
+
+	const handleStop = () => {
+		// Stop the current generation but keep queued messages.
+		editor.ai.stopCurrent();
+	};
+
+	const handleClearQueue = () => {
+		// Clear only the queued messages, don't stop the current task.
+		editor.ai.clearQueueOnly();
+	};
+
+	const handleSteer = () => {
+		const trimmed = draft.trim();
+		if (!trimmed) return;
+		// Steer: interrupt current generation and send this message next.
+		editor.ai.steer(trimmed);
+		setDraft("");
+		setMentionQuery(null);
 	};
 
 	return (
@@ -577,9 +610,9 @@ export function AIEditView() {
 							{queueCount} message{queueCount > 1 ? "s" : ""} queued
 							<button
 								type="button"
-								onClick={handleCancel}
+								onClick={handleClearQueue}
 								className="ml-1 text-white/30 transition-colors hover:text-red-300"
-								title="Cancel queued messages"
+								title="Clear queued messages (keeps current task running)"
 							>
 								<HugeiconsIcon icon={Cancel01Icon} className="size-2.5" />
 							</button>
@@ -660,18 +693,30 @@ export function AIEditView() {
 						{isBusy ? (
 							<div className="flex items-center gap-1.5">
 								{draft.trim() && (
-									<button
-										type="submit"
-										className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
-									>
-										<HugeiconsIcon icon={ChatAdd01Icon} className="size-3" />
-										Queue
-									</button>
+									<>
+										<button
+											type="button"
+											onClick={handleSteer}
+											className="flex items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 py-1 text-[10.5px] font-medium text-amber-200/90 transition-colors hover:bg-amber-400/10 hover:border-amber-400/30"
+											title="Interrupt the current generation and send this message next"
+										>
+											<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3" />
+											Steer
+										</button>
+										<button
+											type="submit"
+											className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
+										>
+											<HugeiconsIcon icon={ChatAdd01Icon} className="size-3" />
+											Queue
+										</button>
+									</>
 								)}
 								<button
 									type="button"
-									onClick={handleCancel}
+									onClick={handleStop}
 									className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/20"
+									title="Stop current generation (queued messages continue)"
 								>
 									<HugeiconsIcon icon={StopIcon} className="size-3" />
 									Stop

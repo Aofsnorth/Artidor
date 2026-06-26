@@ -164,8 +164,15 @@ function safeJson(raw: string): Record<string, unknown> {
 		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
 			return parsed as Record<string, unknown>;
 		}
+		// Model sent valid JSON but not an object (e.g. a string or
+		// number). Return empty so the tool executor can report the
+		// missing required parameters.
+		console.warn("[openai] tool arguments not an object:", typeof parsed);
 		return {};
-	} catch {
+	} catch (err) {
+		// Model sent invalid JSON. Log it so we can debug format issues,
+		// and return empty so the tool executor reports missing params.
+		console.warn("[openai] failed to parse tool arguments:", err, raw.slice(0, 200));
 		return {};
 	}
 }

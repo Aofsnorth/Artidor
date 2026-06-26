@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-chat-steer-queue",
+		date: "2026-06-28",
+		tag: "feature",
+		title: "Steer the AI mid-generation, smarter queue handling, tool-call fixes",
+		items: [
+			"New 'Steer' button: when the AI is busy, type a message and click Steer to interrupt the current generation and send your message next — no need to wait or cancel.",
+			"Stop button now only stops the current generation — queued messages continue automatically. The X button on the queue indicator clears only the queue without stopping the current task.",
+			"Chat no longer auto-scrolls to the bottom on initial open — the 'Welcome to Artidor' message is visible at the top when you open the AI panel.",
+			"System prompt now includes explicit tool-calling format rules: exact tool names, ticks (not seconds), hex colors, no markdown wrapping, and error-retry guidance — reducing format mistakes.",
+			"Tool argument parsing now logs warnings when the model sends invalid JSON, making format issues easier to debug.",
+		],
+	},
+	{
 		id: "2026-06-28-ai-chat-polish",
 		date: "2026-06-28",
 		tag: "improvement",

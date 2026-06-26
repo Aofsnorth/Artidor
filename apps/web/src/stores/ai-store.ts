@@ -221,6 +221,8 @@ interface AIState {
 	clearPendingImages: () => void;
 	/** Enqueue a user message to be sent when the current request finishes. */
 	enqueue: (text: string) => void;
+	/** Prepend a message to the front of the queue (used by steer). */
+	enqueueSteer: (text: string) => void;
 	/** Dequeue and return the first queued message (FIFO). */
 	dequeue: () => string | undefined;
 	/** Clear the entire queue (e.g. when user cancels or starts new chat). */
@@ -368,6 +370,7 @@ export const useAIStore = create<AIState>()(
 			clearPendingImages: () => set({ pendingImages: [] }),
 
 			enqueue: (text) => set({ queue: [...get().queue, text] }),
+			enqueueSteer: (text) => set({ queue: [text, ...get().queue] }),
 			dequeue: () => {
 				const queue = get().queue;
 				if (queue.length === 0) return undefined;

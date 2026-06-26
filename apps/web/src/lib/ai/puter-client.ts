@@ -299,15 +299,23 @@ export async function* streamPuterChat(
 		if (part.type === "text" && part.text) {
 			yield { delta: part.text };
 		} else if (part.type === "tool_use" || (part.name && part.input)) {
+			let args: Record<string, unknown>;
+			if (typeof part.input === "string") {
+				try {
+					args = JSON.parse(part.input) as Record<string, unknown>;
+				} catch {
+					console.warn("[puter] failed to parse tool arguments:", part.input.slice(0, 200));
+					args = {};
+				}
+			} else {
+				args = part.input as Record<string, unknown>;
+			}
 			yield {
 				toolCalls: [
 					{
 						id: part.id ?? crypto.randomUUID(),
 						name: part.name ?? "",
-						arguments:
-							typeof part.input === "string"
-								? (JSON.parse(part.input) as Record<string, unknown>)
-								: (part.input as Record<string, unknown>),
+						arguments: args,
 					},
 				],
 			};
