@@ -14,6 +14,7 @@ import { useGitHubRepo } from "@/hooks/use-github-repo";
 const NAV_LINKS = [
 	{ label: "Features", href: "/#features" },
 	{ label: "Arth", href: "/#ai-copilot" },
+	{ label: "Docs", href: "/docs" },
 	{ label: "Roadmap", href: "/roadmap" },
 	{ label: "Changelog", href: "/changelog" },
 	{ label: "Contributors", href: "/contributors" },
