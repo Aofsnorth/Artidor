@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-projects-minimal-bg-prod",
+		date: "2026-06-27",
+		tag: "performance",
+		title: "Lighter /projects background in production",
+		items: [
+			"On Vercel (production), the /projects page now uses a clean solid background instead of the heavy wallpaper image + atmospheric gradient overlay. This removes a large image download and the layered radial-gradient CSS for production visitors.",
+			"Localhost (development) keeps the full wallpaper + atmospheric overlay so the richer aesthetic is still visible while building.",
+		],
+	},
+	{
 		id: "2026-06-27-queue-auto-retry",
 		date: "2026-06-27",
 		tag: "feature",
