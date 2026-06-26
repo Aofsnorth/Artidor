@@ -21,6 +21,7 @@ import {
 	useMemo,
 	useRef,
 	useState,
+	useSyncExternalStore,
 	type FormEvent,
 	type KeyboardEvent,
 } from "react";
@@ -202,7 +203,12 @@ export function AIEditView() {
 	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
 	const allProviders = useAIProvidersStore((s) => s.providers);
 	const aiName = useSettingsStore((s) => s.aiName);
-	const activeProject = editor.project.getActive();
+	// Subscribe to the active project so the provider dropdown updates
+	// immediately when the user switches providers.
+	const activeProject = useSyncExternalStore(
+		(cb) => editor.project.subscribe(cb),
+		() => editor.project.getActive(),
+	);
 	const projectProviderId = activeProject?.metadata.aiProviderId ?? null;
 	// The effective provider for this project: per-project override
 	// if set and still exists, otherwise the global default.
@@ -2542,6 +2548,12 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 	const [editText, setEditText] = useState(message.content);
 	const [copied, setCopied] = useState(false);
 	if (isTool) return null;
+
+	// Hide empty bubbles that have no visible content and no tool calls.
+	// These can appear while streaming text-based tool calls from Puter.js
+	// (e.g. MiniMax) where the XML tags are stripped and the visible text
+	// arrives later, leaving a bare placeholder bubble above Thinking….
+	if (!message.content?.trim() && !message.toolCalls?.length) return null;
 
 	const toolCallCount = message.toolCalls?.length ?? 0;
 	const successCount =
