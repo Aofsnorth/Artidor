@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-system-prompt-compressed",
+		date: "2026-06-26",
+		tag: "performance",
+		title: "Arth system prompt compressed — fewer tokens, same rules",
+		items: [
+			"Rewrote Arth's system prompt in a compressed style: dropped articles, filler, hedging, and pleasantries. All technical rules preserved (ticks, hex colors, tool constraints, destructive-action warnings, style matching, output contract). ~40% fewer tokens per request — cheaper, faster, more context room for the actual conversation.",
+		],
+	},
+	{
 		id: "2026-06-26-arth-rename-and-asset-mentions",
 		date: "2026-06-26",
 		tag: "feature",
