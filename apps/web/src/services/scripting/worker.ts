@@ -60,10 +60,10 @@ const consoleProxy = {
 
 const artidor = {
 	/** Run an editor command by name; resolves with its ToolExecutionResult.
-	 * The command name is validated on the main thread against the
-	 * registered tool registry before execution — untrusted names are
-	 * rejected, so this dispatch is safe.
-	 * lgtm[js/unvalidated-dynamic-method-call]
+	 * The command name is NOT dispatched dynamically in this worker — it
+	 * is sent as a string payload to the main thread, which validates it
+	 * against the registered tool registry before execution. Untrusted
+	 * names are rejected on the main thread, so this is safe.
 	 */
 	run: (name: string, args?: Record<string, unknown>) =>
 		callMain("run", { name, args: args ?? {} }),
@@ -95,7 +95,9 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 			// name is validated against the registered tool registry before
 			// execution. The `new Function` constructor is intentional here
 			// and safe because the worker has no access to sensitive APIs.
-			// lgtm[js/code-injection]
+			// This is a user-authored automation script (like a macro),
+			// not untrusted remote input — the user is running their own
+			// code in their own browser.
 			const runner = new Function(
 				"artidor",
 				"console",

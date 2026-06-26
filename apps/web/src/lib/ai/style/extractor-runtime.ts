@@ -54,8 +54,12 @@ export async function extractStyle({
 		const url = URL.createObjectURL(file);
 		// Blob URLs from URL.createObjectURL are same-origin and only
 		// decode the media container of the user-selected File — they
-		// cannot carry HTML/script payloads. Safe to assign.
-		// lgtm[js/xss-through-dom]
+		// cannot carry HTML/script payloads. The explicit `blob:`
+		// prefix check guards against any future code path that might
+		// pass a non-blob URL through here.
+		if (!url.startsWith("blob:")) {
+			throw new Error("Refusing to load non-blob URL into video element");
+		}
 		video.src = url;
 
 		await new Promise<void>((resolve, reject) => {

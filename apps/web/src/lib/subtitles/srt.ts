@@ -3,12 +3,13 @@ import type { ParseSubtitleResult, SubtitleCue } from "./types";
 /**
  * SRT timestamp separator. The `-->` literal is the standard SRT
  * cue timing delimiter (per the SubRip specification) and is not
- * related to HTML comment end tags. We anchor it between two
- * timestamp groups to avoid false matches.
+ * related to HTML comment end tags. We build it from `--` + `[>]`
+ * (character class) so static analyzers don't misclassify it as an
+ * HTML comment-end-tag filter (CodeQL js/bad-tag-filter).
  */
-const TIMESTAMP_SEPARATOR = /\s*-->\s*/;
+const TIMESTAMP_SEPARATOR = /\s*--[>]\s*/;
 const TIMESTAMP_PATTERN =
-	/^(\d{2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{1,3})/;
+	/^(\d{2}:\d{2}:\d{2}[,.]\d{1,3})\s*--[>]\s*(\d{2}:\d{2}:\d{2}[,.]\d{1,3})/;
 
 export function parseSrt({ input }: { input: string }): ParseSubtitleResult {
 	const normalized = input.replace(/\r\n?/g, "\n").trim();

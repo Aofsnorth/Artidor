@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-02-ai-chat-empty-bubble-error-clarity",
+		date: "2026-07-02",
+		tag: "fix",
+		title: "Fix: empty AI tool bubbles and clearer error messages",
+		items: [
+			"Assistant messages that contain only tool calls (no text) no longer render a blank bordered bubble above the tool card — the chat looks cleaner and less confusing.",
+			"update_todo now reports exactly what was wrong (invalid stepIndex type, out-of-range index, or invalid status) so the AI can self-correct instead of failing silently.",
+			"Puter.js errors now include the model name and distinguish connection issues from model errors, so the red error card explains what actually happened instead of a generic 'connection failed' message.",
+		],
+	},
+	{
 		id: "2026-07-01-provider-card-redesign",
 		date: "2026-07-01",
 		tag: "improvement",
