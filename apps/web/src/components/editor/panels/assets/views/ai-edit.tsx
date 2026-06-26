@@ -210,6 +210,13 @@ export function AIEditView() {
 		() => editor.project.getActive(),
 	);
 	const projectProviderId = activeProject?.metadata.aiProviderId ?? null;
+	// Switch the AI chat context whenever the active project changes so
+	// each project keeps its own separate conversation history.
+	const switchProject = useAIStore((s) => s.switchProject);
+	const activeProjectId = activeProject?.metadata.id ?? null;
+	useEffect(() => {
+		switchProject(activeProjectId);
+	}, [activeProjectId, switchProject]);
 	// The effective provider for this project: per-project override
 	// if set and still exists, otherwise the global default.
 	const effectiveProvider = projectProviderId

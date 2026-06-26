@@ -150,6 +150,8 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
 };
 
 interface AIState {
+	/** The project ID this chat belongs to, or null when no project is active. */
+	projectId: string | null;
 	messages: ChatMessage[];
 	status: ChatStatus;
 	error: string | null;
@@ -192,6 +194,19 @@ interface AIState {
 	 */
 	plan: Plan | null;
 	/**
+	 * Per-project chat data. When the user switches projects, the
+	 * current chat state is saved here keyed by project ID, and the
+	 * target project's state (if any) is restored.
+	 */
+	projectChats: Record<string, {
+		messages: ChatMessage[];
+		conversations: Conversation[];
+		compactedSummary: CompactedSummary | null;
+		plan: Plan | null;
+		styleProfile: StyleProfile | null;
+		referenceVideoName: string | null;
+	}>;
+	/**
 	 * Advanced AI settings — user-tunable parameters that control the
 	 * tool-call loop, retry behavior, and auto-compaction thresholds.
 	 * Persisted to localStorage so they survive page reloads.
@@ -199,6 +214,9 @@ interface AIState {
 	advancedSettings: AdvancedAISettings;
 	/** Update one or more advanced settings fields. */
 	setAdvancedSettings: (patch: Partial<AdvancedAISettings>) => void;
+	/** Switch the chat context to a different project. Saves the current
+	 *  chat state under the old project ID and loads the new one's state. */
+	switchProject: (projectId: string | null) => void;
 
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
@@ -273,6 +291,7 @@ function generateConversationName(messages: ChatMessage[]): string {
 export const useAIStore = create<AIState>()(
 	persist(
 		(set, get) => ({
+			projectId: null,
 			messages: [],
 			status: "idle",
 			error: null,
@@ -285,11 +304,53 @@ export const useAIStore = create<AIState>()(
 			retryIn: 0,
 			conversations: [],
 			plan: null,
+			projectChats: {},
 			advancedSettings: DEFAULT_ADVANCED_SETTINGS,
 
 			setAdvancedSettings: (patch) => {
 				set({
 					advancedSettings: { ...get().advancedSettings, ...patch },
+				});
+			},
+
+			switchProject: (projectId) => {
+				const state = get();
+				if (state.projectId === projectId) return;
+
+				// Save the current project's chat state.
+				const oldProjectId = state.projectId;
+				const projectChats = { ...state.projectChats };
+				if (oldProjectId) {
+					projectChats[oldProjectId] = {
+						messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
+						conversations: state.conversations.map((c) => ({
+							...c,
+							messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
+						})),
+						compactedSummary: state.compactedSummary,
+						plan: state.plan,
+						styleProfile: state.styleProfile,
+						referenceVideoName: state.referenceVideoName,
+					};
+				}
+
+				// Load the new project's chat state (or start fresh).
+				const saved = projectId ? projectChats[projectId] : undefined;
+				set({
+					projectId,
+					messages: saved?.messages ?? [],
+					conversations: saved?.conversations ?? [],
+					compactedSummary: saved?.compactedSummary ?? null,
+					plan: saved?.plan ?? null,
+					styleProfile: saved?.styleProfile ?? null,
+					referenceVideoName: saved?.referenceVideoName ?? null,
+					error: null,
+					queue: [],
+					retryCount: 0,
+					retryIn: 0,
+					status: "idle",
+					pendingImages: [],
+					projectChats,
 				});
 			},
 
@@ -471,6 +532,7 @@ export const useAIStore = create<AIState>()(
 		{
 			name: "artidor-ai-chat",
 			partialize: (state) => ({
+				projectId: state.projectId,
 				messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
 				styleProfile: state.styleProfile,
 				referenceVideoName: state.referenceVideoName,
@@ -479,6 +541,19 @@ export const useAIStore = create<AIState>()(
 					...c,
 					messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
 				})),
+				projectChats: Object.fromEntries(
+					Object.entries(state.projectChats).map(([id, chat]) => [
+						id,
+						{
+							...chat,
+							messages: chat.messages.slice(-MAX_PERSISTED_MESSAGES),
+							conversations: chat.conversations.map((c) => ({
+								...c,
+								messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
+							})),
+						},
+					]),
+				),
 				advancedSettings: state.advancedSettings,
 			}),
 		},

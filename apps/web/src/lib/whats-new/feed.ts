@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-29-per-project-chat-history",
+		date: "2026-06-29",
+		tag: "feature",
+		title: "Per-project AI chat history",
+		items: [
+			"Each project now keeps its own separate AI conversation history. Switching projects automatically saves the current chat and restores the target project's chat — no more cross-project message bleed.",
+			"Chat history, archived conversations, plans, and style profiles are all scoped per project and persisted across reloads.",
+		],
+	},
+	{
 		id: "2026-06-29-codeql-security-fixes",
 		date: "2026-06-29",
 		tag: "security",
