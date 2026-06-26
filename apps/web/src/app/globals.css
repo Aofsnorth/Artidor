@@ -807,27 +807,69 @@ body::-webkit-scrollbar,
 	}
 }
 
+@keyframes ai-aurora-glow {
+	0%,
+	100% {
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+			0 0 24px 0px rgba(255, 255, 255, 0.08),
+			0 0 60px 4px rgba(255, 255, 255, 0.04);
+	}
+	50% {
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+			0 0 32px 2px rgba(255, 255, 255, 0.18),
+			0 0 80px 8px rgba(255, 255, 255, 0.08);
+	}
+}
+
+/* The aurora border is built from two layers, both bulletproof:
+   1. .ai-aurora-border — the base ring via animated box-shadow.
+      This is always visible regardless of browser mask support.
+      The inset 1px ring is the visible white border; the outer
+      glows create the aurora halo.
+   2. .ai-aurora-border::after — a flowing gradient sheen on top
+      of the ring, clipped to the border area via mask. If mask is
+      not supported, this layer is simply invisible and the base
+      ring still shows. No dark fallback, no broken overlay. */
 .ai-aurora-border {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	animation: ai-aurora-glow 3s ease-in-out infinite;
+}
+
+.ai-aurora-border::after {
+	content: "";
+	position: absolute;
+	inset: 0;
 	background: linear-gradient(
 		90deg,
 		transparent,
-		rgba(255, 255, 255, 0.5),
-		rgba(255, 255, 255, 0.7),
-		rgba(255, 255, 255, 0.5),
+		rgba(255, 255, 255, 0.6),
+		rgba(255, 255, 255, 0.9),
+		rgba(255, 255, 255, 0.6),
 		transparent
 	);
 	background-size: 200% 100%;
 	animation: ai-aurora-border-flow 6s linear infinite;
-	/* Mask out the center so only the 1px border shimmer shows.
-	   The mask is applied directly to the gradient element — if it
-	   fails (older browser), the fallback is a subtle white gradient,
-	   NOT a destructive black overlay. */
+	/* Clip the gradient to a 2px border ring. If mask is unsupported,
+	   this pseudo-element is hidden and only the base box-shadow ring
+	   shows — never a full-screen overlay. */
 	-webkit-mask: linear-gradient(#000, #000) content-box,
 		linear-gradient(#000, #000);
 	-webkit-mask-composite: xor;
 	mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
 	mask-composite: exclude;
-	padding: 1px;
+	padding: 2px;
+}
+
+@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+	/* Browser doesn't support mask — hide the gradient sheen so it
+	   doesn't cover the editor. The base box-shadow ring still shows. */
+	.ai-aurora-border::after {
+		display: none;
+	}
 }
 
 /* AI takeover highlight for timeline elements being modified. */
