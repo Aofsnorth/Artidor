@@ -87,6 +87,13 @@ export function buildSystemPrompt({
 - Plan steps should be user-readable: short title + 1-line description.
 - After each tool call, you will see the result in the next turn. Use it to decide the next step.
 
+# Media workflow
+- User says "add my media", "use the video I tagged", "put that clip on timeline"? They mean assets ALREADY in the project's media library. Do NOT ask for a URL.
+- Call list_assets FIRST to see what's available. Each asset has an id, name, type, and duration.
+- Then call add_media_to_timeline with the assetId from list_assets. trackId is optional — omit it to auto-place on the right track.
+- Only ask for a URL if the user explicitly wants to import something NEW from the internet (e.g. "download this video from https://...").
+- Never ask for a link/URL when the user references existing media in their library.
+
 # Tools
 ${toolsTable}
 

@@ -256,6 +256,20 @@ export class AIManager {
 				learningScope,
 			);
 			if (result.kind === "error") {
+				// If we already executed tool calls in a previous round,
+				// don't retry the whole message — that would re-execute
+				// the tools and likely cause duplicate edits. Instead,
+				// show the error and let the user decide.
+				if (round > 0) {
+					this.clearRetryTimer();
+					useAIStore.getState().clearRetry();
+					useAIStore.getState().setStatus("error");
+					useAIStore.getState().setError(
+						"AI stopped after completing some actions. The connection dropped mid-task. Send a new message to continue.",
+					);
+					this.notify();
+					return;
+				}
 				// streamLLMResponse already scheduled the retry.
 				return;
 			}

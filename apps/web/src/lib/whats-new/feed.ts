@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-media-workflow-retry-fix",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "AI no longer asks for URLs on existing media + retry loop fix",
+		items: [
+			"Fixed: AI was asking for a URL when the user said 'add my media to timeline' — it now understands that references to existing media mean assets already in the project's library. The system prompt now has a Media workflow section instructing the AI to call list_assets first, then add_media_to_timeline with the assetId. trackId is optional (auto-placed).",
+			"Fixed: AI was retrying the entire message after a connection drop, even if tool calls had already been executed — causing duplicate edits. Now, if the connection drops mid-task (after tool calls ran), the AI shows an error instead of retrying from scratch. The user can send a new message to continue.",
+		],
+	},
+	{
 		id: "2026-06-27-expandable-tool-calls",
 		date: "2026-06-27",
 		tag: "feature",
