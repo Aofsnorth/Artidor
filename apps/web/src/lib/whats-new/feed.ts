@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-autolearn-settings-sync",
+		date: "2026-06-28",
+		tag: "fix",
+		title: "Auto-learn toggle and settings scope now stay in sync",
+		items: [
+			"Toggling auto-learn off in the status bar now also sets the learning scope to 'off' in advanced settings — they were previously independent and could disagree.",
+			"Selecting 'off' in the learning scope dropdown now also disables the auto-learn toggle in the status bar.",
+			"Reset to defaults now correctly re-enables auto-learn to match the default 'project' scope.",
+		],
+	},
+	{
 		id: "2026-06-28-ref-button-above-chatbar",
 		date: "2026-06-28",
 		tag: "fix",
