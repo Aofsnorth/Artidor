@@ -37,6 +37,7 @@ import { OllamaProvider } from "@/lib/ai/providers/ollama";
 import type { LLMProvider } from "@/lib/ai/provider";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { getToolDefinitions } from "@/lib/ai/tools/registry";
+import type { ToolDefinition } from "@/lib/ai/provider";
 import type { StyleProfile } from "@/lib/ai/style/extractor";
 import type { TelemetryEvent } from "@/lib/ai/telemetry/store";
 
@@ -107,6 +108,24 @@ const bodySchema = z.object({
 				.enum(["openai-compatible", "ollama"])
 				.default("openai-compatible"),
 		})
+		.optional(),
+	/**
+	 * External MCP tool definitions sent from the client. These are
+	 * merged with the built-in editor tools so the LLM can call both.
+	 * The client handles execution of MCP tools (they connect to
+	 * external servers from the browser).
+	 */
+	externalTools: z
+		.array(
+			z.object({
+				type: z.literal("function"),
+				function: z.object({
+					name: z.string(),
+					description: z.string(),
+					parameters: z.record(z.string(), z.unknown()),
+				}),
+			}),
+		)
 		.optional(),
 });
 
@@ -250,7 +269,10 @@ export async function POST(request: Request) {
 		id: crypto.randomUUID(),
 	})) as TelemetryEvent[] | undefined;
 
-	const tools = getToolDefinitions();
+	const tools: ToolDefinition[] = [
+		...getToolDefinitions(),
+		...((body.externalTools ?? []) as unknown as ToolDefinition[]),
+	];
 	const system = buildSystemPrompt({
 		tools: tools.map((t) => ({
 			name: t.function.name,

@@ -825,4 +825,209 @@ const HANDLERS: Record<string, Handler> = {
 			message: folderId ? "Moved to folder" : "Moved to root",
 		};
 	},
+
+	/* ----------------------- element (advanced) -------------------------- */
+	duplicate_elements: async (editor, args) => {
+		const elements = asArray<ElementRef>(args.elements);
+		if (elements.length === 0)
+			return { ok: false, message: "No elements to duplicate" };
+		const copies = editor.timeline.duplicateElements({ elements });
+		return {
+			ok: true,
+			message: `Duplicated ${copies.length} element(s)`,
+			data: { copies },
+		};
+	},
+
+	toggle_source_audio_separation: async (editor, args) => {
+		editor.timeline.toggleSourceAudioSeparation({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+		});
+		return { ok: true, message: "Toggled audio separation" };
+	},
+
+	set_parent: async (editor, args) => {
+		const ref: ElementRef = {
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+		};
+		const parentId = args.parentId ? asString(args.parentId) : undefined;
+		editor.timeline.setParent({ ref, parentId });
+		return {
+			ok: true,
+			message: parentId ? "Parent set" : "Parent removed",
+		};
+	},
+
+	unlink_parent: async (editor, args) => {
+		editor.timeline.unlinkParent({
+			ref: {
+				trackId: asString(args.trackId),
+				elementId: asString(args.elementId),
+			},
+		});
+		return { ok: true, message: "Parent unlinked" };
+	},
+
+	combine_elements: async (editor, args) => {
+		const elementRefs = asArray<ElementRef>(args.elements);
+		if (elementRefs.length < 2)
+			return { ok: false, message: "Need 2+ elements to combine" };
+		const resultId = editor.timeline.combineElements({ elementRefs });
+		return resultId
+			? { ok: true, message: "Combined elements", data: { id: resultId } }
+			: { ok: false, message: "Could not combine (not adjacent?)" };
+	},
+
+	/* ------------------------- transition (extra) ------------------------ */
+	remove_transition: async (editor, args) => {
+		const mod = await import("@/lib/commands/scene/transition");
+		const cmd = new mod.RemoveTransitionCommand(asString(args.transitionId));
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Transition removed" };
+	},
+
+	update_transition: async (editor, args) => {
+		const mod = await import("@/lib/commands/scene/transition");
+		const patch: Record<string, unknown> = {};
+		if (typeof args.transitionType === "string")
+			patch.transitionType = args.transitionType;
+		if (typeof args.startTime === "number") patch.startTime = args.startTime;
+		if (typeof args.duration === "number") patch.duration = args.duration;
+		const cmd = new mod.UpdateTransitionCommand(
+			asString(args.transitionId),
+			patch as never,
+		);
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Transition updated" };
+	},
+
+	/* --------------------------- effect (extra) -------------------------- */
+	toggle_effect_enabled: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/effects/toggle-effect"
+		);
+		const cmd = new mod.ToggleClipEffectCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			effectId: asString(args.effectId),
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Effect toggled" };
+	},
+
+	reorder_effects: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/effects/reorder-effect"
+		);
+		const cmd = new mod.ReorderClipEffectsCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			fromIndex: asInt(args.fromIndex),
+			toIndex: asInt(args.toIndex),
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Effects reordered" };
+	},
+
+	/* ---------------------------- mask (extra) --------------------------- */
+	toggle_mask_inverted: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/masks/toggle-mask-inverted"
+		);
+		const cmd = new mod.ToggleMaskInvertedCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			maskId: asString(args.maskId),
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Mask inversion toggled" };
+	},
+
+	/* -------------------------- keyframe (extra) ------------------------- */
+	retime_keyframe: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/keyframes/retime-keyframe"
+		);
+		const cmd = new mod.RetimeKeyframeCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			propertyPath: asString(args.path) as never,
+			keyframeId: asString(args.keyframeId),
+			nextTime: asNumber(args.newTime, 0),
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Keyframe retimed" };
+	},
+
+	upsert_effect_param_keyframe: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/keyframes/upsert-effect-param-keyframe"
+		);
+		const cmd = new mod.UpsertEffectParamKeyframeCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			effectId: asString(args.effectId),
+			paramKey: asString(args.paramKey),
+			time: asNumber(args.time, 0),
+			value: args.value as never,
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Effect param keyframe upserted" };
+	},
+
+	remove_effect_param_keyframe: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/element/keyframes/remove-effect-param-keyframe"
+		);
+		const cmd = new mod.RemoveEffectParamKeyframeCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			effectId: asString(args.effectId),
+			paramKey: asString(args.paramKey),
+			keyframeId: asString(args.keyframeId),
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Effect param keyframe removed" };
+	},
+
+	/* ---------------------------- asset (extra) -------------------------- */
+	delete_asset: async (editor, args) => {
+		const project = editor.project.getActive();
+		if (!project) return { ok: false, message: "No active project" };
+		editor.media.removeMediaAsset({
+			projectId: project.metadata.id,
+			id: asString(args.assetId),
+		});
+		return { ok: true, message: "Asset deleted" };
+	},
+
+	rename_folder: async (editor, args) => {
+		await editor.media.renameFolder({
+			id: asString(args.folderId),
+			name: asString(args.name, "Untitled"),
+		});
+		return { ok: true, message: "Folder renamed" };
+	},
+
+	delete_folder: async (editor, args) => {
+		await editor.media.deleteFolder({ id: asString(args.folderId) });
+		return { ok: true, message: "Folder deleted" };
+	},
+
+	/* ------------------------- clipboard (extra) ------------------------- */
+	paste_keyframes: async (editor, args) => {
+		const mod = await import(
+			"@/lib/commands/timeline/clipboard/paste-keyframes"
+		);
+		const cmd = new mod.PasteKeyframesCommand({
+			trackId: asString(args.trackId),
+			elementId: asString(args.elementId),
+			time: asNumber(args.time, 0),
+			clipboardItems: [],
+		});
+		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+		return { ok: true, message: "Keyframes pasted" };
+	},
 };

@@ -690,6 +690,220 @@ export const ALL_TOOLS: RegisteredTool[] = [
 			["assetId"],
 		),
 	),
+
+	/* ------------------------- Element (advanced) --------------------------- */
+	tool(
+		"element",
+		"duplicate_elements",
+		"duplicate_elements",
+		"Duplicate one or more elements. The copies are placed right after the originals on the same track.",
+		objectSchema({ elements: elementRefArraySchema(1) }, ["elements"]),
+	),
+	tool(
+		"element",
+		"toggle_source_audio_separation",
+		"toggle_source_audio_separation",
+		"Toggle audio separation on a video element — splits the audio into its own track for independent editing.",
+		objectSchema(
+			{ trackId: { type: "string" }, elementId: { type: "string" } },
+			["trackId", "elementId"],
+		),
+	),
+	tool(
+		"element",
+		"set_parent",
+		"set_parent",
+		"Set a parent for an element (for nested transforms / parallax). Omit parentId to unset.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				parentId: { type: "string" },
+			},
+			["trackId", "elementId"],
+		),
+	),
+	tool(
+		"element",
+		"unlink_parent",
+		"unlink_parent",
+		"Remove the parent link from an element.",
+		objectSchema(
+			{ trackId: { type: "string" }, elementId: { type: "string" } },
+			["trackId", "elementId"],
+		),
+	),
+	tool(
+		"element",
+		"combine_elements",
+		"combine_elements",
+		"Combine two or more adjacent elements on the same track into a single clip.",
+		objectSchema({ elements: elementRefArraySchema(2) }, ["elements"]),
+	),
+
+	/* --------------------------- Transition (extra) ------------------------- */
+	tool(
+		"transition",
+		"remove_transition",
+		"remove_transition",
+		"Remove a transition by its id.",
+		objectSchema({ transitionId: { type: "string" } }, ["transitionId"]),
+	),
+	tool(
+		"transition",
+		"update_transition",
+		"update_transition",
+		"Update a transition's properties (type, startTime, duration).",
+		objectSchema(
+			{
+				transitionId: { type: "string" },
+				transitionType: { type: "string" },
+				startTime: numberSchema(0),
+				duration: numberSchema(1),
+			},
+			["transitionId"],
+		),
+	),
+
+	/* ----------------------------- Effect (extra) --------------------------- */
+	tool(
+		"effect",
+		"toggle_effect_enabled",
+		"toggle_effect_enabled",
+		"Enable or disable a clip effect without removing it.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				effectId: { type: "string" },
+			},
+			["trackId", "elementId", "effectId"],
+		),
+	),
+	tool(
+		"effect",
+		"reorder_effects",
+		"reorder_effects",
+		"Move an effect from one position to another in the effect stack.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				fromIndex: numberSchema(0),
+				toIndex: numberSchema(0),
+			},
+			["trackId", "elementId", "fromIndex", "toIndex"],
+		),
+	),
+
+	/* ------------------------------ Mask (extra) ---------------------------- */
+	tool(
+		"mask",
+		"toggle_mask_inverted",
+		"toggle_mask_inverted",
+		"Toggle whether a mask is inverted (shows the opposite region).",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				maskId: { type: "string" },
+			},
+			["trackId", "elementId", "maskId"],
+		),
+	),
+
+	/* --------------------------- Keyframe (extra) --------------------------- */
+	tool(
+		"keyframe",
+		"retime_keyframe",
+		"retime_keyframe",
+		"Move a keyframe to a new time on the same property.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				path: { type: "string" },
+				keyframeId: { type: "string" },
+				newTime: numberSchema(0),
+			},
+			["trackId", "elementId", "path", "keyframeId", "newTime"],
+		),
+	),
+	tool(
+		"keyframe",
+		"upsert_effect_param_keyframe",
+		"upsert_effect_param_keyframe",
+		"Insert or update a keyframe on an effect parameter (e.g. blur intensity over time).",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				effectId: { type: "string" },
+				paramKey: { type: "string" },
+				time: numberSchema(0),
+				value: {},
+			},
+			["trackId", "elementId", "effectId", "paramKey", "time", "value"],
+		),
+	),
+	tool(
+		"keyframe",
+		"remove_effect_param_keyframe",
+		"remove_effect_param_keyframe",
+		"Remove a keyframe from an effect parameter.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				effectId: { type: "string" },
+				paramKey: { type: "string" },
+				keyframeId: { type: "string" },
+			},
+			["trackId", "elementId", "effectId", "paramKey", "keyframeId"],
+		),
+	),
+
+	/* --------------------------- Asset (extra) ------------------------------ */
+	tool(
+		"asset",
+		"delete_asset",
+		"delete_asset",
+		"Delete a media asset from the project library.",
+		objectSchema({ assetId: { type: "string" } }, ["assetId"]),
+	),
+	tool(
+		"asset",
+		"rename_folder",
+		"rename_folder",
+		"Rename a media library folder.",
+		objectSchema(
+			{ folderId: { type: "string" }, name: { type: "string", minLength: 1 } },
+			["folderId", "name"],
+		),
+	),
+	tool(
+		"asset",
+		"delete_folder",
+		"delete_folder",
+		"Delete a media library folder. Assets inside are moved to root.",
+		objectSchema({ folderId: { type: "string" } }, ["folderId"]),
+	),
+
+	/* -------------------------- Clipboard (extra) --------------------------- */
+	tool(
+		"clipboard",
+		"paste_keyframes",
+		"paste_keyframes",
+		"Paste copied keyframes onto an element at the given time (ticks).",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				time: numberSchema(0),
+			},
+			["trackId", "elementId", "time"],
+		),
+	),
 ];
 
 /* -------------------------------------------------------------------------- */

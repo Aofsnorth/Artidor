@@ -28,6 +28,7 @@ import {
 } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
 import type { FrameRate } from "artidor-wasm";
 
 /**
@@ -187,6 +188,18 @@ export class AIManager {
 		// Make the request. Include the user's selected provider config so
 		// the server uses the client-managed endpoint rather than env vars.
 		const providerConfig = getDefaultProvider();
+		// Collect MCP external tools so the LLM can call them alongside
+		// the built-in editor tools. Each MCP tool is namespaced as
+		// `mcp__<serverId>__<toolName>` to avoid collisions.
+		const mcpTools = useMcpStore.getState().getAllTools();
+		const externalTools = mcpTools.map((t) => ({
+			type: "function" as const,
+			function: {
+				name: `mcp__${t.serverId}__${t.name}`,
+				description: `[${t.serverName}] ${t.description}`,
+				parameters: t.inputSchema,
+			},
+		}));
 		let res: Response;
 		try {
 			res = await fetch("/api/ai/chat", {
@@ -197,6 +210,7 @@ export class AIManager {
 					context: this.snapshotContext(),
 					recentEvents: recent,
 					styleProfile: ai.styleProfile,
+					externalTools,
 					// Pass the provider config only when there is one — when
 					// absent the server falls back to env-var resolution.
 					provider: providerConfig
@@ -315,19 +329,44 @@ export class AIManager {
 
 		// Execute the tool calls in order. Each call's result is
 		// appended to the assistant message so the user can see what
-		// happened.
+		// happened. MCP tools (prefixed `mcp__<serverId>__<toolName>`)
+		// are routed to the MCP connection manager instead of the
+		// built-in executor.
 		const results: Array<{ name: string; ok: boolean; message?: string }> = [];
 		if (toolCalls.length > 0) {
 			ai.setStatus("awaiting-tools");
 			this.notify();
+			const mcpManager = getMcpConnectionManager();
 			for (const tc of toolCalls) {
-				const r = await executeTool({
-					editor: this.editor,
-					toolName: tc.name,
-					arguments: tc.arguments,
-					source: "ai",
-				});
-				results.push({ name: tc.name, ok: r.ok, message: r.message });
+				if (tc.name.startsWith("mcp__")) {
+					// Parse: mcp__<serverId>__<toolName>
+					const rest = tc.name.slice(5);
+					const sep = rest.indexOf("__");
+					if (sep < 0) {
+						results.push({ name: tc.name, ok: false, message: "Invalid MCP tool name" });
+						continue;
+					}
+					const serverId = rest.slice(0, sep);
+					const toolName = rest.slice(sep + 2);
+					try {
+						const mcpResult = await mcpManager.callTool(serverId, toolName, tc.arguments);
+						results.push({ name: tc.name, ok: true, message: "MCP tool executed", data: mcpResult } as never);
+					} catch (err) {
+						results.push({
+							name: tc.name,
+							ok: false,
+							message: err instanceof Error ? err.message : "MCP tool failed",
+						});
+					}
+				} else {
+					const r = await executeTool({
+						editor: this.editor,
+						toolName: tc.name,
+						arguments: tc.arguments,
+						source: "ai",
+					});
+					results.push({ name: tc.name, ok: r.ok, message: r.message });
+				}
 			}
 		}
 
