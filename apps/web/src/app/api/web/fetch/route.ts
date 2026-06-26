@@ -51,7 +51,7 @@ function isAllowedUrl(url: string): boolean {
 	// Block private/reserved IPv4 ranges.
 	const ipv4 = hostname.split(".").map((n) => Number.parseInt(n, 10));
 	if (ipv4.length === 4 && ipv4.every((n) => Number.isFinite(n))) {
-		const [a, b, c] = ipv4;
+		const [a, b] = ipv4;
 		if (
 			a === 10 ||
 			(a === 172 && b >= 16 && b <= 31) ||
