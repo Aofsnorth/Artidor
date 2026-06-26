@@ -25,6 +25,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		items: [
 			"Fixed Puter.js MiniMax models stopping after the first tool call: the conversation now continues in a text-based format these models understand, so the AI can act on tool results instead of retrying.",
 			"Improved XML tool call parsing for malformed provider wrappers (e.g. <minimax> tags) and stripped leftover XML from the chat bubble so the model's raw tool syntax no longer leaks into the visible message.",
+			"Empty assistant placeholder bubbles above the 'Thinking…' indicator are now hidden, removing the confusing dark card that appeared while streaming.",
+			"The provider dropdown now updates immediately when you select a different provider, instead of lagging until the next re-render.",
 			"Quick-action suggestion chips at the top of the AI panel now use icons that are visually distinct from the tool-call category icons.",
 		],
 	},

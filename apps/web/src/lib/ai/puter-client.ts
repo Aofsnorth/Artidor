@@ -671,7 +671,7 @@ export async function* streamPuterChat(
 	const puterMessages = toPuterMessages(messages, model);
 	console.log("[puter] messages sent", JSON.stringify(puterMessages, null, 2));
 
-	let response;
+	let response: AsyncIterable<PuterChatChunk>;
 	try {
 		response = await puter.ai.chat(puterMessages, options);
 	} catch (err) {
