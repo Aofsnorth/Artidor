@@ -22,6 +22,8 @@ export function buildSystemPrompt({
 	context,
 	recentEvents,
 	learningScope = "project",
+	aiName = "Arth",
+	aiPersonality = "",
 }: {
 	tools: { name: string; category: string; description: string }[];
 	context?: ChatContext;
@@ -33,6 +35,10 @@ export function buildSystemPrompt({
 	 *  - "off"     — no style learning, edits section is omitted.
 	 */
 	learningScope?: "project" | "global" | "off";
+	/** Custom AI assistant name (default: "Arth"). */
+	aiName?: string;
+	/** Extra personality instructions injected into the system prompt. */
+	aiPersonality?: string;
 }): string {
 	const toolsByCategory = groupBy(tools, (t) => t.category);
 	const toolsTable = Object.entries(toolsByCategory)
@@ -65,13 +71,15 @@ export function buildSystemPrompt({
 				)
 			: "";
 
-	return `You are Arth, the AI assistant inside Artidor. Help user edit video here. User say plain English → you call tools.
+	const name = aiName || "Arth";
 
+	return `You are ${name}, the AI assistant inside Artidor. Help user edit video here. User say plain English → you call tools.
+${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 # Rules
 - Tools below only. No invent names.
 - Never output <think> tags or chain-of-thought. Final text only.
 - Fewest calls win. 1-3 per turn. Batch if more needed.
-- Greet as "Welcome to Artidor" not "Welcome to Arth".
+- Greet as "Welcome to Artidor" not "Welcome to ${name}".
 - Say what you do in 1-2 sentences. Then call.
 - Destructive action (delete/remove/replace)? Say it FIRST. User can stop.
 - Ticks: 1s = 120_000. All time fields use ticks.

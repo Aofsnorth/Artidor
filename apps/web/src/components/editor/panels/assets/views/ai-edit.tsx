@@ -54,6 +54,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
@@ -186,6 +187,7 @@ export function AIEditView() {
 	const telemetry = useTelemetryStore();
 	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
 	const allProviders = useAIProvidersStore((s) => s.providers);
+	const aiName = useSettingsStore((s) => s.aiName);
 	const activeProject = editor.project.getActive();
 	const projectProviderId = activeProject?.metadata.aiProviderId ?? null;
 	// The effective provider for this project: per-project override
@@ -410,6 +412,7 @@ export function AIEditView() {
 						});
 						editor.project.saveCurrentProject();
 					}}
+					aiName={aiName}
 					compactedSummary={ai.compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
 					conversations={ai.conversations}
@@ -619,7 +622,7 @@ export function AIEditView() {
 						value={draft}
 						onChange={(e) => handleDraftChange(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="Ask Arth to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset"
+						placeholder={`Ask ${aiName} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset`}
 						rows={2}
 						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/30"
 					/>
@@ -1502,6 +1505,7 @@ function StatusBar({
 	allProviders,
 	projectProviderId,
 	onSelectProvider,
+	aiName,
 	compactedSummary,
 	autoLearnEnabled,
 	conversations,
@@ -1527,6 +1531,7 @@ function StatusBar({
 	allProviders: Array<{ id: string; name: string; model: string; enabled: boolean }>;
 	projectProviderId: string | null;
 	onSelectProvider: (id: string | null) => void;
+	aiName: string;
 	compactedSummary: ReturnType<typeof useAIStore.getState>["compactedSummary"];
 	autoLearnEnabled: boolean;
 	conversations: { id: string; name: string; updatedAt: number }[];
@@ -1587,7 +1592,7 @@ function StatusBar({
 						</div>
 						<div className="flex flex-col">
 							<span className="font-serif text-[13px] leading-tight text-white">
-								Arth
+								{aiName}
 							</span>
 							<span
 								className={cn(
