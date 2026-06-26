@@ -466,14 +466,13 @@ export function AIEditView() {
 					onToggleAutoLearn={() => {
 						const next = !autoLearnEnabled;
 						telemetry.setEnabled(next);
-						// When enabling auto-learn, default to project-scoped
-						// learning so the AI learns from the current project's
-						// edits. The user can switch to global later.
-						if (next) {
-							useAIStore.getState().setAdvancedSettings({
-								learningScope: "project",
-							});
-						}
+						// Keep learningScope in sync with the toggle:
+						//  - enabling → default to project-scoped learning
+						//  - disabling → set scope to "off" so the settings
+						//    dropdown reflects the actual state
+						useAIStore.getState().setAdvancedSettings({
+							learningScope: next ? "project" : "off",
+						});
 					}}
 					onOpenProviders={() => setProvidersOpen(true)}
 					onClearReference={() => editor.ai.clearReference()}
@@ -2332,6 +2331,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 function AdvancedSettingsButton() {
 	const settings = useAIStore((s) => s.advancedSettings);
 	const setAdvancedSettings = useAIStore((s) => s.setAdvancedSettings);
+	const setTelemetryEnabled = useTelemetryStore((s) => s.setEnabled);
 
 	return (
 		<Popover>
@@ -2427,9 +2427,13 @@ function AdvancedSettingsButton() {
 								<button
 									key={opt.value}
 									type="button"
-									onClick={() =>
-										setAdvancedSettings({ learningScope: opt.value })
-									}
+									onClick={() => {
+										setAdvancedSettings({ learningScope: opt.value });
+										// Sync the auto-learn toggle with the scope:
+										// "off" disables telemetry, "project"/"global"
+										// enables it so the status bar toggle matches.
+										setTelemetryEnabled(opt.value !== "off");
+									}}
 									className={cn(
 										"flex-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-all",
 										settings.learningScope === opt.value
@@ -2460,7 +2464,7 @@ function AdvancedSettingsButton() {
 				</div>
 				<button
 					type="button"
-					onClick={() =>
+					onClick={() => {
 						setAdvancedSettings({
 							maxToolRounds: 500,
 							maxRetryAttempts: 10,
@@ -2468,8 +2472,11 @@ function AdvancedSettingsButton() {
 							compactionMessageThreshold: 20,
 							compactionKeepLast: 6,
 							learningScope: "project",
-						})
-					}
+						});
+						// Reset also re-enables telemetry to match the
+						// default "project" learning scope.
+						setTelemetryEnabled(true);
+					}}
 					className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
 				>
 					Reset to defaults
