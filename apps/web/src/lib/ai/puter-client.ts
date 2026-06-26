@@ -394,11 +394,13 @@ function toPuterMessages(messages: unknown[], model: string): unknown[] {
 }
 
 /**
- * Patch the system prompt for text-based models. Replaces the native
- * function-calling instruction with an XML-based instruction.
+ * Patch the system prompt for text-based models. We append a clear
+ * XML-based instruction at the end so it overrides the earlier
+ * native function-calling instructions. Regex replacement is kept as
+ * a best-effort cleanup but the appended block is the source of truth.
  */
 function rewriteSystemPromptForTextTools(content: string): string {
-	return content
+	const cleaned = content
 		.replace(
 			/Call tools using the standard function-calling API\.[^\n]*\n/,
 			"This model does not support native function calling. Emit tool calls as XML tags exactly like this:\n",
@@ -407,6 +409,27 @@ function rewriteSystemPromptForTextTools(content: string): string {
 			/- Do NOT wrap tool calls in markdown code blocks or <tool> tags\. Use the native function-calling mechanism\.\n/,
 			"- Wrap every tool call in XML tags.\n- Example: <tool_call><invoke name=\"tool_name\"><parameter name=\"arg_name\">value</parameter></invoke></tool_call>\n",
 		);
+
+	const xmlInstruction = `
+
+# IMPORTANT: tool calling format for this model
+This model does not support the native function-calling API. You MUST emit tool calls as XML tags in your response text, exactly like this:
+
+<tool_call>
+<invoke name="EXACT_TOOL_NAME_FROM_TABLE">
+<parameter name="param_name">value</parameter>
+</invoke>
+</tool_call>
+
+Rules:
+- Use the EXACT tool name from the tool table above.
+- Wrap each tool call in its own <tool_call> block.
+- Parameter values must match the expected type (string, number, boolean).
+- Do not wrap the XML in markdown code blocks.
+- After the XML, you may briefly tell the user what you did in plain text.
+`;
+
+	return cleaned + xmlInstruction;
 }
 
 /**
@@ -633,6 +656,8 @@ export async function* streamPuterChat(
 	}
 
 	const textBased = isTextBasedToolModel(model);
+	console.log("[puter] chat start", { model, textBased, messageCount: messages.length, hasTools: Boolean(tools && tools.length > 0) });
+
 	const options: Record<string, unknown> = {
 		model,
 		stream: true,
@@ -643,7 +668,22 @@ export async function* streamPuterChat(
 		options.tools = tools;
 	}
 
-	const response = await puter.ai.chat(toPuterMessages(messages, model), options);
+	const puterMessages = toPuterMessages(messages, model);
+	console.log("[puter] messages sent", JSON.stringify(puterMessages, null, 2));
+
+	let response;
+	try {
+		response = await puter.ai.chat(puterMessages, options);
+	} catch (err) {
+		console.error("[puter] chat() threw", err);
+		yield {
+			error:
+				err instanceof Error
+					? `Puter.js chat error: ${err.message}`
+					: "Puter.js chat failed",
+		};
+		return;
+	}
 
 	// Text tool call parser — handles models that emit XML-based tool
 	// calls in text instead of using the native tool_use stream event.
