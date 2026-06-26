@@ -435,25 +435,27 @@ export function AIEditView() {
 					)}
 					<div ref={messagesEndRef} />
 
-					{/* Scroll-to-top button — only visible when not at top */}
-					{!isAtTop && ai.messages.length > 0 && (
+					{/* Scroll-to-top button — only visible when not at top and
+					    mention dropdown is closed (so it doesn't overlap) */}
+					{!isAtTop && ai.messages.length > 0 && !mentionQuery && (
 						<button
 							type="button"
 							onClick={scrollToTop}
 							title="Scroll to top"
-							className="sticky top-1 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
+							className="pointer-events-auto sticky top-1 left-1/2 z-[5] flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
 						>
 							<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
 						</button>
 					)}
 
-					{/* Scroll-to-bottom button — only visible when not at bottom */}
-					{!isAtBottom && ai.messages.length > 0 && (
+					{/* Scroll-to-bottom button — only visible when not at bottom and
+					    mention dropdown is closed (so it doesn't overlap) */}
+					{!isAtBottom && ai.messages.length > 0 && !mentionQuery && (
 						<button
 							type="button"
 							onClick={scrollToBottom}
 							title="Scroll to bottom"
-							className="sticky bottom-1 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
+							className="pointer-events-auto sticky bottom-1 left-1/2 z-[5] flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
 						>
 							<HugeiconsIcon icon={ArrowDown03Icon} className="size-3" />
 						</button>
