@@ -277,13 +277,33 @@ export class AIManager {
 					: useTelemetryStore.getState().recent(20);
 		for (let round = 0; round < maxRounds; round++) {
 			if (signal.aborted) return;
-			const result = await this.streamLLMResponse(
-				text,
-				recentEvents,
-				signal,
-				learningScope,
-			);
-			if (result.kind === "error") {
+			// Retry transient network errors within a round (up to 2
+			// attempts). This handles mid-task connection drops without
+			// losing the tool-call progress from previous rounds.
+			let result:
+				| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
+				| { kind: "error" }
+				| null = null;
+			for (let attempt = 0; attempt < 2; attempt++) {
+				if (signal.aborted) return;
+				result = await this.streamLLMResponse(
+					text,
+					recentEvents,
+					signal,
+					learningScope,
+				);
+				if (result.kind === "ok") break;
+				// If aborted, don't retry.
+				if (signal.aborted) return;
+				// On the first attempt's error, streamLLMResponse may
+				// have scheduled a retry timer. Cancel it — we handle
+				// the retry here instead.
+				this.clearRetryTimer();
+				useAIStore.getState().clearRetry();
+				// If this is the last attempt, fall through to the
+				// error handling below.
+			}
+			if (!result || result.kind === "error") {
 				// If we already executed tool calls in a previous round,
 				// don't retry the whole message — that would re-execute
 				// the tools and likely cause duplicate edits. Instead,
@@ -298,7 +318,12 @@ export class AIManager {
 					this.notify();
 					return;
 				}
-				// streamLLMResponse already scheduled the retry.
+				// Round 0 error: streamLLMResponse already scheduled a
+				// retry (or we exhausted attempts above). Schedule one
+				// final retry here if not already scheduled.
+				if (!result) {
+					this.scheduleRetry(text, "Connection error");
+				}
 				return;
 			}
 			if (signal.aborted) return;

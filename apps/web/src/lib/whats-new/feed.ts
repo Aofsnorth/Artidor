@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-reference-button-and-tool-loop",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Reference button moved + tool loop stability + file error handling",
+		items: [
+			"Moved the Reference button to sit directly above the chat area, with the active reference filename shown inline next to it. Previously it was buried in the quick actions row.",
+			"Fixed tool loop breaking with 'connection dropped mid-task' error. Transient network errors during multi-round tool execution are now retried in-place (up to 2 attempts per round) instead of immediately aborting the entire task. Previous rounds' tool results are preserved.",
+			"Added graceful error handling when the AI can't read a sent reference file. Unsupported formats, corrupt files, and audio-only files now show a clear error message instead of silently failing.",
+		],
+	},
+	{
 		id: "2026-06-27-security-and-project-provider",
 		date: "2026-06-27",
 		tag: "security",
