@@ -2539,6 +2539,15 @@ function SettingRow({
 	);
 }
 
+function isAssistantQuestion(message: ChatMessage): boolean {
+	if (message.role !== "assistant" || message.toolCalls?.length) return false;
+	const text = message.content?.trim() ?? "";
+	if (!text.endsWith("?")) return false;
+	// Sentences before the final question mark should be short enough
+	// that the whole message reads as a question/confirmation prompt.
+	return text.length < 500;
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
 	const isUser = message.role === "user";
 	const isTool = message.role === "tool";
@@ -2655,6 +2664,32 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								>
 									Save
 								</button>
+							</div>
+						</div>
+					) : isAssistantQuestion(message) ? (
+						<div className="flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-3 py-2 shadow-[0_0_12px_-4px_rgba(34,211,238,0.2)]">
+							<div className="grid size-6 shrink-0 place-items-center rounded-lg border border-cyan-400/20 bg-cyan-400/10">
+								<HugeiconsIcon
+									icon={Chat01Icon}
+									className="size-3.5 text-cyan-300"
+								/>
+							</div>
+							<div className="prose prose-invert prose-sm max-w-none text-[12px] leading-relaxed text-cyan-100">
+								<Markdown
+									allowedElements={[
+										"p",
+										"strong",
+										"em",
+										"code",
+										"ul",
+										"ol",
+										"li",
+										"a",
+										"br",
+									]}
+								>
+									{linkifyHashtags(message.content)}
+								</Markdown>
 							</div>
 						</div>
 					) : message.content ? (
@@ -2929,6 +2964,13 @@ function getToolVisual(toolName: string): ToolVisual {
 			bg: "bg-sky-500/10",
 			border: "border-sky-400/20",
 			glow: "shadow-[0_0_12px_-4px_rgba(14,165,233,0.3)]",
+		},
+		web: {
+			icon: CloudIcon,
+			color: "text-violet-300",
+			bg: "bg-violet-500/10",
+			border: "border-violet-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(139,92,246,0.3)]",
 		},
 		style: {
 			icon: PaintBrushIcon,
