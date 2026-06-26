@@ -203,6 +203,72 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 					}
 				: element,
 	}),
+	"transform.rotateX": createNumberPropertyDefinition({
+		numericRange: { min: -360, max: 360, step: 1 },
+		supportsElement: ({ element }) => isVisualElement(element),
+		getValue: ({ element }) =>
+			isVisualElement(element)
+				? (element.transform3d?.rotateX ?? 0)
+				: null,
+		setValue: ({ element, value }) =>
+			isVisualElement(element)
+				? {
+						...element,
+						transform3d: {
+							...element.transform,
+							positionZ: element.transform.positionZ ?? 0,
+							...(element.transform3d ?? { rotateX: 0, rotateY: 0 }),
+							rotateX: value as number,
+						},
+					}
+				: element,
+	}),
+	"transform.rotateY": createNumberPropertyDefinition({
+		numericRange: { min: -360, max: 360, step: 1 },
+		supportsElement: ({ element }) => isVisualElement(element),
+		getValue: ({ element }) =>
+			isVisualElement(element)
+				? (element.transform3d?.rotateY ?? 0)
+				: null,
+		setValue: ({ element, value }) =>
+			isVisualElement(element)
+				? {
+						...element,
+						transform3d: {
+							...element.transform,
+							positionZ: element.transform.positionZ ?? 0,
+							...(element.transform3d ?? { rotateX: 0, rotateY: 0 }),
+							rotateY: value as number,
+						},
+					}
+				: element,
+	}),
+	"transform.skewX": createNumberPropertyDefinition({
+		numericRange: { min: -89, max: 89, step: 0.1 },
+		supportsElement: ({ element }) => isVisualElement(element),
+		getValue: ({ element }) =>
+			isVisualElement(element) ? (element.transform.skewX ?? 0) : null,
+		setValue: ({ element, value }) =>
+			isVisualElement(element)
+				? {
+						...element,
+						transform: { ...element.transform, skewX: value as number },
+					}
+				: element,
+	}),
+	"transform.skewY": createNumberPropertyDefinition({
+		numericRange: { min: -89, max: 89, step: 0.1 },
+		supportsElement: ({ element }) => isVisualElement(element),
+		getValue: ({ element }) =>
+			isVisualElement(element) ? (element.transform.skewY ?? 0) : null,
+		setValue: ({ element, value }) =>
+			isVisualElement(element)
+				? {
+						...element,
+						transform: { ...element.transform, skewY: value as number },
+					}
+				: element,
+	}),
 	opacity: createNumberPropertyDefinition({
 		numericRange: { min: 0, max: 1, step: 0.01 },
 		supportsElement: ({ element }) => isVisualElement(element),

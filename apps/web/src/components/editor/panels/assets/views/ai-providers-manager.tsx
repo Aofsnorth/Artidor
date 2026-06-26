@@ -522,7 +522,7 @@ function ConfirmDeleteDialog({
 							: null}
 					</DialogDescription>
 				</DialogHeader>
-				<DialogFooter className="border-t-0 p-0">
+				<DialogFooter className="border-t-0">
 					<div className="flex w-full items-center justify-end gap-2">
 						<Button
 							size="sm"

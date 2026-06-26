@@ -42,7 +42,9 @@ export type ToolCategory =
 	| "selection"
 	| "clipboard"
 	| "plan"
-	| "generate";
+	| "generate"
+	| "audio"
+	| "skill";
 
 /** Reusable schema for an array of {trackId, elementId} element refs. */
 function elementRefArraySchema(minItems: number): unknown {
@@ -336,7 +338,7 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"element",
 		"update_element",
 		"update_element",
-		"Patch a single element. Any subset of the fields is applied; the rest is left alone. time/duration/trim are in ticks (1s = 120_000).",
+		"Patch a single element. Any subset of the fields is applied; the rest is left alone. All time/duration/trim/fade fields are in ticks (1s = 120_000). Transform fields (positionX/Y/Z, scaleX/Y, rotate, pivotX/Y, rotateX/Y, skewX/Y) are merged into the existing transform — passing only positionX does NOT reset scale or rotate. blendMode is one of: normal, darken, multiply, color-burn, lighten, screen, plus-lighter, color-dodge, overlay, soft-light, hard-light, difference, exclusion, hue, saturation, color, luminosity.",
 		objectSchema(
 			{
 				trackId: { type: "string" },
@@ -351,6 +353,46 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				content: { type: "string" },
 				color: { type: "string" },
 				fontSize: numberSchema(4, 320),
+				// ── Transform (2D + 3D) — merged, not replaced ──
+				positionX: numberSchema(),
+				positionY: numberSchema(),
+				positionZ: numberSchema(),
+				scaleX: numberSchema(),
+				scaleY: numberSchema(),
+				rotate: numberSchema(-360, 360),
+				pivotX: numberSchema(0, 1),
+				pivotY: numberSchema(0, 1),
+				// 3D rotation (sets transform3d if the element doesn't have one yet)
+				rotateX: numberSchema(-360, 360),
+				rotateY: numberSchema(-360, 360),
+				// Skew ("nyerong") in degrees
+				skewX: numberSchema(-89, 89),
+				skewY: numberSchema(-89, 89),
+				// ── Appearance ──
+				blendMode: enumSchema([
+					"normal",
+					"darken",
+					"multiply",
+					"color-burn",
+					"lighten",
+					"screen",
+					"plus-lighter",
+					"color-dodge",
+					"overlay",
+					"soft-light",
+					"hard-light",
+					"difference",
+					"exclusion",
+					"hue",
+					"saturation",
+					"color",
+					"luminosity",
+				]),
+				// ── Audio (video/audio elements only) ──
+				volume: numberSchema(),
+				pan: numberSchema(-100, 100),
+				fadeInDuration: numberSchema(0),
+				fadeOutDuration: numberSchema(0),
 			},
 			["trackId", "elementId"],
 		),
@@ -521,6 +563,38 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"set_volume",
 		"Set the master playback volume. 0..1.",
 		objectSchema({ value: numberSchema(0, 1) }, ["value"]),
+	),
+
+	/* --------------------------------- Audio --------------------------------- */
+	tool(
+		"audio",
+		"detect_beats",
+		"detect_beats",
+		"Analyze an audio or video clip's audio track and return beat timestamps. Pass the trackId+elementId of the audio/video element to analyze. Returns an array of beats, each with timeSeconds and ticks (1s = 120_000 ticks). Use the returned tick times with split_element (to cut on every beat = jedag-jedug) or upsert_keyframe (to animate on the beat).",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+			},
+			["trackId", "elementId"],
+		),
+	),
+	tool(
+		"audio",
+		"apply_beat_sync",
+		"apply_beat_sync",
+		"Snap element start times to the nearest beat. Pass beatTimes (array of tick values from detect_beats) and the elements to snap. Each element's startTime is moved to the closest beat time. Use this for beat-synced placement.",
+		objectSchema(
+			{
+				beatTimes: {
+					type: "array",
+					items: { type: "number", minimum: 0 },
+					minItems: 1,
+				},
+				elements: elementRefArraySchema(1),
+			},
+			["beatTimes", "elements"],
+		),
 	),
 
 	/* --------------------------------- Asset --------------------------------- */
@@ -1097,6 +1171,58 @@ export const ALL_TOOLS: RegisteredTool[] = [
 			},
 			["prompt"],
 		),
+	),
+
+	/* --------------------------------- Skill -------------------------------- */
+	tool(
+		"skill",
+		"save_skill",
+		"save_skill",
+		"Save a sequence of tool calls as a named skill (macro/recipe) that can be replayed later with run_skill. Each step is a toolName + args pair using EXACT tool names from the registry. The skill is persisted across sessions. Use this when the user asks to save a workflow, create a preset, or make a reusable effect.",
+		objectSchema(
+			{
+				name: { type: "string", minLength: 1, maxLength: 60 },
+				description: { type: "string", maxLength: 200 },
+				steps: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							toolName: { type: "string" },
+							args: {
+								type: "object",
+								additionalProperties: true,
+							},
+						},
+						required: ["toolName", "args"],
+						additionalProperties: false,
+					},
+					minItems: 1,
+				},
+			},
+			["name", "steps"],
+		),
+	),
+	tool(
+		"skill",
+		"list_skills",
+		"list_skills",
+		"List all saved AI skills (macros/recipes). Returns each skill's id, name, description, and step count.",
+		objectSchema({}),
+	),
+	tool(
+		"skill",
+		"delete_skill",
+		"delete_skill",
+		"Delete a saved skill by its id.",
+		objectSchema({ skillId: { type: "string" } }, ["skillId"]),
+	),
+	tool(
+		"skill",
+		"run_skill",
+		"run_skill",
+		"Replay a saved skill: execute each stored tool call in sequence. Each step goes through the same validation and safety checks as a live tool call. Returns a summary of which steps succeeded or failed.",
+		objectSchema({ skillId: { type: "string" } }, ["skillId"]),
 	),
 ];
 

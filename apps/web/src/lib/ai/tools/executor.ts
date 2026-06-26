@@ -459,6 +459,94 @@ const HANDLERS: Record<string, Handler> = {
 		if (typeof args.content === "string") patch.content = args.content;
 		if (typeof args.color === "string") patch.color = args.color;
 		if (typeof args.fontSize === "number") patch.fontSize = args.fontSize;
+		if (typeof args.blendMode === "string") patch.blendMode = args.blendMode;
+		if (typeof args.volume === "number") patch.volume = args.volume;
+		if (typeof args.pan === "number") patch.pan = args.pan;
+		if (typeof args.fadeInDuration === "number")
+			patch.fadeInDuration = args.fadeInDuration;
+		if (typeof args.fadeOutDuration === "number")
+			patch.fadeOutDuration = args.fadeOutDuration;
+
+		// ── Transform merge ──
+		// The update pipeline does a SHALLOW merge ({ ...element, ...patch }),
+		// so passing patch.transform would wipe scaleX/scaleY/rotate/etc.
+		// Instead, read the current element and merge only the provided
+		// transform fields into its existing transform object.
+		const hasTransformFields =
+			typeof args.positionX === "number" ||
+			typeof args.positionY === "number" ||
+			typeof args.positionZ === "number" ||
+			typeof args.scaleX === "number" ||
+			typeof args.scaleY === "number" ||
+			typeof args.rotate === "number" ||
+			typeof args.pivotX === "number" ||
+			typeof args.pivotY === "number" ||
+			typeof args.skewX === "number" ||
+			typeof args.skewY === "number";
+		const has3dFields =
+			typeof args.rotateX === "number" || typeof args.rotateY === "number";
+
+		if (hasTransformFields || has3dFields) {
+			const track = editor.timeline.getTrackById({ trackId });
+			const current = track?.elements.find((e) => e.id === elementId) as
+				| {
+						transform?: Record<string, unknown>;
+						transform3d?: Record<string, unknown>;
+				  }
+				| undefined;
+			if (current?.transform) {
+				const mergedTransform: Record<string, unknown> = {
+					...current.transform,
+				};
+				if (typeof args.positionX === "number") {
+					mergedTransform.position = {
+						...(mergedTransform.position as { x?: number; y?: number } | undefined),
+						x: args.positionX,
+					};
+				}
+				if (typeof args.positionY === "number") {
+					mergedTransform.position = {
+						...(mergedTransform.position as { x?: number; y?: number } | undefined),
+						y: args.positionY,
+					};
+				}
+				if (typeof args.positionZ === "number")
+					mergedTransform.positionZ = args.positionZ;
+				if (typeof args.scaleX === "number") mergedTransform.scaleX = args.scaleX;
+				if (typeof args.scaleY === "number") mergedTransform.scaleY = args.scaleY;
+				if (typeof args.rotate === "number") mergedTransform.rotate = args.rotate;
+				if (typeof args.pivotX === "number" || typeof args.pivotY === "number") {
+					const existingPivot =
+						(mergedTransform.pivot as { x?: number; y?: number } | undefined) ??
+						{ x: 0.5, y: 0.5 };
+					mergedTransform.pivot = {
+						x: typeof args.pivotX === "number" ? args.pivotX : existingPivot.x ?? 0.5,
+						y: typeof args.pivotY === "number" ? args.pivotY : existingPivot.y ?? 0.5,
+					};
+				}
+				if (typeof args.skewX === "number") mergedTransform.skewX = args.skewX;
+				if (typeof args.skewY === "number") mergedTransform.skewY = args.skewY;
+				patch.transform = mergedTransform;
+			}
+
+			// 3D rotation lives on transform3d. If the element doesn't have
+			// one yet, create it from the 2D transform + defaults so we
+			// don't lose existing 2D values.
+			if (has3dFields && current?.transform) {
+				const existing3d = current.transform3d;
+				const merged3d: Record<string, unknown> = existing3d
+					? { ...existing3d }
+					: {
+							...current.transform,
+							positionZ: (current.transform.positionZ as number) ?? 0,
+							rotateX: 0,
+							rotateY: 0,
+						};
+				if (typeof args.rotateX === "number") merged3d.rotateX = args.rotateX;
+				if (typeof args.rotateY === "number") merged3d.rotateY = args.rotateY;
+				patch.transform3d = merged3d;
+			}
+		}
 
 		editor.timeline.updateElements({
 			updates: [{ trackId, elementId, patch }],
@@ -1368,5 +1456,228 @@ const HANDLERS: Record<string, Handler> = {
 		});
 		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
 		return { ok: true, message: "Keyframes pasted" };
+	},
+
+	/* ------------------------------- skill -------------------------------- */
+	save_skill: async (_editor, args) => {
+		const { useAiSkillsStore, createSkill } = await import("@/stores/ai-skills-store");
+		const name = asString(args.name);
+		if (!name) return { ok: false, message: "name is required" };
+		const description = asString(args.description);
+		const steps = asArray<{ toolName: string; args: Record<string, unknown> }>(args.steps);
+		if (steps.length === 0) {
+			return { ok: false, message: "At least one step is required" };
+		}
+		// Validate that each step references a registered tool.
+		const { TOOLS_BY_EXECUTOR_KEY } = await import("./registry");
+		for (let i = 0; i < steps.length; i++) {
+			const step = steps[i];
+			if (!step?.toolName) {
+				return { ok: false, message: `Step ${i + 1} is missing toolName` };
+			}
+			if (!TOOLS_BY_EXECUTOR_KEY[step.toolName]) {
+				return {
+					ok: false,
+					message: `Step ${i + 1} references unknown tool "${step.toolName}". Use only tools from the registry.`,
+				};
+			}
+		}
+		const skill = createSkill({
+			name,
+			description,
+			steps: steps.map((s) => ({
+				toolName: s.toolName,
+				args: s.args ?? {},
+			})),
+		});
+		useAiSkillsStore.getState().saveSkill(skill);
+		return {
+			ok: true,
+			message: `Saved skill "${name}" with ${steps.length} step(s). skillId=${skill.id}. Use run_skill with this id to replay it.`,
+			data: { skillId: skill.id, name, stepCount: steps.length },
+		};
+	},
+
+	list_skills: async (_editor) => {
+		const { useAiSkillsStore } = await import("@/stores/ai-skills-store");
+		const skills = useAiSkillsStore.getState().skills;
+		if (skills.length === 0) {
+			return { ok: true, message: "No saved skills yet.", data: { skills: [] } };
+		}
+		const summary = skills
+			.map((s) => `${s.name} (id=${s.id}, ${s.steps.length} steps): ${s.description}`)
+			.join("\n");
+		return {
+			ok: true,
+			message: `${skills.length} skill(s):\n${summary}`,
+			data: {
+				skills: skills.map((s) => ({
+					id: s.id,
+					name: s.name,
+					description: s.description,
+					stepCount: s.steps.length,
+				})),
+			},
+		};
+	},
+
+	delete_skill: async (_editor, args) => {
+		const { useAiSkillsStore } = await import("@/stores/ai-skills-store");
+		const skillId = asString(args.skillId);
+		if (!skillId) return { ok: false, message: "skillId is required" };
+		const removed = useAiSkillsStore.getState().deleteSkill(skillId);
+		return {
+			ok: removed,
+			message: removed ? "Skill deleted" : "Skill not found",
+		};
+	},
+
+	run_skill: async (editor, args) => {
+		const { useAiSkillsStore } = await import("@/stores/ai-skills-store");
+		const skillId = asString(args.skillId);
+		if (!skillId) return { ok: false, message: "skillId is required" };
+		const skill = useAiSkillsStore.getState().getSkill(skillId);
+		if (!skill) {
+			return { ok: false, message: `Skill "${skillId}" not found. Call list_skills to see available skills.` };
+		}
+		const results: Array<{ step: number; toolName: string; ok: boolean; message?: string }> = [];
+		let failed = 0;
+		for (let i = 0; i < skill.steps.length; i++) {
+			const step = skill.steps[i];
+			if (!step) continue;
+			const result = await executeTool({
+				editor,
+				toolName: step.toolName,
+				arguments: step.args ?? {},
+				source: "ai",
+			});
+			results.push({
+				step: i + 1,
+				toolName: step.toolName,
+				ok: result.ok,
+				message: result.message,
+			});
+			if (!result.ok) failed++;
+		}
+		const summary = results
+			.map((r) => `Step ${r.step} (${r.toolName}): ${r.ok ? "OK" : "FAIL — " + (r.message ?? "error")}`)
+			.join("\n");
+		return {
+			ok: failed === 0,
+			message: `Ran skill "${skill.name}": ${results.length - failed}/${results.length} steps succeeded.\n${summary}`,
+			data: { results, failed, total: results.length },
+		};
+	},
+
+	/* ----------------------------- audio (beat) ---------------------------- */
+	detect_beats: async (editor, args) => {
+		const trackId = asString(args.trackId);
+		const elementId = asString(args.elementId);
+		const track = editor.timeline.getTrackById({ trackId });
+		const element = track?.elements.find((e) => e.id === elementId) as
+			| { type: string; id: string }
+			| undefined;
+		if (!element) {
+			return { ok: false, message: "Element not found" };
+		}
+		if (element.type !== "audio" && element.type !== "video") {
+			return {
+				ok: false,
+				message: "Beat detection works on audio or video clips only",
+			};
+		}
+
+		// Dynamic imports — these pull in audio decoding machinery that
+		// we only need when beat detection is actually requested.
+		const { extractClipAudio } = await import("@/lib/media/mediabunny");
+		const { decodeAudioToFloat32 } = await import("@/lib/media/audio");
+		const { detectBeats } = await import("@/lib/media/beat-detection");
+
+		try {
+			const blob = await extractClipAudio({
+				element: element as never,
+				mediaAssets: editor.media.getAssets(),
+			});
+			const { samples, sampleRate } = await decodeAudioToFloat32({
+				audioBlob: blob,
+				sampleRate: 22050,
+			});
+			const beats = detectBeats({ samples, sampleRate });
+			if (beats.length === 0) {
+				return {
+					ok: true,
+					message: "No beats detected in this clip.",
+					data: { beats: [], beatTicks: [] },
+				};
+			}
+			const beatTicks = beats.map((b) => b.ticks);
+			const summary = beats
+				.slice(0, 20)
+				.map((b) => `${(b.timeSeconds).toFixed(2)}s (${b.ticks}t)`)
+				.join(", ");
+			const truncatedNote =
+				beats.length > 20 ? ` ... (${beats.length} beats total)` : "";
+			return {
+				ok: true,
+				message: `Detected ${beats.length} beats at: ${summary}${truncatedNote}. Use these tick values with split_element (cut on each beat) or upsert_keyframe (animate on beat).`,
+				data: {
+					beats: beats.map((b) => ({
+						timeSeconds: b.timeSeconds,
+						ticks: b.ticks,
+						energy: b.energy,
+					})),
+					beatTicks,
+				},
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				message: `Beat detection failed: ${error instanceof Error ? error.message : "unknown error"}`,
+			};
+		}
+	},
+
+	apply_beat_sync: async (editor, args) => {
+		const beatTimes = asArray<number>(args.beatTimes);
+		if (beatTimes.length === 0) {
+			return { ok: false, message: "No beat times provided" };
+		}
+		const elements = asArray<ElementRef>(args.elements);
+		if (elements.length === 0) {
+			return { ok: false, message: "No elements to snap" };
+		}
+
+		const sortedBeats = [...beatTimes].sort((a, b) => a - b);
+		const firstBeat = sortedBeats[0] ?? 0;
+
+		const updates: Array<{
+			trackId: string;
+			elementId: string;
+			patch: { startTime: number };
+		}> = [];
+
+		for (const ref of elements) {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((e) => e.id === ref.elementId);
+			if (!element) continue;
+			const target =
+				element.startTime >= firstBeat
+					? (sortedBeats.find((b) => b >= element.startTime) ?? firstBeat)
+					: firstBeat;
+			updates.push({
+				trackId: ref.trackId,
+				elementId: ref.elementId,
+				patch: { startTime: target },
+			});
+		}
+
+		if (updates.length === 0) {
+			return { ok: true, message: "No elements needed snapping" };
+		}
+		editor.timeline.updateElements({ updates, pushHistory: true });
+		return {
+			ok: true,
+			message: `Snapped ${updates.length} element(s) to beats`,
+		};
 	},
 };

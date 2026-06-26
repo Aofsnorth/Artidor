@@ -42,6 +42,8 @@ export const SUGGESTIONS: Suggestion[] = [
 	// ── Cutting & Pacing ───────────────────────────────────────────
 	{ label: "Auto-cut", text: "Cut every 2 seconds, alternating between two clips." },
 	{ label: "Beat sync", text: "Cut on every beat detected in the audio track." },
+	{ label: "Jedag-jedug", text: "Make this jedag-jedug: detect beats in the audio, then split the video clip on every beat." },
+	{ label: "Skew (nyerong)", text: "Apply a skew transform to this clip — pull the top-right up and bottom-left down for a slanted look." },
 	{ label: "Quick cuts", text: "Make rapid 0.3-second cuts during the chorus section." },
 	{ label: "Jump cut", text: "Remove all silence gaps and jump-cut the talking head segments together." },
 	{ label: "Smooth pacing", text: "Slow down the cut frequency after the 30-second mark for a calmer middle section." },

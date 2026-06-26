@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-ai-takeover-control",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "AI takeover: Arth can now drive the editor directly",
+		items: [
+			"When Arth needs to edit your project, it first asks for permission via a takeover dialog. Approve once per session and the AI can drive the timeline, preview, and properties without re-prompting.",
+			"While the AI is in control, an animated aurora overlay covers the editor and the chrome is locked — only the AI chat stays interactive so you can't accidentally fight the AI mid-edit. A status badge shows what the AI is doing and a Revoke button stops takeover instantly.",
+			"Timeline elements the AI is modifying get a cyan highlight pulse and smooth position/size transitions, so you can watch clips move, split, and resize in real time as the AI edits.",
+			"Read-only tools (list_assets, list_elements, capture_frame, web_fetch, plan tools) don't trigger takeover — only editor-modifying tools do. The AI can still inspect your project without locking it.",
+		],
+	},
+	{
 		id: "2026-07-03-puter-claude-acts-instead-of-announcing",
 		date: "2026-07-03",
 		tag: "fix",

@@ -10,6 +10,8 @@ const defaultTransform: Transform = {
 	positionZ: 0,
 	pivot: { x: 0.5, y: 0.5 },
 	rotate: 0,
+	skewX: 0,
+	skewY: 0,
 };
 
 const defaultOpacity = 1;
