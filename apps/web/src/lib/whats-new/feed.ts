@@ -18,6 +18,32 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-realtime-collaboration",
+		date: "2026-06-26",
+		tag: "feature",
+		title: "Real-time collaboration — edit together with your team",
+		items: [
+			"Invite collaborators to edit the timeline together in real time. Each person gets a unique colored cursor so you can always see who's doing what.",
+			"Four permission modes when starting a session: View (watch only), Comment (view + leave notes), Edit (full editing with element locking to prevent conflicts), and Suggest (propose edits the host approves).",
+			"Click Invite → Collaboration in the top bar to start a session. Share the generated link with your team — they enter a nickname and join instantly.",
+			"Element locking prevents two people from editing the same clip at the same time. Locked elements show a colored border with the editor's name.",
+			"A presence bar next to the Invite button shows who's connected, with colored avatar dots matching each person's cursor.",
+			"Powered by the existing Upstash Redis infrastructure — no new dependencies. Room state auto-expires after 6 hours of inactivity.",
+		],
+	},
+	{
+		id: "2026-06-26-ai-signin-fix-and-chat-improvements",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "AI works without sign-in + smarter long conversations",
+		items: [
+			"You no longer need to sign in to use AI when you've added your own provider in the AI Edit panel (BYOK). Sign-in is only required when using the server's built-in key.",
+			"New Chat button in the AI Edit panel starts a fresh conversation with one click — clears history and any compacted summary.",
+			"Auto-compaction: when a conversation gets long, older messages are automatically summarized into a compact note so the AI keeps full context without hitting context-window limits. A 'N compacted' indicator shows when this has happened.",
+			"Auto-learning toggle: the AI's ability to learn from your edits can now be turned on or off from the AI Edit status bar. A green dot shows when it's active.",
+		],
+	},
+	{
 		id: "2026-06-26-main-track-label-spacing",
 		date: "2026-06-26",
 		tag: "improvement",
