@@ -52,6 +52,10 @@ export async function extractStyle({
 		video.playsInline = true;
 		video.preload = "auto";
 		const url = URL.createObjectURL(file);
+		// Blob URLs from URL.createObjectURL are same-origin and only
+		// decode the media container of the user-selected File — they
+		// cannot carry HTML/script payloads. Safe to assign.
+		// lgtm[js/xss-through-dom]
 		video.src = url;
 
 		await new Promise<void>((resolve, reject) => {

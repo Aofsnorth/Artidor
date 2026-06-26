@@ -15,7 +15,7 @@ const SUBTITLE_FONT_SIZE = 5;
 const MEASUREMENT_CANVAS_SIZE = 4096;
 
 function quoteFontFamily({ fontFamily }: { fontFamily: string }): string {
-	return `"${fontFamily.replace(/"/g, '\\"')}"`;
+	return `"${fontFamily.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 function createMeasurementContext(): CanvasRenderingContext2D | null {

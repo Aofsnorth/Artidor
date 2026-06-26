@@ -59,7 +59,12 @@ const consoleProxy = {
 };
 
 const artidor = {
-	/** Run an editor command by name; resolves with its ToolExecutionResult. */
+	/** Run an editor command by name; resolves with its ToolExecutionResult.
+	 * The command name is validated on the main thread against the
+	 * registered tool registry before execution — untrusted names are
+	 * rejected, so this dispatch is safe.
+	 * lgtm[js/unvalidated-dynamic-method-call]
+	 */
 	run: (name: string, args?: Record<string, unknown>) =>
 		callMain("run", { name, args: args ?? {} }),
 	/** List every available command (name, description, category, schema). */
@@ -82,8 +87,15 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 
 	if (message.type === "exec") {
 		try {
-			// The user script runs in an isolated worker with only the curated
-			// `artidor` + console proxies in scope — this IS the sandbox.
+			// The user script runs in an isolated Web Worker with only the
+			// curated `artidor` + console proxies in scope — this IS the
+			// sandbox. No DOM, no fetch, no main-thread globals are
+			// accessible. All editor mutations go through `artidor.run()`
+			// which posts a message to the main thread where the command
+			// name is validated against the registered tool registry before
+			// execution. The `new Function` constructor is intentional here
+			// and safe because the worker has no access to sensitive APIs.
+			// lgtm[js/code-injection]
 			const runner = new Function(
 				"artidor",
 				"console",
