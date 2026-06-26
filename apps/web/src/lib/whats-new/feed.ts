@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-03-puter-claude-acts-instead-of-announcing",
+		date: "2026-07-03",
+		tag: "fix",
+		title: "Fix: Puter.js AI no longer just announces what it will do",
+		items: [
+			"The AI system prompt now explicitly forbids announcement-only turns: if the AI says it will call a tool, it must call that tool immediately in the same response instead of stopping at 'I will call X'.",
+			"Text-based Puter.js models get the same rule in their XML tool-calling instructions, so they emit the tool call XML right away instead of describing the action.",
+		],
+	},
+	{
 		id: "2026-07-02-ai-chat-empty-bubble-error-clarity",
 		date: "2026-07-02",
 		tag: "fix",

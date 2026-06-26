@@ -427,6 +427,7 @@ Rules:
 - Wrap each tool call in its own <tool_call> block.
 - Parameter values must match the expected type (string, number, boolean).
 - Do not wrap the XML in markdown code blocks.
+- NEVER say "I will call X" or "I will check Y" — either emit the XML immediately in the same response, or ask one specific clarifying question if you truly cannot proceed.
 - After the XML, you may briefly tell the user what you did in plain text.
 `;
 
