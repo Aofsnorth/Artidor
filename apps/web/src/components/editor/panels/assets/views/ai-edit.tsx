@@ -161,7 +161,13 @@ export function AIEditView() {
 	// only if the user is already at (or near) the bottom, so we don't
 	// yank them away while they're reading older messages.
 	const isStreaming =
-		ai.status === "streaming" || ai.status === "awaiting-tools";
+		ai.status === "streaming" ||
+		ai.status === "awaiting-tools" ||
+		ai.status === "retrying";
+	const isBusy = isStreaming || ai.status === "queued";
+	const queueCount = ai.queue.length;
+	const retryIn = ai.retryIn;
+	const retryCount = ai.retryCount;
 	// A single value that changes whenever the chat content changes
 	// (new message, streaming token, status change) so the effect fires.
 	const chatTick = `${ai.messages.length}:${ai.messages[ai.messages.length - 1]?.content ?? ""}:${ai.status}`;
@@ -183,12 +189,14 @@ export function AIEditView() {
 	const handleSend = useCallback(
 		async (text: string) => {
 			const trimmed = text.trim();
-			if (!trimmed || isStreaming) return;
+			if (!trimmed) return;
+			// If the AI is busy, the manager will queue the message.
+			// We still clear the draft so the user can type the next one.
 			setDraft("");
 			setMentionQuery(null);
 			await editor.ai.send({ text: trimmed });
 		},
-		[editor.ai, isStreaming],
+		[editor.ai],
 	);
 
 	const handleSubmit = (event: FormEvent) => {
@@ -286,6 +294,10 @@ export function AIEditView() {
 					styleProfile={ai.styleProfile}
 					recentCount={recentCount}
 					isStreaming={isStreaming}
+					isRetrying={ai.status === "retrying"}
+					queueCount={queueCount}
+					retryIn={retryIn}
+					retryCount={retryCount}
 					defaultProvider={defaultProvider}
 					compactedSummary={ai.compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
@@ -330,11 +342,10 @@ export function AIEditView() {
 							key={qa.label}
 							type="button"
 							onClick={() => handleQuickAction(qa.prompt)}
-							disabled={isStreaming}
 							className={cn(
 								"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
 								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
-								isStreaming && "cursor-not-allowed opacity-50",
+								isBusy && "border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
 							)}
 						>
 							<HugeiconsIcon icon={qa.icon} className="size-3" />
@@ -354,7 +365,7 @@ export function AIEditView() {
 					) : (
 						ai.messages.map((m) => <MessageBubble key={m.id} message={m} />)
 					)}
-					{isStreaming && (
+					{isStreaming && ai.status !== "retrying" && (
 						<div className="flex items-center gap-2.5">
 							<div className="grid size-7 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-gradient-to-br from-white/[0.08] to-white/[0.02]">
 								<HugeiconsIcon
@@ -372,7 +383,48 @@ export function AIEditView() {
 							</div>
 						</div>
 					)}
-					{ai.error && (
+					{ai.status === "retrying" && (
+						<div className="flex items-center gap-2.5">
+							<div className="grid size-7 shrink-0 place-items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.05]">
+								<HugeiconsIcon
+									icon={SparklesIcon}
+									className="size-3.5 text-amber-300/80"
+								/>
+							</div>
+							<div className="flex items-center gap-2.5 rounded-2xl rounded-tl-md border border-amber-400/15 bg-amber-400/[0.04] px-3 py-2">
+								<div className="flex items-center gap-1.5">
+									<span className="font-mono text-[13px] font-semibold tabular-nums text-amber-200">
+										{retryIn}s
+									</span>
+									<span className="text-[11px] text-amber-200/60">
+										Retry {retryCount}/5…
+									</span>
+								</div>
+								<button
+									type="button"
+									onClick={handleCancel}
+									className="rounded border border-amber-400/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-200/70 transition-colors hover:bg-amber-400/10 hover:text-amber-100"
+								>
+									Cancel retry
+								</button>
+							</div>
+						</div>
+					)}
+					{queueCount > 0 && (
+						<div className="flex items-center justify-center gap-1.5 self-center rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] text-white/45">
+							<HugeiconsIcon icon={Chat01Icon} className="size-2.5" />
+							{queueCount} message{queueCount > 1 ? "s" : ""} queued
+							<button
+								type="button"
+								onClick={handleCancel}
+								className="ml-1 text-white/30 transition-colors hover:text-red-300"
+								title="Cancel queued messages"
+							>
+								<HugeiconsIcon icon={Cancel01Icon} className="size-2.5" />
+							</button>
+						</div>
+					)}
+					{ai.error && ai.status !== "retrying" && (
 						<div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3 py-2 text-[11px] text-red-300">
 							<HugeiconsIcon
 								icon={Cancel01Icon}
@@ -438,17 +490,30 @@ export function AIEditView() {
 					<div className="flex items-center justify-between">
 						<span className="flex items-center gap-1 text-[9.5px] text-white/30">
 							<HugeiconsIcon icon={AttachmentIcon} className="size-3" />
-							Enter to send · Shift+Enter for newline
+							{isBusy
+								? "Enter to queue · Shift+Enter for newline"
+								: "Enter to send · Shift+Enter for newline"}
 						</span>
-						{isStreaming ? (
-							<button
-								type="button"
-								onClick={handleCancel}
-								className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
-							>
-								<HugeiconsIcon icon={StopIcon} className="size-3" />
-								Stop
-							</button>
+						{isBusy ? (
+							<div className="flex items-center gap-1.5">
+								{draft.trim() && (
+									<button
+										type="submit"
+										className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
+									>
+										<HugeiconsIcon icon={ChatAdd01Icon} className="size-3" />
+										Queue
+									</button>
+								)}
+								<button
+									type="button"
+									onClick={handleCancel}
+									className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/20"
+								>
+									<HugeiconsIcon icon={StopIcon} className="size-3" />
+									Stop
+								</button>
+							</div>
 						) : (
 							<button
 								type="submit"
@@ -893,6 +958,10 @@ function StatusBar({
 	styleProfile,
 	recentCount,
 	isStreaming,
+	isRetrying,
+	queueCount,
+	retryIn,
+	retryCount,
 	defaultProvider,
 	compactedSummary,
 	autoLearnEnabled,
@@ -911,6 +980,10 @@ function StatusBar({
 		: ReturnType<typeof useAIStore.getState>["styleProfile"];
 	recentCount: number;
 	isStreaming: boolean;
+	isRetrying: boolean;
+	queueCount: number;
+	retryIn: number;
+	retryCount: number;
 	defaultProvider: { name: string; model: string; kind: string } | undefined;
 	compactedSummary: ReturnType<typeof useAIStore.getState>["compactedSummary"];
 	autoLearnEnabled: boolean;
@@ -951,16 +1024,22 @@ function StatusBar({
 						<div
 							className={cn(
 								"grid size-7 place-items-center rounded-lg border transition-all",
-								isStreaming
-									? "border-white/[0.15] bg-white/[0.06]"
-									: "border-white/[0.08] bg-white/[0.04]",
+								isRetrying
+									? "border-amber-400/20 bg-amber-400/[0.06]"
+									: isStreaming
+										? "border-white/[0.15] bg-white/[0.06]"
+										: "border-white/[0.08] bg-white/[0.04]",
 							)}
 						>
 							<HugeiconsIcon
-								icon={isStreaming ? SparklesIcon : MagicWand05Icon}
+								icon={isStreaming || isRetrying ? SparklesIcon : MagicWand05Icon}
 								className={cn(
 									"size-4",
-									isStreaming ? "text-white animate-pulse" : "text-white/70",
+									isRetrying
+										? "text-amber-300/80"
+										: isStreaming
+											? "text-white animate-pulse"
+											: "text-white/70",
 								)}
 							/>
 						</div>
@@ -971,10 +1050,18 @@ function StatusBar({
 							<span
 								className={cn(
 									"text-[8.5px] uppercase tracking-wider transition-colors",
-									isStreaming ? "text-white/50" : "text-white/25",
+									isRetrying
+										? "text-amber-300/60"
+										: isStreaming
+											? "text-white/50"
+											: "text-white/25",
 								)}
 							>
-								{isStreaming ? "working…" : "AI copilot"}
+								{isRetrying
+									? `retry in ${retryIn}s`
+									: isStreaming
+										? "working…"
+										: "AI copilot"}
 							</span>
 						</div>
 					</div>
@@ -982,13 +1069,24 @@ function StatusBar({
 						<span
 							className={cn(
 								"rounded-full border px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider transition-all",
-								isStreaming
-									? "border-white/20 bg-white/[0.08] text-white/80"
-									: "border-white/[0.08] bg-white/[0.03] text-white/35",
+								isRetrying
+									? "border-amber-400/20 bg-amber-400/[0.08] text-amber-200/80"
+									: isStreaming
+										? "border-white/20 bg-white/[0.08] text-white/80"
+										: "border-white/[0.08] bg-white/[0.03] text-white/35",
 							)}
 						>
-							{isStreaming ? "live" : "ready"}
+							{isRetrying
+								? `retry ${retryCount}`
+								: isStreaming
+									? "live"
+									: "ready"}
 						</span>
+						{queueCount > 0 && (
+							<span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider text-white/60">
+								{queueCount} queued
+							</span>
+						)}
 						<ChatHistoryDropdown
 							conversations={conversations}
 							onLoad={onLoadConversation}
