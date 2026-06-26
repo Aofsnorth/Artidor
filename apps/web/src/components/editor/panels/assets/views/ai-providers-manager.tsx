@@ -76,6 +76,37 @@ const KIND_ICONS: Record<ProviderKind, typeof PlugIcon> = {
 	puter: CloudIcon,
 };
 
+/**
+ * Per-kind accent colors. Each kind gets a subtle tint on the icon
+ * tile and a colored left rail so the user can tell providers apart
+ * at a glance. Colors are intentionally muted to fit the dark theme.
+ */
+const KIND_ACCENTS: Record<
+	ProviderKind,
+	{ tile: string; rail: string; icon: string }
+> = {
+	"openai-compatible": {
+		tile: "border-emerald-400/20 bg-emerald-400/[0.08]",
+		rail: "bg-emerald-400/60",
+		icon: "text-emerald-300",
+	},
+	"anthropic-compatible": {
+		tile: "border-orange-400/20 bg-orange-400/[0.08]",
+		rail: "bg-orange-400/60",
+		icon: "text-orange-300",
+	},
+	ollama: {
+		tile: "border-sky-400/20 bg-sky-400/[0.08]",
+		rail: "bg-sky-400/60",
+		icon: "text-sky-300",
+	},
+	puter: {
+		tile: "border-violet-400/20 bg-violet-400/[0.08]",
+		rail: "bg-violet-400/60",
+		icon: "text-violet-300",
+	},
+};
+
 interface TestResult {
 	ok: boolean;
 	error?: string;
@@ -291,6 +322,8 @@ function ProviderCard({
 	onToggleEnabled: () => void;
 }) {
 	const Icon = KIND_ICONS[provider.kind];
+	const accent = KIND_ACCENTS[provider.kind];
+	const kindLabel = KIND_LABELS[provider.kind].label;
 	const lastTestLabel =
 		provider.lastTestedAt === undefined
 			? "Never tested"
@@ -301,29 +334,41 @@ function ProviderCard({
 	return (
 		<div
 			className={cn(
-				"rounded-xl border transition",
+				"group relative overflow-hidden rounded-xl border transition-all duration-200",
 				provider.enabled
-					? "border-white/[0.1] bg-white/[0.03]"
-					: "border-white/[0.06] bg-white/[0.015] opacity-60",
+					? "border-white/[0.1] bg-white/[0.03] hover:border-white/[0.18] hover:bg-white/[0.04]"
+					: "border-white/[0.06] bg-white/[0.015] opacity-70 hover:opacity-90",
+				provider.isDefault && "border-cyan-400/25 ring-1 ring-cyan-400/15",
 			)}
 		>
-			{/* Header row: icon + name + badges */}
-			<div className="flex items-start gap-2.5 p-3">
+			{/* Colored left rail — kind accent */}
+			<div
+				className={cn(
+					"absolute inset-y-0 left-0 w-[3px]",
+					accent.rail,
+					provider.enabled ? "opacity-100" : "opacity-40",
+				)}
+			/>
+
+			{/* Header row: icon tile + name + badges */}
+			<div className="flex items-start gap-3 p-3 pl-4">
 				<div
 					className={cn(
-						"grid size-8 shrink-0 place-items-center rounded-lg border",
-						provider.enabled
-							? "border-white/[0.1] bg-white/[0.05] text-white/80"
-							: "border-white/[0.06] bg-white/[0.02] text-white/40",
+						"grid size-9 shrink-0 place-items-center rounded-lg border transition-colors",
+						accent.tile,
+						!provider.enabled && "opacity-50",
 					)}
 				>
-					<HugeiconsIcon icon={Icon} className="size-4" />
+					<HugeiconsIcon
+						icon={Icon}
+						className={cn("size-4", accent.icon)}
+					/>
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-1.5">
 						<span
 							className={cn(
-								"truncate text-[12.5px] font-semibold",
+								"truncate text-[13px] font-semibold leading-tight",
 								provider.enabled ? "text-white" : "text-white/70",
 							)}
 						>
@@ -332,41 +377,60 @@ function ProviderCard({
 						{provider.isDefault && (
 							<span
 								title="Default provider — used by Arth"
-								className="shrink-0 rounded border border-cyan-300/25 bg-cyan-400/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-200"
+								className="shrink-0 rounded border border-cyan-300/30 bg-cyan-400/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-200"
 							>
 								Default
 							</span>
 						)}
+					</div>
+					{/* Kind label — small uppercase tag */}
+					<div className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-white/35">
+						{kindLabel}
+					</div>
+					{/* Model + base url */}
+					<div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px]">
+						<span
+							className={cn(
+								"rounded font-mono",
+								provider.enabled ? "text-white/70" : "text-white/50",
+							)}
+						>
+							{provider.model}
+						</span>
+						{provider.baseUrl && (
+							<>
+								<span className="text-white/20">·</span>
+								<span className="truncate font-mono text-white/40">
+									{provider.baseUrl}
+								</span>
+							</>
+						)}
+					</div>
+					{/* Status row: test result + enabled state */}
+					<div className="mt-1.5 flex items-center gap-2 text-[10px]">
 						{provider.lastTestOk === true && (
-							<span
-								title="Last test passed"
-								className="grid size-3.5 shrink-0 place-items-center"
-							>
+							<span className="flex items-center gap-1 text-emerald-300/80">
 								<HugeiconsIcon
 									icon={CheckmarkCircle02Icon}
-									className="size-3.5 text-emerald-400"
+									className="size-3"
 								/>
+								{lastTestLabel}
 							</span>
 						)}
 						{provider.lastTestOk === false && (
-							<span
-								title="Last test failed — click Edit to fix"
-								className="grid size-3.5 shrink-0 place-items-center"
-							>
-								<HugeiconsIcon
-									icon={AlertCircleIcon}
-									className="size-3.5 text-red-400"
-								/>
+							<span className="flex items-center gap-1 text-red-300/80">
+								<HugeiconsIcon icon={AlertCircleIcon} className="size-3" />
+								{lastTestLabel}
 							</span>
 						)}
-					</div>
-					<div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-white/45">
-						<span className="font-mono text-white/60">{provider.model}</span>
-						<span className="text-white/25">·</span>
-						<span className="truncate font-mono">{provider.baseUrl}</span>
-					</div>
-					<div className="mt-0.5 text-[9.5px] text-white/35">
-						{lastTestLabel}
+						{provider.lastTestedAt === undefined && (
+							<span className="text-white/35">{lastTestLabel}</span>
+						)}
+						{!provider.enabled && (
+							<span className="ml-auto rounded bg-white/[0.06] px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-white/40">
+								Disabled
+							</span>
+						)}
 					</div>
 				</div>
 			</div>
@@ -420,7 +484,7 @@ function ProviderCard({
 								: "text-white/40 hover:bg-white/[0.06] hover:text-white/80",
 						)}
 					>
-						{provider.enabled ? "Enabled" : "Disabled"}
+						{provider.enabled ? "Enabled" : "Enable"}
 					</button>
 					<button
 						type="button"
@@ -1227,10 +1291,10 @@ function SearchableModelSelect({
 		});
 	}, [options, query]);
 
-	// Reset highlight when filter changes
-	useEffect(() => {
+	const handleQueryChange = (next: string) => {
+		setQuery(next);
 		setHighlightedIndex(0);
-	}, [filtered]);
+	};
 
 	// Close on click outside
 	useEffect(() => {
@@ -1300,10 +1364,7 @@ function SearchableModelSelect({
 				</button>
 			) : (
 				<div className="absolute inset-0 z-50">
-					<div
-						className="flex h-full w-full items-center gap-2 rounded-lg border border-white/25 bg-[#1a1a1e] px-3 shadow-lg"
-						onKeyDown={handleKeyDown}
-					>
+					<div className="flex h-full w-full items-center gap-2 rounded-lg border border-white/25 bg-[#1a1a1e] px-3 shadow-lg">
 						<HugeiconsIcon
 							icon={Search01Icon}
 							className="size-3.5 shrink-0 text-white/40"
@@ -1311,7 +1372,8 @@ function SearchableModelSelect({
 						<input
 							ref={inputRef}
 							value={query}
-							onChange={(e) => setQuery(e.target.value)}
+							onChange={(e) => handleQueryChange(e.target.value)}
+							onKeyDown={handleKeyDown}
 							placeholder="Search models…"
 							className="h-full w-full bg-transparent font-mono text-[12px] text-white/90 outline-none placeholder:text-white/30"
 						/>

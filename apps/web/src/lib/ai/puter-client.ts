@@ -694,9 +694,16 @@ export async function* streamPuterChat(
 		console.error("[puter] chat() threw", err);
 		yield {
 			error:
-				err instanceof Error
-					? `Puter.js chat error: ${err.message}`
-					: "Puter.js chat failed",
+			const base = err instanceof Error ? err.message : "Unknown error";
+			const isConnection =
+				/connection|network|fetch|timeout|unreachable|CSP|load/i.test(base);
+			const prefix = isConnection
+				? "Puter.js connection error"
+				: "Puter.js model error";
+			console.error("[puter] chat() threw", err);
+			yield {
+				error: `${prefix} (${model}): ${base}`,
+			};
 		};
 		return;
 	}
