@@ -25,7 +25,7 @@ import { headers } from "next/headers";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { auth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
+import { normalizeProviderBaseUrl } from "@/lib/ai/provider-url";
 import {
 	resolveProvider,
 	type ChatMessage,
@@ -186,7 +186,11 @@ export async function POST(request: Request) {
 			provider: providerName,
 			model: body.provider.model,
 			apiKey: body.provider.apiKey,
-			baseUrl: body.provider.baseUrl,
+			// Normalize the base URL so the OpenAI provider can safely
+			// append /v1/chat/completions without doubling the path.
+			// Without this, a user who enters "https://api.openai.com/v1"
+			// gets a 404 because the provider builds "/v1/v1/chat/completions".
+			baseUrl: normalizeProviderBaseUrl(body.provider.baseUrl),
 		};
 	} else {
 		config = resolveProvider();
@@ -194,7 +198,7 @@ export async function POST(request: Request) {
 
 	if (config?.baseUrl) {
 		try {
-			assertSafeProviderBaseUrl({ baseUrl: config.baseUrl });
+			normalizeProviderBaseUrl(config.baseUrl);
 		} catch (err) {
 			return new Response(
 				JSON.stringify({
