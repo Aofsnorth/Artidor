@@ -539,7 +539,7 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"asset",
 		"add_media_to_timeline",
 		"add_media_to_timeline",
-		"Add an existing media library asset to the timeline as a video/image/audio clip. Uses the asset's natural duration. startTime defaults to the current playhead position (in ticks).",
+		"Add an existing media library asset to the timeline as a video/image/audio clip. Call list_assets first to get the assetId. trackId is optional — omit it to auto-place on the right track type. startTime defaults to the current playhead position (in ticks).",
 		objectSchema(
 			{
 				assetId: { type: "string" },
