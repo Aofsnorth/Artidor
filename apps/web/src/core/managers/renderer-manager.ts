@@ -83,6 +83,25 @@ export class RendererManager {
 		}
 	}
 
+	/**
+	 * Capture the current preview frame as a base64 data URL (PNG).
+	 * Used by the AI assistant's `capture_frame` tool so the LLM can
+	 * "see" the current state of the canvas when a vision-capable
+	 * provider is configured.
+	 */
+	async captureFrameAsDataURL(): Promise<{
+		success: boolean;
+		dataUrl?: string;
+		error?: string;
+	}> {
+		const snapshot = await this.createSnapshot();
+		if (!snapshot.success) {
+			return { success: false, error: snapshot.error };
+		}
+		const dataUrl = await blobToDataURL(snapshot.blob);
+		return { success: true, dataUrl };
+	}
+
 	private async createSnapshot(): Promise<SnapshotResult> {
 		try {
 			const renderTree = this.getRenderTree();
@@ -393,4 +412,13 @@ export class RendererManager {
 			fn();
 		});
 	}
+}
+
+function blobToDataURL(blob: Blob): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(reader.result as string);
+		reader.onerror = () => reject(new Error("Failed to read blob"));
+		reader.readAsDataURL(blob);
+	});
 }

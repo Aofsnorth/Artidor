@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-vision-capture-media-tools",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Arth can now see the canvas + add media to timeline",
+		items: [
+			"New capture_frame tool: Arth can take a screenshot of the current preview frame and analyze it visually. Works with vision-capable providers (GPT-4o, Claude 3.5, Gemini, etc.) — the captured frame is automatically attached as an image input to the next LLM request.",
+			"New add_media_to_timeline tool: Arth can add an existing media library asset to the timeline as a video/image/audio clip, with automatic track placement and duration detection.",
+			"New import_and_add_to_timeline tool: combined URL import + timeline insertion in one step — download a media file and place it on the timeline in a single tool call.",
+			"Vision/multimodal support added to the LLM provider layer: ChatMessage now accepts text + image content parts. Both OpenAI and Anthropic providers convert image data URLs to the correct provider-specific format.",
+		],
+	},
+	{
 		id: "2026-06-27-full-tool-coverage-mcp-client",
 		date: "2026-06-27",
 		tag: "feature",

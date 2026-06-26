@@ -81,6 +81,12 @@ interface AIState {
 	/** Summary of older messages that were compacted away, or null. */
 	compactedSummary: CompactedSummary | null;
 	/**
+	 * Images captured by the AI (via capture_frame) that should be
+	 * attached as vision inputs to the next LLM request. Cleared
+	 * after each request.
+	 */
+	pendingImages: string[];
+	/**
 	 * Archived conversations. The active conversation is NOT in this list
 	 * until the user starts a new chat or switches to another one.
 	 */
@@ -100,6 +106,10 @@ interface AIState {
 	setStatus: (status: ChatStatus) => void;
 	setError: (error: string | null) => void;
 	setStyleProfile: (profile: StyleProfile | null, name?: string | null) => void;
+	/** Add a captured frame (data URL) to be sent with the next request. */
+	addPendingImage: (dataUrl: string) => void;
+	/** Clear pending images (called after they've been sent to the LLM). */
+	clearPendingImages: () => void;
 	/** Switch to a saved conversation. */
 	loadConversation: (id: string) => void;
 	/** Rename a saved conversation. */
@@ -139,6 +149,7 @@ export const useAIStore = create<AIState>()(
 			styleProfile: null,
 			referenceVideoName: null,
 			compactedSummary: null,
+			pendingImages: [],
 			conversations: [],
 
 			appendMessage: (m) => {
@@ -205,6 +216,10 @@ export const useAIStore = create<AIState>()(
 
 			setStyleProfile: (profile, name) =>
 				set({ styleProfile: profile, referenceVideoName: name ?? null }),
+
+			addPendingImage: (dataUrl) =>
+				set({ pendingImages: [...get().pendingImages, dataUrl] }),
+			clearPendingImages: () => set({ pendingImages: [] }),
 
 			loadConversation: (id) => {
 				const state = get();

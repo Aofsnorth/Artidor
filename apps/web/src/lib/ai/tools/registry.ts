@@ -534,6 +534,44 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"List the assets currently in the project's media library. Returns name, type, duration, and id for each.",
 		objectSchema({}),
 	),
+	tool(
+		"asset",
+		"add_media_to_timeline",
+		"add_media_to_timeline",
+		"Add an existing media library asset to the timeline as a video/image/audio clip. Uses the asset's natural duration. startTime defaults to the current playhead position (in ticks).",
+		objectSchema(
+			{
+				assetId: { type: "string" },
+				trackId: { type: "string" },
+				startTime: numberSchema(0),
+			},
+			["assetId"],
+		),
+	),
+	tool(
+		"asset",
+		"import_and_add_to_timeline",
+		"import_and_add_to_timeline",
+		"Download a media file from a URL and immediately add it to the timeline as a clip. Combines import_asset_from_url + add_media_to_timeline in one step. startTime defaults to the current playhead.",
+		objectSchema(
+			{
+				url: { type: "string", format: "uri" },
+				name: { type: "string" },
+				trackId: { type: "string" },
+				startTime: numberSchema(0),
+			},
+			["url"],
+		),
+	),
+
+	/* -------------------------------- Capture -------------------------------- */
+	tool(
+		"playback",
+		"capture_frame",
+		"capture_frame",
+		"Capture the current preview frame as a PNG screenshot. Returns a base64 data URL that can be used for vision-based analysis. Use this to 'see' what's currently on the canvas — e.g. check composition, colors, text rendering, layout.",
+		objectSchema({}),
+	),
 
 	/* --------------------------------- Style --------------------------------- */
 	tool(

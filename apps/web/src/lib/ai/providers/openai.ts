@@ -9,6 +9,7 @@
  */
 
 import type {
+	ChatMessageContent,
 	ChatRequest,
 	ChatResponse,
 	LLMProvider,
@@ -23,9 +24,17 @@ interface OpenAIToolCall {
 	function: { name: string; arguments: string };
 }
 
+type OpenAIContent =
+	| string
+	| null
+	| Array<
+			| { type: "text"; text: string }
+			| { type: "image_url"; image_url: { url: string } }
+	  >;
+
 interface OpenAIMessage {
 	role: "system" | "user" | "assistant" | "tool";
-	content: string | null;
+	content: OpenAIContent;
 	tool_call_id?: string;
 	tool_calls?: OpenAIToolCall[];
 	name?: string;
@@ -124,7 +133,7 @@ export class OpenAIProvider implements LLMProvider {
 		if (m.role === "tool") {
 			return {
 				role: "tool",
-				content: m.content,
+				content: typeof m.content === "string" ? m.content : JSON.stringify(m.content),
 				tool_call_id: m.toolCallId,
 				name: m.name,
 			};
@@ -132,7 +141,7 @@ export class OpenAIProvider implements LLMProvider {
 		if (m.role === "assistant" && m.toolCalls?.length) {
 			return {
 				role: "assistant",
-				content: m.content || null,
+				content: typeof m.content === "string" && m.content ? m.content : null,
 				tool_calls: m.toolCalls.map((tc) => ({
 					id: tc.id,
 					type: "function",
@@ -143,7 +152,9 @@ export class OpenAIProvider implements LLMProvider {
 				})),
 			};
 		}
-		return { role: m.role, content: m.content };
+		// Pass through multimodal content (text + image_url parts) as-is;
+		// OpenAI's API accepts the same array shape our ChatMessage uses.
+		return { role: m.role, content: m.content as OpenAIContent };
 	}
 }
 

@@ -18,10 +18,24 @@ export type ProviderName = "openai" | "anthropic" | "ollama";
 
 export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
 
+/**
+ * Content part for multimodal messages. Text-only messages use a plain
+ * string; vision-capable providers accept an array of text + image parts.
+ */
+export type ChatMessageContent =
+	| string
+	| Array<
+			| { type: "text"; text: string }
+			| { type: "image_url"; image_url: { url: string } }
+	>;
+
 export interface ChatMessage {
 	role: ChatMessageRole;
-	/** Plain content (no vision yet — adding images is a follow-up). */
-	content: string;
+	/**
+	 * Message content. Plain string for text-only messages, or an
+	 * array of text/image parts for multimodal (vision) messages.
+	 */
+	content: ChatMessageContent;
 	/** When role === "tool" the id of the tool call we are replying to. */
 	toolCallId?: string;
 	/** When role === "assistant" the tool calls the model asked for. */
