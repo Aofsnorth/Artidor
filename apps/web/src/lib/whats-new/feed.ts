@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-tool-loop-planning-todo",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "AI tool loop + planning system + TODO checklist",
+		items: [
+			"Fixed a critical bug where the AI would stop after a single tool call — it never sent the tool results back to the LLM for a follow-up turn. Now the AI runs a proper agentic loop: after executing tools, the results are fed back to the LLM so it can continue reasoning, call more tools, or produce a final answer. Up to 8 tool-call rounds per message.",
+			"Fixed a related bug where the AI claimed 'no media uploaded' on follow-up messages — tool results were missing from the conversation history sent to the LLM. Tool results are now stored as `tool`-role messages and included in every subsequent request.",
+			"New planning system: the AI can now create a step-by-step plan before executing complex multi-step tasks. The plan is shown as a visual checklist card in the chat with a progress ring, step statuses (pending, in_progress, done, skipped), and real-time updates as the AI works through each step.",
+			"New `create_plan` and `update_todo` tools — the AI calls these to create plans and mark step progress. The system prompt instructs the AI to plan first for 3+ step tasks and skip planning for simple 1-2 step tasks.",
+		],
+	},
+	{
 		id: "2026-06-27-thinking-tags-stripped",
 		date: "2026-06-27",
 		tag: "fix",

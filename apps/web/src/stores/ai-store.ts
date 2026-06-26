@@ -23,6 +23,10 @@ export interface ChatMessage {
 		args: Record<string, unknown>;
 		result?: ToolExecutionResultLite;
 	}>;
+	/** For tool-role messages: the id of the tool call this replies to. */
+	toolCallId?: string;
+	/** For tool-role messages: the name of the tool that produced this. */
+	toolName?: string;
 	/** ISO timestamp, used for ordering and the timeline scrubber. */
 	timestamp: number;
 }
@@ -31,11 +35,14 @@ export interface ChatMessage {
  * A trimmed-down shape of `ToolExecutionResult` we use in the
  * conversation mirror. The full result type lives in
  * `lib/ai/tools/executor`; the LLM doesn't need the heavy
- * discriminated unions, just a yes/no + a friendly message.
+ * discriminated unions, just a yes/no + a friendly message + optional
+ * structured data (e.g. the asset list from list_assets).
  */
 export interface ToolExecutionResultLite {
 	ok: boolean;
 	message?: string;
+	/** Structured result data (e.g. asset list) — sent back to the LLM. */
+	data?: unknown;
 }
 
 export type ChatStatus =
@@ -78,6 +85,33 @@ export interface Conversation {
 	compactedSummary: CompactedSummary | null;
 }
 
+/**
+ * The status of a single step in an AI plan.
+ * - pending: not started
+ * - in_progress: the AI is currently working on this step
+ * - done: the step is complete
+ * - skipped: the step was abandoned (no longer needed)
+ */
+export type PlanStepStatus = "pending" | "in_progress" | "done" | "skipped";
+
+export interface PlanStep {
+	/** Short title shown in the checklist card. */
+	title: string;
+	/** What this step involves — shown as a subtitle. */
+	description: string;
+	/** Current status — drives the checkbox / color. */
+	status: PlanStepStatus;
+}
+
+export interface Plan {
+	/** Short title for the overall plan. */
+	title: string;
+	/** Ordered list of steps. */
+	steps: PlanStep[];
+	/** ISO timestamp of when the plan was created. */
+	createdAt: number;
+}
+
 interface AIState {
 	messages: ChatMessage[];
 	status: ChatStatus;
@@ -115,6 +149,11 @@ interface AIState {
 	 * until the user starts a new chat or switches to another one.
 	 */
 	conversations: Conversation[];
+	/**
+	 * The AI's current plan, shown as a visual checklist in the chat.
+	 * Null when no plan is active. A new plan replaces the previous one.
+	 */
+	plan: Plan | null;
 
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
@@ -154,6 +193,12 @@ interface AIState {
 	renameConversation: (id: string, name: string) => void;
 	/** Delete a saved conversation. */
 	deleteConversation: (id: string) => void;
+	/** Create a new plan, replacing any existing one. */
+	createPlan: (title: string, steps: Array<{ title: string; description: string }>) => void;
+	/** Update the status of a plan step by its 0-based index. */
+	updatePlanStep: (stepIndex: number, status: PlanStepStatus) => void;
+	/** Clear the current plan (e.g. when starting a new chat). */
+	clearPlan: () => void;
 }
 
 const MAX_PERSISTED_MESSAGES = 50;
@@ -192,6 +237,7 @@ export const useAIStore = create<AIState>()(
 			retryCount: 0,
 			retryIn: 0,
 			conversations: [],
+			plan: null,
 
 			appendMessage: (m) => {
 				const id = crypto.randomUUID();
@@ -242,6 +288,7 @@ export const useAIStore = create<AIState>()(
 					retryCount: 0,
 					retryIn: 0,
 					conversations,
+					plan: null,
 				});
 			},
 
@@ -335,6 +382,36 @@ export const useAIStore = create<AIState>()(
 					conversations: get().conversations.filter((c) => c.id !== id),
 				});
 			},
+
+			createPlan: (title, steps) => {
+				set({
+					plan: {
+						title,
+						steps: steps.map((s) => ({
+							title: s.title,
+							description: s.description,
+							status: "pending" as const,
+						})),
+						createdAt: Date.now(),
+					},
+				});
+			},
+
+			updatePlanStep: (stepIndex, status) => {
+				const plan = get().plan;
+				if (!plan) return;
+				if (stepIndex < 0 || stepIndex >= plan.steps.length) return;
+				set({
+					plan: {
+						...plan,
+						steps: plan.steps.map((s, i) =>
+							i === stepIndex ? { ...s, status } : s,
+						),
+					},
+				});
+			},
+
+			clearPlan: () => set({ plan: null }),
 		}),
 		{
 			name: "artidor-ai-chat",
