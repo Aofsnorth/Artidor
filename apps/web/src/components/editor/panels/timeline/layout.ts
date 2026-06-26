@@ -20,6 +20,10 @@ export const TIMELINE_RULER_HEIGHT_PX = 22;
 export const TIMELINE_BOOKMARK_ROW_HEIGHT_PX = 16;
 export const TIMELINE_SCROLLBAR_SIZE_PX = 12;
 export const TIMELINE_CONTENT_TOP_PADDING_PX = 2;
+// Inner top/bottom padding for the main track (V1) card so its clip
+// thumbnails don't sit flush against the card's top/bottom edges.
+// Only applied to the main track card, not overlay/audio tracks.
+export const TIMELINE_MAIN_TRACK_INNER_PADDING_PX = 8;
 // The ruler/track content area gets a small left inset so the
 // `00:00:00` label and the first clip's left edge don't sit
 // flush against the divider line. Prevents the labels from looking

@@ -48,6 +48,7 @@ import {
 	TIMELINE_CONTENT_TOP_PADDING_PX,
 	TIMELINE_CONTENT_LEFT_INSET_PX,
 	TIMELINE_TRACK_GAP_PX,
+	TIMELINE_MAIN_TRACK_INNER_PADDING_PX,
 	KEYFRAME_LANE_HEIGHT_PX,
 } from "./layout";
 import { usePanelStore } from "@/stores/panel-store";
@@ -305,6 +306,24 @@ export function Timeline() {
 	);
 	const mainTrackId = scene?.tracks.main.id ?? null;
 	const seek = (time: number) => editor.playback.seek({ time });
+	// Give the main track (V1) a default height override so its label
+	// card has room for inner top/bottom padding around the text and
+	// sliders without cutting anything off. Only applied when the user
+	// hasn't already resized the track themselves.
+	const setTrackHeight = useTimelineStore((s) => s.setTrackHeight);
+	const mainTrackOverride = useTimelineStore((s) =>
+		mainTrackId ? s.trackHeights[mainTrackId] : undefined,
+	);
+	useEffect(() => {
+		if (!mainTrackId || mainTrackOverride !== undefined) return;
+		const mainTrack = scene?.tracks.main;
+		if (!mainTrack) return;
+		const baseHeight = getTrackHeight({ type: mainTrack.type });
+		setTrackHeight(
+			mainTrackId,
+			baseHeight + TIMELINE_MAIN_TRACK_INNER_PADDING_PX * 2,
+		);
+	}, [mainTrackId, mainTrackOverride, scene, setTrackHeight]);
 
 	const timelineRef = useRef<HTMLDivElement>(null);
 	const timelineHeaderRef = useRef<HTMLDivElement>(null);
@@ -1126,6 +1145,9 @@ function TrackLabelsPanel({
 											className={cn(
 												"flex shrink-0 flex-col justify-center gap-1.5 border-b border-white/[0.045] px-3",
 												isLocked && "opacity-70",
+												// Main track (V1): give the label text and sliders
+												// breathing room from the card's top/bottom edges.
+												track.id === mainTrackId && "py-2",
 											)}
 											style={{ height: `${baseHeight}px` }}
 										>

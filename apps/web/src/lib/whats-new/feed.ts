@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-main-track-label-spacing",
+		date: "2026-06-26",
+		tag: "improvement",
+		title: "Cleaner spacing around the main track label",
+		items: [
+			"The main track (V1) label card now has breathing room above and below its title, opacity, and volume sliders so they no longer sit flush against the card edges.",
+		],
+	},
+	{
 		id: "2026-06-25-export-perf-tuning",
 		date: "2026-06-25",
 		tag: "performance",
