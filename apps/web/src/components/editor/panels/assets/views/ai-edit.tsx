@@ -106,6 +106,7 @@ import { useAIProvidersStore } from "@/stores/ai-providers-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { SUGGESTIONS } from "@/lib/ai/suggestions";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
+import { TakeoverPermissionCard } from "@/components/editor/ai-takeover/permission-card";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 import { Button } from "@/components/ui/button";
@@ -556,6 +557,7 @@ export function AIEditView() {
 							))}
 						</>
 					)}
+					<TakeoverPermissionCard />
 					{isStreaming && ai.status !== "retrying" && (
 						<div className="flex items-center gap-2.5">
 							<div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] px-3 py-2">

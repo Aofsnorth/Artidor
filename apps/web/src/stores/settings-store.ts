@@ -59,6 +59,15 @@ interface SettingsState {
 	setAiName: (value: string) => void;
 	aiPersonality: string;
 	setAiPersonality: (value: string) => void;
+
+	/**
+	 * Co-edit mode: when true, the editor chrome stays interactive while
+	 * the AI is in takeover mode. The aurora border still shows, but the
+	 * user can click/drag/edit alongside the AI instead of being locked
+	 * out. When false (default), the editor is locked during takeover.
+	 */
+	aiCoEditMode: boolean;
+	setAiCoEditMode: (value: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -86,6 +95,9 @@ export const useSettingsStore = create<SettingsState>()(
 			setAiName: (value) => set({ aiName: value || "Arth" }),
 			aiPersonality: "",
 			setAiPersonality: (value) => set({ aiPersonality: value }),
+
+			aiCoEditMode: false,
+			setAiCoEditMode: (value) => set({ aiCoEditMode: value }),
 		}),
 		{
 			name: "app-settings",

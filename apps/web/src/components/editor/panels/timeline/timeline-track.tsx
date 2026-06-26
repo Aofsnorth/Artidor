@@ -1,7 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
-import { TimelineElement } from "./timeline-element";
+import { MemoizedTimelineElement as TimelineElement } from "./timeline-element";
 import type { TimelineTrack } from "@/lib/timeline";
 import type { TimelineElement as TimelineElementType } from "@/lib/timeline";
 import type { SnapPoint } from "@/lib/timeline/snap-utils";
@@ -54,6 +55,19 @@ export function TimelineTrackContent({
 }: TimelineTrackContentProps) {
 	const { isElementSelected } = useElementSelection();
 	const duration = useEditor((e) => e.timeline.getTotalDuration());
+
+	// Stabilize callbacks per-track so React.memo on TimelineElement
+	// can skip re-renders when only unrelated elements change.
+	const handleElementMouseDown = useCallback(
+		(event: React.MouseEvent, element: TimelineElementType) =>
+			onElementMouseDown({ event, element, track }),
+		[onElementMouseDown, track],
+	);
+	const handleElementClick = useCallback(
+		(event: React.MouseEvent, element: TimelineElementType) =>
+			onElementClick({ event, element, track }),
+		[onElementClick, track],
+	);
 
 	useEdgeAutoScroll({
 		isActive: dragState.isDragging,
@@ -136,12 +150,8 @@ export function TimelineTrackContent({
 								isSelected={isSelected}
 								onSnapPointChange={onSnapPointChange}
 								onResizeStateChange={onResizeStateChange}
-								onElementMouseDown={(event, element) =>
-									onElementMouseDown({ event, element, track })
-								}
-								onElementClick={(event, element) =>
-									onElementClick({ event, element, track })
-								}
+								onElementMouseDown={handleElementMouseDown}
+								onElementClick={handleElementClick}
 								dragState={dragState}
 								isDropTarget={element.id === targetElementId}
 							/>

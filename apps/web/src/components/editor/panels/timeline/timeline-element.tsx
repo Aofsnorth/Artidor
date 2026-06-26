@@ -3,7 +3,7 @@
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { ReplaceMediaDialog } from "@/components/editor/dialogs/replace-media-dialog";
 import { RenameElementDialog } from "@/components/editor/dialogs/rename-element-dialog";
 import { AudioWaveform } from "./audio-waveform";
@@ -454,7 +454,7 @@ interface TimelineElementProps {
 	isDropTarget?: boolean;
 }
 
-export function TimelineElement({
+function TimelineElement({
 	element,
 	track,
 	zoomLevel,
@@ -1065,6 +1065,8 @@ export function TimelineElement({
 		</>
 	);
 }
+
+export const MemoizedTimelineElement = memo(TimelineElement);
 
 function ElementInner({
 	element,
