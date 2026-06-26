@@ -290,8 +290,11 @@ export class AIManager {
 					}
 					if (parsed.delta) {
 						assembledText += parsed.delta;
+						// Defensive strip: some models emit reasoning tags like
+						//  thinking or <thinking> in the visible stream. Hide them.
+						const sanitized = sanitizeAssistantText(assembledText);
 						useAIStore.getState().updateMessage(assistantId, {
-							content: assembledText,
+							content: sanitized,
 						});
 						this.notify();
 					}
@@ -520,4 +523,17 @@ export class AIManager {
 	getTps(): number {
 		return TICKS_PER_SECOND;
 	}
+}
+
+/**
+ * Strip reasoning tags and leading/trailing whitespace from the model's
+ * visible output. Some providers (e.g. MiniMax) emit <think> blocks in
+ * the same stream as the assistant text. We keep the assistant text clean
+ * so the user never sees internal monologue.
+ */
+function sanitizeAssistantText(text: string): string {
+	return text
+		.replace(/\\thinking[\s\S]*?<\/think>/g, "")
+		.replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
+		.trim();
 }

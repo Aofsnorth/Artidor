@@ -67,6 +67,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AIProvidersManager } from "./ai-providers-manager";
+import Markdown from "react-markdown";
 
 const QUICK_ACTIONS: {
 	label: string;
@@ -968,8 +969,23 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 				{isUser ? "You" : "AI"}
 			</div>
 			{message.content && (
-				<div className="whitespace-pre-wrap text-white/90">
-					{message.content}
+				<div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap text-white/90">
+					<Markdown
+						allowedElements={[
+							"p",
+							"strong",
+							"em",
+							"code",
+							"pre",
+							"ul",
+							"ol",
+							"li",
+							"a",
+							"br",
+						]}
+					>
+						{message.content}
+					</Markdown>
 				</div>
 			)}
 			{message.toolCalls?.length ? (
