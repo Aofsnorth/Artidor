@@ -22,6 +22,13 @@ interface PuterChatChunk {
 	input?: unknown;
 	id?: string;
 	message?: string;
+	reasoning?: string;
+	arguments?: string;
+	function?: { name?: string; arguments?: string };
+	tool_calls?: Array<{
+		id?: string;
+		function?: { name?: string; arguments?: string };
+	}>;
 }
 
 interface PuterModel {
@@ -658,7 +665,7 @@ export async function* streamPuterChat(
 	}
 
 	const textBased = isTextBasedToolModel(model);
-	console.log("[puter] chat start", { model, textBased, messageCount: messages.length, hasTools: Boolean(tools && tools.length > 0) });
+	console.log("[puter] chat start", { model, textBased, messageCount: messages.length, hasTools: Boolean(tools && tools.length > 0), toolCount: tools?.length ?? 0 });
 
 	const options: Record<string, unknown> = {
 		model,
@@ -668,10 +675,17 @@ export async function* streamPuterChat(
 	// tool calls from XML text guided by the rewritten system prompt.
 	if (tools && tools.length > 0 && !textBased) {
 		options.tools = tools;
+		// Explicitly tell the model it MAY call tools. Some providers
+		// (especially OpenAI reasoning models like GPT-5.5) need this
+		// to be set explicitly — without it they may respond with text
+		// only and never attempt a tool call.
+		options.tool_choice = "auto";
 	}
 
 	const puterMessages = toPuterMessages(messages, model);
 	console.log("[puter] messages sent", JSON.stringify(puterMessages, null, 2));
+	console.log("[puter] options sent", JSON.stringify(options, (key, value) =>
+		key === "tools" ? `[${(value as unknown[]).length} tools]` : value, 2));
 
 	let response: AsyncIterable<PuterChatChunk>;
 	try {
@@ -697,9 +711,21 @@ export async function* streamPuterChat(
 			return;
 		}
 
-		// Debug log every chunk type so we can diagnose models that
-		// send tool calls in unexpected formats.
-		console.log("[puter] chunk", { type: part.type, hasText: Boolean(part.text), hasName: Boolean(part.name), hasInput: Boolean(part.input), id: part.id });
+		// Debug log the full chunk so we can diagnose models that
+		// send tool calls in unexpected formats. Truncate text for
+		// readability.
+		const partForLog: Record<string, unknown> = { type: part.type };
+		if (part.text) partForLog.text = part.text.length > 100 ? `${part.text.slice(0, 100)}…` : part.text;
+		if (part.name) partForLog.name = part.name;
+		if (part.id) partForLog.id = part.id;
+		if (part.input !== undefined) partForLog.input = part.input;
+		if (part.message) partForLog.message = part.message;
+		// Also capture any other fields that might indicate tool calls
+		const partRecord = part as Record<string, unknown>;
+		for (const key of ["arguments", "function", "tool_calls", "function_call", "delta"]) {
+			if (partRecord[key] !== undefined) partForLog[key] = partRecord[key];
+		}
+		console.log("[puter] chunk", JSON.stringify(partForLog));
 
 		if (part.type === "text" && part.text) {
 			// Feed through the parser to detect and extract text-based
@@ -717,9 +743,11 @@ export async function* streamPuterChat(
 				try {
 					args = JSON.parse(part.input) as Record<string, unknown>;
 				} catch {
-					console.warn("[puter] failed to parse tool arguments:", part.input.slice(0, 200));
+					console.warn("[puter] failed to parse tool arguments:", String(part.input).slice(0, 200));
 					args = {};
 				}
+			} else if (part.input === null || part.input === undefined) {
+				args = {};
 			} else {
 				args = part.input as Record<string, unknown>;
 			}
@@ -732,10 +760,63 @@ export async function* streamPuterChat(
 					},
 				],
 			};
+		} else if (
+			// Some providers (e.g. OpenAI compatibility layer) may
+			// send tool calls as a `function` field or `tool_calls`
+			// array instead of the Anthropic-style `tool_use` chunk.
+			part.function?.name ||
+			(Array.isArray(part.tool_calls) && part.tool_calls.length > 0)
+		) {
+			const calls: Array<{
+				id: string;
+				name: string;
+				arguments: Record<string, unknown>;
+			}> = [];
+
+			if (part.function?.name) {
+				let args: Record<string, unknown> = {};
+				if (typeof part.function.arguments === "string") {
+					try {
+						args = JSON.parse(part.function.arguments);
+					} catch {
+						args = {};
+					}
+				}
+				calls.push({
+					id: part.id ?? crypto.randomUUID(),
+					name: part.function.name,
+					arguments: args,
+				});
+			}
+
+			if (Array.isArray(part.tool_calls)) {
+				for (const tc of part.tool_calls) {
+					if (!tc.function?.name) continue;
+					let args: Record<string, unknown> = {};
+					if (typeof tc.function.arguments === "string") {
+						try {
+							args = JSON.parse(tc.function.arguments);
+						} catch {
+							args = {};
+						}
+					}
+					calls.push({
+						id: tc.id ?? crypto.randomUUID(),
+						name: tc.function.name,
+						arguments: args,
+					});
+				}
+			}
+
+			if (calls.length > 0) {
+				yield { toolCalls: calls };
+			}
 		} else if (part.type === "error" || part.message) {
 			yield { error: part.message ?? "Unknown Puter.js stream error" };
 			return;
 		}
+		// Unknown chunk types (reasoning, usage, compaction, extra_content)
+		// are silently skipped — they don't contain tool calls or text.
 	}
 
 	// Flush any remaining buffered text or incomplete tool calls
