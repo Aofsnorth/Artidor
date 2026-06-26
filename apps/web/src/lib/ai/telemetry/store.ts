@@ -36,8 +36,16 @@ const MAX_EVENTS = 500;
 
 interface TelemetryState {
 	events: TelemetryEvent[];
+	/**
+	 * Whether auto-learning is enabled. When disabled, `record` is a
+	 * no-op and no events are collected. Defaults to true (the original
+	 * behavior) so existing users keep their learning unless they opt out.
+	 */
+	enabled: boolean;
 	record: (e: Omit<TelemetryEvent, "id" | "timestamp">) => void;
 	clear: () => void;
+	/** Enable or disable auto-learning. */
+	setEnabled: (enabled: boolean) => void;
 	/** Return the last N events in chronological order. */
 	recent: (n: number) => TelemetryEvent[];
 	/** Return all events matching a command name, e.g. "split_element". */
@@ -48,7 +56,10 @@ export const useTelemetryStore = create<TelemetryState>()(
 	persist(
 		(set, get) => ({
 			events: [],
+			enabled: true,
 			record: (e) => {
+				// Auto-learning toggle: when disabled, don't collect events.
+				if (!get().enabled) return;
 				const event: TelemetryEvent = {
 					id: crypto.randomUUID(),
 					timestamp: Date.now(),
@@ -58,6 +69,7 @@ export const useTelemetryStore = create<TelemetryState>()(
 				set({ events: next });
 			},
 			clear: () => set({ events: [] }),
+			setEnabled: (enabled) => set({ enabled }),
 			recent: (n) => get().events.slice(0, n).reverse(),
 			byCommand: (name) => get().events.filter((e) => e.command === name),
 		}),

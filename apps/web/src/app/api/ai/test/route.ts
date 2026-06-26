@@ -14,9 +14,7 @@
  */
 
 import { z } from "zod";
-import { headers } from "next/headers";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
-import { auth as serverAuth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { assertSafeProviderBaseUrl } from "@/lib/ai/provider-url";
 
@@ -95,17 +93,10 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
-	// Auth check: reject anonymous callers (same as /api/ai/chat).
-	const session = await serverAuth.api.getSession({
-		headers: await headers(),
-	});
-	if (!session) {
-		return Response.json(
-			{ ok: false, error: "Sign in to test providers." } satisfies TestResult,
-			{ status: 401 },
-		);
-	}
-
+	// Auth check: this endpoint always uses the client-supplied provider
+	// config (BYOK) — it never touches the server's env-var LLM key, so
+	// there is no cost-abuse risk and anonymous access is allowed. Rate
+	// limiting + SSRF protection still apply.
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return Response.json(

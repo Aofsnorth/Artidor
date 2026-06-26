@@ -39,6 +39,7 @@ import {
 	Upload01Icon,
 	Video01Icon,
 	PlugIcon,
+	ChatAdd01Icon,
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
@@ -111,6 +112,7 @@ export function AIEditView() {
 	}, []);
 
 	const recentCount = telemetry.events.length;
+	const autoLearnEnabled = telemetry.enabled;
 	const isStreaming =
 		ai.status === "streaming" || ai.status === "awaiting-tools";
 
@@ -162,9 +164,12 @@ export function AIEditView() {
 					recentCount={recentCount}
 					isStreaming={isStreaming}
 					defaultProvider={defaultProvider}
+					compactedSummary={ai.compactedSummary}
+					autoLearnEnabled={autoLearnEnabled}
+					onToggleAutoLearn={() => telemetry.setEnabled(!autoLearnEnabled)}
 					onOpenProviders={() => setProvidersOpen(true)}
 					onClearReference={() => editor.ai.clearReference()}
-					onClearConversation={() => ai.clearConversation()}
+					onNewChat={() => ai.clearConversation()}
 				/>
 
 				{/* Quick actions */}
@@ -334,9 +339,12 @@ function StatusBar({
 	recentCount,
 	isStreaming,
 	defaultProvider,
+	compactedSummary,
+	autoLearnEnabled,
+	onToggleAutoLearn,
 	onOpenProviders,
 	onClearReference,
-	onClearConversation,
+	onNewChat,
 }: {
 	referenceVideoName: string | null;
 	styleProfile: ChatMessage extends never
@@ -345,9 +353,12 @@ function StatusBar({
 	recentCount: number;
 	isStreaming: boolean;
 	defaultProvider: { name: string; model: string; kind: string } | undefined;
+	compactedSummary: ReturnType<typeof useAIStore.getState>["compactedSummary"];
+	autoLearnEnabled: boolean;
+	onToggleAutoLearn: () => void;
 	onOpenProviders: () => void;
 	onClearReference: () => void;
-	onClearConversation: () => void;
+	onNewChat: () => void;
 }) {
 	return (
 		<div className="relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#0c0c10] to-[#08080c] p-0">
@@ -400,12 +411,13 @@ function StatusBar({
 						</span>
 						<button
 							type="button"
-							onClick={onClearConversation}
-							aria-label="Clear conversation"
-							title="Clear conversation"
-							className="grid size-5 place-items-center rounded text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+							onClick={onNewChat}
+							aria-label="New chat"
+							title="New chat — clears conversation and summary"
+							className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
 						>
-							<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+							<HugeiconsIcon icon={ChatAdd01Icon} className="size-2.5" />
+							New
 						</button>
 					</div>
 				</div>
@@ -450,14 +462,43 @@ function StatusBar({
 					</span>
 				</button>
 
-				{/* Meta row: learned edits + reference video */}
+				{/* Meta row: learned edits + compaction + reference video */}
 				<div className="flex flex-col gap-1.5">
-					{recentCount > 0 && (
-						<div className="flex items-center gap-1.5 text-[10px] text-white/40">
+					<div className="flex items-center gap-3 text-[10px] text-white/40">
+						<button
+							type="button"
+							onClick={onToggleAutoLearn}
+							title={
+								autoLearnEnabled
+									? "Auto-learning is ON — the AI learns from your edits. Click to disable."
+									: "Auto-learning is OFF. Click to enable — the AI will learn from your edits."
+							}
+							className={cn(
+								"flex items-center gap-1.5 rounded transition-colors hover:text-white/70",
+								autoLearnEnabled ? "text-white/40" : "text-white/25",
+							)}
+						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-2.5" />
-							<span>Learned from {recentCount} edits</span>
-						</div>
-					)}
+							{autoLearnEnabled
+								? `Learned from ${recentCount} edits`
+								: "Auto-learn off"}
+							<span
+								className={cn(
+									"ml-0.5 inline-block size-1.5 rounded-full",
+									autoLearnEnabled ? "bg-emerald-400/70" : "bg-white/20",
+								)}
+							/>
+						</button>
+						{compactedSummary && (
+							<span
+								className="flex items-center gap-1.5"
+								title={`Compacted ${compactedSummary.compactedCount} older messages to save context space`}
+							>
+								<HugeiconsIcon icon={ArrowDown03Icon} className="size-2.5" />
+								{compactedSummary.compactedCount} compacted
+							</span>
+						)}
+					</div>
 					{referenceVideoName && styleProfile ? (
 						<div className="flex items-center justify-between gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1">
 							<span className="flex min-w-0 items-center gap-1.5">
