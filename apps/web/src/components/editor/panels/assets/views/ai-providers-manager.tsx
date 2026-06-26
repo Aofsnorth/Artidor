@@ -526,9 +526,17 @@ function ProviderFormDialog({
 	const [testing, setTesting] = useState(false);
 	const [testError, setTestError] = useState<string | null>(null);
 	// Puter.js mandatory data-usage warning popup — uncloseable for 5s.
+	// Skip the warning if the user is editing an existing Puter provider
+	// (they already approved) or if there's already an enabled Puter
+	// provider in the store (they approved it before).
+	const hasExistingPuter = useAIProvidersStore((s) =>
+		s.providers.some((p) => p.kind === "puter" && p.enabled),
+	);
 	const [showPuterWarning, setShowPuterWarning] = useState(false);
 	const [puterCountdown, setPuterCountdown] = useState(5);
-	const [puterAcknowledged, setPuterAcknowledged] = useState(false);
+	const [puterAcknowledged, setPuterAcknowledged] = useState(
+		provider?.kind === "puter" || hasExistingPuter,
+	);
 	// Puter.js model list — fetched from puter.ai.listModels() when the
 	// user selects the Puter provider kind. Each entry has { id, provider,
 	// name, ... } per the Puter.js API.
