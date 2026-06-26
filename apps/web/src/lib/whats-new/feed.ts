@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-mcp-server-cards",
+		date: "2026-06-27",
+		tag: "improvement",
+		title: "MCP server management redesigned with detailed cards",
+		items: [
+			"MCP server management is now a full dialog with detailed cards instead of a small popover. Each server card shows: name, connection status (Connected/Connecting/Error/Disconnected with colored dot), SSE URL, tool count badge, and an expandable list of available tools with name + description.",
+			"Add MCP Server dialog replaces the old browser prompt() flow — proper form with name, SSE URL, and optional bearer token fields, with validation.",
+			"Each card has a toggle switch (enable/disable), Reconnect button, and Remove button. Error state shows the error message with a 'Try reconnect' link.",
+		],
+	},
+	{
 		id: "2026-06-27-media-workflow-retry-fix",
 		date: "2026-06-27",
 		tag: "fix",
