@@ -561,10 +561,18 @@ export function AIEditView() {
 					{ai.error && ai.status !== "retrying" && (
 						<div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3 py-2 text-[11px] text-red-300">
 							<HugeiconsIcon
-								icon={Cancel01Icon}
+								icon={AlertCircleIcon}
 								className="mt-0.5 size-3 shrink-0 text-red-400/70"
 							/>
-							<span className="leading-relaxed">{ai.error}</span>
+							<span className="flex-1 leading-relaxed">{ai.error}</span>
+							<button
+								type="button"
+								onClick={() => ai.setError(null)}
+								className="shrink-0 text-red-400/50 transition-colors hover:text-red-300"
+								aria-label="Dismiss error"
+							>
+								<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+							</button>
 						</div>
 					)}
 					<div ref={messagesEndRef} />
