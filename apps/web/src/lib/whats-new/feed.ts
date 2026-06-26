@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-ai-provider-test-json-error",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "AI provider test no longer shows cryptic JSON error",
+		items: [
+			"Fixed the 'Unexpected end of JSON input' error when testing an AI provider from the provider dialog. The test handler now safely parses the server response and shows a clear HTTP status message if the server returns a non-JSON error.",
+		],
+	},
+	{
 		id: "2026-06-26-varied-preview-backgrounds",
 		date: "2026-06-26",
 		tag: "improvement",
