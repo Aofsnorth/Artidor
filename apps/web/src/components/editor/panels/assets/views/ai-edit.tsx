@@ -353,7 +353,25 @@ export function AIEditView() {
 	const handleFile = async (file: File) => {
 		setIsExtracting(true);
 		try {
-			await editor.ai.applyReferenceVideo(file);
+			const ok = await editor.ai.applyReferenceVideo(file);
+			if (!ok) {
+				// extractStyle returned duration=0 — the file was read
+				// but no usable video frames were found (e.g. audio-only
+				// file, corrupt video, or unsupported codec).
+				useAIStore.getState().setError(
+					"Could not extract a style profile from this file. Make sure it's a valid video file with visible frames (not audio-only).",
+				);
+				useAIStore.getState().setStatus("error");
+			}
+		} catch (err) {
+			// extractStyle threw — the file couldn't be decoded at all
+			// (unsupported format, corrupt file, browser can't play it).
+			useAIStore.getState().setError(
+				err instanceof Error
+					? `Could not read the reference file: ${err.message}`
+					: "Could not read the reference file. It may be corrupted or in an unsupported format.",
+			);
+			useAIStore.getState().setStatus("error");
 		} finally {
 			setIsExtracting(false);
 		}
@@ -404,8 +422,8 @@ export function AIEditView() {
 					onDeleteConversation={(id) => ai.deleteConversation(id)}
 				/>
 
-				{/* Quick actions */}
-				<div className="flex flex-wrap gap-1">
+				{/* Reference button — sits directly above the chat */}
+				<div className="flex items-center gap-1.5">
 					<button
 						type="button"
 						onClick={() => fileInputRef.current?.click()}
@@ -430,6 +448,24 @@ export function AIEditView() {
 							e.target.value = "";
 						}}
 					/>
+					{ai.referenceVideoName && (
+						<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
+							<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
+							<span className="truncate">{ai.referenceVideoName}</span>
+							<button
+								type="button"
+								onClick={() => editor.ai.clearReference()}
+								className="ml-0.5 text-white/30 hover:text-white/60"
+								aria-label="Clear reference"
+							>
+								<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+							</button>
+						</span>
+					)}
+				</div>
+
+				{/* Quick actions */}
+				<div className="flex flex-wrap gap-1">
 					{QUICK_ACTIONS.map((qa) => (
 						<button
 							key={qa.label}
