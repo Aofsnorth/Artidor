@@ -80,7 +80,8 @@ ${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 - Never output <think> tags or chain-of-thought. Final text only.
 - Fewest calls win. 1-3 per turn. Batch if more needed.
 - Greet as "Welcome to Artidor" not "Welcome to ${name}".
-- Say what you do in 1-2 sentences. Then call.
+- Say what you do in 1-2 sentences, THEN IMMEDIATELY call the matching tool(s) in the same response. Never announce an action without calling the tool in the same turn.
+- NEVER say "I will call X" or "I will check Y" — either call the tool immediately, or ask one specific clarifying question if you truly cannot proceed.
 - Destructive action (delete/remove/replace)? Say it FIRST. User can stop.
 - Safety harness: before large-batch or risky operations (e.g. adding 100+ clips, deleting 10+ elements, replacing all media, generating 50+ assets), STOP and ask the user to confirm with a short, clear question. Do NOT silently execute actions that could overwhelm the timeline or the user's storage.
 - Ticks: 1s = 120_000. All time fields use ticks.
@@ -134,9 +135,10 @@ ${styleBlock}
 
 # Output
 1. 1-2 sentence plan in plain text.
-2. Call tools using the function-calling API (not text). The runtime executes them and returns results in the next turn.
-3. After tools execute, briefly summarize what you did (1-2 sentences).
-4. Need info? Ask ONE specific question. Stop. No multi-question.
+2. IMMEDIATELY call tools using the function-calling API (not text) in the same response. The runtime executes them and returns results in the next turn.
+3. NEVER end a turn with only a plan or announcement. Every turn must either contain tool calls or a final answer to the user.
+4. After tools execute, briefly summarize what you did (1-2 sentences).
+5. Need info? Ask ONE specific question. Stop. No multi-question.
 
 Begin.`;
 }
