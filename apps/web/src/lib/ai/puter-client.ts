@@ -1,0 +1,257 @@
+/**
+ * Puter.js client-side AI provider.
+ *
+ * Puter.js runs entirely in the browser — no server API key needed.
+ * The SDK is loaded dynamically from https://js.puter.com/v2/ and
+ * cached on `window.puter`. This module provides helpers to:
+ *
+ *  1. Load the SDK (idempotent — safe to call multiple times).
+ *  2. Fetch available models via `puter.ai.listModels()`.
+ *  3. Stream chat completions via `puter.ai.chat()` with tool support.
+ *
+ * The streaming interface mirrors the server's SSE format so the
+ * AIManager can consume Puter responses with the same code path
+ * it uses for the `/api/ai/chat` endpoint.
+ */
+
+/** Minimal Puter.js type surface — the SDK is untyped. */
+interface PuterChatChunk {
+	type?: string;
+	text?: string;
+	name?: string;
+	input?: unknown;
+	id?: string;
+	message?: string;
+}
+
+interface PuterModel {
+	id: string;
+	provider: string;
+	name?: string;
+}
+
+interface PuterAI {
+	chat: (
+		messages: unknown,
+		options?: Record<string, unknown>,
+	) => Promise<AsyncIterable<PuterChatChunk>>;
+	listModels: () => Promise<PuterModel[]>;
+}
+
+interface PuterSDK {
+	ai: PuterAI;
+}
+
+declare global {
+	interface Window {
+		puter?: PuterSDK;
+	}
+}
+
+const PUTER_SDK_URL = "https://js.puter.com/v2/";
+
+/** Tracks the in-flight SDK load so concurrent callers share one promise. */
+let sdkLoadPromise: Promise<PuterSDK> | null = null;
+
+/**
+ * Load the Puter.js SDK if not already loaded. Idempotent — concurrent
+ * callers share the same loading promise. Once loaded, `window.puter`
+ * is cached and subsequent calls return immediately.
+ *
+ * @throws Error if the SDK fails to load (network error, CSP block, etc.)
+ */
+export function loadPuterSDK(): Promise<PuterSDK> {
+	if (typeof window === "undefined") {
+		return Promise.reject(new Error("Puter.js requires a browser environment"));
+	}
+	if (window.puter) return Promise.resolve(window.puter);
+	if (sdkLoadPromise) return sdkLoadPromise;
+
+	sdkLoadPromise = new Promise<PuterSDK>((resolve, reject) => {
+		// Check if a script tag already exists (e.g. injected by another
+		// component). If so, attach listeners rather than creating a duplicate.
+		const existing = document.querySelector<HTMLScriptElement>(
+			`script[src="${PUTER_SDK_URL}"]`,
+		);
+		if (existing) {
+			// If the script already fired its load event, window.puter
+			// should be set. If not, wait for it.
+			if (window.puter) {
+				resolve(window.puter);
+				return;
+			}
+			existing.addEventListener("load", () => {
+				if (window.puter) resolve(window.puter);
+				else reject(new Error("Puter.js script loaded but window.puter is undefined"));
+			});
+			existing.addEventListener("error", () =>
+				reject(new Error("Failed to load Puter.js SDK from existing script tag")),
+			);
+			return;
+		}
+
+		const script = document.createElement("script");
+		script.src = PUTER_SDK_URL;
+		script.async = true;
+		script.crossOrigin = "anonymous";
+		script.onload = () => {
+			if (window.puter) {
+				resolve(window.puter);
+			} else {
+				reject(
+					new Error(
+						"Puter.js script loaded but window.puter is undefined — the SDK may be blocked by CSP or a network issue",
+					),
+				);
+			}
+		};
+		script.onerror = () => {
+			reject(
+				new Error(
+					"Failed to load Puter.js SDK — check your network connection or Content Security Policy settings",
+				),
+			);
+		};
+		document.head.appendChild(script);
+	});
+
+	// Clear the promise on failure so retries can attempt to load again.
+	sdkLoadPromise.catch(() => {
+		sdkLoadPromise = null;
+	});
+
+	return sdkLoadPromise;
+}
+
+/**
+ * Fetch the list of available models from Puter.js.
+ * @throws Error if the SDK is not loaded or listModels fails.
+ */
+export async function fetchPuterModels(): Promise<PuterModel[]> {
+	const puter = await loadPuterSDK();
+	if (!puter.ai?.listModels) {
+		throw new Error("Puter.js SDK loaded but listModels() is not available");
+	}
+	return puter.ai.listModels();
+}
+
+/**
+ * Stream a chat completion from Puter.js. Returns an async iterable of
+ * normalized chunks that the AIManager can consume with the same logic
+ * it uses for the server SSE stream.
+ *
+ * Each yielded chunk has the shape:
+ *   { delta?: string, toolCalls?: ToolCallRound[], done?: boolean, error?: string }
+ *
+ * This mirrors the server's SSE event format so the consumer code
+ * stays unified.
+ */
+export interface PuterStreamChunk {
+	delta?: string;
+	toolCalls?: Array<{
+		id: string;
+		name: string;
+		arguments: Record<string, unknown>;
+	}>;
+	done?: boolean;
+	error?: string;
+}
+
+/**
+ * Convert the internal ChatMessage[] to the format Puter.js expects.
+ * Puter uses the same OpenAI-style message format, but tool calls and
+ * tool results use slightly different field names.
+ */
+function toPuterMessages(messages: unknown[]): unknown[] {
+	return messages.map((msg) => {
+		const m = msg as Record<string, unknown>;
+		// Tool result messages: map toolCallId → tool_call_id
+		if (m.role === "tool") {
+			return {
+				role: "tool",
+				tool_call_id: m.toolCallId,
+				content: m.content,
+			};
+		}
+		// Assistant messages with tool calls: map toolCalls → tool_calls
+		if (m.role === "assistant" && Array.isArray(m.toolCalls)) {
+			return {
+				role: "assistant",
+				content: m.content,
+				tool_calls: (m.toolCalls as Array<{ id: string; name: string; arguments: unknown }>).map(
+					(tc) => ({
+						id: tc.id,
+						type: "function",
+						function: {
+							name: tc.name,
+							arguments:
+								typeof tc.arguments === "string"
+									? tc.arguments
+									: JSON.stringify(tc.arguments),
+						},
+					}),
+				),
+			};
+		}
+		return m;
+	});
+}
+
+/**
+ * Stream a chat completion from Puter.js, yielding normalized chunks.
+ *
+ * @param messages - The conversation messages in internal ChatMessage format.
+ * @param model - The Puter model id (e.g. "gpt-4o-mini").
+ * @param tools - Optional array of tool definitions (OpenAI function format).
+ * @param signal - Optional AbortSignal to cancel the stream.
+ */
+export async function* streamPuterChat(
+	messages: unknown[],
+	model: string,
+	tools?: Array<{ type: "function"; function: { name: string; description: string; parameters: unknown } }>,
+	signal?: AbortSignal,
+): AsyncGenerator<PuterStreamChunk> {
+	const puter = await loadPuterSDK();
+	if (!puter.ai?.chat) {
+		throw new Error("Puter.js SDK loaded but chat() is not available");
+	}
+
+	const options: Record<string, unknown> = {
+		model,
+		stream: true,
+	};
+	if (tools && tools.length > 0) {
+		options.tools = tools;
+	}
+
+	const response = await puter.ai.chat(toPuterMessages(messages), options);
+
+	for await (const part of response) {
+		if (signal?.aborted) {
+			yield { done: true };
+			return;
+		}
+
+		if (part.type === "text" && part.text) {
+			yield { delta: part.text };
+		} else if (part.type === "tool_use" || (part.name && part.input)) {
+			yield {
+				toolCalls: [
+					{
+						id: part.id ?? crypto.randomUUID(),
+						name: part.name ?? "",
+						arguments:
+							typeof part.input === "string"
+								? (JSON.parse(part.input) as Record<string, unknown>)
+								: (part.input as Record<string, unknown>),
+					},
+				],
+			};
+		} else if (part.type === "error" || part.message) {
+			yield { error: part.message ?? "Unknown Puter.js stream error" };
+			return;
+		}
+	}
+
+	yield { done: true };
+}

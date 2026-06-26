@@ -35,6 +35,7 @@ import {
 	type AIProvider,
 	type ProviderKind,
 } from "@/stores/ai-providers-store";
+import { fetchPuterModels } from "@/lib/ai/puter-client";
 import { cn } from "@/utils/ui";
 
 interface AIProvidersManagerProps {
@@ -549,54 +550,7 @@ function ProviderFormDialog({
 			setPuterModelsLoading(true);
 			setPuterModelsError(null);
 			try {
-				// Load the Puter.js SDK if not already loaded.
-				if (
-					typeof window === "undefined" ||
-					!(window as unknown as { puter?: unknown }).puter
-				) {
-					await new Promise<void>((resolve, reject) => {
-						const existing = document.querySelector(
-							'script[src="https://js.puter.com/v2/"]',
-						);
-						if (existing) {
-							// Script tag exists but puter not ready yet — wait.
-							existing.addEventListener("load", () => resolve());
-							existing.addEventListener("error", () =>
-								reject(new Error("Failed to load Puter.js SDK")),
-							);
-							return;
-						}
-						const script = document.createElement("script");
-						script.src = "https://js.puter.com/v2/";
-						script.async = true;
-						script.onload = () => resolve();
-						script.onerror = () =>
-							reject(new Error("Failed to load Puter.js SDK"));
-						document.head.appendChild(script);
-					});
-				}
-
-				const puter = (
-					window as unknown as {
-						puter?: {
-							ai: {
-								listModels: () => Promise<
-									Array<{
-										id: string;
-										provider: string;
-										name?: string;
-									}>
-								>;
-							};
-						};
-					}
-				).puter;
-
-				if (!puter?.ai?.listModels) {
-					throw new Error("Puter.js SDK loaded but listModels() not available");
-				}
-
-				const models = await puter.ai.listModels();
+				const models = await fetchPuterModels();
 				if (cancelled) return;
 				setPuterModels(models);
 				// Auto-select the first model if none is set yet.

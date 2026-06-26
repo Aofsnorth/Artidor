@@ -204,8 +204,8 @@ export async function POST(request: Request) {
 		if (body.provider.kind === "puter") {
 			return new Response(
 				JSON.stringify({
-					error:
-						"Puter.js providers run client-side and should not reach the server API. Please use the Puter.js SDK in the browser.",
+					message:
+						"Puter.js providers run client-side and should not reach the server API.",
 				}),
 				{ status: 400, headers: { "content-type": "application/json" } },
 			);
