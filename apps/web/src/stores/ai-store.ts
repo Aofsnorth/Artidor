@@ -40,17 +40,41 @@ export interface ToolExecutionResultLite {
 
 export type ChatStatus = "idle" | "streaming" | "awaiting-tools" | "error";
 
+/**
+ * When the conversation grows too long for the LLM's context window,
+ * older messages are replaced by a single compact summary stored here.
+ * The summary is prepended as a system message when building the
+ * wire-format request, so the LLM retains context without the full
+ * token cost of every old message.
+ */
+export interface CompactedSummary {
+	/** The LLM-generated summary of the compacted-away messages. */
+	text: string;
+	/** Number of messages that were compacted (for UI display). */
+	compactedCount: number;
+	/** ISO timestamp of when compaction happened. */
+	createdAt: number;
+}
+
 interface AIState {
 	messages: ChatMessage[];
 	status: ChatStatus;
 	error: string | null;
 	styleProfile: StyleProfile | null;
 	referenceVideoName: string | null;
+	/** Summary of older messages that were compacted away, or null. */
+	compactedSummary: CompactedSummary | null;
 
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
 	updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
 	clearConversation: () => void;
+	/**
+	 * Replace older messages with a compact summary, keeping the most
+	 * recent `keepLast` messages verbatim. Called by the AI manager
+	 * when auto-compaction triggers.
+	 */
+	compactConversation: (summary: string, keepLast: number) => void;
 	setStatus: (status: ChatStatus) => void;
 	setError: (error: string | null) => void;
 	setStyleProfile: (profile: StyleProfile | null, name?: string | null) => void;
@@ -66,6 +90,7 @@ export const useAIStore = create<AIState>()(
 			error: null,
 			styleProfile: null,
 			referenceVideoName: null,
+			compactedSummary: null,
 
 			appendMessage: (m) => {
 				const id = crypto.randomUUID();
@@ -86,7 +111,23 @@ export const useAIStore = create<AIState>()(
 				});
 			},
 
-			clearConversation: () => set({ messages: [], error: null }),
+			clearConversation: () =>
+				set({ messages: [], error: null, compactedSummary: null }),
+
+			compactConversation: (summary, keepLast) => {
+				const all = get().messages;
+				const compactedCount = Math.max(0, all.length - keepLast);
+				if (compactedCount === 0) return;
+				set({
+					messages: all.slice(-keepLast),
+					compactedSummary: {
+						text: summary,
+						compactedCount,
+						createdAt: Date.now(),
+					},
+				});
+			},
+
 			setStatus: (status) => set({ status }),
 			setError: (error) => set({ error }),
 
@@ -99,6 +140,7 @@ export const useAIStore = create<AIState>()(
 				messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
 				styleProfile: state.styleProfile,
 				referenceVideoName: state.referenceVideoName,
+				compactedSummary: state.compactedSummary,
 			}),
 		},
 	),

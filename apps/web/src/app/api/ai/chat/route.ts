@@ -121,27 +121,14 @@ export async function POST(request: Request) {
 		return new Response("Not Found", { status: 404 });
 	}
 
-	// Auth check: reject anonymous callers. The AI route proxies a
-	// server-side LLM key, so unauthenticated access is a direct
-	// cost-abuse risk (anyone could drain API credits).
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
-	if (!session) {
-		return new Response(
-			JSON.stringify({ error: "unauthorized", message: "Sign in to use AI." }),
-			{ status: 401, headers: { "content-type": "application/json" } },
-		);
-	}
-
-	const { limited } = await checkRateLimit({ request });
-	if (limited) {
-		return new Response(JSON.stringify({ error: "rate_limited" }), {
-			status: 429,
-			headers: { "content-type": "application/json" },
-		});
-	}
-
+	// Parse the body first so we can decide whether auth is required.
+	// When the client supplies its own provider config (BYOK — bring your
+	// own key), the request does NOT touch the server's env-var LLM key,
+	// so there is no cost-abuse risk and we allow anonymous access. When
+	// the client does NOT supply a provider, the server falls back to its
+	// own env-var key — in that case unauthenticated access is a direct
+	// cost-abuse risk (anyone could drain API credits), so we require a
+	// valid session.
 	let body: z.infer<typeof bodySchema>;
 	try {
 		const json = (await request.json()) as unknown;
@@ -154,6 +141,33 @@ export async function POST(request: Request) {
 			}),
 			{ status: 400, headers: { "content-type": "application/json" } },
 		);
+	}
+
+	const hasClientProvider = Boolean(body.provider);
+
+	if (!hasClientProvider) {
+		// No BYOK — the server will use its own env-var key, so auth is
+		// mandatory to prevent anonymous cost abuse.
+		const session = await auth.api.getSession({
+			headers: await headers(),
+		});
+		if (!session) {
+			return new Response(
+				JSON.stringify({
+					error: "unauthorized",
+					message: "Sign in to use AI, or add your own provider in the AI Edit panel.",
+				}),
+				{ status: 401, headers: { "content-type": "application/json" } },
+			);
+		}
+	}
+
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return new Response(JSON.stringify({ error: "rate_limited" }), {
+			status: 429,
+			headers: { "content-type": "application/json" },
+		});
 	}
 
 	// Resolve the provider for this request. The client can supply

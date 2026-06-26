@@ -22,6 +22,7 @@ import {
 	Link01Icon,
 	LockPasswordIcon,
 	UserAddIcon,
+	Comment02Icon,
 } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { Check, Copy } from "lucide-react";
@@ -32,6 +33,9 @@ import {
 	initiateGoogleOAuth,
 } from "@/lib/drive/api";
 import { buildShareUrl, createShare } from "@/lib/share/client";
+import { StartCollabDialog } from "@/components/editor/collab/collab-dialogs";
+import { CollabPresenceBar } from "@/components/editor/collab/collab-overlay";
+import { useCollabStore } from "@/stores/collab-store";
 
 export function ShareButton() {
 	const [open, setOpen] = useState(false);
@@ -45,6 +49,8 @@ export function ShareButton() {
 	const [creating, setCreating] = useState(false);
 	const [shareUrl, setShareUrl] = useState("");
 	const [manageToken, setManageToken] = useState("");
+	const [collabOpen, setCollabOpen] = useState(false);
+	const collabActive = useCollabStore((s) => s.status === "connected");
 
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
 	const hasProject = !!activeProject;
@@ -149,34 +155,55 @@ export function ShareButton() {
 
 	return (
 		<>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<button
-						type="button"
-						aria-label="Invite collaborators"
-						disabled={!hasProject}
-						className="group flex h-8 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 text-xs font-medium text-white/70 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+			<div className="flex items-center gap-2">
+				<CollabPresenceBar />
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							aria-label="Invite collaborators"
+							disabled={!hasProject}
+							className="group flex h-8 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 text-xs font-medium text-white/70 transition-all hover:border-white/[0.12] hover:bg-white/[0.04] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+						>
+							<HugeiconsIcon icon={UserAddIcon} className="size-3.5" />
+							<span>Invite</span>
+							{collabActive && (
+								<span className="ml-0.5 size-1.5 rounded-full bg-emerald-400" />
+							)}
+						</button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent
+						align="end"
+						className="z-100 w-56 border-white/[0.08] bg-[#09090b]/95 text-white/95 backdrop-blur-md"
 					>
-						<HugeiconsIcon icon={UserAddIcon} className="size-3.5" />
-						<span>Invite</span>
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent
-					align="end"
-					className="z-100 w-56 border-white/[0.08] bg-[#09090b]/95 text-white/95 backdrop-blur-md"
-				>
-					<DropdownMenuItem
-						onSelect={() => setOpen(true)}
-						className="hover:bg-white/[0.08] focus:bg-white/[0.08] focus:text-white"
-					>
-						<HugeiconsIcon
-							icon={Link01Icon}
-							className="mr-2 size-3.5 text-white/60"
-						/>
-						Share read-only link
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+						<DropdownMenuItem
+							onSelect={() => setOpen(true)}
+							className="hover:bg-white/[0.08] focus:bg-white/[0.08] focus:text-white"
+						>
+							<HugeiconsIcon
+								icon={Link01Icon}
+								className="mr-2 size-3.5 text-white/60"
+							/>
+							Share read-only link
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onSelect={() => setCollabOpen(true)}
+							className="hover:bg-white/[0.08] focus:bg-white/[0.08] focus:text-white"
+						>
+							<HugeiconsIcon
+								icon={Comment02Icon}
+								className="mr-2 size-3.5 text-white/60"
+							/>
+							Collaboration
+							{collabActive && (
+								<span className="ml-auto size-1.5 rounded-full bg-emerald-400" />
+							)}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+
+			<StartCollabDialog open={collabOpen} onOpenChange={setCollabOpen} />
 
 			<Dialog open={open} onOpenChange={setOpen}>
 				<DialogContent className="overflow-hidden border-white/[0.08] bg-[#09090b]/95 text-white backdrop-blur-md sm:max-w-md">
