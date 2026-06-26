@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { leaveRoomStore } from "@/lib/collab/room-store";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,6 +18,11 @@ export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ roomId: string }> },
 ) {
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return Response.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	const { roomId } = await params;
 
 	let body: z.infer<typeof bodySchema>;

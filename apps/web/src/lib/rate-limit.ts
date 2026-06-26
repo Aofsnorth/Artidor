@@ -28,18 +28,50 @@ export function clientIpOf(request: Request): string {
 	);
 }
 
+/**
+ * In-memory fallback rate limiter used when Upstash Redis is
+ * unreachable. This prevents the fail-open vulnerability where an
+ * attacker could bypass all rate limits by causing Redis to be
+ * unavailable.
+ *
+ * Uses a simple Map with per-IP counters that reset every 60s.
+ * The Map is capped at 10,000 entries to prevent unbounded memory
+ * growth — oldest entries are evicted when the cap is reached.
+ */
+const LOCAL_LIMIT = 100; // 100 requests per minute (matches Redis)
+const LOCAL_WINDOW_MS = 60_000;
+const LOCAL_MAX_ENTRIES = 10_000;
+const localStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkLocalRateLimit(ip: string): { success: boolean; limited: boolean } {
+	const now = Date.now();
+	const entry = localStore.get(ip);
+	if (!entry || now > entry.resetAt) {
+		// Evict oldest entries if we're at capacity.
+		if (localStore.size >= LOCAL_MAX_ENTRIES) {
+			const oldestKey = localStore.keys().next().value;
+			if (oldestKey) localStore.delete(oldestKey);
+		}
+		localStore.set(ip, { count: 1, resetAt: now + LOCAL_WINDOW_MS });
+		return { success: true, limited: false };
+	}
+	entry.count++;
+	if (entry.count > LOCAL_LIMIT) {
+		return { success: false, limited: true };
+	}
+	return { success: true, limited: false };
+}
+
 export async function checkRateLimit({ request }: { request: Request }) {
-	// Fail open: if the rate-limit store (Upstash Redis) is unreachable
-	// — e.g. missing env vars in local dev, network outage, or Redis
-	// maintenance — we allow the request through instead of crashing the
-	// calling endpoint with a 500. Rate limiting is a secondary abuse
-	// protection, not a critical-path feature, so degrading to "no limit"
-	// is safer than breaking every API route that depends on it.
+	const ip = clientIpOf(request);
 	try {
-		const { success } = await baseRateLimit.limit(clientIpOf(request));
+		const { success } = await baseRateLimit.limit(ip);
 		return { success, limited: !success };
 	} catch (err) {
-		console.warn("[rate-limit] store unreachable, failing open:", err);
-		return { success: true, limited: false };
+		// Fail CLOSED with local fallback instead of failing open.
+		// This prevents attackers from bypassing rate limits by
+		// causing Redis to be unavailable.
+		console.warn("[rate-limit] Redis unreachable, using local fallback:", err);
+		return checkLocalRateLimit(ip);
 	}
 }

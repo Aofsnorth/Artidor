@@ -160,6 +160,46 @@ export async function fetchPuterModels(): Promise<PuterModel[]> {
 }
 
 /**
+ * Fetch media generation models from Puter.js. Puter.js doesn't have a
+ * separate API for listing media models, so we fetch all models and
+ * filter by known media-generation provider prefixes and model name
+ * patterns. This covers txt2vid, txt2img, and txt2speech models.
+ *
+ * Known media model patterns:
+ *  - Video: sora, seedance, kling, minimax, luma, runway, pika, hunyuan
+ *  - Image: dall-e, flux, gpt-image, stable-diffusion, ideogram, recraft
+ *  - Audio/TTS: tts, speech, polly, bark, elevenlabs, whisper
+ *
+ * @returns Filtered list of media-capable models.
+ */
+export async function fetchPuterMediaModels(): Promise<{
+	video: PuterModel[];
+	image: PuterModel[];
+	audio: PuterModel[];
+}> {
+	const all = await fetchPuterModels();
+	const videoPatterns = [
+		"sora", "seedance", "kling", "minimax", "luma",
+		"runway", "pika", "hunyuan", "vidu", "wan",
+	];
+	const imagePatterns = [
+		"dall-e", "flux", "gpt-image", "stable-diffusion",
+		"ideogram", "recraft", "imagen", "sdxl", "playground",
+	];
+	const audioPatterns = [
+		"tts", "speech", "polly", "bark", "elevenlabs",
+		"whisper", "audio", "music", "suno", "udio",
+	];
+	const matchAny = (id: string, patterns: string[]) =>
+		patterns.some((p) => id.toLowerCase().includes(p));
+	return {
+		video: all.filter((m) => matchAny(m.id, videoPatterns)),
+		image: all.filter((m) => matchAny(m.id, imagePatterns)),
+		audio: all.filter((m) => matchAny(m.id, audioPatterns)),
+	};
+}
+
+/**
  * Stream a chat completion from Puter.js. Returns an async iterable of
  * normalized chunks that the AIManager can consume with the same logic
  * it uses for the server SSE stream.
