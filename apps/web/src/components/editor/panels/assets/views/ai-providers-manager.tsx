@@ -766,7 +766,7 @@ function ProviderFormDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<DialogBody className="max-h-[70vh] gap-4 overflow-y-auto pr-1">
+				<DialogBody className="max-h-[70vh] gap-4 overflow-y-auto px-6 py-4">
 					{/* Name */}
 					<div className="space-y-1.5">
 						<Label htmlFor="provider-name" className="text-[11px] text-white/70">
