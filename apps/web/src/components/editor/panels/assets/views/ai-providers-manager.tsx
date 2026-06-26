@@ -5,6 +5,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Add01Icon,
 	AlertCircleIcon,
+	ArrowDown03Icon,
 	ArrowRight01Icon,
 	CheckmarkCircle02Icon,
 	CloudIcon,
@@ -895,21 +896,27 @@ function ProviderFormDialog({
 									</p>
 								</div>
 							) : puterModels.length > 0 ? (
-								<select
-									id="provider-model"
-									value={model}
-									onChange={(e) => setModel(e.target.value)}
-									className={cn(
-										"h-9 w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 font-mono text-[12px] text-white/90 outline-none transition-colors focus:border-white/25",
-										errors.model && "border-red-400/40",
-									)}
-								>
-									{puterModels.map((m) => (
-										<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
-											{m.name ?? m.id} ({m.provider})
-										</option>
-									))}
-								</select>
+								<div className="relative">
+									<select
+										id="provider-model"
+										value={model}
+										onChange={(e) => setModel(e.target.value)}
+										className={cn(
+											"h-9 w-full appearance-none rounded-lg border border-white/10 bg-white/[0.02] px-3 pr-9 font-mono text-[12px] text-white/90 outline-none transition-colors focus:border-white/25",
+											errors.model && "border-red-400/40",
+										)}
+									>
+										{puterModels.map((m) => (
+											<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
+												{m.name ?? m.id} ({m.provider})
+											</option>
+										))}
+									</select>
+									<HugeiconsIcon
+										icon={ArrowDown03Icon}
+										className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-white/40"
+									/>
+								</div>
 							) : (
 								<Input
 									id="provider-model"
