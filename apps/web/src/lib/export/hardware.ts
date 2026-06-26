@@ -34,9 +34,10 @@ export async function detectHardware(): Promise<HardwareInfo> {
 			? navigator.hardwareConcurrency
 			: 4;
 
+	const navigatorDeviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
 	const deviceMemoryGb =
-		typeof navigator !== "undefined" && (navigator as Navigator & { deviceMemory?: number }).deviceMemory
-			? (navigator as Navigator & { deviceMemory?: number }).deviceMemory!
+		typeof navigator !== "undefined" && navigatorDeviceMemory
+			? navigatorDeviceMemory
 			: 4;
 
 	let gpuAdapter: GpuAdapterInfo | null = null;

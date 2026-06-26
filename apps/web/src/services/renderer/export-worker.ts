@@ -379,7 +379,8 @@ async function handleExport(msg: WorkerInMessage) {
 		// bottleneck.
 		if (pendingEncodes.length >= RENDER_QUEUE_DEPTH) {
 			const waitStart = performance.now();
-			const oldest = pendingEncodes.shift()!;
+			const oldest = pendingEncodes.shift();
+			if (!oldest) throw new Error("Pending encode queue unexpectedly empty");
 			await oldest;
 			encodeWaitMs += performance.now() - waitStart;
 		}
