@@ -33,7 +33,12 @@ type SourcePattern =
 	| "radial" // off-centre radial gradient (great for vignette / glow)
 	| "stripes" // diagonal stripes (great for stylize / glitch)
 	| "portrait" // stylised head silhouette + bar (great for warp / liquify)
-	| "noise"; // flat field of high-contrast dots (great for noise / grain)
+	| "noise" // flat field of high-contrast dots (great for noise / grain)
+	| "scene" // image-like procedural scene (great for realistic effects)
+	| "grid" // perspective grid (great for distortion / 3D)
+	| "waves" // flowing colour waves (great for blur / motion)
+	| "halftone" // comic dots (great for stylize / threshold)
+	| "tiles"; // geometric mosaic (great for pixelate / kaleidoscope)
 
 const SOURCE_PATTERNS: SourcePattern[] = [
 	"gradient",
@@ -43,6 +48,11 @@ const SOURCE_PATTERNS: SourcePattern[] = [
 	"stripes",
 	"portrait",
 	"noise",
+	"scene",
+	"grid",
+	"waves",
+	"halftone",
+	"tiles",
 ];
 
 function pickPatternForEffect(effectType: string): SourcePattern {
@@ -324,10 +334,10 @@ class EffectPreviewService {
 		height: number;
 	}): CanvasImageSource | null {
 		const pattern = pickPatternForEffect(effectType);
-		// Gradient source varies per-effect-type (6 colour palettes), so
-		// cache key includes the effect type for that pattern. Other
-		// patterns are shape-based and don't vary, so they share the cache.
-		const cacheKey = pattern === "gradient" ? `${pattern}:${effectType}` : pattern;
+		// Cache key includes the effect type so patterns that vary their
+		// colours per effect always produce the same source for the same
+		// effect across re-renders.
+		const cacheKey = `${pattern}:${effectType}`;
 		const cached = this.testSourceCanvases.get(cacheKey);
 		if (cached && cached.width === width && cached.height === height) {
 			return cached;
@@ -382,22 +392,37 @@ class EffectPreviewService {
 				if (!useImageForBase) this.drawGradientSource({ ctx, width, height, effectType });
 				break;
 			case "checkerboard":
-				this.drawCheckerboardSource({ ctx, width, height });
+				this.drawCheckerboardSource({ ctx, width, height, effectType });
 				break;
 			case "colorbars":
-				this.drawColorbarsSource({ ctx, width, height });
+				this.drawColorbarsSource({ ctx, width, height, effectType });
 				break;
 			case "radial":
-				this.drawRadialSource({ ctx, width, height });
+				this.drawRadialSource({ ctx, width, height, effectType });
 				break;
 			case "stripes":
-				this.drawStripesSource({ ctx, width, height });
+				this.drawStripesSource({ ctx, width, height, effectType });
 				break;
 			case "portrait":
-				this.drawPortraitSource({ ctx, width, height });
+				this.drawPortraitSource({ ctx, width, height, effectType });
 				break;
 			case "noise":
-				this.drawNoiseSource({ ctx, width, height });
+				this.drawNoiseSource({ ctx, width, height, effectType });
+				break;
+			case "scene":
+				this.drawSceneSource({ ctx, width, height, effectType });
+				break;
+			case "grid":
+				this.drawGridSource({ ctx, width, height, effectType });
+				break;
+			case "waves":
+				this.drawWavesSource({ ctx, width, height, effectType });
+				break;
+			case "halftone":
+				this.drawHalftoneSource({ ctx, width, height, effectType });
+				break;
+			case "tiles":
+				this.drawTilesSource({ ctx, width, height, effectType });
 				break;
 		}
 
@@ -453,6 +478,41 @@ class EffectPreviewService {
 		},
 	];
 
+	/**
+	 * Deterministic colour set derived from the effect type. Used by the
+	 * non-gradient patterns so checkerboards, stripes, radial glows, etc.
+	 * don't all share the same fixed hues.
+	 */
+	private getEffectColors(effectType: string): {
+		bg: string;
+		primary: string;
+		secondary: string;
+		accent: string;
+		light: string;
+	} {
+		const palettes: {
+			bg: string;
+			primary: string;
+			secondary: string;
+			accent: string;
+			light: string;
+		}[] = [
+			{ bg: "#0f172a", primary: "#f97316", secondary: "#ec4899", accent: "#fbbf24", light: "#fff7ed" },
+			{ bg: "#082f49", primary: "#0ea5e9", secondary: "#06b6d4", accent: "#38bdf8", light: "#f0f9ff" },
+			{ bg: "#052e16", primary: "#22c55e", secondary: "#84cc16", accent: "#4ade80", light: "#f0fdf4" },
+			{ bg: "#3b0764", primary: "#a855f7", secondary: "#ec4899", accent: "#e879f9", light: "#faf5ff" },
+			{ bg: "#451a03", primary: "#d97706", secondary: "#f59e0b", accent: "#fbbf24", light: "#fffbeb" },
+			{ bg: "#1e1b4b", primary: "#6366f1", secondary: "#a855f7", accent: "#c084fc", light: "#eef2ff" },
+			{ bg: "#4c0519", primary: "#e11d48", secondary: "#fb7185", accent: "#fecdd3", light: "#fff1f2" },
+			{ bg: "#111827", primary: "#22d3ee", secondary: "#f472b6", accent: "#facc15", light: "#f8fafc" },
+		];
+		let hash = 5381;
+		for (let i = 0; i < effectType.length; i++) {
+			hash = ((hash << 5) + hash) ^ effectType.charCodeAt(i);
+		}
+		return palettes[Math.abs(hash) % palettes.length] ?? palettes[0];
+	}
+
 	private drawGradientSource({
 		ctx,
 		width,
@@ -505,24 +565,27 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
+		const colors = this.getEffectColors(effectType);
 		const cell = Math.max(8, Math.floor(width / 8));
 		for (let y = 0; y < height; y += cell) {
 			for (let x = 0; x < width; x += cell) {
 				const dark = (x / cell + y / cell) % 2 === 0;
-				ctx.fillStyle = dark ? "#0f172a" : "#f8fafc";
+				ctx.fillStyle = dark ? colors.bg : colors.light;
 				ctx.fillRect(x, y, cell, cell);
 			}
 		}
 		// bright accent line so motion-blur / chromatic-aberration have
 		// something coloured to spread
-		ctx.fillStyle = "#ef4444";
+		ctx.fillStyle = colors.primary;
 		ctx.fillRect(width * 0.18, height * 0.46, width * 0.64, 4);
-		ctx.fillStyle = "#22d3ee";
+		ctx.fillStyle = colors.secondary;
 		ctx.fillRect(width * 0.18, height * 0.5, width * 0.64, 4);
 	}
 
@@ -535,18 +598,21 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
+		const colors = this.getEffectColors(effectType);
 		const bars = [
+			colors.light,
+			colors.accent,
+			colors.secondary,
+			colors.primary,
 			"#c0c0c0",
-			"#c0c000",
-			"#00c0c0",
-			"#00c000",
-			"#c000c0",
-			"#c00000",
+			colors.bg,
 			"#0000c0",
 		];
 		const barWidth = width / bars.length;
@@ -585,19 +651,22 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
+		const colors = this.getEffectColors(effectType);
 		const cx = width * 0.3;
 		const cy = height * 0.35;
 		const radius = Math.max(width, height) * 0.85;
 		const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-		gradient.addColorStop(0, "#fde68a");
-		gradient.addColorStop(0.3, "#f97316");
-		gradient.addColorStop(0.65, "#7c2d12");
-		gradient.addColorStop(1, "#0c0a09");
+		gradient.addColorStop(0, colors.light);
+		gradient.addColorStop(0.3, colors.accent);
+		gradient.addColorStop(0.65, colors.primary);
+		gradient.addColorStop(1, colors.bg);
 		ctx.fillStyle = gradient;
 		ctx.fillRect(0, 0, width, height);
 
@@ -608,7 +677,7 @@ class EffectPreviewService {
 		ctx.fill();
 
 		// diagonal streaks for anamorphic-style effects
-		ctx.strokeStyle = "rgba(255, 200, 100, 0.45)";
+		ctx.strokeStyle = `${colors.secondary}73`;
 		ctx.lineWidth = 2;
 		ctx.beginPath();
 		ctx.moveTo(width * 0.05, height * 0.6);
@@ -624,12 +693,15 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
-		ctx.fillStyle = "#1e293b";
+		const colors = this.getEffectColors(effectType);
+		ctx.fillStyle = colors.bg;
 		ctx.fillRect(0, 0, width, height);
 
 		const stripeWidth = Math.max(6, Math.floor(width / 16));
@@ -638,7 +710,7 @@ class EffectPreviewService {
 		ctx.rotate(Math.PI / 6);
 		ctx.translate(-width, -height / 2);
 		for (let x = 0; x < width * 2; x += stripeWidth * 2) {
-			ctx.fillStyle = x % (stripeWidth * 4) === 0 ? "#22d3ee" : "#f472b6";
+			ctx.fillStyle = x % (stripeWidth * 4) === 0 ? colors.primary : colors.secondary;
 			ctx.fillRect(x, 0, stripeWidth, height * 2);
 		}
 		ctx.restore();
@@ -659,16 +731,19 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
-		ctx.fillStyle = "#fef3c7";
+		const colors = this.getEffectColors(effectType);
+		ctx.fillStyle = colors.light;
 		ctx.fillRect(0, 0, width, height);
 
 		// shoulders / body
-		ctx.fillStyle = "#1e3a8a";
+		ctx.fillStyle = colors.bg;
 		ctx.beginPath();
 		ctx.moveTo(0, height);
 		ctx.lineTo(0, height * 0.78);
@@ -678,7 +753,7 @@ class EffectPreviewService {
 		ctx.fill();
 
 		// head
-		ctx.fillStyle = "#fde68a";
+		ctx.fillStyle = colors.accent;
 		ctx.beginPath();
 		ctx.ellipse(
 			width / 2,
@@ -690,12 +765,12 @@ class EffectPreviewService {
 			Math.PI * 2,
 		);
 		ctx.fill();
-		ctx.strokeStyle = "#92400e";
+		ctx.strokeStyle = colors.primary;
 		ctx.lineWidth = 1.5;
 		ctx.stroke();
 
 		// eyes
-		ctx.fillStyle = "#451a03";
+		ctx.fillStyle = colors.primary;
 		ctx.beginPath();
 		ctx.arc(width * 0.42, height * 0.4, 3, 0, Math.PI * 2);
 		ctx.arc(width * 0.58, height * 0.4, 3, 0, Math.PI * 2);
@@ -715,11 +790,14 @@ class EffectPreviewService {
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
+		const colors = this.getEffectColors(effectType);
 		const imageData = ctx.createImageData(width, height);
 		const data = imageData.data;
 		// simple LCG so the noise is deterministic per call
@@ -744,9 +822,202 @@ class EffectPreviewService {
 		for (let i = 0; i < 80; i++) {
 			const x = Math.floor(next() * width);
 			const y = Math.floor(next() * height);
-			ctx.fillStyle =
-				next() > 0.5 ? "rgba(239, 68, 68, 0.7)" : "rgba(34, 211, 238, 0.7)";
+			ctx.fillStyle = next() > 0.5 ? `${colors.primary}B3` : `${colors.secondary}B3`;
 			ctx.fillRect(x, y, 2, 2);
+		}
+	}
+
+	/**
+	 * Procedural scene image drawn directly to canvas. Looks like a tiny
+	 * photo (landscape / city / ocean) so effects that target realistic
+	 * footage show a meaningful preview.
+	 */
+	private drawSceneSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+		const sky = ctx.createLinearGradient(0, 0, 0, height);
+		sky.addColorStop(0, colors.bg);
+		sky.addColorStop(0.6, colors.secondary);
+		sky.addColorStop(1, colors.primary);
+		ctx.fillStyle = sky;
+		ctx.fillRect(0, 0, width, height);
+
+		// sun / moon
+		ctx.fillStyle = colors.light;
+		ctx.beginPath();
+		ctx.arc(width * 0.75, height * 0.22, width * 0.12, 0, Math.PI * 2);
+		ctx.fill();
+
+		// mountains / ground
+		ctx.fillStyle = colors.bg;
+		ctx.beginPath();
+		ctx.moveTo(0, height);
+		ctx.lineTo(0, height * 0.62);
+		ctx.quadraticCurveTo(width * 0.35, height * 0.45, width * 0.6, height * 0.58);
+		ctx.lineTo(width, height * 0.52);
+		ctx.lineTo(width, height);
+		ctx.closePath();
+		ctx.fill();
+
+		// water / foreground
+		ctx.fillStyle = colors.primary;
+		ctx.globalAlpha = 0.4;
+		ctx.beginPath();
+		ctx.moveTo(0, height);
+		ctx.lineTo(0, height * 0.78);
+		ctx.quadraticCurveTo(width * 0.45, height * 0.68, width, height * 0.8);
+		ctx.lineTo(width, height);
+		ctx.closePath();
+		ctx.fill();
+		ctx.globalAlpha = 1;
+	}
+
+	/**
+	 * Perspective grid — great for distortion, 3D, perspective effects.
+	 */
+	private drawGridSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+		ctx.fillStyle = colors.bg;
+		ctx.fillRect(0, 0, width, height);
+
+		ctx.strokeStyle = colors.accent;
+		ctx.lineWidth = 1;
+		ctx.globalAlpha = 0.5;
+		for (let i = 0; i <= 8; i++) {
+			const x = (i / 8) * width;
+			ctx.beginPath();
+			ctx.moveTo(x + width * 0.1 * (i - 4), -height * 0.2);
+			ctx.lineTo(x, height);
+			ctx.stroke();
+		}
+		for (let i = 0; i <= 6; i++) {
+			const y = (i / 6) * height;
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(width, y);
+			ctx.stroke();
+		}
+		ctx.globalAlpha = 1;
+	}
+
+	/**
+	 * Flowing colour waves — great for blur, motion, ripple effects.
+	 */
+	private drawWavesSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+		const gradient = ctx.createLinearGradient(0, 0, width, height);
+		gradient.addColorStop(0, colors.bg);
+		gradient.addColorStop(0.5, colors.secondary);
+		gradient.addColorStop(1, colors.primary);
+		ctx.fillStyle = gradient;
+		ctx.fillRect(0, 0, width, height);
+
+		ctx.strokeStyle = colors.light;
+		ctx.lineWidth = 2;
+		for (let i = 0; i < 5; i++) {
+			ctx.beginPath();
+			const y = height * 0.2 + i * height * 0.15;
+			ctx.moveTo(0, y);
+			for (let x = 0; x <= width; x += 8) {
+				ctx.lineTo(x, y + Math.sin((x / width) * Math.PI * 4 + i) * 10);
+			}
+			ctx.stroke();
+		}
+	}
+
+	/**
+	 * Halftone comic dots — great for stylize, threshold, posterize.
+	 */
+	private drawHalftoneSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+		ctx.fillStyle = colors.light;
+		ctx.fillRect(0, 0, width, height);
+
+		ctx.fillStyle = colors.primary;
+		const spacing = 14;
+		for (let y = spacing / 2; y < height; y += spacing) {
+			for (let x = spacing / 2; x < width; x += spacing) {
+				const dx = x - width / 2;
+				const dy = y - height / 2;
+				const dist = Math.sqrt(dx * dx + dy * dy);
+				const r = Math.max(2, (1 - dist / Math.max(width, height)) * spacing * 0.5);
+				ctx.beginPath();
+				ctx.arc(x, y, r, 0, Math.PI * 2);
+				ctx.fill();
+			}
+		}
+	}
+
+	/**
+	 * Geometric mosaic tiles — great for pixelate, kaleidoscope, mirror.
+	 */
+	private drawTilesSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+		const tile = Math.floor(width / 5);
+		let hash = 0;
+		for (let i = 0; i < effectType.length; i++) {
+			hash = (hash << 5) - hash + effectType.charCodeAt(i);
+			hash |= 0;
+		}
+		const palette = [colors.bg, colors.primary, colors.secondary, colors.accent, colors.light];
+		for (let y = 0; y < height; y += tile) {
+			for (let x = 0; x < width; x += tile) {
+				const idx = Math.abs(hash + x + y * 7) % palette.length;
+				ctx.fillStyle = palette[idx] ?? colors.bg;
+				ctx.fillRect(x, y, tile, tile);
+				ctx.strokeStyle = colors.light;
+				ctx.lineWidth = 1;
+				ctx.strokeRect(x, y, tile, tile);
+			}
 		}
 	}
 

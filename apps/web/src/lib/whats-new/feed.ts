@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-rate-limit-fail-open",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "API routes no longer crash when Upstash Redis is unreachable",
+		items: [
+			"Every API route that uses rate limiting (AI test, AI chat, collaboration, stock search, share, drive import) was crashing with HTTP 500 when Upstash Redis was unreachable — e.g. missing env vars in local dev, network outage, or Redis maintenance. The rate limiter now fails open: if the store is down, the request is allowed through and a warning is logged instead of throwing.",
+			"Rate limiting is a secondary abuse-protection layer, not a critical-path feature, so degrading to 'no limit' is safer than breaking every dependent endpoint.",
+		],
+	},
+	{
 		id: "2026-06-26-ai-chat-history",
 		date: "2026-06-26",
 		tag: "feature",
@@ -62,9 +72,9 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		title:
 			"Varied preview backgrounds across Transitions, Effects, Motion, and Templates",
 		items: [
-			"Transition previews now show 6 distinct scene backgrounds (landscape, cityscape, portrait, abstract, ocean, sunset) instead of the same two gradients for every transition. Each card picks its scene pair deterministically from its type hash, so the A→B crossfade reads as an actual scene change.",
-			"Effect previews that use the gradient source pattern now cycle through 6 colour palettes (warm sunset, cool ocean, forest, plum, amber, slate) instead of always using the same orange-pink-indigo-cyan gradient. Effects hashing to the same pattern now get visually distinct source images.",
-			"Motion/animation preset previews now use the 12-palette procedural background system (matching text and template cards) instead of a flat black background. Each preset's icon tile also picks up the palette accent colour instead of a fixed orange-pink-purple gradient.",
+			"Transition previews now use procedural scene images (landscape, cityscape, ocean, sunset, portrait, abstract) as the A/B backgrounds instead of flat CSS gradients. Each card picks its scene pair deterministically from its type hash, so the A→B crossfade reads as an actual scene change rather than two colour swatches.",
+			"Effect previews expanded from 7 to 12 source patterns — added scene, grid, waves, halftone, and tiles — so effects that target different content types (realistic footage, geometry, comic, mosaic) get a meaningful source image. All non-gradient patterns now derive their colours from the effect type hash via an 8-palette system, so even effects hashing to the same pattern look visually distinct.",
+			"Motion/animation preset previews now use procedural scene images as their backdrop (matching the transition previews) instead of a flat palette gradient. Each preset's icon tile overlays the scene so the animation reads against a realistic background.",
 			"Template previews now have 5 layout variants (up from 3) — added split-screen vertical and 2×2 grid layouts — so adjacent template cards look more distinct in the grid.",
 		],
 	},
