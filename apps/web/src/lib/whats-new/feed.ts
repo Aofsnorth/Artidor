@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-puter-csp-fix",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Fix Puter.js CSP block",
+		items: [
+			"Fixed 'Loading the script https://js.puter.com/v2/ violates Content Security Policy' — added https://js.puter.com to script-src and https://*.puter.com to connect-src in the CSP headers. Puter.js SDK now loads correctly.",
+		],
+	},
+	{
 		id: "2026-06-27-anthropic-provider-learning-scope",
 		date: "2026-06-27",
 		tag: "feature",

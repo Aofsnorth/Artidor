@@ -30,6 +30,7 @@ const cspDirectives: Record<string, string[]> = {
 		"https://cdn.databuddy.cc",
 		"https://cdn.jsdelivr.net",
 		"https://va.vercel-scripts.com",
+		"https://js.puter.com",
 	],
 	"style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
 	"img-src": [
@@ -69,6 +70,9 @@ const cspDirectives: Record<string, string[]> = {
 		"https://cdn.databuddy.cc",
 		"https://*.vercel-scripts.com",
 		"https://vitals.vercel-insights.com",
+		"https://js.puter.com",
+		"https://api.puter.com",
+		"https://*.puter.com",
 	],
 	"frame-src": ["'self'", "https://drive.google.com", "https://accounts.google.com"],
 	"worker-src": ["'self'", "blob:"],
