@@ -79,7 +79,7 @@ export function measureTextElement({
 		element.fontSize * (canvasHeight / FONT_SIZE_SCALE_REFERENCE);
 	const fontWeight = element.fontWeight === "bold" ? "bold" : "normal";
 	const fontStyle = element.fontStyle === "italic" ? "italic" : "normal";
-	const fontFamily = `"${element.fontFamily.replace(/"/g, '\\"')}"`;
+	const fontFamily = `"${element.fontFamily.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 	const fontString = `${fontStyle} ${fontWeight} ${scaledFontSize}px ${fontFamily}, sans-serif`;
 	const letterSpacing = element.letterSpacing ?? 0;
 	const lineHeightPx =

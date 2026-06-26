@@ -1,5 +1,11 @@
 import type { ParseSubtitleResult, SubtitleCue } from "./types";
 
+/**
+ * SRT timestamp separator. The `-->` literal is the standard SRT
+ * cue timing delimiter (per the SubRip specification) and is not
+ * related to HTML comment end tags. We anchor it between two
+ * timestamp groups to avoid false matches.
+ */
 const TIMESTAMP_SEPARATOR = /\s*-->\s*/;
 const TIMESTAMP_PATTERN =
 	/^(\d{2}:\d{2}:\d{2}[,.]\d{1,3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{1,3})/;

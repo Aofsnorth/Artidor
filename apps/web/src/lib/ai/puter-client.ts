@@ -549,12 +549,20 @@ function parseTextToolCalls(text: string): Array<{
  * so the chat bubble stays clean.
  */
 function stripToolCallXml(text: string): string {
-	return text
-		.replace(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g, "")
-		.replace(/<invoke\s+name="[^"]+">[\s\S]*?<\/invoke>/g, "")
-		.replace(/<parameter\s+name="[^"]+">[\s\S]*?<\/parameter>/g, "")
-		.replace(/<\/?[a-zA-Z0-9_]+(?:\s+[^>]*)?>/g, "")
-		.trim();
+	// Apply replacements repeatedly until stable to prevent
+	// incomplete multi-character sanitization (e.g. "<scri<script>pt>"
+	// collapsing to "<script>" after a single pass).
+	let previous: string;
+	let current = text;
+	do {
+		previous = current;
+		current = current
+			.replace(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g, "")
+			.replace(/<invoke\s+name="[^"]+">[\s\S]*?<\/invoke>/g, "")
+			.replace(/<parameter\s+name="[^"]+">[\s\S]*?<\/parameter>/g, "")
+			.replace(/<\/?[a-zA-Z0-9_]+(?:\s+[^>]*)?>/g, "");
+	} while (current !== previous);
+	return current.trim();
 }
 
 /**
