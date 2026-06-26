@@ -21,10 +21,18 @@ export function buildSystemPrompt({
 	tools,
 	context,
 	recentEvents,
+	learningScope = "project",
 }: {
 	tools: { name: string; category: string; description: string }[];
 	context?: ChatContext;
 	recentEvents?: TelemetryEvent[];
+	/**
+	 * Controls how the AI references recent edits in its prompt:
+	 *  - "project" — edits are from this project only.
+	 *  - "global"  — edits span all projects.
+	 *  - "off"     — no style learning, edits section is omitted.
+	 */
+	learningScope?: "project" | "global" | "off";
 }): string {
 	const toolsByCategory = groupBy(tools, (t) => t.category);
 	const toolsTable = Object.entries(toolsByCategory)
@@ -40,9 +48,12 @@ export function buildSystemPrompt({
 		? renderProjectSnapshot(context)
 		: "No project context available.";
 
-	const editsSummary = recentEvents
-		? summariseRecentEvents(recentEvents)
-		: "No prior edits observed.";
+	const editsSummary =
+		learningScope === "off"
+			? "Style learning is disabled. Do not reference prior edit patterns."
+			: recentEvents
+				? summariseRecentEvents(recentEvents)
+				: "No prior edits observed.";
 
 	const styleBlock =
 		context?.styleProfile &&
@@ -67,7 +78,7 @@ export function buildSystemPrompt({
 - Colors: #rrggbb hex.
 - Tool fail? Read error, try different param. No blind retry.
 - No repeat already-applied effect.
-- Match user editing style from recent edits below. Fast cutter → fast. Slow → slow.
+- Match user editing style from recent edits below. Fast cutter → fast. Slow → slow.${learningScope === "off" ? " (Style learning is OFF — ignore edit history.)" : learningScope === "global" ? " (Learning from edits across ALL projects.)" : " (Learning from edits in THIS project only.)"}
 - Ambiguous request? Pick most common interpretation. Proceed. No clarification unless truly impossible.
 
 # Planning

@@ -10,6 +10,7 @@ import {
 	CloudIcon,
 	Delete02Icon,
 	Edit01Icon,
+	HexagonIcon,
 	Key01Icon,
 	LinkSquareIcon,
 	Loading02Icon,
@@ -52,20 +53,25 @@ const KIND_LABELS: Record<ProviderKind, { label: string; hint: string }> = {
 		label: "OpenAI-compatible",
 		hint: "OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM, llama.cpp server, etc.",
 	},
-	puter: {
-		label: "Puter.js (free, browser-based)",
-		hint: "Uses Puter.js — runs in the browser via your Puter account. No API key needed. WARNING: Puter may use your data for training.",
+	"anthropic-compatible": {
+		label: "Anthropic (Claude)",
+		hint: "Anthropic Messages API — Claude models. Uses a different schema than OpenAI.",
 	},
 	ollama: {
 		label: "Ollama (local)",
 		hint: "Local Ollama HTTP server. Same /v1/chat/completions schema, no API key.",
 	},
+	puter: {
+		label: "Puter.js (free, browser-based)",
+		hint: "Uses Puter.js — runs in the browser via your Puter account. No API key needed. WARNING: Puter may use your data for training.",
+	},
 };
 
 const KIND_ICONS: Record<ProviderKind, typeof PlugIcon> = {
 	"openai-compatible": SparklesIcon,
-	puter: CloudIcon,
+	"anthropic-compatible": HexagonIcon,
 	ollama: PlugIcon,
+	puter: CloudIcon,
 };
 
 interface TestResult {
@@ -597,7 +603,10 @@ function ProviderFormDialog({
 			} else if (!/^https?:\/\//i.test(baseUrl.trim())) {
 				next.baseUrl = "Base URL must start with http:// or https://";
 			}
-			if (kind === "openai-compatible" && !apiKey.trim()) {
+			if (
+				(kind === "openai-compatible" || kind === "anthropic-compatible") &&
+				!apiKey.trim()
+			) {
 				next.apiKey = "API key is required for this provider.";
 			}
 		}
@@ -1068,12 +1077,14 @@ interface AIProvidersStore {
 function defaultBaseUrlForKind(kind: ProviderKind): string {
 	if (kind === "ollama") return "http://127.0.0.1:11434/v1";
 	if (kind === "puter") return "";
+	if (kind === "anthropic-compatible") return "https://api.anthropic.com";
 	return "https://api.openai.com/v1";
 }
 
 function defaultModelForKind(kind: ProviderKind): string {
 	if (kind === "ollama") return "llama3.1";
 	if (kind === "puter") return "gpt-4o-mini";
+	if (kind === "anthropic-compatible") return "claude-sonnet-4-20250514";
 	return "gpt-4o-mini";
 }
 

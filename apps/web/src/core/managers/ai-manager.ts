@@ -28,6 +28,8 @@ import {
 } from "@/stores/ai-store";
 import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
 import { streamPuterChat } from "@/lib/ai/puter-client";
+import { buildSystemPrompt } from "@/lib/ai/system-prompt";
+import { getToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
 import type { FrameRate } from "artidor-wasm";
@@ -195,7 +197,6 @@ export class AIManager {
 	 */
 	private async processMessage(text: string): Promise<void> {
 		const ai = useAIStore.getState();
-		const telemetry = useTelemetryStore.getState();
 
 		// Create a fresh AbortController for this message cycle. The
 		// user can cancel via `cancel()` which aborts the fetch and
@@ -232,12 +233,27 @@ export class AIManager {
 		// requesting tool calls (or we hit the round limit, or the user
 		// aborts). The round limit is user-tunable via advanced settings.
 		const maxRounds = useAIStore.getState().advancedSettings.maxToolRounds;
+		// Keep the telemetry store's currentProjectId in sync so that
+		// user edits are tagged with the right project for scoped learning.
+		const projectId = this.editor.project.getActive()?.metadata.id ?? null;
+		useTelemetryStore.getState().setCurrentProjectId(projectId);
+		// Fetch recent edit events according to the user's learning scope
+		// preference: "project" → only this project's events, "global" →
+		// all events, "off" → empty (no style learning).
+		const learningScope = useAIStore.getState().advancedSettings.learningScope;
+		const recentEvents =
+			learningScope === "off"
+				? []
+				: learningScope === "project" && projectId
+					? useTelemetryStore.getState().recentForProject(20, projectId)
+					: useTelemetryStore.getState().recent(20);
 		for (let round = 0; round < maxRounds; round++) {
 			if (signal.aborted) return;
 			const result = await this.streamLLMResponse(
 				text,
-				telemetry.recent(20),
+				recentEvents,
 				signal,
+				learningScope,
 			);
 			if (result.kind === "error") {
 				// streamLLMResponse already scheduled the retry.
@@ -292,6 +308,7 @@ export class AIManager {
 		text: string,
 		recent: ReturnType<ReturnType<typeof useTelemetryStore.getState>["recent"]>,
 		signal: AbortSignal,
+		learningScope: "project" | "global" | "off" = "project",
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
 		| { kind: "error" }
@@ -387,8 +404,31 @@ export class AIManager {
 		// puter.ai.chat() and feed the chunks into the same assistant
 		// bubble + tool-call pipeline as the server SSE path.
 		if (providerConfig?.kind === "puter") {
+			// Build the system prompt client-side (the server route
+			// normally does this, but Puter bypasses the server).
+			const builtInTools = getToolDefinitions().map((t) => ({
+				name: t.function.name,
+				category: t.function.name.split("_")[0] ?? "misc",
+				description: t.function.description,
+			}));
+			const mcpTools = externalTools.map((t) => ({
+				name: t.function.name,
+				category: t.function.name.split("_")[0] ?? "mcp",
+				description: t.function.description,
+			}));
+			const systemPrompt = buildSystemPrompt({
+				tools: [...builtInTools, ...mcpTools],
+				context: this.snapshotContext(),
+				recentEvents: recent,
+				learningScope,
+			});
+			// Prepend the system prompt to the messages array.
+			const messagesWithSystem: ChatMessage[] = [
+				{ role: "system", content: systemPrompt },
+				...messages,
+			];
 			return await this.streamPuterResponse(
-				messages,
+				messagesWithSystem,
 				providerConfig.model,
 				externalTools,
 				signal,
@@ -407,6 +447,7 @@ export class AIManager {
 					recentEvents: recent,
 					styleProfile: storeState.styleProfile,
 					externalTools,
+					learningScope,
 					provider: providerConfig
 						? {
 								baseUrl: providerConfig.baseUrl,

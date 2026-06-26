@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-anthropic-provider-learning-scope",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Anthropic provider + style learning scope",
+		items: [
+			"New Anthropic (Claude) provider option in the AI providers manager. Uses the Anthropic Messages API — enter your API key and base URL. The provider card now has 4 options in a 2×2 grid: OpenAI-compatible (top-left), Anthropic (top-right), Ollama (bottom-left), Puter.js (bottom-right).",
+			"New Style Learning setting in Advanced AI Settings — control how the AI learns your editing style: Project (learn from edits in this project only), Global (learn across all projects), or Off (disable style learning entirely). Default: Project.",
+			"Telemetry events are now tagged with the project id, enabling project-scoped learning. The system prompt tells the AI which scope is active so it knows whether it's seeing project-specific or cross-project edit history.",
+		],
+	},
+	{
 		id: "2026-06-27-puter-client-side-streaming",
 		date: "2026-06-27",
 		tag: "fix",
