@@ -1843,7 +1843,7 @@ function EmptyState({
 					},
 					{
 						title: "Export in MP4 / WebM",
-						body: "Or ask the AI co-pilot to do the whole thing for you.",
+						body: "Or ask Arth to do the whole thing for you.",
 					},
 				].map((tip) => (
 					<div

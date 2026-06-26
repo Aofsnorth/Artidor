@@ -19,8 +19,8 @@ const STEPS = [
 	},
 	{
 		icon: FolderOpen,
-		title: "Edit (or ask the co-pilot)",
-		body: "Use the timeline, the inspector, the keyboard — or describe the edit in the AI panel. The co-pilot learns from your style as you work.",
+		title: "Edit (or ask Arth)",
+		body: "Use the timeline, the inspector, the keyboard — or describe the edit in the AI panel. Arth learns from your style as you work.",
 		eyebrow: "Step 02",
 	},
 	{

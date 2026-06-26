@@ -85,7 +85,7 @@ const createHugeiconsIcon =
 export const tabs = {
 	ai: {
 		icon: createHugeiconsIcon({ icon: AiBrain01Icon }),
-		label: "AI Edit",
+		label: "Arth",
 	},
 	assets: {
 		icon: createHugeiconsIcon({ icon: Folder03Icon }),

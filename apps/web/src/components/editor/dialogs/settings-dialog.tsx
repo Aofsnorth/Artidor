@@ -174,7 +174,7 @@ function AISettings() {
 	return (
 		<div className="flex flex-col gap-5">
 			<header>
-				<h2 className="text-sm font-semibold text-white/85">AI Co-Pilot</h2>
+				<h2 className="text-sm font-semibold text-white/85">Arth</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
 					Configure the AI provider used by the assistant.
 				</p>

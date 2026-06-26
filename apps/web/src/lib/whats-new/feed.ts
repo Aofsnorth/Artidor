@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-arth-rename-and-asset-mentions",
+		date: "2026-06-26",
+		tag: "feature",
+		title: "Meet Arth — the AI co-pilot + @-mention assets in chat",
+		items: [
+			"The AI assistant is now named Arth. All user-facing labels — the editor tab, settings section, landing page, header nav, system prompt, and provider dialog — now say 'Arth' instead of 'AI Edit' or 'AI Co-Pilot'. The system prompt introduces the assistant as 'Arth, the Artidor AI video-editing assistant'.",
+			"You can now type @ in the Arth chat composer to mention a specific asset from your project. A dropdown appears showing your media library filtered by the text after @ — click an asset to insert @asset-name into your prompt. This lets you reference a specific clip, image, or audio file by name so Arth knows exactly which asset you mean.",
+		],
+	},
+	{
 		id: "2026-06-26-rate-limit-fail-open",
 		date: "2026-06-26",
 		tag: "fix",

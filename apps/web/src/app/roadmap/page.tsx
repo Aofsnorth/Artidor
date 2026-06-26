@@ -69,7 +69,7 @@ const roadmapItems: RoadmapItem[] = [
 	{
 		title: "AI & provider flexibility",
 		description:
-			"OpenAI-compatible provider for the AI Co-Pilot so users can point the assistant at any local or self-hosted endpoint.",
+			"OpenAI-compatible provider for Arth so users can point the assistant at any local or self-hosted endpoint.",
 		status: {
 			text: "Not started",
 			type: "default",

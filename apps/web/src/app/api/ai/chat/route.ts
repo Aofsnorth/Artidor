@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 			return new Response(
 				JSON.stringify({
 					error: "unauthorized",
-					message: "Sign in to use AI, or add your own provider in the AI Edit panel.",
+					message: "Sign in to use Arth, or add your own provider in the Arth panel.",
 				}),
 				{ status: 401, headers: { "content-type": "application/json" } },
 			);
@@ -211,7 +211,7 @@ export async function POST(request: Request) {
 			JSON.stringify({
 				error: "no_provider",
 				message:
-					"AI provider is not configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL, or attach a provider in the AI Edit panel.",
+					"AI provider is not configured. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_BASE_URL, or attach a provider in the Arth panel.",
 			}),
 			{ status: 501, headers: { "content-type": "application/json" } },
 		);

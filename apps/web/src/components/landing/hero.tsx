@@ -48,7 +48,7 @@ export function Hero() {
 						<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
 						<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
 					</span>
-					Now with AI Co-Pilot
+					Now with Arth — your AI co-pilot
 					<span className="text-white/30">·</span>
 					<span className="text-white/55">Try the editor</span>
 				</div>
@@ -75,7 +75,7 @@ export function Hero() {
 				<p className="text-pretty mx-auto mt-7 max-w-2xl text-base font-light leading-relaxed tracking-wide text-white/65 md:text-lg">
 					Artidor is a free, open-source video editor that runs entirely in your
 					browser or on your desktop. No uploads, no paywalls, no
-					&quot;Pro&quot; tier. Now with an AI co-pilot that learns how you
+					&quot;Pro&quot; tier. Now with Arth, an AI co-pilot that learns how you
 					edit.
 				</p>
 

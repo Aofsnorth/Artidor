@@ -316,7 +316,7 @@ function ProviderCard({
 						</span>
 						{provider.isDefault && (
 							<span
-								title="Default provider — used by AI Edit"
+								title="Default provider — used by Arth"
 								className="shrink-0 rounded border border-cyan-300/25 bg-cyan-400/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-200"
 							>
 								Default
@@ -363,7 +363,7 @@ function ProviderCard({
 						type="button"
 						onClick={onSetDefault}
 						className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
-						title="Use this provider for AI Edit"
+						title="Use this provider for Arth"
 					>
 						<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
 						Set default
@@ -439,7 +439,7 @@ function ConfirmDeleteDialog({
 					<DialogTitle>Remove provider?</DialogTitle>
 					<DialogDescription>
 						{provider
-							? `"${provider.name}" will be removed from the AI Edit panel. This only removes it from this device — your API key and account on the provider are untouched.`
+							? `"${provider.name}" will be removed from Arth. This only removes it from this device — your API key and account on the provider are untouched.`
 							: null}
 					</DialogDescription>
 				</DialogHeader>
