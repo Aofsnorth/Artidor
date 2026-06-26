@@ -314,7 +314,7 @@ function TemplateItem({
 }) {
 	const durationSec = Math.round(template.durationTicks / TICKS_PER_SECOND);
 	const h = hashString(template.id);
-	const layoutType = h % 3;
+	const layoutType = h % 5;
 	const photoUrl = getTemplatePhotoUrl(template.id);
 	void photoUrl;
 	const templatePalette = getPaletteForId(template.id);
@@ -358,6 +358,26 @@ function TemplateItem({
 						<div className="absolute right-2 top-2 bottom-2 w-[58%] rounded border border-white/20 backdrop-blur-sm" />
 						<div className="absolute right-4 top-4 h-3 w-10 rounded bg-white/30 backdrop-blur-sm" />
 						<div className="absolute right-4 top-9 h-2 w-14 rounded bg-white/25 backdrop-blur-sm" />
+					</>
+				)}
+				{layoutType === 3 && (
+					<>
+						{/* Split-screen vertical */}
+						<div className="absolute inset-x-2 top-2 h-1/2 rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute inset-x-2 bottom-2 h-1/2 rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute left-4 top-4 h-2 w-12 rounded bg-white/30 backdrop-blur-sm" />
+						<div className="absolute left-4 bottom-4 h-3 w-16 rounded bg-white/25 backdrop-blur-sm" />
+						<div className="absolute left-4 bottom-9 h-2 w-10 rounded bg-white/20 backdrop-blur-sm" />
+					</>
+				)}
+				{layoutType === 4 && (
+					<>
+						{/* Grid 2×2 */}
+						<div className="absolute left-2 top-2 size-[40%] rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute right-2 top-2 size-[40%] rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute left-2 bottom-2 size-[40%] rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute right-2 bottom-2 size-[40%] rounded border border-white/20 backdrop-blur-sm" />
+						<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-3 w-8 rounded bg-white/30" />
 					</>
 				)}
 
