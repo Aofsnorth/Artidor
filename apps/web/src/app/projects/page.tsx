@@ -297,13 +297,27 @@ export default function ProjectsPage() {
 							/>
 						</>
 					) : (
-						/* Production: minimal solid background — no wallpaper,
-						   no atmospheric glows. Keeps the page lightweight and
-						   clean for Vercel deployments. */
-						<div
-							aria-hidden
-							className="pointer-events-none absolute inset-0 -z-10 bg-[#08080c]"
-						/>
+						/* Production: minimal background — solid base with two
+						   very soft radial glows for subtle depth. No wallpaper,
+						   no heavy assets. Keeps the page lightweight and clean
+						   for Vercel deployments while avoiding a flat look. */
+						<>
+							<div
+								aria-hidden
+								className="pointer-events-none absolute inset-0 -z-20 bg-[#08080c]"
+							/>
+							<div
+								aria-hidden
+								className="pointer-events-none absolute inset-0 -z-10"
+								style={{
+									background: [
+										"radial-gradient(ellipse 60% 50% at 20% 0%, rgba(100, 120, 200, 0.08), transparent 60%)",
+										"radial-gradient(ellipse 50% 40% at 80% 100%, rgba(180, 140, 200, 0.06), transparent 60%)",
+										"linear-gradient(180deg, rgba(8, 8, 10, 0) 0%, rgba(8, 8, 10, 0.15) 100%)",
+									].join(", "),
+								}}
+							/>
+						</>
 					)}
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
