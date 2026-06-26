@@ -114,6 +114,17 @@ export async function POST(request: Request): Promise<Response> {
 			);
 		}
 
+		// Puter.js providers run entirely client-side — there's no
+		// server-side endpoint to test. Return a friendly message so
+		// the test button doesn't 400.
+		if (body.kind === "puter") {
+			return Response.json({
+				ok: true,
+				error:
+					"Puter.js providers are tested client-side. Make sure you're logged in to Puter when using this provider.",
+			} satisfies TestResult);
+		}
+
 		let url: string;
 		try {
 			url = `${normalizeBaseUrl({ baseUrl: body.baseUrl })}/chat/completions`;
