@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-29-puter-minimax-followup-icons",
+		date: "2026-06-29",
+		tag: "fix",
+		title: "Puter.js MiniMax follow-up conversations, quick-action icons",
+		items: [
+			"Fixed Puter.js MiniMax models stopping after the first tool call: the conversation now continues in a text-based format these models understand, so the AI can act on tool results instead of retrying.",
+			"Improved XML tool call parsing for malformed provider wrappers (e.g. <minimax> tags) and stripped leftover XML from the chat bubble so the model's raw tool syntax no longer leaks into the visible message.",
+			"Quick-action suggestion chips at the top of the AI panel now use icons that are visually distinct from the tool-call category icons.",
+		],
+	},
+	{
 		id: "2026-06-28-puter-toolcall-errorcard-media",
 		date: "2026-06-28",
 		tag: "fix",

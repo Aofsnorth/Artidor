@@ -287,43 +287,126 @@ export interface PuterStreamChunk {
 }
 
 /**
+ * Models that stream tool calls as XML text instead of native `tool_use`
+ * events. For these models we drop the native `tools` option and convert the
+ * conversation history to plain user/assistant text so the Puter API doesn't
+ * reject the follow-up request after a tool call.
+ */
+const TEXT_BASED_TOOL_MODELS = ["minimax"];
+
+function isTextBasedToolModel(model: string): boolean {
+	const lower = model.toLowerCase();
+	return TEXT_BASED_TOOL_MODELS.some((pattern) => lower.includes(pattern));
+}
+
+/**
  * Convert the internal ChatMessage[] to the format Puter.js expects.
  * Puter uses the same OpenAI-style message format, but tool calls and
  * tool results use slightly different field names.
+ *
+ * For text-based models (e.g. MiniMax), we also convert the tool-calling
+ * history into plain user/assistant messages. The Puter API for these
+ * models doesn't accept native `tool`/`tool_calls` roles, so we describe
+ * the tool calls and their results in text.
  */
-function toPuterMessages(messages: unknown[]): unknown[] {
-	return messages.map((msg) => {
+function toPuterMessages(messages: unknown[], model: string): unknown[] {
+	const textBased = isTextBasedToolModel(model);
+	const out: unknown[] = [];
+
+	for (const msg of messages) {
 		const m = msg as Record<string, unknown>;
-		// Tool result messages: map toolCallId → tool_call_id
+
 		if (m.role === "tool") {
-			return {
+			if (textBased) {
+				// Convert tool result to a user message so text-based models
+				// can see the outcome without native tool roles.
+				const name = String(m.toolName ?? "tool");
+				const content = String(m.content ?? "");
+				out.push({
+					role: "user",
+					content: `Tool result for ${name}: ${content}`,
+				});
+				continue;
+			}
+			// Tool result messages: map toolCallId → tool_call_id
+			out.push({
 				role: "tool",
 				tool_call_id: m.toolCallId,
 				content: m.content,
-			};
+			});
+			continue;
 		}
-		// Assistant messages with tool calls: map toolCalls → tool_calls
+
 		if (m.role === "assistant" && Array.isArray(m.toolCalls)) {
-			return {
+			const toolCalls = m.toolCalls as Array<{
+				id: string;
+				name: string;
+				arguments: unknown;
+			}>;
+			if (textBased) {
+				// Convert the assistant's tool calls into plain text in the
+				// assistant message, then the tool results are user messages.
+				const toolLines = toolCalls
+					.map(
+						(tc) =>
+							`- ${tc.name}: ${typeof tc.arguments === "string" ? tc.arguments : JSON.stringify(tc.arguments)}`,
+					)
+					.join("\n");
+				const content = [m.content, `I called these tools:\n${toolLines}`]
+					.filter(Boolean)
+					.join("\n\n");
+				out.push({ role: "assistant", content });
+				continue;
+			}
+			// Assistant messages with tool calls: map toolCalls → tool_calls
+			out.push({
 				role: "assistant",
 				content: m.content,
-				tool_calls: (m.toolCalls as Array<{ id: string; name: string; arguments: unknown }>).map(
-					(tc) => ({
-						id: tc.id,
-						type: "function",
-						function: {
-							name: tc.name,
-							arguments:
-								typeof tc.arguments === "string"
-									? tc.arguments
-									: JSON.stringify(tc.arguments),
-						},
-					}),
-				),
-			};
+				tool_calls: toolCalls.map((tc) => ({
+					id: tc.id,
+					type: "function",
+					function: {
+						name: tc.name,
+						arguments:
+							typeof tc.arguments === "string"
+								? tc.arguments
+								: JSON.stringify(tc.arguments),
+					},
+				})),
+			});
+			continue;
 		}
-		return m;
-	});
+
+		// For text-based models, rewrite the system prompt so the model knows
+		// it must emit XML tool calls instead of native function calls.
+		if (textBased && m.role === "system" && typeof m.content === "string") {
+			out.push({
+				role: "system",
+				content: rewriteSystemPromptForTextTools(m.content),
+			});
+			continue;
+		}
+
+		out.push(m);
+	}
+
+	return out;
+}
+
+/**
+ * Patch the system prompt for text-based models. Replaces the native
+ * function-calling instruction with an XML-based instruction.
+ */
+function rewriteSystemPromptForTextTools(content: string): string {
+	return content
+		.replace(
+			/Call tools using the standard function-calling API\.[^\n]*\n/,
+			"This model does not support native function calling. Emit tool calls as XML tags exactly like this:\n",
+		)
+		.replace(
+			/- Do NOT wrap tool calls in markdown code blocks or <tool> tags\. Use the native function-calling mechanism\.\n/,
+			"- Wrap every tool call in XML tags.\n- Example: <tool_call><invoke name=\"tool_name\"><parameter name=\"arg_name\">value</parameter></invoke></tool_call>\n",
+		);
 }
 
 /**
@@ -336,7 +419,7 @@ function toPuterMessages(messages: unknown[]): unknown[] {
  */
 /**
  * Parse text-based tool calls from models that don't support native
- * function calling (e.g. minimax via Puter.js). These models emit
+ * function calling (e.g. MiniMax via Puter.js). These models emit
  * XML-like tags in their text output instead of using the tool_use
  * stream event.
  *
@@ -347,7 +430,8 @@ function toPuterMessages(messages: unknown[]): unknown[] {
  *   </invoke>
  *   </tool_call>
  *
- * Also handles the simpler:
+ * Also handles provider-specific wrappers (e.g. <minimax>) and the
+ * simpler form:
  *   <tool_call name="tool_name">{"arg": "value"}</tool_call>
  *
  * @returns An array of parsed tool calls. The caller is responsible
@@ -360,50 +444,81 @@ function parseTextToolCalls(text: string): Array<{
 }> {
 	const calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
 
-	// Match <invoke name="...">...<parameter name="...">...</parameter>...</invoke>
-	const invokeRegex = /<invoke\s+name="([^"]+)">([\s\S]*?)<\/invoke>/g;
+	// Match any <tool_call> block, including nested provider wrappers
+	// like <minimax>. Use a lazy match for the inner content.
+	const toolCallRegex = /<tool_call[^>]*>([\s\S]*?)<\/tool_call>/g;
 	let match: RegExpExecArray | null;
 	// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
-	while ((match = invokeRegex.exec(text)) !== null) {
-		const name = match[1];
-		const body = match[2];
-		const args: Record<string, unknown> = {};
-		const paramRegex = /<parameter\s+name="([^"]+)">([\s\S]*?)<\/parameter>/g;
-		let paramMatch: RegExpExecArray | null;
-		// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
-		while ((paramMatch = paramRegex.exec(body)) !== null) {
-			const paramName = paramMatch[1];
-			let paramValue: unknown = paramMatch[2].trim();
-			// Try to parse as JSON for non-string types (numbers, booleans, arrays, objects)
-			try {
-				paramValue = JSON.parse(paramValue as string);
-			} catch {
-				// Keep as string if it's not valid JSON
-			}
-			args[paramName] = paramValue;
-		}
-		calls.push({
-			id: crypto.randomUUID(),
-			name,
-			arguments: args,
-		});
-	}
+	while ((match = toolCallRegex.exec(text)) !== null) {
+		const block = match[1];
 
-	// Also match the simpler <tool_call name="...">{json}</tool_call>
-	if (calls.length === 0) {
-		const simpleRegex = /<tool_call\s+name="([^"]+)">([\s\S]*?)<\/tool_call>/g;
-		// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
-		while ((match = simpleRegex.exec(text)) !== null) {
-			const name = match[1];
+		// Find the inner <invoke name="..."> block.
+		const invokeMatch = /<invoke\s+name="([^"]+)">([\s\S]*?)<\/invoke>/g.exec(block);
+		if (invokeMatch) {
+			const name = invokeMatch[1];
+			const body = invokeMatch[2];
+			const args: Record<string, unknown> = {};
+			const paramRegex = /<parameter\s+name="([^"]+)">([\s\S]*?)<\/parameter>/g;
+			let paramMatch: RegExpExecArray | null;
+			// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
+			while ((paramMatch = paramRegex.exec(body)) !== null) {
+				const paramName = paramMatch[1];
+				let paramValue: unknown = paramMatch[2].trim();
+				try {
+					paramValue = JSON.parse(paramValue as string);
+				} catch {
+					// Keep as string if it's not valid JSON
+				}
+				args[paramName] = paramValue;
+			}
+			calls.push({
+				id: crypto.randomUUID(),
+				name,
+				arguments: args,
+			});
+			continue;
+		}
+
+		// Fallback: look for any inner tag with name="..." (handles
+		// provider wrappers like <minimax name="list_assets">).
+		const namedTagMatch = /<([a-zA-Z0-9_]+)\s+name="([^"]+)">([\s\S]*?)<\/\1>/g.exec(block);
+		if (namedTagMatch) {
+			const name = namedTagMatch[2];
+			const body = namedTagMatch[3];
+			const args: Record<string, unknown> = {};
+			const paramRegex = /<parameter\s+name="([^"]+)">([\s\S]*?)<\/parameter>/g;
+			let paramMatch: RegExpExecArray | null;
+			// biome-ignore lint/suspicious/noAssignInExpressions: standard regex exec loop
+			while ((paramMatch = paramRegex.exec(body)) !== null) {
+				const paramName = paramMatch[1];
+				let paramValue: unknown = paramMatch[2].trim();
+				try {
+					paramValue = JSON.parse(paramValue as string);
+				} catch {
+					// Keep as string if it's not valid JSON
+				}
+				args[paramName] = paramValue;
+			}
+			calls.push({
+				id: crypto.randomUUID(),
+				name,
+				arguments: args,
+			});
+			continue;
+		}
+
+		// Fallback: simpler <tool_call name="...">{json}</tool_call>
+		const simpleNameMatch = /<tool_call\s+name="([^"]+)">([\s\S]*?)<\/tool_call>/.exec(match[0]);
+		if (simpleNameMatch) {
 			let args: Record<string, unknown> = {};
 			try {
-				args = JSON.parse(match[2].trim());
+				args = JSON.parse(simpleNameMatch[2].trim());
 			} catch {
 				// Keep empty args if JSON parse fails
 			}
 			calls.push({
 				id: crypto.randomUUID(),
-				name,
+				name: simpleNameMatch[1],
 				arguments: args,
 			});
 		}
@@ -414,15 +529,16 @@ function parseTextToolCalls(text: string): Array<{
 
 /**
  * Strip text-based tool call XML tags from the displayed text.
- * Removes <tool_call>, <invoke>, <parameter>, and their closing tags.
+ * Removes the entire <tool_call> block including any nested tags.
+ * Also strips any remaining angle-bracket tags that look like XML
+ * so the chat bubble stays clean.
  */
 function stripToolCallXml(text: string): string {
 	return text
-		.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "")
-		.replace(/<tool_call\s+name="[^"]+">[\s\S]*?<\/tool_call>/g, "")
+		.replace(/<tool_call[^>]*>[\s\S]*?<\/tool_call>/g, "")
 		.replace(/<invoke\s+name="[^"]+">[\s\S]*?<\/invoke>/g, "")
 		.replace(/<parameter\s+name="[^"]+">[\s\S]*?<\/parameter>/g, "")
-		.replace(/<\/?(?:tool_call|invoke|parameter)[^>]*>/g, "")
+		.replace(/<\/?[a-zA-Z0-9_]+(?:\s+[^>]*)?>/g, "")
 		.trim();
 }
 
@@ -439,14 +555,16 @@ class TextToolCallParser {
 	feed(text: string): { delta?: string; toolCalls?: PuterStreamChunk["toolCalls"] } {
 		this.buffer += text;
 
-		// Check if we have complete tool_call blocks
-		const hasOpenTag = this.buffer.includes("<tool_call") || this.buffer.includes("<invoke");
-		const hasCloseTag = this.buffer.includes("</tool_call>") || this.buffer.includes("</invoke>");
+		// Check if we have complete tool_call blocks. We look for the
+		// closing </tool_call> tag because the entire block is stripped
+		// from the display anyway.
+		const hasOpenTag = this.buffer.includes("<tool_call");
+		const hasCloseTag = this.buffer.includes("</tool_call>");
 
 		if (hasOpenTag && !hasCloseTag) {
 			// Tool call is still being streamed — don't yield the partial XML.
 			// Yield any text before the opening tag.
-			const openIdx = this.buffer.search(/<tool_call|<invoke/);
+			const openIdx = this.buffer.indexOf("<tool_call");
 			if (openIdx > this.yieldedLength) {
 				const safeText = this.buffer.slice(this.yieldedLength, openIdx);
 				this.yieldedLength = openIdx;
@@ -456,17 +574,14 @@ class TextToolCallParser {
 		}
 
 		if (hasOpenTag && hasCloseTag) {
-			// Complete tool call(s) found — parse them
+			// Complete tool_call block(s) found — parse them and strip XML.
 			const toolCalls = parseTextToolCalls(this.buffer);
-			// Yield any text before the tool call
-			const openIdx = this.buffer.search(/<tool_call|<invoke/);
+			const openIdx = this.buffer.indexOf("<tool_call");
 			let beforeText = "";
 			if (openIdx > this.yieldedLength) {
 				beforeText = this.buffer.slice(this.yieldedLength, openIdx);
 			}
-			// Strip all tool call XML from the buffer
 			const cleanText = stripToolCallXml(this.buffer);
-			// Yield the clean text minus what we already yielded
 			const newText = cleanText.slice(
 				Math.min(this.yieldedLength, cleanText.length),
 			);
@@ -489,7 +604,6 @@ class TextToolCallParser {
 	/** Flush any remaining buffered text at stream end. */
 	flush(): { delta?: string; toolCalls?: PuterStreamChunk["toolCalls"] } {
 		if (this.yieldedLength < this.buffer.length) {
-			// Check for any remaining tool calls
 			const toolCalls = parseTextToolCalls(this.buffer);
 			if (toolCalls.length > 0) {
 				const cleanText = stripToolCallXml(this.buffer);
@@ -518,15 +632,18 @@ export async function* streamPuterChat(
 		throw new Error("Puter.js SDK loaded but chat() is not available");
 	}
 
+	const textBased = isTextBasedToolModel(model);
 	const options: Record<string, unknown> = {
 		model,
 		stream: true,
 	};
-	if (tools && tools.length > 0) {
+	// Text-based models don't accept the native `tools` option; they parse
+	// tool calls from XML text guided by the rewritten system prompt.
+	if (tools && tools.length > 0 && !textBased) {
 		options.tools = tools;
 	}
 
-	const response = await puter.ai.chat(toPuterMessages(messages), options);
+	const response = await puter.ai.chat(toPuterMessages(messages, model), options);
 
 	// Text tool call parser — handles models that emit XML-based tool
 	// calls in text instead of using the native tool_use stream event.

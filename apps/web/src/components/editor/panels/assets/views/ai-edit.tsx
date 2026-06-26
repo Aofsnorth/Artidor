@@ -173,25 +173,25 @@ const QUICK_ACTIONS: {
 		label: "Motion graphic",
 		prompt:
 			"Create a kinetic typography motion graphic: 3 text layers that fly in, hold, then fly out, with a smooth 1-second ease. Use the current project's canvas size.",
-		icon: SparklesIcon,
+		icon: MagicWand05Icon,
 	},
 	{
 		label: "60s reel",
 		prompt:
 			"Make this a 60-second reel: trim the longest clip, add captions using the available audio, drop a beat-synced zoom on each cut.",
-		icon: Video01Icon,
+		icon: Clock01Icon,
 	},
 	{
 		label: "Cinematic grade",
 		prompt:
 			"Apply a cinematic look: add a subtle blur effect to the background track, fade in the first 0.5s and fade out the last 1s, set background to blur intensity 12.",
-		icon: PaintBrushIcon,
+		icon: Edit01Icon,
 	},
 	{
 		label: "Match style",
 		prompt:
 			"Match the cut pacing and transition style of the reference video I attached. Start with a 4-cut intro and add quick keyframes on each text element.",
-		icon: MagicWand05Icon,
+		icon: CheckListIcon,
 	},
 ];
 
@@ -1998,7 +1998,7 @@ function QuickActionsBar({
 				onClick={() => setDropdownOpen((o) => !o)}
 				className={cn(buttonClass, "shrink-0")}
 			>
-				<HugeiconsIcon icon={SparklesIcon} className="size-3" />
+				<HugeiconsIcon icon={Cursor02Icon} className="size-3" />
 				More
 				<HugeiconsIcon
 					icon={ArrowDown03Icon}
