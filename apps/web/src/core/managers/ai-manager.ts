@@ -738,7 +738,14 @@ export class AIManager {
  */
 function sanitizeAssistantText(text: string): string {
 	return text
-		.replace(/\\thinking[\s\S]*?<\/think>/g, "")
+		// Closed <think> ... </think> blocks (DeepSeek-R1 / QwQ style, no angle brackets).
+		.replace(/<think>[\s\S]*?<\/think>/g, "")
+		// Closed <thinking> ... </thinking> blocks (MiniMax / generic).
 		.replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
+		// Unclosed opening tags during streaming — hide from the opening
+		// tag to the end of the buffer; the content reappears once the
+		// closing tag arrives and the closed-tag regex removes the block.
+		.replace(/<(?:think|thinking)>[\s\S]*$/g, "")
+		.replace(/<think>[\s\S]*$/g, "")
 		.trim();
 }

@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-thinking-tags-stripped",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "AI thinking/reasoning no longer leaks into chat",
+		items: [
+			"Fixed a broken regex that was supposed to strip  thinking tags from DeepSeek-R1, QwQ, and similar reasoning models. The tags and their internal monologue content were passing through into the visible chat bubble.",
+			"Now correctly strips both closed ( ... ) and unclosed (mid-stream) thinking blocks, plus <thinking>...</thinking> tags from MiniMax and other providers. During streaming, unclosed thinking content is hidden until the closing tag arrives.",
+		],
+	},
+	{
 		id: "2026-06-27-mcp-chip-collapsed",
 		date: "2026-06-27",
 		tag: "improvement",
