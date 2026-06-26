@@ -52,6 +52,18 @@ import {
 	PlugIcon,
 	ChatAdd01Icon,
 	Settings02Icon,
+	FilmIcon,
+	LayersIcon,
+	CropIcon,
+	PlayCircleIcon,
+	Folder01Icon,
+	PaintBoardIcon,
+	FileExportIcon,
+	Clock01Icon,
+	Cursor02Icon,
+	ClipboardCheckIcon,
+	CheckListIcon,
+	CloudIcon,
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
@@ -418,7 +430,18 @@ export function AIEditView() {
 					compactedSummary={ai.compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
 					conversations={ai.conversations}
-					onToggleAutoLearn={() => telemetry.setEnabled(!autoLearnEnabled)}
+					onToggleAutoLearn={() => {
+						const next = !autoLearnEnabled;
+						telemetry.setEnabled(next);
+						// When enabling auto-learn, default to project-scoped
+						// learning so the AI learns from the current project's
+						// edits. The user can switch to global later.
+						if (next) {
+							useAIStore.getState().setAdvancedSettings({
+								learningScope: "project",
+							});
+						}
+					}}
 					onOpenProviders={() => setProvidersOpen(true)}
 					onClearReference={() => editor.ai.clearReference()}
 					onNewChat={() => ai.clearConversation()}
@@ -427,66 +450,71 @@ export function AIEditView() {
 					onDeleteConversation={(id) => ai.deleteConversation(id)}
 				/>
 
-				{/* Reference button — sits directly above the chat */}
-				<div className="flex items-center gap-1.5">
-					<button
-						type="button"
-						onClick={() => fileInputRef.current?.click()}
-						disabled={isExtracting}
-						className={cn(
-							"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
-							"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
-							isExtracting && "cursor-wait opacity-60",
+				{/* Reference button — sits directly above the chat.
+				    Peeks a sliver when idle, fully reveals on hover. */}
+				<div className="group/ref relative flex items-center gap-1.5">
+					<div className="flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-out max-h-0 opacity-0 group-hover/ref:max-h-12 group-hover/ref:opacity-100">
+						<button
+							type="button"
+							onClick={() => fileInputRef.current?.click()}
+							disabled={isExtracting}
+							className={cn(
+								"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
+								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
+								isExtracting && "cursor-wait opacity-60",
+							)}
+						>
+							<HugeiconsIcon icon={Upload01Icon} className="size-3" />
+							{isExtracting ? "Analysing…" : "Reference"}
+						</button>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="video/*"
+							className="hidden"
+							onChange={(e) => {
+								const f = e.target.files?.[0];
+								if (f) void handleFile(f);
+								e.target.value = "";
+							}}
+						/>
+						{ai.referenceVideoName && (
+							<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
+								<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
+								<span className="truncate">{ai.referenceVideoName}</span>
+								<button
+									type="button"
+									onClick={() => editor.ai.clearReference()}
+									className="ml-0.5 text-white/30 hover:text-white/60"
+									aria-label="Clear reference"
+								>
+									<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+								</button>
+							</span>
 						)}
-					>
-						<HugeiconsIcon icon={Upload01Icon} className="size-3" />
-						{isExtracting ? "Analysing…" : "Reference"}
-					</button>
-					<input
-						ref={fileInputRef}
-						type="file"
-						accept="video/*"
-						className="hidden"
-						onChange={(e) => {
-							const f = e.target.files?.[0];
-							if (f) void handleFile(f);
-							e.target.value = "";
-						}}
-					/>
+					</div>
+					{/* Peek sliver — always visible, shows a tiny hint */}
+					{!ai.referenceVideoName && (
+						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/15 transition-opacity group-hover/ref:opacity-0">
+							<HugeiconsIcon icon={Upload01Icon} className="size-2" />
+							ref
+						</span>
+					)}
+					{/* Reference indicator — always visible when a ref is set */}
 					{ai.referenceVideoName && (
-						<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
-							<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
-							<span className="truncate">{ai.referenceVideoName}</span>
-							<button
-								type="button"
-								onClick={() => editor.ai.clearReference()}
-								className="ml-0.5 text-white/30 hover:text-white/60"
-								aria-label="Clear reference"
-							>
-								<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-							</button>
+						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/25 transition-opacity group-hover/ref:opacity-0">
+							<HugeiconsIcon icon={Video01Icon} className="size-2" />
+							ref set
 						</span>
 					)}
 				</div>
 
-				{/* Quick actions */}
-				<div className="flex flex-wrap gap-1">
-					{QUICK_ACTIONS.map((qa) => (
-						<button
-							key={qa.label}
-							type="button"
-							onClick={() => handleQuickAction(qa.prompt)}
-							className={cn(
-								"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
-								"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
-								isBusy && "border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
-							)}
-						>
-							<HugeiconsIcon icon={qa.icon} className="size-3" />
-							{qa.label}
-						</button>
-					))}
-				</div>
+				{/* Quick actions — collapses to dropdown on narrow screens */}
+				<QuickActionsBar
+					actions={QUICK_ACTIONS}
+					isBusy={isBusy}
+					onPick={handleQuickAction}
+				/>
 
 				{/* Messages */}
 				<div
@@ -506,12 +534,6 @@ export function AIEditView() {
 					)}
 					{isStreaming && ai.status !== "retrying" && (
 						<div className="flex items-center gap-2.5">
-							<div className="grid size-7 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-gradient-to-br from-white/[0.08] to-white/[0.02]">
-								<HugeiconsIcon
-									icon={SparklesIcon}
-									className="size-3.5 text-white/80 animate-pulse"
-								/>
-							</div>
 							<div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] px-3 py-2">
 								<TypingDots />
 								<span className="text-[11px] text-white/55">
@@ -1845,6 +1867,120 @@ function StatusBar({
 }
 
 /**
+ * Quick actions bar — shows buttons inline when they fit, collapses
+ * to a dropdown when the panel is too narrow. Uses a ResizeObserver
+ * to detect overflow.
+ */
+function QuickActionsBar({
+	actions,
+	isBusy,
+	onPick,
+}: {
+	actions: { label: string; prompt: string; icon: typeof SparklesIcon }[];
+	isBusy: boolean;
+	onPick: (prompt: string) => void;
+}) {
+	const containerRef = useRef<HTMLDivElement>(null);
+	const innerRef = useRef<HTMLDivElement>(null);
+	const [overflow, setOverflow] = useState(false);
+	const [dropdownOpen, setDropdownOpen] = useState(false);
+
+	useEffect(() => {
+		const c = containerRef.current;
+		const i = innerRef.current;
+		if (!c || !i) return;
+		const check = () => setOverflow(i.scrollWidth > c.clientWidth + 2);
+		check();
+		const ro = new ResizeObserver(check);
+		ro.observe(c);
+		return () => ro.disconnect();
+	}, []);
+
+	const buttonClass = cn(
+		"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
+		"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
+		isBusy && "border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
+	);
+
+	if (!overflow) {
+		return (
+			<div ref={containerRef} className="flex flex-nowrap gap-1 overflow-hidden">
+				<div ref={innerRef} className="flex flex-nowrap gap-1">
+					{actions.map((qa) => (
+						<button
+							key={qa.label}
+							type="button"
+							onClick={() => onPick(qa.prompt)}
+							className={buttonClass}
+						>
+							<HugeiconsIcon icon={qa.icon} className="size-3" />
+							{qa.label}
+						</button>
+					))}
+				</div>
+			</div>
+		);
+	}
+
+	// Overflow mode: show first action + a "More" dropdown
+	return (
+		<div ref={containerRef} className="relative flex flex-nowrap gap-1 overflow-hidden">
+			<div ref={innerRef} className="flex flex-nowrap gap-1">
+				{actions.slice(0, 1).map((qa) => (
+					<button
+						key={qa.label}
+						type="button"
+						onClick={() => onPick(qa.prompt)}
+						className={cn(buttonClass, "shrink-0")}
+					>
+						<HugeiconsIcon icon={qa.icon} className="size-3" />
+						{qa.label}
+					</button>
+				))}
+			</div>
+			<button
+				type="button"
+				onClick={() => setDropdownOpen((o) => !o)}
+				className={cn(buttonClass, "shrink-0")}
+			>
+				<HugeiconsIcon icon={SparklesIcon} className="size-3" />
+				More
+				<HugeiconsIcon
+					icon={ArrowDown03Icon}
+					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
+				/>
+			</button>
+			{dropdownOpen && (
+				<>
+					<button
+						type="button"
+						aria-label="Close menu"
+						className="fixed inset-0 z-40 cursor-default"
+						onClick={() => setDropdownOpen(false)}
+					/>
+					<div className="absolute left-0 top-7 z-50 flex flex-col gap-0.5 rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
+						{actions.slice(1).map((qa) => (
+							<button
+								key={qa.label}
+								type="button"
+								onClick={() => {
+									onPick(qa.prompt);
+									setDropdownOpen(false);
+								}}
+								className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white/85"
+							>
+								<HugeiconsIcon icon={qa.icon} className="size-3" />
+								{qa.label}
+							</button>
+						))}
+					</div>
+				</>
+			)}
+		</div>
+	);
+}
+
+/**
  * Pick an icon for a suggestion based on its label keyword.
  * This keeps the suggestion data file icon-free (compact) while
  * still showing a relevant icon per card.
@@ -2540,14 +2676,37 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 				{/* Tool calls */}
 				{toolCallCount > 0 && (
 					<div className="flex w-full flex-col gap-1">
-						<div className="flex items-center gap-1.5 px-1 text-[9px] font-medium uppercase tracking-wider text-white/35">
-							<HugeiconsIcon
-								icon={MagicWand05Icon}
-								className="size-2.5"
-							/>
-							{successCount === toolCallCount
-								? `${toolCallCount} action${toolCallCount > 1 ? "s" : ""} completed`
-								: `${successCount}/${toolCallCount} actions done`}
+						<div className="flex items-center gap-1.5 px-1 text-[9px] font-medium uppercase tracking-wider">
+							<motion.div
+								initial={{ scale: 0, rotate: -180 }}
+								animate={{ scale: 1, rotate: 0 }}
+								transition={{ type: "spring", stiffness: 300, damping: 20 }}
+								className={cn(
+									"grid size-4 place-items-center rounded",
+									successCount === toolCallCount
+										? "bg-emerald-400/15"
+										: "bg-white/[0.06]",
+								)}
+							>
+								<HugeiconsIcon
+									icon={successCount === toolCallCount ? CheckmarkCircle02Icon : MagicWand05Icon}
+									className={cn(
+										"size-2.5",
+										successCount === toolCallCount
+											? "text-emerald-300"
+											: "text-white/50",
+									)}
+								/>
+							</motion.div>
+							<span className={cn(
+								successCount === toolCallCount
+									? "text-emerald-300/60"
+									: "text-white/35",
+							)}>
+								{successCount === toolCallCount
+									? `${toolCallCount} action${toolCallCount > 1 ? "s" : ""} completed`
+									: `${successCount}/${toolCallCount} actions done`}
+							</span>
 						</div>
 						{message.toolCalls?.map((tc, i) => (
 							<ToolCallRow
@@ -2564,9 +2723,195 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 /**
- * Expandable tool-call row. Click to expand and see the arguments
- * the AI passed, the result message, and any structured data the
- * tool returned. Collapsed state shows just the tool name + status.
+ * Map a tool name to its category for icon + color assignment.
+ * Tool names are prefixed with their category (e.g. "scene_add",
+ * "element_update", "generate_video"). MCP tools are prefixed
+ * with "mcp__".
+ */
+interface ToolVisual {
+	icon: typeof SparklesIcon;
+	color: string;
+	bg: string;
+	border: string;
+	glow: string;
+}
+
+function getToolVisual(toolName: string): ToolVisual {
+	// MCP tools
+	if (toolName.startsWith("mcp__")) {
+		return {
+			icon: PuzzleIcon,
+			color: "text-violet-300",
+			bg: "bg-violet-500/10",
+			border: "border-violet-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(139,92,246,0.3)]",
+		};
+	}
+	// Generation tools
+	if (toolName.startsWith("generate_")) {
+		const sub = toolName.slice(9);
+		if (sub === "video")
+			return {
+				icon: Video01Icon,
+				color: "text-rose-300",
+				bg: "bg-rose-500/10",
+				border: "border-rose-400/20",
+				glow: "shadow-[0_0_12px_-4px_rgba(244,63,94,0.3)]",
+			};
+		if (sub === "image")
+			return {
+				icon: Image01Icon,
+				color: "text-cyan-300",
+				bg: "bg-cyan-500/10",
+				border: "border-cyan-400/20",
+				glow: "shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)]",
+			};
+		if (sub === "audio" || sub === "media")
+			return {
+				icon: MusicNote03Icon,
+				color: "text-amber-300",
+				bg: "bg-amber-500/10",
+				border: "border-amber-400/20",
+				glow: "shadow-[0_0_12px_-4px_rgba(245,158,11,0.3)]",
+			};
+		return {
+			icon: SparklesIcon,
+			color: "text-fuchsia-300",
+			bg: "bg-fuchsia-500/10",
+			border: "border-fuchsia-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(217,70,239,0.3)]",
+		};
+	}
+	// Category-based mapping
+	const prefix = toolName.split("_")[0] ?? "misc";
+	const map: Record<string, ToolVisual> = {
+		project: {
+			icon: Folder01Icon,
+			color: "text-blue-300",
+			bg: "bg-blue-500/10",
+			border: "border-blue-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(59,130,246,0.3)]",
+		},
+		scene: {
+			icon: FilmIcon,
+			color: "text-indigo-300",
+			bg: "bg-indigo-500/10",
+			border: "border-indigo-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(99,102,241,0.3)]",
+		},
+		track: {
+			icon: LayersIcon,
+			color: "text-teal-300",
+			bg: "bg-teal-500/10",
+			border: "border-teal-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(20,184,166,0.3)]",
+		},
+		element: {
+			icon: CropIcon,
+			color: "text-emerald-300",
+			bg: "bg-emerald-500/10",
+			border: "border-emerald-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(16,185,129,0.3)]",
+		},
+		effect: {
+			icon: PaintBoardIcon,
+			color: "text-purple-300",
+			bg: "bg-purple-500/10",
+			border: "border-purple-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(168,85,247,0.3)]",
+		},
+		mask: {
+			icon: PaintBrushIcon,
+			color: "text-pink-300",
+			bg: "bg-pink-500/10",
+			border: "border-pink-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(236,72,153,0.3)]",
+		},
+		keyframe: {
+			icon: SlidersHorizontalIcon,
+			color: "text-orange-300",
+			bg: "bg-orange-500/10",
+			border: "border-orange-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(249,115,22,0.3)]",
+		},
+		transition: {
+			icon: FilmIcon,
+			color: "text-lime-300",
+			bg: "bg-lime-500/10",
+			border: "border-lime-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(132,204,22,0.3)]",
+		},
+		playback: {
+			icon: PlayCircleIcon,
+			color: "text-green-300",
+			bg: "bg-green-500/10",
+			border: "border-green-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(34,197,94,0.3)]",
+		},
+		asset: {
+			icon: CloudIcon,
+			color: "text-sky-300",
+			bg: "bg-sky-500/10",
+			border: "border-sky-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(14,165,233,0.3)]",
+		},
+		style: {
+			icon: PaintBrushIcon,
+			color: "text-fuchsia-300",
+			bg: "bg-fuchsia-500/10",
+			border: "border-fuchsia-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(217,70,239,0.3)]",
+		},
+		export: {
+			icon: FileExportIcon,
+			color: "text-red-300",
+			bg: "bg-red-500/10",
+			border: "border-red-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(239,68,68,0.3)]",
+		},
+		history: {
+			icon: Clock01Icon,
+			color: "text-stone-300",
+			bg: "bg-stone-500/10",
+			border: "border-stone-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(120,113,108,0.3)]",
+		},
+		selection: {
+			icon: Cursor02Icon,
+			color: "text-yellow-300",
+			bg: "bg-yellow-500/10",
+			border: "border-yellow-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(234,179,8,0.3)]",
+		},
+		clipboard: {
+			icon: ClipboardCheckIcon,
+			color: "text-cyan-300",
+			bg: "bg-cyan-500/10",
+			border: "border-cyan-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(34,211,238,0.3)]",
+		},
+		plan: {
+			icon: CheckListIcon,
+			color: "text-indigo-300",
+			bg: "bg-indigo-500/10",
+			border: "border-indigo-400/20",
+			glow: "shadow-[0_0_12px_-4px_rgba(99,102,241,0.3)]",
+		},
+	};
+	return map[prefix] ?? {
+		icon: MagicWand05Icon,
+		color: "text-white/60",
+		bg: "bg-white/[0.04]",
+		border: "border-white/[0.08]",
+		glow: "",
+	};
+}
+
+/**
+ * Expandable tool-call row with colorful category-based icons,
+ * glow effects, and smooth animations. Click to expand and see
+ * the arguments the AI passed, the result message, and any
+ * structured data the tool returned.
  */
 function ToolCallRow({
 	tc,
@@ -2580,80 +2925,116 @@ function ToolCallRow({
 	idx: number;
 }) {
 	const [expanded, setExpanded] = useState(false);
+	const visual = getToolVisual(tc.name);
 
 	const hasDetails =
 		Object.keys(tc.args).length > 0 ||
 		tc.result?.data !== undefined ||
 		(tc.result?.message && tc.result.message.length > 40);
 
+	// Pretty-print the tool name: "scene_add" → "scene · add"
+	const prettyName = tc.name
+		.replace(/^mcp__/, "mcp · ")
+		.replace(/__/g, " · ")
+		.replace(/_/g, " ");
+
 	return (
 		<motion.div
-			initial={{ opacity: 0, x: -4 }}
-			animate={{ opacity: 1, x: 0 }}
-			transition={{ delay: idx * 0.05 }}
+			initial={{ opacity: 0, x: -8, scale: 0.95 }}
+			animate={{ opacity: 1, x: 0, scale: 1 }}
+			transition={{ delay: idx * 0.06, type: "spring", stiffness: 300, damping: 24 }}
 			className={cn(
-				"overflow-hidden rounded-lg border",
-				tc.result?.ok
-					? "border-emerald-400/15 bg-emerald-400/[0.04]"
-					: tc.result
-						? "border-red-400/15 bg-red-400/[0.04]"
-						: "border-white/[0.06] bg-white/[0.02]",
+				"overflow-hidden rounded-lg border transition-all",
+				visual.border,
+				visual.bg,
+				visual.glow,
+				tc.result?.ok === false && "border-red-400/25 bg-red-500/[0.06]",
 			)}
 		>
 			<button
 				type="button"
 				onClick={() => hasDetails && setExpanded((e) => !e)}
 				className={cn(
-					"flex w-full items-center gap-2 px-2.5 py-1.5 text-left",
+					"flex w-full items-center gap-2 px-2.5 py-2 text-left",
 					hasDetails && "cursor-pointer hover:bg-white/[0.03]",
 				)}
 				aria-expanded={expanded}
 			>
+				{/* Category icon with colored background */}
 				<div
 					className={cn(
-						"grid size-4 shrink-0 place-items-center rounded-full",
-						tc.result?.ok
-							? "bg-emerald-400/15"
-							: tc.result
-								? "bg-red-400/15"
-								: "bg-white/[0.06]",
+						"grid size-5 shrink-0 place-items-center rounded-md border",
+						visual.border,
+						visual.bg,
 					)}
 				>
 					<HugeiconsIcon
-						icon={
-							tc.result?.ok
-								? CheckmarkCircle02Icon
-								: tc.result
-									? Cancel01Icon
-									: MagicWand05Icon
-						}
-						className={cn(
-							"size-2.5",
-							tc.result?.ok
-								? "text-emerald-300"
-								: tc.result
-									? "text-red-300"
-									: "text-white/50",
-						)}
+						icon={visual.icon}
+						className={cn("size-3", visual.color)}
 					/>
 				</div>
-				<span className="shrink-0 font-mono text-[10px] font-medium text-white/80">
-					{tc.name}
+				{/* Tool name */}
+				<span className={cn(
+					"shrink-0 font-mono text-[10px] font-medium",
+					visual.color,
+				)}>
+					{prettyName}
 				</span>
-				{tc.result?.message && !expanded && (
-					<span className="min-w-0 flex-1 truncate text-[10px] text-white/40">
-						{tc.result.message}
-					</span>
-				)}
-				{hasDetails && (
-					<HugeiconsIcon
-						icon={ArrowDown03Icon}
-						className={cn(
-							"ml-auto size-3 shrink-0 text-white/30 transition-transform",
-							expanded && "rotate-180",
-						)}
-					/>
-				)}
+				{/* Status indicator */}
+				<div className="ml-auto flex items-center gap-1.5">
+					{tc.result?.ok && (
+						<motion.div
+							initial={{ scale: 0 }}
+							animate={{ scale: 1 }}
+							transition={{ type: "spring", stiffness: 400, damping: 15 }}
+							className="grid size-3.5 place-items-center"
+						>
+							<HugeiconsIcon
+								icon={CheckmarkCircle02Icon}
+								className="size-3.5 text-emerald-400"
+							/>
+						</motion.div>
+					)}
+					{tc.result?.ok === false && (
+						<motion.div
+							initial={{ scale: 0 }}
+							animate={{ scale: 1 }}
+							transition={{ type: "spring", stiffness: 400, damping: 15 }}
+							className="grid size-3.5 place-items-center"
+						>
+							<HugeiconsIcon
+								icon={AlertCircleIcon}
+								className="size-3.5 text-red-400"
+							/>
+						</motion.div>
+					)}
+					{!tc.result && (
+						<motion.div
+							animate={{ rotate: 360 }}
+							transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+							className="grid size-3.5 place-items-center"
+						>
+							<HugeiconsIcon
+								icon={MagicWand05Icon}
+								className="size-3 text-white/40"
+							/>
+						</motion.div>
+					)}
+					{tc.result?.message && !expanded && (
+						<span className="hidden max-w-[120px] truncate text-[9.5px] text-white/35 sm:inline">
+							{tc.result.message}
+						</span>
+					)}
+					{hasDetails && (
+						<HugeiconsIcon
+							icon={ArrowDown03Icon}
+							className={cn(
+								"size-3 shrink-0 text-white/30 transition-transform",
+								expanded && "rotate-180",
+							)}
+						/>
+					)}
+				</div>
 			</button>
 			{expanded && hasDetails && (
 				<motion.div
@@ -2678,7 +3059,10 @@ function ToolCallRow({
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
 								Result
 							</div>
-							<p className="text-[10px] leading-relaxed text-white/60">
+							<p className={cn(
+								"text-[10px] leading-relaxed",
+								tc.result.ok ? "text-emerald-300/70" : "text-red-300/70",
+							)}>
 								{tc.result.message}
 							</p>
 						</div>

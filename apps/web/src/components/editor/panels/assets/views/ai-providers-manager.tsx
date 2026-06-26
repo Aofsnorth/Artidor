@@ -37,7 +37,7 @@ import {
 	type AIProvider,
 	type ProviderKind,
 } from "@/stores/ai-providers-store";
-import { fetchPuterModels } from "@/lib/ai/puter-client";
+import { fetchPuterModels, fetchPuterMediaModels } from "@/lib/ai/puter-client";
 import { cn } from "@/utils/ui";
 
 interface AIProvidersManagerProps {
@@ -539,6 +539,13 @@ function ProviderFormDialog({
 	const [puterModelsError, setPuterModelsError] = useState<string | null>(
 		null,
 	);
+	// Puter.js media generation models — fetched alongside chat models
+	// so the media model fields can show dropdowns instead of free text.
+	const [puterMediaModels, setPuterMediaModels] = useState<{
+		video: Array<{ id: string; provider: string; name?: string }>;
+		image: Array<{ id: string; provider: string; name?: string }>;
+		audio: Array<{ id: string; provider: string; name?: string }>;
+	}>({ video: [], image: [], audio: [] });
 
 	// Countdown timer for the Puter warning popup. The popup cannot be
 	// dismissed until the countdown reaches 0.
@@ -563,9 +570,17 @@ function ProviderFormDialog({
 			setPuterModelsLoading(true);
 			setPuterModelsError(null);
 			try {
-				const models = await fetchPuterModels();
+				const [models, mediaModels] = await Promise.all([
+					fetchPuterModels(),
+					fetchPuterMediaModels().catch(() => ({
+						video: [],
+						image: [],
+						audio: [],
+					})),
+				]);
 				if (cancelled) return;
 				setPuterModels(models);
+				setPuterMediaModels(mediaModels);
 				// Auto-select the first model if none is set yet.
 				if (models.length > 0 && !model) {
 					setModel(models[0].id);
@@ -747,7 +762,7 @@ function ProviderFormDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<DialogBody className="gap-4">
+				<DialogBody className="max-h-[70vh] gap-4 overflow-y-auto pr-1">
 					{/* Name */}
 					<div className="space-y-1.5">
 						<Label htmlFor="provider-name" className="text-[11px] text-white/70">
@@ -971,55 +986,35 @@ function ProviderFormDialog({
 							<span className="text-[9.5px] text-white/30">(optional)</span>
 						</div>
 						<p className="text-[10px] leading-relaxed text-white/30">
-							Fill in only the models your provider supports. When a field is
-							empty, the AI cannot call that type of generation tool.
+							{kind === "puter"
+								? "Select from the available models fetched from your Puter account. When a field is empty, the AI cannot call that type of generation tool."
+								: "Fill in only the models your provider supports. When a field is empty, the AI cannot call that type of generation tool."}
 						</p>
 						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-							<div className="flex flex-col gap-1">
-								<label
-									htmlFor="provider-video-model"
-									className="text-[10px] text-white/45"
-								>
-									Video model
-								</label>
-								<Input
-									id="provider-video-model"
-									value={videoModel}
-									placeholder="e.g. sora-2, seedance-1.0-pro"
-									onChange={(e) => setVideoModel(e.target.value)}
-									className="h-8 font-mono text-[11px]"
-								/>
-							</div>
-							<div className="flex flex-col gap-1">
-								<label
-									htmlFor="provider-image-model"
-									className="text-[10px] text-white/45"
-								>
-									Image model
-								</label>
-								<Input
-									id="provider-image-model"
-									value={imageModel}
-									placeholder="e.g. dall-e-3, flux-1"
-									onChange={(e) => setImageModel(e.target.value)}
-									className="h-8 font-mono text-[11px]"
-								/>
-							</div>
-							<div className="flex flex-col gap-1">
-								<label
-									htmlFor="provider-audio-model"
-									className="text-[10px] text-white/45"
-								>
-									Audio model
-								</label>
-								<Input
-									id="provider-audio-model"
-									value={audioModel}
-									placeholder="e.g. tts-1, bark"
-									onChange={(e) => setAudioModel(e.target.value)}
-									className="h-8 font-mono text-[11px]"
-								/>
-							</div>
+							<MediaModelField
+								id="provider-video-model"
+								label="Video model"
+								value={videoModel}
+								placeholder="e.g. sora-2, seedance-1.0-pro"
+								onChange={setVideoModel}
+								options={kind === "puter" ? puterMediaModels.video : []}
+							/>
+							<MediaModelField
+								id="provider-image-model"
+								label="Image model"
+								value={imageModel}
+								placeholder="e.g. dall-e-3, flux-1"
+								onChange={setImageModel}
+								options={kind === "puter" ? puterMediaModels.image : []}
+							/>
+							<MediaModelField
+								id="provider-audio-model"
+								label="Audio model"
+								value={audioModel}
+								placeholder="e.g. tts-1, bark"
+								onChange={setAudioModel}
+								options={kind === "puter" ? puterMediaModels.audio : []}
+							/>
 							<div className="flex flex-col gap-1">
 								<label
 									htmlFor="provider-media-model"
@@ -1196,6 +1191,73 @@ function formatRelativeTime(timestamp: number): string {
 	if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
 	if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
 	return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+/**
+ * Media model field — shows a dropdown when Puter media models are
+ * available, falls back to a text input otherwise. This lets Puter
+ * users pick from fetched models while still allowing manual entry
+ * for non-Puter providers.
+ */
+function MediaModelField({
+	id,
+	label,
+	value,
+	placeholder,
+	onChange,
+	options,
+}: {
+	id: string;
+	label: string;
+	value: string;
+	placeholder: string;
+	onChange: (v: string) => void;
+	options: Array<{ id: string; provider: string; name?: string }>;
+}) {
+	if (options.length > 0) {
+		return (
+			<div className="flex flex-col gap-1">
+				<label htmlFor={id} className="text-[10px] text-white/45">
+					{label}
+				</label>
+				<div className="relative">
+					<select
+						id={id}
+						value={value}
+						onChange={(e) => onChange(e.target.value)}
+						className="h-8 w-full appearance-none rounded-lg border border-white/10 bg-white/[0.02] px-3 pr-8 font-mono text-[11px] text-white/90 outline-none transition-colors focus:border-white/25"
+					>
+						<option value="" className="bg-[#1a1a1e]">
+							— None —
+						</option>
+						{options.map((m) => (
+							<option key={m.id} value={m.id} className="bg-[#1a1a1e]">
+								{m.name ?? m.id} ({m.provider})
+							</option>
+						))}
+					</select>
+					<HugeiconsIcon
+						icon={ArrowDown03Icon}
+						className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-white/40"
+					/>
+				</div>
+			</div>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-1">
+			<label htmlFor={id} className="text-[10px] text-white/45">
+				{label}
+			</label>
+			<Input
+				id={id}
+				value={value}
+				placeholder={placeholder}
+				onChange={(e) => onChange(e.target.value)}
+				className="h-8 font-mono text-[11px]"
+			/>
+		</div>
+	);
 }
 
 // silence the unused-import warning if Settings02Icon / Time01Icon ever

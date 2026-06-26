@@ -276,16 +276,24 @@ export class AIManager {
 				: learningScope === "project" && projectId
 					? useTelemetryStore.getState().recentForProject(20, projectId)
 					: useTelemetryStore.getState().recent(20);
+		// Maximum in-round retry attempts for transient network errors.
+		// Higher than before (3 → 4) so mid-task connection drops have
+		// more chances to recover without losing tool-call progress.
+		const MAX_IN_ROUND_RETRIES = 4;
+		// Delay between in-round retries (exponential: 1s, 2s, 4s).
+		const RETRY_DELAY_BASE_MS = 1000;
+
 		for (let round = 0; round < maxRounds; round++) {
 			if (signal.aborted) return;
-			// Retry transient network errors within a round (up to 2
-			// attempts). This handles mid-task connection drops without
-			// losing the tool-call progress from previous rounds.
+			// Retry transient network errors within a round. This handles
+			// mid-task connection drops without losing the tool-call
+			// progress from previous rounds.
 			let result:
 				| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
 				| { kind: "error" }
 				| null = null;
-			for (let attempt = 0; attempt < 2; attempt++) {
+			let lastError = "Connection error";
+			for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
 				if (signal.aborted) return;
 				result = await this.streamLLMResponse(
 					text,
@@ -301,8 +309,18 @@ export class AIManager {
 				// the retry here instead.
 				this.clearRetryTimer();
 				useAIStore.getState().clearRetry();
-				// If this is the last attempt, fall through to the
-				// error handling below.
+				// Show a transient retry status to the user.
+				if (attempt < MAX_IN_ROUND_RETRIES - 1) {
+					const delay = RETRY_DELAY_BASE_MS * Math.pow(2, attempt);
+					useAIStore.getState().setStatus("retrying");
+					useAIStore.getState().setError(
+						`Connection issue — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES})…`,
+					);
+					this.notify();
+					// Wait before retrying (exponential backoff).
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					if (signal.aborted) return;
+				}
 			}
 			if (!result || result.kind === "error") {
 				// If we already executed tool calls in a previous round,
@@ -314,17 +332,13 @@ export class AIManager {
 					useAIStore.getState().clearRetry();
 					useAIStore.getState().setStatus("error");
 					useAIStore.getState().setError(
-						"AI stopped after completing some actions. The connection dropped mid-task. Send a new message to continue.",
+						`AI stopped after completing ${round} round${round > 1 ? "s" : ""} of actions. ${lastError} — the connection could not be recovered after ${MAX_IN_ROUND_RETRIES} attempts. Send a new message to continue.`,
 					);
 					this.notify();
 					return;
 				}
-				// Round 0 error: streamLLMResponse already scheduled a
-				// retry (or we exhausted attempts above). Schedule one
-				// final retry here if not already scheduled.
-				if (!result) {
-					this.scheduleRetry(text, "Connection error");
-				}
+				// Round 0 error: schedule a full retry cycle.
+				this.scheduleRetry(text, lastError);
 				return;
 			}
 			if (signal.aborted) return;
@@ -1011,15 +1025,25 @@ export class AIManager {
 
 		// Append a `tool`-role message for each tool call result so the
 		// next LLM round can see what each tool returned. The content is
-		// a JSON string (per the OpenAI tool message schema).
+		// a JSON string (per the OpenAI tool message schema). When a tool
+		// failed, we add a retry hint so the model knows it should try
+		// again with corrected arguments or a different approach.
 		for (let i = 0; i < toolCalls.length; i++) {
 			const tc = toolCalls[i];
 			const result = results[i];
-			const toolContent = JSON.stringify({
-				ok: result.ok,
-				message: result.message,
-				data: result.data,
-			});
+			const toolContent = result.ok
+				? JSON.stringify({
+						ok: true,
+						message: result.message,
+						data: result.data,
+					})
+				: JSON.stringify({
+						ok: false,
+						error: result.message ?? "Tool execution failed",
+						message: result.message,
+						retry_hint:
+							"This tool call failed. Please analyze the error, fix your arguments or approach, and try again. If the error is persistent, inform the user and suggest an alternative.",
+					});
 			useAIStore.getState().appendMessage({
 				role: "tool",
 				content: toolContent,

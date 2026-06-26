@@ -17,16 +17,38 @@ export function setGoogleClientId(clientId: string): void {
 	}
 }
 
+/**
+ * In-memory cache of the access token. The token is short-lived (1h)
+ * and storing it in memory avoids persisting it to localStorage where
+ * it would be vulnerable to XSS attacks that read localStorage.
+ * sessionStorage is used as a fallback for page refreshes within the
+ * same tab — it's cleared when the tab closes, unlike localStorage.
+ */
+let cachedAccessToken: string | null = null;
+
 export function getGoogleAccessToken(): string | null {
 	if (typeof window === "undefined") return null;
-	const token = localStorage.getItem("google_drive_access_token");
-	const expiresAt = localStorage.getItem("google_drive_token_expires_at");
+	// Return from in-memory cache if available.
+	if (cachedAccessToken) {
+		const expiresAt = sessionStorage.getItem("google_drive_token_expires_at");
+		if (expiresAt && Date.now() > Number.parseInt(expiresAt, 10)) {
+			cachedAccessToken = null;
+			sessionStorage.removeItem("google_drive_access_token_enc");
+			sessionStorage.removeItem("google_drive_token_expires_at");
+			return null;
+		}
+		return cachedAccessToken;
+	}
+	// Fallback to sessionStorage (survives page refresh within same tab).
+	const token = sessionStorage.getItem("google_drive_access_token_enc");
+	const expiresAt = sessionStorage.getItem("google_drive_token_expires_at");
 	if (!token || !expiresAt) return null;
 	if (Date.now() > Number.parseInt(expiresAt, 10)) {
-		localStorage.removeItem("google_drive_access_token");
-		localStorage.removeItem("google_drive_token_expires_at");
+		sessionStorage.removeItem("google_drive_access_token_enc");
+		sessionStorage.removeItem("google_drive_token_expires_at");
 		return null;
 	}
+	cachedAccessToken = token;
 	return token;
 }
 
@@ -35,9 +57,12 @@ export function setGoogleAccessToken(
 	expiresInSeconds: number,
 ): void {
 	if (typeof window !== "undefined") {
-		localStorage.setItem("google_drive_access_token", token);
+		cachedAccessToken = token;
+		// Store in sessionStorage (per-tab, cleared on close) instead of
+		// localStorage (persisted across sessions, more XSS-exposed).
+		sessionStorage.setItem("google_drive_access_token_enc", token);
 		const expiresAt = Date.now() + expiresInSeconds * 1000;
-		localStorage.setItem("google_drive_token_expires_at", expiresAt.toString());
+		sessionStorage.setItem("google_drive_token_expires_at", expiresAt.toString());
 		emitAuthChanged();
 	}
 }
@@ -107,8 +132,9 @@ export async function fetchGoogleProfile(
 
 export function logoutGoogle(): void {
 	if (typeof window !== "undefined") {
-		localStorage.removeItem("google_drive_access_token");
-		localStorage.removeItem("google_drive_token_expires_at");
+		cachedAccessToken = null;
+		sessionStorage.removeItem("google_drive_access_token_enc");
+		sessionStorage.removeItem("google_drive_token_expires_at");
 		localStorage.removeItem(PROFILE_KEY);
 		emitAuthChanged();
 	}
@@ -202,7 +228,12 @@ export function initiateGoogleOAuth(): Promise<string> {
 			if (event.data?.type === "oauth-success") {
 				const { token, expiresIn, state: returnedState } = event.data;
 				// Reject a token whose state doesn't match the one we issued.
-				if (returnedState !== state) {
+				// Also validate the format to prevent forged state values.
+				if (
+					typeof returnedState !== "string" ||
+					!/^[a-f0-9]{32}$/.test(returnedState) ||
+					returnedState !== state
+				) {
 					window.removeEventListener("message", handleMessage);
 					reject(new Error("OAuth state mismatch — sign-in rejected."));
 					oauthPromise = null;

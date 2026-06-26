@@ -18,6 +18,27 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-ai-chat-polish",
+		date: "2026-06-28",
+		tag: "improvement",
+		title: "Colorful tool calls, dynamic Puter media models, security hardening",
+		items: [
+			"Tool calls in the AI chat now show colorful category-based icons with glow effects and smooth spring animations — each tool type (scene, element, effect, generate, etc.) has its own color and icon.",
+			"Puter.js media generation models (video, image, audio) are now fetched dynamically from your account instead of requiring manual entry — just pick from the dropdown when adding a Puter provider.",
+			"The Add/Edit provider dialog is now scrollable, so it works on smaller monitors without cutting off fields.",
+			"Quick action buttons collapse into a 'More' dropdown when the panel is too narrow, keeping the chat area clean on small screens.",
+			"The thinking indicator no longer shows a logo — just a clean typing dots animation.",
+			"The reference button now peeks a tiny hint when idle and fully reveals on hover, reducing visual clutter above the chat.",
+			"Auto-learn now defaults to project-scoped learning when enabled, so the AI learns from the current project's edits by default.",
+			"Connection drops mid-task are now handled with up to 4 retry attempts with exponential backoff, instead of giving up after 2 tries.",
+			"Tool errors now include a retry hint in the result message, prompting the model to analyze the error and try again with corrected arguments.",
+			"Security: Rate limiting now fails closed with a local in-memory fallback instead of failing open when Redis is unreachable.",
+			"Security: The collaboration leave endpoint now has rate limiting.",
+			"Security: Google Drive access tokens are stored in sessionStorage (per-tab) instead of localStorage (persistent), reducing XSS exposure.",
+			"Security: OAuth state validation now checks the format before comparing, preventing forged state values.",
+		],
+	},
+	{
 		id: "2026-06-27-random-suggestions",
 		date: "2026-06-27",
 		tag: "improvement",
