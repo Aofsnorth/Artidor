@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-full-tool-coverage-mcp-client",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Full AI tool coverage + MCP client integration",
+		items: [
+			"Added 18 new AI tools covering every editor operation: duplicate elements, toggle audio separation, set/unlink parent, combine elements, remove/update transitions, toggle/reorder effects, toggle mask inversion, retime keyframes, effect param keyframes, delete/rename media folders, paste keyframes.",
+			"Arth can now connect to external MCP (Model Context Protocol) servers and use their tools alongside the built-in editor tools. Add MCP servers from the AI panel — supports SSE transport with optional bearer token authentication.",
+			"MCP server configs persist to localStorage and auto-reconnect on reload. Tools from connected MCP servers are namespaced as mcp__<server>__<tool> to avoid collisions with built-in tools.",
+		],
+	},
+	{
 		id: "2026-06-26-arth-chat-rendering-fix",
 		date: "2026-06-26",
 		tag: "fix",

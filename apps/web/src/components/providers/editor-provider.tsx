@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EditorCore } from "@/core";
 import { startEditorBridge } from "@/lib/api/bridge";
+import { getMcpConnectionManager } from "@/stores/mcp-store";
 import { CommandPalette } from "@/components/editor/command-palette";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsListener } from "@/hooks/use-keybindings";
@@ -192,6 +193,15 @@ function EditorRuntimeBindings() {
 	// Inbound automation bridge: lets same-origin scripts / other tabs / the
 	// MCP relay drive the editor via editor.api. Torn down on unmount.
 	useEffect(() => startEditorBridge(editor), [editor]);
+
+	// Outbound MCP client connections: lets the Arth AI assistant use
+	// tools from external MCP servers. Started on mount, torn down on
+	// unmount.
+	useEffect(() => {
+		const manager = getMcpConnectionManager();
+		manager.start();
+		return () => manager.disconnectAll();
+	}, []);
 
 	useEditorActions();
 	useKeybindingsListener();

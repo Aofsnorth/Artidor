@@ -66,8 +66,17 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
 import { AIProvidersManager } from "./ai-providers-manager";
 import Markdown from "react-markdown";
+import {
+	getMcpConnectionManager,
+	useMcpStore,
+} from "@/stores/mcp-store";
 
 const QUICK_ACTIONS: {
 	label: string;
@@ -691,6 +700,173 @@ function ChatHistoryDropdown({
 	);
 }
 
+/**
+ * MCP Server chip — shows the number of connected MCP servers and
+ * opens a popover to add/remove/monitor them. MCP servers expose
+ * external tools that Arth can use alongside the built-in editor
+ * tools.
+ */
+function McpServerChip() {
+	const servers = useMcpStore((s) => s.servers);
+	const connections = useMcpStore((s) => s.connections);
+	const addServer = useMcpStore((s) => s.addServer);
+	const removeServer = useMcpStore((s) => s.removeServer);
+	const updateServer = useMcpStore((s) => s.updateServer);
+
+	const connectedCount = connections.filter(
+		(c) => c.status === "connected",
+	).length;
+
+	const handleAdd = () => {
+		const name = prompt("MCP server name:");
+		if (!name?.trim()) return;
+		const url = prompt("SSE URL (e.g. http://localhost:3001/sse):");
+		if (!url?.trim()) return;
+		addServer({ name: name.trim(), url: url.trim(), enabled: true });
+		// Connect immediately.
+		const manager = getMcpConnectionManager();
+		const latest = useMcpStore.getState().servers.at(-1);
+		if (latest) {
+			manager.connect(latest, useMcpStore.getState().updateConnection);
+		}
+	};
+
+	const handleToggle = (id: string, enabled: boolean) => {
+		updateServer(id, { enabled });
+		const manager = getMcpConnectionManager();
+		if (enabled) {
+			const server = useMcpStore.getState().servers.find((s) => s.id === id);
+			if (server) {
+				manager.connect(
+					{ ...server, enabled },
+					useMcpStore.getState().updateConnection,
+				);
+			}
+		} else {
+			manager.disconnect(id);
+		}
+	};
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label="MCP servers"
+					title="MCP servers — external tools"
+					className={cn(
+						"group flex items-center justify-between gap-2 rounded-lg border px-2 py-1.5 text-left transition-all",
+						connectedCount > 0
+							? "border-green-400/20 bg-green-400/[0.05] hover:border-green-400/30"
+							: "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
+					)}
+				>
+					<span className="flex min-w-0 items-center gap-1.5">
+						<HugeiconsIcon
+							icon={PlugIcon}
+							className={cn(
+								"size-3 shrink-0",
+								connectedCount > 0 ? "text-green-300" : "text-white/50",
+							)}
+						/>
+						<span className="truncate text-[11px] text-white/80">
+							{connectedCount > 0
+								? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""}`
+								: "MCP servers"}
+						</span>
+					</span>
+					<span className="shrink-0 text-[9.5px] text-white/35 transition-colors group-hover:text-white/60">
+						Manage
+					</span>
+				</button>
+			</PopoverTrigger>
+			<PopoverContent
+				align="start"
+				className="w-72 border-white/[0.08] bg-[#09090b]/95 text-white/95 backdrop-blur-md"
+			>
+				<div className="flex flex-col gap-2 p-1">
+					<div className="flex items-center justify-between">
+						<span className="text-xs font-semibold text-white/90">
+							MCP Servers
+						</span>
+						<button
+							type="button"
+							onClick={handleAdd}
+							className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
+						>
+							<HugeiconsIcon icon={ChatAdd01Icon} className="size-2.5" />
+							Add
+						</button>
+					</div>
+
+					{servers.length === 0 ? (
+						<p className="text-[10px] text-white/40 py-2">
+							No MCP servers configured. Add one to let Arth use external
+							tools (filesystem, web search, databases, etc).
+						</p>
+					) : (
+						<div className="flex flex-col gap-1.5">
+							{servers.map((server) => {
+								const conn = connections.find(
+									(c) => c.config.id === server.id,
+								);
+								const status = conn?.status ?? "disconnected";
+								const toolCount = conn?.tools.length ?? 0;
+								return (
+									<div
+										key={server.id}
+										className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
+									>
+										<div
+											className={cn(
+												"size-1.5 rounded-full shrink-0",
+												status === "connected"
+													? "bg-green-400"
+													: status === "connecting"
+														? "bg-yellow-400 animate-pulse"
+														: status === "error"
+															? "bg-red-400"
+															: "bg-white/20",
+											)}
+										/>
+										<div className="flex flex-1 flex-col min-w-0">
+											<span className="text-[10px] font-medium text-white/80 truncate">
+												{server.name}
+											</span>
+											<span className="text-[9px] text-white/35 truncate">
+												{toolCount > 0
+													? `${toolCount} tools`
+													: server.url}
+											</span>
+										</div>
+										<button
+											type="button"
+											onClick={() => handleToggle(server.id, !server.enabled)}
+											className="text-[9px] text-white/40 hover:text-white/80"
+										>
+											{server.enabled ? "on" : "off"}
+										</button>
+										<button
+											type="button"
+											onClick={() => {
+												getMcpConnectionManager().disconnect(server.id);
+												removeServer(server.id);
+											}}
+											className="text-[9px] text-red-300/60 hover:text-red-300"
+										>
+											<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+										</button>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</div>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
 function StatusBar({
 	referenceVideoName,
 	styleProfile,
@@ -832,6 +1008,9 @@ function StatusBar({
 						Manage
 					</span>
 				</button>
+
+				{/* MCP servers chip */}
+				<McpServerChip />
 
 				{/* Meta row: learned edits + compaction + reference video */}
 				<div className="flex flex-col gap-1.5">
