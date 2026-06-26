@@ -24,7 +24,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ProviderKind = "openai-compatible" | "ollama";
+export type ProviderKind = "openai-compatible" | "ollama" | "puter";
 
 /**
  * A user-configured AI provider. The id is a client-side uuid used as

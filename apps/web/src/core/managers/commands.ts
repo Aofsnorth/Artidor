@@ -114,6 +114,15 @@ export class CommandManager {
 		return this.redoStack.length > 0;
 	}
 
+	/**
+	 * Current number of entries in the undo stack. Used by the AI
+	 * manager to snapshot the history length before processing a user
+	 * message, so it can revert all AI-made edits later.
+	 */
+	getHistoryLength(): number {
+		return this.history.length;
+	}
+
 	getHistoryLabels(): string[] {
 		return this.history.map(({ command }) =>
 			command.constructor.name

@@ -101,11 +101,11 @@ const bodySchema = z.object({
 	 */
 	provider: z
 		.object({
-			baseUrl: z.string().min(1),
+			baseUrl: z.string().default(""),
 			apiKey: z.string().optional().default(""),
 			model: z.string().min(1),
 			kind: z
-				.enum(["openai-compatible", "ollama"])
+				.enum(["openai-compatible", "ollama", "puter"])
 				.default("openai-compatible"),
 		})
 		.optional(),
@@ -198,7 +198,18 @@ export async function POST(request: Request) {
 		// Map the client provider kind onto the server-side provider
 		// names the LLMProvider classes know about. "openai-compatible"
 		// and "ollama" both reuse the OpenAI code path because Ollama
-		// ships the same /v1/chat/completions schema.
+		// ships the same /v1/chat/completions schema. "puter" runs
+		// entirely client-side and should never reach this route — if
+		// it does, return a clear error.
+		if (body.provider.kind === "puter") {
+			return new Response(
+				JSON.stringify({
+					error:
+						"Puter.js providers run client-side and should not reach the server API. Please use the Puter.js SDK in the browser.",
+				}),
+				{ status: 400, headers: { "content-type": "application/json" } },
+			);
+		}
 		const providerName: "openai" | "ollama" =
 			body.provider.kind === "ollama" ? "ollama" : "openai";
 		config = {

@@ -18,6 +18,20 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-ai-stop-copy-edit-revert-adv-settings-puter",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "AI Stop fix + chat actions + advanced settings + Puter.js",
+		items: [
+			"Fixed the Stop button — it now actually cancels in-flight AI requests and breaks the tool-call loop using an AbortController. Previously the button only reset the UI status but the AI kept executing in the background.",
+			"Each chat message now has Copy and Edit buttons (visible on hover). Edit any message — user or AI — to fix typos or refine prompts without retyping.",
+			"User messages have a Revert button that undoes all editor changes the AI made in response to that message. It uses the command history snapshot taken before the AI started processing, so you can safely roll back AI edits.",
+			"New Advanced AI Settings panel (sliders icon next to the provider button) — tune max tool rounds, retry attempts, retry cooldown, and compaction thresholds. Settings persist to localStorage.",
+			"MCP server chip moved next to the AI settings button and now uses a puzzle icon (was the same plug icon as the AI provider button).",
+			"Puter.js provider support — a free, browser-based AI provider option. When selected, a mandatory 5-second uncloseable warning popup explains that Puter may use conversation data for model training. The user must acknowledge and accept before the provider is saved.",
+		],
+	},
+	{
 		id: "2026-06-27-tool-loop-planning-todo",
 		date: "2026-06-27",
 		tag: "feature",

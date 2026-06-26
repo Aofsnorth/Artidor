@@ -22,10 +22,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
-	baseUrl: z.string().min(1),
+	baseUrl: z.string().default(""),
 	apiKey: z.string().optional().default(""),
 	model: z.string().min(1),
-	kind: z.enum(["openai-compatible", "ollama"]).default("openai-compatible"),
+	kind: z
+		.enum(["openai-compatible", "ollama", "puter"])
+		.default("openai-compatible"),
 });
 
 const TEST_PROMPT = [
@@ -53,9 +55,9 @@ function buildAuthHeader({
 	kind,
 }: {
 	apiKey: string | undefined;
-	kind: "openai-compatible" | "ollama";
+	kind: "openai-compatible" | "ollama" | "puter";
 }): string | null {
-	if (kind === "ollama") return null;
+	if (kind === "ollama" || kind === "puter") return null;
 	if (!apiKey || apiKey.length === 0) return null;
 	return `Bearer ${apiKey}`;
 }

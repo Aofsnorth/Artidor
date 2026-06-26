@@ -112,6 +112,32 @@ export interface Plan {
 	createdAt: number;
 }
 
+/**
+ * User-tunable advanced AI parameters. These control the tool-call loop
+ * depth, retry behavior, and auto-compaction thresholds. Persisted to
+ * localStorage so the user's preferences survive page reloads.
+ */
+export interface AdvancedAISettings {
+	/** Maximum number of tool-call rounds per message (default: 500). */
+	maxToolRounds: number;
+	/** Maximum retry attempts on error (default: 10). */
+	maxRetryAttempts: number;
+	/** Base cooldown in seconds per retry attempt (default: 5). */
+	retryCooldownBase: number;
+	/** Message count threshold before auto-compaction (default: 20). */
+	compactionMessageThreshold: number;
+	/** Number of recent messages to keep during compaction (default: 6). */
+	compactionKeepLast: number;
+}
+
+const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
+	maxToolRounds: 500,
+	maxRetryAttempts: 10,
+	retryCooldownBase: 5,
+	compactionMessageThreshold: 20,
+	compactionKeepLast: 6,
+};
+
 interface AIState {
 	messages: ChatMessage[];
 	status: ChatStatus;
@@ -154,6 +180,14 @@ interface AIState {
 	 * Null when no plan is active. A new plan replaces the previous one.
 	 */
 	plan: Plan | null;
+	/**
+	 * Advanced AI settings — user-tunable parameters that control the
+	 * tool-call loop, retry behavior, and auto-compaction thresholds.
+	 * Persisted to localStorage so they survive page reloads.
+	 */
+	advancedSettings: AdvancedAISettings;
+	/** Update one or more advanced settings fields. */
+	setAdvancedSettings: (patch: Partial<AdvancedAISettings>) => void;
 
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
@@ -238,6 +272,13 @@ export const useAIStore = create<AIState>()(
 			retryIn: 0,
 			conversations: [],
 			plan: null,
+			advancedSettings: DEFAULT_ADVANCED_SETTINGS,
+
+			setAdvancedSettings: (patch) => {
+				set({
+					advancedSettings: { ...get().advancedSettings, ...patch },
+				});
+			},
 
 			appendMessage: (m) => {
 				const id = crypto.randomUUID();
@@ -424,6 +465,7 @@ export const useAIStore = create<AIState>()(
 					...c,
 					messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
 				})),
+				advancedSettings: state.advancedSettings,
 			}),
 		},
 	),

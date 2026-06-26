@@ -26,7 +26,7 @@ import {
 	useAIStore,
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
-import { useAIProvidersStore } from "@/stores/ai-providers-store";
+import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
 import type { FrameRate } from "artidor-wasm";
@@ -36,26 +36,7 @@ import type { FrameRate } from "artidor-wasm";
  * older messages are summarized and replaced by a compact system message
  * so the LLM's context window stays manageable on long sessions.
  */
-const COMPACTION_MESSAGE_THRESHOLD = 20;
 const COMPACTION_TOKEN_THRESHOLD = 6000;
-const COMPACTION_KEEP_LAST = 6;
-
-/**
- * Progressive retry cooldown: each retry attempt waits
- * `RETRY_COOLDOWN_BASE_SECONDS * attemptCount` seconds before retrying.
- * So attempt 1 = 5s, 2 = 10s, 3 = 15s, etc.
- */
-const RETRY_COOLDOWN_BASE_SECONDS = 5;
-/** Max retry attempts before giving up and showing the error to the user. */
-const MAX_RETRY_ATTEMPTS = 10;
-
-/**
- * Maximum number of tool-call rounds in a single message processing
- * cycle. Each round = one LLM request + tool execution. The loop exits
- * early when the LLM stops requesting tools. This cap prevents infinite
- * tool-call cycles (e.g. a model stuck calling list_assets repeatedly).
- */
-const MAX_TOOL_ROUNDS = 500;
 
 /**
  * A tool call as received from the LLM stream, with a stable id for
@@ -96,7 +77,7 @@ function getDefaultProvider(): {
 	baseUrl: string;
 	apiKey: string;
 	model: string;
-	kind: "openai-compatible" | "ollama";
+	kind: ProviderKind;
 } | null {
 	const state = useAIProvidersStore.getState();
 	const provider = state.getDefault();
@@ -115,6 +96,18 @@ export class AIManager {
 	private retryTimer: ReturnType<typeof setInterval> | null = null;
 	/** The text being retried (saved so we can resend after cooldown). */
 	private retryText: string | null = null;
+	/**
+	 * AbortController for the in-flight fetch + tool-call loop. When the
+	 * user clicks Stop, we abort this to cancel the streaming response
+	 * and prevent further tool-call rounds.
+	 */
+	private abortController: AbortController | null = null;
+	/**
+	 * Maps a user message id → the command-history length at the moment
+	 * before the AI started processing that message. Used by `revert()`
+	 * to undo all editor changes the AI made in response to that message.
+	 */
+	private revertSnapshots = new Map<string, number>();
 
 	constructor(private editor: EditorCore) {}
 
@@ -203,11 +196,26 @@ export class AIManager {
 		const ai = useAIStore.getState();
 		const telemetry = useTelemetryStore.getState();
 
+		// Create a fresh AbortController for this message cycle. The
+		// user can cancel via `cancel()` which aborts the fetch and
+		// breaks the tool-call loop.
+		this.abortController = new AbortController();
+		const { signal } = this.abortController;
+
 		// Append the user message locally (only on first attempt —
 		// retries reuse the existing message).
 		const retryCount = useAIStore.getState().retryCount;
+		let userMessageId: string | null = null;
 		if (retryCount === 0) {
-			ai.appendMessage({ role: "user", content: text });
+			userMessageId = ai.appendMessage({ role: "user", content: text });
+			// Snapshot the undo-history length so we can revert all AI
+			// edits for this message later if the user asks.
+			if (userMessageId) {
+				this.revertSnapshots.set(
+					userMessageId,
+					this.editor.command.getHistoryLength(),
+				);
+			}
 		}
 		ai.setError(null);
 		ai.setStatus("streaming");
@@ -220,13 +228,21 @@ export class AIManager {
 		await this.maybeAutoCompact();
 
 		// Tool-call loop: keep sending requests until the LLM stops
-		// requesting tool calls (or we hit the round limit).
-		for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-			const result = await this.streamLLMResponse(text, telemetry.recent(20));
+		// requesting tool calls (or we hit the round limit, or the user
+		// aborts). The round limit is user-tunable via advanced settings.
+		const maxRounds = useAIStore.getState().advancedSettings.maxToolRounds;
+		for (let round = 0; round < maxRounds; round++) {
+			if (signal.aborted) return;
+			const result = await this.streamLLMResponse(
+				text,
+				telemetry.recent(20),
+				signal,
+			);
 			if (result.kind === "error") {
 				// streamLLMResponse already scheduled the retry.
 				return;
 			}
+			if (signal.aborted) return;
 			if (result.toolCalls.length === 0) {
 				// No tool calls — the LLM produced a final text answer.
 				break;
@@ -234,11 +250,17 @@ export class AIManager {
 
 			// Execute the tool calls and append tool-role messages with
 			// the results so the next LLM round can see them.
-			await this.executeAndRecordToolCalls(result.assistantId, result.toolCalls);
+			await this.executeAndRecordToolCalls(
+				result.assistantId,
+				result.toolCalls,
+				signal,
+			);
+
+			if (signal.aborted) return;
 
 			// If this was the last round, append a note so the LLM knows
 			// it hit the limit.
-			if (round === MAX_TOOL_ROUNDS - 1) {
+			if (round === maxRounds - 1) {
 				useAIStore.getState().appendMessage({
 					role: "assistant",
 					content:
@@ -268,6 +290,7 @@ export class AIManager {
 	private async streamLLMResponse(
 		text: string,
 		recent: ReturnType<ReturnType<typeof useTelemetryStore.getState>["recent"]>,
+		signal: AbortSignal,
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
 		| { kind: "error" }
@@ -361,6 +384,7 @@ export class AIManager {
 			res = await fetch("/api/ai/chat", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
+				signal,
 				body: JSON.stringify({
 					messages,
 					context: this.snapshotContext(),
@@ -378,6 +402,11 @@ export class AIManager {
 				}),
 			});
 		} catch (err) {
+			// User aborted — don't schedule a retry, just return error
+			// so the loop can check signal.aborted and exit cleanly.
+			if (signal.aborted || err instanceof DOMException) {
+				return { kind: "error" };
+			}
 			this.scheduleRetry(
 				text,
 				err instanceof Error ? err.message : "Network error",
@@ -482,6 +511,7 @@ export class AIManager {
 	private async executeAndRecordToolCalls(
 		assistantId: string,
 		toolCalls: ToolCallRound[],
+		signal: AbortSignal,
 	): Promise<void> {
 		useAIStore.getState().setStatus("awaiting-tools");
 		this.notify();
@@ -495,6 +525,7 @@ export class AIManager {
 		}> = [];
 
 		for (const tc of toolCalls) {
+			if (signal.aborted) return;
 			// Planning tools — these modify the AI store directly, not
 			// the editor. Handle them here before falling through to the
 			// executor / MCP paths.
@@ -656,15 +687,16 @@ export class AIManager {
 	 */
 	private scheduleRetry(text: string, errorMessage: string): void {
 		const store = useAIStore.getState();
+		const { maxRetryAttempts, retryCooldownBase } = store.advancedSettings;
 		const attempt = store.retryCount + 1;
 
-		if (attempt > MAX_RETRY_ATTEMPTS) {
+		if (attempt > maxRetryAttempts) {
 			// Give up — show the error to the user.
 			this.clearRetryTimer();
 			store.clearRetry();
 			store.setStatus("error");
 			store.setError(
-				`${errorMessage} (gave up after ${MAX_RETRY_ATTEMPTS} retries)`,
+				`${errorMessage} (gave up after ${maxRetryAttempts} retries)`,
 			);
 			this.notify();
 			// Still drain the queue so queued messages aren't stuck.
@@ -672,12 +704,12 @@ export class AIManager {
 			return;
 		}
 
-		const cooldown = RETRY_COOLDOWN_BASE_SECONDS * attempt;
+		const cooldown = retryCooldownBase * attempt;
 		this.retryText = text;
 		store.setRetry(attempt, cooldown);
 		store.setStatus("retrying");
 		store.setError(
-			`${errorMessage} — retry ${attempt}/${MAX_RETRY_ATTEMPTS} in ${cooldown}s…`,
+			`${errorMessage} — retry ${attempt}/${maxRetryAttempts} in ${cooldown}s…`,
 		);
 		this.notify();
 
@@ -691,7 +723,7 @@ export class AIManager {
 			// Update the error message with the live countdown.
 			if (current.retryIn > 0) {
 				current.setError(
-					`${errorMessage} — retry ${attempt}/${MAX_RETRY_ATTEMPTS} in ${current.retryIn}s…`,
+					`${errorMessage} — retry ${attempt}/${maxRetryAttempts} in ${current.retryIn}s…`,
 				);
 			}
 			this.notify();
@@ -727,19 +759,21 @@ export class AIManager {
 	private async maybeAutoCompact(): Promise<void> {
 		const store = useAIStore.getState();
 		const messages = store.messages;
+		const { compactionMessageThreshold, compactionKeepLast } =
+			store.advancedSettings;
 
 		const tokenEstimate = estimateTokens(messages);
 		const shouldCompact =
-			messages.length > COMPACTION_MESSAGE_THRESHOLD ||
+			messages.length > compactionMessageThreshold ||
 			tokenEstimate > COMPACTION_TOKEN_THRESHOLD;
 
 		if (!shouldCompact) return;
 		// Don't compact if there aren't enough messages to meaningfully trim.
-		if (messages.length <= COMPACTION_KEEP_LAST) return;
+		if (messages.length <= compactionKeepLast) return;
 
-		const toCompact = messages.slice(0, -COMPACTION_KEEP_LAST);
+		const toCompact = messages.slice(0, -compactionKeepLast);
 		const summary = await this.summarizeMessages(toCompact);
-		store.compactConversation(summary, COMPACTION_KEEP_LAST);
+		store.compactConversation(summary, compactionKeepLast);
 		this.notify();
 	}
 
@@ -821,7 +855,7 @@ export class AIManager {
 						if (parsed.delta) assembled += parsed.delta;
 						if (parsed.done) done = true;
 					} catch {
-						continue;
+						/* skip malformed SSE lines */
 					}
 				}
 			}
@@ -856,6 +890,11 @@ export class AIManager {
 	 * the queue. The user explicitly wants to stop everything.
 	 */
 	cancel(): void {
+		// Abort any in-flight fetch + break the tool-call loop.
+		if (this.abortController) {
+			this.abortController.abort();
+			this.abortController = null;
+		}
 		this.clearRetryTimer();
 		const ai = useAIStore.getState();
 		ai.clearRetry();
@@ -863,6 +902,53 @@ export class AIManager {
 		ai.setStatus("idle");
 		ai.setError(null);
 		this.notify();
+	}
+
+	/**
+	 * Revert all editor changes the AI made in response to a specific
+	 * user message. This undoes commands back to the snapshot taken
+	 * just before that message was processed. Also removes the
+	 * assistant reply and all subsequent messages from the chat, so
+	 * the conversation reflects the reverted state.
+	 *
+	 * Returns true if the revert was performed, false if no snapshot
+	 * was found for the given message id.
+	 */
+	revertToMessage(messageId: string): boolean {
+		const snapshot = this.revertSnapshots.get(messageId);
+		if (snapshot === undefined) return false;
+
+		const commands = this.editor.command;
+		const targetLength = snapshot;
+		let undone = 0;
+		while (commands.getHistoryLength() > targetLength && commands.canUndo()) {
+			commands.undo();
+			undone++;
+		}
+
+		// Remove the reverted snapshot and any snapshots for later
+		// messages (they're no longer valid since the conversation is
+		// being trimmed).
+		for (const [id] of this.revertSnapshots) {
+			if (id === messageId) {
+				this.revertSnapshots.delete(id);
+			}
+		}
+
+		// Trim the conversation: remove the user message and everything
+		// after it, since the AI's response is being reverted.
+		const ai = useAIStore.getState();
+		const messages = ai.messages;
+		const idx = messages.findIndex((m) => m.id === messageId);
+		if (idx !== -1) {
+			// Remove all messages from idx onward.
+			for (let i = messages.length - 1; i >= idx; i--) {
+				ai.removeMessage(messages[i].id);
+			}
+		}
+
+		this.notify();
+		return undone > 0 || idx !== -1;
 	}
 
 	/**

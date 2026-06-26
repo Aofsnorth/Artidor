@@ -1,21 +1,22 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Add01Icon,
+	AlertCircleIcon,
+	ArrowRight01Icon,
+	CheckmarkCircle02Icon,
+	CloudIcon,
 	Delete02Icon,
 	Edit01Icon,
-	Loading02Icon,
-	CheckmarkCircle02Icon,
-	AlertCircleIcon,
-	PlugIcon,
 	Key01Icon,
 	LinkSquareIcon,
+	Loading02Icon,
+	PlugIcon,
+	Settings02Icon,
 	SparklesIcon,
 	Time01Icon,
-	Settings02Icon,
-	ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,11 +55,16 @@ const KIND_LABELS: Record<ProviderKind, { label: string; hint: string }> = {
 		label: "Ollama (local)",
 		hint: "Local Ollama HTTP server. Same /v1/chat/completions schema, no API key.",
 	},
+	puter: {
+		label: "Puter.js (free, browser-based)",
+		hint: "Uses Puter.js — runs in the browser via your Puter account. No API key needed. WARNING: Puter may use your data for training.",
+	},
 };
 
 const KIND_ICONS: Record<ProviderKind, typeof PlugIcon> = {
 	"openai-compatible": SparklesIcon,
 	ollama: PlugIcon,
+	puter: CloudIcon,
 };
 
 interface TestResult {
@@ -505,6 +511,21 @@ function ProviderFormDialog({
 	const key = provider?.id ?? "new";
 	const [testing, setTesting] = useState(false);
 	const [testError, setTestError] = useState<string | null>(null);
+	// Puter.js mandatory data-usage warning popup — uncloseable for 5s.
+	const [showPuterWarning, setShowPuterWarning] = useState(false);
+	const [puterCountdown, setPuterCountdown] = useState(5);
+	const [puterAcknowledged, setPuterAcknowledged] = useState(false);
+
+	// Countdown timer for the Puter warning popup. The popup cannot be
+	// dismissed until the countdown reaches 0.
+	useEffect(() => {
+		if (!showPuterWarning) return;
+		if (puterCountdown <= 0) return;
+		const timer = setTimeout(() => {
+			setPuterCountdown((c) => c - 1);
+		}, 1000);
+		return () => clearTimeout(timer);
+	}, [showPuterWarning, puterCountdown]);
 
 	const handleKindChange = useCallback(
 		(next: ProviderKind) => {
@@ -523,13 +544,16 @@ function ProviderFormDialog({
 	const validate = useCallback((): boolean => {
 		const next: typeof errors = {};
 		if (!name.trim()) next.name = "Give the provider a name.";
-		if (!baseUrl.trim()) {
-			next.baseUrl = "Base URL is required.";
-		} else if (!/^https?:\/\//i.test(baseUrl.trim())) {
-			next.baseUrl = "Base URL must start with http:// or https://";
-		}
-		if (kind === "openai-compatible" && !apiKey.trim()) {
-			next.apiKey = "API key is required for this provider.";
+		// Puter.js runs entirely client-side — no base URL or API key needed.
+		if (kind !== "puter") {
+			if (!baseUrl.trim()) {
+				next.baseUrl = "Base URL is required.";
+			} else if (!/^https?:\/\//i.test(baseUrl.trim())) {
+				next.baseUrl = "Base URL must start with http:// or https://";
+			}
+			if (kind === "openai-compatible" && !apiKey.trim()) {
+				next.apiKey = "API key is required for this provider.";
+			}
 		}
 		if (!model.trim()) next.model = "Model name is required.";
 		setErrors(next);
@@ -538,11 +562,21 @@ function ProviderFormDialog({
 
 	const handleSave = useCallback(() => {
 		if (!validate()) return;
+		// Puter.js requires a mandatory data-usage warning. Show the
+		// popup first; the actual save happens in handlePuterConfirm.
+		if (kind === "puter" && !puterAcknowledged) {
+			setShowPuterWarning(true);
+			setPuterCountdown(5);
+			return;
+		}
 		const trimmed = {
 			name: name.trim(),
 			kind,
-			baseUrl: baseUrl.trim().replace(/\/+$/, ""),
-			apiKey: apiKey.trim(),
+			baseUrl:
+				kind === "puter"
+					? ""
+					: baseUrl.trim().replace(/\/+$/, ""),
+			apiKey: kind === "puter" ? "" : apiKey.trim(),
 			model: model.trim(),
 			enabled: true,
 		};
@@ -566,9 +600,37 @@ function ProviderFormDialog({
 		name,
 		onSaved,
 		provider,
+		puterAcknowledged,
 		updateProvider,
 		validate,
 	]);
+
+	const handlePuterConfirm = useCallback(() => {
+		setPuterAcknowledged(true);
+		setShowPuterWarning(false);
+		// Save the Puter provider directly — puterAcknowledged is now true.
+		const trimmed = {
+			name: name.trim(),
+			kind: "puter" as const,
+			baseUrl: "",
+			apiKey: "",
+			model: model.trim(),
+			enabled: true,
+		};
+		if (provider) {
+			updateProvider(provider.id, trimmed);
+			onSaved({ ...provider, ...trimmed });
+		} else {
+			const id = addProvider(trimmed);
+			onSaved({ id, ...trimmed, isDefault: false });
+		}
+		onOpenChange(false);
+	}, [name, model, provider, addProvider, updateProvider, onSaved, onOpenChange]);
+
+	const handlePuterCancel = useCallback(() => {
+		setShowPuterWarning(false);
+		setPuterAcknowledged(false);
+	}, []);
 
 	const handleTestFromDialog = useCallback(async () => {
 		if (!validate()) return;
@@ -660,54 +722,83 @@ function ProviderFormDialog({
 						</div>
 					</div>
 
-					{/* Base URL */}
-					<div className="space-y-1.5">
-						<Label
-							htmlFor="provider-base-url"
-							className="flex items-center gap-1.5 text-[11px] text-white/70"
-						>
-							<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
-							Base URL
-						</Label>
-						<Input
-							id="provider-base-url"
-							value={baseUrl}
-							placeholder="https://api.openai.com/v1"
-							onChange={(e) => setBaseUrl(e.target.value)}
-							className={cn("font-mono", errors.baseUrl && "border-red-400/40")}
-						/>
-						{errors.baseUrl && (
-							<p className="text-[10.5px] text-red-300/90">{errors.baseUrl}</p>
-						)}
-					</div>
-
-					{/* API Key */}
-					<div className="space-y-1.5">
-						<Label
-							htmlFor="provider-api-key"
-							className="flex items-center gap-1.5 text-[11px] text-white/70"
-						>
-							<HugeiconsIcon icon={Key01Icon} className="size-3" />
-							API Key
-							{kind === "ollama" && (
-								<span className="text-[10px] font-normal text-white/40">
-									— not required for Ollama
-								</span>
+					{kind === "puter" ? (
+						<div className="rounded-lg border border-amber-400/25 bg-amber-400/[0.06] p-3">
+							<div className="flex items-start gap-2">
+								<HugeiconsIcon
+									icon={AlertCircleIcon}
+									className="mt-0.5 size-4 shrink-0 text-amber-300"
+								/>
+								<div className="flex flex-col gap-1">
+									<p className="text-[11px] font-semibold text-amber-200">
+										Puter.js — Data Usage Warning
+									</p>
+									<p className="text-[10px] leading-relaxed text-amber-100/80">
+										Puter.js is a free, browser-based AI provider. It runs
+										entirely in your browser using your Puter account — no API
+										key needed. However, Puter may use your conversation data
+										for model training. Do not use Puter.js with sensitive or
+										private content.
+									</p>
+									<p className="text-[10px] text-amber-100/60">
+										You will see a mandatory confirmation dialog before Puter.js
+										is activated.
+									</p>
+								</div>
+							</div>
+						</div>
+					) : (
+					<>
+						{/* Base URL */}
+						<div className="space-y-1.5">
+							<Label
+								htmlFor="provider-base-url"
+								className="flex items-center gap-1.5 text-[11px] text-white/70"
+							>
+								<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
+								Base URL
+							</Label>
+							<Input
+								id="provider-base-url"
+								value={baseUrl}
+								placeholder="https://api.openai.com/v1"
+								onChange={(e) => setBaseUrl(e.target.value)}
+								className={cn("font-mono", errors.baseUrl && "border-red-400/40")}
+							/>
+							{errors.baseUrl && (
+								<p className="text-[10.5px] text-red-300/90">{errors.baseUrl}</p>
 							)}
-						</Label>
-						<Input
-							id="provider-api-key"
-							type="password"
-							value={apiKey}
-							placeholder={kind === "ollama" ? "(leave blank)" : "sk-..."}
-							onChange={(e) => setApiKey(e.target.value)}
-							className={cn("font-mono", errors.apiKey && "border-red-400/40")}
-							disabled={kind === "ollama"}
-						/>
-						{errors.apiKey && (
-							<p className="text-[10.5px] text-red-300/90">{errors.apiKey}</p>
-						)}
-					</div>
+						</div>
+
+						{/* API Key */}
+						<div className="space-y-1.5">
+							<Label
+								htmlFor="provider-api-key"
+								className="flex items-center gap-1.5 text-[11px] text-white/70"
+							>
+								<HugeiconsIcon icon={Key01Icon} className="size-3" />
+								API Key
+								{kind === "ollama" && (
+									<span className="text-[10px] font-normal text-white/40">
+										— not required for Ollama
+									</span>
+								)}
+							</Label>
+							<Input
+								id="provider-api-key"
+								type="password"
+								value={apiKey}
+								placeholder={kind === "ollama" ? "(leave blank)" : "sk-..."}
+								onChange={(e) => setApiKey(e.target.value)}
+								className={cn("font-mono", errors.apiKey && "border-red-400/40")}
+								disabled={kind === "ollama"}
+							/>
+							{errors.apiKey && (
+								<p className="text-[10.5px] text-red-300/90">{errors.apiKey}</p>
+							)}
+						</div>
+					</>
+					)}
 
 					{/* Model */}
 					<div className="space-y-1.5">
@@ -748,7 +839,70 @@ function ProviderFormDialog({
 						)
 					)}
 					<FormKeyBridge key={key} />
-				</DialogBody>
+				{showPuterWarning && (
+					<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+						<div className="mx-4 w-full max-w-md rounded-2xl border-2 border-amber-400/40 bg-[#1a1510] p-6 shadow-2xl">
+							<div className="mb-4 flex items-center justify-center">
+								<div className="grid size-12 place-items-center rounded-full border-2 border-amber-400/30 bg-amber-400/10">
+									<HugeiconsIcon
+										icon={AlertCircleIcon}
+										className="size-6 text-amber-300"
+									/>
+								</div>
+							</div>
+							<h3 className="mb-2 text-center text-[14px] font-bold text-amber-200">
+								Puter.js Data Usage Warning
+							</h3>
+							<p className="mb-3 text-center text-[11px] leading-relaxed text-amber-100/80">
+								Puter.js is a free, browser-based AI provider that uses your
+								Puter account. <strong>Puter may use your conversation data
+								for model training.</strong> Do not use Puter.js with
+								sensitive, private, or confidential content.
+							</p>
+							<p className="mb-4 text-center text-[11px] text-amber-100/60">
+								By clicking "I Understand & Accept", you acknowledge that
+								your data may be used for training purposes.
+							</p>
+							<div className="flex flex-col gap-2">
+								<button
+									type="button"
+									onClick={handlePuterConfirm}
+									disabled={puterCountdown > 0}
+									className={cn(
+										"w-full rounded-lg border px-4 py-2.5 text-[12px] font-semibold transition-all",
+										puterCountdown > 0
+											? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
+											: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
+									)}
+								>
+									{puterCountdown > 0
+										? `Please wait ${puterCountdown}s…`
+										: "I Understand & Accept"}
+								</button>
+								<button
+									type="button"
+									onClick={handlePuterCancel}
+									disabled={puterCountdown > 0}
+									className={cn(
+										"w-full rounded-lg border px-4 py-2 text-[11px] transition-all",
+										puterCountdown > 0
+											? "cursor-not-allowed border-white/5 text-white/20"
+											: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
+									)}
+								>
+									Cancel
+								</button>
+							</div>
+							{puterCountdown > 0 && (
+								<p className="mt-3 text-center text-[9px] text-white/30">
+									This warning cannot be dismissed for {puterCountdown} more
+									second{puterCountdown > 1 ? "s" : ""}.
+								</p>
+							)}
+						</div>
+					</div>
+			)}
+			</DialogBody>
 
 				<DialogFooter>
 					<Button
@@ -806,13 +960,15 @@ interface AIProvidersStore {
 /* -------------------------------------------------------------------------- */
 
 function defaultBaseUrlForKind(kind: ProviderKind): string {
-	return kind === "ollama"
-		? "http://127.0.0.1:11434/v1"
-		: "https://api.openai.com/v1";
+	if (kind === "ollama") return "http://127.0.0.1:11434/v1";
+	if (kind === "puter") return "";
+	return "https://api.openai.com/v1";
 }
 
 function defaultModelForKind(kind: ProviderKind): string {
-	return kind === "ollama" ? "llama3.1" : "gpt-4o-mini";
+	if (kind === "ollama") return "llama3.1";
+	if (kind === "puter") return "gpt-4o-mini";
+	return "gpt-4o-mini";
 }
 
 function formatRelativeTime(timestamp: number): string {
