@@ -692,18 +692,14 @@ export async function* streamPuterChat(
 		response = await puter.ai.chat(puterMessages, options);
 	} catch (err) {
 		console.error("[puter] chat() threw", err);
+		const base = err instanceof Error ? err.message : "Unknown error";
+		const isConnection =
+			/connection|network|fetch|timeout|unreachable|CSP|load/i.test(base);
+		const prefix = isConnection
+			? "Puter.js connection error"
+			: "Puter.js model error";
 		yield {
-			error:
-			const base = err instanceof Error ? err.message : "Unknown error";
-			const isConnection =
-				/connection|network|fetch|timeout|unreachable|CSP|load/i.test(base);
-			const prefix = isConnection
-				? "Puter.js connection error"
-				: "Puter.js model error";
-			console.error("[puter] chat() threw", err);
-			yield {
-				error: `${prefix} (${model}): ${base}`,
-			};
+			error: `${prefix} (${model}): ${base}`,
 		};
 		return;
 	}
@@ -819,7 +815,8 @@ export async function* streamPuterChat(
 				yield { toolCalls: calls };
 			}
 		} else if (part.type === "error" || part.message) {
-			yield { error: part.message ?? "Unknown Puter.js stream error" };
+			const msg = part.message ?? "Unknown Puter.js stream error";
+			yield { error: `Puter.js (${model}): ${msg}` };
 			return;
 		}
 		// Unknown chunk types (reasoning, usage, compaction, extra_content)

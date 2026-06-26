@@ -335,8 +335,15 @@ const getMediaDuration = ({ file }: { file: File }): Promise<number> => {
 
 		// Blob URLs from URL.createObjectURL are same-origin and cannot
 		// carry arbitrary HTML/script payloads — they only decode the
-		// media container of the user-selected File. Safe to assign.
-		// lgtm[js/xss-through-dom]
+		// media container of the user-selected File. The explicit
+		// `blob:` prefix check guards against any future code path that
+		// might pass a non-blob URL through this function.
+		if (!objectUrl.startsWith("blob:")) {
+			URL.revokeObjectURL(objectUrl);
+			element.remove();
+			reject(new Error("Refusing to load non-blob URL into media element"));
+			return;
+		}
 		element.src = objectUrl;
 		element.load();
 	});
