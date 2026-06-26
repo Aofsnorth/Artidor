@@ -524,12 +524,13 @@ export class AIManager {
 		if (providerConfig?.kind === "puter") {
 			// Build the system prompt client-side (the server route
 			// normally does this, but Puter bypasses the server).
-			const builtInTools = getFilteredToolDefinitions({
+			const builtInToolDefs = getFilteredToolDefinitions({
 				videoModel: providerConfig.videoModel,
 				imageModel: providerConfig.imageModel,
 				audioModel: providerConfig.audioModel,
 				mediaModel: providerConfig.mediaModel,
-			}).map((t) => ({
+			});
+			const builtInTools = builtInToolDefs.map((t) => ({
 				name: t.function.name,
 				category: t.function.name.split("_")[0] ?? "misc",
 				description: t.function.description,
@@ -552,10 +553,15 @@ export class AIManager {
 				{ role: "system", content: systemPrompt },
 				...messages,
 			];
+			// IMPORTANT: pass BOTH built-in tool definitions and MCP tools
+			// to the Puter.js chat API. Without the built-in tool defs,
+			// Claude can see tool names in the system prompt text but
+			// cannot actually call them via the native function-calling API.
+			const allTools = [...builtInToolDefs, ...externalTools];
 			return await this.streamPuterResponse(
 				messagesWithSystem,
 				providerConfig.model,
-				externalTools,
+				allTools,
 				signal,
 			);
 		}

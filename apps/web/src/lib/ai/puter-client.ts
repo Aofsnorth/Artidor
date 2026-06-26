@@ -697,13 +697,21 @@ export async function* streamPuterChat(
 			return;
 		}
 
+		// Debug log every chunk type so we can diagnose models that
+		// send tool calls in unexpected formats.
+		console.log("[puter] chunk", { type: part.type, hasText: Boolean(part.text), hasName: Boolean(part.name), hasInput: Boolean(part.input), id: part.id });
+
 		if (part.type === "text" && part.text) {
 			// Feed through the parser to detect and extract text-based
 			// tool calls (e.g. minimax emits <tool_call> XML tags).
 			const result = textParser.feed(part.text);
 			if (result.delta) yield { delta: result.delta };
 			if (result.toolCalls) yield { toolCalls: result.toolCalls };
-		} else if (part.type === "tool_use" || (part.name && part.input)) {
+		} else if (
+			part.type === "tool_use" ||
+			part.type === "function_call" ||
+			(part.name && part.input !== undefined)
+		) {
 			let args: Record<string, unknown>;
 			if (typeof part.input === "string") {
 				try {
