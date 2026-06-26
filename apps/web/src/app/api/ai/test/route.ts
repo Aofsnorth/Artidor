@@ -26,7 +26,7 @@ const bodySchema = z.object({
 	apiKey: z.string().optional().default(""),
 	model: z.string().min(1),
 	kind: z
-		.enum(["openai-compatible", "ollama", "puter"])
+		.enum(["openai-compatible", "anthropic-compatible", "ollama", "puter"])
 		.default("openai-compatible"),
 });
 
@@ -55,7 +55,7 @@ function buildAuthHeader({
 	kind,
 }: {
 	apiKey: string | undefined;
-	kind: "openai-compatible" | "ollama" | "puter";
+	kind: "openai-compatible" | "anthropic-compatible" | "ollama" | "puter";
 }): string | null {
 	if (kind === "ollama" || kind === "puter") return null;
 	if (!apiKey || apiKey.length === 0) return null;

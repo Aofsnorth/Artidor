@@ -128,6 +128,14 @@ export interface AdvancedAISettings {
 	compactionMessageThreshold: number;
 	/** Number of recent messages to keep during compaction (default: 6). */
 	compactionKeepLast: number;
+	/**
+	 * Controls how the AI learns from the user's editing style:
+	 *  - "project" — only learn from edits in the current project.
+	 *  - "global"  — learn from edits across all projects (cross-project).
+	 *  - "off"     — disable style learning entirely.
+	 * Default: "project".
+	 */
+	learningScope: "project" | "global" | "off";
 }
 
 const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
@@ -136,6 +144,7 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
 	retryCooldownBase: 5,
 	compactionMessageThreshold: 20,
 	compactionKeepLast: 6,
+	learningScope: "project",
 };
 
 interface AIState {

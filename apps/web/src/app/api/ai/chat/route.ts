@@ -105,7 +105,12 @@ const bodySchema = z.object({
 			apiKey: z.string().optional().default(""),
 			model: z.string().min(1),
 			kind: z
-				.enum(["openai-compatible", "ollama", "puter"])
+				.enum([
+					"openai-compatible",
+					"anthropic-compatible",
+					"ollama",
+					"puter",
+				])
 				.default("openai-compatible"),
 		})
 		.optional(),
@@ -127,6 +132,15 @@ const bodySchema = z.object({
 			}),
 		)
 		.optional(),
+	/**
+	 * Controls how the AI references recent edits in the system prompt:
+	 *  - "project" — edits are from this project only.
+	 *  - "global"  — edits span all projects.
+	 *  - "off"     — no style learning.
+	 */
+	learningScope: z
+		.enum(["project", "global", "off"])
+		.default("project"),
 });
 
 export const dynamic = "force-dynamic";
@@ -210,8 +224,12 @@ export async function POST(request: Request) {
 				{ status: 400, headers: { "content-type": "application/json" } },
 			);
 		}
-		const providerName: "openai" | "ollama" =
-			body.provider.kind === "ollama" ? "ollama" : "openai";
+		const providerName: "openai" | "anthropic" | "ollama" =
+			body.provider.kind === "ollama"
+				? "ollama"
+				: body.provider.kind === "anthropic-compatible"
+					? "anthropic"
+					: "openai";
 		config = {
 			provider: providerName,
 			model: body.provider.model,
@@ -292,6 +310,7 @@ export async function POST(request: Request) {
 		})),
 		context,
 		recentEvents,
+		learningScope: body.learningScope,
 	});
 
 	const provider: LLMProvider = (() => {

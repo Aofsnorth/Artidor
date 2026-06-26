@@ -1601,6 +1601,58 @@ function AdvancedSettingsButton() {
 						max={20}
 						onChange={(v) => setAdvancedSettings({ compactionKeepLast: v })}
 					/>
+
+					{/* Learning scope — controls how the AI learns from edits */}
+					<div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-2">
+						<div className="flex items-center gap-1.5">
+							<span className="text-[10.5px] font-semibold text-white/70">
+								Style learning
+							</span>
+						</div>
+						<p className="text-[9.5px] leading-snug text-white/40">
+							How the AI learns your editing style.
+						</p>
+						<div className="mt-0.5 flex gap-1">
+							{(
+								[
+									{ value: "project", label: "Project" },
+									{ value: "global", label: "Global" },
+									{ value: "off", label: "Off" },
+								] as const
+							).map((opt) => (
+								<button
+									key={opt.value}
+									type="button"
+									onClick={() =>
+										setAdvancedSettings({ learningScope: opt.value })
+									}
+									className={cn(
+										"flex-1 rounded-md border px-2 py-1 text-[10px] font-medium transition-all",
+										settings.learningScope === opt.value
+											? "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
+											: "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70",
+									)}
+								>
+									{opt.label}
+								</button>
+							))}
+						</div>
+						{settings.learningScope === "project" && (
+							<p className="text-[9px] text-white/30">
+								Learns from edits in this project only.
+							</p>
+						)}
+						{settings.learningScope === "global" && (
+							<p className="text-[9px] text-white/30">
+								Learns from edits across all projects.
+							</p>
+						)}
+						{settings.learningScope === "off" && (
+							<p className="text-[9px] text-white/30">
+								No style learning — AI won't reference edit history.
+							</p>
+						)}
+					</div>
 				</div>
 				<button
 					type="button"
@@ -1611,6 +1663,7 @@ function AdvancedSettingsButton() {
 							retryCooldownBase: 5,
 							compactionMessageThreshold: 20,
 							compactionKeepLast: 6,
+							learningScope: "project",
 						})
 					}
 					className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"

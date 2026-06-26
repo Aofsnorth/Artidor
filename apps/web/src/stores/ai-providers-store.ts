@@ -8,23 +8,27 @@
  * per request; if none is supplied it falls back to the server's
  * env-var resolution.
  *
- * Two provider kinds are supported out of the box:
+ * Provider kinds supported:
  *  - "openai-compatible" — any endpoint that speaks the OpenAI Chat
  *    Completions schema. Covers OpenAI itself, Together, Groq,
  *    OpenRouter, LM Studio, llama.cpp's server, vLLM, etc.
+ *  - "anthropic-compatible" — Anthropic Messages API (Claude models).
+ *    Uses the server-side Anthropic provider code path.
  *  - "ollama" — local Ollama instance. Reuses the openai-compatible
  *    code path because Ollama exposes the same schema on
  *    `/v1/chat/completions` from v0.1.32 onward.
- *
- * Anthropic is intentionally NOT in the UI yet — the existing
- * server-side Anthropic provider still works via env vars; we can add
- * it to the store later without breaking anything.
+ *  - "puter" — Puter.js, a free browser-based provider. Runs entirely
+ *    client-side via the Puter.js SDK.
  */
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ProviderKind = "openai-compatible" | "ollama" | "puter";
+export type ProviderKind =
+	| "openai-compatible"
+	| "anthropic-compatible"
+	| "ollama"
+	| "puter";
 
 /**
  * A user-configured AI provider. The id is a client-side uuid used as

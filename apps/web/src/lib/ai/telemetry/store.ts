@@ -30,6 +30,8 @@ export interface TelemetryEvent {
 	summary?: string;
 	/** "user" for clicks/keyboard, "ai" for AI-dispatched. */
 	source: "user" | "ai";
+	/** Project id this event was recorded in (for project-scoped learning). */
+	projectId?: string;
 }
 
 const MAX_EVENTS = 500;
@@ -42,12 +44,18 @@ interface TelemetryState {
 	 * behavior) so existing users keep their learning unless they opt out.
 	 */
 	enabled: boolean;
+	/** Current project id — attached to each recorded event. */
+	currentProjectId: string | null;
 	record: (e: Omit<TelemetryEvent, "id" | "timestamp">) => void;
 	clear: () => void;
 	/** Enable or disable auto-learning. */
 	setEnabled: (enabled: boolean) => void;
-	/** Return the last N events in chronological order. */
+	/** Set the current project id for event tagging. */
+	setCurrentProjectId: (id: string | null) => void;
+	/** Return the last N events in chronological order (all projects). */
 	recent: (n: number) => TelemetryEvent[];
+	/** Return the last N events for a specific project (chronological). */
+	recentForProject: (n: number, projectId: string) => TelemetryEvent[];
 	/** Return all events matching a command name, e.g. "split_element". */
 	byCommand: (name: string) => TelemetryEvent[];
 }
@@ -57,12 +65,14 @@ export const useTelemetryStore = create<TelemetryState>()(
 		(set, get) => ({
 			events: [],
 			enabled: true,
+			currentProjectId: null,
 			record: (e) => {
 				// Auto-learning toggle: when disabled, don't collect events.
 				if (!get().enabled) return;
 				const event: TelemetryEvent = {
 					id: crypto.randomUUID(),
 					timestamp: Date.now(),
+					projectId: get().currentProjectId ?? undefined,
 					...e,
 				};
 				const next = [event, ...get().events].slice(0, MAX_EVENTS);
@@ -70,7 +80,13 @@ export const useTelemetryStore = create<TelemetryState>()(
 			},
 			clear: () => set({ events: [] }),
 			setEnabled: (enabled) => set({ enabled }),
+			setCurrentProjectId: (id) => set({ currentProjectId: id }),
 			recent: (n) => get().events.slice(0, n).reverse(),
+			recentForProject: (n, projectId) =>
+				get()
+					.events.filter((e) => e.projectId === projectId)
+					.slice(0, n)
+					.reverse(),
 			byCommand: (name) => get().events.filter((e) => e.command === name),
 		}),
 		{ name: "artidor-ai-telemetry" },
