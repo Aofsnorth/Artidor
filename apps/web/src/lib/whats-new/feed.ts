@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-puter-middle-card-model-fetch",
+		date: "2026-06-27",
+		tag: "improvement",
+		title: "Puter.js provider card repositioned + auto-fetch models",
+		items: [
+			"Puter.js now appears in the middle of the provider type selector card (between OpenAI-compatible and Ollama) instead of at the bottom.",
+			"When Puter.js is selected, the available models are automatically fetched from the Puter.js API (puter.ai.listModels()) and shown in a dropdown. No need to manually type a model name — just pick from the list.",
+			"Loading spinner while models are being fetched, with a fallback to manual text input if the fetch fails.",
+		],
+	},
+	{
 		id: "2026-06-27-ai-stop-copy-edit-revert-adv-settings-puter",
 		date: "2026-06-27",
 		tag: "feature",
