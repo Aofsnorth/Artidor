@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-mcp-csp-fix",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "MCP server connections no longer blocked by CSP",
+		items: [
+			"Fixed: MCP server connections (SSE) were blocked by the Content Security Policy because connect-src only allowed specific known origins. MCP servers can be at any URL (localhost, custom domains), so connect-src now allows all http: and https: origins. The user adds MCP servers manually, so they trust those URLs.",
+		],
+	},
+	{
 		id: "2026-06-27-mcp-server-cards",
 		date: "2026-06-27",
 		tag: "improvement",

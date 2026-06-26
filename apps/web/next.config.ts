@@ -54,6 +54,10 @@ const cspDirectives: Record<string, string[]> = {
 		"'self'",
 		"blob:",
 		"data:",
+		// MCP servers can be at any URL (localhost, custom domains, etc).
+		// The user adds them manually, so we allow all http/https origins.
+		"http:",
+		"https:",
 		"https://www.googleapis.com",
 		"https://accounts.google.com",
 		"https://drive.google.com",
