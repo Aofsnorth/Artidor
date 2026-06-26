@@ -38,7 +38,13 @@ export interface ToolExecutionResultLite {
 	message?: string;
 }
 
-export type ChatStatus = "idle" | "streaming" | "awaiting-tools" | "error";
+export type ChatStatus =
+	| "idle"
+	| "streaming"
+	| "awaiting-tools"
+	| "error"
+	| "queued"
+	| "retrying";
 
 /**
  * When the conversation grows too long for the LLM's context window,
@@ -87,6 +93,24 @@ interface AIState {
 	 */
 	pendingImages: string[];
 	/**
+	 * Messages queued while the AI is busy (streaming/awaiting-tools).
+	 * Each entry is the raw user text. When the current request
+	 * finishes, the queue is drained FIFO — the first queued message
+	 * is sent next.
+	 */
+	queue: string[];
+	/**
+	 * Current retry attempt count for the active message. Resets to 0
+	 * on a successful response. Used to compute the progressive
+	 * cooldown: 5s × attemptCount.
+	 */
+	retryCount: number;
+	/**
+	 * Seconds remaining until the next auto-retry. 0 when no retry
+	 * is scheduled. The UI shows a countdown when this is > 0.
+	 */
+	retryIn: number;
+	/**
 	 * Archived conversations. The active conversation is NOT in this list
 	 * until the user starts a new chat or switches to another one.
 	 */
@@ -95,6 +119,8 @@ interface AIState {
 	/* mutations */
 	appendMessage: (m: Omit<ChatMessage, "id" | "timestamp">) => string;
 	updateMessage: (id: string, patch: Partial<ChatMessage>) => void;
+	/** Remove a single message by id (used during retry cleanup). */
+	removeMessage: (id: string) => void;
 	/** Start a fresh chat, archiving the current conversation if it has messages. */
 	clearConversation: () => void;
 	/**
@@ -110,6 +136,18 @@ interface AIState {
 	addPendingImage: (dataUrl: string) => void;
 	/** Clear pending images (called after they've been sent to the LLM). */
 	clearPendingImages: () => void;
+	/** Enqueue a user message to be sent when the current request finishes. */
+	enqueue: (text: string) => void;
+	/** Dequeue and return the first queued message (FIFO). */
+	dequeue: () => string | undefined;
+	/** Clear the entire queue (e.g. when user cancels or starts new chat). */
+	clearQueue: () => void;
+	/** Set the retry attempt count and countdown. */
+	setRetry: (count: number, seconds: number) => void;
+	/** Decrement the retry countdown by 1 second. */
+	tickRetry: () => void;
+	/** Reset retry state to 0 (called on success or manual cancel). */
+	clearRetry: () => void;
 	/** Switch to a saved conversation. */
 	loadConversation: (id: string) => void;
 	/** Rename a saved conversation. */
@@ -150,6 +188,9 @@ export const useAIStore = create<AIState>()(
 			referenceVideoName: null,
 			compactedSummary: null,
 			pendingImages: [],
+			queue: [],
+			retryCount: 0,
+			retryIn: 0,
 			conversations: [],
 
 			appendMessage: (m) => {
@@ -169,6 +210,10 @@ export const useAIStore = create<AIState>()(
 						m.id === id ? { ...m, ...patch } : m,
 					),
 				});
+			},
+
+			removeMessage: (id) => {
+				set({ messages: get().messages.filter((m) => m.id !== id) });
 			},
 
 			clearConversation: () => {
@@ -193,6 +238,9 @@ export const useAIStore = create<AIState>()(
 					messages: [],
 					error: null,
 					compactedSummary: null,
+					queue: [],
+					retryCount: 0,
+					retryIn: 0,
 					conversations,
 				});
 			},
@@ -220,6 +268,24 @@ export const useAIStore = create<AIState>()(
 			addPendingImage: (dataUrl) =>
 				set({ pendingImages: [...get().pendingImages, dataUrl] }),
 			clearPendingImages: () => set({ pendingImages: [] }),
+
+			enqueue: (text) => set({ queue: [...get().queue, text] }),
+			dequeue: () => {
+				const queue = get().queue;
+				if (queue.length === 0) return undefined;
+				const [first, ...rest] = queue;
+				set({ queue: rest });
+				return first;
+			},
+			clearQueue: () => set({ queue: [] }),
+			setRetry: (count, seconds) =>
+				set({ retryCount: count, retryIn: seconds }),
+			tickRetry: () => {
+				const current = get().retryIn;
+				if (current <= 0) return;
+				set({ retryIn: current - 1 });
+			},
+			clearRetry: () => set({ retryCount: 0, retryIn: 0 }),
 
 			loadConversation: (id) => {
 				const state = get();

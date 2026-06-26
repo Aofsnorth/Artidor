@@ -41,6 +41,15 @@ const COMPACTION_TOKEN_THRESHOLD = 6000;
 const COMPACTION_KEEP_LAST = 6;
 
 /**
+ * Progressive retry cooldown: each retry attempt waits
+ * `RETRY_COOLDOWN_BASE_SECONDS * attemptCount` seconds before retrying.
+ * So attempt 1 = 5s, 2 = 10s, 3 = 15s, etc.
+ */
+const RETRY_COOLDOWN_BASE_SECONDS = 5;
+/** Max retry attempts before giving up and showing the error to the user. */
+const MAX_RETRY_ATTEMPTS = 5;
+
+/**
  * Rough token estimate: ~4 characters per token. This is intentionally
  * conservative (overestimates slightly) so compaction triggers before
  * the context window is actually full.
@@ -84,6 +93,10 @@ function getDefaultProvider(): {
 
 export class AIManager {
 	private listeners = new Set<() => void>();
+	/** Active retry countdown timer (setInterval id). */
+	private retryTimer: ReturnType<typeof setInterval> | null = null;
+	/** The text being retried (saved so we can resend after cooldown). */
+	private retryText: string | null = null;
 
 	constructor(private editor: EditorCore) {}
 
@@ -135,15 +148,44 @@ export class AIManager {
 	}
 
 	/**
-	 * Send a user message to the AI. Streams the response, dispatches
-	 * tool calls back into the editor, and updates the UI store.
+	 * Send a user message to the AI. If the AI is already busy
+	 * (streaming/awaiting-tools/retrying), the message is queued and
+	 * will be sent automatically when the current request finishes.
 	 */
 	async send({ text }: SendOptions): Promise<void> {
 		const ai = useAIStore.getState();
+		const isBusy =
+			ai.status === "streaming" ||
+			ai.status === "awaiting-tools" ||
+			ai.status === "retrying";
+
+		if (isBusy) {
+			ai.enqueue(text);
+			this.notify();
+			return;
+		}
+
+		// Cancel any pending retry — the user sent a new message.
+		this.clearRetryTimer();
+		useAIStore.getState().clearRetry();
+		await this.processMessage(text);
+	}
+
+	/**
+	 * Core message processing: appends the user message, builds the
+	 * request, streams the response, and dispatches tool calls.
+	 * On error, schedules an auto-retry with progressive cooldown.
+	 */
+	private async processMessage(text: string): Promise<void> {
+		const ai = useAIStore.getState();
 		const telemetry = useTelemetryStore.getState();
 
-		// Append the user message locally.
-		ai.appendMessage({ role: "user", content: text });
+		// Append the user message locally (only on first attempt —
+		// retries reuse the existing message).
+		const retryCount = useAIStore.getState().retryCount;
+		if (retryCount === 0) {
+			ai.appendMessage({ role: "user", content: text });
+		}
 		ai.setError(null);
 		ai.setStatus("streaming");
 		this.notify();
@@ -258,9 +300,10 @@ export class AIManager {
 				}),
 			});
 		} catch (err) {
-			ai.setStatus("error");
-			ai.setError(err instanceof Error ? err.message : "Network error");
-			this.notify();
+			this.scheduleRetry(
+				text,
+				err instanceof Error ? err.message : "Network error",
+			);
 			return;
 		}
 
@@ -277,9 +320,7 @@ export class AIManager {
 			if (res.status === 501) {
 				message = `${message} — open the AI providers manager to add one.`;
 			}
-			ai.setStatus("error");
-			ai.setError(message);
-			this.notify();
+			this.scheduleRetry(text, message);
 			return;
 		}
 
@@ -292,9 +333,7 @@ export class AIManager {
 
 		const reader = res.body?.getReader();
 		if (!reader) {
-			ai.setStatus("error");
-			ai.setError("No response body");
-			this.notify();
+			this.scheduleRetry(text, "No response body");
 			return;
 		}
 
@@ -332,9 +371,10 @@ export class AIManager {
 						continue;
 					}
 					if (parsed.error) {
-						ai.setStatus("error");
-						ai.setError(parsed.error);
-						this.notify();
+						// Remove the empty assistant bubble we reserved, then retry.
+						useAIStore.getState().removeMessage(assistantId);
+						this.scheduleRetry(text, parsed.error);
+						return;
 					}
 					if (parsed.delta) {
 						assembledText += parsed.delta;
@@ -355,9 +395,10 @@ export class AIManager {
 				}
 			}
 		} catch (err) {
-			ai.setStatus("error");
-			ai.setError(err instanceof Error ? err.message : "Stream error");
-			this.notify();
+			this.scheduleRetry(
+				text,
+				err instanceof Error ? err.message : "Stream error",
+			);
 			return;
 		}
 
@@ -421,8 +462,90 @@ export class AIManager {
 		useAIStore.getState().updateMessage(assistantId, {
 			toolCalls: finalToolCalls,
 		});
+
+		// Success — reset retry state and drain the queue.
+		this.clearRetryTimer();
+		useAIStore.getState().clearRetry();
 		ai.setStatus("idle");
 		this.notify();
+
+		// If there are queued messages, send the next one.
+		this.drainQueue();
+	}
+
+	/**
+	 * Send the next queued message if any. Called after a successful
+	 * response or when the queue is manually flushed.
+	 */
+	private async drainQueue(): Promise<void> {
+		const next = useAIStore.getState().dequeue();
+		if (next) {
+			await this.processMessage(next);
+		}
+	}
+
+	/**
+	 * Schedule an auto-retry with progressive cooldown.
+	 * Attempt 1 → 5s, 2 → 10s, 3 → 15s, etc.
+	 * After MAX_RETRY_ATTEMPTS, gives up and shows the error.
+	 */
+	private scheduleRetry(text: string, errorMessage: string): void {
+		const store = useAIStore.getState();
+		const attempt = store.retryCount + 1;
+
+		if (attempt > MAX_RETRY_ATTEMPTS) {
+			// Give up — show the error to the user.
+			this.clearRetryTimer();
+			store.clearRetry();
+			store.setStatus("error");
+			store.setError(
+				`${errorMessage} (gave up after ${MAX_RETRY_ATTEMPTS} retries)`,
+			);
+			this.notify();
+			// Still drain the queue so queued messages aren't stuck.
+			void this.drainQueue();
+			return;
+		}
+
+		const cooldown = RETRY_COOLDOWN_BASE_SECONDS * attempt;
+		this.retryText = text;
+		store.setRetry(attempt, cooldown);
+		store.setStatus("retrying");
+		store.setError(
+			`${errorMessage} — retry ${attempt}/${MAX_RETRY_ATTEMPTS} in ${cooldown}s…`,
+		);
+		this.notify();
+
+		// Start a per-second countdown timer.
+		this.clearRetryTimer();
+		this.retryTimer = setInterval(() => {
+			const current = useAIStore.getState();
+			current.tickRetry();
+			this.notify();
+
+			// Update the error message with the live countdown.
+			if (current.retryIn > 0) {
+				current.setError(
+					`${errorMessage} — retry ${attempt}/${MAX_RETRY_ATTEMPTS} in ${current.retryIn}s…`,
+				);
+			}
+			this.notify();
+
+			if (current.retryIn <= 0) {
+				this.clearRetryTimer();
+				// Preserve the retry count (it's already set to `attempt`)
+				// and re-process the message.
+				void this.processMessage(this.retryText ?? text);
+			}
+		}, 1000);
+	}
+
+	/** Clear the retry countdown interval if active. */
+	private clearRetryTimer(): void {
+		if (this.retryTimer) {
+			clearInterval(this.retryTimer);
+			this.retryTimer = null;
+		}
 	}
 
 	/**
@@ -564,13 +687,14 @@ export class AIManager {
 	}
 
 	/**
-	 * Cancel an in-flight request. (The browser fetch is aborted, the
-	 * streamed state is reset.) We don't store the controller at the
-	 * manager level — a single in-flight request per editor is fine
-	 * because the UI disables the input while streaming.
+	 * Cancel an in-flight request, clear the retry timer, and flush
+	 * the queue. The user explicitly wants to stop everything.
 	 */
 	cancel(): void {
+		this.clearRetryTimer();
 		const ai = useAIStore.getState();
+		ai.clearRetry();
+		ai.clearQueue();
 		ai.setStatus("idle");
 		ai.setError(null);
 		this.notify();

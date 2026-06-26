@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-queue-auto-retry",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Chat queue + auto-retry with progressive cooldown",
+		items: [
+			"Messages sent while the AI is busy are now queued and processed automatically when the current request finishes. The queue indicator shows how many messages are waiting.",
+			"When the AI errors (network failure, provider down, stream error), it auto-retries with progressive cooldown: attempt 1 waits 5s, 2 waits 10s, 3 waits 15s — up to 5 attempts before giving up.",
+			"Retry countdown is shown live in the chat as an amber bubble with a 'Cancel retry' button. The StatusBar badge also shows 'retry N' with the countdown.",
+			"Quick actions and the composer still work while the AI is busy — they queue instead of being disabled. The send button becomes a 'Queue' button when busy.",
+		],
+	},
+	{
 		id: "2026-06-27-ai-chat-redesign",
 		date: "2026-06-27",
 		tag: "improvement",
