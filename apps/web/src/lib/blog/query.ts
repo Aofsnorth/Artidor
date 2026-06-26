@@ -15,7 +15,7 @@ import rehypeSanitize from "rehype-sanitize";
 
 const url =
 	process.env.NEXT_PUBLIC_MARBLE_API_URL ?? "https://api.marblecms.com";
-const key = process.env.MARBLE_WORKSPACE_KEY ?? "cmd4iw9mm0006l804kwqv0k46";
+const key = process.env.MARBLE_WORKSPACE_KEY;
 
 const EMPTY_PAGINATION: Pagination = {
 	limit: 0,
@@ -47,12 +47,14 @@ const EMPTY_AUTHORS: MarbleAuthorList = {
 };
 
 function isMarbleConfigured() {
-	return ![
-		"",
-		"placeholder",
-		"build-placeholder",
-		"your_workspace_key_here",
-	].includes(key);
+	return (
+		!!key &&
+		![
+			"placeholder",
+			"build-placeholder",
+			"your_workspace_key_here",
+		].includes(key)
+	);
 }
 
 async function fetchFromMarble<T>({
@@ -67,7 +69,7 @@ async function fetchFromMarble<T>({
 	}
 
 	try {
-		const response = await fetch(`${url}/${key}/${endpoint}`);
+		const response = await fetch(`${url}/${key ?? ""}/${endpoint}`);
 		if (!response.ok) {
 			console.warn(
 				`Failed to fetch ${endpoint}: ${response.status} ${response.statusText}`,

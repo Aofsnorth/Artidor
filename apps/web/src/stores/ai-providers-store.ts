@@ -22,7 +22,11 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import {
+	encryptApiKey,
+	decryptApiKey,
+} from "@/lib/ai/key-crypto";
 
 export type ProviderKind =
 	| "openai-compatible"
@@ -101,6 +105,66 @@ function generateId(): string {
 		return crypto.randomUUID();
 	}
 	return `provider-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Zustand storage adapter that encrypts `apiKey` fields before
+ * writing to localStorage and decrypts them after reading.
+ *
+ * Uses the Web Crypto API (AES-GCM) via `@/lib/ai/key-crypto`. The
+ * encryption key is stored in IndexedDB, not localStorage, so a
+ * naive `localStorage.getItem` only returns ciphertext.
+ *
+ * Falls back to plaintext if the crypto API is unavailable (e.g.
+ * non-secure context like HTTP localhost), preserving backwards
+ * compatibility with existing plaintext entries.
+ *
+ * The store always works with plaintext keys in memory — encryption
+ * is transparent at the storage boundary.
+ */
+function createEncryptedStorage() {
+	return createJSONStorage(() => ({
+		getItem: async (name: string): Promise<string | null> => {
+			const raw = localStorage.getItem(name);
+			if (!raw) return null;
+			try {
+				const parsed = JSON.parse(raw) as {
+					providers?: Array<{ apiKey?: string }>;
+				};
+				if (parsed.providers) {
+					for (const p of parsed.providers) {
+						if (p.apiKey) {
+							p.apiKey = await decryptApiKey(p.apiKey);
+						}
+					}
+				}
+				return JSON.stringify(parsed);
+			} catch {
+				return raw;
+			}
+		},
+		setItem: async (name: string, value: string): Promise<void> => {
+			try {
+				const parsed = JSON.parse(value) as {
+					providers?: Array<{ apiKey?: string }>;
+				};
+				if (parsed.providers) {
+					for (const p of parsed.providers) {
+						if (p.apiKey) {
+							p.apiKey = await encryptApiKey(p.apiKey);
+						}
+					}
+				}
+				localStorage.setItem(name, JSON.stringify(parsed));
+			} catch {
+				localStorage.setItem(name, value);
+			}
+		},
+		removeItem: (name: string): Promise<void> => {
+			localStorage.removeItem(name);
+			return Promise.resolve();
+		},
+	}));
 }
 
 export const useAIProvidersStore = create<AIProvidersState>()(
@@ -193,6 +257,12 @@ export const useAIProvidersStore = create<AIProvidersState>()(
 		{
 			name: "artidor-ai-providers",
 			partialize: (state) => ({ providers: state.providers }),
+			// Custom storage that encrypts API keys before writing to
+			// localStorage and decrypts them after reading. This mitigates
+			// XSS-based key theft: an attacker who reads localStorage gets
+			// ciphertext, not plaintext keys. The encryption key lives in
+			// IndexedDB (see key-crypto.ts), which is harder to access blindly.
+			storage: createEncryptedStorage(),
 		},
 	),
 );

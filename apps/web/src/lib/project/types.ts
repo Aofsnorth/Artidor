@@ -25,6 +25,14 @@ export interface TProjectMetadata {
 	updatedAt: Date;
 	googleDriveFolderId?: string | null;
 	googleDriveFileId?: string | null;
+	/**
+	 * Optional per-project AI provider override. When set, the AI
+	 * Edit panel uses this provider instead of the global default.
+	 * The value is the provider id from `useAIProvidersStore`.
+	 * When unset or the provider no longer exists, falls back to
+	 * the global default provider.
+	 */
+	aiProviderId?: string | null;
 }
 
 export interface TProjectSettings {

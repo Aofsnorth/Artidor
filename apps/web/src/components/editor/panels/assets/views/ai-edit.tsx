@@ -185,6 +185,14 @@ export function AIEditView() {
 	const ai = useAIStore();
 	const telemetry = useTelemetryStore();
 	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
+	const allProviders = useAIProvidersStore((s) => s.providers);
+	const activeProject = editor.project.getActive();
+	const projectProviderId = activeProject?.metadata.aiProviderId ?? null;
+	// The effective provider for this project: per-project override
+	// if set and still exists, otherwise the global default.
+	const effectiveProvider = projectProviderId
+		? allProviders.find((p) => p.id === projectProviderId && p.enabled)
+		: defaultProvider;
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isExtracting, setIsExtracting] = useState(false);
 	const [providersOpen, setProvidersOpen] = useState(false);
@@ -367,7 +375,23 @@ export function AIEditView() {
 					queueCount={queueCount}
 					retryIn={retryIn}
 					retryCount={retryCount}
-					defaultProvider={defaultProvider}
+					defaultProvider={effectiveProvider ?? defaultProvider}
+					allProviders={allProviders}
+					projectProviderId={projectProviderId}
+					onSelectProvider={(id) => {
+						const project = editor.project.getActive();
+						if (!project) return;
+						editor.project.setActiveProject({
+							project: {
+								...project,
+								metadata: {
+									...project.metadata,
+									aiProviderId: id,
+								},
+							},
+						});
+						editor.project.saveCurrentProject();
+					}}
 					compactedSummary={ai.compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
 					conversations={ai.conversations}
@@ -1439,6 +1463,9 @@ function StatusBar({
 	retryIn,
 	retryCount,
 	defaultProvider,
+	allProviders,
+	projectProviderId,
+	onSelectProvider,
 	compactedSummary,
 	autoLearnEnabled,
 	conversations,
@@ -1461,6 +1488,9 @@ function StatusBar({
 	retryIn: number;
 	retryCount: number;
 	defaultProvider: { name: string; model: string; kind: string } | undefined;
+	allProviders: Array<{ id: string; name: string; model: string; enabled: boolean }>;
+	projectProviderId: string | null;
+	onSelectProvider: (id: string | null) => void;
 	compactedSummary: ReturnType<typeof useAIStore.getState>["compactedSummary"];
 	autoLearnEnabled: boolean;
 	conversations: { id: string; name: string; updatedAt: number }[];
@@ -1624,6 +1654,37 @@ function StatusBar({
 							className="size-3 shrink-0 text-white/30 transition-colors group-hover:text-white/60"
 						/>
 					</button>
+					{allProviders.length > 1 && (
+						<div className="relative shrink-0">
+							<select
+								value={projectProviderId ?? ""}
+								onChange={(e) =>
+									onSelectProvider(e.target.value || null)
+								}
+								title="Select AI provider for this project"
+								className="h-7 appearance-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 pr-6 text-[10px] text-white/70 outline-none transition-colors hover:border-white/15 hover:bg-white/[0.05] focus:border-white/25"
+							>
+								<option value="" className="bg-[#1a1a1e]">
+									Default
+								</option>
+								{allProviders
+									.filter((p) => p.enabled)
+									.map((p) => (
+										<option
+											key={p.id}
+											value={p.id}
+											className="bg-[#1a1a1e]"
+										>
+											{p.name}
+										</option>
+									))}
+							</select>
+							<HugeiconsIcon
+								icon={ArrowDown03Icon}
+								className="pointer-events-none absolute right-1.5 top-1/2 size-2.5 -translate-y-1/2 text-white/40"
+							/>
+						</div>
+					)}
 					<McpServerChip />
 					<AdvancedSettingsButton />
 				</div>

@@ -26,7 +26,11 @@ import {
 	useAIStore,
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
-import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
+import {
+	useAIProvidersStore,
+	type ProviderKind,
+	type AIProvider,
+} from "@/stores/ai-providers-store";
 import {
 	streamPuterChat,
 	puterTxt2Vid,
@@ -81,7 +85,7 @@ export interface SendOptions {
  * `null` when the user has no providers configured — in which case
  * the server falls back to its env-var provider.
  */
-function getDefaultProvider(): {
+function getDefaultProvider(projectProviderId?: string | null): {
 	baseUrl: string;
 	apiKey: string;
 	model: string;
@@ -92,7 +96,18 @@ function getDefaultProvider(): {
 	mediaModel?: string;
 } | null {
 	const state = useAIProvidersStore.getState();
-	const provider = state.getDefault();
+	// If the project has a per-project provider override, try it first.
+	// Fall back to the global default if the override provider no longer
+	// exists (e.g. was deleted).
+	let provider: AIProvider | undefined;
+	if (projectProviderId) {
+		provider = state.providers.find(
+			(p) => p.id === projectProviderId && p.enabled,
+		);
+	}
+	if (!provider) {
+		provider = state.getDefault();
+	}
 	if (!provider) return null;
 	return {
 		baseUrl: provider.baseUrl,
@@ -411,7 +426,10 @@ export class AIManager {
 
 		// Make the request. Include the user's selected provider config so
 		// the server uses the client-managed endpoint rather than env vars.
-		const providerConfig = getDefaultProvider();
+		// Pass the project's per-project provider override if set.
+		const projectProviderId =
+			this.editor.project.getActive()?.metadata.aiProviderId ?? null;
+		const providerConfig = getDefaultProvider(projectProviderId);
 		// Collect MCP external tools so the LLM can call them alongside
 		// the built-in editor tools. Each MCP tool is namespaced as
 		// `mcp__<serverId>__<toolName>` to avoid collisions.
@@ -880,7 +898,9 @@ export class AIManager {
 				// result into the media library. They only run when
 				// the active provider is Puter.js and the
 				// corresponding media model is configured.
-				const provider = getDefaultProvider();
+				const provider = getDefaultProvider(
+					this.editor.project.getActive()?.metadata.aiProviderId ?? null,
+				);
 				if (provider?.kind !== "puter") {
 					results.push({
 						name: tc.name,
@@ -1108,7 +1128,9 @@ export class AIManager {
 			})
 			.join("\n");
 
-		const providerConfig = getDefaultProvider();
+		const providerConfig = getDefaultProvider(
+			this.editor.project.getActive()?.metadata.aiProviderId ?? null,
+		);
 		const summarizeMessages: ChatMessage[] = [
 			{
 				role: "system",

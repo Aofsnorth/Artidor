@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-security-and-project-provider",
+		date: "2026-06-27",
+		tag: "security",
+		title: "API key encryption + per-project provider selection",
+		items: [
+			"Security: API keys are now encrypted with AES-GCM (Web Crypto API) before being stored in localStorage. The encryption key lives in IndexedDB, so a naive localStorage.getItem only returns ciphertext. This mitigates XSS-based key theft while maintaining backwards compatibility with existing plaintext entries.",
+			"Security: Removed hardcoded Marble CMS workspace key fallback. The key must now be set via the MARBLE_WORKSPACE_KEY environment variable.",
+			"Feature: Per-project AI provider selection. A Select dropdown appears in the AI panel when you have 2+ providers. Choose 'Default' to use the global default provider, or pick a specific provider for this project only. The selection is saved in the project metadata and persists across sessions.",
+		],
+	},
+	{
 		id: "2026-06-27-ai-media-generation",
 		date: "2026-06-27",
 		tag: "feature",
