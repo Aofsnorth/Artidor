@@ -36,6 +36,11 @@ const TAG_STYLES: Record<
 		chip: "bg-violet-400/15 text-violet-300 ring-violet-400/20",
 		dot: "bg-violet-400",
 	},
+	security: {
+		label: "Security",
+		chip: "bg-rose-400/15 text-rose-300 ring-rose-400/20",
+		dot: "bg-rose-400",
+	},
 };
 
 export function WhatsNewCard() {

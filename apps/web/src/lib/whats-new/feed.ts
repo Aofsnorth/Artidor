@@ -4,7 +4,7 @@
  * bottom-left of the editor. Add a new entry at the TOP of WHATS_NEW for every
  * shipped change — the newest entry's id drives the unseen indicator.
  */
-export type WhatsNewTag = "feature" | "improvement" | "fix" | "performance";
+export type WhatsNewTag = "feature" | "improvement" | "fix" | "performance" | "security";
 
 export interface WhatsNewEntry {
 	/** Stable unique id (also the seen-tracking key). Newest entry first. */

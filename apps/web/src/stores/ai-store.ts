@@ -133,7 +133,8 @@ export interface AdvancedAISettings {
 	 *  - "project" — only learn from edits in the current project.
 	 *  - "global"  — learn from edits across all projects (cross-project).
 	 *  - "off"     — disable style learning entirely.
-	 * Default: "project".
+	 * Default: "off" (opt-in — the user must explicitly enable
+	 * learning so their edit data is never collected without consent).
 	 */
 	learningScope: "project" | "global" | "off";
 }
@@ -144,7 +145,7 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
 	retryCooldownBase: 5,
 	compactionMessageThreshold: 20,
 	compactionKeepLast: 6,
-	learningScope: "project",
+	learningScope: "off",
 };
 
 interface AIState {
