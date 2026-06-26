@@ -147,6 +147,10 @@ const bodySchema = z.object({
 	learningScope: z
 		.enum(["project", "global", "off"])
 		.default("project"),
+	/** Custom AI assistant name (default: "Arth"). */
+	aiName: z.string().max(60).optional(),
+	/** Extra personality instructions for the AI. */
+	aiPersonality: z.string().max(2000).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -322,6 +326,8 @@ export async function POST(request: Request) {
 		context,
 		recentEvents,
 		learningScope: body.learningScope,
+		aiName: body.aiName,
+		aiPersonality: body.aiPersonality,
 	});
 
 	const provider: LLMProvider = (() => {

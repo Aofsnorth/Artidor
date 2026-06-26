@@ -48,6 +48,17 @@ interface SettingsState {
 	 */
 	hdDragPreview: boolean;
 	setHdDragPreview: (value: boolean) => void;
+
+	/**
+	 * AI assistant persona configuration. The name is shown in the
+	 * chat header and used in the system prompt. The personality is
+	 * injected into the system prompt as additional instructions.
+	 * When empty, defaults to "Arth" with no extra personality.
+	 */
+	aiName: string;
+	setAiName: (value: string) => void;
+	aiPersonality: string;
+	setAiPersonality: (value: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -70,6 +81,11 @@ export const useSettingsStore = create<SettingsState>()(
 
 			hdDragPreview: false,
 			setHdDragPreview: (value) => set({ hdDragPreview: value }),
+
+			aiName: "Arth",
+			setAiName: (value) => set({ aiName: value || "Arth" }),
+			aiPersonality: "",
+			setAiPersonality: (value) => set({ aiPersonality: value }),
 		}),
 		{
 			name: "app-settings",

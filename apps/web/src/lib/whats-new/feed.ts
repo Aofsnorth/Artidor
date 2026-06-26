@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-custom-ai-persona",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "Customize the AI assistant's name and personality",
+		items: [
+			"You can now rename the AI assistant and customize its personality from Settings → AI. The name appears in the chat header and placeholder text. The personality field accepts free-form instructions that shape the AI's tone and style (e.g. 'Be concise and friendly. Use casual language.').",
+			"Both fields are persisted to localStorage and injected into the system prompt on every request. The server-side chat route and the Puter.js client-side path both respect the custom name and personality.",
+			"Default name is 'Arth' with no extra personality — same behavior as before if you don't change anything.",
+		],
+	},
+	{
 		id: "2026-06-27-reference-button-and-tool-loop",
 		date: "2026-06-27",
 		tag: "fix",

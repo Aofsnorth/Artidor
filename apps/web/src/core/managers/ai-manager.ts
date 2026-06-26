@@ -26,6 +26,7 @@ import {
 	useAIStore,
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import {
 	useAIProvidersStore,
 	type ProviderKind,
@@ -496,6 +497,8 @@ export class AIManager {
 				context: this.snapshotContext(),
 				recentEvents: recent,
 				learningScope,
+				aiName: useSettingsStore.getState().aiName,
+				aiPersonality: useSettingsStore.getState().aiPersonality,
 			});
 			// Prepend the system prompt to the messages array.
 			const messagesWithSystem: ChatMessage[] = [
@@ -523,6 +526,8 @@ export class AIManager {
 					styleProfile: storeState.styleProfile,
 					externalTools,
 					learningScope,
+					aiName: useSettingsStore.getState().aiName,
+					aiPersonality: useSettingsStore.getState().aiPersonality,
 					provider: providerConfig
 						? {
 								baseUrl: providerConfig.baseUrl,

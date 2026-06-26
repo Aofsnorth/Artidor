@@ -16,6 +16,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSettingsStore } from "@/stores/settings-store";
 import { Switch } from "@/components/ui/switch";
@@ -171,14 +172,50 @@ function GeneralSettings() {
 }
 
 function AISettings() {
+	const aiName = useSettingsStore((s) => s.aiName);
+	const setAiName = useSettingsStore((s) => s.setAiName);
+	const aiPersonality = useSettingsStore((s) => s.aiPersonality);
+	const setAiPersonality = useSettingsStore((s) => s.setAiPersonality);
+
 	return (
 		<div className="flex flex-col gap-5">
 			<header>
-				<h2 className="text-sm font-semibold text-white/85">Arth</h2>
+				<h2 className="text-sm font-semibold text-white/85">{aiName}</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
-					Configure the AI provider used by the assistant.
+					Customize the AI assistant and configure providers.
 				</p>
 			</header>
+
+			{/* AI Persona */}
+			<div className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+				<div className="flex flex-col gap-1.5">
+					<Label className="text-[12px] text-white/70">Assistant name</Label>
+					<Input
+						value={aiName}
+						onChange={(e) => setAiName(e.target.value)}
+						placeholder="Arth"
+						maxLength={60}
+						className="h-8 text-[12px]"
+					/>
+					<p className="text-[10.5px] text-white/40">
+						Shown in the chat header and used in the AI's system prompt.
+					</p>
+				</div>
+				<div className="flex flex-col gap-1.5">
+					<Label className="text-[12px] text-white/70">Personality</Label>
+					<textarea
+						value={aiPersonality}
+						onChange={(e) => setAiPersonality(e.target.value)}
+						placeholder="e.g. Be concise and friendly. Use casual language. Focus on speed."
+						maxLength={2000}
+						rows={3}
+						className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2 text-[12px] text-white/80 outline-none transition-colors placeholder:text-white/30 focus:border-white/20"
+					/>
+					<p className="text-[10.5px] text-white/40">
+						Extra instructions that shape the AI's tone and style. Leave empty for default behavior.
+					</p>
+				</div>
+			</div>
 
 			<SettingRow
 				title="Supported providers"
