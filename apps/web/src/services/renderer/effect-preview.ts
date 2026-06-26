@@ -59,7 +59,7 @@ function pickPatternForEffect(effectType: string): SourcePattern {
 
 class EffectPreviewService {
 	private testSourceCanvases = new Map<
-		SourcePattern,
+		string,
 		OffscreenCanvas | HTMLCanvasElement
 	>();
 	private previewImageElement: HTMLImageElement | null = null;
@@ -324,7 +324,11 @@ class EffectPreviewService {
 		height: number;
 	}): CanvasImageSource | null {
 		const pattern = pickPatternForEffect(effectType);
-		const cached = this.testSourceCanvases.get(pattern);
+		// Gradient source varies per-effect-type (6 colour palettes), so
+		// cache key includes the effect type for that pattern. Other
+		// patterns are shape-based and don't vary, so they share the cache.
+		const cacheKey = pattern === "gradient" ? `${pattern}:${effectType}` : pattern;
+		const cached = this.testSourceCanvases.get(cacheKey);
 		if (cached && cached.width === width && cached.height === height) {
 			return cached;
 		}
@@ -333,9 +337,10 @@ class EffectPreviewService {
 			pattern,
 			width,
 			height,
+			effectType,
 		});
 		if (canvas) {
-			this.testSourceCanvases.set(pattern, canvas);
+			this.testSourceCanvases.set(cacheKey, canvas);
 		}
 		return canvas;
 	}
@@ -344,10 +349,12 @@ class EffectPreviewService {
 		pattern,
 		width,
 		height,
+		effectType,
 	}: {
 		pattern: SourcePattern;
 		width: number;
 		height: number;
+		effectType: string;
 	}): OffscreenCanvas | HTMLCanvasElement | null {
 		const canvas = createOffscreenCanvas({ width, height });
 		const ctx = canvas.getContext("2d") as
@@ -372,7 +379,7 @@ class EffectPreviewService {
 
 		switch (pattern) {
 			case "gradient":
-				if (!useImageForBase) this.drawGradientSource({ ctx, width, height });
+				if (!useImageForBase) this.drawGradientSource({ ctx, width, height, effectType });
 				break;
 			case "checkerboard":
 				this.drawCheckerboardSource({ ctx, width, height });
@@ -398,33 +405,90 @@ class EffectPreviewService {
 	}
 
 	/**
-	 * Warm diagonal gradient + a soft "sun" disc + a low bar — the
-	 * classic hero-image background. Used as the default when nothing
-	 * else fits, and as the base layer when the photo loads.
+	 * Gradient source with 6 colour palettes so effect previews that hash
+	 * to the "gradient" pattern don't all look the same. The palette is
+	 * picked from the effect type hash (second hash byte) so it's
+	 * deterministic per-effect and stable across re-renders.
 	 */
+	private static readonly GRADIENT_PALETTES: ReadonlyArray<{
+		stops: [string, string, string, string];
+		sun: string;
+		bar: string;
+	}> = [
+		{
+			// Warm sunset
+			stops: ["#f97316", "#ec4899", "#6366f1", "#06b6d4"],
+			sun: "rgba(255,255,255,0.72)",
+			bar: "rgba(15,23,42,0.68)",
+		},
+		{
+			// Cool ocean
+			stops: ["#0ea5e9", "#06b6d4", "#0891b2", "#164e63"],
+			sun: "rgba(224,242,254,0.7)",
+			bar: "rgba(8,47,73,0.7)",
+		},
+		{
+			// Forest
+			stops: ["#84cc16", "#22c55e", "#15803d", "#14532d"],
+			sun: "rgba(236,253,200,0.6)",
+			bar: "rgba(20,83,45,0.7)",
+		},
+		{
+			// Plum/magenta
+			stops: ["#a855f7", "#ec4899", "#be185d", "#831843"],
+			sun: "rgba(250,232,255,0.65)",
+			bar: "rgba(131,24,67,0.7)",
+		},
+		{
+			// Amber/honey
+			stops: ["#fbbf24", "#f59e0b", "#d97706", "#78350f"],
+			sun: "rgba(254,243,199,0.7)",
+			bar: "rgba(120,53,15,0.7)",
+		},
+		{
+			// Slate/steel
+			stops: ["#94a3b8", "#64748b", "#475569", "#1e293b"],
+			sun: "rgba(248,250,252,0.6)",
+			bar: "rgba(15,23,42,0.7)",
+		},
+	];
+
 	private drawGradientSource({
 		ctx,
 		width,
 		height,
+		effectType,
 	}: {
 		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 		width: number;
 		height: number;
+		effectType: string;
 	}): void {
+		// Second hash byte picks the palette so even effects that hash to
+		// the same pattern get different colours.
+		let hash = 5381;
+		for (let i = 0; i < effectType.length; i++) {
+			hash = ((hash << 5) + hash) ^ effectType.charCodeAt(i);
+		}
+		const palette =
+			EffectPreviewService.GRADIENT_PALETTES[
+				Math.abs(hash >> 8) % EffectPreviewService.GRADIENT_PALETTES.length
+			] ?? EffectPreviewService.GRADIENT_PALETTES[0];
+
 		const gradient = ctx.createLinearGradient(0, 0, width, height);
-		gradient.addColorStop(0, "#f97316");
-		gradient.addColorStop(0.35, "#ec4899");
-		gradient.addColorStop(0.7, "#6366f1");
-		gradient.addColorStop(1, "#06b6d4");
+		gradient.addColorStop(0, palette.stops[0]);
+		gradient.addColorStop(0.35, palette.stops[1]);
+		gradient.addColorStop(0.7, palette.stops[2]);
+		gradient.addColorStop(1, palette.stops[3]);
 		ctx.fillStyle = gradient;
 		ctx.fillRect(0, 0, width, height);
 
-		ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+		ctx.fillStyle = palette.sun;
 		ctx.beginPath();
 		ctx.arc(width * 0.5, height * 0.38, width * 0.18, 0, Math.PI * 2);
 		ctx.fill();
 
-		ctx.fillStyle = "rgba(15, 23, 42, 0.68)";
+		ctx.fillStyle = palette.bar;
 		ctx.beginPath();
 		ctx.roundRect(width * 0.2, height * 0.62, width * 0.6, height * 0.2, 14);
 		ctx.fill();

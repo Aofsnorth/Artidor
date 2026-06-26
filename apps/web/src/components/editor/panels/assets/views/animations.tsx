@@ -32,6 +32,7 @@ import {
 import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { getPaletteForId } from "@/components/editor/panels/assets/views/components/procedural-preview";
 
 const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
 	[
@@ -196,6 +197,7 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 	}, [onApply, preset]);
 
 	const previewStyle = useMemo(() => presetPreviewStyle(preset), [preset]);
+	const palette = useMemo(() => getPaletteForId(preset.type), [preset.type]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
@@ -219,12 +221,16 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
 				style={{ width: "80%", height: "80%" }}
 			>
-				<div aria-hidden className="absolute inset-0 bg-black" />
+				<div
+					aria-hidden
+					className="absolute inset-0"
+					style={{ background: palette.background }}
+				/>
 				<div
 					className="absolute inset-0 flex items-center justify-center z-10"
 					style={previewStyle}
 				>
-					<PresetIcon preset={preset} />
+					<PresetIcon preset={preset} paletteAccent={palette.accent} />
 				</div>
 			</div>
 			<MarqueeText
@@ -242,15 +248,19 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 
 const PresetIcon = memo(function PresetIcon({
 	preset,
+	paletteAccent,
 }: {
 	preset: AnimationPreset;
+	paletteAccent: string;
 }) {
 	const keyframes = useMemo(() => presetStyleKeyframes(preset), [preset]);
 
 	return (
 		<div
-			className="flex size-12 items-center justify-center rounded-md bg-gradient-to-br from-orange-400 via-pink-500 to-purple-600 text-white"
+			className="flex size-12 items-center justify-center rounded-md text-white"
 			style={{
+				background: `linear-gradient(135deg, ${paletteAccent}, rgba(0,0,0,0.4))`,
+				boxShadow: `inset 0 0 0 1px ${paletteAccent}`,
 				animation: `${preset.type} 2.4s ease-in-out infinite alternate`,
 			}}
 		>

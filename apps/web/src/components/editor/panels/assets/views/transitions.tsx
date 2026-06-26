@@ -239,27 +239,142 @@ function SceneThumbnail({
 	seed: number;
 	variant: "from" | "to";
 }) {
-	void seed;
 	const isTo = variant === "to";
+	// Pick a scene variant from the seed so each transition shows a
+	// different pair of backgrounds. 6 variants × 2 directions = 12
+	// distinct looks, so adjacent cards in the grid never repeat.
+	const variantIndex = (seed + (isTo ? 37 : 0)) % 6;
 	return (
 		<div className="absolute inset-0 overflow-hidden">
-			<div
-				className="absolute inset-0"
-				style={{
-					background: isTo
-						? "linear-gradient(180deg, #b9c7d4 0%, #53616f 54%, #17202a 100%)"
-						: "linear-gradient(180deg, #d8c4a2 0%, #806a4c 54%, #211912 100%)",
-				}}
-			/>
-			<div className="absolute left-[8%] top-[12%] size-[18%] rounded-full bg-white/70 blur-[1px]" />
-			<div className="absolute inset-x-0 bottom-0 h-[46%] bg-[linear-gradient(155deg,transparent_0_28%,rgba(15,23,42,0.92)_29%_58%,transparent_59%),linear-gradient(25deg,transparent_0_38%,rgba(30,41,59,0.88)_39%_70%,transparent_71%)]" />
-			<div className="absolute bottom-0 left-0 h-[24%] w-full bg-[linear-gradient(180deg,rgba(20,83,45,0.18),rgba(20,83,45,0.78))]" />
-			<div className="absolute bottom-[18%] left-[12%] h-[22%] w-[18%] rounded-t-full bg-black/45" />
-			<div className="absolute bottom-[19%] left-[16%] size-[8%] rounded-full bg-black/50" />
-			<div className="absolute bottom-[16%] right-[12%] h-[18%] w-[26%] rounded-sm bg-white/18 shadow-[0_0_0_1px_rgba(255,255,255,0.16)]" />
-			<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,transparent_0%,rgba(0,0,0,0.34)_100%)]" />
+			<SceneVariant index={variantIndex} />
 		</div>
 	);
+}
+
+/**
+ * Six visually distinct scene backgrounds so transition previews don't
+ * all look the same. Each variant has a different colour palette and
+ * silhouette arrangement — landscape, cityscape, portrait, abstract,
+ * ocean, sunset — so the A→B crossfade actually reads as a scene change.
+ */
+function SceneVariant({ index }: { index: number }) {
+	switch (index) {
+		case 0:
+			// Landscape — warm golden hour
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(180deg, #f59e0b 0%, #f97316 30%, #c2410c 60%, #1c1917 100%)",
+						}}
+					/>
+					<div className="absolute left-[15%] top-[18%] size-[16%] rounded-full bg-yellow-200/80 blur-[1px]" />
+					<div className="absolute inset-x-0 bottom-0 h-[42%] bg-[linear-gradient(155deg,transparent_0_28%,rgba(28,25,23,0.92)_29%_58%,transparent_59%),linear-gradient(25deg,transparent_0_38%,rgba(67,20,7,0.88)_39%_70%,transparent_71%)]" />
+					<div className="absolute bottom-0 left-0 h-[22%] w-full bg-[linear-gradient(180deg,rgba(120,53,15,0.2),rgba(120,53,15,0.7))]" />
+					<div className="absolute bottom-[16%] left-[14%] h-[20%] w-[16%] rounded-t-full bg-black/40" />
+					<div className="absolute bottom-[15%] right-[16%] h-[18%] w-[22%] rounded-t-full bg-black/35" />
+				</div>
+			);
+		case 1:
+			// Cityscape — cool blue night
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(180deg, #1e3a8a 0%, #3730a3 35%, #1e293b 65%, #0f172a 100%)",
+						}}
+					/>
+					<div className="absolute left-[70%] top-[10%] size-[12%] rounded-full bg-slate-300/60 blur-[1px]" />
+					<div className="absolute bottom-0 left-0 h-[55%] w-full bg-[linear-gradient(180deg,rgba(15,23,42,0.3),rgba(15,23,42,0.9))]" />
+					<div className="absolute bottom-[10%] left-[8%] h-[35%] w-[10%] bg-slate-700/80" />
+					<div className="absolute bottom-[10%] left-[20%] h-[45%] w-[12%] bg-slate-600/80" />
+					<div className="absolute bottom-[10%] left-[34%] h-[30%] w-[14%] bg-slate-700/70" />
+					<div className="absolute bottom-[10%] left-[50%] h-[50%] w-[11%] bg-slate-600/80" />
+					<div className="absolute bottom-[10%] left-[63%] h-[38%] w-[13%] bg-slate-700/75" />
+					<div className="absolute bottom-[10%] left-[78%] h-[42%] w-[12%] bg-slate-600/80" />
+					{/* Windows */}
+					<div className="absolute bottom-[20%] left-[10%] size-[3%] bg-amber-300/70" />
+					<div className="absolute bottom-[30%] left-[22%] size-[3%] bg-amber-300/60" />
+					<div className="absolute bottom-[35%] left-[52%] size-[3%] bg-amber-300/70" />
+					<div className="absolute bottom-[25%] left-[64%] size-[3%] bg-amber-300/50" />
+				</div>
+			);
+		case 2:
+			// Portrait — studio warm/sepia
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(180deg, #78350f 0%, #92400e 40%, #451a03 75%, #1c1917 100%)",
+						}}
+					/>
+					<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(251,191,36,0.25),transparent_60%)]" />
+					<div className="absolute bottom-[10%] left-1/2 -translate-x-1/2 h-[45%] w-[28%] rounded-t-full bg-amber-900/60" />
+					<div className="absolute bottom-[8%] left-1/2 -translate-x-1/2 size-[14%] rounded-full bg-amber-800/70" />
+					<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.3)_100%)]" />
+				</div>
+			);
+		case 3:
+			// Abstract — vibrant teal/magenta
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(135deg, #0d9488 0%, #0891b2 30%, #7c3aed 65%, #db2777 100%)",
+						}}
+					/>
+					<div className="absolute left-[10%] top-[15%] size-[30%] rounded-full bg-cyan-300/30 blur-[6px]" />
+					<div className="absolute right-[10%] bottom-[15%] size-[25%] rounded-full bg-fuchsia-400/30 blur-[6px]" />
+					<div className="absolute left-[40%] top-[40%] h-[20%] w-[20%] rotate-45 bg-white/15" />
+					<div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
+				</div>
+			);
+		case 4:
+			// Ocean — deep blue/teal
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(180deg, #38bdf8 0%, #0ea5e9 25%, #0c4a6e 60%, #082f49 100%)",
+						}}
+					/>
+					<div className="absolute left-[60%] top-[8%] size-[14%] rounded-full bg-white/80 blur-[1px]" />
+					<div className="absolute inset-x-0 top-[45%] h-[2px] bg-white/20" />
+					<div className="absolute inset-x-0 top-[52%] h-[1px] bg-white/15" />
+					<div className="absolute bottom-0 left-0 h-[40%] w-full bg-[linear-gradient(180deg,rgba(8,47,73,0.3),rgba(8,47,73,0.85))]" />
+					<div className="absolute bottom-[8%] left-[20%] h-[12%] w-[60%] rounded-t-full bg-cyan-900/50" />
+				</div>
+			);
+		case 5:
+			// Sunset — pink/purple dramatic
+			return (
+				<div className="absolute inset-0">
+					<div
+						className="absolute inset-0"
+						style={{
+							background:
+								"linear-gradient(180deg, #fbbf24 0%, #f43f5e 25%, #a855f7 55%, #1e1b4b 100%)",
+						}}
+					/>
+					<div className="absolute left-[20%] top-[30%] size-[35%] rounded-full bg-orange-200/40 blur-[8px]" />
+					<div className="absolute inset-x-0 bottom-0 h-[35%] bg-[linear-gradient(180deg,rgba(30,27,75,0.3),rgba(30,27,75,0.8))]" />
+					<div className="absolute bottom-[20%] left-[10%] h-[15%] w-[80%] rounded-t-full bg-purple-900/40" />
+					<div className="absolute bottom-0 left-0 h-[20%] w-full bg-[linear-gradient(180deg,rgba(30,27,75,0.5),rgba(30,27,75,0.95))]" />
+				</div>
+			);
+		default:
+			return null;
+	}
 }
 
 function TransitionPreview({
