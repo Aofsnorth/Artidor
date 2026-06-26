@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-random-suggestions",
+		date: "2026-06-27",
+		tag: "improvement",
+		title: "640 random AI suggestions — fresh ideas every chat",
+		items: [
+			"The AI chat empty state now shows 4 random suggestions picked from a pool of 640 prompts, covering text animation, cutting, color grading, effects, motion, audio, social media formats, transitions, compositing, music video style, documentary, gaming, product, wedding, education, mood, technical fixes, holiday, abstract, and more.",
+			"Every time you open a new chat, you get 4 different suggestions — no more seeing the same 4 static prompts every time.",
+			"Icons are assigned dynamically based on the suggestion's category keyword (text, video, color, audio, or general).",
+		],
+	},
+	{
 		id: "2026-06-27-custom-ai-persona",
 		date: "2026-06-27",
 		tag: "feature",
