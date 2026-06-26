@@ -28,16 +28,21 @@ import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	ArrowDown03Icon,
+	ArrowTurnBackwardIcon,
 	ArrowUp02Icon,
 	AttachmentIcon,
 	Cancel01Icon,
 	Chat01Icon,
 	CheckmarkCircle02Icon,
+	CheckmarkSquare01Icon,
+	Copy02Icon,
 	Delete02Icon,
 	Edit01Icon,
 	Image01Icon,
 	MagicWand05Icon,
 	PaintBrushIcon,
+	PuzzleIcon,
+	SlidersHorizontalIcon,
 	SparklesIcon,
 	StopIcon,
 	Upload01Icon,
@@ -859,7 +864,7 @@ function McpServerChip() {
 					)}
 				>
 					<HugeiconsIcon
-						icon={PlugIcon}
+						icon={PuzzleIcon}
 						className={cn(
 							"size-3 shrink-0",
 							connectedCount > 0 ? "text-green-300" : "text-white/50",
@@ -1154,9 +1159,9 @@ function StatusBar({
 							className="size-3 shrink-0 text-white/30 transition-colors group-hover:text-white/60"
 						/>
 					</button>
+					<McpServerChip />
+					<AdvancedSettingsButton />
 				</div>
-
-				<McpServerChip />
 
 				{/* Meta row: learned edits + compaction + reference video */}
 				<div className="flex flex-col gap-1.5">
@@ -1514,14 +1519,185 @@ function PlanCard({ plan }: { plan: Plan }) {
 	);
 }
 
+
+/**
+ * Advanced AI settings popover — lets the user tune the tool-call loop
+ * depth, retry behavior, and auto-compaction thresholds. Settings are
+ * persisted via the AI store (localStorage).
+ */
+function AdvancedSettingsButton() {
+	const settings = useAIStore((s) => s.advancedSettings);
+	const setAdvancedSettings = useAIStore((s) => s.setAdvancedSettings);
+
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					type="button"
+					aria-label="Advanced AI settings"
+					title="Advanced AI settings — tune tool rounds, retries, compaction"
+					className="group flex size-6 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] transition-all hover:border-white/15 hover:bg-white/[0.05]"
+				>
+					<HugeiconsIcon
+						icon={SlidersHorizontalIcon}
+						className="size-3 shrink-0 text-white/50 transition-colors group-hover:text-white/80"
+					/>
+				</button>
+			</PopoverTrigger>
+			<PopoverContent
+				align="end"
+				sideOffset={4}
+				className="w-72 rounded-xl border border-white/10 bg-[#0f0f12] p-3 shadow-2xl"
+			>
+				<div className="mb-2.5 flex items-center gap-1.5">
+					<HugeiconsIcon
+						icon={SlidersHorizontalIcon}
+						className="size-3.5 text-white/60"
+					/>
+					<span className="text-[11px] font-semibold text-white/80">
+						Advanced AI Settings
+					</span>
+				</div>
+				<div className="flex flex-col gap-2.5">
+					<SettingRow
+						label="Max tool rounds"
+						description="Max LLM tool-call cycles per message"
+						value={settings.maxToolRounds}
+						min={1}
+						max={1000}
+						onChange={(v) => setAdvancedSettings({ maxToolRounds: v })}
+					/>
+					<SettingRow
+						label="Max retry attempts"
+						description="Auto-retries on error before giving up"
+						value={settings.maxRetryAttempts}
+						min={0}
+						max={50}
+						onChange={(v) => setAdvancedSettings({ maxRetryAttempts: v })}
+					/>
+					<SettingRow
+						label="Retry cooldown (s)"
+						description="Base seconds per retry attempt"
+						value={settings.retryCooldownBase}
+						min={1}
+						max={60}
+						onChange={(v) => setAdvancedSettings({ retryCooldownBase: v })}
+					/>
+					<SettingRow
+						label="Compaction threshold"
+						description="Message count before auto-compacting"
+						value={settings.compactionMessageThreshold}
+						min={5}
+						max={100}
+						onChange={(v) =>
+							setAdvancedSettings({ compactionMessageThreshold: v })
+						}
+					/>
+					<SettingRow
+						label="Keep last (compaction)"
+						description="Recent messages kept during compaction"
+						value={settings.compactionKeepLast}
+						min={2}
+						max={20}
+						onChange={(v) => setAdvancedSettings({ compactionKeepLast: v })}
+					/>
+				</div>
+				<button
+					type="button"
+					onClick={() =>
+						setAdvancedSettings({
+							maxToolRounds: 500,
+							maxRetryAttempts: 10,
+							retryCooldownBase: 5,
+							compactionMessageThreshold: 20,
+							compactionKeepLast: 6,
+						})
+					}
+					className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+				>
+					Reset to defaults
+				</button>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+function SettingRow({
+	label,
+	description,
+	value,
+	min,
+	max,
+	onChange,
+}: {
+	label: string;
+	description: string;
+	value: number;
+	min: number;
+	max: number;
+	onChange: (v: number) => void;
+}) {
+	return (
+		<div className="flex flex-col gap-1">
+			<div className="flex items-center justify-between">
+				<span className="text-[10.5px] font-medium text-white/70">
+					{label}
+				</span>
+				<span className="font-mono text-[10px] text-white/50">{value}</span>
+			</div>
+			<p className="text-[9px] text-white/35">{description}</p>
+			<input
+				type="range"
+				min={min}
+				max={max}
+				value={value}
+				onChange={(e) => onChange(Number(e.target.value))}
+				className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-white/60"
+			/>
+		</div>
+	);
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
 	const isUser = message.role === "user";
 	const isTool = message.role === "tool";
+	const editor = useEditor();
+	const [isEditing, setIsEditing] = useState(false);
+	const [editText, setEditText] = useState(message.content);
+	const [copied, setCopied] = useState(false);
 	if (isTool) return null;
 
 	const toolCallCount = message.toolCalls?.length ?? 0;
 	const successCount =
 		message.toolCalls?.filter((tc) => tc.result?.ok).length ?? 0;
+
+	const handleCopy = async () => {
+		try {
+			await navigator.clipboard.writeText(message.content);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			/* clipboard may be blocked — silent fail */
+		}
+	};
+
+	const handleSaveEdit = () => {
+		const trimmed = editText.trim();
+		if (!trimmed) return;
+		useAIStore.getState().updateMessage(message.id, {
+			content: trimmed,
+		});
+		setIsEditing(false);
+	};
+
+	const handleCancelEdit = () => {
+		setEditText(message.content);
+		setIsEditing(false);
+	};
+
+	const handleRevert = () => {
+		editor.ai.revertToMessage(message.id);
+	};
 
 	return (
 		<motion.div
@@ -1566,7 +1742,34 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 							: "rounded-tl-md border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] text-white/90",
 					)}
 				>
-					{message.content && (
+					{isEditing ? (
+						<div className="flex flex-col gap-1.5">
+							<textarea
+								value={editText}
+								onChange={(e) => setEditText(e.target.value)}
+								className="w-full resize-none rounded-lg border border-white/15 bg-black/30 px-2 py-1.5 text-[12px] text-white outline-none focus:border-white/30"
+								rows={3}
+								// biome-ignore lint/a11y/noAutofocus: focusing the edit textarea is intentional UX
+								autoFocus
+							/>
+							<div className="flex justify-end gap-1.5">
+								<button
+									type="button"
+									onClick={handleCancelEdit}
+									className="rounded border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/60 hover:bg-white/[0.06]"
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									onClick={handleSaveEdit}
+									className="rounded border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200 hover:bg-emerald-400/20"
+								>
+									Save
+								</button>
+							</div>
+						</div>
+					) : message.content ? (
 						<div className="prose prose-invert prose-sm max-w-none text-white/90 [&_a]:text-white/80 [&_a]:underline [&_code]:rounded [&_code]:bg-white/[0.08] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[10.5px] [&_code]:font-mono [&_pre]:rounded-lg [&_pre]:bg-black/30 [&_pre]:px-2.5 [&_pre]:py-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_strong]:text-white">
 							<Markdown
 								allowedElements={[
@@ -1585,8 +1788,54 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								{message.content}
 							</Markdown>
 						</div>
-					)}
+					) : null}
 				</div>
+
+				{/* Action buttons — copy, edit, revert (visible on hover) */}
+				{!isEditing && message.content && (
+					<div
+						className={cn(
+							"flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100",
+							isUser ? "flex-row-reverse" : "flex-row",
+						)}
+					>
+						<button
+							type="button"
+							onClick={handleCopy}
+							title={copied ? "Copied!" : "Copy message"}
+							className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+						>
+							<HugeiconsIcon
+								icon={copied ? CheckmarkSquare01Icon : Copy02Icon}
+								className="size-2.5"
+							/>
+							{copied ? "Copied" : "Copy"}
+						</button>
+						<button
+							type="button"
+							onClick={() => setIsEditing(true)}
+							title="Edit message"
+							className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+						>
+							<HugeiconsIcon icon={Edit01Icon} className="size-2.5" />
+							Edit
+						</button>
+						{isUser && toolCallCount === 0 && (
+							<button
+								type="button"
+								onClick={handleRevert}
+								title="Revert all AI edits made for this message"
+								className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-amber-400/10 hover:text-amber-200"
+							>
+								<HugeiconsIcon
+									icon={ArrowTurnBackwardIcon}
+									className="size-2.5"
+								/>
+								Revert
+							</button>
+						)}
+					</div>
+				)}
 
 				{/* Tool calls */}
 				{toolCallCount > 0 && (
