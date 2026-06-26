@@ -12,6 +12,7 @@ import { ClipboardManager } from "./managers/clipboard-manager";
 import { DiagnosticsManager } from "./managers/diagnostics-manager";
 import { TeleprompterManager } from "./managers/teleprompter-manager";
 import { AIManager } from "./managers/ai-manager";
+import { CollabManager } from "./managers/collab-manager";
 import { registerDefaultEffects } from "@/lib/effects";
 import { registerDefaultMasks } from "@/lib/masks";
 import { registerDefaultTransitions } from "@/lib/transitions";
@@ -39,6 +40,7 @@ export class EditorCore {
 	public readonly diagnostics: DiagnosticsManager;
 	public readonly teleprompter: TeleprompterManager;
 	public readonly ai: AIManager;
+	public readonly collab: CollabManager;
 	/** Public, framework-free command API (Scripting tab / bridge / MCP). */
 	public readonly api: EditorApi;
 
@@ -61,6 +63,7 @@ export class EditorCore {
 		this.diagnostics = new DiagnosticsManager(this);
 		this.teleprompter = new TeleprompterManager(this);
 		this.ai = new AIManager(this);
+		this.collab = new CollabManager(this);
 		this.api = createEditorApi(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
