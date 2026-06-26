@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-26-ai-provider-edit-fields-persist",
+		date: "2026-06-26",
+		tag: "fix",
+		title: "AI provider edit dialog keeps the existing values",
+		items: [
+			"Fixed a bug where opening a provider for editing showed empty fields instead of the existing name, URL, API key, and model. The dialog now resets its form state whenever the target provider changes.",
+		],
+	},
+	{
 		id: "2026-06-26-ai-provider-test-json-error",
 		date: "2026-06-26",
 		tag: "fix",
