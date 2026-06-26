@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-ai-media-generation",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "AI can now generate video, images, and audio",
+		items: [
+			"The AI copilot can now generate media directly from text prompts using Puter.js. Four new tools are available: generate_video (txt2vid), generate_image (txt2img), generate_audio (txt2speech), and generate_media.",
+			"Generated media is automatically imported into the project's media library, ready to use on the timeline.",
+			"Tools are gated by the provider's media model configuration — the AI only sees generation tools for media types where a model is configured. Non-Puter providers get a clear error message directing them to switch to Puter or use import_asset_from_url.",
+			"Puter.js supports models like Sora 2 (video), DALL-E/GPT-Image (images), and AWS Polly/OpenAI TTS (audio). All free via Puter.js — no API key needed.",
+		],
+	},
+	{
 		id: "2026-06-27-media-model-config",
 		date: "2026-06-27",
 		tag: "feature",
