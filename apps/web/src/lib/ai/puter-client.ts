@@ -148,15 +148,70 @@ export function loadPuterSDK(): Promise<PuterSDK> {
 }
 
 /**
+ * In-memory cache for the Puter model list. The model list rarely
+ * changes within a session, so we cache it to avoid re-fetching
+ * every time the provider dialog reopens. The cache expires after
+ * 5 minutes to pick up newly added models.
+ */
+let cachedModels: PuterModel[] | null = null;
+let cachedModelsAt = 0;
+const MODEL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
  * Fetch the list of available models from Puter.js.
+ * Results are cached for 5 minutes to avoid repeated network calls.
  * @throws Error if the SDK is not loaded or listModels fails.
  */
 export async function fetchPuterModels(): Promise<PuterModel[]> {
+	const now = Date.now();
+	if (cachedModels && now - cachedModelsAt < MODEL_CACHE_TTL) {
+		return cachedModels;
+	}
 	const puter = await loadPuterSDK();
 	if (!puter.ai?.listModels) {
 		throw new Error("Puter.js SDK loaded but listModels() is not available");
 	}
-	return puter.ai.listModels();
+	const models = await puter.ai.listModels();
+	cachedModels = models;
+	cachedModelsAt = now;
+	return models;
+}
+
+/**
+ * Media model filter patterns. Used by both fetchPuterMediaModels()
+ * and fetchPuterModelsAndMedia() to classify models by generation type.
+ */
+const VIDEO_PATTERNS = [
+	"sora", "seedance", "kling", "minimax", "luma",
+	"runway", "pika", "hunyuan", "vidu", "wan",
+];
+const IMAGE_PATTERNS = [
+	"dall-e", "flux", "gpt-image", "stable-diffusion",
+	"ideogram", "recraft", "imagen", "sdxl", "playground",
+];
+const AUDIO_PATTERNS = [
+	"tts", "speech", "polly", "bark", "elevenlabs",
+	"whisper", "audio", "music", "suno", "udio",
+];
+
+function matchAny(id: string, patterns: string[]): boolean {
+	return patterns.some((p) => id.toLowerCase().includes(p));
+}
+
+/**
+ * Filter a list of Puter models into video/image/audio categories.
+ * This is a pure function — no network calls.
+ */
+function filterMediaModels(all: PuterModel[]): {
+	video: PuterModel[];
+	image: PuterModel[];
+	audio: PuterModel[];
+} {
+	return {
+		video: all.filter((m) => matchAny(m.id, VIDEO_PATTERNS)),
+		image: all.filter((m) => matchAny(m.id, IMAGE_PATTERNS)),
+		audio: all.filter((m) => matchAny(m.id, AUDIO_PATTERNS)),
+	};
 }
 
 /**
@@ -164,11 +219,6 @@ export async function fetchPuterModels(): Promise<PuterModel[]> {
  * separate API for listing media models, so we fetch all models and
  * filter by known media-generation provider prefixes and model name
  * patterns. This covers txt2vid, txt2img, and txt2speech models.
- *
- * Known media model patterns:
- *  - Video: sora, seedance, kling, minimax, luma, runway, pika, hunyuan
- *  - Image: dall-e, flux, gpt-image, stable-diffusion, ideogram, recraft
- *  - Audio/TTS: tts, speech, polly, bark, elevenlabs, whisper
  *
  * @returns Filtered list of media-capable models.
  */
@@ -178,24 +228,31 @@ export async function fetchPuterMediaModels(): Promise<{
 	audio: PuterModel[];
 }> {
 	const all = await fetchPuterModels();
-	const videoPatterns = [
-		"sora", "seedance", "kling", "minimax", "luma",
-		"runway", "pika", "hunyuan", "vidu", "wan",
-	];
-	const imagePatterns = [
-		"dall-e", "flux", "gpt-image", "stable-diffusion",
-		"ideogram", "recraft", "imagen", "sdxl", "playground",
-	];
-	const audioPatterns = [
-		"tts", "speech", "polly", "bark", "elevenlabs",
-		"whisper", "audio", "music", "suno", "udio",
-	];
-	const matchAny = (id: string, patterns: string[]) =>
-		patterns.some((p) => id.toLowerCase().includes(p));
+	return filterMediaModels(all);
+}
+
+/**
+ * Fetch both chat models and media models in a single listModels() call.
+ * This avoids the double-fetch that happens when calling
+ * fetchPuterModels() and fetchPuterMediaModels() in parallel (each
+ * makes its own listModels() request).
+ *
+ * @returns Chat models + filtered media models from a single API call.
+ */
+export async function fetchPuterModelsAndMedia(): Promise<{
+	models: PuterModel[];
+	mediaModels: {
+		video: PuterModel[];
+		image: PuterModel[];
+		audio: PuterModel[];
+	};
+}> {
+	// Use the cached fetch — avoids a redundant listModels() call
+	// when the dialog reopens within 5 minutes.
+	const all = await fetchPuterModels();
 	return {
-		video: all.filter((m) => matchAny(m.id, videoPatterns)),
-		image: all.filter((m) => matchAny(m.id, imagePatterns)),
-		audio: all.filter((m) => matchAny(m.id, audioPatterns)),
+		models: all,
+		mediaModels: filterMediaModels(all),
 	};
 }
 
