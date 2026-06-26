@@ -28,6 +28,7 @@ import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	ArrowDown03Icon,
+	AlertCircleIcon,
 	ArrowTurnBackwardIcon,
 	ArrowUp02Icon,
 	AttachmentIcon,
@@ -57,6 +58,7 @@ import { useTelemetryStore } from "@/lib/ai/telemetry/store";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
 	Dialog,
 	DialogBody,
@@ -84,6 +86,11 @@ import {
 	getMcpConnectionManager,
 	useMcpStore,
 } from "@/stores/mcp-store";
+import type {
+	McpServerConfig,
+	McpConnection,
+	McpTool,
+} from "@/lib/mcp/client";
 import {
 	tabs as ASSETS_TABS,
 	useAssetsPanelStore,
@@ -857,34 +864,81 @@ function ChatHistoryDropdown({
 
 /**
  * MCP Server chip — shows the number of connected MCP servers and
- * opens a popover to add/remove/monitor them. MCP servers expose
+ * opens a dialog to add/remove/monitor them. MCP servers expose
  * external tools that Arth can use alongside the built-in editor
  * tools.
  */
 function McpServerChip() {
-	const servers = useMcpStore((s) => s.servers);
 	const connections = useMcpStore((s) => s.connections);
-	const addServer = useMcpStore((s) => s.addServer);
-	const removeServer = useMcpStore((s) => s.removeServer);
-	const updateServer = useMcpStore((s) => s.updateServer);
+	const [manageOpen, setManageOpen] = useState(false);
+	const [addOpen, setAddOpen] = useState(false);
 
 	const connectedCount = connections.filter(
 		(c) => c.status === "connected",
 	).length;
 
-	const handleAdd = () => {
-		const name = prompt("MCP server name:");
-		if (!name?.trim()) return;
-		const url = prompt("SSE URL (e.g. http://localhost:3001/sse):");
-		if (!url?.trim()) return;
-		addServer({ name: name.trim(), url: url.trim(), enabled: true });
-		// Connect immediately.
-		const manager = getMcpConnectionManager();
-		const latest = useMcpStore.getState().servers.at(-1);
-		if (latest) {
-			manager.connect(latest, useMcpStore.getState().updateConnection);
-		}
-	};
+	return (
+		<>
+			<button
+				type="button"
+				aria-label="MCP servers"
+				title={
+					connectedCount > 0
+						? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""} connected — click to manage`
+						: "MCP servers — external tools (click to manage)"
+				}
+				onClick={() => setManageOpen(true)}
+				className={cn(
+					"group relative flex size-6 items-center justify-center rounded-md border transition-all",
+					connectedCount > 0
+						? "border-green-400/20 bg-green-400/[0.05] hover:border-green-400/30"
+						: "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
+				)}
+			>
+				<HugeiconsIcon
+					icon={PuzzleIcon}
+					className={cn(
+						"size-3 shrink-0",
+						connectedCount > 0 ? "text-green-300" : "text-white/50",
+					)}
+				/>
+				{connectedCount > 0 && (
+					<span className="absolute -right-1 -top-1 flex size-2.5 items-center justify-center rounded-full bg-green-400 text-[7px] font-bold text-[#09090b]">
+						{connectedCount}
+					</span>
+				)}
+			</button>
+
+			<McpManageDialog
+				open={manageOpen}
+				onOpenChange={setManageOpen}
+				onAddClick={() => {
+					setAddOpen(true);
+				}}
+			/>
+			<McpAddDialog open={addOpen} onOpenChange={setAddOpen} />
+		</>
+	);
+}
+
+/**
+ * MCP server management dialog — lists all configured servers as
+ * detailed cards with status, tool count, expandable tool list,
+ * enable/disable toggle, and delete button.
+ */
+function McpManageDialog({
+	open,
+	onOpenChange,
+	onAddClick,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onAddClick: () => void;
+}) {
+	const servers = useMcpStore((s) => s.servers);
+	const connections = useMcpStore((s) => s.connections);
+	const removeServer = useMcpStore((s) => s.removeServer);
+	const updateServer = useMcpStore((s) => s.updateServer);
 
 	const handleToggle = (id: string, enabled: boolean) => {
 		updateServer(id, { enabled });
@@ -902,122 +956,476 @@ function McpServerChip() {
 		}
 	};
 
-	return (
-		<Popover>
-			<PopoverTrigger asChild>
-				<button
-					type="button"
-					aria-label="MCP servers"
-					title={
-						connectedCount > 0
-							? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""} connected — click to manage`
-							: "MCP servers — external tools (click to manage)"
-					}
-					className={cn(
-						"group relative flex size-6 items-center justify-center rounded-md border transition-all",
-						connectedCount > 0
-							? "border-green-400/20 bg-green-400/[0.05] hover:border-green-400/30"
-							: "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
-					)}
-				>
-					<HugeiconsIcon
-						icon={PuzzleIcon}
-						className={cn(
-							"size-3 shrink-0",
-							connectedCount > 0 ? "text-green-300" : "text-white/50",
-						)}
-					/>
-					{connectedCount > 0 && (
-						<span className="absolute -right-1 -top-1 flex size-2.5 items-center justify-center rounded-full bg-green-400 text-[7px] font-bold text-[#09090b]">
-							{connectedCount}
-						</span>
-					)}
-				</button>
-			</PopoverTrigger>
-			<PopoverContent
-				align="start"
-				className="w-72 border-white/[0.08] bg-[#09090b]/95 text-white/95 backdrop-blur-md"
-			>
-				<div className="flex flex-col gap-2 p-1">
-					<div className="flex items-center justify-between">
-						<span className="text-xs font-semibold text-white/90">
-							MCP Servers
-						</span>
-						<button
-							type="button"
-							onClick={handleAdd}
-							className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
-						>
-							<HugeiconsIcon icon={ChatAdd01Icon} className="size-2.5" />
-							Add
-						</button>
-					</div>
+	const handleReconnect = (id: string) => {
+		const server = useMcpStore.getState().servers.find((s) => s.id === id);
+		if (!server) return;
+		updateServer(id, { enabled: true });
+		getMcpConnectionManager().connect(
+			server,
+			useMcpStore.getState().updateConnection,
+		);
+	};
 
+	const handleDelete = (id: string) => {
+		getMcpConnectionManager().disconnect(id);
+		removeServer(id);
+	};
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
+				<DialogHeader>
+					<DialogTitle>MCP Servers</DialogTitle>
+					<DialogDescription>
+						External tool servers that extend Arth's capabilities —
+						filesystem, web search, databases, custom integrations.
+					</DialogDescription>
+				</DialogHeader>
+				<DialogBody className="max-h-[60vh] gap-3 overflow-y-auto">
 					{servers.length === 0 ? (
-						<p className="text-[10px] text-white/40 py-2">
-							No MCP servers configured. Add one to let Arth use external
-							tools (filesystem, web search, databases, etc).
-						</p>
+						<div className="flex flex-col items-center gap-3 py-10 text-center">
+							<div className="grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.02]">
+								<HugeiconsIcon
+									icon={PuzzleIcon}
+									className="size-5 text-white/30"
+								/>
+							</div>
+							<div className="flex flex-col gap-1">
+								<span className="text-[13px] font-medium text-white/70">
+									No MCP servers configured
+								</span>
+								<span className="text-[11px] text-white/35">
+									Add a server to let Arth use external tools.
+								</span>
+							</div>
+							<Button size="sm" onClick={onAddClick} className="mt-1">
+								<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
+								Add MCP Server
+							</Button>
+						</div>
 					) : (
-						<div className="flex flex-col gap-1.5">
+						<div className="flex flex-col gap-2.5">
 							{servers.map((server) => {
 								const conn = connections.find(
 									(c) => c.config.id === server.id,
 								);
 								const status = conn?.status ?? "disconnected";
-								const toolCount = conn?.tools.length ?? 0;
+								const tools = conn?.tools ?? [];
+								const error = conn?.error;
 								return (
-									<div
+									<McpServerCard
 										key={server.id}
-										className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
-									>
-										<div
-											className={cn(
-												"size-1.5 rounded-full shrink-0",
-												status === "connected"
-													? "bg-green-400"
-													: status === "connecting"
-														? "bg-yellow-400 animate-pulse"
-														: status === "error"
-															? "bg-red-400"
-															: "bg-white/20",
-											)}
-										/>
-										<div className="flex flex-1 flex-col min-w-0">
-											<span className="text-[10px] font-medium text-white/80 truncate">
-												{server.name}
-											</span>
-											<span className="text-[9px] text-white/35 truncate">
-												{toolCount > 0
-													? `${toolCount} tools`
-													: server.url}
-											</span>
-										</div>
-										<button
-											type="button"
-											onClick={() => handleToggle(server.id, !server.enabled)}
-											className="text-[9px] text-white/40 hover:text-white/80"
-										>
-											{server.enabled ? "on" : "off"}
-										</button>
-										<button
-											type="button"
-											onClick={() => {
-												getMcpConnectionManager().disconnect(server.id);
-												removeServer(server.id);
-											}}
-											className="text-[9px] text-red-300/60 hover:text-red-300"
-										>
-											<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-										</button>
-									</div>
+										server={server}
+										status={status}
+										tools={tools}
+										error={error}
+										onToggle={(enabled) => handleToggle(server.id, enabled)}
+										onReconnect={() => handleReconnect(server.id)}
+										onDelete={() => handleDelete(server.id)}
+									/>
 								);
 							})}
 						</div>
 					)}
+				</DialogBody>
+				<DialogFooter className="border-t border-white/[0.06] bg-black/20">
+					{servers.length > 0 && (
+						<Button
+							size="sm"
+							onClick={onAddClick}
+							className="mr-auto"
+						>
+							<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
+							Add Server
+						</Button>
+					)}
+					<Button
+						size="sm"
+						variant="ghost"
+						onClick={() => onOpenChange(false)}
+					>
+						Done
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+/**
+ * MCP server card — detailed, expandable card showing server name,
+ * status, URL, tool count, and an expandable list of available tools.
+ */
+function McpServerCard({
+	server,
+	status,
+	tools,
+	error,
+	onToggle,
+	onReconnect,
+	onDelete,
+}: {
+	server: McpServerConfig;
+	status: McpConnection["status"];
+	tools: McpTool[];
+	error?: string;
+	onToggle: (enabled: boolean) => void;
+	onReconnect: () => void;
+	onDelete: () => void;
+}) {
+	const [expanded, setExpanded] = useState(false);
+
+	const statusConfig = {
+		connected: {
+			dot: "bg-green-400",
+			label: "Connected",
+			text: "text-green-300",
+			border: "border-green-400/15",
+			bg: "bg-green-400/[0.03]",
+		},
+		connecting: {
+			dot: "bg-yellow-400 animate-pulse",
+			label: "Connecting",
+			text: "text-yellow-300",
+			border: "border-yellow-400/15",
+			bg: "bg-yellow-400/[0.03]",
+		},
+		error: {
+			dot: "bg-red-400",
+			label: "Error",
+			text: "text-red-300",
+			border: "border-red-400/15",
+			bg: "bg-red-400/[0.03]",
+		},
+		disconnected: {
+			dot: "bg-white/20",
+			label: "Disconnected",
+			text: "text-white/40",
+			border: "border-white/[0.06]",
+			bg: "bg-white/[0.02]",
+		},
+	} as const;
+
+	const sc = statusConfig[status];
+	const hasTools = tools.length > 0;
+
+	return (
+		<div
+			className={cn(
+				"overflow-hidden rounded-xl border transition-colors",
+				sc.border,
+				sc.bg,
+			)}
+		>
+			{/* Header row */}
+			<div className="flex items-center gap-2.5 px-3 py-2.5">
+				{/* Status dot */}
+				<div className={cn("size-2 shrink-0 rounded-full", sc.dot)} />
+
+				{/* Name + status */}
+				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+					<div className="flex items-center gap-2">
+						<span className="truncate text-[12px] font-semibold text-white/90">
+							{server.name}
+						</span>
+						<span
+							className={cn(
+								"shrink-0 text-[9px] font-medium uppercase tracking-wide",
+								sc.text,
+							)}
+						>
+							{sc.label}
+						</span>
+					</div>
+					<span className="truncate font-mono text-[9.5px] text-white/30">
+						{server.url}
+					</span>
 				</div>
-			</PopoverContent>
-		</Popover>
+
+				{/* Tool count badge */}
+				{hasTools && (
+					<span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-semibold text-white/60">
+						{tools.length} {tools.length === 1 ? "tool" : "tools"}
+					</span>
+				)}
+
+				{/* Expand toggle */}
+				{hasTools && (
+					<button
+						type="button"
+						onClick={() => setExpanded((e) => !e)}
+						className="grid size-5 shrink-0 place-items-center rounded text-white/30 transition hover:bg-white/[0.06] hover:text-white/70"
+						aria-label={expanded ? "Collapse tools" : "Expand tools"}
+					>
+						<HugeiconsIcon
+							icon={ArrowDown03Icon}
+							className={cn(
+								"size-3 transition-transform",
+								expanded && "rotate-180",
+							)}
+						/>
+					</button>
+				)}
+			</div>
+
+			{/* Error message */}
+			{status === "error" && error && (
+				<div className="border-t border-red-400/10 px-3 py-2">
+					<p className="text-[10px] leading-relaxed text-red-300/70">
+						{error}
+					</p>
+					<button
+						type="button"
+						onClick={onReconnect}
+						className="mt-1.5 text-[10px] font-medium text-red-300/80 underline hover:text-red-200"
+					>
+						Try reconnect
+					</button>
+				</div>
+			)}
+
+			{/* Expandable tool list */}
+			{expanded && hasTools && (
+				<motion.div
+					initial={{ height: 0, opacity: 0 }}
+					animate={{ height: "auto", opacity: 1 }}
+					className="border-t border-white/[0.06]"
+				>
+					<div className="flex flex-col gap-1 px-3 py-2">
+						<span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/30">
+							Available tools
+						</span>
+						{tools.map((tool) => (
+							<div
+								key={tool.name}
+								className="flex flex-col gap-0.5 rounded-md bg-black/20 px-2 py-1.5"
+							>
+								<span className="font-mono text-[10px] font-medium text-white/70">
+									{tool.name}
+								</span>
+								{tool.description && (
+									<span className="text-[9.5px] leading-relaxed text-white/35">
+										{tool.description}
+									</span>
+								)}
+							</div>
+						))}
+					</div>
+				</motion.div>
+			)}
+
+			{/* Action bar */}
+			<div className="flex items-center gap-2 border-t border-white/[0.06] px-3 py-2">
+				{/* Enable/disable toggle */}
+				<button
+					type="button"
+					onClick={() => onToggle(!server.enabled)}
+					className={cn(
+						"relative h-4 w-7 rounded-full transition-colors",
+						server.enabled ? "bg-green-400/30" : "bg-white/[0.08]",
+					)}
+					aria-label={server.enabled ? "Disable server" : "Enable server"}
+				>
+					<span
+						className={cn(
+							"absolute top-0.5 size-3 rounded-full transition-transform",
+							server.enabled
+								? "translate-x-3.5 bg-green-400"
+								: "translate-x-0.5 bg-white/40",
+						)}
+					/>
+				</button>
+				<span className="text-[10px] text-white/40">
+					{server.enabled ? "Enabled" : "Disabled"}
+				</span>
+
+				{/* Reconnect button */}
+				{status !== "connecting" && (
+					<button
+						type="button"
+						onClick={onReconnect}
+						className="ml-auto text-[10px] font-medium text-white/40 transition hover:text-white/80"
+					>
+						Reconnect
+					</button>
+				)}
+
+				{/* Delete button */}
+				<button
+					type="button"
+					onClick={onDelete}
+					className="flex items-center gap-1 text-[10px] font-medium text-red-300/50 transition hover:text-red-300"
+					aria-label="Delete server"
+				>
+					<HugeiconsIcon icon={Delete02Icon} className="size-3" />
+					Remove
+				</button>
+			</div>
+		</div>
+	);
+}
+
+/**
+ * Add MCP Server dialog — proper form with name, URL, and optional
+ * token fields. Replaces the old browser `prompt()` flow.
+ */
+function McpAddDialog({
+	open,
+	onOpenChange,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}) {
+	const addServer = useMcpStore((s) => s.addServer);
+	const [name, setName] = useState("");
+	const [url, setUrl] = useState("");
+	const [token, setToken] = useState("");
+	const [error, setError] = useState<string | null>(null);
+
+	const reset = () => {
+		setName("");
+		setUrl("");
+		setToken("");
+		setError(null);
+	};
+
+	const handleSubmit = (e: FormEvent) => {
+		e.preventDefault();
+		setError(null);
+
+		if (!name.trim()) {
+			setError("Server name is required.");
+			return;
+		}
+		if (!url.trim()) {
+			setError("SSE URL is required.");
+			return;
+		}
+		if (!/^https?:\/\//i.test(url.trim())) {
+			setError("URL must start with http:// or https://");
+			return;
+		}
+
+		addServer({
+			name: name.trim(),
+			url: url.trim(),
+			token: token.trim() || undefined,
+			enabled: true,
+		});
+
+		// Connect immediately.
+		const manager = getMcpConnectionManager();
+		const latest = useMcpStore.getState().servers.at(-1);
+		if (latest) {
+			manager.connect(latest, useMcpStore.getState().updateConnection);
+		}
+
+		reset();
+		onOpenChange(false);
+	};
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={(v) => {
+				if (!v) reset();
+				onOpenChange(v);
+			}}
+		>
+			<DialogContent className="max-w-md overflow-hidden">
+				<DialogHeader>
+					<DialogTitle>Add MCP Server</DialogTitle>
+					<DialogDescription>
+						Connect to an MCP-compatible server to give Arth access to
+						external tools.
+					</DialogDescription>
+				</DialogHeader>
+				<form onSubmit={handleSubmit}>
+					<DialogBody className="gap-3">
+						{/* Name */}
+						<div className="flex flex-col gap-1.5">
+							<label
+								htmlFor="mcp-name"
+								className="text-[11px] font-medium text-white/60"
+							>
+								Server name
+							</label>
+							<Input
+								id="mcp-name"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								placeholder="My MCP Server"
+								autoFocus
+								className="h-9 text-[12px]"
+							/>
+						</div>
+
+						{/* URL */}
+						<div className="flex flex-col gap-1.5">
+							<label
+								htmlFor="mcp-url"
+								className="text-[11px] font-medium text-white/60"
+							>
+								SSE URL
+							</label>
+							<Input
+								id="mcp-url"
+								value={url}
+								onChange={(e) => setUrl(e.target.value)}
+								placeholder="http://localhost:3001/sse"
+								className="h-9 font-mono text-[11px]"
+							/>
+							<span className="text-[10px] text-white/30">
+								The SSE endpoint of the MCP server.
+							</span>
+						</div>
+
+						{/* Token (optional) */}
+						<div className="flex flex-col gap-1.5">
+							<label
+								htmlFor="mcp-token"
+								className="text-[11px] font-medium text-white/60"
+							>
+								Bearer token{" "}
+								<span className="text-white/30">(optional)</span>
+							</label>
+							<Input
+								id="mcp-token"
+								type="password"
+								value={token}
+								onChange={(e) => setToken(e.target.value)}
+								placeholder="For authenticated MCP servers"
+								className="h-9 font-mono text-[11px]"
+							/>
+						</div>
+
+						{error && (
+							<div className="flex items-center gap-1.5 rounded-lg border border-red-400/15 bg-red-400/[0.05] px-2.5 py-2">
+								<HugeiconsIcon
+									icon={AlertCircleIcon}
+									className="size-3.5 shrink-0 text-red-300"
+								/>
+								<span className="text-[11px] text-red-300/80">{error}</span>
+							</div>
+						)}
+					</DialogBody>
+					<DialogFooter className="border-t border-white/[0.06] bg-black/20">
+						<Button
+							type="button"
+							size="sm"
+							variant="ghost"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<Button type="submit" size="sm">
+							<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
+							Add Server
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
 	);
 }
 
