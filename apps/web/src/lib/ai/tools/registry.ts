@@ -620,6 +620,24 @@ export const ALL_TOOLS: RegisteredTool[] = [
 	),
 	tool(
 		"asset",
+		"view_asset",
+		"view_asset",
+		"View (see) a media asset's visual content so you can reason about its composition, colors, subjects, and layout. Pass the assetId from list_assets. For images, the image is attached as a vision input. For videos, sample frames are extracted and attached (or the video is sent natively when the active chat model supports video input, e.g. Gemini). For audio, only metadata is returned (audio cannot be viewed visually). Use this before suggesting edits that depend on what's actually in the media.",
+		objectSchema(
+			{
+				assetId: { type: "string" },
+				/**
+				 * Optional. For video assets, the number of sample frames to
+				 * extract (default 3, max 8). Ignored for images and audio,
+				 * and when the model supports native video input.
+				 */
+				sampleFrames: numberSchema(1, 8),
+			},
+			["assetId"],
+		),
+	),
+	tool(
+		"asset",
 		"add_media_to_timeline",
 		"add_media_to_timeline",
 		"Add an existing media library asset to the timeline as a video/image/audio clip. Call list_assets first to get the assetId. trackId is optional — omit it to auto-place on the right track type. startTime defaults to the current playhead position (in ticks).",

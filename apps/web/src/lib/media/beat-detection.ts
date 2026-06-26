@@ -1,4 +1,5 @@
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { yieldToEventLoop } from "@/lib/media/yield";
 
 export interface BeatDetectionOptions {
 	minBpm?: number;
@@ -19,17 +20,6 @@ const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	thresholdRatio: 1.35,
 	minBeatGapMs: 200,
 };
-
-/**
- * Yield to the event loop (macrotask) so pending UI events — clicks,
- * animation frames, etc. — can be processed. Without this, the tight
- * nested loops in beat detection block the main thread for seconds on
- * long audio files, freezing the editor and making the Revoke button
- * unclickable.
- */
-function yieldToEventLoop(): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, 0));
-}
 
 /**
  * Synchronous beat detection. Kept for backward compatibility and tests,

@@ -68,6 +68,20 @@ interface SettingsState {
 	 */
 	aiCoEditMode: boolean;
 	setAiCoEditMode: (value: boolean) => void;
+
+	/**
+	 * AI takeover permission mode.
+	 *  - "normal" (default): the AI must ask for the user's approval before
+	 *    executing editor-modifying tools. The permission dialog/inline card
+	 *    is shown once per session.
+	 *  - "bypass": the AI skips the permission dialog entirely and executes
+	 *    all modifying tools (including destructive ones like delete) without
+	 *    asking. Intended for power users who trust the AI and want
+	 *    uninterrupted autonomous operation. The aurora overlay still shows
+	 *    so the user can see the AI is active and can revoke at any time.
+	 */
+	aiPermissionMode: "normal" | "bypass";
+	setAiPermissionMode: (value: "normal" | "bypass") => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -98,6 +112,9 @@ export const useSettingsStore = create<SettingsState>()(
 
 			aiCoEditMode: false,
 			setAiCoEditMode: (value) => set({ aiCoEditMode: value }),
+
+			aiPermissionMode: "normal",
+			setAiPermissionMode: (value) => set({ aiPermissionMode: value }),
 		}),
 		{
 			name: "app-settings",

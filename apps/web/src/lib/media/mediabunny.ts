@@ -3,6 +3,7 @@ import { createTimelineAudioBuffer } from "@/lib/media/audio";
 import type { AudioElement, SceneTracks, VideoElement } from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { yieldToEventLoop } from "@/lib/media/yield";
 
 export async function getVideoInfo({
 	videoFile,
@@ -90,17 +91,17 @@ export const extractTimelineAudio = async ({
 
 	onProgress?.(90);
 
-	const interleavedSamples = interleaveAudioBuffer({ audioBuffer });
+	const interleavedSamples = await interleaveAudioBuffer({ audioBuffer });
 	onProgress?.(100);
 
 	return createWavBlob({ samples: interleavedSamples });
 };
 
-function interleaveAudioBuffer({
+async function interleaveAudioBuffer({
 	audioBuffer,
 }: {
 	audioBuffer: AudioBuffer;
-}): Float32Array {
+}): Promise<Float32Array> {
 	const numChannels = Math.min(NUM_CHANNELS, audioBuffer.numberOfChannels);
 	const interleavedSamples = new Float32Array(
 		audioBuffer.length * NUM_CHANNELS,
@@ -112,12 +113,21 @@ function interleaveAudioBuffer({
 			interleavedSamples[sampleIndex * NUM_CHANNELS + channel] =
 				audioBuffer.getChannelData(sourceChannel)[sampleIndex] ?? 0;
 		}
+		// Yield periodically so the main thread stays responsive on
+		// long audio files (millions of samples).
+		if (sampleIndex % 8192 === 0 && sampleIndex > 0) {
+			await yieldToEventLoop();
+		}
 	}
 
 	return interleavedSamples;
 }
 
-function createWavBlob({ samples }: { samples: Float32Array }): Blob {
+async function createWavBlob({
+	samples,
+}: {
+	samples: Float32Array;
+}): Promise<Blob> {
 	const numChannels = NUM_CHANNELS;
 	const bitsPerSample = 16;
 	const bytesPerSample = bitsPerSample / 8;
@@ -145,13 +155,15 @@ function createWavBlob({ samples }: { samples: Float32Array }): Blob {
 	writeString({ view, offset: 36, str: "data" });
 	view.setUint32(40, dataSize, true);
 
-	// convert float32 to int16 and write
+	// convert float32 to int16 and write — yield periodically so the
+	// main thread stays responsive on long audio files.
 	let offset = 44;
 	for (let i = 0; i < samples.length; i++) {
-		const sample = Math.max(-1, Math.min(1, samples[i]));
+		const sample = Math.max(-1, Math.min(1, samples[i] ?? 0));
 		const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
 		view.setInt16(offset, int16, true);
 		offset += 2;
+		if (i % 8192 === 0 && i > 0) await yieldToEventLoop();
 	}
 
 	return new Blob([buffer], { type: "audio/wav" });
@@ -231,6 +243,8 @@ export async function extractClipAudio({
 				for (let i = 0; i < length; i++) {
 					mixed[i] += (data[startSample + i] ?? 0) / channelCount;
 				}
+				// Yield between channels to keep UI responsive.
+				if (length > 8192) await yieldToEventLoop();
 			}
 
 			collected.push(mixed);
@@ -249,6 +263,8 @@ export async function extractClipAudio({
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS + 1] = arr[i] ?? 0;
 			}
 			offset += arr.length;
+			// Yield between collected chunks to keep UI responsive.
+			if (arr.length > 8192) await yieldToEventLoop();
 		}
 
 		return createWavBlob({ samples: interleaved });
@@ -293,6 +309,8 @@ export async function extractAssetAudio({
 				for (let i = 0; i < length; i++) {
 					mixed[i] += (data[i] ?? 0) / channelCount;
 				}
+				// Yield between channels to keep UI responsive.
+				if (length > 8192) await yieldToEventLoop();
 			}
 
 			collected.push(mixed);
@@ -311,6 +329,8 @@ export async function extractAssetAudio({
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS + 1] = arr[i] ?? 0;
 			}
 			offset += arr.length;
+			// Yield between collected chunks to keep UI responsive.
+			if (arr.length > 8192) await yieldToEventLoop();
 		}
 
 		return createWavBlob({ samples: interleaved });

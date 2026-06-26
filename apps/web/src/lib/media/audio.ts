@@ -22,6 +22,7 @@ import { mediaSupportsAudio } from "@/lib/media/media-utils";
 import { getSourceTimeAtClipTime, renderRetimedBuffer } from "@/lib/retime";
 import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { yieldToEventLoop } from "@/lib/media/yield";
 
 const MAX_AUDIO_CHANNELS = 2;
 const EXPORT_SAMPLE_RATE = 44100;
@@ -70,7 +71,8 @@ export async function decodeAudioToFloat32({
 	const arrayBuffer = await audioBlob.arrayBuffer();
 	const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-	// mix down to mono
+	// mix down to mono — yield periodically so the main thread stays
+	// responsive on long audio files (millions of samples).
 	const numChannels = audioBuffer.numberOfChannels;
 	const length = audioBuffer.length;
 	const samples = new Float32Array(length);
@@ -81,6 +83,7 @@ export async function decodeAudioToFloat32({
 			sum += audioBuffer.getChannelData(channel)[i];
 		}
 		samples[i] = sum / numChannels;
+		if (i % 8192 === 0 && i > 0) await yieldToEventLoop();
 	}
 
 	return { samples, sampleRate: audioBuffer.sampleRate };
