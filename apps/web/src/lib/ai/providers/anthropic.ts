@@ -49,7 +49,16 @@ export class AnthropicProvider implements LLMProvider {
 			this.config.baseUrl ?? "https://api.anthropic.com"
 		).replace(/\/$/, "");
 
-		const system = request.messages.find((m) => m.role === "system")?.content;
+		const systemMsg = request.messages.find((m) => m.role === "system");
+		const system =
+			typeof systemMsg?.content === "string"
+				? systemMsg.content
+				: Array.isArray(systemMsg?.content)
+					? systemMsg.content
+							.filter((p) => p.type === "text")
+							.map((p) => (p as { type: "text"; text: string }).text)
+							.join("\n")
+					: undefined;
 		const messages = request.messages
 			.filter((m) => m.role !== "system")
 			.map((m) => this.toAnthropicMessage(m));
@@ -136,7 +145,10 @@ export class AnthropicProvider implements LLMProvider {
 					{
 						type: "tool_result",
 						tool_use_id: m.toolCallId,
-						content: m.content,
+						content:
+							typeof m.content === "string"
+								? m.content
+								: JSON.stringify(m.content),
 					},
 				],
 			};
@@ -152,10 +164,33 @@ export class AnthropicProvider implements LLMProvider {
 				})),
 			};
 		}
-		// User text message.
+		// Convert content parts to Anthropic's format. Image_url parts
+		// (data URLs) are converted to Anthropic's base64 image blocks.
+		const parts = Array.isArray(m.content) ? m.content : [{ type: "text" as const, text: m.content }];
+		const content = parts.map((p) => {
+			if (p.type === "text") {
+				return { type: "text", text: p.text };
+			}
+			// image_url → Anthropic base64 image block.
+			const url = p.image_url.url;
+			const match = url.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
+			if (match) {
+				return {
+					type: "image",
+					source: {
+						type: "base64",
+						media_type: match[1],
+						data: match[2],
+					},
+				};
+			}
+			// Non-data URLs: pass as text reference (Anthropic doesn't
+			// support URL-based images directly).
+			return { type: "text", text: `[image: ${url}]` };
+		});
 		return {
-			role: "user",
-			content: [{ type: "text", text: m.content }],
+			role: m.role === "assistant" ? "assistant" : "user",
+			content,
 		};
 	}
 

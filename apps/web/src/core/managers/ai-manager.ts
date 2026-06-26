@@ -185,6 +185,40 @@ export class AIManager {
 			}),
 		);
 
+		// Attach pending captured frames as vision inputs to the last
+		// user message. This lets the LLM "see" what capture_frame
+		// captured when it processes the next turn.
+		const pendingImages = storeState.pendingImages;
+		if (pendingImages.length > 0) {
+			const lastUserIdx = [...messages]
+				.reverse()
+				.findIndex((m) => m.role === "user");
+			if (lastUserIdx >= 0) {
+				const realIdx = messages.length - 1 - lastUserIdx;
+				const userMsg = messages[realIdx];
+				const text =
+					typeof userMsg.content === "string"
+						? userMsg.content
+						: Array.isArray(userMsg.content)
+							? userMsg.content
+									.filter((p) => p.type === "text")
+									.map((p) => (p as { type: "text"; text: string }).text)
+									.join("")
+							: "";
+				messages[realIdx] = {
+					role: "user",
+					content: [
+						{ type: "text", text },
+						...pendingImages.map((url) => ({
+							type: "image_url" as const,
+							image_url: { url },
+						})),
+					],
+				};
+			}
+			useAIStore.getState().clearPendingImages();
+		}
+
 		// Make the request. Include the user's selected provider config so
 		// the server uses the client-managed endpoint rather than env vars.
 		const providerConfig = getDefaultProvider();
@@ -366,6 +400,14 @@ export class AIManager {
 						source: "ai",
 					});
 					results.push({ name: tc.name, ok: r.ok, message: r.message });
+					// If this was a frame capture, store the image so it
+					// gets attached as a vision input to the next request.
+					if (tc.name === "capture_frame" && r.ok) {
+						const data = r.data as { dataUrl?: string } | undefined;
+						if (data?.dataUrl) {
+							useAIStore.getState().addPendingImage(data.dataUrl);
+						}
+					}
 				}
 			}
 		}

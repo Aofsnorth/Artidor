@@ -634,6 +634,147 @@ const HANDLERS: Record<string, Handler> = {
 		};
 	},
 
+	add_media_to_timeline: async (editor, args) => {
+		const assetId = asString(args.assetId);
+		if (!assetId) return { ok: false, message: "assetId required" };
+		const assets = editor.media.getAssets();
+		const asset = assets.find((a) => a.id === assetId);
+		if (!asset) return { ok: false, message: "Asset not found" };
+
+		const { buildElementFromMedia } = await import(
+			"@/lib/timeline/element-utils"
+		);
+		const startTime =
+			typeof args.startTime === "number"
+				? asNumber(args.startTime)
+				: editor.playback.getCurrentTime();
+		const duration =
+			asset.duration != null
+				? Math.round(asset.duration * TICKS_PER_SECOND)
+				: Math.round(5 * TICKS_PER_SECOND);
+
+		const element = buildElementFromMedia({
+			mediaId: asset.id,
+			mediaType: asset.type,
+			name: asset.name,
+			duration,
+			startTime,
+		});
+
+		const trackId = asString(args.trackId);
+		if (trackId) {
+			editor.timeline.insertElement({
+				element,
+				placement: { mode: "explicit", trackId },
+			});
+		} else {
+			editor.timeline.insertElement({
+				element,
+				placement: {
+					mode: "auto",
+					trackType: asset.type === "audio" ? "audio" : "video",
+				},
+			});
+		}
+		return {
+			ok: true,
+			message: `Added "${asset.name}" to timeline at ${startTime} ticks`,
+		};
+	},
+
+	import_and_add_to_timeline: async (editor, args) => {
+		const url = asString(args.url);
+		if (!url) return { ok: false, message: "url required" };
+		// Step 1: import the asset.
+		try {
+			const res = await fetch("/api/drive/import", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ url }),
+			});
+			const data = await res.json();
+			if (!data.ok) {
+				return { ok: false, message: data.message ?? "Import failed" };
+			}
+			// Step 2: find the newly imported asset in the library.
+			// The import endpoint returns fileName; we match by name.
+			const assets = editor.media.getAssets();
+			const fileName: string = data.fileName ?? "";
+			const asset =
+				assets.find((a) => a.name === fileName) ?? assets.at(-1);
+			if (!asset) {
+				return {
+					ok: false,
+					message: "Imported but asset not found in library",
+				};
+			}
+			// Step 3: add to timeline.
+			const { buildElementFromMedia } = await import(
+				"@/lib/timeline/element-utils"
+			);
+			const startTime =
+				typeof args.startTime === "number"
+					? asNumber(args.startTime)
+					: editor.playback.getCurrentTime();
+			const duration =
+				asset.duration != null
+					? Math.round(asset.duration * TICKS_PER_SECOND)
+					: Math.round(5 * TICKS_PER_SECOND);
+
+			const element = buildElementFromMedia({
+				mediaId: asset.id,
+				mediaType: asset.type,
+				name: asset.name,
+				duration,
+				startTime,
+			});
+
+			const trackId = asString(args.trackId);
+			if (trackId) {
+				editor.timeline.insertElement({
+					element,
+					placement: { mode: "explicit", trackId },
+				});
+			} else {
+				editor.timeline.insertElement({
+					element,
+					placement: {
+						mode: "auto",
+						trackType: asset.type === "audio" ? "audio" : "video",
+					},
+				});
+			}
+			return {
+				ok: true,
+				message: `Imported and added "${asset.name}" to timeline`,
+				data: { assetId: asset.id },
+			};
+		} catch (err) {
+			return {
+				ok: false,
+				message: err instanceof Error ? err.message : "Import failed",
+			};
+		}
+	},
+
+	/* ------------------------------- capture ----------------------------- */
+	capture_frame: async (editor) => {
+		const result = await editor.renderer.captureFrameAsDataURL();
+		if (!result.success || !result.dataUrl) {
+			return {
+				ok: false,
+				message: result.error ?? "Failed to capture frame",
+			};
+		}
+		// Return the data URL. The AI manager will detect this and
+		// attach it as a vision input to the next LLM request.
+		return {
+			ok: true,
+			message: "Frame captured (PNG, base64)",
+			data: { dataUrl: result.dataUrl, mimeType: "image/png" },
+		};
+	},
+
 	/* -------------------------------- style ------------------------------ */
 	apply_preset: async (editor, args) => {
 		const preset = asString(args.preset, "cinematic").toLowerCase();
