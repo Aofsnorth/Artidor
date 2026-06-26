@@ -67,6 +67,40 @@ interface TestResult {
 	latencyMs?: number;
 }
 
+/**
+ * Parse the response from /api/ai/test safely. The route always returns
+ * JSON, but proxies, middleware, or transient failures can produce an
+ * empty or HTML body. If JSON parsing fails, we read the body as text and
+ * surface a human-readable message instead of the raw "Unexpected end of
+ * JSON input" exception.
+ */
+async function parseTestResponse(response: Response): Promise<TestResult> {
+	const contentType = response.headers.get("content-type") ?? "";
+	const isJson = contentType.includes("application/json");
+	if (!response.ok || !isJson) {
+		let text = "";
+		try {
+			text = (await response.text()).slice(0, 300);
+		} catch {
+			// ignore — we'll fall back to status
+		}
+		return {
+			ok: false,
+			error: text
+				? `Server returned HTTP ${response.status}: ${text}`
+				: `Server returned HTTP ${response.status}. Please try again.`,
+		};
+	}
+	try {
+		return (await response.json()) as TestResult;
+	} catch (err) {
+		return {
+			ok: false,
+			error: `Could not read server response: ${err instanceof Error ? err.message : String(err)}`,
+		};
+	}
+}
+
 export function AIProvidersManager({
 	variant = "panel",
 }: AIProvidersManagerProps) {
@@ -111,7 +145,7 @@ export function AIProvidersManager({
 						kind: provider.kind,
 					}),
 				});
-				const result = (await response.json()) as TestResult;
+				const result = await parseTestResponse(response);
 				markTestResult(provider.id, result.ok);
 				if (!result.ok) {
 					// Surface the failure to the user too — markTestResult
@@ -550,7 +584,7 @@ function ProviderFormDialog({
 					kind,
 				}),
 			});
-			const result = (await response.json()) as TestResult;
+			const result = await parseTestResponse(response);
 			if (result.ok) {
 				setTestError(null);
 			} else {
