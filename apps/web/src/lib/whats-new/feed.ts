@@ -18,6 +18,20 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-28-docs-page",
+		date: "2026-06-28",
+		tag: "feature",
+		title: "Documentation page — MCP server, AI copilot, shortcuts, and more",
+		items: [
+			"New /docs page with full documentation for Artidor's features.",
+			"MCP Server section explains how external AIs (Claude Desktop, Cursor, etc.) can connect to Artidor and directly edit projects — setup steps, tool categories, security model, and troubleshooting.",
+			"MCP Client section covers how to connect external MCP servers to Arth for extended tool access.",
+			"AI Copilot section covers Arth usage, providers, media generation, auto-learn, and the new Steer/Queue/Stop controls.",
+			"Also includes keyboard shortcuts, project management, collaboration, export, privacy & security, and troubleshooting sections.",
+			"Docs link added to the header navigation and footer.",
+		],
+	},
+	{
 		id: "2026-06-28-chat-steer-queue",
 		date: "2026-06-28",
 		tag: "feature",

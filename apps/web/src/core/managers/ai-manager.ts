@@ -300,7 +300,7 @@ export class AIManager {
 				| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
 				| { kind: "error" }
 				| null = null;
-			let lastError = "Connection error";
+			const lastError = "Connection error";
 			for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
 				if (signal.aborted) return;
 				result = await this.streamLLMResponse(
@@ -319,7 +319,7 @@ export class AIManager {
 				useAIStore.getState().clearRetry();
 				// Show a transient retry status to the user.
 				if (attempt < MAX_IN_ROUND_RETRIES - 1) {
-					const delay = RETRY_DELAY_BASE_MS * Math.pow(2, attempt);
+					const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
 					useAIStore.getState().setStatus("retrying");
 					useAIStore.getState().setError(
 						`Connection issue — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES})…`,

@@ -9,7 +9,6 @@
  */
 
 import type {
-	ChatMessageContent,
 	ChatRequest,
 	ChatResponse,
 	LLMProvider,
