@@ -108,6 +108,7 @@ export function AIEditView() {
 	const [isExtracting, setIsExtracting] = useState(false);
 	const [providersOpen, setProvidersOpen] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const composerRef = useRef<HTMLTextAreaElement>(null);
 	const [draft, setDraft] = useState("");
 	const mediaAssets = useEditor((e) => e.media.getAssets());
@@ -120,10 +121,44 @@ export function AIEditView() {
 		text: string;
 	} | null>(null);
 
-	// Auto-scroll to the latest message when the chat updates.
-	useEffect(() => {
+	// Scroll tracking: we auto-scroll to the bottom when new messages
+	// arrive, but only if the user is already near the bottom (so we
+	// don't yank them away while they're reading older messages).
+	// The "atBottom" flag also controls whether the scroll-down button
+	// is shown.
+	const [isAtBottom, setIsAtBottom] = useState(true);
+	const [isAtTop, setIsAtTop] = useState(true);
+
+	const handleMessagesScroll = useCallback(() => {
+		const el = messagesContainerRef.current;
+		if (!el) return;
+		const threshold = 32; // px from edge to count as "at bottom/top"
+		setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < threshold);
+		setIsAtTop(el.scrollTop < threshold);
+	}, []);
+
+	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, []);
+
+	const scrollToTop = useCallback(() => {
+		messagesContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+	}, []);
+
+	// Auto-scroll to the latest message when the chat updates — but
+	// only if the user is already at (or near) the bottom, so we don't
+	// yank them away while they're reading older messages.
+	const isStreaming =
+		ai.status === "streaming" || ai.status === "awaiting-tools";
+	// A single value that changes whenever the chat content changes
+	// (new message, streaming token, status change) so the effect fires.
+	const chatTick = `${ai.messages.length}:${ai.messages[ai.messages.length - 1]?.content ?? ""}:${ai.status}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick is a proxy for ai.messages changes
+	useEffect(() => {
+		if (isAtBottom) {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		}
+	}, [chatTick, isAtBottom]);
 
 	// Auto-focus the composer once on mount.
 	useEffect(() => {
@@ -132,8 +167,6 @@ export function AIEditView() {
 
 	const recentCount = telemetry.events.length;
 	const autoLearnEnabled = telemetry.enabled;
-	const isStreaming =
-		ai.status === "streaming" || ai.status === "awaiting-tools";
 
 	const handleSend = useCallback(
 		async (text: string) => {
@@ -299,7 +332,11 @@ export function AIEditView() {
 				</div>
 
 				{/* Messages */}
-				<div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5">
+				<div
+					ref={messagesContainerRef}
+					onScroll={handleMessagesScroll}
+					className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-0.5"
+				>
 					{ai.messages.length === 0 ? (
 						<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
 					) : (
@@ -319,6 +356,30 @@ export function AIEditView() {
 						</div>
 					)}
 					<div ref={messagesEndRef} />
+
+					{/* Scroll-to-top button — only visible when not at top */}
+					{!isAtTop && ai.messages.length > 0 && (
+						<button
+							type="button"
+							onClick={scrollToTop}
+							title="Scroll to top"
+							className="sticky top-1 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
+						>
+							<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
+						</button>
+					)}
+
+					{/* Scroll-to-bottom button — only visible when not at bottom */}
+					{!isAtBottom && ai.messages.length > 0 && (
+						<button
+							type="button"
+							onClick={scrollToBottom}
+							title="Scroll to bottom"
+							className="sticky bottom-1 left-1/2 z-10 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
+						>
+							<HugeiconsIcon icon={ArrowDown03Icon} className="size-3" />
+						</button>
+					)}
 				</div>
 
 				{/* Composer */}
@@ -976,5 +1037,4 @@ function Spinner() {
 
 // Suppress unused-import warning for icons that are only referenced
 // inside the QUICK_ACTIONS table; keep them in scope for tree-shaking.
-void ArrowDown03Icon;
 void Image01Icon;
