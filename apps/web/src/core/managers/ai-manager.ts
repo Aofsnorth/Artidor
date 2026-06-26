@@ -27,6 +27,7 @@ import {
 	type ChatMessage as UiChatMessage,
 } from "@/stores/ai-store";
 import { useAIProvidersStore, type ProviderKind } from "@/stores/ai-providers-store";
+import { streamPuterChat } from "@/lib/ai/puter-client";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
 import type { FrameRate } from "artidor-wasm";
@@ -379,6 +380,21 @@ export class AIManager {
 				parameters: t.inputSchema,
 			},
 		}));
+
+		// ── Puter.js client-side path ──────────────────────────────
+		// Puter.js runs entirely in the browser via the Puter.js SDK.
+		// It never hits our server API. We stream directly from
+		// puter.ai.chat() and feed the chunks into the same assistant
+		// bubble + tool-call pipeline as the server SSE path.
+		if (providerConfig?.kind === "puter") {
+			return await this.streamPuterResponse(
+				messages,
+				providerConfig.model,
+				externalTools,
+				signal,
+			);
+		}
+
 		let res: Response;
 		try {
 			res = await fetch("/api/ai/chat", {
@@ -496,6 +512,88 @@ export class AIManager {
 			this.scheduleRetry(
 				text,
 				err instanceof Error ? err.message : "Stream error",
+			);
+			return { kind: "error" };
+		}
+
+		return { kind: "ok", assistantId, toolCalls };
+	}
+
+	/**
+	 * Stream a chat completion from Puter.js (client-side).
+	 *
+	 * This mirrors the SSE path in `streamLLMResponse` but uses the
+	 * Puter.js SDK directly instead of fetching from `/api/ai/chat`.
+	 * The chunk format is normalized by `streamPuterChat()` so the
+	 * consumer logic (assistant bubble, tool calls, error handling)
+	 * stays identical.
+	 */
+	private async streamPuterResponse(
+		messages: ChatMessage[],
+		model: string,
+		externalTools: Array<{
+			type: "function";
+			function: {
+				name: string;
+				description: string;
+				parameters: unknown;
+			};
+		}>,
+		signal: AbortSignal,
+	): Promise<
+		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
+		| { kind: "error" }
+	> {
+		// Reserve an assistant bubble; we'll stream into it.
+		const assistantId = useAIStore.getState().appendMessage({
+			role: "assistant",
+			content: "",
+		});
+		this.notify();
+
+		let assembledText = "";
+		let toolCalls: ToolCallRound[] = [];
+
+		try {
+			for await (const chunk of streamPuterChat(
+				messages,
+				model,
+				externalTools,
+				signal,
+			)) {
+				if (signal.aborted) return { kind: "error" };
+
+				if (chunk.error) {
+					useAIStore.getState().removeMessage(assistantId);
+					this.scheduleRetry("", chunk.error);
+					return { kind: "error" };
+				}
+				if (chunk.delta) {
+					assembledText += chunk.delta;
+					const sanitized = sanitizeAssistantText(assembledText);
+					useAIStore.getState().updateMessage(assistantId, {
+						content: sanitized,
+					});
+					this.notify();
+				}
+				if (chunk.toolCalls?.length) {
+					toolCalls = chunk.toolCalls.map((tc) => ({
+						id: tc.id,
+						name: tc.name,
+						arguments: tc.arguments,
+					}));
+				}
+				if (chunk.done) break;
+			}
+		} catch (err) {
+			// User aborted — don't schedule retry.
+			if (signal.aborted || err instanceof DOMException) {
+				return { kind: "error" };
+			}
+			useAIStore.getState().removeMessage(assistantId);
+			this.scheduleRetry(
+				"",
+				err instanceof Error ? err.message : "Puter.js stream error",
 			);
 			return { kind: "error" };
 		}

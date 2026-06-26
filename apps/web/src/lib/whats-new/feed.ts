@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-puter-client-side-streaming",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Puter.js now works — client-side streaming + SDK fix",
+		items: [
+			"Fixed HTTP 400 error when using Puter.js — the AI manager was sending requests to the server API, but Puter.js runs entirely in the browser. Puter.js now streams directly from the Puter.js SDK (puter.ai.chat) without touching the server.",
+			"Fixed 'Failed to load Puter.js SDK' — the SDK loader is now a shared, idempotent module (lib/ai/puter-client.ts) with proper error handling, cross-origin attribute, and retry support.",
+			"Tool calls work with Puter.js — the streaming path converts Puter's tool_use chunks to the same internal format the server SSE path uses, so the agentic tool loop works identically.",
+		],
+	},
+	{
 		id: "2026-06-27-puter-middle-card-model-fetch",
 		date: "2026-06-27",
 		tag: "improvement",
