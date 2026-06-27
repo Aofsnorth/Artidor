@@ -1,5 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { hasDragData } from "@/lib/drag-data";
+import { isTauri } from "@/lib/tauri/detect";
+import { importMediaNative } from "@/lib/tauri/media-bridge";
 
 interface UseFileUploadOptions {
 	accept?: string;
@@ -18,19 +20,25 @@ export function useFileUpload({
 }: UseFileUploadOptions = {}) {
 	const [isDragOver, setIsDragOver] = useState(false);
 	const dragCounterRef = useRef(0);
-	// Flipped true the instant a real drop fires. A drop and a cancel both reset
-	// `isDragOver` to false, so consumers that want to show "drop cancelled"
-	// feedback need this to tell the two apart. Consumers read it, then reset it.
 	const justDroppedRef = useRef(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	function openFilePicker() {
-		if (!inputRef.current) return;
+	const openFilePicker = useCallback(async () => {
+		// Native file picker when in Tauri
+		if (isTauri()) {
+			const imports = await importMediaNative();
+			if (imports && imports.length > 0 && onFilesSelected) {
+				onFilesSelected(imports.map((imp) => imp.file));
+			}
+			return;
+		}
 
+		// Web fallback: use hidden <input type="file">
+		if (!inputRef.current) return;
 		inputRef.current.accept = accept || "*";
 		inputRef.current.multiple = multiple || false;
 		inputRef.current.click();
-	}
+	}, [accept, multiple, onFilesSelected]);
 
 	function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
 		const files = Array.from(event.target.files ?? []);
