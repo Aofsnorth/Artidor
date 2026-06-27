@@ -18,7 +18,9 @@ use crate::render::viewport::renderer_for;
 use crate::state::{self, Element, Track, TrackType};
 use crate::theme::PLAYBACK_TIMER_ID;
 use crate::ui::layout::Layout;
-use crate::window::{WindowState, child_hwnd, timeline_duration, window_state, window_state_mut};
+use crate::window::{
+    DragMode, DragState, WindowState, child_hwnd, timeline_duration, window_state, window_state_mut,
+};
 
 /// Handle a WM_KEYDOWN message. Returns true if the window should repaint.
 pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
@@ -56,6 +58,7 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                     let next_type = types[track_count % types.len()];
                     let id = format!("track-{}", track_count + 1);
                     let name = format!("{}", next_type.label());
+                    state.history.push(&state.project);
                     state.project.add_track(Track::new(id, name, next_type));
                     state.selected_track = state.project.scene.tracks.len() - 1;
                     dirty = true;
@@ -63,6 +66,7 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                 0x4D if track_count > 0 => {
                     let sel = state.selected_track;
                     let track_id = state.project.scene.tracks[sel].id.clone();
+                    state.history.push(&state.project);
                     let _ = state.project.toggle_track_mute(&track_id);
                     dirty = true;
                 }
@@ -77,6 +81,7 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                         start,
                         5.0,
                     );
+                    state.history.push(&state.project);
                     let _ = state.project.add_element(&track_id, el);
                     dirty = true;
                 }
@@ -103,6 +108,7 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                             if ei < state.project.scene.tracks[ti].elements.len() {
                                 let element_id =
                                     state.project.scene.tracks[ti].elements[ei].id.clone();
+                                state.history.push(&state.project);
                                 state.project.remove_element(&track_id, &element_id);
                                 state.selected_element = None;
                                 dirty = true;
@@ -133,6 +139,17 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
         }
         if key == 0x45 && GetKeyState(VK_CONTROL.0 as i32) < 0 {
             dirty |= handle_export(hwnd);
+        }
+        // Ctrl+Z = undo, Ctrl+Y = Ctrl+Shift+Z = redo.
+        if key == 0x5A && GetKeyState(VK_CONTROL.0 as i32) < 0 {
+            if GetKeyState(windows::Win32::UI::Input::KeyboardAndMouse::VK_SHIFT.0 as i32) < 0 {
+                dirty |= handle_redo(hwnd);
+            } else {
+                dirty |= handle_undo(hwnd);
+            }
+        }
+        if key == 0x59 && GetKeyState(VK_CONTROL.0 as i32) < 0 {
+            dirty |= handle_redo(hwnd);
         }
 
         if dirty {
@@ -192,6 +209,33 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                 if let Some((ti, ei)) = clicked_clip {
                     state.selected_element = Some((ti, ei));
                     state.selected_track = ti;
+                    // Start a drag: trim if click is in the last 8px of
+                    // the clip, else move. Push history so the drag can
+                    // be undone as a single action.
+                    let track = &state.project.scene.tracks[ti];
+                    let element = &track.elements[ei];
+                    let start_frac = (element.start_seconds / duration).clamp(0.0, 1.0);
+                    let end_frac = (element.end_seconds() / duration).clamp(0.0, 1.0);
+                    let header_right = tl.left + 8 + 140;
+                    let clip_area_left = header_right + 4;
+                    let clip_area_right = tl.left + panel_w - 8 - 4;
+                    let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
+                    let clip_x = clip_area_left + (start_frac * clip_area_w) as i32;
+                    let clip_w = ((end_frac - start_frac) * clip_area_w) as i32;
+                    let mode = if x >= clip_x + clip_w - 8 {
+                        DragMode::TrimRight
+                    } else {
+                        DragMode::Move
+                    };
+                    state.drag = Some(DragState {
+                        track_index: ti,
+                        element_index: ei,
+                        mode,
+                        start_x: x,
+                        start_seconds: element.start_seconds,
+                        start_duration: element.duration_seconds,
+                    });
+                    state.history.push(&state.project);
                     return true;
                 } else if x >= tl.left + 8 && x <= tl.right - 8 && y >= tl.top && y <= list_bottom {
                     state.selected_element = None;
@@ -444,6 +488,92 @@ fn handle_export(hwnd: HWND) -> bool {
 }
 
 /// Show a simple modal MessageBox with the Artidor title.
+/// Handle WM_MOUSEMOVE: if a drag is active, move or trim the clip.
+pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::LPARAM) -> bool {
+    unsafe {
+        let x = (lparam.0 & 0xFFFF) as i16 as i32;
+        if let Some(state) = window_state_mut(hwnd) {
+            if let Some(drag) = state.drag {
+                let mut client = RECT::default();
+                if GetClientRect(hwnd, &mut client).is_ok() {
+                    let layout =
+                        Layout::compute(client.right - client.left, client.bottom - client.top);
+                    let tl = &layout.timeline;
+                    let panel_w = tl.right - tl.left;
+                    let duration = timeline_duration(&state.project);
+                    if duration <= 0.0 {
+                        return false;
+                    }
+                    let header_right = tl.left + 8 + 140;
+                    let clip_area_left = header_right + 4;
+                    let clip_area_right = tl.left + panel_w - 8 - 4;
+                    let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
+                    let delta_px = (x - drag.start_x) as f64;
+                    let delta_seconds = delta_px / clip_area_w * duration;
+
+                    let track_id = state.project.scene.tracks[drag.track_index].id.clone();
+                    let element_id = state.project.scene.tracks[drag.track_index].elements
+                        [drag.element_index]
+                        .id
+                        .clone();
+
+                    match drag.mode {
+                        DragMode::Move => {
+                            let new_start = (drag.start_seconds + delta_seconds).max(0.0);
+                            state
+                                .project
+                                .move_element(&track_id, &element_id, new_start);
+                        }
+                        DragMode::TrimRight => {
+                            let new_dur = (drag.start_duration + delta_seconds).max(0.1);
+                            state.project.trim_element(&track_id, &element_id, new_dur);
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+
+/// Handle WM_LBUTTONUP: end any active drag.
+pub unsafe fn handle_lbuttonup(hwnd: HWND) -> bool {
+    unsafe {
+        if let Some(state) = window_state_mut(hwnd) {
+            if state.drag.is_some() {
+                state.drag = None;
+                return true;
+            }
+        }
+        false
+    }
+}
+
+/// Handle Ctrl+Z: undo the last mutating action.
+fn handle_undo(hwnd: HWND) -> bool {
+    if let Some(state) = window_state_mut(hwnd) {
+        if let Some(prev) = state.history.undo(&state.project) {
+            state.project = prev;
+            state.selected_element = None;
+            return true;
+        }
+    }
+    false
+}
+
+/// Handle Ctrl+Y / Ctrl+Shift+Z: redo.
+fn handle_redo(hwnd: HWND) -> bool {
+    if let Some(state) = window_state_mut(hwnd) {
+        if let Some(next) = state.history.redo(&state.project) {
+            state.project = next;
+            state.selected_element = None;
+            return true;
+        }
+    }
+    false
+}
+
 pub fn message_box(text: &str, error: bool) {
     use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
     use windows::core::{PCWSTR, w};
