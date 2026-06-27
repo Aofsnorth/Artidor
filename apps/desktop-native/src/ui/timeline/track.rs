@@ -10,6 +10,7 @@ use crate::theme::{BG_DARK, TEXT_BRIGHT, TEXT_DIM, TRACK_PAD, TRACK_ROW_H};
 use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
 
 /// Draw a single track row: type tag + name + clip blocks.
+/// Uses zoom (pps) + scroll (seconds) for pixel-accurate clip placement.
 /// Returns the row's bottom y for the next row.
 pub unsafe fn draw_track_row(
     hdc: HDC,
@@ -19,7 +20,8 @@ pub unsafe fn draw_track_row(
     track_index: usize,
     selected_track: usize,
     selected_element: Option<(usize, usize)>,
-    duration: f64,
+    zoom_pps: f64,
+    scroll_seconds: f64,
     list_bottom: i32,
 ) -> i32 {
     unsafe {
@@ -74,41 +76,54 @@ pub unsafe fn draw_track_row(
         };
         draw_text_left(hdc, &label, &name_rect, name_color);
 
-        // Clip blocks.
-        if duration > 0.0 {
-            let clip_area_left = header_right + 4;
-            let clip_area_right = row.right - 4;
-            let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
-            for (ei, element) in track.elements.iter().enumerate() {
-                let start_frac = (element.start_seconds / duration).clamp(0.0, 1.0);
-                let end_frac = (element.end_seconds() / duration).clamp(0.0, 1.0);
-                let clip_x = clip_area_left + (start_frac * clip_area_w) as i32;
-                let clip_w = ((end_frac - start_frac) * clip_area_w) as i32;
-                if clip_w < 2 {
-                    continue;
-                }
-                let clip_rect = RECT {
-                    left: clip_x,
-                    top: row.top + 3,
-                    right: clip_x + clip_w,
-                    bottom: row.bottom - 3,
-                };
-                let clip_color = match track.track_type {
-                    TrackType::Video => 0x2A3F8C,
-                    TrackType::Text => 0xA8365C,
-                    TrackType::Audio => 0x178E6B,
-                    TrackType::Graphic => 0xB8860B,
-                };
-                fill_rect(hdc, &clip_rect, clip_color);
-                let clip_border = if selected_element == Some((track_index, ei)) {
-                    0xB3B3B8
-                } else {
-                    tag_color
-                };
-                border_rect(hdc, &clip_rect, clip_border);
-                if clip_w > 30 {
-                    draw_text_left(hdc, &element.name, &clip_rect, 0xE8E8EC);
-                }
+        // Clip blocks — pixel-accurate via zoom + scroll.
+        let clip_area_left = header_right + 4;
+        let clip_area_right = row.right - 4;
+        for (ei, element) in track.elements.iter().enumerate() {
+            let clip_x = crate::window::time_to_x(
+                element.start_seconds,
+                zoom_pps,
+                scroll_seconds,
+                clip_area_left,
+            );
+            let clip_end_x = crate::window::time_to_x(
+                element.end_seconds(),
+                zoom_pps,
+                scroll_seconds,
+                clip_area_left,
+            );
+            // Skip clips entirely outside the visible area.
+            if clip_end_x < clip_area_left || clip_x > clip_area_right {
+                continue;
+            }
+            let clip_w = (clip_end_x - clip_x).max(2);
+            // Clamp drawing to the clip area.
+            let draw_x = clip_x.max(clip_area_left);
+            let draw_right = (clip_x + clip_w).min(clip_area_right);
+            if draw_right <= draw_x {
+                continue;
+            }
+            let clip_rect = RECT {
+                left: draw_x,
+                top: row.top + 3,
+                right: draw_right,
+                bottom: row.bottom - 3,
+            };
+            let clip_color = match track.track_type {
+                TrackType::Video => 0x2A3F8C,
+                TrackType::Text => 0xA8365C,
+                TrackType::Audio => 0x178E6B,
+                TrackType::Graphic => 0xB8860B,
+            };
+            fill_rect(hdc, &clip_rect, clip_color);
+            let clip_border = if selected_element == Some((track_index, ei)) {
+                0xB3B3B8
+            } else {
+                tag_color
+            };
+            border_rect(hdc, &clip_rect, clip_border);
+            if (draw_right - draw_x) > 30 {
+                draw_text_left(hdc, &element.name, &clip_rect, 0xE8E8EC);
             }
         }
 

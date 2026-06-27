@@ -15,7 +15,7 @@ use crate::ui::gfx::{border_rect, fill_rect};
 use crate::window::timeline_duration;
 
 /// Draw the full timeline panel: background + border + track rows +
-/// playhead + readout strip.
+/// playhead + readout strip. Uses zoom + scroll for pixel-accurate layout.
 pub unsafe fn draw_timeline_tracks(
     hdc: HDC,
     panel: &RECT,
@@ -23,6 +23,8 @@ pub unsafe fn draw_timeline_tracks(
     selected_track: usize,
     project_is_playing: bool,
     selected_element: Option<(usize, usize)>,
+    zoom_pps: f64,
+    scroll_seconds: f64,
 ) {
     unsafe {
         fill_rect(hdc, panel, BG);
@@ -30,7 +32,6 @@ pub unsafe fn draw_timeline_tracks(
 
         let readout_h = 22;
         let list_bottom = panel.bottom - readout_h;
-        let duration = timeline_duration(project);
 
         let mut y = panel.top + TRACK_PAD;
         for (i, track) in project.scene.tracks.iter().enumerate() {
@@ -42,7 +43,8 @@ pub unsafe fn draw_timeline_tracks(
                 i,
                 selected_track,
                 selected_element,
-                duration,
+                zoom_pps,
+                scroll_seconds,
                 list_bottom,
             );
             if y + 28 > list_bottom {
@@ -50,6 +52,14 @@ pub unsafe fn draw_timeline_tracks(
             }
         }
 
-        playhead::draw_playhead(hdc, panel, project, project_is_playing, list_bottom);
+        playhead::draw_playhead(
+            hdc,
+            panel,
+            project,
+            project_is_playing,
+            list_bottom,
+            zoom_pps,
+            scroll_seconds,
+        );
     }
 }

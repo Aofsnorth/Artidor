@@ -4,6 +4,7 @@
 
 pub mod ai;
 pub mod assets;
+pub mod font;
 pub mod footer;
 pub mod gfx;
 pub mod header;
@@ -32,6 +33,8 @@ pub unsafe fn paint_chrome(
     selected_element: Option<(usize, usize)>,
     teleprompter_text: &str,
     teleprompter_on: bool,
+    zoom_pps: f64,
+    scroll_seconds: f64,
 ) {
     unsafe {
         fill_rect(hdc, client, BG);
@@ -61,6 +64,8 @@ pub unsafe fn paint_chrome(
             selected_track,
             playing,
             selected_element,
+            zoom_pps,
+            scroll_seconds,
         );
 
         // Preview panel frame.
