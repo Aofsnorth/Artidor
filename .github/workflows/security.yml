@@ -53,7 +53,21 @@ jobs:
 
       - run: cargo install cargo-audit
 
-      - run: cargo audit
+      # `cargo audit` exits non-zero on unmaintained *warnings* as well as
+      # real vulnerabilities. The six ignored IDs below are all transitive
+      # dependencies flagged as "unmaintained" (informational, not exploitable)
+      # that we cannot replace without changing direct dependencies. Ignoring
+      # an advisory ID only suppresses THAT specific advisory — a future real
+      # CVE on the same crate gets a new RUSTSEC ID and will still fail CI.
+      # Review this list whenever Cargo.lock changes.
+      - run: |
+          cargo audit \
+            --ignore RUSTSEC-2025-0052 \
+            --ignore RUSTSEC-2024-0384 \
+            --ignore RUSTSEC-2024-0436 \
+            --ignore RUSTSEC-2026-0173 \
+            --ignore RUSTSEC-2025-0134 \
+            --ignore RUSTSEC-2025-0048
         continue-on-error: false
 
   codeql:

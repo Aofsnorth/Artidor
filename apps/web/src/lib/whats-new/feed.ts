@@ -18,13 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
-		id: "2026-06-27-takeover-banner-key-fix-and-google-verification",
-		date: "2026-06-27",
-		tag: "fix",
-		title: "Internal polish: AI takeover banner key warnings and Google Search Console verification",
+		id: "2026-07-08-desktop-app-gpui-wgpu",
+		date: "2026-07-08",
+		tag: "feature",
+		title: "Native desktop app scaffolded with GPUI + WGPU offscreen rendering",
 		items: [
-			"Fixed React duplicate-key warnings in the AI takeover status banner's word-cycle animation. The first action word is duplicated at the end of the loop for a seamless CSS cycle; words now carry stable composite keys so React no longer warns when that word appears twice.",
-			"Added a Google Search Console verification meta tag alongside the existing HTML-file verification method, so the site can be verified through either path on Google's next crawl.",
+			"A new native desktop app is being built under apps/desktop/ using GPUI (Zed's GPU-accelerated UI framework) and the existing Rust compositor crate. The desktop app shares the same Rust business logic as the web editor — timeline math, effects, masks, and the WGPU compositor — but renders the viewport via offscreen WGPU → GPUI image handoff instead of OffscreenCanvas.",
+			"The desktop shell includes the full editor layout: header (project name, resolution, fps, import/save/export), left toolbar (8 tools), center viewport (WGPU-rendered preview), right inspector (element properties), right assets panel (50+ shader effects library organized by category), bottom timeline (ruler with frame markers, multi-track clips, playhead scrubbing, zoom controls), footer (transport controls, timecode, status), and an AI copilot panel placeholder.",
+			"Keyboard shortcuts are registered globally via GPUI actions: Space (play/pause), S (split), Delete (delete), Ctrl+S (save), Ctrl+I (import), Ctrl+E (export), plus zoom, panel toggles, and transport controls. All shortcuts map to the same logical operations as the web editor.",
+			"This is a foundational scaffold — the UI renders and compiles cleanly, but media import, effect application, and export are not yet wired to the compositor. The next phase connects the WGPU viewport to real frame rendering and enables end-to-end editing on desktop.",
 		],
 	},
 	{
@@ -340,6 +342,26 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Security: The collaboration leave endpoint now has rate limiting.",
 			"Security: Google Drive access tokens are stored in sessionStorage (per-tab) instead of localStorage (persistent), reducing XSS exposure.",
 			"Security: OAuth state validation now checks the format before comparing, preventing forged state values.",
+		],
+	},
+	{
+		id: "2026-06-27-security-hardening-ssrf-and-provider-timeout",
+		date: "2026-06-27",
+		tag: "security",
+		title: "Security hardening: SSRF guard expansion + AI provider timeout",
+		items: [
+			"Tightened the server-side web-fetch proxy the AI copilot uses to read pages. It now blocks the full set of private/reserved IPv4 ranges (including 0.0.0.0/8 and CGNAT), IPv6 loopback/unspecified/ULA/link-local literals, IPv4-mapped IPv6 addresses, and cloud-metadata hostnames (GCP, Azure IMDS) — closing SSRF bypass paths that could have reached internal services or metadata endpoints.",
+			"AI provider requests (OpenAI- and Anthropic-compatible) now enforce a 90-second hard timeout. A hung or unresponsive upstream can no longer hold a server worker indefinitely, which prevents resource exhaustion and keeps the AI panel responsive instead of hanging forever.",
+		],
+	},
+	{
+		id: "2026-06-27-takeover-banner-key-fix-and-google-verification",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Internal polish: AI takeover banner key warnings and Google Search Console verification",
+		items: [
+			"Fixed React duplicate-key warnings in the AI takeover status banner's word-cycle animation. The first action word is duplicated at the end of the loop for a seamless CSS cycle; words now carry stable composite keys so React no longer warns when that word appears twice.",
+			"Added a Google Search Console verification meta tag alongside the existing HTML-file verification method, so the site can be verified through either path on Google's next crawl.",
 		],
 	},
 	{

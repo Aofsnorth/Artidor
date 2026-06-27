@@ -352,6 +352,144 @@ impl Compositor {
         Ok(())
     }
 
+    /// Renders a frame offscreen and returns the raw pixel bytes (BGRA8).
+    ///
+    /// This is used by the native desktop app where no display surface is
+    /// available — the compositor renders to a texture, copies it to a
+    /// readback buffer, and returns the CPU-visible bytes so the host UI
+    /// framework (e.g. GPUI) can display them.
+    ///
+    /// The returned `Vec<u8>` contains `width * height * 4` bytes in BGRA
+    /// order, matching [`gpu::GPU_TEXTURE_FORMAT`] (`Bgra8Unorm` on native).
+    pub fn render_frame_to_bytes(
+        &mut self,
+        context: &GpuContext,
+        frame: &FrameDescriptor,
+    ) -> Result<Vec<u8>, CompositorError> {
+        let bytes_per_row = frame.width * 4; // BGRA = 4 bytes/pixel
+        let padded_bytes_per_row = (bytes_per_row + 255) & !255; // WGPU requires 256-byte alignment
+
+        self.texture_pool.recycle_frame();
+        let mut encoder =
+            context
+                .device()
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("compositor-offscreen-encoder"),
+                });
+
+        let mut scene = self.create_cleared_texture(
+            context,
+            &mut encoder,
+            frame.width,
+            frame.height,
+            frame.clear.color,
+        );
+
+        for item in &frame.items {
+            match item {
+                FrameItemDescriptor::Layer(layer) => {
+                    let layer_texture =
+                        self.render_layer(context, &mut encoder, frame, layer)?;
+                    scene = self.blend_texture(
+                        context,
+                        &mut encoder,
+                        &scene,
+                        &layer_texture,
+                        layer.blend_mode,
+                        frame.width,
+                        frame.height,
+                    )?;
+                }
+                FrameItemDescriptor::SceneEffect { effect_pass_groups } => {
+                    scene = self.apply_effect_groups(
+                        context,
+                        &mut encoder,
+                        &scene,
+                        frame.width,
+                        frame.height,
+                        effect_pass_groups,
+                    )?;
+                }
+            }
+        }
+
+        // Copy the final scene texture into a CPU-readable buffer.
+        let readback_buffer = context.device().create_buffer(&wgpu::BufferDescriptor {
+            label: Some("compositor-offscreen-readback"),
+            size: (padded_bytes_per_row * frame.height) as u64,
+            usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        encoder.copy_texture_to_buffer(
+            wgpu::TexelCopyTextureInfo {
+                texture: &scene,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback_buffer,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(padded_bytes_per_row),
+                    rows_per_image: Some(frame.height),
+                },
+            },
+            wgpu::Extent3d {
+                width: frame.width,
+                height: frame.height,
+                depth_or_array_layers: 1,
+            },
+        );
+
+        context.queue().submit([encoder.finish()]);
+        self.texture_pool.recycle_frame();
+
+        // Block until the GPU work completes, then map the buffer.
+        let _ = context
+            .device()
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .map_err(|_| CompositorError::Gpu(gpu::GpuError::AdapterUnavailable))?;
+
+        let (tx, rx) = std::sync::mpsc::channel();
+        readback_buffer
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |result| {
+                let _ = tx.send(result);
+            });
+
+        context
+            .device()
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .map_err(|_| CompositorError::Gpu(gpu::GpuError::AdapterUnavailable))?;
+
+        rx.recv()
+            .map_err(|_| CompositorError::Gpu(gpu::GpuError::AdapterUnavailable))?
+            .map_err(|_| CompositorError::Gpu(gpu::GpuError::AdapterUnavailable))?;
+
+        let padded_bytes = readback_buffer.slice(..).get_mapped_range();
+
+        // Unpad: copy each row stripping the padding bytes.
+        let mut output = Vec::with_capacity((bytes_per_row * frame.height) as usize);
+        for row in 0..frame.height {
+            let start = (row * padded_bytes_per_row) as usize;
+            let end = start + bytes_per_row as usize;
+            output.extend_from_slice(&padded_bytes[start..end]);
+        }
+
+        drop(padded_bytes);
+        readback_buffer.unmap();
+
+        Ok(output)
+    }
+
     fn render_layer(
         &mut self,
         context: &GpuContext,

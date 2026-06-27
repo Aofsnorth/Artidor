@@ -185,7 +185,14 @@ export function createPluginSandbox({
 		// Uses strict mode. Shadowing `globalThis`, `self`, `Function`,
 		// `eval`, `Reflect`, `Proxy`, timers, and DOM/storage APIs
 		// blocks the most common escape vectors.
-		const wrapper = new Function(
+		// Intentional: plugin code runs inside a Function-scope sandbox that
+		// shadows globalThis/self/Function/eval/Reflect/Proxy/DOM/storage. The
+		// artidor API is Object.freeze'd and its methods are non-constructable
+		// arrow functions, blocking the known constructor-chain escape vectors.
+		// Plugins are user-installed (the user runs their own code in their own
+		// browser); the install UI surfaces a prominent trust warning. See the
+		// SECURITY comment above.
+		const wrapper = new Function( // nosemgrep: no-eval — intentional plugin sandbox
 			"artidor",
 			"window",
 			"document",

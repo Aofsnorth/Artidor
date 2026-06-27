@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the smooth AI status optimization", () => {
+	test("the newest entry is the desktop app GPUI scaffold", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-07-smooth-ai-status-optimization",
+			"2026-07-08-desktop-app-gpui-wgpu",
 		);
 	});
 });
