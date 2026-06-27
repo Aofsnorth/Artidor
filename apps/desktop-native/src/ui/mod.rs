@@ -12,6 +12,7 @@ pub mod inspector;
 pub mod layout;
 pub mod tab_bar;
 pub mod timeline;
+pub mod viewport_toolbar;
 pub mod welcome;
 
 use windows::Win32::Foundation::RECT;
@@ -36,18 +37,23 @@ pub unsafe fn paint_chrome(
     teleprompter_on: bool,
     zoom_pps: f64,
     scroll_seconds: f64,
+    header_btns: &mut crate::ui::header::HeaderButtons,
+    active_tab: crate::state::AssetsTab,
+    tab_rects: &mut Vec<windows::Win32::Foundation::RECT>,
+    looping: bool,
+    toolbar_btns: &mut crate::ui::viewport_toolbar::ToolbarButtons,
 ) {
     unsafe {
         fill_rect(hdc, client, BG);
 
-        header::draw_header(hdc, &layout.header, project);
+        header::draw_header(hdc, &layout.header, project, zoom_pps, header_btns);
         footer::draw_footer(hdc, &layout.footer, project, playing);
-        tab_bar::draw_tab_bar(hdc, &layout.tabbar);
+        tab_bar::draw_tab_bar(hdc, &layout.tabbar, active_tab, tab_rects);
 
         // Tools panel: assets + copilot.
         fill_rect(hdc, &layout.tools, BG);
         border_rect(hdc, &layout.tools, BORDER_FAINT);
-        assets::draw_assets_list(hdc, &layout.tools, project);
+        assets::draw_assets_list(hdc, &layout.tools, project, active_tab);
         ai::draw_copilot_suggestions(hdc, &layout.tools, project);
 
         // Properties panel.
@@ -72,9 +78,19 @@ pub unsafe fn paint_chrome(
         // Preview panel frame.
         border_rect(hdc, &layout.preview, BORDER_FAINT);
 
+        // Viewport toolbar (transport controls at bottom of preview).
+        viewport_toolbar::draw_viewport_toolbar(
+            hdc,
+            &layout.viewport_toolbar,
+            project,
+            playing,
+            looping,
+            toolbar_btns,
+        );
+
         // Teleprompter overlay.
         if teleprompter_on && !teleprompter_text.is_empty() {
-            draw_teleprompter_overlay(hdc, &layout.preview, project, teleprompter_text);
+            draw_teleprompter_overlay(hdc, &layout.viewport, project, teleprompter_text);
         }
     }
 }

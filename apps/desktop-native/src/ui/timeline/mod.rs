@@ -1,21 +1,22 @@
-//! Timeline panel — track list + playhead + readout.
+//! Timeline panel — ruler + track list + playhead + readout.
 //!
-//! Orchestrates track rows + playhead indicator. Mirrors
+//! Orchestrates ruler, track rows, and playhead indicator. Mirrors
 //! `apps/desktop-web/src/ui/timeline/mod.rs`.
 
 pub mod playhead;
+pub mod ruler;
 pub mod track;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::Project;
-use crate::theme::{BG, BORDER_FAINT, TRACK_PAD};
+use crate::theme::{BG, BORDER_FAINT, RULER_H, TRACK_PAD};
 use crate::ui::gfx::{border_rect, fill_rect};
-use crate::window::timeline_duration;
 
-/// Draw the full timeline panel: background + border + track rows +
-/// playhead + readout strip. Uses zoom + scroll for pixel-accurate layout.
+/// Draw the full timeline panel: ruler + background + border + track
+/// rows + playhead + readout strip. Uses zoom + scroll for pixel-accurate
+/// layout. The ruler occupies the top RULER_H pixels; tracks start below it.
 pub unsafe fn draw_timeline_tracks(
     hdc: HDC,
     panel: &RECT,
@@ -30,10 +31,26 @@ pub unsafe fn draw_timeline_tracks(
         fill_rect(hdc, panel, BG);
         border_rect(hdc, panel, BORDER_FAINT);
 
+        // Ruler strip at the top.
+        let ruler_rect = RECT {
+            left: panel.left,
+            top: panel.top,
+            right: panel.right,
+            bottom: panel.top + RULER_H,
+        };
+        ruler::draw_ruler(
+            hdc,
+            &ruler_rect,
+            zoom_pps,
+            scroll_seconds,
+            project.playhead.as_seconds(),
+        );
+
         let readout_h = 22;
         let list_bottom = panel.bottom - readout_h;
 
-        let mut y = panel.top + TRACK_PAD;
+        // Tracks start below the ruler.
+        let mut y = ruler_rect.bottom + TRACK_PAD;
         for (i, track) in project.scene.tracks.iter().enumerate() {
             y = track::draw_track_row(
                 hdc,

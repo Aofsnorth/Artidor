@@ -41,10 +41,93 @@ impl TrackType {
     }
 }
 
-/// A timeline element (clip). Minimal subset of web `BaseTimelineElement`
-/// (`apps/web/src/lib/timeline/types.ts`): id, name, start time, duration.
-/// Trim/animation/parent fields are deferred — this is enough to render
-/// clip blocks on the timeline and compute the project duration.
+/// Transform — position, size, rotation on the canvas. All values are
+/// normalized (0.0–1.0) relative to the canvas, matching the web app's
+/// `QuadTransformDescriptor`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Transform {
+    /// Center X position (0.0 = left edge, 0.5 = center, 1.0 = right).
+    pub center_x: f64,
+    /// Center Y position (0.0 = top, 0.5 = center, 1.0 = bottom).
+    pub center_y: f64,
+    /// Width as fraction of canvas width (1.0 = full width).
+    pub width: f64,
+    /// Height as fraction of canvas height (1.0 = full height).
+    pub height: f64,
+    /// Rotation in degrees (0.0 = upright).
+    pub rotation_degrees: f64,
+    /// Horizontal flip.
+    pub flip_x: bool,
+    /// Vertical flip.
+    pub flip_y: bool,
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self {
+            center_x: 0.5,
+            center_y: 0.5,
+            width: 1.0,
+            height: 1.0,
+            rotation_degrees: 0.0,
+            flip_x: false,
+            flip_y: false,
+        }
+    }
+}
+
+/// Blend mode for compositing layers. Matches the compositor crate's
+/// `BlendMode` enum. Subset for now — the most common modes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BlendMode {
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    Add,
+    Subtract,
+}
+
+impl Default for BlendMode {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
+impl BlendMode {
+    /// All blend modes for the inspector dropdown.
+    pub fn all() -> &'static [BlendMode] {
+        &[
+            BlendMode::Normal,
+            BlendMode::Multiply,
+            BlendMode::Screen,
+            BlendMode::Overlay,
+            BlendMode::Darken,
+            BlendMode::Lighten,
+            BlendMode::Add,
+            BlendMode::Subtract,
+        ]
+    }
+
+    /// Display label.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Normal => "Normal",
+            Self::Multiply => "Multiply",
+            Self::Screen => "Screen",
+            Self::Overlay => "Overlay",
+            Self::Darken => "Darken",
+            Self::Lighten => "Lighten",
+            Self::Add => "Add",
+            Self::Subtract => "Subtract",
+        }
+    }
+}
+
+/// A timeline element (clip). Mirrors web `BaseTimelineElement` with
+/// transform, opacity, and blend mode for the inspector panel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)] // no Eq: f64 fields
 pub struct Element {
     pub id: String,
@@ -53,6 +136,19 @@ pub struct Element {
     pub start_seconds: f64,
     /// Clip duration, in seconds.
     pub duration_seconds: f64,
+    /// Transform — position, size, rotation on the canvas.
+    #[serde(default)]
+    pub transform: Transform,
+    /// Opacity 0.0–1.0.
+    #[serde(default = "default_opacity")]
+    pub opacity: f64,
+    /// Blend mode for compositing with layers below.
+    #[serde(default)]
+    pub blend_mode: BlendMode,
+}
+
+fn default_opacity() -> f64 {
+    1.0
 }
 
 impl Element {
@@ -73,6 +169,9 @@ impl Element {
             name: name.into(),
             start_seconds,
             duration_seconds,
+            transform: Transform::default(),
+            opacity: 1.0,
+            blend_mode: BlendMode::Normal,
         }
     }
 }

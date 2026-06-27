@@ -1,17 +1,45 @@
-//! Assets panel — imported media list.
+//! Assets panel — imported media list + effects library.
 //!
 //! Mirrors `apps/desktop-web/src/ui/assets/mod.rs`.
+
+pub mod effects;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
-use crate::state::{MediaKind, Project};
+use crate::state::{AssetsTab, MediaKind, Project};
 use crate::theme::{ASSET_PAD, ASSET_ROW_H, BG_DARK, TEXT_DIM, TEXT_FAINT};
 use crate::ui::gfx::{draw_text_centered, draw_text_left, fill_rect};
 
+/// Draw the tools panel content based on the active tab.
+/// Assets tab → media list. Effects tab → effects library.
+/// Other tabs → placeholder text.
+pub unsafe fn draw_assets_list(hdc: HDC, panel: &RECT, project: &Project, active_tab: AssetsTab) {
+    unsafe {
+        match active_tab {
+            AssetsTab::Assets => draw_media_list(hdc, panel, project),
+            AssetsTab::Effects => effects::draw_effects_library(hdc, panel),
+            AssetsTab::Ai => {
+                // AI panel is drawn separately by draw_copilot_suggestions.
+            }
+            _ => {
+                // Placeholder for other tabs.
+                let hint = RECT {
+                    left: panel.left + ASSET_PAD,
+                    top: panel.top + 32,
+                    right: panel.right - ASSET_PAD,
+                    bottom: panel.top + 56,
+                };
+                let label = active_tab.label();
+                draw_text_centered(hdc, &format!("{label} — coming soon"), &hint, TEXT_FAINT);
+            }
+        }
+    }
+}
+
 /// Draw the imported media assets list. One row per asset: "[kind] name".
 /// Empty state shows an "Import media (Ctrl+I)" hint.
-pub unsafe fn draw_assets_list(hdc: HDC, panel: &RECT, project: &Project) {
+unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
     unsafe {
         let panel_w = panel.right - panel.left;
 

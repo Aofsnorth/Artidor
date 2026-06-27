@@ -33,6 +33,7 @@ pub const PREVIEW_PCT: f32 = 0.47;
 // Timeline constants
 pub const TRACK_ROW_H: i32 = 28;
 pub const TRACK_PAD: i32 = 8;
+pub const RULER_H: i32 = 24;
 pub const TIMELINE_MIN_SECONDS: f64 = 30.0;
 pub const PLAYBACK_TIMER_ID: usize = 1;
 
