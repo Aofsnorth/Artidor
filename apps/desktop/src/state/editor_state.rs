@@ -214,7 +214,9 @@ impl EditorState {
 
     /// Find a media entry by texture ID.
     pub fn find_media(&self, texture_id: &str) -> Option<&MediaEntry> {
-        self.media_registry.iter().find(|m| m.texture_id == texture_id)
+        self.media_registry
+            .iter()
+            .find(|m| m.texture_id == texture_id)
     }
 
     /// Find a texture ID by file path.

@@ -4,10 +4,11 @@
 //! app state and GPUI context. Each panel is a free function that reads
 //! from `&ArtidorApp` and returns a `div()` element tree.
 
-use gpui::{div, Entity, ParentElement, Styled, prelude::*};
+use gpui::{Entity, ParentElement, Styled, div, prelude::*};
 
 use crate::app::ArtidorApp;
 use crate::theme;
+use crate::ui::ai::build_ai_copilot_panel;
 use crate::ui::assets::build_assets_panel;
 use crate::ui::footer::build_footer;
 use crate::ui::header::build_header;
@@ -15,7 +16,6 @@ use crate::ui::inspector::build_inspector_panel;
 use crate::ui::timeline::build_timeline_panel;
 use crate::ui::toolbar::build_toolbar;
 use crate::ui::viewport_panel::build_viewport_panel;
-use crate::ui::ai::build_ai_copilot_panel;
 
 use std::sync::Arc;
 

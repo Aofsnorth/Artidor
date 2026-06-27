@@ -4,8 +4,8 @@
 //! ruler seeks the playhead to that frame.
 
 use gpui::{
-    div, px, App, Entity, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
-    ParentElement, Styled, Window,
+    App, Entity, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement,
+    Styled, Window, div, px,
 };
 
 use crate::app::ArtidorApp;

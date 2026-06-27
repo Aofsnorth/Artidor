@@ -388,8 +388,7 @@ impl Compositor {
         for item in &frame.items {
             match item {
                 FrameItemDescriptor::Layer(layer) => {
-                    let layer_texture =
-                        self.render_layer(context, &mut encoder, frame, layer)?;
+                    let layer_texture = self.render_layer(context, &mut encoder, frame, layer)?;
                     scene = self.blend_texture(
                         context,
                         &mut encoder,

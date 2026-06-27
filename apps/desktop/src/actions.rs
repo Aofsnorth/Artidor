@@ -9,7 +9,6 @@ actions!(
     [
         // App
         Quit,
-
         // Playback
         PlayPause,
         Stop,
@@ -18,33 +17,28 @@ actions!(
         JumpToStart,
         JumpToEnd,
         ToggleLoop,
-
         // Editing
         SplitAtPlayhead,
         DeleteSelected,
         DuplicateSelected,
         SelectAll,
         DeselectAll,
-
         // View
         ZoomIn,
         ZoomOut,
         ZoomToFit,
         ToggleFullscreen,
-
         // Project
         ImportMedia,
         SaveProject,
         OpenProject,
         NewProject,
         ExportVideo,
-
         // Panels
         ToggleAssetsPanel,
         ToggleInspectorPanel,
         ToggleTimeline,
         FocusViewport,
-
         // AI
         ToggleAICopilot,
     ]

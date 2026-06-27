@@ -1816,6 +1816,9 @@ const HANDLERS: Record<string, Handler> = {
 	detect_beats: async (editor, args) => {
 		const trackId = asString(args.trackId);
 		const elementId = asString(args.elementId);
+		const limit = typeof args.limit === "number" ? Math.max(1, Math.min(args.limit as number, 1000)) : undefined;
+		const sortBy =
+			args.sortBy === "energy" || args.sortBy === "time" ? args.sortBy : "time";
 		const track = editor.timeline.getTrackById({ trackId });
 		const element = track?.elements.find((e) => e.id === elementId) as
 			| { type: string; id: string }
@@ -1841,9 +1844,12 @@ const HANDLERS: Record<string, Handler> = {
 				element: element as never,
 				mediaAssets: editor.media.getAssets(),
 			});
+			// Use a low analysis sample rate for beat detection. We only need
+			// the energy envelope; 8kHz mono is plenty and reduces the data sent
+			// to the worker by ~7x vs 22.05kHz, which keeps long videos responsive.
 			const { samples, sampleRate } = await decodeAudioToFloat32({
 				audioBlob: blob,
-				sampleRate: 22050,
+				sampleRate: 8000,
 			});
 			const beats = await detectBeatsAsync({ samples, sampleRate });
 			if (beats.length === 0) {
@@ -1853,18 +1859,25 @@ const HANDLERS: Record<string, Handler> = {
 					data: { beats: [], beatTicks: [] },
 				};
 			}
-			const beatTicks = beats.map((b) => b.ticks);
-			const summary = beats
+
+			// Sort and optionally limit for the "strongest/highest beat" use case.
+			const orderedBeats =
+				sortBy === "energy"
+					? [...beats].sort((a, b) => b.energy - a.energy)
+					: beats;
+			const resultBeats = limit ? orderedBeats.slice(0, limit) : orderedBeats;
+			const beatTicks = resultBeats.map((b) => b.ticks);
+			const summary = resultBeats
 				.slice(0, 20)
 				.map((b) => `${(b.timeSeconds).toFixed(2)}s (${b.ticks}t)`)
 				.join(", ");
 			const truncatedNote =
-				beats.length > 20 ? ` ... (${beats.length} beats total)` : "";
+				resultBeats.length > 20 ? ` ... (${resultBeats.length} beats total)` : "";
 			return {
 				ok: true,
-				message: `Detected ${beats.length} beats at: ${summary}${truncatedNote}. Use these tick values with split_element (cut on each beat) or upsert_keyframe (animate on beat).`,
+				message: `Detected ${resultBeats.length} beats${sortBy === "energy" ? " (sorted by strongest first)" : ""} at: ${summary}${truncatedNote}. Use these tick values with split_element (cut on each beat) or upsert_keyframe (animate on beat).`,
 				data: {
-					beats: beats.map((b) => ({
+					beats: resultBeats.map((b) => ({
 						timeSeconds: b.timeSeconds,
 						ticks: b.ticks,
 						energy: b.energy,

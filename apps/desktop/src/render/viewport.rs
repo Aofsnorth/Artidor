@@ -53,7 +53,10 @@ impl ViewportRenderer {
         let context = pollster::block_on(GpuContext::new())
             .map_err(|e| format!("Failed to create GPU context: {e}"))?;
         let compositor = Compositor::new(&context);
-        Ok(Self { context, compositor })
+        Ok(Self {
+            context,
+            compositor,
+        })
     }
 
     /// Renders a frame descriptor to raw BGRA bytes.
@@ -63,7 +66,11 @@ impl ViewportRenderer {
         let bytes = self
             .compositor
             .render_frame_to_bytes(&self.context, frame)?;
-        Ok(RenderedFrame { bytes, width, height })
+        Ok(RenderedFrame {
+            bytes,
+            width,
+            height,
+        })
     }
 
     /// Uploads a raw RGBA8 image as a named texture to the compositor.
@@ -74,7 +81,9 @@ impl ViewportRenderer {
         width: u32,
         height: u32,
     ) -> Result<(), String> {
-        let texture = self.context.create_render_texture(width, height, "viewport-upload");
+        let texture = self
+            .context
+            .create_render_texture(width, height, "viewport-upload");
 
         // The compositor uses Bgra8Unorm, so we need to convert RGBA → BGRA.
         let bgra_bytes: Vec<u8> = rgba_bytes

@@ -3,7 +3,7 @@
 //! Mirrors the web app's preview toolbar. Contains buttons for the
 //! selection tool, hand/pan tool, text tool, shape tools, and mask tool.
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled, prelude::*};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, prelude::*, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;

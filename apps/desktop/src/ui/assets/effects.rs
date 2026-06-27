@@ -5,7 +5,7 @@
 //! future, clicking an effect will add it to the selected element's
 //! effect pass groups.
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled, prelude::*};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, prelude::*, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;
@@ -45,59 +45,226 @@ impl EffectCategory {
 /// All available effects, matching the shaders in `rust/crates/effects/`.
 const EFFECTS: &[EffectDef] = &[
     // Basic
-    EffectDef { shader: "brightness", name: "Brightness", category: EffectCategory::Basic },
-    EffectDef { shader: "contrast", name: "Contrast", category: EffectCategory::Basic },
-    EffectDef { shader: "saturation", name: "Saturation", category: EffectCategory::Basic },
-    EffectDef { shader: "vibrance", name: "Vibrance", category: EffectCategory::Basic },
-    EffectDef { shader: "hue-rotate", name: "Hue Rotate", category: EffectCategory::Basic },
-    EffectDef { shader: "temperature", name: "Temperature", category: EffectCategory::Basic },
-    EffectDef { shader: "fade", name: "Fade", category: EffectCategory::Basic },
-
+    EffectDef {
+        shader: "brightness",
+        name: "Brightness",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "contrast",
+        name: "Contrast",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "saturation",
+        name: "Saturation",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "vibrance",
+        name: "Vibrance",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "hue-rotate",
+        name: "Hue Rotate",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "temperature",
+        name: "Temperature",
+        category: EffectCategory::Basic,
+    },
+    EffectDef {
+        shader: "fade",
+        name: "Fade",
+        category: EffectCategory::Basic,
+    },
     // Color
-    EffectDef { shader: "sepia", name: "Sepia", category: EffectCategory::Color },
-    EffectDef { shader: "grayscale", name: "Grayscale", category: EffectCategory::Color },
-    EffectDef { shader: "invert", name: "Invert", category: EffectCategory::Color },
-    EffectDef { shader: "posterize", name: "Posterize", category: EffectCategory::Color },
-    EffectDef { shader: "color-wheels", name: "Color Wheels", category: EffectCategory::Color },
-    EffectDef { shader: "highlights", name: "Highlights", category: EffectCategory::Color },
-    EffectDef { shader: "shadows", name: "Shadows", category: EffectCategory::Color },
-    EffectDef { shader: "whites", name: "Whites", category: EffectCategory::Color },
-    EffectDef { shader: "blacks", name: "Blacks", category: EffectCategory::Color },
-    EffectDef { shader: "dehaze", name: "Dehaze", category: EffectCategory::Color },
-    EffectDef { shader: "clarity", name: "Clarity", category: EffectCategory::Color },
-
+    EffectDef {
+        shader: "sepia",
+        name: "Sepia",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "grayscale",
+        name: "Grayscale",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "invert",
+        name: "Invert",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "posterize",
+        name: "Posterize",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "color-wheels",
+        name: "Color Wheels",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "highlights",
+        name: "Highlights",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "shadows",
+        name: "Shadows",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "whites",
+        name: "Whites",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "blacks",
+        name: "Blacks",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "dehaze",
+        name: "Dehaze",
+        category: EffectCategory::Color,
+    },
+    EffectDef {
+        shader: "clarity",
+        name: "Clarity",
+        category: EffectCategory::Color,
+    },
     // Blur
-    EffectDef { shader: "gaussian-blur", name: "Gaussian Blur", category: EffectCategory::Blur },
-    EffectDef { shader: "motion-blur", name: "Motion Blur", category: EffectCategory::Blur },
-    EffectDef { shader: "velocity-blur", name: "Velocity Blur", category: EffectCategory::Blur },
-
+    EffectDef {
+        shader: "gaussian-blur",
+        name: "Gaussian Blur",
+        category: EffectCategory::Blur,
+    },
+    EffectDef {
+        shader: "motion-blur",
+        name: "Motion Blur",
+        category: EffectCategory::Blur,
+    },
+    EffectDef {
+        shader: "velocity-blur",
+        name: "Velocity Blur",
+        category: EffectCategory::Blur,
+    },
     // Distortion
-    EffectDef { shader: "chromatic-aberration", name: "Chromatic Aberration", category: EffectCategory::Distortion },
-    EffectDef { shader: "fisheye", name: "Fisheye", category: EffectCategory::Distortion },
-    EffectDef { shader: "bulge", name: "Bulge", category: EffectCategory::Distortion },
-    EffectDef { shader: "swirl", name: "Swirl", category: EffectCategory::Distortion },
-    EffectDef { shader: "twist", name: "Twist", category: EffectCategory::Distortion },
-    EffectDef { shader: "wave", name: "Wave", category: EffectCategory::Distortion },
-    EffectDef { shader: "ripple", name: "Ripple", category: EffectCategory::Distortion },
-    EffectDef { shader: "pixelate", name: "Pixelate", category: EffectCategory::Distortion },
-    EffectDef { shader: "mirror", name: "Mirror", category: EffectCategory::Distortion },
-
+    EffectDef {
+        shader: "chromatic-aberration",
+        name: "Chromatic Aberration",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "fisheye",
+        name: "Fisheye",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "bulge",
+        name: "Bulge",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "swirl",
+        name: "Swirl",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "twist",
+        name: "Twist",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "wave",
+        name: "Wave",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "ripple",
+        name: "Ripple",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "pixelate",
+        name: "Pixelate",
+        category: EffectCategory::Distortion,
+    },
+    EffectDef {
+        shader: "mirror",
+        name: "Mirror",
+        category: EffectCategory::Distortion,
+    },
     // Stylize
-    EffectDef { shader: "glow", name: "Glow", category: EffectCategory::Stylize },
-    EffectDef { shader: "outer-glow", name: "Outer Glow", category: EffectCategory::Stylize },
-    EffectDef { shader: "vignette", name: "Vignette", category: EffectCategory::Stylize },
-    EffectDef { shader: "grain", name: "Grain", category: EffectCategory::Stylize },
-    EffectDef { shader: "scanlines", name: "Scanlines", category: EffectCategory::Stylize },
-    EffectDef { shader: "halftone", name: "Halftone", category: EffectCategory::Stylize },
-    EffectDef { shader: "thermal", name: "Thermal", category: EffectCategory::Stylize },
-    EffectDef { shader: "emboss", name: "Emboss", category: EffectCategory::Stylize },
-    EffectDef { shader: "stroke", name: "Stroke", category: EffectCategory::Stylize },
-    EffectDef { shader: "drop-shadow", name: "Drop Shadow", category: EffectCategory::Stylize },
-
+    EffectDef {
+        shader: "glow",
+        name: "Glow",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "outer-glow",
+        name: "Outer Glow",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "vignette",
+        name: "Vignette",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "grain",
+        name: "Grain",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "scanlines",
+        name: "Scanlines",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "halftone",
+        name: "Halftone",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "thermal",
+        name: "Thermal",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "emboss",
+        name: "Emboss",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "stroke",
+        name: "Stroke",
+        category: EffectCategory::Stylize,
+    },
+    EffectDef {
+        shader: "drop-shadow",
+        name: "Drop Shadow",
+        category: EffectCategory::Stylize,
+    },
     // Edge
-    EffectDef { shader: "sharpen", name: "Sharpen", category: EffectCategory::Edge },
-    EffectDef { shader: "edge-detect", name: "Edge Detect", category: EffectCategory::Edge },
-    EffectDef { shader: "chroma-key", name: "Chroma Key", category: EffectCategory::Edge },
+    EffectDef {
+        shader: "sharpen",
+        name: "Sharpen",
+        category: EffectCategory::Edge,
+    },
+    EffectDef {
+        shader: "edge-detect",
+        name: "Edge Detect",
+        category: EffectCategory::Edge,
+    },
+    EffectDef {
+        shader: "chroma-key",
+        name: "Chroma Key",
+        category: EffectCategory::Edge,
+    },
 ];
 
 /// Builds the effects library panel.
@@ -115,24 +282,18 @@ pub fn build_effects_library(_app: &ArtidorApp, _entity: Entity<ArtidorApp>) -> 
     ];
 
     for category in categories {
-        let effects: Vec<&EffectDef> =
-            EFFECTS.iter().filter(|e| e.category == category).collect();
+        let effects: Vec<&EffectDef> = EFFECTS.iter().filter(|e| e.category == category).collect();
         if effects.is_empty() {
             continue;
         }
 
-        let mut section = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .gap(theme::px_6())
-            .child(
-                div()
-                    .text_color(theme::TEXT_SECONDARY)
-                    .text_size(px(10.0))
-                    .font_weight(gpui::FontWeight::BOLD)
-                    .child(category.label().to_string()),
-            );
+        let mut section = div().w_full().flex().flex_col().gap(theme::px_6()).child(
+            div()
+                .text_color(theme::TEXT_SECONDARY)
+                .text_size(px(10.0))
+                .font_weight(gpui::FontWeight::BOLD)
+                .child(category.label().to_string()),
+        );
 
         // Effect grid (2 columns).
         let mut grid = div()

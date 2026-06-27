@@ -5,8 +5,8 @@
 //! the current zoom level.
 
 use gpui::{
-    div, px, App, Entity, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
-    ParentElement, Styled, Window, prelude::*,
+    App, Entity, InteractiveElement, IntoElement, MouseButton, MouseDownEvent, ParentElement,
+    Styled, Window, div, prelude::*, px,
 };
 
 use crate::app::ArtidorApp;
@@ -124,7 +124,9 @@ fn build_element_clip(
         .bg(track_color)
         .border_1()
         .border_color(border_color)
-        .when(is_selected, |d| d.border_2().border_color(theme::BORDER_FOCUS))
+        .when(is_selected, |d| {
+            d.border_2().border_color(theme::BORDER_FOCUS)
+        })
         .px(theme::px_4())
         .flex()
         .items_center()

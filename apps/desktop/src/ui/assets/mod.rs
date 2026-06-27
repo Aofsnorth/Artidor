@@ -7,7 +7,7 @@
 
 pub mod effects;
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled, prelude::*};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, prelude::*, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;

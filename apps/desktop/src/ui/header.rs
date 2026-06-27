@@ -5,7 +5,7 @@
 
 use gpui::prelude::*;
 use gpui::{
-    div, px, App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window,
+    App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window, div, px,
 };
 
 use crate::app::ArtidorApp;
@@ -14,7 +14,11 @@ use crate::theme;
 /// Builds the header bar element.
 pub fn build_header(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let project_name: SharedString = app.state.project.name.clone().into();
-    let dirty_text: SharedString = if app.state.dirty { "●".into() } else { "".into() };
+    let dirty_text: SharedString = if app.state.dirty {
+        "●".into()
+    } else {
+        "".into()
+    };
     let fps = app.state.project.fps();
     let resolution = format!("{}×{}", app.state.project.width, app.state.project.height);
     let fps_text: SharedString = format!("{fps:.2} fps").into();
@@ -86,7 +90,11 @@ pub fn build_header(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoEl
                 .flex_row()
                 .items_center()
                 .gap(theme::px_4())
-                .child(header_button("Import", entity.clone(), HeaderAction::Import))
+                .child(header_button(
+                    "Import",
+                    entity.clone(),
+                    HeaderAction::Import,
+                ))
                 .child(header_button("Save", entity.clone(), HeaderAction::Save))
                 .child(header_button("Export", entity, HeaderAction::Export)),
         )
@@ -117,12 +125,10 @@ fn header_button(
         .child(label.to_string())
         .id(btn_id)
         .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            entity.update(cx, |app, cx| {
-                match action {
-                    HeaderAction::Import => app.handle_import_media(cx),
-                    HeaderAction::Save => app.handle_save_project(cx),
-                    HeaderAction::Export => app.handle_export(cx),
-                }
+            entity.update(cx, |app, cx| match action {
+                HeaderAction::Import => app.handle_import_media(cx),
+                HeaderAction::Save => app.handle_save_project(cx),
+                HeaderAction::Export => app.handle_export(cx),
             });
         })
 }

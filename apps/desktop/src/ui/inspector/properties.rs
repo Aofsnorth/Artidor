@@ -4,14 +4,17 @@
 //! text inputs (future) or drag-to-adjust (future). For now, properties
 //! are displayed read-only with clear labels.
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, px};
 
 use crate::app::ArtidorApp;
 use crate::state::project::{Element, Project};
 use crate::theme;
 
 /// Builds the element properties section.
-pub fn build_element_properties(element: &Element, _entity: Entity<ArtidorApp>) -> impl IntoElement {
+pub fn build_element_properties(
+    element: &Element,
+    _entity: Entity<ArtidorApp>,
+) -> impl IntoElement {
     let mut container = div()
         .w_full()
         .flex()
@@ -43,35 +46,83 @@ pub fn build_element_properties(element: &Element, _entity: Entity<ArtidorApp>) 
     // Transform section
     container = container.child(section("Transform", {
         let mut s = div().flex().flex_col().gap(theme::px_4());
-        s = s.child(property_row("Position X", format!("{:.3}", element.transform.center_x)));
-        s = s.child(property_row("Position Y", format!("{:.3}", element.transform.center_y)));
-        s = s.child(property_row("Width", format!("{:.3}", element.transform.width)));
-        s = s.child(property_row("Height", format!("{:.3}", element.transform.height)));
-        s = s.child(property_row("Rotation", format!("{:.1}°", element.transform.rotation_degrees)));
-        s = s.child(property_row("Flip X", if element.transform.flip_x { "Yes".to_string() } else { "No".to_string() }));
-        s = s.child(property_row("Flip Y", if element.transform.flip_y { "Yes".to_string() } else { "No".to_string() }));
+        s = s.child(property_row(
+            "Position X",
+            format!("{:.3}", element.transform.center_x),
+        ));
+        s = s.child(property_row(
+            "Position Y",
+            format!("{:.3}", element.transform.center_y),
+        ));
+        s = s.child(property_row(
+            "Width",
+            format!("{:.3}", element.transform.width),
+        ));
+        s = s.child(property_row(
+            "Height",
+            format!("{:.3}", element.transform.height),
+        ));
+        s = s.child(property_row(
+            "Rotation",
+            format!("{:.1}°", element.transform.rotation_degrees),
+        ));
+        s = s.child(property_row(
+            "Flip X",
+            if element.transform.flip_x {
+                "Yes".to_string()
+            } else {
+                "No".to_string()
+            },
+        ));
+        s = s.child(property_row(
+            "Flip Y",
+            if element.transform.flip_y {
+                "Yes".to_string()
+            } else {
+                "No".to_string()
+            },
+        ));
         s
     }));
 
     // Appearance section
     container = container.child(section("Appearance", {
         let mut s = div().flex().flex_col().gap(theme::px_4());
-        s = s.child(property_row("Opacity", format!("{:.0}%", element.opacity * 100.0)));
-        s = s.child(property_row("Blend Mode", format!("{:?}", element.blend_mode)));
+        s = s.child(property_row(
+            "Opacity",
+            format!("{:.0}%", element.opacity * 100.0),
+        ));
+        s = s.child(property_row(
+            "Blend Mode",
+            format!("{:?}", element.blend_mode),
+        ));
         s
     }));
 
     // Timing section
     container = container.child(section("Timing", {
         let mut s = div().flex().flex_col().gap(theme::px_4());
-        s = s.child(property_row("Start Frame", format!("{}", element.start_frame)));
-        s = s.child(property_row("Duration", format!("{} frames", element.duration_frames)));
-        s = s.child(property_row("End Frame", format!("{}", element.end_frame())));
+        s = s.child(property_row(
+            "Start Frame",
+            format!("{}", element.start_frame),
+        ));
+        s = s.child(property_row(
+            "Duration",
+            format!("{} frames", element.duration_frames),
+        ));
+        s = s.child(property_row(
+            "End Frame",
+            format!("{}", element.end_frame()),
+        ));
         s
     }));
 
     // Effects section
-    let effect_count = element.effect_pass_groups.iter().map(|g| g.len()).sum::<usize>();
+    let effect_count = element
+        .effect_pass_groups
+        .iter()
+        .map(|g| g.len())
+        .sum::<usize>();
     container = container.child(section("Effects", {
         div()
             .text_color(theme::TEXT_SECONDARY)
@@ -93,7 +144,10 @@ pub fn build_element_properties(element: &Element, _entity: Entity<ArtidorApp>) 
 }
 
 /// Builds the project properties section (shown when no element is selected).
-pub fn build_project_properties(project: &Project, _entity: Entity<ArtidorApp>) -> impl IntoElement {
+pub fn build_project_properties(
+    project: &Project,
+    _entity: Entity<ArtidorApp>,
+) -> impl IntoElement {
     let mut container = div()
         .w_full()
         .flex()
@@ -113,15 +167,24 @@ pub fn build_project_properties(project: &Project, _entity: Entity<ArtidorApp>) 
         let mut s = div().flex().flex_col().gap(theme::px_4());
         s = s.child(property_row("Width", format!("{} px", project.width)));
         s = s.child(property_row("Height", format!("{} px", project.height)));
-        s = s.child(property_row("Frame Rate", format!("{:.2} fps", project.fps())));
+        s = s.child(property_row(
+            "Frame Rate",
+            format!("{:.2} fps", project.fps()),
+        ));
         s
     }));
 
     container = container.child(section("Content", {
         let mut s = div().flex().flex_col().gap(theme::px_4());
         s = s.child(property_row("Tracks", format!("{}", project.tracks.len())));
-        s = s.child(property_row("Total Frames", format!("{}", project.total_frames())));
-        s = s.child(property_row("Duration", format!("{:.2}s", project.total_frames() as f64 / project.fps())));
+        s = s.child(property_row(
+            "Total Frames",
+            format!("{}", project.total_frames()),
+        ));
+        s = s.child(property_row(
+            "Duration",
+            format!("{:.2}s", project.total_frames() as f64 / project.fps()),
+        ));
         s
     }));
 
@@ -147,7 +210,13 @@ pub fn build_project_properties(project: &Project, _entity: Entity<ArtidorApp>) 
                 div()
                     .text_color(theme::TEXT_SECONDARY)
                     .text_size(px(11.0))
-                    .child(format!("R:{:.0} G:{:.0} B:{:.0} A:{:.0}", r * 255.0, g * 255.0, b * 255.0, a * 255.0)),
+                    .child(format!(
+                        "R:{:.0} G:{:.0} B:{:.0} A:{:.0}",
+                        r * 255.0,
+                        g * 255.0,
+                        b * 255.0,
+                        a * 255.0
+                    )),
             )
     }));
 
