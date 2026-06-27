@@ -30,6 +30,7 @@ import { useElementPlayhead } from "../hooks/use-element-playhead";
 import { resolveOpacityAtTime } from "@/lib/animation";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 import { isPropertyAtDefault } from "./transform-tab";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 
 type BlendingElement = {
 	id: string;
@@ -146,7 +147,26 @@ export function BlendingTab({
 
 	return (
 		<Section collapsible sectionKey={`${element.id}:blending`}>
-			<SectionHeader>
+			<SectionHeader
+				trailing={
+					<CopyPasteButtons
+						category="Blending"
+						extract={(el) => {
+							const style: {
+								opacity?: number;
+								blendMode?: BlendMode;
+							} = {};
+							if ("opacity" in el && el.opacity !== undefined) {
+								style.opacity = el.opacity;
+							}
+							if ("blendMode" in el && el.blendMode) {
+								style.blendMode = el.blendMode;
+							}
+							return style;
+						}}
+					/>
+				}
+			>
 				<SectionTitle className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
 					Blending
 				</SectionTitle>

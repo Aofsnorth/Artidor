@@ -783,91 +783,188 @@ body::-webkit-scrollbar,
 }
 
 /* ── AI takeover aurora overlay ────────────────────────────────── */
-/* A thin animated border glow (white) shown while the AI is "taking
-   control" of the editor. The center is transparent — only the border
-   shimmer is visible. */
+/* A rich animated aurora border glow (white/silver) shown while the AI
+   is "taking control" of the editor. Built from multiple React-rendered
+   div elements — no CSS mask, no mix-blend-mode, no pseudo-elements.
+   This approach is bulletproof across all browsers.
 
-@keyframes ai-aurora-border-flow {
-	0%,
-	100% {
-		background-position: 0% 50%;
-	}
-	50% {
-		background-position: 100% 50%;
-	}
-}
-
-@keyframes ai-aurora-pulse {
-	0%,
-	100% {
-		opacity: 0.4;
-	}
-	50% {
-		opacity: 0.8;
-	}
-}
+   Layers (all rendered as child divs by AuroraOverlay):
+   1. .ai-aurora-ring — base pulsing border via box-shadow. Always
+      visible. This is the fallback if animations are disabled.
+   2. .ai-aurora-orb — large blurred radial-gradient circles positioned
+      at the screen edges. They animate along the perimeter, creating
+      the flowing aurora light effect. 3 orbs at different speeds.
+   3. .ai-aurora-sheen — a thin bright gradient that sweeps around the
+      border on top, adding a shimmer highlight. */
 
 @keyframes ai-aurora-glow {
 	0%,
 	100% {
 		box-shadow:
-			inset 0 0 0 1px rgba(255, 255, 255, 0.35),
-			0 0 24px 0px rgba(255, 255, 255, 0.08),
-			0 0 60px 4px rgba(255, 255, 255, 0.04);
+			inset 0 0 0 1.5px rgba(255, 255, 255, 0.4),
+			inset 0 0 20px 2px rgba(255, 255, 255, 0.1),
+			0 0 28px 0px rgba(255, 255, 255, 0.08);
 	}
 	50% {
 		box-shadow:
-			inset 0 0 0 1px rgba(255, 255, 255, 0.7),
-			0 0 32px 2px rgba(255, 255, 255, 0.18),
-			0 0 80px 8px rgba(255, 255, 255, 0.08);
+			inset 0 0 0 2.5px rgba(255, 255, 255, 0.9),
+			inset 0 0 40px 6px rgba(255, 255, 255, 0.25),
+			0 0 60px 8px rgba(255, 255, 255, 0.2),
+			0 0 120px 20px rgba(255, 255, 255, 0.08);
 	}
 }
 
-/* The aurora border is built from two layers, both bulletproof:
-   1. .ai-aurora-border — the base ring via animated box-shadow.
-      This is always visible regardless of browser mask support.
-      The inset 1px ring is the visible white border; the outer
-      glows create the aurora halo.
-   2. .ai-aurora-border::after — a flowing gradient sheen on top
-      of the ring, clipped to the border area via mask. If mask is
-      not supported, this layer is simply invisible and the base
-      ring still shows. No dark fallback, no broken overlay. */
-.ai-aurora-border {
+/* Orb 1: travels along top edge left → right → bottom → left → top */
+@keyframes ai-aurora-orb-1 {
+	0% {
+		top: -150px;
+		left: 5%;
+	}
+	25% {
+		top: 5%;
+		left: calc(100% + 150px);
+	}
+	50% {
+		top: calc(100% + 150px);
+		left: 95%;
+	}
+	75% {
+		top: 95%;
+		left: -150px;
+	}
+	100% {
+		top: -150px;
+		left: 5%;
+	}
+}
+
+/* Orb 2: travels in reverse, different speed */
+@keyframes ai-aurora-orb-2 {
+	0% {
+		top: calc(100% + 150px);
+		left: 15%;
+	}
+	25% {
+		top: 85%;
+		left: -150px;
+	}
+	50% {
+		top: -150px;
+		left: 85%;
+	}
+	75% {
+		top: 15%;
+		left: calc(100% + 150px);
+	}
+	100% {
+		top: calc(100% + 150px);
+		left: 15%;
+	}
+}
+
+/* Orb 3: slower, offset phase */
+@keyframes ai-aurora-orb-3 {
+	0% {
+		top: 30%;
+		left: calc(100% + 150px);
+	}
+	33% {
+		top: calc(100% + 150px);
+		left: 50%;
+	}
+	66% {
+		top: 30%;
+		left: -150px;
+	}
+	100% {
+		top: 30%;
+		left: calc(100% + 150px);
+	}
+}
+
+/* Sheen: a bright streak that sweeps around the border */
+@keyframes ai-aurora-sheen-sweep {
+	0% {
+		transform: translateX(-100%) rotate(0deg);
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	90% {
+		opacity: 1;
+	}
+	100% {
+		transform: translateX(100%) rotate(0deg);
+		opacity: 0;
+	}
+}
+
+.ai-aurora-ring {
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
-	animation: ai-aurora-glow 3s ease-in-out infinite;
+	animation: ai-aurora-glow 3.5s ease-in-out infinite;
 }
 
-.ai-aurora-border::after {
-	content: "";
+.ai-aurora-orb {
 	position: absolute;
-	inset: 0;
+	width: 350px;
+	height: 350px;
+	border-radius: 50%;
+	pointer-events: none;
+	/* Heavy blur creates the soft aurora glow. The radial gradient
+	   goes from bright white center to transparent edge. */
+	background: radial-gradient(
+		circle,
+		rgba(255, 255, 255, 0.7) 0%,
+		rgba(255, 255, 255, 0.3) 30%,
+		rgba(255, 255, 255, 0.1) 50%,
+		transparent 70%
+	);
+	filter: blur(40px);
+	will-change: top, left;
+}
+
+.ai-aurora-orb-1 {
+	animation: ai-aurora-orb-1 8s linear infinite;
+}
+
+.ai-aurora-orb-2 {
+	animation: ai-aurora-orb-2 10s linear infinite;
+}
+
+.ai-aurora-orb-3 {
+	animation: ai-aurora-orb-3 12s linear infinite;
+}
+
+.ai-aurora-sheen {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 3px;
+	pointer-events: none;
 	background: linear-gradient(
 		90deg,
 		transparent,
 		rgba(255, 255, 255, 0.6),
-		rgba(255, 255, 255, 0.9),
+		rgba(255, 255, 255, 1),
 		rgba(255, 255, 255, 0.6),
 		transparent
 	);
-	background-size: 200% 100%;
-	animation: ai-aurora-border-flow 6s linear infinite;
-	/* Clip the gradient to a 2px border ring. If mask is unsupported,
-	   this pseudo-element is hidden and only the base box-shadow ring
-	   shows — never a full-screen overlay. */
-	-webkit-mask: linear-gradient(#000, #000) content-box,
-		linear-gradient(#000, #000);
-	-webkit-mask-composite: xor;
-	mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
-	mask-composite: exclude;
-	padding: 2px;
+	filter: blur(2px);
+	animation: ai-aurora-sheen-sweep 4s ease-in-out infinite;
 }
 
-@supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
-	/* Browser doesn't support mask — hide the gradient sheen so it
-	   doesn't cover the editor. The base box-shadow ring still shows. */
-	.ai-aurora-border::after {
+/* Respect reduced-motion: drop animations, keep static glow. */
+@media (prefers-reduced-motion: reduce) {
+	.ai-aurora-ring,
+	.ai-aurora-orb,
+	.ai-aurora-sheen {
+		animation: none;
+	}
+	.ai-aurora-orb {
 		display: none;
 	}
 }

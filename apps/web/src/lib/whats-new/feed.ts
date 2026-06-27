@@ -18,6 +18,26 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-06-per-property-copy-paste",
+		date: "2026-07-06",
+		tag: "feature",
+		title: "Copy & paste individual properties between elements",
+		items: [
+			"New per-property copy/paste buttons in the Properties panel. Instead of copying the entire style (Ctrl+Shift+C), you can now copy just the Transform, Blending, Effects, Text Style, Text Effects (Stroke+Shadow), Audio, or Color Grading from one element and paste it onto another. The buttons appear as small copy/paste icons in each section header.",
+			"Properties are pasted type-safely: text-only properties (font, color, stroke, shadow) are only applied to text elements; audio properties (volume, pan, fades) only to audio/video elements; masks only to maskable elements. Incompatible properties are silently skipped, so you can safely copy from a text layer to a video clip without breaking anything.",
+		],
+	},
+	{
+		id: "2026-07-06-ai-takeover-revoke-race-fix",
+		date: "2026-07-06",
+		tag: "fix",
+		title: "AI takeover revoke button and race condition fixes",
+		items: [
+			"Fixed a race condition where revoking the AI and immediately sending a new message would cause the aurora overlay and revoke button to vanish — the old processing cycle's cleanup was clobbering the new cycle's takeover state. Each processing cycle now has a unique ID and only cleans up its own state.",
+			"Added a persistent takeover banner inside the AI chat panel with a Revoke button. Previously the only revoke button was in the aurora overlay at the screen edge — if it disappeared due to the race condition, there was no way to stop the AI from the chat panel. The banner is always visible while the AI is in control.",
+		],
+	},
+	{
 		id: "2026-07-06-ai-view-media-permission-bypass",
 		date: "2026-07-06",
 		tag: "feature",

@@ -2238,6 +2238,12 @@ function TiledMediaContent({
 						beatColor="rgba(255, 255, 255, 1)"
 						variant="beats"
 						symmetric={false}
+						trimStartTicks={element.trimStart}
+						trimEndTicks={element.trimEnd}
+						sourceDurationTicks={
+							element.sourceDuration ||
+							element.duration + element.trimStart + element.trimEnd
+						}
 						scale={waveformScale}
 					/>
 				</div>

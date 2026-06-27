@@ -242,6 +242,11 @@ export async function extractClipAudio({
 				const data = buffer.getChannelData(ch);
 				for (let i = 0; i < length; i++) {
 					mixed[i] += (data[startSample + i] ?? 0) / channelCount;
+					// Yield inside the inner loop too — a single buffer
+					// can contain hundreds of thousands of samples, and
+					// only yielding between channels still freezes the
+					// UI for the entire buffer duration.
+					if (i % 16384 === 0 && i > 0) await yieldToEventLoop();
 				}
 				// Yield between channels to keep UI responsive.
 				if (length > 8192) await yieldToEventLoop();
@@ -261,6 +266,7 @@ export async function extractClipAudio({
 			for (let i = 0; i < arr.length; i++) {
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS] = arr[i] ?? 0;
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS + 1] = arr[i] ?? 0;
+				if (i % 16384 === 0 && i > 0) await yieldToEventLoop();
 			}
 			offset += arr.length;
 			// Yield between collected chunks to keep UI responsive.
@@ -327,6 +333,7 @@ export async function extractAssetAudio({
 			for (let i = 0; i < arr.length; i++) {
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS] = arr[i] ?? 0;
 				interleaved[(offset + i) * CLIP_NUM_CHANNELS + 1] = arr[i] ?? 0;
+				if (i % 16384 === 0 && i > 0) await yieldToEventLoop();
 			}
 			offset += arr.length;
 			// Yield between collected chunks to keep UI responsive.

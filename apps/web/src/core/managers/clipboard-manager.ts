@@ -18,6 +18,22 @@ export interface EffectClipboardEntry {
 	enabled: boolean;
 }
 
+/**
+ * What gets stored when a user copies a single property category
+ * (e.g. just transform, just effects, just text style). The `category`
+ * label is shown in the UI so the user knows what's in the clipboard.
+ * Only the fields present in `partialStyle` are applied on paste —
+ * everything else on the target element stays untouched.
+ */
+export interface PropertyClipboardEntry {
+	/** Human-readable label shown in tooltips/toasts (e.g. "Transform"). */
+	category: string;
+	/** The element type the property was copied from. */
+	sourceType: string;
+	/** Partial style — only the fields that were copied. */
+	partialStyle: ElementStyle;
+}
+
 export class ClipboardManager {
 	private entry: ClipboardEntry | null = null;
 	/**
@@ -31,6 +47,12 @@ export class ClipboardManager {
 	 * onto other elements' effect stacks.
 	 */
 	private effectEntry: EffectClipboardEntry | null = null;
+	/**
+	 * Separate slot for "Copy Property" — a single property category
+	 * (transform, effects, text style, audio, etc.) that can be pasted
+	 * onto other elements independently of the full style clipboard.
+	 */
+	private propertyEntry: PropertyClipboardEntry | null = null;
 	private listeners = new Set<() => void>();
 
 	constructor(private editor: EditorCore) {}
@@ -173,6 +195,73 @@ export class ClipboardManager {
 			});
 		}
 
+		return true;
+	}
+
+	// ---- Property clipboard (per-category) ----
+
+	getPropertyEntry(): PropertyClipboardEntry | null {
+		return this.propertyEntry;
+	}
+
+	hasPropertyEntry(): boolean {
+		return this.propertyEntry !== null;
+	}
+
+	/**
+	 * Copy a single property category from the first selected element.
+	 * Only the fields present in `extract` are stored — everything else
+	 * on the target element stays untouched when pasting.
+	 *
+	 * @param category Human-readable label (e.g. "Transform", "Effects").
+	 * @param extract  Function that picks the relevant fields from the
+	 *                 source element and returns a partial ElementStyle.
+	 */
+	copyProperty({
+		category,
+		extract,
+	}: {
+		category: string;
+		extract: (element: TimelineElement) => ElementStyle;
+	}): boolean {
+		const selectedElements = this.editor.selection.getSelectedElements();
+		if (selectedElements.length === 0) return false;
+
+		const [result] = this.editor.timeline.getElementsWithTracks({
+			elements: [selectedElements[0]],
+		});
+		if (!result) return false;
+
+		const partialStyle = extract(result.element);
+		// Only store if at least one field was extracted.
+		if (Object.keys(partialStyle).length === 0) return false;
+
+		this.propertyEntry = {
+			category,
+			sourceType: result.element.type,
+			partialStyle,
+		};
+		this.notify();
+		return true;
+	}
+
+	/**
+	 * Paste the copied property category onto all currently selected
+	 * elements. Uses PasteStyleCommand with the partial style — only
+	 * the fields that were copied are applied; everything else stays.
+	 */
+	pasteProperty(): boolean {
+		if (!this.propertyEntry) return false;
+
+		const selectedElements = this.editor.selection.getSelectedElements();
+		if (selectedElements.length === 0) return false;
+
+		const command = new PasteStyleCommand({
+			targets: selectedElements,
+			style: this.propertyEntry.partialStyle,
+		});
+
+		this.editor.command.execute({ command });
 		return true;
 	}
 

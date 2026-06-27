@@ -95,7 +95,7 @@ export async function detectBeatsAsync({
 	samples,
 	sampleRate,
 	options = {},
-	yieldInterval = 500,
+	yieldInterval = 200,
 }: {
 	samples: Float32Array;
 	sampleRate: number;

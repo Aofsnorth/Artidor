@@ -24,6 +24,7 @@ import {
 import { parseCubeLut } from "@/lib/colors/lut";
 import { toast } from "sonner";
 import { cn } from "@/utils/ui";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 
 /**
  * "Advanced" colour-correction tab. Bundles every per-channel
@@ -129,15 +130,33 @@ export function MasterSection({
 					</div>
 				}
 				trailing={
-					isModified && (
-						<button
-							type="button"
-							onClick={resetAll}
-							className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wider text-white/55 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-						>
-							Reset
-						</button>
-					)
+					<div className="flex items-center gap-1">
+						<CopyPasteButtons
+							category="Color Grading"
+							extract={(el) => {
+								if (!("effects" in el) || !el.effects) return {};
+								// Copy only color-related effects (hsl, curves, lut)
+								const colorEffects = el.effects.filter(
+									(e) =>
+										e.type === "hsl" ||
+										e.type === "curves" ||
+										e.type === "lut",
+								);
+								return colorEffects.length > 0
+									? { effects: colorEffects.map((e) => ({ ...e })) }
+									: {};
+							}}
+						/>
+						{isModified && (
+							<button
+								type="button"
+								onClick={resetAll}
+								className="rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wider text-white/55 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+							>
+								Reset
+							</button>
+						)}
+					</div>
 				}
 			>
 				<SectionTitle>Master HSL</SectionTitle>
