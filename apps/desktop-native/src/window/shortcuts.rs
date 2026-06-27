@@ -15,7 +15,7 @@ use windows::Win32::UI::WindowsAndMessaging::{KillTimer, SetTimer};
 use crate::dialogs;
 use crate::export;
 use crate::render::viewport::renderer_for;
-use crate::state::{self, Element, Track, TrackType};
+use crate::state::{self, Element, Project, Track, TrackType};
 use crate::theme::PLAYBACK_TIMER_ID;
 use crate::ui::layout::Layout;
 use crate::window::{
@@ -56,6 +56,12 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                 }
                 0xBD | 0x2D => {
                     state.zoom_pps = clamp_zoom(state.zoom_pps / 1.25);
+                    dirty = true;
+                }
+                // Esc = go back to welcome screen (from editor).
+                0x1B => {
+                    state.mode = crate::window::AppMode::Welcome;
+                    state.welcome = crate::ui::welcome::WelcomeState::new();
                     dirty = true;
                 }
                 0x54 => {
@@ -169,12 +175,51 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
     }
 }
 
-/// Handle WM_LBUTTONDOWN: click-to-select-clip or click-to-seek.
+/// Handle WM_LBUTTONDOWN: in Welcome mode, check button/card clicks.
+/// In Editor mode, click-to-select-clip or click-to-seek.
 pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation::LPARAM) -> bool {
     unsafe {
         let x = (lparam.0 & 0xFFFF) as i16 as i32;
         let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
         if let Some(state) = window_state_mut(hwnd) {
+            // --- Welcome mode: handle New Project + recent project clicks ---
+            if state.mode == crate::window::AppMode::Welcome {
+                let btn = state.welcome.new_project_btn.rect;
+                if x >= btn.left && x <= btn.right && y >= btn.top && y <= btn.bottom {
+                    // New Project: create fresh untitled project, switch to editor.
+                    let now_ms = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as i64)
+                        .unwrap_or(0);
+                    state.project = Project::new_untitled("untitled", now_ms);
+                    state.mode = crate::window::AppMode::Editor;
+                    state.history.clear();
+                    return true;
+                }
+                // Check recent project card clicks.
+                if let Some(idx) = state.welcome.hovered_recent {
+                    if idx < state.welcome.recent.len() {
+                        let rp = state.welcome.recent[idx].clone();
+                        match crate::state::persistence::load_project(&rp.path) {
+                            Ok(project) => {
+                                state.project = project;
+                                state.mode = crate::window::AppMode::Editor;
+                                state.history.clear();
+                                state.selected_track = 0;
+                                state.selected_element = None;
+                                return true;
+                            }
+                            Err(e) => {
+                                let msg = format!("Failed to open recent project:\n\n{e}");
+                                message_box(&msg, true);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // --- Editor mode: clip selection + seek ---
             let mut client = RECT::default();
             if GetClientRect(hwnd, &mut client).is_ok() {
                 let layout =
@@ -323,8 +368,11 @@ fn handle_save(hwnd: HWND) -> bool {
         match dialogs::save_dialog(hwnd, "Save Project", &filters, "artpr.json", &default_name) {
             Ok(Some(path)) => {
                 if let Some(state) = window_state_mut(hwnd) {
+                    let project_name = state.project.metadata.name.clone();
                     match crate::state::persistence::save_project(&path, &state.project) {
                         Ok(()) => {
+                            // Add to recent projects.
+                            crate::state::persistence::add_recent_project(&project_name, &path);
                             let msg = format!("Saved project to:\n\n{}", path.display());
                             crate::window::shortcuts::message_box(&msg, false);
                         }
@@ -354,7 +402,11 @@ fn handle_open(hwnd: HWND) -> bool {
         Ok(Some(path)) => match crate::state::persistence::load_project(&path) {
             Ok(project) => {
                 if let Some(state) = window_state_mut(hwnd) {
+                    // Add to recent projects list.
+                    crate::state::persistence::add_recent_project(&project.metadata.name, &path);
                     state.project = project;
+                    state.mode = crate::window::AppMode::Editor;
+                    state.history.clear();
                     state.selected_track = 0;
                     state.selected_element = None;
                     return true;

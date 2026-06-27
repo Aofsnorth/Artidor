@@ -25,6 +25,70 @@ use crate::state::Project;
 /// inspectable/editable by hand, matching the web app's persisted shape.
 pub const PROJECT_EXT: &str = "artpr.json";
 
+/// A recent project entry for the welcome screen's recent-projects list.
+/// Stores the project name + file path so the user can reopen it without
+/// navigating the file dialog. Mirrors the web app's recent-projects list.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RecentProject {
+    pub name: String,
+    pub path: PathBuf,
+    /// Last-opened timestamp (Unix epoch ms) for sorting.
+    pub last_opened_ms: i64,
+}
+
+/// Maximum number of recent projects kept.
+const MAX_RECENT: usize = 10;
+
+/// Get the recent-projects file path (in the user's local app data dir).
+/// Falls back to the current directory if the env var is unavailable.
+fn recent_file_path() -> PathBuf {
+    let base = std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."));
+    base.join("Artidor").join("recent.json")
+}
+
+/// Load the recent-projects list from disk. Returns an empty vec if the
+/// file doesn't exist or can't be parsed (no silent bad state — just
+/// starts fresh).
+pub fn load_recent_projects() -> Vec<RecentProject> {
+    let path = recent_file_path();
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => serde_json::from_str(&contents).unwrap_or_default(),
+        Err(_) => Vec::new(),
+    }
+}
+
+/// Add a project to the recent-projects list (or move it to the top if
+/// it already exists). Saves the list to disk. Fails silently — the
+/// welcome screen still works without persistence.
+pub fn add_recent_project(name: &str, path: &Path) {
+    let mut recent = load_recent_projects();
+    // Remove existing entry with the same path (dedup).
+    recent.retain(|r| r.path != path);
+    // Add new entry at the top.
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    recent.insert(
+        0,
+        RecentProject {
+            name: name.to_string(),
+            path: path.to_path_buf(),
+            last_opened_ms: now_ms,
+        },
+    );
+    // Trim to max.
+    recent.truncate(MAX_RECENT);
+    // Save (best-effort — create dir if needed).
+    let file_path = recent_file_path();
+    let _ = std::fs::create_dir_all(file_path.parent().unwrap_or(Path::new(".")));
+    if let Ok(json) = serde_json::to_string_pretty(&recent) {
+        let _ = std::fs::write(&file_path, json);
+    }
+}
+
 /// On-disk wrapper: the serialized project plus a schema version for
 /// future migrations (the web app uses `TProject.version` for the same
 /// purpose). Keeping a separate file-version field lets the persistence

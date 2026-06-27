@@ -41,7 +41,9 @@ use crate::window::shortcuts::{
     handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_mousewheel,
     handle_timer,
 };
-use crate::window::{WindowState, child_hwnd, client_height, client_width, window_state};
+use crate::window::{
+    WindowState, child_hwnd, client_height, client_width, window_state, window_state_mut,
+};
 
 const CLASS_NAME: PCWSTR = w!("ArtidorNativeWndClass");
 const CHILD_CLASS_NAME: PCWSTR = w!("ArtidorNativeViewportClass");
@@ -69,25 +71,32 @@ unsafe extern "system" fn main_proc(
                 if GetClientRect(hwnd, &mut client).is_ok() {
                     let layout =
                         Layout::compute(client.right - client.left, client.bottom - client.top);
-                    if let Some(state) = window_state(hwnd) {
+                    if let Some(state) = window_state_mut(hwnd) {
                         // Select the body font for all chrome text.
                         let prev_font = windows::Win32::Graphics::Gdi::SelectObject(
                             hdc,
                             state.fonts.body.into(),
                         );
-                        paint_chrome(
-                            hdc,
-                            &layout,
-                            &client,
-                            &state.project,
-                            state.selected_track,
-                            state.playing,
-                            state.selected_element,
-                            &state.teleprompter_text,
-                            state.teleprompter_on,
-                            state.zoom_pps,
-                            state.scroll_seconds,
-                        );
+                        match state.mode {
+                            crate::window::AppMode::Welcome => {
+                                crate::ui::welcome::draw_welcome(hdc, &client, &mut state.welcome);
+                            }
+                            crate::window::AppMode::Editor => {
+                                paint_chrome(
+                                    hdc,
+                                    &layout,
+                                    &client,
+                                    &state.project,
+                                    state.selected_track,
+                                    state.playing,
+                                    state.selected_element,
+                                    &state.teleprompter_text,
+                                    state.teleprompter_on,
+                                    state.zoom_pps,
+                                    state.scroll_seconds,
+                                );
+                            }
+                        }
                         let _ = windows::Win32::Graphics::Gdi::SelectObject(hdc, prev_font);
                     } else {
                         let fallback = Project::new_untitled("loading", 0);
