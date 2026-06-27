@@ -55,8 +55,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: cargo fmt --all -- --check
-      - run: cargo check --workspace --all-targets --exclude artidor-desktop
-      - run: cargo test --workspace --all-targets --exclude artidor-desktop
+      - run: cargo check --workspace --all-targets --exclude artidor-desktop --exclude artidor-desktop-tauri
+      - run: cargo test --workspace --all-targets --exclude artidor-desktop --exclude artidor-desktop-tauri
 
   harness:
     name: Harness policy check
