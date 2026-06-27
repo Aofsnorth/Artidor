@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/acl/2",
+  "identifier": "default",
+  "description": "Default capability for Artidor desktop — minimal permissions.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open"
+  ]
+}
