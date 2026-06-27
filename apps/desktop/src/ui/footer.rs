@@ -1,158 +1,195 @@
-//! Footer bar — playback controls, timecode display, and status message.
+//! Footer bar — project metadata and status.
 //!
-//! Mirrors the web app's `editor-footer.tsx`. Contains transport controls
-//! (play/pause, stop, step), the current timecode, zoom level, and a
-//! status message area.
+//! Mirrors the web app's `editor-footer.tsx`:
+//! - Left: "Worked on HH:MM:SS" capsule + FPS monitor
+//! - Center: status dot (emerald pulse)
+//! - Right: resolution + fps + aspect + stereo
+//!
+//! The web version updates the "Worked on" counter via direct DOM mutation
+//! to avoid re-rendering the whole footer. In GPUI we use a simple status
+//! string that updates on `cx.notify()` — the footer is cheap to re-render
+//! in GPUI's retained mode.
 
-use gpui::{
-    App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window, div,
-    prelude::*, px,
-};
+use gpui::{Entity, IntoElement, ParentElement, SharedString, Styled, div, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;
 
 /// Builds the footer bar element.
-pub fn build_footer(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
-    let frame = app.state.playhead_frame;
-    let fps = app.state.project.fps();
-    let seconds = frame as f64 / fps;
-    let timecode: SharedString = format!("{frame:06} | {seconds:.2}s").into();
-    let total_frames = app.state.project.total_frames();
-    let total_text: SharedString = format!("/ {total_frames}").into();
+pub fn build_footer(app: &ArtidorApp, _entity: Entity<ArtidorApp>) -> impl IntoElement {
+    let fps = app.state.project.fps().round() as i32;
+    let width = app.state.project.width;
+    let height = app.state.project.height;
+    let aspect = format_aspect(width, height);
     let status: SharedString = app.status_message.clone();
-    let playing = app.state.playing;
-    let looping = app.state.looping;
-    let zoom_text: SharedString = format!("{:.1}px/f", app.state.px_per_frame).into();
 
     div()
         .h(theme::FOOTER_HEIGHT)
         .w_full()
-        .bg(theme::BG_PANEL)
-        .border_t_1()
-        .border_color(theme::BORDER)
         .flex()
         .flex_row()
         .items_center()
-        .px(theme::px_12())
-        .gap(theme::px_8())
-        // Left: transport controls
+        .justify_between()
+        .px(px(16.0))
+        .bg(theme::BG_APP)
+        .border_t_1()
+        .border_color(theme::BORDER)
+        .relative()
+        // Left: "Worked on" capsule + status text
         .child(
             div()
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(theme::px_4())
-                .child(transport_button(
-                    "<<",
-                    FooterAction::JumpToStart,
-                    entity.clone(),
-                ))
-                .child(transport_button(
-                    "<",
-                    FooterAction::StepBackward,
-                    entity.clone(),
-                ))
-                .child(transport_button(
-                    if playing { "||" } else { ">" },
-                    FooterAction::PlayPause,
-                    entity.clone(),
-                ))
-                .child(transport_button(
-                    ">",
-                    FooterAction::StepForward,
-                    entity.clone(),
-                ))
-                .child(transport_button(
-                    ">>",
-                    FooterAction::JumpToEnd,
-                    entity.clone(),
-                ))
-                .child(transport_button(
-                    if looping { "Loop*" } else { "Loop" },
-                    FooterAction::ToggleLoop,
-                    entity.clone(),
-                )),
-        )
-        // Center: timecode
-        .child(
-            div()
-                .flex_1()
-                .flex()
-                .justify_center()
-                .items_center()
-                .gap(theme::px_8())
+                .gap(px(12.0))
                 .child(
+                    // "Worked on" capsule
                     div()
-                        .text_color(theme::TEXT_PRIMARY)
-                        .text_size(px(13.0))
-                        .font_weight(gpui::FontWeight::BOLD)
-                        .child(timecode),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(6.0))
+                        .rounded(px(14.0))
+                        .border_1()
+                        .border_color(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.07,
+                        })
+                        .bg(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.035,
+                        })
+                        .px(px(10.0))
+                        .py(px(4.0))
+                        .child(
+                            div()
+                                .text_size(px(9.0))
+                                .font_weight(gpui::FontWeight::SEMIBOLD)
+                                .text_color(gpui::Hsla {
+                                    h: 0.0,
+                                    s: 0.0,
+                                    l: 1.0,
+                                    a: 0.32,
+                                })
+                                .child("WORKED ON"),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(11.0))
+                                .text_color(gpui::Hsla {
+                                    h: 0.0,
+                                    s: 0.0,
+                                    l: 1.0,
+                                    a: 0.82,
+                                })
+                                .child("00:00:00"),
+                        ),
                 )
                 .child(
                     div()
+                        .text_size(px(10.0))
                         .text_color(theme::TEXT_MUTED)
-                        .text_size(px(11.0))
-                        .child(total_text),
-                ),
-        )
-        // Right: zoom + status
-        .child(
-            div()
-                .flex()
-                .flex_row()
-                .items_center()
-                .gap(theme::px_12())
-                .child(
-                    div()
-                        .text_color(theme::TEXT_MUTED)
-                        .text_size(px(11.0))
-                        .child(zoom_text),
-                )
-                .child(div().w(px(1.0)).h(px(16.0)).bg(theme::BORDER))
-                .child(
-                    div()
-                        .text_color(theme::TEXT_SECONDARY)
-                        .text_size(px(11.0))
                         .child(status),
                 ),
         )
+        // Center: status dot (emerald, absolute-centered)
+        .child(
+            div()
+                .absolute()
+                .left_1_2()
+                .top_1_2()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(8.0))
+                .rounded(px(14.0))
+                .border_1()
+                .border_color(gpui::Hsla {
+                    h: 0.525,
+                    s: 0.85,
+                    l: 0.53,
+                    a: 0.16,
+                })
+                .bg(gpui::Hsla {
+                    h: 0.525,
+                    s: 0.85,
+                    l: 0.53,
+                    a: 0.055,
+                })
+                .px(px(12.0))
+                .py(px(4.0))
+                .child(
+                    div()
+                        .w(px(6.0))
+                        .h(px(6.0))
+                        .rounded(px(3.0))
+                        .bg(theme::ACCENT_EMERALD),
+                ),
+        )
+        // Right: resolution + fps + aspect + stereo
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(12.0))
+                .text_size(px(10.0))
+                .text_color(theme::TEXT_MUTED)
+                .child(div().child(format!("{height}p")))
+                .child(
+                    div()
+                        .text_color(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.22,
+                        })
+                        .child("•"),
+                )
+                .child(div().child(format!("{fps} fps")))
+                .child(
+                    div()
+                        .text_color(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.22,
+                        })
+                        .child("•"),
+                )
+                .child(div().child(aspect))
+                .child(
+                    div()
+                        .text_color(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.22,
+                        })
+                        .child("•"),
+                )
+                .child(div().child("Stereo")),
+        )
 }
 
-/// Which footer transport action to perform.
-enum FooterAction {
-    PlayPause,
-    JumpToStart,
-    JumpToEnd,
-    StepForward,
-    StepBackward,
-    ToggleLoop,
+/// Formats the canvas aspect ratio as a reduced fraction (e.g. "16:9").
+fn format_aspect(width: u32, height: u32) -> String {
+    let divisor = gcd(width, height);
+    if divisor == 0 {
+        return "16:9".to_string();
+    }
+    format!("{}:{}", width / divisor, height / divisor)
 }
 
-/// A transport control button.
-fn transport_button(
-    icon: &str,
-    action: FooterAction,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
-    let btn_id: gpui::SharedString = icon.to_string().into();
-    div()
-        .px(theme::px_8())
-        .py(theme::px_4())
-        .rounded(px(3.0))
-        .text_color(theme::TEXT_SECONDARY)
-        .text_size(px(14.0))
-        .hover(|s| s.bg(theme::BG_HOVER).text_color(theme::TEXT_PRIMARY))
-        .child(icon.to_string())
-        .id(btn_id)
-        .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            entity.update(cx, |app, cx| match action {
-                FooterAction::PlayPause => app.handle_play_pause(cx),
-                FooterAction::JumpToStart => app.handle_jump_to_start(cx),
-                FooterAction::JumpToEnd => app.handle_jump_to_end(cx),
-                FooterAction::StepForward => app.handle_step_forward(cx),
-                FooterAction::StepBackward => app.handle_step_backward(cx),
-                FooterAction::ToggleLoop => app.handle_toggle_loop(cx),
-            });
-        })
+/// Greatest common divisor.
+fn gcd(a: u32, b: u32) -> u32 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
 }

@@ -50,11 +50,47 @@ pub struct DecodedImage {
     pub height: u32,
 }
 
+/// Maximum decoded image dimension (width or height) in pixels.
+///
+/// Images larger than this are rejected to prevent OOM on machines with
+/// limited RAM. 8K (7680) is the practical ceiling for video editing
+/// source media; anything larger should be downsampled before import.
+const MAX_IMAGE_DIMENSION: u32 = 8192;
+
+/// Maximum file size on disk for a single image import (200 MB).
+///
+/// This guards against accidentally loading a huge raw/TIFF file that
+/// would saturate the decoder even if its dimensions are within bounds.
+const MAX_FILE_SIZE_BYTES: u64 = 200 * 1024 * 1024;
+
 /// Loads an image file from disk and decodes it to RGBA8.
 ///
-/// Returns an error if the file cannot be read or is not a supported image
-/// format.
+/// Returns an error if the file cannot be read, is not a supported image
+/// format, exceeds the dimension limit, or exceeds the file-size limit.
 pub fn load_image_to_rgba(path: &Path) -> Result<DecodedImage, String> {
+    // Validate path: reject empty paths, non-existent files, and paths
+    // that don't point to a regular file (e.g. directories, symlinks to
+    // special devices).
+    if path.as_os_str().is_empty() {
+        return Err("Empty file path".to_string());
+    }
+    let metadata = std::fs::metadata(path)
+        .map_err(|e| format!("Cannot stat file '{}': {e}", path.display()))?;
+    if !metadata.is_file() {
+        return Err(format!(
+            "Path '{}' is not a regular file",
+            path.display()
+        ));
+    }
+    if metadata.len() > MAX_FILE_SIZE_BYTES {
+        return Err(format!(
+            "File '{}' is {} MB — exceeds the {} MB import limit",
+            path.display(),
+            metadata.len() / (1024 * 1024),
+            MAX_FILE_SIZE_BYTES / (1024 * 1024)
+        ));
+    }
+
     let reader = ImageReader::open(path)
         .map_err(|e| format!("Failed to open file '{}': {e}", path.display()))?;
 
@@ -69,6 +105,13 @@ pub fn load_image_to_rgba(path: &Path) -> Result<DecodedImage, String> {
     let rgba = image.to_rgba8();
     let width = rgba.width();
     let height = rgba.height();
+
+    // Guard against OOM from extremely large images.
+    if width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION {
+        return Err(format!(
+            "Image dimensions {width}×{height} exceed the {MAX_IMAGE_DIMENSION}px limit"
+        ));
+    }
 
     Ok(DecodedImage {
         rgba_bytes: rgba.into_raw(),

@@ -76,38 +76,81 @@ pub fn build_timeline_panel(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> imp
     container
 }
 
-/// Builds the timeline toolbar (zoom controls, snap toggle).
+/// Builds the timeline toolbar — 3-column layout matching web `TimelineToolbar`:
+/// left: "Tracks" label, center: zoom controls, right: snap/split actions.
 fn build_timeline_toolbar(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let zoom_text = format!("{:.1}px/f", app.state.px_per_frame);
 
     div()
         .h(theme::TIMELINE_TOOLBAR_HEIGHT)
         .w_full()
-        .bg(theme::BG_PANEL_RAISED)
-        .border_b_1()
-        .border_color(theme::BORDER)
         .flex()
         .flex_row()
         .items_center()
-        .px(theme::px_8())
-        .gap(theme::px_8())
+        .px(px(14.0))
+        .py(px(2.0))
+        .border_b_1()
+        .border_color(theme::BORDER)
+        // Left: "Tracks" label
         .child(
             div()
-                .text_color(theme::TEXT_SECONDARY)
-                .text_size(px(11.0))
-                .child("Timeline"),
+                .flex_1()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(8.0))
+                .child(
+                    div()
+                        .text_size(px(10.0))
+                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                        .text_color(gpui::Hsla {
+                            h: 0.0,
+                            s: 0.0,
+                            l: 1.0,
+                            a: 0.35,
+                        })
+                        .child("TRACKS"),
+                )
+                .child(
+                    div()
+                        .text_size(px(10.0))
+                        .text_color(theme::TEXT_MUTED)
+                        .child(zoom_text),
+                ),
         )
-        .child(div().w(px(1.0)).h(px(16.0)).bg(theme::BORDER))
+        // Center: zoom controls
         .child(
             div()
-                .text_color(theme::TEXT_MUTED)
-                .text_size(px(11.0))
-                .child(zoom_text),
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(2.0))
+                .child(zoom_button("-", entity.clone(), ZoomAction::Out))
+                .child(zoom_button("+", entity.clone(), ZoomAction::In))
+                .child(zoom_button("Fit", entity.clone(), ZoomAction::Fit)),
         )
-        .child(div().flex_1())
-        .child(zoom_button("-", entity.clone(), ZoomAction::Out))
-        .child(zoom_button("+", entity.clone(), ZoomAction::In))
-        .child(zoom_button("Fit", entity, ZoomAction::Fit))
+        // Right: split + delete actions
+        .child(
+            div()
+                .flex_1()
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_end()
+                .gap(px(4.0))
+                .child(toolbar_action_button(
+                    "✂",
+                    "tl-split",
+                    entity.clone(),
+                    ToolbarEditAction::Split,
+                ))
+                .child(toolbar_action_button(
+                    "⌫",
+                    "tl-delete",
+                    entity,
+                    ToolbarEditAction::Delete,
+                )),
+        )
 }
 
 /// Which zoom action to perform.
@@ -115,6 +158,13 @@ enum ZoomAction {
     In,
     Out,
     Fit,
+}
+
+/// Which edit action the toolbar button triggers.
+#[derive(Debug)]
+enum ToolbarEditAction {
+    Split,
+    Delete,
 }
 
 /// A zoom toolbar button that directly updates the entity state.
@@ -134,6 +184,34 @@ fn zoom_button(label: &str, entity: Entity<ArtidorApp>, action: ZoomAction) -> i
                 ZoomAction::In => app.handle_zoom_in(cx),
                 ZoomAction::Out => app.handle_zoom_out(cx),
                 ZoomAction::Fit => app.handle_zoom_to_fit(cx),
+            });
+        })
+}
+
+/// A toolbar edit action button (split, delete, etc.).
+fn toolbar_action_button(
+    icon: &str,
+    id: &str,
+    entity: Entity<ArtidorApp>,
+    action: ToolbarEditAction,
+) -> impl IntoElement {
+    let btn_id: gpui::SharedString = id.to_string().into();
+    div()
+        .w(px(28.0))
+        .h(px(28.0))
+        .rounded(px(6.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_color(theme::TEXT_SECONDARY)
+        .text_size(px(13.0))
+        .hover(|s| s.bg(theme::BG_HOVER).text_color(theme::TEXT_PRIMARY))
+        .child(icon.to_string())
+        .id(btn_id)
+        .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
+            entity.update(cx, |app, cx| match action {
+                ToolbarEditAction::Split => app.handle_split(cx),
+                ToolbarEditAction::Delete => app.handle_delete(cx),
             });
         })
 }

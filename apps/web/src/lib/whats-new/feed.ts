@@ -18,6 +18,27 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-09-beat-detection-yielding",
+		date: "2026-07-09",
+		tag: "performance",
+		title: "Beat detection no longer freezes the editor on long audio files",
+		items: [
+			"The waveform peak computation (computePeakBuffer) was a tight triple-nested loop that blocked the main thread for seconds on audio files longer than a few minutes. It now yields to the event loop every 4096 blocks (~1M samples), keeping the UI responsive during waveform analysis.",
+			"The 'Add beat markers' action scanned the peak buffer on the main thread without yielding. It now yields every 4096 iterations so clicks, scrolls, and animations stay smooth while beats are being detected.",
+		],
+	},
+	{
+		id: "2026-07-09-desktop-ui-parity",
+		date: "2026-07-09",
+		tag: "improvement",
+		title: "Desktop app UI now matches the web editor layout",
+		items: [
+			"The desktop app header, footer, tab bar, viewport toolbar, timeline toolbar, assets panel, and inspector now mirror the web editor's layout: 72px vertical tab rail, rounded-xl panel cards with 8px gaps, capsule-style header buttons, preview toolbar with timecode + transport controls, and a 3-column timeline toolbar.",
+			"Window controls (minimize —, maximize □, close ✕) are now placed next to the Export button in the header, matching the desktop convention while keeping the web-style action hub layout.",
+			"Safety hardening: the WGPU viewport renderer no longer panics on buffer size mismatch (returns None instead), window creation failures exit gracefully instead of unwrapping, and image imports are now validated for file size (200MB limit) and dimensions (8192px limit) to prevent OOM.",
+		],
+	},
+	{
 		id: "2026-07-08-desktop-app-gpui-wgpu",
 		date: "2026-07-08",
 		tag: "feature",

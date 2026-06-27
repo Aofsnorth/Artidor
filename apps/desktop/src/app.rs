@@ -94,8 +94,9 @@ impl ArtidorApp {
 
         match renderer.render(&frame_descriptor) {
             Ok(rendered) => {
-                let source = rendered_frame_to_image_source(&rendered);
-                if let gpui::ImageSource::Render(img) = source {
+                if let Some(gpui::ImageSource::Render(img)) =
+                    rendered_frame_to_image_source(&rendered)
+                {
                     self.cached_image = Some(img);
                 }
                 self.last_rendered_frame = playhead;
@@ -706,12 +707,22 @@ pub fn run() {
                         app
                     })
                 },
-            )
-            .unwrap();
+            );
 
         // Register global action listeners for keyboard shortcuts.
-        let entity = window.entity(cx).unwrap();
-        ArtidorApp::register_global_actions(cx, entity);
+        // If the window or entity is unavailable (e.g. GPU init failure on
+        // headless systems), skip action registration and exit gracefully
+        // rather than panicking.
+        if let Ok(window) = window {
+            match window.entity(cx) {
+                Ok(entity) => ArtidorApp::register_global_actions(cx, entity),
+                Err(e) => log::error!("Failed to get window entity: {e}"),
+            }
+        } else {
+            log::error!("Failed to open main window — exiting");
+            cx.quit();
+            return;
+        }
 
         cx.activate(true);
     });
