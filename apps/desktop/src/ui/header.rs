@@ -25,7 +25,11 @@ use crate::theme;
 /// ```
 pub fn build_header(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let project_name: SharedString = app.state.project.name.clone().into();
-    let dirty_dot: SharedString = if app.state.dirty { "●".into() } else { "".into() };
+    let dirty_dot: SharedString = if app.state.dirty {
+        "●".into()
+    } else {
+        "".into()
+    };
 
     div()
         .h(theme::HEADER_HEIGHT)
@@ -132,9 +136,19 @@ pub fn build_header(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoEl
                 .gap(px(10.0))
                 .ml_auto()
                 // Settings button
-                .child(header_icon_button("⚙", "header-settings", entity.clone(), HeaderAction::None))
+                .child(header_icon_button(
+                    "⚙",
+                    "header-settings",
+                    entity.clone(),
+                    HeaderAction::None,
+                ))
                 // Share button
-                .child(header_text_button("Share", "header-share", entity.clone(), HeaderAction::None))
+                .child(header_text_button(
+                    "Share",
+                    "header-share",
+                    entity.clone(),
+                    HeaderAction::None,
+                ))
                 // Export button (emphasized)
                 .child(header_export_button("header-export", entity.clone()))
                 // Window controls: minimize, maximize, close
@@ -217,10 +231,7 @@ fn header_text_button(
 }
 
 /// The Export button — emphasized with a subtle background.
-fn header_export_button(
-    id: &str,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn header_export_button(id: &str, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let btn_id: SharedString = id.to_string().into();
     div()
         .h(px(28.0))
