@@ -152,10 +152,7 @@ enum ToolbarAction {
 
 /// Builds the preview toolbar (44px) — timecode (left), transport (center),
 /// loop + fullscreen (right).
-fn build_preview_toolbar(
-    app: &ArtidorApp,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn build_preview_toolbar(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let frame = app.state.playhead_frame;
     let fps = app.state.project.fps();
     let total_frames = app.state.project.total_frames();
@@ -207,15 +204,31 @@ fn build_preview_toolbar(
                 .flex_row()
                 .items_center()
                 .gap(px(4.0))
-                .child(transport_button("⏮", ToolbarAction::JumpToStart, entity.clone()))
-                .child(transport_button("◀", ToolbarAction::StepBackward, entity.clone()))
+                .child(transport_button(
+                    "⏮",
+                    ToolbarAction::JumpToStart,
+                    entity.clone(),
+                ))
+                .child(transport_button(
+                    "◀",
+                    ToolbarAction::StepBackward,
+                    entity.clone(),
+                ))
                 .child(transport_button(
                     if playing { "⏸" } else { "▶" },
                     ToolbarAction::PlayPause,
                     entity.clone(),
                 ))
-                .child(transport_button("▶", ToolbarAction::StepForward, entity.clone()))
-                .child(transport_button("⏭", ToolbarAction::JumpToEnd, entity.clone())),
+                .child(transport_button(
+                    "▶",
+                    ToolbarAction::StepForward,
+                    entity.clone(),
+                ))
+                .child(transport_button(
+                    "⏭",
+                    ToolbarAction::JumpToEnd,
+                    entity.clone(),
+                )),
         )
         // Right: loop + fullscreen
         .child(
@@ -280,8 +293,5 @@ fn format_timecode(frame: i64, fps: f64) -> String {
     let hours = total_seconds / 3600;
     let minutes = (total_seconds % 3600) / 60;
     let seconds = total_seconds % 60;
-    format!(
-        "{:02}:{:02}:{:02}:{:02}",
-        hours, minutes, seconds, frames
-    )
+    format!("{:02}:{:02}:{:02}:{:02}", hours, minutes, seconds, frames)
 }

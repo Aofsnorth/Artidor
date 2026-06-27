@@ -77,10 +77,7 @@ pub fn load_image_to_rgba(path: &Path) -> Result<DecodedImage, String> {
     let metadata = std::fs::metadata(path)
         .map_err(|e| format!("Cannot stat file '{}': {e}", path.display()))?;
     if !metadata.is_file() {
-        return Err(format!(
-            "Path '{}' is not a regular file",
-            path.display()
-        ));
+        return Err(format!("Path '{}' is not a regular file", path.display()));
     }
     if metadata.len() > MAX_FILE_SIZE_BYTES {
         return Err(format!(

@@ -56,11 +56,7 @@ pub fn build_tab_bar(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoE
 }
 
 /// A single tab button.
-fn tab_button(
-    tab: AssetsTab,
-    active: AssetsTab,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn tab_button(tab: AssetsTab, active: AssetsTab, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let is_active = tab == active;
     let label: SharedString = tab.label().to_string().into();
     let glyph: SharedString = tab.glyph().to_string().into();
@@ -100,16 +96,8 @@ fn tab_button(
             a: 0.14,
         })
         .text_color(theme::TEXT_PRIMARY)
-        .child(
-            div()
-                .text_size(px(16.0))
-                .child(glyph),
-        )
-        .child(
-            div()
-                .text_size(px(8.0))
-                .child(label),
-        )
+        .child(div().text_size(px(16.0)).child(glyph))
+        .child(div().text_size(px(8.0)).child(label))
     } else {
         base.border_color(gpui::transparent_black())
             .text_color(gpui::Hsla {
@@ -127,16 +115,8 @@ fn tab_button(
                 })
                 .text_color(theme::TEXT_PRIMARY)
             })
-            .child(
-                div()
-                    .text_size(px(16.0))
-                    .child(glyph),
-            )
-            .child(
-                div()
-                    .text_size(px(8.0))
-                    .child(label),
-            )
+            .child(div().text_size(px(16.0)).child(glyph))
+            .child(div().text_size(px(8.0)).child(label))
     }
 }
 
@@ -194,17 +174,11 @@ fn storage_card() -> impl IntoElement {
                     l: 1.0,
                     a: 0.07,
                 })
-                .child(
-                    div()
-                        .w(px(12.0))
-                        .h_full()
-                        .rounded(px(2.0))
-                        .bg(gpui::Hsla {
-                            h: 0.0,
-                            s: 0.0,
-                            l: 1.0,
-                            a: 0.85,
-                        }),
-                ),
+                .child(div().w(px(12.0)).h_full().rounded(px(2.0)).bg(gpui::Hsla {
+                    h: 0.0,
+                    s: 0.0,
+                    l: 1.0,
+                    a: 0.85,
+                })),
         )
 }

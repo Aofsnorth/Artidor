@@ -22,6 +22,7 @@ import {
 	Input,
 	type WrappedAudioBuffer,
 } from "mediabunny";
+import { yieldToEventLoop } from "@/lib/media/yield";
 
 import { useTimelineStore } from "@/stores/timeline-store";
 
@@ -941,6 +942,7 @@ export class AudioManager {
 			for await (const { buffer } of sink.buffers(0)) {
 				chunks.push(buffer);
 				totalSamples += buffer.length;
+				await yieldToEventLoop();
 			}
 
 			if (chunks.length === 0) {
@@ -964,6 +966,7 @@ export class AudioManager {
 					);
 				}
 				offset += chunk.length;
+				if (chunk.length > 8192) await yieldToEventLoop();
 			}
 
 			const outputSamples = Math.ceil(
