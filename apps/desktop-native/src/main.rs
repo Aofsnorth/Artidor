@@ -38,7 +38,8 @@ use crate::theme::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use crate::ui::layout::Layout;
 use crate::ui::paint_chrome;
 use crate::window::shortcuts::{
-    handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_timer,
+    handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_mousewheel,
+    handle_timer,
 };
 use crate::window::{WindowState, child_hwnd, client_height, client_width, window_state};
 
@@ -69,6 +70,11 @@ unsafe extern "system" fn main_proc(
                     let layout =
                         Layout::compute(client.right - client.left, client.bottom - client.top);
                     if let Some(state) = window_state(hwnd) {
+                        // Select the body font for all chrome text.
+                        let prev_font = windows::Win32::Graphics::Gdi::SelectObject(
+                            hdc,
+                            state.fonts.body.into(),
+                        );
                         paint_chrome(
                             hdc,
                             &layout,
@@ -79,10 +85,15 @@ unsafe extern "system" fn main_proc(
                             state.selected_element,
                             &state.teleprompter_text,
                             state.teleprompter_on,
+                            state.zoom_pps,
+                            state.scroll_seconds,
                         );
+                        let _ = windows::Win32::Graphics::Gdi::SelectObject(hdc, prev_font);
                     } else {
                         let fallback = Project::new_untitled("loading", 0);
-                        paint_chrome(hdc, &layout, &client, &fallback, 0, false, None, "", false);
+                        paint_chrome(
+                            hdc, &layout, &client, &fallback, 0, false, None, "", false, 20.0, 0.0,
+                        );
                     }
                 }
                 let _ = EndPaint(hwnd, &ps);
@@ -126,6 +137,12 @@ unsafe extern "system" fn main_proc(
             }
             windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP => {
                 if handle_lbuttonup(hwnd) {
+                    let _ = InvalidateRect(Some(hwnd), None, false);
+                }
+                LRESULT(0)
+            }
+            windows::Win32::UI::WindowsAndMessaging::WM_MOUSEWHEEL => {
+                if handle_mousewheel(hwnd, wparam) {
                     let _ = InvalidateRect(Some(hwnd), None, false);
                 }
                 LRESULT(0)

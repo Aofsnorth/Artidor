@@ -19,7 +19,8 @@ use crate::state::{self, Element, Track, TrackType};
 use crate::theme::PLAYBACK_TIMER_ID;
 use crate::ui::layout::Layout;
 use crate::window::{
-    DragMode, DragState, WindowState, child_hwnd, timeline_duration, window_state, window_state_mut,
+    DragMode, DragState, WindowState, child_hwnd, clamp_scroll, clamp_zoom, timeline_duration,
+    window_state, window_state_mut,
 };
 
 /// Handle a WM_KEYDOWN message. Returns true if the window should repaint.
@@ -47,6 +48,15 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                         state.selected_track += 1;
                         dirty = true;
                     }
+                }
+                // '+' = zoom in, '-' = zoom out (no Ctrl needed).
+                0xBB | 0x6B => {
+                    state.zoom_pps = clamp_zoom(state.zoom_pps * 1.25);
+                    dirty = true;
+                }
+                0xBD | 0x2D => {
+                    state.zoom_pps = clamp_zoom(state.zoom_pps / 1.25);
+                    dirty = true;
                 }
                 0x54 => {
                     let types = [
@@ -175,9 +185,9 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                 let panel_w = tl.right - tl.left;
                 let duration = timeline_duration(&state.project);
 
-                // Step 1: hit-test clip blocks.
+                // Step 1: hit-test clip blocks (pixel-accurate via zoom/scroll).
                 let mut clicked_clip: Option<(usize, usize)> = None;
-                if duration > 0.0 && y >= tl.top && y <= list_bottom {
+                if y >= tl.top && y <= list_bottom {
                     let mut row_y = tl.top + 8;
                     for (ti, track) in state.project.scene.tracks.iter().enumerate() {
                         if row_y + 28 > list_bottom {
@@ -188,14 +198,22 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                         let header_right = tl.left + 8 + 140;
                         let clip_area_left = header_right + 4;
                         let clip_area_right = tl.left + panel_w - 8 - 4;
-                        let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
                         if y >= row_top && y <= row_bottom {
                             for (ei, element) in track.elements.iter().enumerate() {
-                                let start_frac = (element.start_seconds / duration).clamp(0.0, 1.0);
-                                let end_frac = (element.end_seconds() / duration).clamp(0.0, 1.0);
-                                let clip_x = clip_area_left + (start_frac * clip_area_w) as i32;
-                                let clip_w = ((end_frac - start_frac) * clip_area_w) as i32;
-                                if x >= clip_x && x <= clip_x + clip_w.max(2) {
+                                let clip_x = crate::window::time_to_x(
+                                    element.start_seconds,
+                                    state.zoom_pps,
+                                    state.scroll_seconds,
+                                    clip_area_left,
+                                );
+                                let clip_end_x = crate::window::time_to_x(
+                                    element.end_seconds(),
+                                    state.zoom_pps,
+                                    state.scroll_seconds,
+                                    clip_area_left,
+                                );
+                                let clip_w = (clip_end_x - clip_x).max(2);
+                                if x >= clip_x && x <= clip_x + clip_w {
                                     clicked_clip = Some((ti, ei));
                                     break;
                                 }
@@ -214,14 +232,21 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     // be undone as a single action.
                     let track = &state.project.scene.tracks[ti];
                     let element = &track.elements[ei];
-                    let start_frac = (element.start_seconds / duration).clamp(0.0, 1.0);
-                    let end_frac = (element.end_seconds() / duration).clamp(0.0, 1.0);
                     let header_right = tl.left + 8 + 140;
                     let clip_area_left = header_right + 4;
-                    let clip_area_right = tl.left + panel_w - 8 - 4;
-                    let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
-                    let clip_x = clip_area_left + (start_frac * clip_area_w) as i32;
-                    let clip_w = ((end_frac - start_frac) * clip_area_w) as i32;
+                    let clip_x = crate::window::time_to_x(
+                        element.start_seconds,
+                        state.zoom_pps,
+                        state.scroll_seconds,
+                        clip_area_left,
+                    );
+                    let clip_end_x = crate::window::time_to_x(
+                        element.end_seconds(),
+                        state.zoom_pps,
+                        state.scroll_seconds,
+                        clip_area_left,
+                    );
+                    let clip_w = (clip_end_x - clip_x).max(2);
                     let mode = if x >= clip_x + clip_w - 8 {
                         DragMode::TrimRight
                     } else {
@@ -239,15 +264,17 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     return true;
                 } else if x >= tl.left + 8 && x <= tl.right - 8 && y >= tl.top && y <= list_bottom {
                     state.selected_element = None;
-                    if duration > 0.0 {
-                        let track_area_left = tl.left + 8;
-                        let track_area_right = tl.right - 8;
-                        let track_area_w = (track_area_right - track_area_left).max(1) as f64;
-                        let frac = ((x - track_area_left) as f64 / track_area_w).clamp(0.0, 1.0);
-                        let seconds = frac * duration;
-                        if state.project.seek_seconds(seconds) {
-                            return true;
-                        }
+                    // Click-to-seek: convert pixel x to time via zoom/scroll.
+                    let header_right = tl.left + 8 + 140;
+                    let clip_area_left = header_right + 4;
+                    let seconds = crate::window::x_to_time(
+                        x,
+                        state.zoom_pps,
+                        state.scroll_seconds,
+                        clip_area_left,
+                    );
+                    if seconds >= 0.0 && state.project.seek_seconds(seconds) {
+                        return true;
                     }
                 }
             }
@@ -500,16 +527,12 @@ pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::L
                         Layout::compute(client.right - client.left, client.bottom - client.top);
                     let tl = &layout.timeline;
                     let panel_w = tl.right - tl.left;
-                    let duration = timeline_duration(&state.project);
-                    if duration <= 0.0 {
-                        return false;
-                    }
                     let header_right = tl.left + 8 + 140;
                     let clip_area_left = header_right + 4;
-                    let clip_area_right = tl.left + panel_w - 8 - 4;
-                    let clip_area_w = (clip_area_right - clip_area_left).max(1) as f64;
+                    let _clip_area_right = tl.left + panel_w - 8 - 4;
+                    // Delta in seconds = delta_px / zoom_pps.
                     let delta_px = (x - drag.start_x) as f64;
-                    let delta_seconds = delta_px / clip_area_w * duration;
+                    let delta_seconds = delta_px / state.zoom_pps;
 
                     let track_id = state.project.scene.tracks[drag.track_index].id.clone();
                     let element_id = state.project.scene.tracks[drag.track_index].elements
@@ -545,6 +568,29 @@ pub unsafe fn handle_lbuttonup(hwnd: HWND) -> bool {
                 state.drag = None;
                 return true;
             }
+        }
+        false
+    }
+}
+
+/// Handle WM_MOUSEWHEEL: Ctrl+wheel = zoom, wheel = horizontal scroll.
+/// `wparam_hi` is the wheel delta (multiples of 120). `lparam` holds the
+/// mouse position (screen coords). Returns true if the view changed.
+pub unsafe fn handle_mousewheel(hwnd: HWND, wparam: WPARAM) -> bool {
+    unsafe {
+        let wheel_delta = ((wparam.0 >> 16) & 0xFFFF) as i16 as i32;
+        let ctrl_down = GetKeyState(VK_CONTROL.0 as i32) < 0;
+        if let Some(state) = window_state_mut(hwnd) {
+            if ctrl_down {
+                // Zoom: each 120 delta = 1.25x factor.
+                let factor = 1.25_f64.powi(wheel_delta / 120);
+                state.zoom_pps = clamp_zoom(state.zoom_pps * factor);
+            } else {
+                // Horizontal scroll: each 120 delta = 2 seconds.
+                let delta_seconds = -(wheel_delta as f64 / 120.0) * 2.0;
+                state.scroll_seconds = clamp_scroll(state.scroll_seconds + delta_seconds);
+            }
+            return true;
         }
         false
     }

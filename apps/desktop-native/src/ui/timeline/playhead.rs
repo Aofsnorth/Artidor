@@ -10,24 +10,30 @@ use crate::theme::{PLAYHEAD_COLOR, TRACK_PAD, rgb};
 use crate::window::timeline_duration;
 
 /// Draw the playhead vertical line + the readout strip at the bottom.
+/// Uses zoom (pps) + scroll (seconds) for pixel-accurate placement.
 pub unsafe fn draw_playhead(
     hdc: windows::Win32::Graphics::Gdi::HDC,
     panel: &RECT,
     project: &Project,
     project_is_playing: bool,
     list_bottom: i32,
+    zoom_pps: f64,
+    scroll_seconds: f64,
 ) {
     unsafe {
         let panel_w = panel.right - panel.left;
-        let duration = timeline_duration(project);
+        let header_right = panel.left + TRACK_PAD + 140;
+        let clip_area_left = header_right + 4;
+        let clip_area_right = panel.left + panel_w - TRACK_PAD;
 
-        // Vertical playhead line.
-        if duration > 0.0 {
-            let frac = (project.playhead.as_seconds() / duration).clamp(0.0, 1.0);
-            let track_area_left = panel.left + TRACK_PAD;
-            let track_area_right = panel.left + panel_w - TRACK_PAD;
-            let track_area_w = (track_area_right - track_area_left).max(1);
-            let px = track_area_left + (frac * track_area_w as f64) as i32;
+        // Vertical playhead line (pixel-accurate via zoom/scroll).
+        let px = crate::window::time_to_x(
+            project.playhead.as_seconds(),
+            zoom_pps,
+            scroll_seconds,
+            clip_area_left,
+        );
+        if px >= clip_area_left && px <= clip_area_right {
             let pen = CreatePen(PS_SOLID, 2, COLORREF(rgb(PLAYHEAD_COLOR)));
             let old = SelectObject(hdc, pen.into());
             let _ = Rectangle(hdc, px, panel.top + TRACK_PAD, px + 2, list_bottom);
