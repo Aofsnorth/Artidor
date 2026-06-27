@@ -324,6 +324,9 @@ export async function decodeMediaFileAudioBuffer({
 		for await (const { buffer } of sink.buffers(startTimestamp, endTimestamp)) {
 			chunks.push(buffer);
 			totalSamples += buffer.length;
+			// Yield between chunks so the UI stays responsive during
+			// long video audio extraction (each chunk can be ~100ms).
+			await yieldToEventLoop();
 		}
 
 		console.info(
@@ -351,6 +354,8 @@ export async function decodeMediaFileAudioBuffer({
 				nativeChannels[channel].set(sourceData, offset);
 			}
 			offset += chunk.length;
+			// Yield between chunks to keep UI responsive.
+			if (chunk.length > 8192) await yieldToEventLoop();
 		}
 
 		// use OfflineAudioContext for high-quality resampling to target rate

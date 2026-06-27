@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the desktop Tauri migration", () => {
+	test("the newest entry is the beat detection worker fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-09-desktop-tauri-migration",
+			"2026-07-09-beat-detection-worker-fix",
 		);
 	});
 });
