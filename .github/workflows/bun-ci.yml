@@ -45,11 +45,13 @@ jobs:
         run: rustup target add wasm32-unknown-unknown
 
       - name: Install wasm-pack
-        # Pinned to a specific version instead of `latest` to avoid fetching
-        # a potentially compromised or unvetted release into CI.
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: 0.14.0
+        # `jetli/wasm-pack-action@v0.4.0` used the old `rustwasm/wasm-pack`
+        # download URL which 404s after the repo moved to `wasm-bindgen/wasm-pack`
+        # (the 0.14.0 npm package was never republished with the corrected URL).
+        # The action is also unmaintained (node16, deprecated). Installing via
+        # cargo is slower but bulletproof — no third-party action, no URL drift,
+        # and the version is pinned to a vetted release.
+        run: cargo install wasm-pack --locked --version 0.15.0
 
       - name: Cache Rust build artifacts
         uses: actions/cache@v6

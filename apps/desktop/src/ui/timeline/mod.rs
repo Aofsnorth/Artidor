@@ -8,12 +8,12 @@
 //! Interaction: clicking on the ruler seeks the playhead, clicking on an
 //! element selects it, and dragging elements moves them.
 
+pub mod playhead;
 pub mod ruler;
 pub mod track;
-pub mod playhead;
 
 use gpui::{
-    div, px, App, ClickEvent, Entity, IntoElement, ParentElement, Styled, Window, prelude::*,
+    App, ClickEvent, Entity, IntoElement, ParentElement, Styled, Window, div, prelude::*, px,
 };
 
 use crate::app::ArtidorApp;
@@ -130,12 +130,10 @@ fn zoom_button(label: &str, entity: Entity<ArtidorApp>, action: ZoomAction) -> i
         .child(label.to_string())
         .id(btn_id)
         .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            entity.update(cx, |app, cx| {
-                match action {
-                    ZoomAction::In => app.handle_zoom_in(cx),
-                    ZoomAction::Out => app.handle_zoom_out(cx),
-                    ZoomAction::Fit => app.handle_zoom_to_fit(cx),
-                }
+            entity.update(cx, |app, cx| match action {
+                ZoomAction::In => app.handle_zoom_in(cx),
+                ZoomAction::Out => app.handle_zoom_out(cx),
+                ZoomAction::Fit => app.handle_zoom_to_fit(cx),
             });
         })
 }

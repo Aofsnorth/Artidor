@@ -7,7 +7,7 @@
 
 pub mod properties;
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled, prelude::*};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, prelude::*, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;
@@ -53,7 +53,10 @@ pub fn build_inspector_panel(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> im
     } else if app.state.selection.element_ids.len() > 1 {
         panel = panel.child(empty_state("Multiple elements selected"));
     } else {
-        panel = panel.child(properties::build_project_properties(&app.state.project, entity));
+        panel = panel.child(properties::build_project_properties(
+            &app.state.project,
+            entity,
+        ));
     }
 
     panel

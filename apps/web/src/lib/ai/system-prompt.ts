@@ -131,6 +131,7 @@ ${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 - "jedag-jedug", "beat sync", "cut on beat", "rhythmic cut" → use detect_beats FIRST on the audio/video clip, then use the returned beatTicks to split_element at each beat or upsert_keyframe at beat times.
 - Workflow: 1) detect_beats(trackId, elementId of audio) → get beatTicks array. 2) For "jedag-jedug": call split_element at each beat tick on the video clip. 3) For "snap to beat": call apply_beat_sync with beatTimes + elements to snap.
 - detect_beats returns beats with {timeSeconds, ticks, energy}. Use the ticks values (1s = 120_000 ticks) for split_element time parameter.
+- For "highest beat" or "strongest beat" requests, pass detect_beats with limit (e.g. 10) and sortBy: "energy" so it returns the strongest beats only — faster and avoids huge results on long videos.
 - Never guess beat times — always call detect_beats first.
 
 # Markers & bookmarks (IMPORTANT — cut on user-placed marks)

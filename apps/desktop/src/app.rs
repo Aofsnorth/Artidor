@@ -4,11 +4,12 @@
 
 use compositor::CompositorError;
 use gpui::{
-    prelude::*, App, Application, Bounds, Context, Entity, Menu, MenuItem,
-    SharedString, TitlebarOptions, Window, WindowBounds, WindowOptions, px, size,
+    App, Application, Bounds, Context, Entity, Menu, MenuItem, SharedString, TitlebarOptions,
+    Window, WindowBounds, WindowOptions, prelude::*, px, size,
 };
 
 use crate::actions::*;
+use crate::media::{detect_media_type, load_image_to_rgba, media_type_to_element_type};
 use crate::playback::PlaybackEngine;
 use crate::render::scene::build_frame;
 use crate::render::viewport::{ViewportRenderer, ViewportState, rendered_frame_to_image_source};
@@ -16,7 +17,6 @@ use crate::shortcuts;
 use crate::state::editor_state::EditorState;
 use crate::state::persistence;
 use crate::state::project::{Element, Track};
-use crate::media::{detect_media_type, load_image_to_rgba, media_type_to_element_type};
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -56,26 +56,25 @@ impl ArtidorApp {
 
     /// Initializes the WGPU viewport renderer (async, runs in background).
     pub fn init_viewport(&mut self, cx: &mut Context<Self>) {
-        let task = cx.background_executor().spawn(async move {
-            ViewportRenderer::new()
-        });
-        cx.spawn(async move |this, cx| {
-            match task.await {
-                Ok(renderer) => {
-                    let _ = this.update(cx, |app, cx| {
-                        app.viewport = ViewportState::Ready(renderer);
-                        app.content_dirty = true;
-                        cx.notify();
-                    });
-                }
-                Err(err) => {
-                    let _ = this.update(cx, |app, cx| {
-                        app.viewport = ViewportState::Failed(err);
-                        cx.notify();
-                    });
-                }
+        let task = cx
+            .background_executor()
+            .spawn(async move { ViewportRenderer::new() });
+        cx.spawn(async move |this, cx| match task.await {
+            Ok(renderer) => {
+                let _ = this.update(cx, |app, cx| {
+                    app.viewport = ViewportState::Ready(renderer);
+                    app.content_dirty = true;
+                    cx.notify();
+                });
             }
-        }).detach();
+            Err(err) => {
+                let _ = this.update(cx, |app, cx| {
+                    app.viewport = ViewportState::Failed(err);
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
     }
 
     /// Renders the current frame via the WGPU compositor and caches the
@@ -118,22 +117,26 @@ impl ArtidorApp {
     pub fn start_playback_timer(&mut self, cx: &mut Context<Self>) {
         let task = cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor().timer(std::time::Duration::from_millis(16)).await;
-                let should_continue = this.update(cx, |app, cx| {
-                    if !app.state.playing {
-                        return false;
-                    }
-                    let fps = app.state.project.fps();
-                    let delta = app.playback.poll(fps);
-                    if delta != 0 {
-                        let cont = app.state.advance_playback(delta);
-                        app.content_dirty = true;
-                        cx.notify();
-                        cont
-                    } else {
-                        true
-                    }
-                }).unwrap_or(false);
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(16))
+                    .await;
+                let should_continue = this
+                    .update(cx, |app, cx| {
+                        if !app.state.playing {
+                            return false;
+                        }
+                        let fps = app.state.project.fps();
+                        let delta = app.playback.poll(fps);
+                        if delta != 0 {
+                            let cont = app.state.advance_playback(delta);
+                            app.content_dirty = true;
+                            cx.notify();
+                            cont
+                        } else {
+                            true
+                        }
+                    })
+                    .unwrap_or(false);
                 if !should_continue {
                     break;
                 }
@@ -407,9 +410,7 @@ impl ArtidorApp {
 
                         // Create a timeline element.
                         let mut element = Element::new(
-                            path.file_stem()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or("Image"),
+                            path.file_stem().and_then(|s| s.to_str()).unwrap_or("Image"),
                             element_type,
                         );
                         element.source_path = Some(path.to_string_lossy().to_string());
@@ -428,10 +429,7 @@ impl ArtidorApp {
                             self.state.project.tracks[idx].elements.push(element);
                         } else {
                             // Create a new track.
-                            let mut track = Track::new(
-                                format!("{element_type:?}"),
-                                element_type,
-                            );
+                            let mut track = Track::new(format!("{element_type:?}"), element_type);
                             track.elements.push(element);
                             self.state.project.tracks.push(track);
                         }
@@ -623,11 +621,7 @@ impl Render for ArtidorApp {
         self.render_viewport_frame();
 
         // Build the full editor layout.
-        crate::ui::editor_layout::build_layout(
-            self,
-            cx.entity(),
-            self.cached_image.clone(),
-        )
+        crate::ui::editor_layout::build_layout(self, cx.entity(), self.cached_image.clone())
     }
 }
 

@@ -6,12 +6,12 @@
 //! - Timeline (tracks, ruler, playhead)
 //! - Footer (playback controls, time, status)
 
+pub mod ai;
+pub mod assets;
 pub mod editor_layout;
-pub mod header;
 pub mod footer;
+pub mod header;
+pub mod inspector;
+pub mod timeline;
 pub mod toolbar;
 pub mod viewport_panel;
-pub mod timeline;
-pub mod inspector;
-pub mod assets;
-pub mod ai;

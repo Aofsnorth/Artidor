@@ -189,9 +189,13 @@ impl Project {
 
     /// Find an element by ID across all tracks.
     pub fn find_element(&self, id: &str) -> Option<(&Track, &Element)> {
-        self.tracks
-            .iter()
-            .find_map(|track| track.elements.iter().map(|e| (track, e)).find(|(_, e)| e.id == id))
+        self.tracks.iter().find_map(|track| {
+            track
+                .elements
+                .iter()
+                .map(|e| (track, e))
+                .find(|(_, e)| e.id == id)
+        })
     }
 
     /// Find the (track index, element index) for an element by ID.

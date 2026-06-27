@@ -5,12 +5,9 @@
 //! It resolves which elements are visible at the playhead, maps each
 //! element to a `LayerDescriptor`, and attaches effect passes and masks.
 
-use compositor::{
-    CanvasClearDescriptor, FrameDescriptor, FrameItemDescriptor,
-    LayerDescriptor,
-};
 use crate::state::editor_state::EditorState;
 use crate::state::project::ElementType;
+use compositor::{CanvasClearDescriptor, FrameDescriptor, FrameItemDescriptor, LayerDescriptor};
 
 /// Builds a `FrameDescriptor` for the current playhead position.
 ///

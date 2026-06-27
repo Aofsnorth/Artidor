@@ -638,11 +638,13 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"audio",
 		"detect_beats",
 		"detect_beats",
-		"Analyze an audio or video clip's audio track and return beat timestamps. Pass the trackId+elementId of the audio/video element to analyze. Returns an array of beats, each with timeSeconds and ticks (1s = 120_000 ticks). Use the returned tick times with split_element (to cut on every beat = jedag-jedug) or upsert_keyframe (to animate on the beat).",
+		"Analyze an audio or video clip's audio track and return beat timestamps. Pass the trackId+elementId of the audio/video element to analyze. Returns an array of beats, each with timeSeconds and ticks (1s = 120_000 ticks). Use the returned tick times with split_element (to cut on every beat = jedag-jedug) or upsert_keyframe (to animate on the beat). Optionally pass limit to return only the strongest N beats (sorted by energy) — useful for 'the highest beat' requests and much faster on long videos.",
 		objectSchema(
 			{
 				trackId: { type: "string" },
 				elementId: { type: "string" },
+				limit: numberSchema(1, 1000),
+				sortBy: enumSchema(["energy", "time"]),
 			},
 			["trackId", "elementId"],
 		),

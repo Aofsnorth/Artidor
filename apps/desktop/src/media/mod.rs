@@ -7,4 +7,4 @@
 
 pub mod loader;
 
-pub use loader::{load_image_to_rgba, MediaType, detect_media_type, media_type_to_element_type};
+pub use loader::{MediaType, detect_media_type, load_image_to_rgba, media_type_to_element_type};

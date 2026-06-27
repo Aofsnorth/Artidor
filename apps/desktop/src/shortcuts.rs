@@ -3,8 +3,8 @@
 //! Registers GPUI `KeyBinding`s that map keystrokes to editor actions.
 //! Uses `control` on Windows/Linux and `platform` (cmd) on macOS.
 
-use gpui::{App, KeyBinding};
 use crate::actions::*;
+use gpui::{App, KeyBinding};
 
 /// Registers all editor key bindings with the GPUI app.
 pub fn register(cx: &mut App) {
@@ -54,7 +54,5 @@ pub fn register(cx: &mut App) {
     ]);
 
     // AI
-    cx.bind_keys([
-        KeyBinding::new("ctrl-shift-a", ToggleAICopilot, None),
-    ]);
+    cx.bind_keys([KeyBinding::new("ctrl-shift-a", ToggleAICopilot, None)]);
 }

@@ -6,7 +6,7 @@
 //! letterboxing. When no image is available (GPU initializing or no media
 //! loaded), it shows a placeholder.
 
-use gpui::{div, img, px, Entity, ImageSource, IntoElement, ParentElement, Styled, prelude::*};
+use gpui::{Entity, ImageSource, IntoElement, ParentElement, Styled, div, img, prelude::*, px};
 
 use crate::app::ArtidorApp;
 use crate::render::viewport::ViewportState;

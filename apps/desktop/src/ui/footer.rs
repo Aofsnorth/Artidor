@@ -5,8 +5,8 @@
 //! status message area.
 
 use gpui::{
-    div, px, App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window,
-    prelude::*,
+    App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window, div,
+    prelude::*, px,
 };
 
 use crate::app::ArtidorApp;
@@ -43,15 +43,31 @@ pub fn build_footer(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoEl
                 .flex_row()
                 .items_center()
                 .gap(theme::px_4())
-                .child(transport_button("<<", FooterAction::JumpToStart, entity.clone()))
-                .child(transport_button("<", FooterAction::StepBackward, entity.clone()))
+                .child(transport_button(
+                    "<<",
+                    FooterAction::JumpToStart,
+                    entity.clone(),
+                ))
+                .child(transport_button(
+                    "<",
+                    FooterAction::StepBackward,
+                    entity.clone(),
+                ))
                 .child(transport_button(
                     if playing { "||" } else { ">" },
                     FooterAction::PlayPause,
                     entity.clone(),
                 ))
-                .child(transport_button(">", FooterAction::StepForward, entity.clone()))
-                .child(transport_button(">>", FooterAction::JumpToEnd, entity.clone()))
+                .child(transport_button(
+                    ">",
+                    FooterAction::StepForward,
+                    entity.clone(),
+                ))
+                .child(transport_button(
+                    ">>",
+                    FooterAction::JumpToEnd,
+                    entity.clone(),
+                ))
                 .child(transport_button(
                     if looping { "Loop*" } else { "Loop" },
                     FooterAction::ToggleLoop,
@@ -130,15 +146,13 @@ fn transport_button(
         .child(icon.to_string())
         .id(btn_id)
         .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            entity.update(cx, |app, cx| {
-                match action {
-                    FooterAction::PlayPause => app.handle_play_pause(cx),
-                    FooterAction::JumpToStart => app.handle_jump_to_start(cx),
-                    FooterAction::JumpToEnd => app.handle_jump_to_end(cx),
-                    FooterAction::StepForward => app.handle_step_forward(cx),
-                    FooterAction::StepBackward => app.handle_step_backward(cx),
-                    FooterAction::ToggleLoop => app.handle_toggle_loop(cx),
-                }
+            entity.update(cx, |app, cx| match action {
+                FooterAction::PlayPause => app.handle_play_pause(cx),
+                FooterAction::JumpToStart => app.handle_jump_to_start(cx),
+                FooterAction::JumpToEnd => app.handle_jump_to_end(cx),
+                FooterAction::StepForward => app.handle_step_forward(cx),
+                FooterAction::StepBackward => app.handle_step_backward(cx),
+                FooterAction::ToggleLoop => app.handle_toggle_loop(cx),
             });
         })
 }

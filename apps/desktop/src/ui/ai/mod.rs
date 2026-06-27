@@ -4,7 +4,7 @@
 //! provides a chat interface that connects to the same AI backend. The
 //! takeover/permission system and aurora overlay are future enhancements.
 
-use gpui::{div, px, Entity, IntoElement, ParentElement, Styled};
+use gpui::{Entity, IntoElement, ParentElement, Styled, div, px};
 
 use crate::app::ArtidorApp;
 use crate::theme;
@@ -30,13 +30,7 @@ pub fn build_ai_copilot_panel(_app: &ArtidorApp, _entity: Entity<ArtidorApp>) ->
             .items_center()
             .px(theme::px_12())
             .gap(theme::px_6())
-            .child(
-                div()
-                    .w(px(8.0))
-                    .h(px(8.0))
-                    .rounded_full()
-                    .bg(theme::ACCENT),
-            )
+            .child(div().w(px(8.0)).h(px(8.0)).rounded_full().bg(theme::ACCENT))
             .child(
                 div()
                     .text_color(theme::TEXT_SECONDARY)
