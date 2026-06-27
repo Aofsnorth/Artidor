@@ -1,7 +1,7 @@
 import type { FrameRate } from "artidor-wasm";
 import type { AnyBaseNode } from "./nodes/base-node";
 import { buildFrameDescriptor } from "./compositor/frame-descriptor";
-import { wasmCompositor } from "./compositor/wasm-compositor";
+import { compositor } from "./compositor/unified-compositor";
 import { resolveRenderTree } from "./resolve";
 
 export type CanvasRendererParams = {
@@ -63,11 +63,11 @@ export class CanvasRenderer {
 	}
 
 	getOutputCanvas(): HTMLCanvasElement | OffscreenCanvas {
-		wasmCompositor.ensureInitialized({
+		compositor.ensureInitialized({
 			width: this.width,
 			height: this.height,
 		});
-		return wasmCompositor.getCanvas();
+		return compositor.getCanvas();
 	}
 
 	setSize({
@@ -137,12 +137,12 @@ export class CanvasRenderer {
 				item.transform.height *= scaleY;
 			}
 		}
-		wasmCompositor.ensureInitialized({
+		compositor.ensureInitialized({
 			width: this.width,
 			height: this.height,
 		});
-		wasmCompositor.syncTextures(textures);
-		wasmCompositor.render(frame);
+		compositor.syncTextures(textures);
+		await compositor.renderAsync(frame);
 	}
 
 	async renderToCanvas({
@@ -162,7 +162,7 @@ export class CanvasRenderer {
 		}
 
 		ctx.drawImage(
-			wasmCompositor.getCanvas(),
+			compositor.getCanvas(),
 			0,
 			0,
 			targetCanvas.width,
