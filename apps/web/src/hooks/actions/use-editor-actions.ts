@@ -32,6 +32,7 @@ import {
 	decodeAndCache,
 	getCacheKey,
 } from "@/components/editor/panels/timeline/audio-waveform";
+import { yieldToEventLoop } from "@/lib/media/yield";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -977,8 +978,12 @@ export function useEditorActions() {
 				const newBookmarks = [...(element.bookmarks ?? [])];
 				const _blockDurationTicks = (TICKS_PER_SECOND * 256) / 44100; // rough approximation, PEAK_BLOCK_SIZE=256 and ~44100 sampleRate
 
-				// Scan for beats using the same heuristic as the visualizer
+				// Scan for beats using the same heuristic as the visualizer.
+				// Yield periodically so the UI stays responsive during large
+				// audio files (the peak buffer can be tens of thousands of
+				// entries for long clips).
 				for (let i = 1; i < peaks.length - 1; i++) {
+					if ((i & 4095) === 0) await yieldToEventLoop();
 					const normalized = Math.min(1, peaks[i] / safePeak);
 					const scaled = Math.log1p(normalized) / logBase;
 					const leftPeak = peaks[i - 1] ?? 0;

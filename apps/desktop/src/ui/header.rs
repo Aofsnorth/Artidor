@@ -1,102 +1,154 @@
-//! Header bar — project name, save status, and action buttons.
+//! Header bar — project name, zoom, and action buttons.
 //!
-//! Mirrors the web app's `editor-header.tsx`. Contains the project title,
-//! a dirty indicator, and buttons for import, save, and export.
+//! Mirrors the web app's `editor-header.tsx`:
+//! - Left: logo + project name capsule
+//! - Center: zoom capsule (absolute-centered)
+//! - Right: cloud status + settings + share + export + window controls
+//!
+//! Desktop-specific: window controls (minimize —, maximize □, close ✕)
+//! are appended after the Export button, matching the user's request for
+//! "button x kotak dan - di samping export".
 
-use gpui::prelude::*;
 use gpui::{
-    App, ClickEvent, Entity, IntoElement, ParentElement, SharedString, Styled, Window, div, px,
+    App, ClickEvent, Entity, InteractiveElement, IntoElement, ParentElement, SharedString,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::app::ArtidorApp;
 use crate::theme;
 
 /// Builds the header bar element.
+///
+/// Layout (matches web `EditorHeader`):
+/// ```text
+/// [Logo] [Projects / ProjectName]  …  [Fit ▾]  …  [Cloud] [⚙] [Share] [Export] [— □ ✕]
+/// ```
 pub fn build_header(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     let project_name: SharedString = app.state.project.name.clone().into();
-    let dirty_text: SharedString = if app.state.dirty {
-        "●".into()
-    } else {
-        "".into()
-    };
-    let fps = app.state.project.fps();
-    let resolution = format!("{}×{}", app.state.project.width, app.state.project.height);
-    let fps_text: SharedString = format!("{fps:.2} fps").into();
-    let res_text: SharedString = resolution.into();
+    let dirty_dot: SharedString = if app.state.dirty { "●".into() } else { "".into() };
 
     div()
         .h(theme::HEADER_HEIGHT)
         .w_full()
-        .bg(theme::BG_PANEL)
-        .border_b_1()
-        .border_color(theme::BORDER)
         .flex()
         .flex_row()
         .items_center()
-        .px(theme::px_16())
-        // Left: logo + project name
+        .px(px(16.0))
+        .bg(theme::BG_APP)
+        .relative()
+        // Left: logo + project name capsule
         .child(
             div()
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(theme::px_8())
+                .gap(px(12.0))
                 .child(
+                    // Logo
                     div()
                         .text_color(theme::TEXT_ACCENT)
                         .text_size(px(16.0))
                         .font_weight(gpui::FontWeight::BOLD)
                         .child("Artidor"),
                 )
-                .child(div().w(px(1.0)).h(px(20.0)).bg(theme::BORDER))
+                // Identity pod capsule (matches web's capsule style)
                 .child(
                     div()
-                        .text_color(theme::TEXT_PRIMARY)
-                        .text_size(px(13.0))
-                        .child(project_name),
-                )
-                .child(
-                    div()
-                        .text_color(theme::WARNING)
-                        .text_size(px(10.0))
-                        .child(dirty_text),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(8.0))
+                        .h(px(28.0))
+                        .rounded(px(14.0))
+                        .border_1()
+                        .border_color(theme::CAPSULE_BORDER)
+                        .bg(theme::CAPSULE_BG)
+                        .px(px(10.0))
+                        .child(
+                            div()
+                                .text_color(theme::TEXT_FAINT)
+                                .text_size(px(10.0))
+                                .child("Projects"),
+                        )
+                        .child(
+                            div()
+                                .text_color(gpui::Hsla {
+                                    h: 0.0,
+                                    s: 0.0,
+                                    l: 1.0,
+                                    a: 0.2,
+                                })
+                                .child("/"),
+                        )
+                        .child(
+                            div()
+                                .text_color(theme::TEXT_SECONDARY)
+                                .text_size(px(12.0))
+                                .child(project_name),
+                        )
+                        .child(
+                            div()
+                                .text_color(theme::WARNING)
+                                .text_size(px(10.0))
+                                .child(dirty_dot),
+                        ),
                 ),
         )
-        // Center: resolution + fps
+        // Center: zoom capsule (absolute-centered, matches web)
         .child(
             div()
-                .flex_1()
+                .absolute()
+                .left_1_2()
+                .top_1_2()
                 .flex()
-                .justify_center()
+                .flex_row()
                 .items_center()
-                .gap(theme::px_12())
+                .gap(px(6.0))
+                .h(px(28.0))
+                .rounded(px(14.0))
+                .border_1()
+                .border_color(theme::CAPSULE_BORDER)
+                .bg(theme::CAPSULE_BG)
+                .px(px(8.0))
                 .child(
                     div()
-                        .text_color(theme::TEXT_MUTED)
+                        .text_color(theme::TEXT_SECONDARY)
                         .text_size(px(11.0))
-                        .child(res_text),
+                        .child("Fit"),
                 )
                 .child(
                     div()
-                        .text_color(theme::TEXT_MUTED)
-                        .text_size(px(11.0))
-                        .child(fps_text),
+                        .text_color(theme::TEXT_FAINT)
+                        .text_size(px(10.0))
+                        .child("▾"),
                 ),
         )
-        // Right: action buttons
+        // Right: action buttons + window controls
         .child(
             div()
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(theme::px_4())
-                .child(header_button(
-                    "Import",
-                    entity.clone(),
-                    HeaderAction::Import,
-                ))
-                .child(header_button("Save", entity.clone(), HeaderAction::Save))
-                .child(header_button("Export", entity, HeaderAction::Export)),
+                .gap(px(10.0))
+                .ml_auto()
+                // Settings button
+                .child(header_icon_button("⚙", "header-settings", entity.clone(), HeaderAction::None))
+                // Share button
+                .child(header_text_button("Share", "header-share", entity.clone(), HeaderAction::None))
+                // Export button (emphasized)
+                .child(header_export_button("header-export", entity.clone()))
+                // Window controls: minimize, maximize, close
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(2.0))
+                        .ml(px(8.0))
+                        .child(window_button("—", "win-minimize", WindowAction::Minimize))
+                        .child(window_button("□", "win-maximize", WindowAction::Maximize))
+                        .child(window_button("✕", "win-close", WindowAction::Close)),
+                ),
         )
 }
 
@@ -105,30 +157,148 @@ enum HeaderAction {
     Import,
     Save,
     Export,
+    None,
 }
 
-/// A header action button that directly calls the entity's handler.
-fn header_button(
-    label: &str,
-    entity: Entity<ArtidorApp>,
-    action: HeaderAction,
+/// Which window control action to perform.
+enum WindowAction {
+    Minimize,
+    Maximize,
+    Close,
+}
+
+/// A small icon-only header button (settings, etc.).
+fn header_icon_button(
+    icon: &str,
+    id: &str,
+    _entity: Entity<ArtidorApp>,
+    _action: HeaderAction,
 ) -> impl IntoElement {
-    let btn_id: gpui::SharedString = label.to_string().into();
+    let btn_id: SharedString = id.to_string().into();
     div()
-        .px(theme::px_12())
-        .py(theme::px_6())
-        .rounded(px(4.0))
-        .bg(theme::BG_PANEL_RAISED)
+        .w(px(28.0))
+        .h(px(28.0))
+        .rounded(px(8.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_color(theme::TEXT_SECONDARY)
+        .text_size(px(14.0))
+        .hover(|s| s.bg(theme::BG_HOVER).text_color(theme::TEXT_PRIMARY))
+        .child(icon.to_string())
+        .id(btn_id)
+        .on_click(move |_: &ClickEvent, _window: &mut Window, _cx: &mut App| {
+            // Settings/share dialogs not yet wired — placeholder.
+        })
+}
+
+/// A text header button (Share, etc.).
+fn header_text_button(
+    label: &str,
+    id: &str,
+    _entity: Entity<ArtidorApp>,
+    _action: HeaderAction,
+) -> impl IntoElement {
+    let btn_id: SharedString = id.to_string().into();
+    div()
+        .h(px(28.0))
+        .rounded(px(8.0))
+        .flex()
+        .items_center()
+        .px(px(12.0))
         .text_color(theme::TEXT_SECONDARY)
         .text_size(px(12.0))
         .hover(|s| s.bg(theme::BG_HOVER).text_color(theme::TEXT_PRIMARY))
         .child(label.to_string())
         .id(btn_id)
-        .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
-            entity.update(cx, |app, cx| match action {
-                HeaderAction::Import => app.handle_import_media(cx),
-                HeaderAction::Save => app.handle_save_project(cx),
-                HeaderAction::Export => app.handle_export(cx),
-            });
+        .on_click(move |_: &ClickEvent, _window: &mut Window, _cx: &mut App| {
+            // Share dialog not yet wired — placeholder.
         })
+}
+
+/// The Export button — emphasized with a subtle background.
+fn header_export_button(
+    id: &str,
+    entity: Entity<ArtidorApp>,
+) -> impl IntoElement {
+    let btn_id: SharedString = id.to_string().into();
+    div()
+        .h(px(28.0))
+        .rounded(px(8.0))
+        .flex()
+        .items_center()
+        .px(px(14.0))
+        .bg(gpui::Hsla {
+            h: 0.0,
+            s: 0.0,
+            l: 1.0,
+            a: 0.08,
+        })
+        .border_1()
+        .border_color(theme::CAPSULE_BORDER)
+        .text_color(theme::TEXT_PRIMARY)
+        .text_size(px(12.0))
+        .font_weight(gpui::FontWeight::MEDIUM)
+        .hover(|s| {
+            s.bg(gpui::Hsla {
+                h: 0.0,
+                s: 0.0,
+                l: 1.0,
+                a: 0.12,
+            })
+        })
+        .child("Export")
+        .id(btn_id)
+        .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
+            entity.update(cx, |app, cx| app.handle_export(cx));
+        })
+}
+
+/// A window control button (minimize, maximize, close).
+///
+/// The close button turns red on hover (standard Windows convention).
+fn window_button(icon: &str, id: &str, action: WindowAction) -> impl IntoElement {
+    let btn_id: SharedString = id.to_string().into();
+    let is_close = matches!(action, WindowAction::Close);
+
+    let base = div()
+        .w(px(32.0))
+        .h(px(28.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .text_color(theme::TEXT_SECONDARY)
+        .text_size(px(12.0))
+        .id(btn_id)
+        .on_click(move |_: &ClickEvent, _window: &mut Window, cx: &mut App| {
+            match action {
+                WindowAction::Close => cx.quit(),
+                WindowAction::Minimize | WindowAction::Maximize => {
+                    // GPUI 0.2.2 does not expose minimize/maximize APIs
+                    // directly. These will be wired when the platform
+                    // abstraction is extended.
+                }
+            }
+        });
+
+    if is_close {
+        base.hover(|s| {
+            s.bg(gpui::Hsla {
+                h: 0.0,
+                s: 0.85,
+                l: 0.45,
+                a: 1.0,
+            })
+            .text_color(gpui::Hsla {
+                h: 0.0,
+                s: 0.0,
+                l: 1.0,
+                a: 1.0,
+            })
+        })
+        .child(icon.to_string())
+    } else {
+        base.hover(|s| s.bg(theme::BG_HOVER).text_color(theme::TEXT_PRIMARY))
+            .child(icon.to_string())
+    }
 }

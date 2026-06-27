@@ -23,22 +23,29 @@ pub fn build_inspector_panel(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> im
         .id("inspector")
         .overflow_scroll();
 
-    // Panel header
+    // Panel header — matches web PropertiesPanel header style.
     panel = panel.child(
         div()
-            .h(theme::TIMELINE_TOOLBAR_HEIGHT)
+            .h(px(40.0))
             .w_full()
-            .bg(theme::BG_PANEL_RAISED)
-            .border_b_1()
-            .border_color(theme::BORDER)
             .flex()
             .items_center()
-            .px(theme::px_12())
+            .justify_between()
+            .px(px(12.0))
+            .border_b_1()
+            .border_color(theme::BORDER)
             .child(
                 div()
-                    .text_color(theme::TEXT_SECONDARY)
-                    .text_size(px(11.0))
+                    .text_size(px(12.0))
+                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                    .text_color(theme::TEXT_PRIMARY)
                     .child("Properties"),
+            )
+            .child(
+                div()
+                    .text_size(px(10.0))
+                    .text_color(theme::TEXT_FAINT)
+                    .child("⋯"),
             ),
     );
 

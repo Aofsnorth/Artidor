@@ -42,6 +42,106 @@ impl Selection {
     }
 }
 
+/// Which assets-panel tab is active. Mirrors the web app's
+/// `assets-panel-store` tab keys (a subset that the desktop app
+/// renders).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssetsTab {
+    Assets,
+    Ai,
+    Text,
+    Elements,
+    Transitions,
+    Effects,
+    Overlays,
+    Audio,
+    Motion,
+    Adjust,
+    Templates,
+    Presets,
+    Tools,
+    Plugins,
+    Captions,
+    Scripting,
+    Settings,
+}
+
+impl Default for AssetsTab {
+    fn default() -> Self {
+        Self::Assets
+    }
+}
+
+impl AssetsTab {
+    /// The short label shown under the tab icon (matches web).
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Assets => "Assets",
+            Self::Ai => "Arth",
+            Self::Text => "Text",
+            Self::Elements => "Elements",
+            Self::Transitions => "Transitions",
+            Self::Effects => "Effects",
+            Self::Overlays => "Overlays",
+            Self::Audio => "Audio",
+            Self::Motion => "Motion",
+            Self::Adjust => "Adjust",
+            Self::Templates => "Templates",
+            Self::Presets => "Preset",
+            Self::Tools => "Tools",
+            Self::Plugins => "Plugins",
+            Self::Captions => "Captions",
+            Self::Scripting => "Scripting",
+            Self::Settings => "Settings",
+        }
+    }
+
+    /// A single-glyph icon label (GPUI has no icon font wired up yet, so
+    /// we use compact text glyphs that approximate the web's Hugeicons).
+    pub fn glyph(&self) -> &'static str {
+        match self {
+            Self::Assets => "▤",
+            Self::Ai => "✦",
+            Self::Text => "T",
+            Self::Elements => "◻",
+            Self::Transitions => "»",
+            Self::Effects => "✧",
+            Self::Overlays => "☰",
+            Self::Audio => "♪",
+            Self::Motion => "↬",
+            Self::Adjust => "≡",
+            Self::Templates => "▦",
+            Self::Presets => "★",
+            Self::Tools => "⚡",
+            Self::Plugins => "⌥",
+            Self::Captions => "CC",
+            Self::Scripting => "</>",
+            Self::Settings => "⚙",
+        }
+    }
+
+    /// All tabs in the same order as the web `VISIBLE_TAB_KEYS`.
+    pub const ALL: &[AssetsTab] = &[
+        AssetsTab::Assets,
+        AssetsTab::Ai,
+        AssetsTab::Text,
+        AssetsTab::Elements,
+        AssetsTab::Transitions,
+        AssetsTab::Effects,
+        AssetsTab::Overlays,
+        AssetsTab::Audio,
+        AssetsTab::Motion,
+        AssetsTab::Adjust,
+        AssetsTab::Templates,
+        AssetsTab::Presets,
+        AssetsTab::Tools,
+        AssetsTab::Plugins,
+        AssetsTab::Captions,
+        AssetsTab::Scripting,
+        AssetsTab::Settings,
+    ];
+}
+
 /// Panel visibility flags.
 #[derive(Debug, Clone)]
 pub struct PanelVisibility {
@@ -49,6 +149,8 @@ pub struct PanelVisibility {
     pub inspector: bool,
     pub timeline: bool,
     pub ai_copilot: bool,
+    /// Which assets-panel tab is currently active.
+    pub active_tab: AssetsTab,
 }
 
 impl Default for PanelVisibility {
@@ -58,6 +160,7 @@ impl Default for PanelVisibility {
             inspector: true,
             timeline: true,
             ai_copilot: false,
+            active_tab: AssetsTab::default(),
         }
     }
 }

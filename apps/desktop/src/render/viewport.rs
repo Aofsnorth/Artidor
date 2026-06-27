@@ -125,23 +125,29 @@ impl ViewportRenderer {
 ///
 /// GPUI's `RenderImage` expects data in BGRA format (matching its internal
 /// GPU texture format), which is exactly what the compositor produces.
-pub fn rendered_frame_to_image_source(rendered: &RenderedFrame) -> ImageSource {
-    // GPUI's RenderImage stores BGRA bytes inside an image::Frame.
-    // The image crate's Frame expects an ImageBuffer<Rgba<u8>>, but the
-    // actual byte order is BGRA (GPUI handles the swap internally on
-    // platforms where the GPU expects a different format).
+///
+/// Returns `None` if the byte buffer does not match `width * height * 4`
+/// (e.g. WGPU returned a partial buffer or the GPU context was lost).
+/// The caller should treat `None` as "no frame this tick" rather than
+/// crashing — a transient mismatch during resize or device-lost recovery
+/// is recoverable on the next render.
+pub fn rendered_frame_to_image_source(rendered: &RenderedFrame) -> Option<ImageSource> {
+    let expected_len = (rendered.width as usize)
+        .saturating_mul(rendered.height as usize)
+        .saturating_mul(4);
+    if rendered.bytes.len() != expected_len {
+        log::warn!(
+            "Rendered frame byte count {} != expected {} ({}x{}x4); skipping frame",
+            rendered.bytes.len(),
+            expected_len,
+            rendered.width,
+            rendered.height
+        );
+        return None;
+    }
     let buffer: ImageBuffer<Rgba<u8>, Vec<u8>> =
-        ImageBuffer::from_raw(rendered.width, rendered.height, rendered.bytes.clone())
-            .expect("Rendered frame bytes must match width*height*4");
+        ImageBuffer::from_raw(rendered.width, rendered.height, rendered.bytes.clone())?;
     let frame = Frame::new(buffer);
     let render_image = RenderImage::new(SmallVec::from_elem(frame, 1));
-    ImageSource::Render(Arc::new(render_image))
-}
-
-/// The size of a rendered frame in device pixels (for GPUI).
-pub fn rendered_size(rendered: &RenderedFrame) -> gpui::Size<gpui::DevicePixels> {
-    gpui::Size {
-        width: gpui::DevicePixels(rendered.width as i32),
-        height: gpui::DevicePixels(rendered.height as i32),
-    }
+    Some(ImageSource::Render(Arc::new(render_image)))
 }

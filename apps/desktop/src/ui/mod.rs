@@ -12,6 +12,6 @@ pub mod editor_layout;
 pub mod footer;
 pub mod header;
 pub mod inspector;
+pub mod tab_bar;
 pub mod timeline;
-pub mod toolbar;
 pub mod viewport_panel;

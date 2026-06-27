@@ -6,6 +6,7 @@ import {
 	createAudioContext,
 	decodeMediaFileAudioBuffer,
 } from "@/lib/media/audio";
+import { yieldToEventLoop } from "@/lib/media/yield";
 import { findScrollParent } from "@/utils/browser";
 import { cn } from "@/utils/ui";
 
@@ -112,7 +113,7 @@ export async function decodeAndCache(
 
 			if (!buffer) throw new Error("Could not decode audio");
 
-			return computePeakBuffer(buffer);
+			return await computePeakBuffer(buffer);
 		} finally {
 			audioContext.close().catch(() => {});
 		}
@@ -410,8 +411,11 @@ export function AudioWaveform({
 		let cancelled = false;
 
 		if (audioBuffer) {
-			decodedRef.current = computePeakBuffer(audioBuffer);
-			drawVisibleRef.current();
+			computePeakBuffer(audioBuffer).then((peaks) => {
+				if (cancelled) return;
+				decodedRef.current = peaks;
+				drawVisibleRef.current();
+			});
 			return;
 		}
 
@@ -486,11 +490,23 @@ export function AudioWaveform({
 // ---------------------------------------------------------------------------
 // Peak computation
 // ---------------------------------------------------------------------------
-function computePeakBuffer(buffer: AudioBuffer): DecodedPeaks {
+/**
+ * Computes a downsampled peak buffer from an AudioBuffer.
+ *
+ * Yields to the event loop every `PEAK_YIELD_INTERVAL` blocks so the UI
+ * stays responsive during large audio files. Without yielding, the
+ * triple-nested loop (channels × blocks × samples) blocks the main
+ * thread for seconds on files longer than a few minutes.
+ */
+async function computePeakBuffer(buffer: AudioBuffer): Promise<DecodedPeaks> {
 	const channels = buffer.numberOfChannels;
 	const blockCount = Math.ceil(buffer.length / PEAK_BLOCK_SIZE);
 	const peakBuffer = new Float32Array(blockCount);
 	let globalPeak = 0;
+
+	// Yield every ~4096 blocks (~1M samples at PEAK_BLOCK_SIZE=256) to keep
+	// each chunk under one frame (16ms) on typical hardware.
+	const PEAK_YIELD_INTERVAL = 4096;
 
 	for (let c = 0; c < channels; c++) {
 		const data = buffer.getChannelData(c);
@@ -503,6 +519,11 @@ function computePeakBuffer(buffer: AudioBuffer): DecodedPeaks {
 				if (abs > max) max = abs;
 			}
 			peakBuffer[b] += max / channels;
+
+			// Yield periodically so the event loop can process UI events.
+			if ((b & (PEAK_YIELD_INTERVAL - 1)) === 0) {
+				await yieldToEventLoop();
+			}
 		}
 	}
 
