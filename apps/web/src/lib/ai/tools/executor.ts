@@ -1803,7 +1803,7 @@ const HANDLERS: Record<string, Handler> = {
 			if (!result.ok) failed++;
 		}
 		const summary = results
-			.map((r) => `Step ${r.step} (${r.toolName}): ${r.ok ? "OK" : "FAIL — " + (r.message ?? "error")}`)
+			.map((r) => `Step ${r.step} (${r.toolName}): ${r.ok ? "OK" : `FAIL — ${r.message ?? "error"}`}`)
 			.join("\n");
 		return {
 			ok: failed === 0,

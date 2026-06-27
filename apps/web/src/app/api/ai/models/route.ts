@@ -163,7 +163,7 @@ async function fetchModelsFromProvider({
 		// OpenAI-compatible: /v1/models with Bearer auth.
 		url = `${normalizedBaseUrl}/v1/models`;
 		if (apiKey) {
-			headers["Authorization"] = `Bearer ${apiKey}`;
+			headers.Authorization = `Bearer ${apiKey}`;
 		}
 	}
 
