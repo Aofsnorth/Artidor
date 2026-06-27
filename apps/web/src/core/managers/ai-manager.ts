@@ -149,13 +149,6 @@ export class AIManager {
 	 * state (race condition when the user revokes + immediately resends).
 	 */
 	private processCycle = 0;
-	/**
-	 * Maps a user message id → the command-history length at the moment
-	 * before the AI started processing that message. Used by `revert()`
-	 * to undo all editor changes the AI made in response to that message.
-	 */
-	private revertSnapshots = new Map<string, number>();
-
 	constructor(private editor: EditorCore) {}
 
 	subscribe(listener: () => void): () => void {
@@ -544,9 +537,10 @@ export class AIManager {
 		if (retryCount === 0) {
 			userMessageId = ai.appendMessage({ role: "user", content: text });
 			// Snapshot the undo-history length so we can revert all AI
-			// edits for this message later if the user asks.
+			// edits for this message later if the user asks. Persisted in
+			// the AI store so reverts still work after reload.
 			if (userMessageId) {
-				this.revertSnapshots.set(
+				ai.setRevertSnapshot(
 					userMessageId,
 					this.editor.command.getHistoryLength(),
 				);
@@ -1930,11 +1924,17 @@ export class AIManager {
 	 * assistant reply and all subsequent messages from the chat, so
 	 * the conversation reflects the reverted state.
 	 *
+	 * The snapshot is read from the persisted AI store, so reverts work
+	 * even after the user reloads the page. Snapshots for the reverted
+	 * message and all later messages are deleted because the conversation
+	 * is being trimmed.
+	 *
 	 * Returns true if the revert was performed, false if no snapshot
 	 * was found for the given message id.
 	 */
 	revertToMessage(messageId: string): boolean {
-		const snapshot = this.revertSnapshots.get(messageId);
+		const ai = useAIStore.getState();
+		const snapshot = ai.revertSnapshots[messageId];
 		if (snapshot === undefined) return false;
 
 		const commands = this.editor.command;
@@ -1945,18 +1945,13 @@ export class AIManager {
 			undone++;
 		}
 
-		// Remove the reverted snapshot and any snapshots for later
-		// messages (they're no longer valid since the conversation is
-		// being trimmed).
-		for (const [id] of this.revertSnapshots) {
-			if (id === messageId) {
-				this.revertSnapshots.delete(id);
-			}
-		}
+		// Delete the snapshot for the reverted message AND all later
+		// messages. The conversation is trimmed at `messageId`, so any
+		// snapshots after it are no longer valid.
+		ai.deleteRevertSnapshotsFrom(messageId);
 
 		// Trim the conversation: remove the user message and everything
 		// after it, since the AI's response is being reverted.
-		const ai = useAIStore.getState();
 		const messages = ai.messages;
 		const idx = messages.findIndex((m) => m.id === messageId);
 		if (idx !== -1) {

@@ -103,6 +103,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useAIStore, type ChatMessage, type Plan } from "@/stores/ai-store";
 import { useAIProvidersStore } from "@/stores/ai-providers-store";
+import { useShallow } from "zustand/shallow";
 import { useSettingsStore } from "@/stores/settings-store";
 import { SUGGESTIONS } from "@/lib/ai/suggestions";
 import { useTelemetryStore } from "@/lib/ai/telemetry/store";
@@ -235,8 +236,32 @@ const QUICK_ACTIONS: {
 
 export function AIEditView() {
 	const editor = useEditor();
-	const ai = useAIStore();
-	const telemetry = useTelemetryStore();
+	const telemetryEvents = useTelemetryStore((s) => s.events);
+	const telemetryEnabled = useTelemetryStore((s) => s.enabled);
+	const telemetrySetEnabled = useTelemetryStore((s) => s.setEnabled);
+
+	// Granular AI store subscriptions — previously `const ai = useAIStore()`
+	// subscribed to the entire store, causing this huge component to re-render
+	// on every message, status tick, and pending-media change. We now pick
+	// exactly the slices each part of the UI needs, with shallow equality
+	// for arrays/objects so identical data doesn't trigger re-renders.
+	const status = useAIStore((s) => s.status);
+	const error = useAIStore((s) => s.error);
+	const queue = useAIStore((s) => s.queue, useShallow);
+	const retryIn = useAIStore((s) => s.retryIn);
+	const retryCount = useAIStore((s) => s.retryCount);
+	const referenceVideoName = useAIStore((s) => s.referenceVideoName);
+	const styleProfile = useAIStore((s) => s.styleProfile);
+	const compactedSummary = useAIStore((s) => s.compactedSummary);
+	const plan = useAIStore((s) => s.plan);
+	const clearConversation = useAIStore((s) => s.clearConversation);
+	const loadConversation = useAIStore((s) => s.loadConversation);
+	const renameConversation = useAIStore((s) => s.renameConversation);
+	const deleteConversation = useAIStore((s) => s.deleteConversation);
+	const setError = useAIStore((s) => s.setError);
+	const { messages, conversations } = useAIStore(
+		useShallow((s) => ({ messages: s.messages, conversations: s.conversations })),
+	);
 	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
 	const allProviders = useAIProvidersStore((s) => s.providers);
 	const aiName = useSettingsStore((s) => s.aiName);
@@ -309,17 +334,15 @@ export function AIEditView() {
 	// only if the user is already at (or near) the bottom, so we don't
 	// yank them away while they're reading older messages.
 	const isStreaming =
-		ai.status === "streaming" ||
-		ai.status === "awaiting-tools" ||
-		ai.status === "retrying";
-	const isBusy = isStreaming || ai.status === "queued";
-	const queueCount = ai.queue.length;
-	const retryIn = ai.retryIn;
-	const retryCount = ai.retryCount;
+		status === "streaming" ||
+		status === "awaiting-tools" ||
+		status === "retrying";
+	const isBusy = isStreaming || status === "queued";
+	const queueCount = queue.length;
 	// A single value that changes whenever the chat content changes
 	// (new message, streaming token, status change) so the effect fires.
-	const chatTick = `${ai.messages.length}:${ai.messages[ai.messages.length - 1]?.content ?? ""}:${ai.status}`;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick is a proxy for ai.messages changes
+	const chatTick = `${messages.length}:${messages[messages.length - 1]?.content ?? ""}:${status}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick is a proxy for messages changes
 	useEffect(() => {
 		// On initial mount, don't auto-scroll — let the user see the
 		// welcome message at the top. Mark as initialized so subsequent
@@ -340,8 +363,8 @@ export function AIEditView() {
 		composerRef.current?.focus();
 	}, []);
 
-	const recentCount = telemetry.events.length;
-	const autoLearnEnabled = telemetry.enabled;
+	const recentCount = telemetryEvents.length;
+	const autoLearnEnabled = telemetryEnabled;
 
 	const handleSend = useCallback(
 		async (text: string) => {
@@ -484,11 +507,11 @@ export function AIEditView() {
 		<>
 			<div className="flex h-full min-h-0 flex-col gap-2 px-1.5 pb-1.5 pt-1.5">
 				<StatusBar
-					referenceVideoName={ai.referenceVideoName}
-					styleProfile={ai.styleProfile}
+					referenceVideoName={referenceVideoName}
+					styleProfile={styleProfile}
 					recentCount={recentCount}
 					isStreaming={isStreaming}
-					isRetrying={ai.status === "retrying"}
+					isRetrying={status === "retrying"}
 					queueCount={queueCount}
 					retryIn={retryIn}
 					retryCount={retryCount}
@@ -513,9 +536,9 @@ export function AIEditView() {
 						void editor.project.saveCurrentProject();
 					}}
 					aiName={aiName}
-					compactedSummary={ai.compactedSummary}
+					compactedSummary={compactedSummary}
 					autoLearnEnabled={autoLearnEnabled}
-					conversations={ai.conversations}
+					conversations={conversations}
 					onToggleAutoLearn={() => {
 						const next = !autoLearnEnabled;
 						telemetry.setEnabled(next);
@@ -529,10 +552,10 @@ export function AIEditView() {
 					}}
 					onOpenProviders={() => setProvidersOpen(true)}
 					onClearReference={() => editor.ai.clearReference()}
-					onNewChat={() => ai.clearConversation()}
-					onLoadConversation={(id) => ai.loadConversation(id)}
-					onRenameConversation={(id, name) => ai.renameConversation(id, name)}
-					onDeleteConversation={(id) => ai.deleteConversation(id)}
+					onNewChat={() => clearConversation()}
+					onLoadConversation={(id) => loadConversation(id)}
+					onRenameConversation={(id, name) => renameConversation(id, name)}
+					onDeleteConversation={(id) => deleteConversation(id)}
 				/>
 
 				{/* Quick actions — collapses to dropdown on narrow screens */}
@@ -548,31 +571,31 @@ export function AIEditView() {
 					onScroll={handleMessagesScroll}
 					className="relative flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-0.5"
 				>
-					{ai.messages.length === 0 ? (
+					{messages.length === 0 ? (
 						<EmptyState onPick={(t) => setDraft(t)} recentCount={recentCount} />
 					) : (
 						<>
-							{ai.plan && <PlanCard plan={ai.plan} />}
-							{ai.messages.map((m) => (
+							{plan && <PlanCard plan={plan} />}
+							{messages.map((m) => (
 								<MessageBubble key={m.id} message={m} />
 							))}
 						</>
 					)}
 					<TakeoverPermissionCard />
 					<TakeoverActiveBanner />
-					{isStreaming && ai.status !== "retrying" && (
+					{isStreaming && status !== "retrying" && (
 						<div className="flex items-center gap-2.5">
 							<div className="flex items-center gap-2 rounded-2xl rounded-tl-md border border-white/[0.06] bg-gradient-to-br from-white/[0.04] to-white/[0.01] px-3 py-2">
 								<TypingDots />
 								<span className="text-[11px] text-white/55">
-									{ai.status === "awaiting-tools"
+									{status === "awaiting-tools"
 										? "Executing actions…"
 										: "Thinking…"}
 								</span>
 							</div>
 						</div>
 					)}
-					{ai.status === "retrying" && (
+					{status === "retrying" && (
 						<div className="flex items-center gap-2.5">
 							<div className="grid size-7 shrink-0 place-items-center rounded-lg border border-amber-400/20 bg-amber-400/[0.05]">
 								<HugeiconsIcon
@@ -613,16 +636,16 @@ export function AIEditView() {
 							</button>
 						</div>
 					)}
-					{ai.error && ai.status !== "retrying" && (
+					{error && status !== "retrying" && (
 						<div className="flex items-start gap-2 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-3 py-2 text-[11px] text-red-300">
 							<HugeiconsIcon
 								icon={AlertCircleIcon}
 								className="mt-0.5 size-3 shrink-0 text-red-400/70"
 							/>
-							<span className="flex-1 leading-relaxed">{ai.error}</span>
+							<span className="flex-1 leading-relaxed">{error}</span>
 							<button
 								type="button"
-								onClick={() => ai.setError(null)}
+								onClick={() => setError(null)}
 								className="shrink-0 text-red-400/50 transition-colors hover:text-red-300"
 								aria-label="Dismiss error"
 							>
@@ -634,7 +657,7 @@ export function AIEditView() {
 
 					{/* Scroll-to-top button — only visible when not at top and
 					    mention dropdown is closed (so it doesn't overlap) */}
-					{!isAtTop && ai.messages.length > 0 && !mentionQuery && (
+					{!isAtTop && messages.length > 0 && !mentionQuery && (
 						<button
 							type="button"
 							onClick={scrollToTop}
@@ -647,7 +670,7 @@ export function AIEditView() {
 
 					{/* Scroll-to-bottom button — only visible when not at bottom and
 					    mention dropdown is closed (so it doesn't overlap) */}
-					{!isAtBottom && ai.messages.length > 0 && !mentionQuery && (
+					{!isAtBottom && messages.length > 0 && !mentionQuery && (
 						<button
 							type="button"
 							onClick={scrollToBottom}
@@ -687,10 +710,10 @@ export function AIEditView() {
 								e.target.value = "";
 							}}
 						/>
-						{ai.referenceVideoName && (
+						{referenceVideoName && (
 							<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
 								<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
-								<span className="truncate">{ai.referenceVideoName}</span>
+								<span className="truncate">{referenceVideoName}</span>
 								<button
 									type="button"
 									onClick={() => editor.ai.clearReference()}
@@ -703,14 +726,14 @@ export function AIEditView() {
 						)}
 					</div>
 					{/* Peek sliver — always visible, shows a tiny hint */}
-					{!ai.referenceVideoName && (
+					{!referenceVideoName && (
 						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/15 transition-opacity group-hover/ref:opacity-0">
 							<HugeiconsIcon icon={Upload01Icon} className="size-2" />
 							ref
 						</span>
 					)}
 					{/* Reference indicator — always visible when a ref is set */}
-					{ai.referenceVideoName && (
+					{referenceVideoName && (
 						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/25 transition-opacity group-hover/ref:opacity-0">
 							<HugeiconsIcon icon={Video01Icon} className="size-2" />
 							ref set

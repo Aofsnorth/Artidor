@@ -13,13 +13,13 @@
  * chat panel (z-210), so the chat always stays interactive.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, memo } from "react";
 import { useAIControlStore } from "@/stores/ai-control-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useEditor } from "@/hooks/use-editor";
 import { cn } from "@/utils/ui";
 
-export function AuroraOverlay() {
+export const AuroraOverlay = memo(function AuroraOverlay() {
 	const takeoverState = useAIControlStore((s) => s.takeoverState);
 	const activeToolCall = useAIControlStore((s) => s.activeToolCall);
 	const revokeApproval = useAIControlStore((s) => s.revokeApproval);
@@ -64,18 +64,20 @@ export function AuroraOverlay() {
 			}}
 			style={{ cursor: coEditMode ? "default" : "not-allowed" }}
 		>
-			{/* Aurora overlay — multiple animated layers that create a
-			    flowing light effect around the screen perimeter:
-			    1. Ring: pulsing box-shadow border (always visible)
-			    2. Orbs: 3 large blurred glow circles traveling along edges
-			    3. Sheen: a bright streak that sweeps across the top
-			    No CSS mask or blend modes — all layers are simple
-			    absolutely-positioned divs with blur filters. */}
-			<div className="ai-aurora-ring absolute inset-0" />
-			<div className="ai-aurora-orb ai-aurora-orb-1" />
-			<div className="ai-aurora-orb ai-aurora-orb-2" />
-			<div className="ai-aurora-orb ai-aurora-orb-3" />
-			<div className="ai-aurora-sheen" />
+			{/* Aurora overlay — a thick, firefly-pulsing border glow.
+			    No traveling orbs or sweeps; instead the whole frame pulses
+			    and the corners/edges flare independently like a swarm of
+			    fireflies (kunang-kunang). The center stays transparent so
+			    the editor content remains readable. */}
+			<div className="ai-aurora-frame" />
+			<div className="ai-aurora-edge ai-aurora-edge-top" />
+			<div className="ai-aurora-edge ai-aurora-edge-bottom" />
+			<div className="ai-aurora-edge ai-aurora-edge-left" />
+			<div className="ai-aurora-edge ai-aurora-edge-right" />
+			<div className="ai-aurora-corner ai-aurora-corner-tl" />
+			<div className="ai-aurora-corner ai-aurora-corner-tr" />
+			<div className="ai-aurora-corner ai-aurora-corner-br" />
+			<div className="ai-aurora-corner ai-aurora-corner-bl" />
 
 			{/* Status badge — top center, shows what the AI is doing */}
 			<div className="absolute top-3 left-1/2 -translate-x-1/2">
@@ -111,4 +113,4 @@ export function AuroraOverlay() {
 			</div>
 		</div>
 	);
-}
+});

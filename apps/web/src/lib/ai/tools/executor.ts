@@ -320,6 +320,50 @@ const HANDLERS: Record<string, Handler> = {
 		return { ok: true, message: `Removed bookmark` };
 	},
 
+	list_bookmarks: async (editor) => {
+		const scene = editor.scenes.getActiveSceneOrNull();
+		if (!scene) {
+			return { ok: false, message: "No active scene" };
+		}
+		const bookmarks = scene.bookmarks ?? [];
+		if (bookmarks.length === 0) {
+			return {
+				ok: true,
+				message: "No bookmarks on the active scene.",
+				data: { bookmarks: [] },
+			};
+		}
+		const sorted = [...bookmarks].sort((a, b) => a.time - b.time);
+		const summary = sorted
+			.map(
+				(b) =>
+					`${b.time}t (${(b.time / 120_000).toFixed(2)}s)${b.note ? ` note="${b.note}"` : ""}${b.color ? ` color=${b.color}` : ""}${b.duration ? ` dur=${b.duration}` : ""}`,
+			)
+			.join(", ");
+		return {
+			ok: true,
+			message: `${bookmarks.length} bookmark(s): ${summary}. Use these time values with split_element to cut at each marker.`,
+			data: { bookmarks: sorted },
+		};
+	},
+
+	update_bookmark: async (editor, args) => {
+		const time = asNumber(args.time, 0);
+		const updates: Partial<{ note: string; color: string; duration: number }> = {};
+		if (typeof args.note === "string") updates.note = args.note;
+		if (typeof args.color === "string") updates.color = args.color;
+		if (typeof args.duration === "number") updates.duration = args.duration;
+		await editor.scenes.updateBookmark({ time, updates });
+		return { ok: true, message: `Updated bookmark at ${time}` };
+	},
+
+	move_bookmark: async (editor, args) => {
+		const fromTime = asNumber(args.fromTime, 0);
+		const toTime = asNumber(args.toTime, 0);
+		await editor.scenes.moveBookmark({ fromTime, toTime });
+		return { ok: true, message: `Moved bookmark from ${fromTime} to ${toTime}` };
+	},
+
 	/* -------------------------------- track ----------------------------- */
 	add_track: async (editor, args) => {
 		const type = asString(args.type, "video") as
@@ -653,6 +697,7 @@ const HANDLERS: Record<string, Handler> = {
 			trimStart: number;
 			trimEnd: number;
 			mediaId?: string;
+			bookmarks?: Array<{ time: number; note?: string; color?: string }>;
 		};
 		const out: ElSummary[] = [];
 		const collect = (
@@ -661,6 +706,7 @@ const HANDLERS: Record<string, Handler> = {
 			elements: readonly TimelineElement[],
 		) => {
 			for (const el of elements) {
+				const elBookmarks = (el as { bookmarks?: Array<{ time: number; note?: string; color?: string }> }).bookmarks;
 				out.push({
 					trackId,
 					trackType,
@@ -675,6 +721,14 @@ const HANDLERS: Record<string, Handler> = {
 					trimStart: el.trimStart ?? 0,
 					trimEnd: el.trimEnd ?? 0,
 					mediaId: (el as { mediaId?: string }).mediaId,
+					bookmarks:
+						elBookmarks && elBookmarks.length > 0
+							? elBookmarks.map((b) => ({
+									time: b.time,
+									note: b.note,
+									color: b.color,
+								}))
+							: undefined,
 				});
 			}
 		};
@@ -695,7 +749,7 @@ const HANDLERS: Record<string, Handler> = {
 		const summary = out
 			.map(
 				(e) =>
-					`${e.type} "${e.name}" elementId=${e.elementId} trackId=${e.trackId} (${e.trackType}) start=${e.startTime} dur=${e.duration} trim=${e.trimStart}-${e.trimEnd}`,
+					`${e.type} "${e.name}" elementId=${e.elementId} trackId=${e.trackId} (${e.trackType}) start=${e.startTime} dur=${e.duration} trim=${e.trimStart}-${e.trimEnd}${e.bookmarks ? ` bookmarks=${e.bookmarks.length}` : ""}`,
 			)
 			.join("\n");
 		return {
@@ -860,6 +914,32 @@ const HANDLERS: Record<string, Handler> = {
 	set_volume: async (editor, args) => {
 		editor.playback.setVolume({ volume: asNumber(args.value, 1) });
 		return { ok: true, message: "Volume updated" };
+	},
+	toggle_playback: async (editor) => {
+		editor.playback.toggle();
+		return { ok: true, message: editor.playback.getIsPlaying() ? "Playing" : "Paused" };
+	},
+	mute_playback: async (editor) => {
+		editor.playback.mute();
+		return { ok: true, message: "Muted" };
+	},
+	unmute_playback: async (editor) => {
+		editor.playback.unmute();
+		return { ok: true, message: "Unmuted" };
+	},
+	save_snapshot: async (editor) => {
+		const result = await editor.renderer.saveSnapshot();
+		return {
+			ok: result.success,
+			message: result.success ? "Snapshot saved" : result.error,
+		};
+	},
+	copy_snapshot: async (editor) => {
+		const result = await editor.renderer.copySnapshot();
+		return {
+			ok: result.success,
+			message: result.success ? "Snapshot copied to clipboard" : result.error,
+		};
 	},
 
 	/* ------------------------------- assets ------------------------------ */
@@ -1841,6 +1921,179 @@ const HANDLERS: Record<string, Handler> = {
 		return {
 			ok: true,
 			message: `Snapped ${updates.length} element(s) to beats`,
+		};
+	},
+
+	/* --------------------------------- info -------------------------------- */
+	get_playhead: async (editor) => {
+		const time = editor.playback.getCurrentTime();
+		return {
+			ok: true,
+			message: `Playhead at ${time} ticks (${(time / 120_000).toFixed(2)}s)`,
+			data: { time },
+		};
+	},
+
+	is_playing: async (editor) => {
+		const playing = editor.playback.getIsPlaying();
+		return {
+			ok: true,
+			message: playing ? "Playback is active" : "Playback is paused",
+			data: { playing },
+		};
+	},
+
+	get_volume: async (editor) => {
+		const volume = editor.playback.getVolume();
+		const muted = editor.playback.isMuted();
+		return {
+			ok: true,
+			message: `Master volume: ${volume}${muted ? " (muted)" : ""}`,
+			data: { volume, muted },
+		};
+	},
+
+	get_selection: async (editor) => {
+		const selected = editor.selection.getSelectedElements();
+		if (selected.length === 0) {
+			return {
+				ok: true,
+				message: "No elements selected.",
+				data: { elements: [] },
+			};
+		}
+		const summary = selected
+			.map((s) => `elementId=${s.elementId} trackId=${s.trackId}`)
+			.join(", ");
+		return {
+			ok: true,
+			message: `${selected.length} element(s) selected: ${summary}`,
+			data: { elements: selected },
+		};
+	},
+
+	get_project_info: async (editor) => {
+		const project = editor.project.getActiveOrNull();
+		if (!project) {
+			return { ok: false, message: "No active project" };
+		}
+		const duration = editor.timeline.getTotalDuration();
+		const info = {
+			name: project.metadata?.name ?? "(unnamed)",
+			fps: project.settings?.fps
+				? `${project.settings.fps.numerator}/${project.settings.fps.denominator}`
+				: "unknown",
+			canvasWidth: project.settings?.canvasSize?.width ?? 0,
+			canvasHeight: project.settings?.canvasSize?.height ?? 0,
+			duration,
+		};
+		return {
+			ok: true,
+			message: `Project "${info.name}": ${info.fps} fps, ${info.canvasWidth}×${info.canvasHeight}, duration ${info.duration} ticks (${(info.duration / 120_000).toFixed(2)}s)`,
+			data: info,
+		};
+	},
+
+	list_scenes: async (editor) => {
+		const scenes = editor.scenes.getScenes();
+		const activeScene = editor.scenes.getActiveSceneOrNull();
+		if (scenes.length === 0) {
+			return { ok: true, message: "No scenes.", data: { scenes: [] } };
+		}
+		const summary = scenes
+			.map(
+				(s) =>
+					`${s.name} (id=${s.id}${s.isMain ? ", main" : ""}${activeScene?.id === s.id ? ", active" : ""}, ${s.bookmarks?.length ?? 0} bookmarks)`,
+			)
+			.join("\n");
+		return {
+			ok: true,
+			message: `${scenes.length} scene(s):\n${summary}`,
+			data: {
+				scenes: scenes.map((s) => ({
+					id: s.id,
+					name: s.name,
+					isMain: s.isMain,
+					isActive: activeScene?.id === s.id,
+					bookmarkCount: s.bookmarks?.length ?? 0,
+				})),
+			},
+		};
+	},
+
+	get_timeline_duration: async (editor) => {
+		const duration = editor.timeline.getTotalDuration();
+		return {
+			ok: true,
+			message: `Timeline duration: ${duration} ticks (${(duration / 120_000).toFixed(2)}s)`,
+			data: { duration },
+		};
+	},
+
+	list_tracks: async (editor) => {
+		const scene = editor.scenes.getActiveSceneOrNull();
+		if (!scene) {
+			return { ok: false, message: "No active scene" };
+		}
+		type TrackSummary = {
+			trackId: string;
+			type: string;
+			name: string;
+			elementCount: number;
+			muted: boolean;
+			hidden: boolean;
+		};
+		const out: TrackSummary[] = [];
+		const collect = (track: {
+			id: string;
+			type: string;
+			name?: string;
+			elements: unknown[];
+			muted?: boolean;
+			hidden?: boolean;
+		}) => {
+			out.push({
+				trackId: track.id,
+				type: track.type,
+				name: track.name ?? track.type,
+				elementCount: track.elements.length,
+				muted: track.muted ?? false,
+				hidden: track.hidden ?? false,
+			});
+		};
+		collect(scene.tracks.main);
+		for (const t of scene.tracks.overlay) collect(t);
+		for (const t of scene.tracks.audio) collect(t);
+		const summary = out
+			.map(
+				(t) =>
+					`${t.type} "${t.name}" trackId=${t.trackId} (${t.elementCount} elements${t.muted ? ", muted" : ""}${t.hidden ? ", hidden" : ""})`,
+			)
+			.join("\n");
+		return {
+			ok: true,
+			message: `${out.length} track(s):\n${summary}`,
+			data: { tracks: out },
+		};
+	},
+
+	has_clipboard: async (editor) => {
+		const hasMain = editor.clipboard.hasEntry();
+		const hasStyle = editor.clipboard.hasStyleEntry();
+		const hasEffect = editor.clipboard.hasEffectEntry();
+		return {
+			ok: true,
+			message: `Clipboard: ${hasMain ? "has elements" : "empty"}, style: ${hasStyle ? "yes" : "no"}, effect: ${hasEffect ? "yes" : "no"}`,
+			data: { hasMain, hasStyle, hasEffect },
+		};
+	},
+
+	is_dirty: async (editor) => {
+		const dirty = editor.save.getIsDirty();
+		return {
+			ok: true,
+			message: dirty ? "Project has unsaved changes" : "All changes saved",
+			data: { dirty },
 		};
 	},
 };

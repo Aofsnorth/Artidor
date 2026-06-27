@@ -1,18 +1,24 @@
+/**
+ * Beat detection — energy-based onset detection with adaptive thresholding.
+ *
+ * Two entry points:
+ *  - `detectBeats` (synchronous) — for tests and short clips. Runs on
+ *    the main thread. Do NOT call this for long audio files.
+ *  - `detectBeatsAsync` (async) — delegates to a Web Worker so the UI
+ *    never freezes. Returns a promise that resolves with the detected
+ *    beats. Supports progress callbacks and cancellation.
+ *
+ * The algorithm runs entirely off the main thread in the worker:
+ *  1. Compute RMS energy in overlapping windows
+ *  2. Find local maxima above average energy * threshold ratio
+ *  3. Filter by minimum beat gap to avoid duplicates
+ */
+
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { yieldToEventLoop } from "@/lib/media/yield";
+import type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
+import type { WorkerRequest, WorkerResponse } from "./beat-detection-worker";
 
-export interface BeatDetectionOptions {
-	minBpm?: number;
-	maxBpm?: number;
-	thresholdRatio?: number;
-	minBeatGapMs?: number;
-}
-
-export interface DetectedBeat {
-	timeSeconds: number;
-	ticks: number;
-	energy: number;
-}
+export type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
 
 const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	minBpm: 60,
@@ -22,9 +28,9 @@ const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 };
 
 /**
- * Synchronous beat detection. Kept for backward compatibility and tests,
- * but should NOT be called on the main thread for long audio files —
- * use {@link detectBeatsAsync} instead, which yields periodically.
+ * Synchronous beat detection — for tests and short clips only.
+ * Do NOT call this on the main thread for long audio files;
+ * use {@link detectBeatsAsync} instead.
  */
 export function detectBeats({
 	samples,
@@ -81,78 +87,102 @@ export function detectBeats({
 	return beats;
 }
 
+// ---------------------------------------------------------------------------
+// Web Worker pool — a single reusable worker for all beat detection calls.
+// Created lazily on first use, terminated on page unload.
+// ---------------------------------------------------------------------------
+
+let worker: Worker | null = null;
+
+function getWorker(): Worker {
+	if (worker) return worker;
+	worker = new Worker(new URL("./beat-detection-worker.ts", import.meta.url), {
+		type: "module",
+	});
+	return worker;
+}
+
 /**
- * Async beat detection — same algorithm as {@link detectBeats} but yields
- * to the event loop every `yieldInterval` iterations so the UI stays
- * responsive (clicks, animation frames, revoke buttons) during analysis
- * of long audio files.
+ * Async beat detection via Web Worker. Runs the entire algorithm off
+ * the main thread so the UI never freezes — no setTimeout yields, no
+ * chunked processing, no jank. The worker posts progress updates
+ * (0..1) during computation.
  *
- * The energy computation (the expensive nested loop) is chunked: after
- * every `yieldInterval` hops we `await` a macrotask. The peak-picking
- * pass over the energies array is fast enough to run synchronously.
+ * The samples Float32Array is **transferred** (not copied) to the
+ * worker for zero-copy efficiency. The caller should not use the
+ * samples array after calling this.
+ *
+ * @param onProgress Optional callback receiving progress (0..1).
+ * @param signal Optional AbortSignal for cancellation.
  */
 export async function detectBeatsAsync({
 	samples,
 	sampleRate,
 	options = {},
-	yieldInterval = 200,
+	onProgress,
+	signal,
 }: {
 	samples: Float32Array;
 	sampleRate: number;
 	options?: BeatDetectionOptions;
-	/** Number of hop iterations between event-loop yields. */
-	yieldInterval?: number;
+	onProgress?: (progress: number) => void;
+	signal?: AbortSignal;
 }): Promise<DetectedBeat[]> {
-	const opts = { ...DEFAULT_OPTIONS, ...options };
 	if (samples.length === 0 || sampleRate <= 0) return [];
 
-	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
-	const hopSize = Math.max(64, Math.floor(windowSize / 2));
-	const energies: number[] = [];
+	const w = getWorker();
 
-	for (let i = 0; i < samples.length - windowSize; i += hopSize) {
-		let sum = 0;
-		for (let j = 0; j < windowSize; j++) {
-			const sample = samples[i + j] ?? 0;
-			sum += sample * sample;
+	return new Promise<DetectedBeat[]>((resolve, reject) => {
+		let settled = false;
+
+		const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+			const response = event.data;
+			switch (response.type) {
+				case "progress":
+					onProgress?.(response.progress);
+					break;
+				case "complete":
+					cleanup();
+					settled = true;
+					resolve(response.beats);
+					break;
+				case "error":
+					cleanup();
+					settled = true;
+					reject(new Error(response.error));
+					break;
+				case "cancelled":
+					cleanup();
+					settled = true;
+					reject(new DOMException("Beat detection cancelled", "AbortError"));
+					break;
+			}
+		};
+
+		const handleAbort = () => {
+			if (settled) return;
+			w.postMessage({ type: "cancel" } satisfies WorkerRequest);
+		};
+
+		function cleanup(): void {
+			w.removeEventListener("message", handleMessage);
+			signal?.removeEventListener("abort", handleAbort);
 		}
-		energies.push(Math.sqrt(sum / windowSize));
 
-		// Yield periodically so the main thread can process pending
-		// UI events (clicks, rAF, etc.) instead of freezing.
-		if (energies.length % yieldInterval === 0) {
-			await yieldToEventLoop();
-		}
-	}
+		w.addEventListener("message", handleMessage);
+		signal?.addEventListener("abort", handleAbort);
 
-	if (energies.length === 0) return [];
-
-	const minGapSamples = Math.floor(
-		(opts.minBeatGapMs / 1000) * (sampleRate / hopSize),
-	);
-	const threshold = average(energies) * opts.thresholdRatio;
-
-	const beats: DetectedBeat[] = [];
-	let lastIndex = -minGapSamples;
-
-	for (let i = 1; i < energies.length - 1; i++) {
-		const e = energies[i] ?? 0;
-		const prev = energies[i - 1] ?? 0;
-		const next = energies[i + 1] ?? 0;
-		if (e < threshold) continue;
-		if (e <= prev || e < next) continue;
-		if (i - lastIndex < minGapSamples) continue;
-
-		const timeSeconds = (i * hopSize) / sampleRate;
-		beats.push({
-			timeSeconds,
-			ticks: Math.round(timeSeconds * TICKS_PER_SECOND),
-			energy: e,
-		});
-		lastIndex = i;
-	}
-
-	return beats;
+		// Transfer the samples buffer for zero-copy efficiency.
+		w.postMessage(
+			{
+				type: "detect",
+				samples,
+				sampleRate,
+				options,
+			} satisfies WorkerRequest,
+			[samples.buffer],
+		);
+	});
 }
 
 function average(values: number[]): number {

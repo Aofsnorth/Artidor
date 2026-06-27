@@ -18,6 +18,41 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-ai-marker-reading-and-low-level-tools",
+		date: "2026-06-27",
+		tag: "feature",
+		title: "AI can now read timeline markers and 18 new low-level tools",
+		items: [
+			"New tool: list_bookmarks lets the AI read every timeline marker/bookmark you placed manually (scene-level). Each marker returns its time (in ticks), note, color, and duration. The AI can then call split_element at each marker time to cut the video exactly where you marked it — \"potong video sesuai mark\" now works end-to-end.",
+			"list_elements now includes element-level bookmarks (beat markers) in its result. Previously the AI could not see markers placed on individual clips; now each element's bookmarks array is returned so the AI can cut on those marks too.",
+			"New bookmark tools: update_bookmark (change note/color/duration) and move_bookmark (reposition a marker to a new time). Combined with the existing add_bookmark and remove_bookmark, the AI now has full CRUD over timeline markers.",
+			"New playback tools: toggle_playback, mute_playback, unmute_playback, save_snapshot (download current frame as PNG), copy_snapshot (copy frame to system clipboard).",
+			"New read-only info tools: get_playhead (current cursor position), is_playing, get_volume, get_selection (which clips are highlighted), get_project_info (name/fps/canvas/duration), list_scenes, get_timeline_duration, list_tracks (all tracks with ids/types/element counts/mute/hidden state), has_clipboard, is_dirty (unsaved changes check).",
+			"System prompt updated with a dedicated \"Markers & bookmarks\" section teaching the AI the list_bookmarks → split_element workflow, and an \"Info & state tools\" section listing all read-only tools the AI can call freely without side effects.",
+		],
+	},
+	{
+		id: "2026-07-06-persisted-ai-revert",
+		date: "2026-07-06",
+		tag: "fix",
+		title: "AI revert now works across reloads and deletes stale snapshots safely",
+		items: [
+			"AI revert snapshots are now persisted in the AI chat store (localStorage) alongside the chat messages. Previously, revert snapshots lived only in memory — after reloading the page, old messages could no longer be reverted because the undo-history snapshots were gone. Now reverts work even after closing and reopening the app.",
+			"Fixed the revert cleanup logic: when reverting a message, the snapshot for that message AND all later messages is now deleted, instead of only the single snapshot. This prevents stale snapshots from referencing a trimmed conversation.",
+			"Storage safety: snapshots are capped to 50 entries per project, only store message IDs that already exist in the persisted chat, and orphaned snapshots are automatically cleaned on load. No user media, API keys, or project content is stored — only lightweight message-id → history-length mappings.",
+		],
+	},
+	{
+		id: "2026-07-06-beat-detection-web-worker",
+		date: "2026-07-06",
+		tag: "fix",
+		title: "Beat detection no longer freezes the editor",
+		items: [
+			"Beat detection now runs entirely in a Web Worker, off the main thread. Previously, the algorithm used setTimeout-based yielding which still blocked the UI for long audio files — the editor would freeze for several seconds during analysis. Now the entire computation (energy windowing + peak picking) happens in a separate thread, so the timeline stays fully interactive while beats are being detected.",
+			"The beat detection UI now shows a live progress percentage (\"Detecting beats… 45%\") instead of a static loading spinner, and supports cancellation via AbortSignal.",
+		],
+	},
+	{
 		id: "2026-07-06-per-property-copy-paste",
 		date: "2026-07-06",
 		tag: "feature",
