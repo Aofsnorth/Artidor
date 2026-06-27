@@ -332,6 +332,28 @@ impl ProjectSettings {
     pub fn fps_label(self) -> u32 {
         self.fps.numerator / self.fps.denominator
     }
+
+    /// Update canvas + fps from a parsed settings dialog result.
+    /// Returns the new settings for caller convenience.
+    pub fn update(&mut self, width: u32, height: u32, fps: u32) {
+        self.canvas = CanvasSize { width, height };
+        self.fps = frame_rate_from_u32(fps);
+    }
+}
+
+/// Map a whole-number fps to the closest FrameRate constant. Falls back
+/// to FPS_30 for unknown values (no silent bad state — caller validates).
+pub fn frame_rate_from_u32(fps: u32) -> FrameRate {
+    match fps {
+        24 => FrameRate::FPS_24,
+        25 => FrameRate::FPS_25,
+        30 => FrameRate::FPS_30,
+        48 => FrameRate::FPS_48,
+        50 => FrameRate::FPS_50,
+        60 => FrameRate::FPS_60,
+        120 => FrameRate::FPS_120,
+        _ => FrameRate::FPS_30,
+    }
 }
 
 /// Playhead position. A thin wrapper around `time::MediaTime` so the
@@ -472,6 +494,11 @@ impl Project {
     /// Toggle a track's locked flag in the current scene.
     pub fn toggle_track_lock(&mut self, track_id: &str) -> Option<bool> {
         self.scene.toggle_lock(track_id)
+    }
+
+    /// Update project canvas + fps from the settings dialog.
+    pub fn update_settings(&mut self, width: u32, height: u32, fps: u32) {
+        self.settings.update(width, height, fps);
     }
 
     /// Add an element to a track by track id. Returns the element id, or
@@ -754,6 +781,28 @@ mod tests {
         assert!(!t.soloed);
         assert!(!t.hidden);
         assert!(!t.locked);
+    }
+
+    #[test]
+    fn update_settings_changes_canvas_and_fps() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.update_settings(1280, 720, 60);
+        assert_eq!(p.settings.canvas.width, 1280);
+        assert_eq!(p.settings.canvas.height, 720);
+        assert_eq!(p.settings.fps_label(), 60);
+    }
+
+    #[test]
+    fn frame_rate_from_u32_maps_common_fps() {
+        assert_eq!(frame_rate_from_u32(24), FrameRate::FPS_24);
+        assert_eq!(frame_rate_from_u32(30), FrameRate::FPS_30);
+        assert_eq!(frame_rate_from_u32(60), FrameRate::FPS_60);
+        assert_eq!(frame_rate_from_u32(120), FrameRate::FPS_120);
+    }
+
+    #[test]
+    fn frame_rate_from_u32_unknown_falls_back_to_30() {
+        assert_eq!(frame_rate_from_u32(999), FrameRate::FPS_30);
     }
 
     #[test]

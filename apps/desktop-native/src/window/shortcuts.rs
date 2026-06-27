@@ -191,6 +191,10 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
         if key == 0x59 && GetKeyState(VK_CONTROL.0 as i32) < 0 {
             dirty |= handle_redo(hwnd);
         }
+        // Ctrl+, (comma) = project settings dialog.
+        if key == 0xBC && GetKeyState(VK_CONTROL.0 as i32) < 0 {
+            dirty |= handle_settings(hwnd);
+        }
 
         if dirty {
             let _ = InvalidateRect(Some(hwnd), None, false);
@@ -507,6 +511,34 @@ fn handle_rename(hwnd: HWND) -> bool {
             Err(e) => {
                 let msg = format!("Rename dialog error:\n\n{e}");
                 message_box(&msg, true);
+            }
+        }
+    }
+    false
+}
+
+/// Ctrl+, — project settings dialog (canvas WxH@fps).
+fn handle_settings(hwnd: HWND) -> bool {
+    if let Some(state) = window_state(hwnd) {
+        let w = state.project.settings.canvas.width;
+        let h = state.project.settings.canvas.height;
+        let fps = state.project.settings.fps_label();
+        match dialogs::settings_dialog(hwnd, w, h, fps) {
+            Ok(Some(settings)) => {
+                if let Some(state) = window_state_mut(hwnd) {
+                    state.history.push(&state.project);
+                    state
+                        .project
+                        .update_settings(settings.width, settings.height, settings.fps);
+                    return true;
+                }
+            }
+            Ok(None) => {}
+            Err(_) => {
+                message_box(
+                    "Invalid settings format.\n\nUse: WxH@fps (e.g. 1920x1080@30)",
+                    true,
+                );
             }
         }
     }

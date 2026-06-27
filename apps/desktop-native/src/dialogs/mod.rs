@@ -426,3 +426,122 @@ pub fn prompt_dialog(
         }
     }
 }
+
+/// Parsed project settings from the settings dialog.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProjectSettings {
+    pub width: u32,
+    pub height: u32,
+    pub fps: u32,
+}
+
+/// Show a project settings dialog (canvas size + fps). The user enters
+/// a string like "1920x1080@30". Returns `Ok(Some(settings))` on OK,
+/// `Ok(None)` on cancel, `Err` on dialog failure or invalid input.
+///
+/// Presets shown in the label: 1920x1080@30, 1280x720@60, 1080x1080@30
+/// (square), 1080x1920@30 (vertical). The default is the project's
+/// current settings.
+pub fn settings_dialog(
+    owner: HWND,
+    current_width: u32,
+    current_height: u32,
+    current_fps: u32,
+) -> Result<Option<ProjectSettings>, DialogError> {
+    let default = format!("{current_width}x{current_height}@{current_fps}");
+    let label = "Canvas WxH@fps  (e.g. 1920x1080@30, 1280x720@60, 1080x1920@30)";
+    match prompt_dialog(owner, "Project Settings", label, &default)? {
+        Some(text) => parse_settings(&text)
+            .map(|s| Some(s))
+            .ok_or(DialogError::Failed(0)),
+        None => Ok(None),
+    }
+}
+
+/// Parse a "WxH@fps" string into ProjectSettings. Returns None on
+/// malformed input (no silent bad state — caller shows error).
+fn parse_settings(text: &str) -> Option<ProjectSettings> {
+    let text = text.trim();
+    let at_pos = text.rfind('@')?;
+    let (dims, fps_str) = text.split_at(at_pos);
+    let fps_str = &fps_str[1..]; // skip '@'
+    let fps: u32 = fps_str.parse().ok()?;
+    if fps == 0 || fps > 240 {
+        return None;
+    }
+    let x_pos = dims.find('x')?;
+    let (w_str, h_str) = dims.split_at(x_pos);
+    let h_str = &h_str[1..]; // skip 'x'
+    let width: u32 = w_str.parse().ok()?;
+    let height: u32 = h_str.parse().ok()?;
+    if width == 0 || width > 8192 || height == 0 || height > 8192 {
+        return None;
+    }
+    Some(ProjectSettings { width, height, fps })
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::*;
+
+    #[test]
+    fn parse_valid_1080p30() {
+        let s = parse_settings("1920x1080@30").unwrap();
+        assert_eq!(
+            s,
+            ProjectSettings {
+                width: 1920,
+                height: 1080,
+                fps: 30
+            }
+        );
+    }
+
+    #[test]
+    fn parse_valid_720p60() {
+        let s = parse_settings("1280x720@60").unwrap();
+        assert_eq!(s.fps, 60);
+    }
+
+    #[test]
+    fn parse_valid_vertical() {
+        let s = parse_settings("1080x1920@30").unwrap();
+        assert_eq!(s.height, 1920);
+    }
+
+    #[test]
+    fn parse_with_spaces() {
+        let s = parse_settings("  1920x1080@30  ").unwrap();
+        assert_eq!(s.width, 1920);
+    }
+
+    #[test]
+    fn parse_missing_at_returns_none() {
+        assert!(parse_settings("1920x1080").is_none());
+    }
+
+    #[test]
+    fn parse_missing_x_returns_none() {
+        assert!(parse_settings("19201080@30").is_none());
+    }
+
+    #[test]
+    fn parse_zero_fps_returns_none() {
+        assert!(parse_settings("1920x1080@0").is_none());
+    }
+
+    #[test]
+    fn parse_huge_fps_returns_none() {
+        assert!(parse_settings("1920x1080@999").is_none());
+    }
+
+    #[test]
+    fn parse_zero_width_returns_none() {
+        assert!(parse_settings("0x1080@30").is_none());
+    }
+
+    #[test]
+    fn parse_huge_width_returns_none() {
+        assert!(parse_settings("99999x1080@30").is_none());
+    }
+}
