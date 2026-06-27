@@ -7,6 +7,7 @@
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { updateCursor } from "@/lib/collab/room-store";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,6 +23,11 @@ export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ roomId: string }> },
 ) {
+	const session = await getOptionalSession();
+	if (!session) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return Response.json({ error: "Too many requests" }, { status: 429 });

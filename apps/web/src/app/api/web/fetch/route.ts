@@ -15,6 +15,7 @@
 
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -135,6 +136,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 			{ ok: false, error: "URL is not allowed" },
 			{ status: 400 },
 		);
+	}
+
+	const session = await getOptionalSession();
+	if (!session) {
+		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 	}
 
 	const controller = new AbortController();
