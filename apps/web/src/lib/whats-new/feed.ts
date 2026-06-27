@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-06-27-takeover-banner-key-fix-and-google-verification",
+		date: "2026-06-27",
+		tag: "fix",
+		title: "Internal polish: AI takeover banner key warnings and Google Search Console verification",
+		items: [
+			"Fixed React duplicate-key warnings in the AI takeover status banner's word-cycle animation. The first action word is duplicated at the end of the loop for a seamless CSS cycle; words now carry stable composite keys so React no longer warns when that word appears twice.",
+			"Added a Google Search Console verification meta tag alongside the existing HTML-file verification method, so the site can be verified through either path on Google's next crawl.",
+		],
+	},
+	{
 		id: "2026-07-07-smooth-ai-status-optimization",
 		date: "2026-07-07",
 		tag: "feature",
