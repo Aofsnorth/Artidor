@@ -44,7 +44,8 @@ export type ToolCategory =
 	| "plan"
 	| "generate"
 	| "audio"
-	| "skill";
+	| "skill"
+	| "info";
 
 /** Reusable schema for an array of {trackId, elementId} element refs. */
 function elementRefArraySchema(minItems: number): unknown {
@@ -204,6 +205,38 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"remove_bookmark",
 		"Remove the bookmark at the given time.",
 		objectSchema({ time: numberSchema(0) }, ["time"]),
+	),
+	tool(
+		"scene",
+		"list_bookmarks",
+		"list_bookmarks",
+		"List all bookmarks (timeline markers) on the active scene. Returns each bookmark's time (in ticks), note, color, and duration. Use this to read markers the user placed manually, then split_element at each bookmark time to cut the video at those marks.",
+		objectSchema({}),
+	),
+	tool(
+		"scene",
+		"update_bookmark",
+		"update_bookmark",
+		"Update a bookmark's note, color, or duration at the given time.",
+		objectSchema(
+			{
+				time: numberSchema(0),
+				note: { type: "string" },
+				color: { type: "string" },
+				duration: numberSchema(0),
+			},
+			["time"],
+		),
+	),
+	tool(
+		"scene",
+		"move_bookmark",
+		"move_bookmark",
+		"Move a bookmark from one time to another.",
+		objectSchema(
+			{ fromTime: numberSchema(0), toTime: numberSchema(0) },
+			["fromTime", "toTime"],
+		),
 	),
 
 	/* --------------------------------- Track --------------------------------- */
@@ -563,6 +596,41 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"set_volume",
 		"Set the master playback volume. 0..1.",
 		objectSchema({ value: numberSchema(0, 1) }, ["value"]),
+	),
+	tool(
+		"playback",
+		"toggle_playback",
+		"toggle_playback",
+		"Toggle between play and pause.",
+		objectSchema({}),
+	),
+	tool(
+		"playback",
+		"mute_playback",
+		"mute_playback",
+		"Mute the master playback audio.",
+		objectSchema({}),
+	),
+	tool(
+		"playback",
+		"unmute_playback",
+		"unmute_playback",
+		"Unmute the master playback audio.",
+		objectSchema({}),
+	),
+	tool(
+		"playback",
+		"save_snapshot",
+		"save_snapshot",
+		"Save the current preview frame as a PNG image file (downloads to the user's device).",
+		objectSchema({}),
+	),
+	tool(
+		"playback",
+		"copy_snapshot",
+		"copy_snapshot",
+		"Copy the current preview frame to the system clipboard as an image.",
+		objectSchema({}),
 	),
 
 	/* --------------------------------- Audio --------------------------------- */
@@ -1241,6 +1309,78 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"run_skill",
 		"Replay a saved skill: execute each stored tool call in sequence. Each step goes through the same validation and safety checks as a live tool call. Returns a summary of which steps succeeded or failed.",
 		objectSchema({ skillId: { type: "string" } }, ["skillId"]),
+	),
+
+	/* ---------------------------------- Info ---------------------------------- */
+	tool(
+		"info",
+		"get_playhead",
+		"get_playhead",
+		"Get the current playhead position in ticks (1s = 120_000 ticks). Use this to know where the user's cursor is on the timeline.",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"is_playing",
+		"is_playing",
+		"Check whether playback is currently active (true) or paused (false).",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"get_volume",
+		"get_volume",
+		"Get the current master playback volume (0..1).",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"get_selection",
+		"get_selection",
+		"Get the currently selected elements as an array of {trackId, elementId}. Use this to find which clip(s) the user has highlighted before applying an operation to 'the selected clip'.",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"get_project_info",
+		"get_project_info",
+		"Get the active project's metadata: name, fps, canvas size (width×height), and total timeline duration (in ticks).",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"list_scenes",
+		"list_scenes",
+		"List all scenes in the project. Returns each scene's id, name, isMain flag, and bookmark count. The active scene is flagged.",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"get_timeline_duration",
+		"get_timeline_duration",
+		"Get the total timeline duration of the active scene in ticks (1s = 120_000 ticks).",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"list_tracks",
+		"list_tracks",
+		"List all tracks on the active scene. Returns each track's id, type, name, element count, muted state, and hidden state. Use this to find a trackId when you need to place an element on a specific track type.",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"has_clipboard",
+		"has_clipboard",
+		"Check whether the clipboard has content to paste (true/false). Also reports whether the style and effect clipboard slots have content.",
+		objectSchema({}),
+	),
+	tool(
+		"info",
+		"is_dirty",
+		"is_dirty",
+		"Check whether the project has unsaved changes (true = needs save, false = all changes saved).",
+		objectSchema({}),
 	),
 ];
 

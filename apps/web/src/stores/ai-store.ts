@@ -211,7 +211,25 @@ interface AIState {
 		plan: Plan | null;
 		styleProfile: StyleProfile | null;
 		referenceVideoName: string | null;
+		/**
+		 * Maps user message id → command history length at the moment just
+		 * before the AI started processing that message. Used to revert
+		 * AI edits for a message even after reload. Stored as a plain
+		 * object because zustand persist serializes Maps to `{}`.
+		 */
+		revertSnapshots: Record<string, number>;
 	}>;
+	/**
+	 * Maps user message id → command history length at the moment just
+	 * before the AI started processing that message. Used to revert AI
+	 * edits for a message even after reload. Stored as a plain Record
+	 * because zustand persist serializes Maps to `{}`.
+	 *
+	 * Storage safety: only message ids (already in `messages`) and integer
+	 * history lengths are stored. Orphaned snapshots are cleaned on load
+	 * and capped to MAX_PERSISTED_MESSAGES to prevent unbounded growth.
+	 */
+	revertSnapshots: Record<string, number>;
 	/**
 	 * Advanced AI settings — user-tunable parameters that control the
 	 * tool-call loop, retry behavior, and auto-compaction thresholds.
@@ -275,6 +293,21 @@ interface AIState {
 	renameConversation: (id: string, name: string) => void;
 	/** Delete a saved conversation. */
 	deleteConversation: (id: string) => void;
+	/**
+	 * Record (or overwrite) the command-history snapshot for a user message.
+	 * Used to revert AI edits for that message later.
+	 */
+	setRevertSnapshot: (messageId: string, historyLength: number) => void;
+	/**
+	 * Delete a revert snapshot for a message, plus all snapshots for messages
+	 * that appear after it in the conversation.
+	 */
+	deleteRevertSnapshotsFrom: (messageId: string) => void;
+	/**
+	 * Remove any revert snapshots whose message id is no longer present in the
+	 * active message list. Called automatically after loading persisted state.
+	 */
+	cleanOrphanedRevertSnapshots: () => void;
 	/** Create a new plan, replacing any existing one. */
 	createPlan: (title: string, steps: Array<{ title: string; description: string }>) => void;
 	/** Update the status of a plan step by its 0-based index. */
@@ -285,6 +318,36 @@ interface AIState {
 
 const MAX_PERSISTED_MESSAGES = 50;
 const MAX_ARCHIVED_CONVERSATIONS = 30;
+
+/**
+ * Keep only revert snapshots whose message id still exists in the
+ * message list. This prevents unbounded localStorage growth from
+ * orphaned snapshots and keeps the persisted snapshot set aligned
+ * with the messages that are actually stored. The snapshot map is
+ * tiny (message id → integer), so capping it to `maxCount` provides
+ * a hard upper bound on storage per project.
+ */
+function pruneRevertSnapshots({
+	snapshots,
+	messages,
+	maxCount,
+}: {
+	snapshots: Record<string, number> | null | undefined;
+	messages: ChatMessage[];
+	maxCount: number;
+}): Record<string, number> {
+	const messageIds = new Set(messages.map((m) => m.id));
+	const pruned: Record<string, number> = {};
+	let count = 0;
+	for (const [id, snapshot] of Object.entries(snapshots ?? {})) {
+		if (messageIds.has(id)) {
+			pruned[id] = snapshot;
+			count++;
+			if (count >= maxCount) break;
+		}
+	}
+	return pruned;
+}
 
 function generateConversationName(messages: ChatMessage[]): string {
 	const firstUser = messages.find((m) => m.role === "user");
@@ -323,6 +386,7 @@ export const useAIStore = create<AIState>()(
 			conversations: [],
 			plan: null,
 			projectChats: {},
+			revertSnapshots: {},
 			advancedSettings: DEFAULT_ADVANCED_SETTINGS,
 
 			setAdvancedSettings: (patch) => {
@@ -349,6 +413,11 @@ export const useAIStore = create<AIState>()(
 						plan: state.plan,
 						styleProfile: state.styleProfile,
 						referenceVideoName: state.referenceVideoName,
+						revertSnapshots: pruneRevertSnapshots({
+							snapshots: state.revertSnapshots,
+							messages: state.messages,
+							maxCount: MAX_PERSISTED_MESSAGES,
+						}),
 					};
 				}
 
@@ -362,6 +431,11 @@ export const useAIStore = create<AIState>()(
 					plan: saved?.plan ?? null,
 					styleProfile: saved?.styleProfile ?? null,
 					referenceVideoName: saved?.referenceVideoName ?? null,
+					revertSnapshots: pruneRevertSnapshots({
+						snapshots: saved?.revertSnapshots ?? {},
+						messages: saved?.messages ?? [],
+						maxCount: MAX_PERSISTED_MESSAGES,
+					}),
 					error: null,
 					queue: [],
 					retryCount: 0,
@@ -524,6 +598,44 @@ export const useAIStore = create<AIState>()(
 				});
 			},
 
+			setRevertSnapshot: (messageId, historyLength) => {
+				set({
+					revertSnapshots: {
+						...get().revertSnapshots,
+						[messageId]: historyLength,
+					},
+				});
+			},
+
+			deleteRevertSnapshotsFrom: (messageId) => {
+				const messages = get().messages;
+				const idx = messages.findIndex((m) => m.id === messageId);
+				if (idx === -1) return;
+
+				const idsToKeep = new Set(
+					messages.slice(0, idx).map((m) => m.id),
+				);
+				const pruned: Record<string, number> = {};
+				for (const [id, snapshot] of Object.entries(get().revertSnapshots)) {
+					if (idsToKeep.has(id)) pruned[id] = snapshot;
+				}
+				set({ revertSnapshots: pruned });
+			},
+
+			cleanOrphanedRevertSnapshots: () => {
+				const messageIds = new Set(get().messages.map((m) => m.id));
+				const pruned: Record<string, number> = {};
+				let count = 0;
+				for (const [id, snapshot] of Object.entries(get().revertSnapshots)) {
+					if (messageIds.has(id)) {
+						pruned[id] = snapshot;
+						count++;
+						if (count >= MAX_PERSISTED_MESSAGES) break;
+					}
+				}
+				set({ revertSnapshots: pruned });
+			},
+
 			createPlan: (title, steps) => {
 				set({
 					plan: {
@@ -576,11 +688,42 @@ export const useAIStore = create<AIState>()(
 								...c,
 								messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
 							})),
+							revertSnapshots: pruneRevertSnapshots({
+								snapshots: chat.revertSnapshots,
+								messages: chat.messages,
+								maxCount: MAX_PERSISTED_MESSAGES,
+							}),
 						},
 					]),
 				),
+				revertSnapshots: pruneRevertSnapshots({
+					snapshots: state.revertSnapshots,
+					messages: state.messages,
+					maxCount: MAX_PERSISTED_MESSAGES,
+				}),
 				advancedSettings: state.advancedSettings,
 			}),
+			onRehydrateStorage: (state) => {
+				// After zustand rehydrates from localStorage, remove any
+				// revert snapshots that no longer have a matching message.
+				// This defends against stale data from older app versions or
+				// truncated persisted message lists. We do the cleanup inline
+				// using the rehydrated state instead of calling an action,
+				// because the store's `get()` may not be ready during the
+				// rehydrate callback.
+				if (!state) return;
+				const messageIds = new Set(state.messages.map((m) => m.id));
+				const pruned: Record<string, number> = {};
+				let count = 0;
+				for (const [id, snapshot] of Object.entries(state.revertSnapshots)) {
+					if (messageIds.has(id)) {
+						pruned[id] = snapshot;
+						count++;
+						if (count >= MAX_PERSISTED_MESSAGES) break;
+					}
+				}
+				state.revertSnapshots = pruned;
+			},
 		},
 	),
 );

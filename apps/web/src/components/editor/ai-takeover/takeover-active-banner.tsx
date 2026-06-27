@@ -13,7 +13,7 @@
  * not here — the chat banner is purely a status indicator.
  */
 
-import { useEffect, useState } from "react";
+import { memo } from "react";
 import { useAIControlStore } from "@/stores/ai-control-store";
 import { cn } from "@/utils/ui";
 
@@ -104,44 +104,17 @@ const ACTION_WORDS = [
 	"Navigating",
 ] as const;
 
-/** Interval between word changes (ms). Matches Claude Code's cadence. */
-const WORD_INTERVAL_MS = 2200;
-/** Transition duration for the fade/slide animation (ms). */
-const WORD_TRANSITION_MS = 400;
+/** Seconds each word stays fully readable before the next one slides in. */
+const WORD_DURATION_S = 2.2;
 
-export function TakeoverActiveBanner() {
+export const TakeoverActiveBanner = memo(function TakeoverActiveBanner() {
 	const takeoverState = useAIControlStore((s) => s.takeoverState);
-	const [wordIndex, setWordIndex] = useState(0);
-	const [isExiting, setIsExiting] = useState(false);
-
-	// Cycle through action words while the AI is active. Each word
-	// fades out, then the next word fades in — a smooth crossfade
-	// that makes the status feel alive without being distracting.
-	useEffect(() => {
-		if (takeoverState !== "active") return;
-
-		// Reset to the first word when takeover (re)starts so the
-		// user always sees "Thinking" first.
-		setWordIndex(0);
-		setIsExiting(false);
-
-		const cycleTimer = setInterval(() => {
-			// Start exit animation
-			setIsExiting(true);
-			// After the exit animation, swap to the next word and
-			// fade back in.
-			setTimeout(() => {
-				setWordIndex((prev) => (prev + 1) % ACTION_WORDS.length);
-				setIsExiting(false);
-			}, WORD_TRANSITION_MS);
-		}, WORD_INTERVAL_MS);
-
-		return () => clearInterval(cycleTimer);
-	}, [takeoverState]);
 
 	if (takeoverState !== "active") return null;
 
-	const currentWord = ACTION_WORDS[wordIndex] ?? "Thinking";
+	// Duplicate the first word at the end so the CSS loop is seamless.
+	const words = [...ACTION_WORDS, ACTION_WORDS[0]];
+	const totalDuration = words.length * WORD_DURATION_S;
 
 	return (
 		<div className="flex justify-center py-0.5">
@@ -158,29 +131,37 @@ export function TakeoverActiveBanner() {
 					<span className="relative inline-flex size-2 rounded-full bg-white/90" />
 				</span>
 
-				{/* Animated cycling word — Claude Code style crossfade */}
+				{/* Animated cycling word — continuous vertical CSS scroll.
+				    A mask fades words in/out at the top and bottom while the
+				    stack translates upward. No JS interval, no re-renders,
+				    no setTimeout scheduling jitter — fully GPU-driven. */}
 				<div
 					className={cn(
-						"min-w-0 flex-1 overflow-hidden",
+						"ai-word-cycle-mask min-w-0 flex-1 overflow-hidden",
 						"font-mono text-[10px] uppercase tracking-wider",
 					)}
 					style={{ height: "1.2em" }}
 				>
-					<span
-						key={wordIndex}
-						className={cn(
-							"inline-block whitespace-nowrap text-white/70",
-							"transition-all duration-[400ms] ease-in-out",
-							isExiting
-								? "translate-y-[-100%] opacity-0"
-								: "translate-y-0 opacity-100",
-						)}
+					<div
+						className="ai-word-cycle-stack"
+						style={{
+							animationDuration: `${totalDuration}s`,
+						}}
 					>
-						{currentWord}
-						<span className="ml-0.5 animate-pulse text-white/40">…</span>
-					</span>
+						{words.map((word, i) => (
+							<span
+								key={i}
+								className="ai-word-cycle-line block whitespace-nowrap text-white/70"
+							>
+								{word}
+								{i < words.length - 1 && (
+									<span className="ml-0.5 animate-pulse text-white/40">…</span>
+								)}
+							</span>
+						))}
+					</div>
 				</div>
 			</div>
 		</div>
 	);
-}
+});

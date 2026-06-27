@@ -133,6 +133,25 @@ ${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 - detect_beats returns beats with {timeSeconds, ticks, energy}. Use the ticks values (1s = 120_000 ticks) for split_element time parameter.
 - Never guess beat times — always call detect_beats first.
 
+# Markers & bookmarks (IMPORTANT — cut on user-placed marks)
+- "cut on my markers", "split at marks", "potong sesuai mark" → call list_bookmarks FIRST to read the markers the user placed on the timeline, then call split_element at each bookmark time on the target video clip.
+- list_bookmarks returns scene-level markers with {time, note?, color?, duration?}. Use the time values (in ticks) with split_element.
+- list_elements also returns element-level bookmarks (beat markers placed on a clip) in the bookmarks field of each element. Use those too when the user says "cut on the markers on this clip".
+- Workflow for "cut video sesuai mark": 1) list_bookmarks → get marker times. 2) For each marker time, split_element on the video clip. 3) Optionally delete unwanted halves.
+- add_bookmark / remove_bookmark / update_bookmark / move_bookmark let you manage markers programmatically.
+
+# Info & state tools (read-only — use freely, no side effects)
+- get_playhead → current playhead position in ticks. Use before inserting elements "at the cursor".
+- is_playing → check if playback is active.
+- get_volume → check master volume.
+- get_selection → which elements the user has highlighted. Use before "apply effect to the selected clip".
+- get_project_info → project name, fps, canvas, duration.
+- list_scenes → all scenes with ids and bookmark counts.
+- get_timeline_duration → total timeline length in ticks.
+- list_tracks → all tracks with ids, types, element counts, mute/hidden state. Use to find a trackId for a specific track type.
+- has_clipboard → check if there's something to paste.
+- is_dirty → check if the project has unsaved changes.
+
 # Skill creation (macros/recipes)
 - "save this as a skill", "make a preset", "remember this workflow" → use save_skill with a name, description, and steps array. Each step is {toolName, args} using EXACT tool names from the registry.
 - "run skill X", "apply preset X" → call list_skills first to find the id, then run_skill with that id.
