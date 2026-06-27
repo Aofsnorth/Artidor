@@ -113,7 +113,12 @@ export const TakeoverActiveBanner = memo(function TakeoverActiveBanner() {
 	if (takeoverState !== "active") return null;
 
 	// Duplicate the first word at the end so the CSS loop is seamless.
-	const words = [...ACTION_WORDS, ACTION_WORDS[0]];
+	// Pre-compute stable keys (word + offset) so React doesn't warn about
+	// duplicate keys when ACTION_WORDS[0] appears twice.
+	const words = [...ACTION_WORDS, ACTION_WORDS[0]].map((word, i) => ({
+		word,
+		key: `${word}-${i}`,
+	}));
 	const totalDuration = words.length * WORD_DURATION_S;
 
 	return (
@@ -148,9 +153,9 @@ export const TakeoverActiveBanner = memo(function TakeoverActiveBanner() {
 							animationDuration: `${totalDuration}s`,
 						}}
 					>
-						{words.map((word, i) => (
+						{words.map(({ word, key }, i) => (
 							<span
-								key={i}
+								key={key}
 								className="ai-word-cycle-line block whitespace-nowrap text-white/70"
 							>
 								{word}

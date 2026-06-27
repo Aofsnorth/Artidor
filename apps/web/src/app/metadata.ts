@@ -56,6 +56,13 @@ export const baseMetaData: Metadata = {
 	pinterest: {
 		richPin: false,
 	},
+	// Google Search Console verification. The same token is also published
+	// as /googlea15b2b9880ac002b.html (HTML file method) — declaring it
+	// here adds the meta-tag method as a second verification path, which
+	// Google picks up automatically on the next crawl.
+	verification: {
+		google: "googlea15b2b9880ac002b.html",
+	},
 	robots: {
 		index: true,
 		follow: true,
