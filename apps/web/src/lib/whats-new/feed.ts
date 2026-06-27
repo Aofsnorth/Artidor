@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-09-beat-detection-worker-fix",
+		date: "2026-07-09",
+		tag: "fix",
+		title: "Beat detection 5-10x faster — moved to Web Worker",
+		items: [
+			"The \"Add Beat Markers\" button was running the entire beat detection on the main thread — audio decode, peak scanning, and beat detection all blocked the UI for 5-10 seconds on long audio files. The UI would completely freeze with a loading spinner and no progress indication.",
+			"Fixed by switching to the same Web Worker path that the AI copilot uses: extractClipAudio (mediabunny with yielding) → decodeAudioToFloat32 at 8kHz mono (minimal data, ~22x less than the old 44.1kHz stereo path) → detectBeatsAsync (runs entirely in a Web Worker with zero UI freeze). The beat detection algorithm now runs off the main thread with progress updates.",
+			"Also added yielding to mediabunny buffers() loops in audio.ts and audio-manager.ts — these were iterating video audio chunks without yielding, causing additional UI freezes during video audio extraction.",
+			"Result: beat detection that took 5-10 seconds with a frozen UI now takes 1-2 seconds with a responsive UI and live progress percentage. The Web Worker sends progress updates (0-100%) that are shown in the toast notification.",
+		],
+	},
+	{
 		id: "2026-07-09-desktop-tauri-migration",
 		date: "2026-07-09",
 		tag: "feature",
