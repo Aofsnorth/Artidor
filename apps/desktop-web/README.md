@@ -22,12 +22,12 @@ Both scripts skip installation if Rust is already present. On Linux/macOS/WSL on
 
 ```bash
 # Linux / macOS / WSL
-./apps/desktop/script/setup
+./apps/desktop-web/script/setup
 ```
 
 ```powershell
 # Windows
-powershell -ExecutionPolicy Bypass -File .\apps\desktop\script\setup.ps1
+powershell -ExecutionPolicy Bypass -File .\apps\desktop-web\script\setup.ps1
 ```
 
 **3. Run:**

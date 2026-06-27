@@ -46,7 +46,8 @@ async fn init_compositor(
     let mut s = state.lock().await;
 
     if s.context.is_none() {
-        let context = tauri::async_runtime::block_on(GpuContext::new())
+        let context = GpuContext::new()
+            .await
             .map_err(|e| format!("GPU init failed: {e}"))?;
         let compositor = Compositor::new(&context);
         s.context = Some(context);

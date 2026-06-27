@@ -142,7 +142,7 @@ export class CanvasRenderer {
 			height: this.height,
 		});
 		compositor.syncTextures(textures);
-		await compositor.renderAsync(frame);
+		compositor.render(frame);
 	}
 
 	async renderToCanvas({
