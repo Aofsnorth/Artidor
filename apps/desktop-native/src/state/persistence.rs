@@ -48,6 +48,48 @@ fn recent_file_path() -> PathBuf {
     base.join("Artidor").join("recent.json")
 }
 
+/// Get the auto-save file path (in the user's local app data dir).
+/// The auto-save is a backup of the current project state, written
+/// every 30s if the project has been modified. Loaded on startup to
+/// offer crash recovery.
+fn autosave_file_path() -> PathBuf {
+    let base = std::env::var("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("."));
+    base.join("Artidor").join("autosave.json")
+}
+
+/// Auto-save the current project to the auto-save file. Best-effort —
+/// fails silently (the welcome screen still works without it). Creates
+/// the dir if needed.
+pub fn autosave_project(project: &Project) {
+    let file = ProjectFile::new(project.clone());
+    let path = autosave_file_path();
+    let _ = std::fs::create_dir_all(path.parent().unwrap_or(Path::new(".")));
+    if let Ok(json) = serde_json::to_string_pretty(&file) {
+        let _ = std::fs::write(&path, json);
+    }
+}
+
+/// Load the auto-saved project, if any. Returns None if the file
+/// doesn't exist or can't be parsed (no silent bad state — just starts
+/// fresh).
+pub fn load_autosave() -> Option<Project> {
+    let path = autosave_file_path();
+    match std::fs::read_to_string(&path) {
+        Ok(contents) => serde_json::from_str::<ProjectFile>(&contents)
+            .ok()
+            .map(|f| f.project),
+        Err(_) => None,
+    }
+}
+
+/// Clear the auto-save file (called when a project is saved normally
+/// or the user starts a new project).
+pub fn clear_autosave() {
+    let _ = std::fs::remove_file(autosave_file_path());
+}
+
 /// Load the recent-projects list from disk. Returns an empty vec if the
 /// file doesn't exist or can't be parsed (no silent bad state — just
 /// starts fresh).

@@ -197,6 +197,10 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
         }
 
         if dirty {
+            // Mark the project as dirty for auto-save.
+            if let Some(state) = window_state_mut(hwnd) {
+                state.dirty = true;
+            }
             let _ = InvalidateRect(Some(hwnd), None, false);
         }
         dirty
@@ -363,6 +367,20 @@ pub unsafe fn handle_timer(hwnd: HWND, wparam: WPARAM) -> bool {
             return false;
         }
         if let Some(state) = window_state_mut(hwnd) {
+            // Auto-save: every 30s if dirty (in editor mode only).
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            if state.dirty
+                && state.mode == crate::window::AppMode::Editor
+                && now_ms - state.last_autosave_ms > 30_000
+            {
+                crate::state::persistence::autosave_project(&state.project);
+                state.last_autosave_ms = now_ms;
+                state.dirty = false;
+            }
+
             if state.playing {
                 let duration = timeline_duration(&state.project);
                 let current = state.project.playhead.as_seconds();
@@ -399,8 +417,10 @@ fn handle_save(hwnd: HWND) -> bool {
                     let project_name = state.project.metadata.name.clone();
                     match crate::state::persistence::save_project(&path, &state.project) {
                         Ok(()) => {
-                            // Add to recent projects.
+                            // Add to recent projects + clear autosave.
                             crate::state::persistence::add_recent_project(&project_name, &path);
+                            crate::state::persistence::clear_autosave();
+                            state.dirty = false;
                             let msg = format!("Saved project to:\n\n{}", path.display());
                             crate::window::shortcuts::message_box(&msg, false);
                         }

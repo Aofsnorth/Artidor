@@ -79,6 +79,11 @@ pub struct WindowState {
     pub mode: AppMode,
     /// Welcome screen state (recent projects + button hover).
     pub welcome: WelcomeState,
+    /// Last auto-save timestamp (Unix epoch ms). Auto-save runs every
+    /// 30s if `dirty` is true.
+    pub last_autosave_ms: i64,
+    /// True if the project has been modified since the last auto-save.
+    pub dirty: bool,
 }
 
 impl WindowState {
@@ -99,6 +104,8 @@ impl WindowState {
             fonts: FontCache::new(),
             mode: AppMode::Welcome,
             welcome: WelcomeState::new(),
+            last_autosave_ms: 0,
+            dirty: false,
         }
     }
 }
