@@ -37,7 +37,9 @@ use crate::state::Project;
 use crate::theme::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use crate::ui::layout::Layout;
 use crate::ui::paint_chrome;
-use crate::window::shortcuts::{handle_keydown, handle_lbuttondown, handle_timer};
+use crate::window::shortcuts::{
+    handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_timer,
+};
 use crate::window::{WindowState, child_hwnd, client_height, client_width, window_state};
 
 const CLASS_NAME: PCWSTR = w!("ArtidorNativeWndClass");
@@ -114,6 +116,18 @@ unsafe extern "system" fn main_proc(
             WM_LBUTTONDOWN => {
                 handle_lbuttondown(hwnd, lparam);
                 let _ = InvalidateRect(Some(hwnd), None, false);
+                LRESULT(0)
+            }
+            windows::Win32::UI::WindowsAndMessaging::WM_MOUSEMOVE => {
+                if handle_mousemove(hwnd, lparam) {
+                    let _ = InvalidateRect(Some(hwnd), None, false);
+                }
+                LRESULT(0)
+            }
+            windows::Win32::UI::WindowsAndMessaging::WM_LBUTTONUP => {
+                if handle_lbuttonup(hwnd) {
+                    let _ = InvalidateRect(Some(hwnd), None, false);
+                }
                 LRESULT(0)
             }
             WM_TIMER => {

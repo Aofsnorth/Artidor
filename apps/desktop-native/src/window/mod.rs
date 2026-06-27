@@ -8,8 +8,31 @@ use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::UI::WindowsAndMessaging::{GWLP_USERDATA, GetClientRect, GetWindowLongPtrW};
 
 use crate::render::Renderer;
-use crate::state::Project;
+use crate::state::{History, Project};
 use crate::theme::TIMELINE_MIN_SECONDS;
+
+/// Drag mode for clip interaction (move vs trim right edge).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DragMode {
+    /// Moving the whole clip (drag from the body).
+    Move,
+    /// Trimming the right edge (drag from the last 8px).
+    TrimRight,
+}
+
+/// Active drag state for a clip being moved or trimmed.
+#[derive(Clone, Copy, Debug)]
+pub struct DragState {
+    pub track_index: usize,
+    pub element_index: usize,
+    pub mode: DragMode,
+    /// The pixel x where the drag started.
+    pub start_x: i32,
+    /// The element's start_seconds at drag start.
+    pub start_seconds: f64,
+    /// The element's duration at drag start.
+    pub start_duration: f64,
+}
 
 /// Per-window state for the main window. Holds the viewport child HWND
 /// and the editor `Project` model. Stored in the parent's
@@ -27,6 +50,11 @@ pub struct WindowState {
     pub teleprompter_text: String,
     /// Whether the teleprompter overlay is visible.
     pub teleprompter_on: bool,
+    /// Active clip drag (set on WM_LBUTTONDOWN over a clip, cleared on
+    /// WM_LBUTTONUP). None when no drag is in progress.
+    pub drag: Option<DragState>,
+    /// Undo/redo history (snapshot stack). Push before mutating actions.
+    pub history: History,
 }
 
 impl WindowState {
@@ -40,6 +68,8 @@ impl WindowState {
             selected_element: None,
             teleprompter_text: String::new(),
             teleprompter_on: false,
+            drag: None,
+            history: History::new(),
         }
     }
 }
