@@ -690,24 +690,23 @@ pub fn run() {
 
         // Open the main window.
         let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
-        let window = cx
-            .open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(bounds)),
-                    titlebar: Some(TitlebarOptions {
-                        title: Some("Artidor".into()),
-                        ..Default::default()
-                    }),
+        let window = cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                titlebar: Some(TitlebarOptions {
+                    title: Some("Artidor".into()),
                     ..Default::default()
-                },
-                |_window, cx| {
-                    cx.new(|cx| {
-                        let mut app = ArtidorApp::new(cx);
-                        app.init_viewport(cx);
-                        app
-                    })
-                },
-            );
+                }),
+                ..Default::default()
+            },
+            |_window, cx| {
+                cx.new(|cx| {
+                    let mut app = ArtidorApp::new(cx);
+                    app.init_viewport(cx);
+                    app
+                })
+            },
+        );
 
         // Register global action listeners for keyboard shortcuts.
         // If the window or entity is unavailable (e.g. GPU init failure on
