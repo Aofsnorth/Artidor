@@ -12,6 +12,7 @@ pub mod inspector;
 pub mod layout;
 pub mod tab_bar;
 pub mod timeline;
+pub mod welcome;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;

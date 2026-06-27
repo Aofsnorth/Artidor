@@ -11,6 +11,16 @@ use crate::render::Renderer;
 use crate::state::{History, Project};
 use crate::theme::TIMELINE_MIN_SECONDS;
 use crate::ui::font::FontCache;
+use crate::ui::welcome::WelcomeState;
+
+/// App mode: welcome screen (no project open) vs editor (project loaded).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AppMode {
+    /// Welcome/homepage screen with recent projects + New Project button.
+    Welcome,
+    /// Editor mode with the full panel layout.
+    Editor,
+}
 
 /// Drag mode for clip interaction (move vs trim right edge).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -65,6 +75,10 @@ pub struct WindowState {
     /// Cached GDI fonts (Segoe UI at 5 sizes). Created once, reused
     /// across paints. Deleted on window destroy.
     pub fonts: FontCache,
+    /// App mode: welcome screen vs editor.
+    pub mode: AppMode,
+    /// Welcome screen state (recent projects + button hover).
+    pub welcome: WelcomeState,
 }
 
 impl WindowState {
@@ -83,6 +97,8 @@ impl WindowState {
             zoom_pps: 20.0,
             scroll_seconds: 0.0,
             fonts: FontCache::new(),
+            mode: AppMode::Welcome,
+            welcome: WelcomeState::new(),
         }
     }
 }
