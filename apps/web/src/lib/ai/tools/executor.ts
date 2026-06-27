@@ -17,6 +17,7 @@ import type { EditorCore } from "@/core";
 import type { TextElement, TimelineElement } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { captureFrameFromVideo } from "@/lib/media/frame-capture";
+import { hasMediaId } from "@/lib/timeline/element-utils";
 import { TOOLS_BY_EXECUTOR_KEY } from "./registry";
 
 export interface ToolExecutionResult {
@@ -1820,9 +1821,7 @@ const HANDLERS: Record<string, Handler> = {
 		const sortBy =
 			args.sortBy === "energy" || args.sortBy === "time" ? args.sortBy : "time";
 		const track = editor.timeline.getTrackById({ trackId });
-		const element = track?.elements.find((e) => e.id === elementId) as
-			| { type: string; id: string }
-			| undefined;
+		const element = track?.elements.find((e) => e.id === elementId);
 		if (!element) {
 			return { ok: false, message: "Element not found" };
 		}
@@ -1833,25 +1832,23 @@ const HANDLERS: Record<string, Handler> = {
 			};
 		}
 
-		// Dynamic imports — these pull in audio decoding machinery that
-		// we only need when beat detection is actually requested.
-		const { extractClipAudio } = await import("@/lib/media/mediabunny");
-		const { decodeAudioToFloat32 } = await import("@/lib/media/audio");
-		const { detectBeatsAsync } = await import("@/lib/media/beat-detection");
+		// Dynamic import — full pipeline runs in a Web Worker (zero UI freeze).
+		const { analyzeBeats } = await import("@/lib/media/beat-analysis");
 
 		try {
-			const blob = await extractClipAudio({
-				element: element as never,
-				mediaAssets: editor.media.getAssets(),
+			const mediaAssets = editor.media.getAssets();
+			const mediaAsset = hasMediaId(element)
+				? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+				: null;
+			if (!mediaAsset?.file) {
+				return { ok: false, message: "Media file not found for beat detection" };
+			}
+			const beats = await analyzeBeats({
+				file: mediaAsset.file,
+				trimStartSeconds: (element.trimStart ?? 0) / TICKS_PER_SECOND,
+				durationSeconds: element.duration / TICKS_PER_SECOND,
+				targetSampleRate: 8000,
 			});
-			// Use a low analysis sample rate for beat detection. We only need
-			// the energy envelope; 8kHz mono is plenty and reduces the data sent
-			// to the worker by ~7x vs 22.05kHz, which keeps long videos responsive.
-			const { samples, sampleRate } = await decodeAudioToFloat32({
-				audioBlob: blob,
-				sampleRate: 8000,
-			});
-			const beats = await detectBeatsAsync({ samples, sampleRate });
 			if (beats.length === 0) {
 				return {
 					ok: true,
