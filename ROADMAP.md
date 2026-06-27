@@ -76,6 +76,18 @@ AI agents must read this file before implementing new features.
 - Changing license/legal text
 - Disabling CI/security checks
 
+## Approved overrides (owner decisions)
+
+- **2026-06-27 — Win32 native desktop path** (`apps/desktop-native/`):
+  the owner approved a full native Win32 API rewrite of the web app as a
+  parallel desktop shell, kept alongside the web app (`apps/web`) and the
+  Tauri path (`apps/desktop-web`). This is a large rewrite that overrides
+  the "Tauri migration is the current approved exception" rule above. It
+  is built incrementally from the smallest verifiable unit (Increment 0 =
+  a single native Win32 window). See `features/desktop-native-win32/`.
+  Tauri remains the roadmap-default desktop shell; Win32 is an explicit
+  parallel path, not a replacement.
+
 ## Feature Priorities
 
 ### P0 — Critical (must fix before any new features)
@@ -152,6 +164,44 @@ AI agents must read this file before implementing new features.
 - [ ] Audit log for all tool calls
 - [ ] Rollback for destructive tool calls
 
+### 4. Desktop Native — Win32 API (owner-approved, in progress)
+
+**Status**: Increment 0–4g + 5 + 6a + 6b + 6c + 7 complete. Increment 0 = native
+Win32 window scaffold. Increment 1 = top-1 preview foundation (native
+WGPU/D3D12 surface, zero CPU readback). Increment 2 = 1:1 editor chrome
+(GDI on parent + D3D12 on child HWND). Increment 3 = state model
+(reusing the repo's `time` crate, 13 unit tests). Increment 4 = state
+wired to UI (per-window `WindowState`, chrome from live `Project`).
+Increment 4b = interactive timeline panel (track list + arrow-key frame
+seek). Increment 4c = track selection + keyboard interactions (Up/Down
+select, T add track, M toggle mute). Increment 4d = panel content (rename
+dialog Ctrl+R, click-to-seek, property fields, element/clip model + clip
+rendering, 'E' to add test clips). Increment 4e = playback (Spacebar
+play/pause, WM_TIMER frame-accurate advance). Increment 4f = clip
+selection + delete (click clip to select, Delete key, clip properties in
+inspector). Increment 4g = playback transport UI (play/pause indicator +
+timecode in footer). Increment 5 = AI copilot stub (local suggestions,
+no network/keys) + teleprompter overlay (Ctrl+P, scrolls text over
+preview based on playhead). Increment 6a = native project persistence
+(save/load `.artpr.json` via serde + std::fs, atomic write, Ctrl+S).
+Increment 6b = top-1 export backend (compositor → ffmpeg-sidecar with
+`-hwaccel auto` → `.mp4`, Ctrl+E). Increment 6c = native file dialogs +
+media import (GetOpenFileNameW/GetSaveFileNameW, Ctrl+S/O/I/E via native
+dialogs, MediaAsset model with native file paths). Increment 7 =
+packaging notes (FFmpeg bundling, release build, distribution). 49 unit
+tests total. Built up incrementally toward full 1:1 UI parity. The web
+app and the Tauri path are both kept and still ship.
+
+**Crate**: `apps/desktop-native/` — standalone Rust crate with its own
+`[workspace]` (the sensitive root `Cargo.toml` is NOT edited). Win32 API
+is accessed via the official Microsoft `windows` crate (windows-rs).
+
+**Phases**: see `features/desktop-native-win32/PLAN.md` (Increment 0 =
+window scaffold; later increments add app shell, state bridge, viewport
+compositor, panels, AI/copilot, native I/O + export, workspace/CI).
+
+**Approval**: owner override 2026-06-27 (see "Approved overrides" above).
+
 ## Roadmap Rule
 
 Every feature must answer:
@@ -189,6 +239,7 @@ LICENSE
 
 - **Web frontend**: Next.js 16, React 19, TypeScript, Tailwind, Zustand
 - **Desktop shell**: Tauri 2.0 (replacing GPUI)
+- **Desktop shell (native, parallel)**: Win32 API via the `windows` crate — `apps/desktop-native/` (owner-approved 2026-06-27; incremental 1:1 rewrite of the web app)
 - **Native backend**: Rust (compositor, gpu, effects, masks, time, bridge crates)
 - **WASM bridge**: rust/wasm crate (initCompositor, renderFrame)
 - **Package manager**: Bun
