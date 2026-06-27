@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the persisted AI revert fix", () => {
+	test("the newest entry is the smooth AI status optimization", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-06-persisted-ai-revert",
+			"2026-07-07-smooth-ai-status-optimization",
 		);
 	});
 });

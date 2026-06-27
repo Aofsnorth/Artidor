@@ -247,7 +247,7 @@ export function AIEditView() {
 	// for arrays/objects so identical data doesn't trigger re-renders.
 	const status = useAIStore((s) => s.status);
 	const error = useAIStore((s) => s.error);
-	const queue = useAIStore((s) => s.queue, useShallow);
+	const queue = useAIStore(useShallow((s) => s.queue));
 	const retryIn = useAIStore((s) => s.retryIn);
 	const retryCount = useAIStore((s) => s.retryCount);
 	const referenceVideoName = useAIStore((s) => s.referenceVideoName);
@@ -541,7 +541,7 @@ export function AIEditView() {
 					conversations={conversations}
 					onToggleAutoLearn={() => {
 						const next = !autoLearnEnabled;
-						telemetry.setEnabled(next);
+						telemetrySetEnabled(next);
 						// Keep learningScope in sync with the toggle:
 						//  - enabling → default to project-scoped learning
 						//  - disabling → set scope to "off" so the settings
