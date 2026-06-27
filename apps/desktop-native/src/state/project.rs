@@ -467,6 +467,33 @@ impl Project {
         false
     }
 
+    /// Move an element to a new start time. Clamps at 0 (no negative
+    /// start). Recomputes duration after. Returns true if found + moved.
+    pub fn move_element(&mut self, track_id: &str, element_id: &str, new_start: f64) -> bool {
+        if let Some(track) = self.scene.tracks.iter_mut().find(|t| t.id == track_id) {
+            if let Some(el) = track.elements.iter_mut().find(|e| e.id == element_id) {
+                el.start_seconds = new_start.max(0.0);
+                self.recompute_duration();
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Trim an element's duration (resize from the right edge). Minimum
+    /// duration is 0.1s. Recomputes duration after. Returns true if
+    /// found + trimmed.
+    pub fn trim_element(&mut self, track_id: &str, element_id: &str, new_duration: f64) -> bool {
+        if let Some(track) = self.scene.tracks.iter_mut().find(|t| t.id == track_id) {
+            if let Some(el) = track.elements.iter_mut().find(|e| e.id == element_id) {
+                el.duration_seconds = new_duration.max(0.1);
+                self.recompute_duration();
+                return true;
+            }
+        }
+        false
+    }
+
     /// Recompute `metadata.duration_seconds` from the max element end
     /// time across all tracks. Called after structural changes (add
     /// element, add track with elements, load project).
@@ -797,7 +824,48 @@ mod tests {
         p.add_element("track-main", Element::new("el-1", "A", 0.0, 5.0));
         assert!(!p.remove_element("track-main", "nope"));
         assert!(!p.remove_element("nope", "el-1"));
-        // State unchanged.
         assert_eq!(p.scene.tracks[0].elements.len(), 1);
+    }
+
+    #[test]
+    fn move_element_updates_start_and_duration() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.add_element("track-main", Element::new("el-1", "A", 0.0, 5.0));
+        assert!(p.move_element("track-main", "el-1", 10.0));
+        assert_eq!(p.scene.tracks[0].elements[0].start_seconds, 10.0);
+        assert_eq!(p.metadata.duration_seconds, 15.0);
+    }
+
+    #[test]
+    fn move_element_clamps_at_zero() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.add_element("track-main", Element::new("el-1", "A", 5.0, 5.0));
+        assert!(p.move_element("track-main", "el-1", -3.0));
+        assert_eq!(p.scene.tracks[0].elements[0].start_seconds, 0.0);
+    }
+
+    #[test]
+    fn move_element_unknown_returns_false() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.add_element("track-main", Element::new("el-1", "A", 0.0, 5.0));
+        assert!(!p.move_element("track-main", "nope", 10.0));
+        assert!(!p.move_element("nope", "el-1", 10.0));
+    }
+
+    #[test]
+    fn trim_element_updates_duration() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.add_element("track-main", Element::new("el-1", "A", 0.0, 10.0));
+        assert!(p.trim_element("track-main", "el-1", 3.0));
+        assert_eq!(p.scene.tracks[0].elements[0].duration_seconds, 3.0);
+        assert_eq!(p.metadata.duration_seconds, 3.0);
+    }
+
+    #[test]
+    fn trim_element_enforces_minimum() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        p.add_element("track-main", Element::new("el-1", "A", 0.0, 10.0));
+        assert!(p.trim_element("track-main", "el-1", 0.01));
+        assert_eq!(p.scene.tracks[0].elements[0].duration_seconds, 0.1);
     }
 }
