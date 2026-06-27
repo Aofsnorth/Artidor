@@ -79,7 +79,13 @@ unsafe extern "system" fn main_proc(
                         );
                         match state.mode {
                             crate::window::AppMode::Welcome => {
-                                crate::ui::welcome::draw_welcome(hdc, &client, &mut state.welcome);
+                                crate::ui::welcome::draw_welcome(
+                                    hdc,
+                                    hwnd,
+                                    &client,
+                                    &mut state.welcome,
+                                    &state.fonts,
+                                );
                             }
                             crate::window::AppMode::Editor => {
                                 paint_chrome(

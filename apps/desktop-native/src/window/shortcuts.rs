@@ -229,7 +229,10 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     return true;
                 }
                 // Check recent project card clicks.
-                if let Some(idx) = state.welcome.hovered_recent {
+                // Hit-test using the click coords (client space) against
+                // the card rects stored during the last paint. This avoids
+                // relying on stale hover state from WM_MOUSEMOVE.
+                if let Some(idx) = state.welcome.hit_test_card(x, y) {
                     if idx < state.welcome.recent.len() {
                         let rp = state.welcome.recent[idx].clone();
                         match crate::state::persistence::load_project(&rp.path) {
