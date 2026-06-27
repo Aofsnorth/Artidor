@@ -23,6 +23,7 @@ import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { normalizeProviderBaseUrl } from "@/lib/ai/provider-url";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -54,6 +55,11 @@ export async function POST(request: Request): Promise<Response> {
 			{ models: [], error: "Not Found" } satisfies ModelsResult,
 			{ status: 404 },
 		);
+	}
+
+	const session = await getOptionalSession();
+	if (!session) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 
 	try {

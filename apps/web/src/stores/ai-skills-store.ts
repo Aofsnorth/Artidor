@@ -53,7 +53,7 @@ interface AiSkillsState {
 }
 
 function generateId(): string {
-	return `skill_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+	return `skill_${crypto.randomUUID()}`;
 }
 
 export const useAiSkillsStore = create<AiSkillsState>()(
