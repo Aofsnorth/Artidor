@@ -80,6 +80,10 @@ export class AnthropicProvider implements LLMProvider {
 				"anthropic-version": "2023-06-01",
 			},
 			body: JSON.stringify(body),
+			// Hard ceiling so a hung upstream provider cannot hold a server
+			// worker indefinitely (resource exhaustion / DoS). 90s is generous
+			// enough for a single non-streaming chat completion with tools.
+			signal: AbortSignal.timeout(90_000),
 		});
 
 		if (!res.ok) {

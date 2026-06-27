@@ -98,7 +98,11 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 			// This is a user-authored automation script (like a macro),
 			// not untrusted remote input — the user is running their own
 			// code in their own browser.
-			const runner = new Function(
+			// Intentional: user-authored automation macro runs in an isolated
+			// Web Worker with no DOM/fetch/network access. All editor mutations
+			// go through artidor.run(), which is validated against the tool
+			// registry on the main thread. See the security comment above.
+			const runner = new Function( // nosemgrep: no-eval — intentional sandboxed user macro
 				"artidor",
 				"console",
 				`"use strict"; return (async () => {\n${message.code}\n})();`,

@@ -1,41 +1,26 @@
-use gpui::{
-    div, prelude::*, px, rgb, size, App, Application, Bounds, Context, SharedString, Window,
-    WindowBounds, WindowOptions,
-};
+//! Artidor — native desktop video editor.
+//!
+//! Built with GPUI (Zed's GPU-accelerated UI framework) for the UI shell
+//! and the shared WGPU compositor crate for canvas rendering. All
+//! non-UI logic lives in `rust/` — this binary is purely a UI shell that
+//! drives the compositor, playback engine, and editor state.
 
-struct AppWindow {
-    title: SharedString,
-}
-
-impl Render for AppWindow {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .size_full()
-            .bg(rgb(0x0f0f0f))
-            .flex()
-            .justify_center()
-            .items_center()
-            .text_xl()
-            .text_color(rgb(0xffffff))
-            .child(self.title.clone())
-    }
-}
+mod actions;
+mod app;
+mod media;
+mod playback;
+mod render;
+mod shortcuts;
+mod state;
+mod theme;
+mod ui;
 
 fn main() {
-    Application::new().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(1280.), px(720.)), cx);
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                ..Default::default()
-            },
-            |_, cx| {
-                cx.new(|_| AppWindow {
-                    title: "Artidor".into(),
-                })
-            },
-        )
-        .unwrap();
-        cx.activate(true);
-    });
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format_timestamp(None)
+        .init();
+
+    log::info!("Starting Artidor desktop editor");
+
+    app::run();
 }
