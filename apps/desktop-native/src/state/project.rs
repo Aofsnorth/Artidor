@@ -78,7 +78,7 @@ impl Element {
 }
 
 /// A timeline track. Minimal subset of web `TimelineTrack`
-/// (id + name + type + elements). Elements are clips placed on the track.
+/// (id + name + type + elements + mute/solo/lock/visibility flags).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Track {
     pub id: String,
@@ -86,6 +86,10 @@ pub struct Track {
     pub track_type: TrackType,
     pub muted: bool,
     pub hidden: bool,
+    /// Solo: only this track's output is rendered (mutes all others).
+    pub soloed: bool,
+    /// Locked: clips can't be dragged, trimmed, or deleted.
+    pub locked: bool,
     pub elements: Vec<Element>,
 }
 
@@ -97,6 +101,8 @@ impl Track {
             track_type,
             muted: false,
             hidden: false,
+            soloed: false,
+            locked: false,
             elements: Vec::new(),
         }
     }
@@ -151,6 +157,27 @@ impl Scene {
         let track = self.tracks.iter_mut().find(|t| t.id == track_id)?;
         track.muted = !track.muted;
         Some(track.muted)
+    }
+
+    /// Toggle a track's solo flag. Returns the new state, or `None`.
+    pub fn toggle_solo(&mut self, track_id: &str) -> Option<bool> {
+        let track = self.tracks.iter_mut().find(|t| t.id == track_id)?;
+        track.soloed = !track.soloed;
+        Some(track.soloed)
+    }
+
+    /// Toggle a track's hidden (visibility) flag. Returns the new state.
+    pub fn toggle_hidden(&mut self, track_id: &str) -> Option<bool> {
+        let track = self.tracks.iter_mut().find(|t| t.id == track_id)?;
+        track.hidden = !track.hidden;
+        Some(track.hidden)
+    }
+
+    /// Toggle a track's locked flag. Returns the new state.
+    pub fn toggle_lock(&mut self, track_id: &str) -> Option<bool> {
+        let track = self.tracks.iter_mut().find(|t| t.id == track_id)?;
+        track.locked = !track.locked;
+        Some(track.locked)
     }
 }
 
@@ -432,6 +459,21 @@ impl Project {
         self.scene.toggle_mute(track_id)
     }
 
+    /// Toggle a track's solo flag in the current scene.
+    pub fn toggle_track_solo(&mut self, track_id: &str) -> Option<bool> {
+        self.scene.toggle_solo(track_id)
+    }
+
+    /// Toggle a track's hidden (visibility) flag in the current scene.
+    pub fn toggle_track_hidden(&mut self, track_id: &str) -> Option<bool> {
+        self.scene.toggle_hidden(track_id)
+    }
+
+    /// Toggle a track's locked flag in the current scene.
+    pub fn toggle_track_lock(&mut self, track_id: &str) -> Option<bool> {
+        self.scene.toggle_lock(track_id)
+    }
+
     /// Add an element to a track by track id. Returns the element id, or
     /// `None` if the track id is not found (no silent bad state). Also
     /// recomputes the project duration from the new element set.
@@ -680,8 +722,38 @@ mod tests {
     fn toggle_track_mute_unknown_id_returns_none() {
         let mut p = Project::new_untitled("proj-1", 0);
         assert_eq!(p.toggle_track_mute("nope"), None);
-        // State must not change.
         assert!(!p.scene.tracks[0].muted);
+    }
+
+    #[test]
+    fn toggle_solo_flips_state() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        assert_eq!(p.toggle_track_solo("track-main"), Some(true));
+        assert!(p.scene.tracks[0].soloed);
+        assert_eq!(p.toggle_track_solo("track-main"), Some(false));
+    }
+
+    #[test]
+    fn toggle_lock_flips_state() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        assert_eq!(p.toggle_track_lock("track-main"), Some(true));
+        assert!(p.scene.tracks[0].locked);
+    }
+
+    #[test]
+    fn toggle_hidden_flips_state() {
+        let mut p = Project::new_untitled("proj-1", 0);
+        assert_eq!(p.toggle_track_hidden("track-main"), Some(true));
+        assert!(p.scene.tracks[0].hidden);
+    }
+
+    #[test]
+    fn new_track_has_all_flags_false() {
+        let t = Track::new("t1", "Main", TrackType::Video);
+        assert!(!t.muted);
+        assert!(!t.soloed);
+        assert!(!t.hidden);
+        assert!(!t.locked);
     }
 
     #[test]

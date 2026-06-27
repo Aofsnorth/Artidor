@@ -56,11 +56,18 @@ pub unsafe fn draw_track_row(
         draw_text_centered(hdc, track.track_type.label(), &tag, 0x111114);
 
         let mut label = track.name.clone();
+        // Append state indicators (matches web track header badges).
         if track.muted {
-            label.push_str("  (muted)");
+            label.push_str("  [M]");
+        }
+        if track.soloed {
+            label.push_str("  [S]");
         }
         if track.hidden {
-            label.push_str("  (hidden)");
+            label.push_str("  [H]");
+        }
+        if track.locked {
+            label.push_str("  [L]");
         }
         let header_right = row.left + 140;
         let name_rect = RECT {

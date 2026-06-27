@@ -86,6 +86,30 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                     let _ = state.project.toggle_track_mute(&track_id);
                     dirty = true;
                 }
+                // 'S' = toggle solo on the selected track.
+                0x53 if track_count > 0 && GetKeyState(VK_CONTROL.0 as i32) >= 0 => {
+                    let sel = state.selected_track;
+                    let track_id = state.project.scene.tracks[sel].id.clone();
+                    state.history.push(&state.project);
+                    let _ = state.project.toggle_track_solo(&track_id);
+                    dirty = true;
+                }
+                // 'L' = toggle lock on the selected track.
+                0x4C if track_count > 0 => {
+                    let sel = state.selected_track;
+                    let track_id = state.project.scene.tracks[sel].id.clone();
+                    state.history.push(&state.project);
+                    let _ = state.project.toggle_track_lock(&track_id);
+                    dirty = true;
+                }
+                // 'H' = toggle hidden (visibility) on the selected track.
+                0x48 if track_count > 0 => {
+                    let sel = state.selected_track;
+                    let track_id = state.project.scene.tracks[sel].id.clone();
+                    state.history.push(&state.project);
+                    let _ = state.project.toggle_track_hidden(&track_id);
+                    dirty = true;
+                }
                 0x45 if track_count > 0 && GetKeyState(VK_CONTROL.0 as i32) >= 0 => {
                     let sel = state.selected_track;
                     let track_id = state.project.scene.tracks[sel].id.clone();

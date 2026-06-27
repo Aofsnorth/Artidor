@@ -53,7 +53,7 @@ pub unsafe fn draw_playhead(
             .frame_floor(project.settings.fps)
             .unwrap_or(0);
         let readout_label = format!(
-            "Playhead {:.3}s (frame {})  {}  \u{2022}  {} tracks  \u{2022}  \u{2190}\u{2192} seek  \u{2191}\u{2193} select  T track  E clip  M mute  Space play  Ctrl+R rename  Ctrl+S/O/I/E",
+            "Playhead {:.3}s (frame {})  {}  \u{2022}  {} tracks  \u{2022}  \u{2190}\u{2192} seek  \u{2191}\u{2193} select  T track  E clip  M mute  S solo  H hide  L lock  Space play  Esc home  Ctrl+Z/Y  Ctrl+R/S/O/I/E/P",
             project.playhead.as_seconds(),
             frame,
             if project_is_playing {
