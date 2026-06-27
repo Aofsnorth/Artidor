@@ -18,8 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
-		id: "2026-06-27-ai-marker-reading-and-low-level-tools",
-		date: "2026-06-27",
+		id: "2026-07-07-smooth-ai-status-optimization",
+		date: "2026-07-07",
+		tag: "feature",
+		title: "Smoother AI status animation and major chat panel performance optimization",
+		items: [
+			"The AI status banner word cycle (Thinking, Orchestrating, Harmonizing, etc.) is now driven by a continuous CSS animation instead of a JS interval + setTimeout. This eliminates frame scheduling jitter, makes the fade/slide buttery smooth, and removes all React re-renders during the animation. The word stack also gets a soft top/bottom mask so each word fades in and out organically.",
+			"Optimized the AI chat panel to prevent unnecessary re-renders. The panel previously subscribed to the entire AI store with `useAIStore()`, re-rendering on every message, status tick, and pending-media change. It now uses granular zustand selectors with shallow equality, so only the specific data each UI region needs triggers updates. `AuroraOverlay` and `TakeoverActiveBanner` are also memoized with `React.memo`.",
+		],
+	},
+	{
+		id: "2026-07-07-ai-marker-reading-and-low-level-tools",
+		date: "2026-07-07",
 		tag: "feature",
 		title: "AI can now read timeline markers and 18 new low-level tools",
 		items: [
