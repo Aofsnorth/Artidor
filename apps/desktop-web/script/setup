@@ -106,5 +106,5 @@ if [[ "$(uname)" == "Darwin" ]]; then
   exit 0
 fi
 
-echo "Unsupported platform. See apps/desktop/README.md for manual setup instructions."
+echo "Unsupported platform. See apps/desktop-web/README.md for manual setup instructions."
 exit 1

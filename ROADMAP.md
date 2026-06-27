@@ -118,7 +118,7 @@ AI agents must read this file before implementing new features.
 - [x] Phase 3: Web frontend Tauri detection + compositor bridge
 - [ ] Phase 4: Wire web renderer to NativeCompositor when in Tauri
 - [ ] Phase 5: Native FFmpeg export pipeline
-- [ ] Phase 6: Delete old GPUI code (apps/desktop/src/ui/, app.rs, etc.)
+- [ ] Phase 6: Delete old GPUI code (apps/desktop-web/src/ui/, app.rs, etc.)
 - [ ] Phase 7: Update AGENTS.md, What's New, release notes
 
 **Track**: `feat/desktop-tauri-migration` branch, PR #36

@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "apps/desktop",
-    "apps/desktop/src-tauri",
+    "apps/desktop-web",
+    "apps/desktop-web/src-tauri",
     "rust/crates/time",
     "rust/crates/bridge",
     "rust/crates/effects",
