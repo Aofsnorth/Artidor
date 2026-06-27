@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the desktop app GPUI scaffold", () => {
+	test("the newest entry is the desktop Tauri migration", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-08-desktop-app-gpui-wgpu",
+			"2026-07-09-desktop-tauri-migration",
 		);
 	});
 });
