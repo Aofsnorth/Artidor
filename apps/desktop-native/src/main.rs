@@ -100,14 +100,38 @@ unsafe extern "system" fn main_proc(
                                     state.teleprompter_on,
                                     state.zoom_pps,
                                     state.scroll_seconds,
+                                    &mut state.header_btns,
+                                    state.active_tab,
+                                    &mut state.tab_rects,
+                                    state.looping,
+                                    &mut state.toolbar_btns,
                                 );
                             }
                         }
                         let _ = windows::Win32::Graphics::Gdi::SelectObject(hdc, prev_font);
                     } else {
                         let fallback = Project::new_untitled("loading", 0);
+                        let mut dummy_btns = crate::ui::header::HeaderButtons::default();
+                        let mut dummy_tabs = Vec::new();
+                        let mut dummy_toolbar =
+                            crate::ui::viewport_toolbar::ToolbarButtons::default();
                         paint_chrome(
-                            hdc, &layout, &client, &fallback, 0, false, None, "", false, 20.0, 0.0,
+                            hdc,
+                            &layout,
+                            &client,
+                            &fallback,
+                            0,
+                            false,
+                            None,
+                            "",
+                            false,
+                            20.0,
+                            0.0,
+                            &mut dummy_btns,
+                            crate::state::AssetsTab::Assets,
+                            &mut dummy_tabs,
+                            false,
+                            &mut dummy_toolbar,
                         );
                     }
                 }

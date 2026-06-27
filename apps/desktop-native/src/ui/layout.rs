@@ -9,8 +9,9 @@
 use windows::Win32::Foundation::RECT;
 
 use crate::theme::{
-    FOOTER_H, GAP, HEADER_H, MAIN_CONTENT_PCT, PAD, PREVIEW_PCT, TABBAR_W, TOOLS_PCT,
+    FOOTER_H, GAP, HEADER_H, MAIN_CONTENT_PCT, PAD, PREVIEW_PCT, RULER_H, TABBAR_W, TOOLS_PCT,
 };
+use crate::ui::viewport_toolbar::TOOLBAR_H;
 
 /// All chrome rectangles derived from the parent client size. The
 /// `viewport` rect is where the D3D12 child window lives.
@@ -23,8 +24,14 @@ pub struct Layout {
     pub preview: RECT,
     pub properties: RECT,
     pub timeline: RECT,
-    /// The D3D12 viewport child window rect (== preview panel).
+    /// The ruler strip at the top of the timeline (frame markers +
+    /// time labels). Click-to-seek target.
+    pub ruler: RECT,
+    /// The D3D12 viewport child window rect (preview canvas area,
+    /// excluding the toolbar).
     pub viewport: RECT,
+    /// The viewport toolbar rect (transport controls, bottom of preview).
+    pub viewport_toolbar: RECT,
 }
 
 impl Layout {
@@ -98,8 +105,27 @@ impl Layout {
             right: pg_x + row_w,
             bottom: inner_y + inner_h,
         };
+        // Ruler is the top strip of the timeline panel.
+        l.ruler = RECT {
+            left: l.timeline.left,
+            top: l.timeline.top,
+            right: l.timeline.right,
+            bottom: l.timeline.top + RULER_H,
+        };
 
-        l.viewport = l.preview;
+        // Viewport canvas = preview minus toolbar strip at bottom.
+        l.viewport_toolbar = RECT {
+            left: l.preview.left,
+            top: l.preview.bottom - TOOLBAR_H,
+            right: l.preview.right,
+            bottom: l.preview.bottom,
+        };
+        l.viewport = RECT {
+            left: l.preview.left,
+            top: l.preview.top,
+            right: l.preview.right,
+            bottom: l.preview.bottom - TOOLBAR_H,
+        };
         l
     }
 }
@@ -124,9 +150,15 @@ mod tests {
     }
 
     #[test]
-    fn layout_viewport_equals_preview() {
+    fn layout_viewport_is_preview_minus_toolbar() {
         let l = Layout::compute(1280, 800);
-        assert_eq!(l.viewport, l.preview);
+        // Viewport canvas = preview minus toolbar strip at bottom.
+        assert_eq!(l.viewport.left, l.preview.left);
+        assert_eq!(l.viewport.right, l.preview.right);
+        assert_eq!(l.viewport.top, l.preview.top);
+        assert_eq!(l.viewport.bottom, l.preview.bottom - TOOLBAR_H);
+        assert_eq!(l.viewport_toolbar.bottom, l.preview.bottom);
+        assert_eq!(l.viewport_toolbar.top, l.preview.bottom - TOOLBAR_H);
     }
 
     #[test]

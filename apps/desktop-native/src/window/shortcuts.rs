@@ -259,16 +259,142 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
             if GetClientRect(hwnd, &mut client).is_ok() {
                 let layout =
                     Layout::compute(client.right - client.left, client.bottom - client.top);
+
+                // --- Tab bar click: switch active tab ---
+                if x >= layout.tabbar.left
+                    && x <= layout.tabbar.right
+                    && y >= layout.tabbar.top
+                    && y <= layout.tabbar.bottom
+                {
+                    for (i, tr) in state.tab_rects.iter().enumerate() {
+                        if x >= tr.left && x <= tr.right && y >= tr.top && y <= tr.bottom {
+                            if let Some(&tab) = crate::state::AssetsTab::ALL.get(i) {
+                                state.active_tab = tab;
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                // --- Viewport toolbar hit-testing ---
+                let tb = state.toolbar_btns;
+                if y >= layout.viewport_toolbar.top && y <= layout.viewport_toolbar.bottom {
+                    let fps = state.project.settings.fps_label();
+                    let duration = timeline_duration(&state.project);
+                    // Play/Pause.
+                    if x >= tb.play_pause.left && x <= tb.play_pause.right {
+                        state.playing = !state.playing;
+                        return true;
+                    }
+                    // Jump to start.
+                    if x >= tb.jump_start.left && x <= tb.jump_start.right {
+                        let _ = state.project.seek_seconds(0.0);
+                        return true;
+                    }
+                    // Jump to end.
+                    if x >= tb.jump_end.left && x <= tb.jump_end.right {
+                        let _ = state.project.seek_seconds(duration);
+                        return true;
+                    }
+                    // Step backward (1 frame).
+                    if x >= tb.step_back.left && x <= tb.step_back.right {
+                        let cur = state.project.playhead.as_seconds();
+                        let step = 1.0 / fps as f64;
+                        let _ = state.project.seek_seconds((cur - step).max(0.0));
+                        return true;
+                    }
+                    // Step forward (1 frame).
+                    if x >= tb.step_fwd.left && x <= tb.step_fwd.right {
+                        let cur = state.project.playhead.as_seconds();
+                        let step = 1.0 / fps as f64;
+                        let _ = state.project.seek_seconds(cur + step);
+                        return true;
+                    }
+                    // Loop toggle.
+                    if x >= tb.loop_btn.left && x <= tb.loop_btn.right {
+                        state.looping = !state.looping;
+                        return true;
+                    }
+                    // Fullscreen toggle (placeholder — no fullscreen impl yet).
+                    if x >= tb.fullscreen.left && x <= tb.fullscreen.right {
+                        // TODO: implement fullscreen toggle (SW_MAXIMIZE or exclusive fullscreen).
+                        return true;
+                    }
+                }
+
+                // --- Header button hit-testing ---
+                let hb = state.header_btns;
+                if y >= layout.header.top && y <= layout.header.bottom {
+                    // Close button.
+                    if x >= hb.close.left && x <= hb.close.right {
+                        let _ = windows::Win32::UI::WindowsAndMessaging::PostMessageW(
+                            Some(hwnd),
+                            windows::Win32::UI::WindowsAndMessaging::WM_CLOSE,
+                            windows::Win32::Foundation::WPARAM(0),
+                            windows::Win32::Foundation::LPARAM(0),
+                        );
+                        return true;
+                    }
+                    // Maximize button.
+                    if x >= hb.maximize.left && x <= hb.maximize.right {
+                        let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                            hwnd,
+                            if windows::Win32::UI::WindowsAndMessaging::IsZoomed(hwnd).as_bool() {
+                                windows::Win32::UI::WindowsAndMessaging::SW_RESTORE
+                            } else {
+                                windows::Win32::UI::WindowsAndMessaging::SW_MAXIMIZE
+                            },
+                        );
+                        return true;
+                    }
+                    // Minimize button.
+                    if x >= hb.minimize.left && x <= hb.minimize.right {
+                        let _ = windows::Win32::UI::WindowsAndMessaging::ShowWindow(
+                            hwnd,
+                            windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE,
+                        );
+                        return true;
+                    }
+                    // Export button.
+                    if x >= hb.export_btn.left && x <= hb.export_btn.right {
+                        drop(state);
+                        return handle_export(hwnd);
+                    }
+                    // Settings button.
+                    if x >= hb.settings_btn.left && x <= hb.settings_btn.right {
+                        drop(state);
+                        return handle_settings(hwnd);
+                    }
+                }
+
                 let tl = &layout.timeline;
                 let readout_h = 22;
                 let list_bottom = tl.bottom - readout_h;
                 let panel_w = tl.right - tl.left;
-                let duration = timeline_duration(&state.project);
+                let _duration = timeline_duration(&state.project);
+
+                // Ruler click-to-seek: if click is in the ruler strip,
+                // convert x to time and seek.
+                let ruler_bottom = tl.top + crate::theme::RULER_H;
+                if y >= tl.top && y <= ruler_bottom {
+                    let header_right = tl.left + 8 + 140;
+                    let clip_area_left = header_right + 4;
+                    let seconds = crate::window::x_to_time(
+                        x,
+                        state.zoom_pps,
+                        state.scroll_seconds,
+                        clip_area_left,
+                    );
+                    if seconds >= 0.0 && state.project.seek_seconds(seconds) {
+                        return true;
+                    }
+                }
 
                 // Step 1: hit-test clip blocks (pixel-accurate via zoom/scroll).
+                // Tracks start below the ruler.
                 let mut clicked_clip: Option<(usize, usize)> = None;
-                if y >= tl.top && y <= list_bottom {
-                    let mut row_y = tl.top + 8;
+                if y >= ruler_bottom && y <= list_bottom {
+                    let mut row_y = ruler_bottom + crate::theme::TRACK_PAD;
                     for (ti, track) in state.project.scene.tracks.iter().enumerate() {
                         if row_y + 28 > list_bottom {
                             break;

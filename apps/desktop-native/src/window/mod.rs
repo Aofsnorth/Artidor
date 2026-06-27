@@ -8,9 +8,12 @@ use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::UI::WindowsAndMessaging::{GWLP_USERDATA, GetClientRect, GetWindowLongPtrW};
 
 use crate::render::Renderer;
+use crate::state::AssetsTab;
 use crate::state::{History, Project};
 use crate::theme::TIMELINE_MIN_SECONDS;
 use crate::ui::font::FontCache;
+use crate::ui::header::HeaderButtons;
+use crate::ui::viewport_toolbar::ToolbarButtons;
 use crate::ui::welcome::WelcomeState;
 
 /// App mode: welcome screen (no project open) vs editor (project loaded).
@@ -84,6 +87,16 @@ pub struct WindowState {
     pub last_autosave_ms: i64,
     /// True if the project has been modified since the last auto-save.
     pub dirty: bool,
+    /// Header button rects for click hit-testing.
+    pub header_btns: HeaderButtons,
+    /// Active assets panel tab (Media/Effects/Templates/etc).
+    pub active_tab: AssetsTab,
+    /// Tab button rects from the last paint, for click hit-testing.
+    pub tab_rects: Vec<RECT>,
+    /// Viewport toolbar button rects for click hit-testing.
+    pub toolbar_btns: ToolbarButtons,
+    /// Loop playback toggle.
+    pub looping: bool,
 }
 
 impl WindowState {
@@ -106,6 +119,11 @@ impl WindowState {
             welcome: WelcomeState::new(),
             last_autosave_ms: 0,
             dirty: false,
+            header_btns: HeaderButtons::default(),
+            active_tab: AssetsTab::Assets,
+            tab_rects: Vec::new(),
+            toolbar_btns: ToolbarButtons::default(),
+            looping: false,
         }
     }
 }

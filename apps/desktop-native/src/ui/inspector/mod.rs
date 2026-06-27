@@ -36,14 +36,16 @@ pub unsafe fn draw_properties_panel(
             if let Some(track) = project.scene.tracks.get(ti) {
                 if let Some(element) = track.elements.get(ei) {
                     draw_text_left(hdc, "Clip Properties", &header, TEXT_DIM);
-                    let fields: [(&str, String); 5] = [
+
+                    // Basic info section.
+                    let basic_fields: [(&str, String); 5] = [
                         ("Name", element.name.clone()),
                         ("ID", element.id.clone()),
                         ("Track", track.name.clone()),
                         ("Start", format!("{:.2}s", element.start_seconds)),
                         ("Duration", format!("{:.2}s", element.duration_seconds)),
                     ];
-                    for (label, value) in &fields {
+                    for (label, value) in &basic_fields {
                         if y + PROP_ROW_H > panel.bottom {
                             break;
                         }
@@ -63,6 +65,106 @@ pub unsafe fn draw_properties_panel(
                         draw_text_left(hdc, value, &value_rect, TEXT_DIM);
                         y += PROP_ROW_H;
                     }
+
+                    // Transform section header.
+                    if y + PROP_ROW_H <= panel.bottom {
+                        let sect_rect = RECT {
+                            left,
+                            top: y + 4,
+                            right,
+                            bottom: y + PROP_ROW_H + 4,
+                        };
+                        draw_text_left(hdc, "Transform", &sect_rect, TEXT_DIM);
+                        y += PROP_ROW_H + 8;
+                    }
+
+                    // Transform properties.
+                    let transform_fields: [(&str, String); 7] = [
+                        ("Pos X", format!("{:.3}", element.transform.center_x)),
+                        ("Pos Y", format!("{:.3}", element.transform.center_y)),
+                        ("Width", format!("{:.3}", element.transform.width)),
+                        ("Height", format!("{:.3}", element.transform.height)),
+                        (
+                            "Rotation",
+                            format!("{:.1}\u{00B0}", element.transform.rotation_degrees),
+                        ),
+                        (
+                            "Flip X",
+                            if element.transform.flip_x {
+                                "Yes"
+                            } else {
+                                "No"
+                            }
+                            .to_string(),
+                        ),
+                        (
+                            "Flip Y",
+                            if element.transform.flip_y {
+                                "Yes"
+                            } else {
+                                "No"
+                            }
+                            .to_string(),
+                        ),
+                    ];
+                    for (label, value) in &transform_fields {
+                        if y + PROP_ROW_H > panel.bottom {
+                            break;
+                        }
+                        let label_rect = RECT {
+                            left,
+                            top: y,
+                            right: left + 70,
+                            bottom: y + PROP_ROW_H,
+                        };
+                        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
+                        let value_rect = RECT {
+                            left: left + 78,
+                            top: y,
+                            right,
+                            bottom: y + PROP_ROW_H,
+                        };
+                        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+                        y += PROP_ROW_H;
+                    }
+
+                    // Compositing section.
+                    if y + PROP_ROW_H <= panel.bottom {
+                        let sect_rect = RECT {
+                            left,
+                            top: y + 4,
+                            right,
+                            bottom: y + PROP_ROW_H + 4,
+                        };
+                        draw_text_left(hdc, "Compositing", &sect_rect, TEXT_DIM);
+                        y += PROP_ROW_H + 8;
+                    }
+
+                    let comp_fields: [(&str, String); 2] = [
+                        ("Opacity", format!("{:.0}%", element.opacity * 100.0)),
+                        ("Blend", element.blend_mode.label().to_string()),
+                    ];
+                    for (label, value) in &comp_fields {
+                        if y + PROP_ROW_H > panel.bottom {
+                            break;
+                        }
+                        let label_rect = RECT {
+                            left,
+                            top: y,
+                            right: left + 70,
+                            bottom: y + PROP_ROW_H,
+                        };
+                        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
+                        let value_rect = RECT {
+                            left: left + 78,
+                            top: y,
+                            right,
+                            bottom: y + PROP_ROW_H,
+                        };
+                        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+                        y += PROP_ROW_H;
+                    }
+
                     if y + PROP_ROW_H <= panel.bottom {
                         let hint_rect = RECT {
                             left,
