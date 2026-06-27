@@ -119,10 +119,7 @@ fn panel_card() -> gpui::Div {
 }
 
 /// Assets panel card.
-fn build_assets_card(
-    app: &ArtidorApp,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn build_assets_card(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     panel_card()
         .w(theme::ASSETS_WIDTH)
         .h_full()
@@ -145,10 +142,7 @@ fn build_preview_card(
 }
 
 /// Properties panel card.
-fn build_properties_card(
-    app: &ArtidorApp,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn build_properties_card(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     panel_card()
         .w(theme::INSPECTOR_WIDTH)
         .h_full()
@@ -157,10 +151,7 @@ fn build_properties_card(
 }
 
 /// AI copilot panel card.
-fn build_ai_card(
-    app: &ArtidorApp,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn build_ai_card(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     panel_card()
         .w(theme::ASSETS_WIDTH)
         .h_full()
@@ -169,10 +160,7 @@ fn build_ai_card(
 }
 
 /// Timeline panel card.
-fn build_timeline_card(
-    app: &ArtidorApp,
-    entity: Entity<ArtidorApp>,
-) -> impl IntoElement {
+fn build_timeline_card(app: &ArtidorApp, entity: Entity<ArtidorApp>) -> impl IntoElement {
     panel_card()
         .h(theme::TIMELINE_HEIGHT)
         .w_full()

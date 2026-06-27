@@ -187,9 +187,5 @@ fn format_aspect(width: u32, height: u32) -> String {
 
 /// Greatest common divisor.
 fn gcd(a: u32, b: u32) -> u32 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    if b == 0 { a } else { gcd(b, a % b) }
 }

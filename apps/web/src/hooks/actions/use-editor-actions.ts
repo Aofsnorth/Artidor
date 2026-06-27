@@ -28,11 +28,9 @@ import {
 	clearActiveScope,
 	type ScopeEntry,
 } from "@/lib/selection/scope";
-import {
-	decodeAndCache,
-	getCacheKey,
-} from "@/components/editor/panels/timeline/audio-waveform";
-import { yieldToEventLoop } from "@/lib/media/yield";
+import { extractClipAudio } from "@/lib/media/mediabunny";
+import { decodeAudioToFloat32 } from "@/lib/media/audio";
+import { detectBeatsAsync } from "@/lib/media/beat-detection";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -953,77 +951,49 @@ export function useEditorActions() {
 			toast.loading("Analyzing beats...", { id: "beat-analysis" });
 
 			try {
-				let audioUrl: string | undefined;
-				let mediaFile: File | undefined;
+				// Use the same fast path as the AI detect_beats tool:
+				// extractClipAudio (mediabunny, has yielding) →
+				// decodeAudioToFloat32 at 8kHz mono (minimal data) →
+				// detectBeatsAsync (Web Worker — no UI freeze).
+				//
+				// This replaces the old main-thread path that called
+				// decodeAndCache (full-quality decode + peak scan on main
+				// thread), which blocked the UI for 5-10 seconds on long
+				// audio files.
+				const blob = await extractClipAudio({
+					element: element as never,
+					mediaAssets,
+				});
+				const { samples, sampleRate } = await decodeAudioToFloat32({
+					audioBlob: blob,
+					sampleRate: 8000,
+				});
 
-				if (element.type === "audio") {
-					audioUrl =
-						element.sourceType === "library"
-							? element.sourceUrl
-							: mediaAsset?.url;
-					mediaFile =
-						element.sourceType === "library" ? undefined : mediaAsset?.file;
-				} else {
-					audioUrl = mediaAsset?.url;
-					mediaFile = mediaAsset?.file;
-				}
+				const beats = await detectBeatsAsync({
+					samples,
+					sampleRate,
+					onProgress: (progress) => {
+						const pct = Math.round(progress * 100);
+						toast.loading(`Analyzing beats… ${pct}%`, { id: "beat-analysis" });
+					},
+				});
 
-				const cacheKey = getCacheKey(audioUrl, mediaFile);
-				const decoded = await decodeAndCache(cacheKey, audioUrl, mediaFile);
-
-				const peaks = decoded.peakBuffer;
-				const safePeak = Math.max(decoded.globalPeak, 0.01);
-				const logBase = Math.log1p(1);
-
+				// Convert detected beats to bookmarks, offset by trimStart
+				// so they align with the element's position on the timeline.
+				const trimStartTicks = element.trimStart ?? 0;
 				const newBookmarks = [...(element.bookmarks ?? [])];
-				const _blockDurationTicks = (TICKS_PER_SECOND * 256) / 44100; // rough approximation, PEAK_BLOCK_SIZE=256 and ~44100 sampleRate
 
-				// Scan for beats using the same heuristic as the visualizer.
-				// Yield periodically so the UI stays responsive during large
-				// audio files (the peak buffer can be tens of thousands of
-				// entries for long clips).
-				for (let i = 1; i < peaks.length - 1; i++) {
-					if ((i & 4095) === 0) await yieldToEventLoop();
-					const normalized = Math.min(1, peaks[i] / safePeak);
-					const scaled = Math.log1p(normalized) / logBase;
-					const leftPeak = peaks[i - 1] ?? 0;
-					const rightPeak = peaks[i + 1] ?? 0;
+				for (const beat of beats) {
+					const beatTicks = Math.round(beat.timeSeconds * TICKS_PER_SECOND);
+					const absoluteTicks = trimStartTicks + beatTicks;
 
-					const isBeat =
-						scaled > 0.32 && peaks[i] >= leftPeak && peaks[i] >= rightPeak;
-					if (isBeat) {
-						// i is the block index. PEAK_BLOCK_SIZE is 256
-						// We don't have the exact sampleRate here, but typical is 44100
-						// Actually we can approximate time using block duration
-						// but wait, we need exact time. bufferLength is the total samples.
-						// time = (i * 256) / sampleRate. sampleRate = bufferLength / sourceDurationSeconds
-						const sourceDurationSeconds = element.sourceDuration
-							? element.sourceDuration / TICKS_PER_SECOND
-							: (element.duration + element.trimStart + element.trimEnd) /
-								TICKS_PER_SECOND;
-
-						const sampleRate = decoded.bufferLength / sourceDurationSeconds;
-						const timeInSeconds = (i * 256) / sampleRate;
-						const timeInTicks = Math.round(timeInSeconds * TICKS_PER_SECOND);
-
-						// Only add if it's within the trimmed bounds
-						const trimmedEnd =
-							element.sourceDuration ??
-							element.duration + element.trimStart + element.trimEnd;
-						if (
-							timeInTicks >= element.trimStart &&
-							timeInTicks <= trimmedEnd - element.trimEnd
-						) {
-							// Avoid duplicates
-							if (
-								!newBookmarks.some(
-									(b) =>
-										Math.abs(b.time - timeInTicks) < TICKS_PER_SECOND * 0.1,
-								)
-							) {
-								newBookmarks.push({ time: timeInTicks });
-							}
-						}
+					// Avoid duplicates (within 0.1s of existing bookmark)
+					if (
+						!newBookmarks.some(
+							(b) => Math.abs(b.time - absoluteTicks) < TICKS_PER_SECOND * 0.1,
+						)
+					) {
+						newBookmarks.push({ time: absoluteTicks });
 					}
 				}
 
