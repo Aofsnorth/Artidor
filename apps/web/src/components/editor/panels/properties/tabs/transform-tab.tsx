@@ -29,6 +29,7 @@ import { KeyframeToggle } from "../components/keyframe-toggle";
 import { useKeyframedNumberProperty } from "../hooks/use-keyframed-number-property";
 import { usePropertiesStore } from "../stores/properties-store";
 import { BlendingTab } from "./blending-tab";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 
 export function parseNumericInput({ input }: { input: string }): number | null {
 	const parsed = parseFloat(input);
@@ -465,15 +466,25 @@ export function TransformTab({
 				<SectionHeader
 					className="h-10 px-3"
 					trailing={
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onClick={handleResetAll}
-							className="h-7 rounded-md px-2 text-xs text-white/45 hover:bg-white/[0.06] hover:text-white"
-						>
-							Reset
-						</Button>
+						<div className="flex items-center gap-1">
+							<CopyPasteButtons
+								category="Transform"
+								extract={(el) =>
+									"transform" in el && el.transform
+										? { transform: { ...el.transform } }
+										: {}
+								}
+							/>
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onClick={handleResetAll}
+								className="h-7 rounded-md px-2 text-xs text-white/45 hover:bg-white/[0.06] hover:text-white"
+							>
+								Reset
+							</Button>
+						</div>
 					}
 				>
 					<SectionTitle className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">

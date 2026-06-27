@@ -64,12 +64,18 @@ export function AuroraOverlay() {
 			}}
 			style={{ cursor: coEditMode ? "default" : "not-allowed" }}
 		>
-			{/* Animated border — thin white glow around the editor area.
-			    Center is transparent; only the border shimmer is visible.
-			    The mask is applied directly via CSS (.ai-aurora-border)
-			    so there is no separate dark layer that could cover the
-			    editor if the mask fails. */}
-			<div className="ai-aurora-border absolute inset-0" />
+			{/* Aurora overlay — multiple animated layers that create a
+			    flowing light effect around the screen perimeter:
+			    1. Ring: pulsing box-shadow border (always visible)
+			    2. Orbs: 3 large blurred glow circles traveling along edges
+			    3. Sheen: a bright streak that sweeps across the top
+			    No CSS mask or blend modes — all layers are simple
+			    absolutely-positioned divs with blur filters. */}
+			<div className="ai-aurora-ring absolute inset-0" />
+			<div className="ai-aurora-orb ai-aurora-orb-1" />
+			<div className="ai-aurora-orb ai-aurora-orb-2" />
+			<div className="ai-aurora-orb ai-aurora-orb-3" />
+			<div className="ai-aurora-sheen" />
 
 			{/* Status badge — top center, shows what the AI is doing */}
 			<div className="absolute top-3 left-1/2 -translate-x-1/2">

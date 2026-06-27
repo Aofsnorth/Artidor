@@ -28,6 +28,7 @@ import {
 import { cn } from "@/utils/ui";
 import { Separator } from "@/components/ui/separator";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 
 export function StandaloneEffectTab({
 	element,
@@ -160,18 +161,28 @@ export function ClipEffectsTab({
 		<div className="flex flex-col h-full">
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center justify-between">
 				<SectionTitle>Effects</SectionTitle>
-				{hasCopiedEffect && (
-					<Button
-						variant="ghost"
-						size="icon"
-						className="size-7"
-						onClick={handlePasteEffect}
-						title="Paste effect"
-						aria-label="Paste effect"
-					>
-						<HugeiconsIcon icon={ClipboardIcon} className="size-3.5" />
-					</Button>
-				)}
+				<div className="flex items-center gap-1">
+					<CopyPasteButtons
+						category="Effects"
+						extract={(el) =>
+							"effects" in el && el.effects
+								? { effects: el.effects.map((e) => ({ ...e })) }
+								: {}
+						}
+					/>
+					{hasCopiedEffect && (
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-7"
+							onClick={handlePasteEffect}
+							title="Paste effect"
+							aria-label="Paste effect"
+						>
+							<HugeiconsIcon icon={ClipboardIcon} className="size-3.5" />
+						</Button>
+					)}
+				</div>
 			</div>
 			{effects.length === 0 ? (
 				<EmptyView />

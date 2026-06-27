@@ -142,6 +142,14 @@ export class AIManager {
 	 */
 	private isProcessing = false;
 	/**
+	 * Monotonically increasing cycle counter. Each processMessage call
+	 * captures its own cycle number at the start. In the finally block,
+	 * cleanup only runs if this is still the latest cycle — this prevents
+	 * a cancelled cycle's finally from clobbering a new cycle's takeover
+	 * state (race condition when the user revokes + immediately resends).
+	 */
+	private processCycle = 0;
+	/**
 	 * Maps a user message id → the command-history length at the moment
 	 * before the AI started processing that message. Used by `revert()`
 	 * to undo all editor changes the AI made in response to that message.
@@ -511,6 +519,14 @@ export class AIManager {
 	 * The loop runs up to MAX_TOOL_ROUNDS to prevent infinite cycles.
 	 */
 	private async processMessage(text: string): Promise<void> {
+		// Assign a unique cycle number so the finally block can detect
+		// if a newer processMessage has started (via cancel+resend or
+		// steer). If a newer cycle exists, this cycle's finally must NOT
+		// reset isProcessing or end the takeover — the newer cycle owns
+		// those. Without this guard, the old cycle's finally clobbers
+		// the new cycle's takeover state (race condition that makes the
+		// aurora overlay + revoke button vanish after revoke+resend).
+		const myCycle = ++this.processCycle;
 		this.isProcessing = true;
 		try {
 		const ai = useAIStore.getState();
@@ -727,10 +743,20 @@ export class AIManager {
 		// If there are queued messages, send the next one.
 		this.drainQueue();
 		} finally {
-			this.isProcessing = false;
-			// Safety net: ensure takeover ends even on early returns.
-			if (useAIControlStore.getState().takeoverState !== "idle") {
-				useAIControlStore.getState().endTakeover();
+			// Only clean up if we're still the latest cycle. If a newer
+			// processMessage has started (cancel+resend, steer), it has
+			// its own cycle number and its own finally block — cleaning
+			// up here would clobber the new cycle's isProcessing flag
+			// and takeover state, causing the aurora overlay + revoke
+			// button to vanish and the AI to appear stuck.
+			if (this.processCycle === myCycle) {
+				this.isProcessing = false;
+				// Safety net: ensure takeover ends even on early returns
+				// (e.g. uncaught throw, max-rounds exit). On normal
+				// completion, endTakeover() was already called above.
+				if (useAIControlStore.getState().takeoverState !== "idle") {
+					useAIControlStore.getState().endTakeover();
+				}
 			}
 		}
 	}

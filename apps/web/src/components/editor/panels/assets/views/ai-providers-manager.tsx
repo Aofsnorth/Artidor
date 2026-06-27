@@ -612,6 +612,18 @@ function ProviderFormDialog({
 	const [puterModelsError, setPuterModelsError] = useState<string | null>(
 		null,
 	);
+	// Fetched models for non-Puter providers (OpenAI-compatible, Ollama,
+	// Anthropic). Populated when the user clicks "Fetch models" — calls
+	// the server-side /api/ai/models route which proxies the request to
+	// avoid CORS. Same shape as puterModels so we can reuse
+	// SearchableModelSelect.
+	const [fetchedModels, setFetchedModels] = useState<
+		Array<{ id: string; provider: string; name?: string }>
+	>([]);
+	const [fetchedModelsLoading, setFetchedModelsLoading] = useState(false);
+	const [fetchedModelsError, setFetchedModelsError] = useState<string | null>(
+		null,
+	);
 	// Puter.js media generation models — fetched alongside chat models
 	// so the media model fields can show dropdowns instead of free text.
 	const [puterMediaModels, setPuterMediaModels] = useState<{
@@ -670,6 +682,50 @@ function ProviderFormDialog({
 			cancelled = true;
 		};
 	}, [kind]);
+
+	// Fetch available models from non-Puter providers via the server-side
+	// /api/ai/models route. This avoids CORS — the browser can't call
+	// OpenAI's /v1/models or Anthropic's /v1/models directly. Requires
+	// baseUrl to be set; apiKey is required for OpenAI/Anthropic but not
+	// for Ollama.
+	const handleFetchModels = useCallback(async () => {
+		if (!baseUrl.trim()) return;
+		setFetchedModelsLoading(true);
+		setFetchedModelsError(null);
+		setFetchedModels([]);
+		try {
+			const res = await fetch("/api/ai/models", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					baseUrl: baseUrl.trim(),
+					apiKey: apiKey.trim(),
+					kind,
+				}),
+			});
+			const data = (await res.json()) as {
+				models?: Array<{ id: string; provider: string; name?: string }>;
+				error?: string;
+			};
+			if (!res.ok || data.error) {
+				setFetchedModelsError(data.error ?? `HTTP ${res.status}`);
+			} else if (data.models && data.models.length > 0) {
+				setFetchedModels(data.models);
+				// Auto-select the first model if none is set yet.
+				if (!model) {
+					setModel(data.models[0].id);
+				}
+			} else {
+				setFetchedModelsError("No models returned by the provider.");
+			}
+		} catch (err) {
+			setFetchedModelsError(
+				err instanceof Error ? err.message : "Failed to fetch models.",
+			);
+		} finally {
+			setFetchedModelsLoading(false);
+		}
+	}, [baseUrl, apiKey, kind, model]);
 
 	const handleKindChange = useCallback(
 		(next: ProviderKind) => {
@@ -1009,17 +1065,79 @@ function ProviderFormDialog({
 										errors.model && "border-red-400/40",
 									)}
 								/>
+							) : fetchedModels.length > 0 ? (
+								<div className="flex flex-col gap-1.5">
+									<SearchableModelSelect
+										id="provider-model"
+										value={model}
+										onChange={setModel}
+										options={fetchedModels}
+										placeholder="Select a model…"
+										className={cn(
+											errors.model && "border-red-400/40",
+										)}
+									/>
+									<button
+										type="button"
+										onClick={handleFetchModels}
+										disabled={fetchedModelsLoading}
+										className="self-start text-[10px] text-white/40 transition-colors hover:text-white/60"
+									>
+										{fetchedModelsLoading ? "Refreshing…" : "Refresh models"}
+									</button>
+								</div>
 							) : (
-								<Input
-									id="provider-model"
-									value={model}
-									placeholder="gpt-4o-mini"
-									onChange={(e) => setModel(e.target.value)}
-									className={cn(
-										"font-mono",
-										errors.model && "border-red-400/40",
+								<div className="flex flex-col gap-1.5">
+									<div className="flex gap-1.5">
+										<Input
+											id="provider-model"
+											value={model}
+											placeholder="gpt-4o-mini"
+											onChange={(e) => setModel(e.target.value)}
+											className={cn(
+												"font-mono",
+												errors.model && "border-red-400/40",
+											)}
+										/>
+										<button
+											type="button"
+											onClick={handleFetchModels}
+											disabled={
+												fetchedModelsLoading || !baseUrl.trim()
+											}
+											title={
+												!baseUrl.trim()
+													? "Enter a base URL first"
+													: "Fetch available models from this provider"
+											}
+											className={cn(
+												"flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[10.5px] font-medium transition-colors",
+												fetchedModelsLoading || !baseUrl.trim()
+													? "cursor-not-allowed border-white/10 text-white/25"
+													: "border-white/15 text-white/70 hover:border-white/30 hover:bg-white/[0.06] hover:text-white",
+											)}
+										>
+											<HugeiconsIcon
+												icon={fetchedModelsLoading ? Loading02Icon : Search01Icon}
+												className={cn(
+													"size-3",
+													fetchedModelsLoading && "animate-spin",
+												)}
+											/>
+											Fetch
+										</button>
+									</div>
+									{fetchedModelsError && (
+										<p className="text-[10px] text-amber-300/80">
+											{fetchedModelsError} — you can still type a model id manually.
+										</p>
 									)}
-								/>
+									{!fetchedModelsError && (
+										<p className="text-[10px] text-white/25">
+											Type a model id or click Fetch to load available models.
+										</p>
+									)}
+								</div>
 							)
 						) : (
 							<Input

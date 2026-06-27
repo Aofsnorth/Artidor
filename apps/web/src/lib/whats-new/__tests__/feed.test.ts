@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the view-media / permission-bypass feature", () => {
+	test("the newest entry is the per-property copy/paste feature", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-06-ai-view-media-permission-bypass",
+			"2026-07-06-per-property-copy-paste",
 		);
 	});
 });

@@ -37,6 +37,7 @@ import { useKeyframedColorProperty } from "../hooks/use-keyframed-color-property
 import { useKeyframedNumberProperty } from "../hooks/use-keyframed-number-property";
 import { useElementPlayhead } from "../hooks/use-element-playhead";
 import { KeyframeToggle } from "../components/keyframe-toggle";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 import { isPropertyAtDefault, parseNumericInput } from "./transform-tab";
 import { resolveColorAtTime, resolveNumberAtTime } from "@/lib/animation";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -115,7 +116,28 @@ function StyleSection({
 
 	return (
 		<Section collapsible defaultOpen sectionKey={`${element.id}:style`}>
-			<SectionHeader>
+			<SectionHeader
+				trailing={
+					<CopyPasteButtons
+						category="Text Style"
+						extract={(el) => {
+							if (el.type !== "text") return {};
+							const t = el as TextElement;
+							return {
+								fontSize: t.fontSize,
+								fontFamily: t.fontFamily,
+								color: t.color,
+								textAlign: t.textAlign,
+								fontWeight: t.fontWeight,
+								fontStyle: t.fontStyle,
+								textDecoration: t.textDecoration,
+								letterSpacing: t.letterSpacing,
+								lineHeight: t.lineHeight,
+							};
+						}}
+					/>
+				}
+			>
 				<SectionTitle>Style</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
@@ -1095,7 +1117,21 @@ function EffectsSection({
 
 	return (
 		<Section collapsible sectionKey={`${element.id}:effects`}>
-			<SectionHeader>
+			<SectionHeader
+				trailing={
+					<CopyPasteButtons
+						category="Text Effects"
+						extract={(el) => {
+							if (el.type !== "text") return {};
+							const t = el as TextElement;
+							return {
+								stroke: t.stroke ? { ...t.stroke } : undefined,
+								shadow: t.shadow ? { ...t.shadow } : undefined,
+							};
+						}}
+					/>
+				}
+			>
 				<SectionTitle>Effects</SectionTitle>
 			</SectionHeader>
 			<SectionContent>

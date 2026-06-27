@@ -18,6 +18,7 @@ import { useElementPlayhead } from "../hooks/use-element-playhead";
 import { useKeyframedNumberProperty } from "../hooks/use-keyframed-number-property";
 import { usePropertyDraft } from "../hooks/use-property-draft";
 import { KeyframeToggle } from "../components/keyframe-toggle";
+import { CopyPasteButtons } from "../components/copy-paste-buttons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { VolumeHighIcon, MusicNote03Icon } from "@hugeicons/core-free-icons";
 import {
@@ -260,7 +261,39 @@ export function AudioTab({
 				sectionKey={`${element.id}:audio:${variant}`}
 				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
 			>
-				<SectionHeader className="h-10 px-3">
+				<SectionHeader
+					className="h-10 px-3"
+					trailing={
+						<CopyPasteButtons
+							category="Audio"
+							extract={(el) => {
+								const style: {
+									volume?: number;
+									muted?: boolean;
+									pan?: number;
+									fadeInDuration?: number;
+									fadeOutDuration?: number;
+								} = {};
+								if ("volume" in el && el.volume !== undefined) {
+									style.volume = el.volume;
+								}
+								if ("muted" in el && el.muted !== undefined) {
+									style.muted = el.muted;
+								}
+								if ("pan" in el && el.pan !== undefined) {
+									style.pan = el.pan;
+								}
+								if ("fadeInDuration" in el && el.fadeInDuration !== undefined) {
+									style.fadeInDuration = el.fadeInDuration;
+								}
+								if ("fadeOutDuration" in el && el.fadeOutDuration !== undefined) {
+									style.fadeOutDuration = el.fadeOutDuration;
+								}
+								return style;
+							}}
+						/>
+					}
+				>
 					<SectionTitle className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
 						<HugeiconsIcon icon={MusicNote03Icon} size={14} />
 						{variant === "audio-element" ? "Audio Track" : "Audio"}
