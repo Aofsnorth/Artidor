@@ -136,6 +136,7 @@ import {
 } from "@/components/ui/popover";
 import { AIProvidersManager } from "./ai-providers-manager";
 import Markdown from "react-markdown";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import {
 	getMcpConnectionManager,
 	useMcpStore,
@@ -150,6 +151,23 @@ import {
 	useAssetsPanelStore,
 	type Tab as AssetsTab,
 } from "@/stores/assets-panel-store";
+
+/**
+ * Sanitize schema for AI-generated markdown. Extends the rehype-sanitize
+ * default (which strips event-handler attributes, javascript: URLs, and
+ * other XSS vectors) to allow the subset of elements the AI panel renders.
+ * Without this, `allowedElements` alone only filters tag names — malicious
+ * attributes like `onmouseover` or `href="javascript:..."` pass through.
+ */
+const aiMarkdownSchema = {
+	...defaultSchema,
+	attributes: {
+		...defaultSchema.attributes,
+		a: [...(defaultSchema.attributes?.a ?? []), "href"],
+		code: [...(defaultSchema.attributes?.code ?? []), "className"],
+	},
+	tagNames: ["p", "strong", "em", "code", "pre", "ul", "ol", "li", "a", "br"],
+};
 
 /**
  * Hashtag → tab mapping. Built from the assets-panel tab definitions.
@@ -2829,17 +2847,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 							</div>
 							<div className="prose prose-invert prose-sm max-w-none text-[12px] leading-relaxed text-cyan-100">
 								<Markdown
-									allowedElements={[
-										"p",
-										"strong",
-										"em",
-										"code",
-										"ul",
-										"ol",
-										"li",
-										"a",
-										"br",
-									]}
+									rehypePlugins={[[rehypeSanitize, aiMarkdownSchema]]}
 								>
 									{linkifyHashtags(message.content)}
 								</Markdown>
@@ -2848,18 +2856,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 					) : message.content?.trim() ? (
 						<div className="prose prose-invert prose-sm max-w-none text-white/90 [&_a]:text-white/80 [&_a]:underline [&_code]:rounded [&_code]:bg-white/[0.08] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[10.5px] [&_code]:font-mono [&_pre]:rounded-lg [&_pre]:bg-black/30 [&_pre]:px-2.5 [&_pre]:py-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_strong]:text-white">
 							<Markdown
-								allowedElements={[
-									"p",
-									"strong",
-									"em",
-									"code",
-									"pre",
-									"ul",
-									"ol",
-									"li",
-									"a",
-									"br",
-								]}
+								rehypePlugins={[[rehypeSanitize, aiMarkdownSchema]]}
 								components={{
 									a: ({ href, children }) => {
 										// Intercept hashtag links of the form

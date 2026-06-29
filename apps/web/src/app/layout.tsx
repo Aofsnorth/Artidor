@@ -24,6 +24,19 @@ const serifFont = Playfair_Display({
 
 export const metadata = baseMetaData;
 
+/**
+ * Viewport configuration — ensures the app renders at the correct scale on
+ * mobile devices and respects the user's display scaling / browser zoom.
+ * Without this, mobile browsers default to a ~980px virtual viewport,
+ * making the UI tiny and broken on phones and small tablets.
+ */
+export const viewport = {
+	width: "device-width",
+	initialScale: 1,
+	maximumScale: 5,
+	userScalable: true,
+} as const;
+
 const protectedRoutes = [
 	{
 		path: "/none",

@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { shares } from "@/lib/db/schema";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, checkCreateResourceRateLimit } from "@/lib/rate-limit";
 import {
 	generateManageToken,
 	generateShareId,
@@ -35,6 +35,16 @@ export async function POST(request: Request) {
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
+
+	// Stricter cap on share creation — 10/hour per IP. Prevents resource
+	// exhaustion abuse while staying anonymous (local-first design).
+	const { limited: createLimited } = await checkCreateResourceRateLimit({ request });
+	if (createLimited) {
+		return NextResponse.json(
+			{ error: "Too many shares created. Please wait before creating another." },
+			{ status: 429 },
+		);
 	}
 
 	const json = await request.json().catch(() => null);

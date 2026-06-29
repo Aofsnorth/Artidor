@@ -1,4 +1,5 @@
 import { isIP } from "node:net";
+import { lookup } from "node:dns/promises";
 
 const PRIVATE_IPV4_RANGES: Array<[number, number]> = [
 	[0x00000000, 0x00ffffff],
@@ -40,6 +41,49 @@ export function assertSafeProviderBaseUrl({
 	}
 
 	return parsed;
+}
+
+/**
+ * DNS rebinding defense — resolve the hostname and verify that the
+ * resolved IP is not private/link-local. Without this, an attacker can
+ * register a domain that initially resolves to a public IP (passing the
+ * sync check in assertSafeProviderBaseUrl) but then resolves to an
+ * internal IP (e.g. 169.254.169.254) by the time fetch() connects.
+ *
+ * There is an inherent TOCTOU gap between this check and the subsequent
+ * fetch(), but this makes DNS rebinding significantly harder — the
+ * attacker must flip their DNS response in the millisecond between the
+ * check and the fetch's own resolution.
+ *
+ * Only runs in production (when localhost is not allowed). In dev,
+ * localhost/private IPs are permitted for local LLM servers (LM Studio,
+ * Ollama, etc.).
+ */
+export async function assertSafeProviderUrlDns(url: URL): Promise<void> {
+	const allowLocalhost = process.env.NODE_ENV !== "production";
+	if (allowLocalhost) return;
+
+	const host = url.hostname.toLowerCase();
+	// Skip DNS resolution for literal IPs — already checked synchronously.
+	if (isIP(host) !== 0) return;
+
+	let addresses: string[];
+	try {
+		const result = await lookup(host, { all: true });
+		addresses = result.map((r) => r.address);
+	} catch {
+		// DNS resolution failed — let the fetch fail naturally with a
+		// network error rather than blocking prematurely.
+		return;
+	}
+
+	for (const addr of addresses) {
+		if (isPrivateIp(addr)) {
+			throw new Error(
+				"Provider URL resolves to a private or local network address.",
+			);
+		}
+	}
 }
 
 /**

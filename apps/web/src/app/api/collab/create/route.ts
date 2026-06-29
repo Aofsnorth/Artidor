@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, checkCreateResourceRateLimit } from "@/lib/rate-limit";
 import { createRoomStore } from "@/lib/collab/room-store";
 import { buildJoinUrl } from "@/lib/collab/client";
 import type { CreateRoomResult } from "@/lib/collab/types";
@@ -24,6 +24,16 @@ export async function POST(request: Request) {
 	if (limited) {
 		return Response.json(
 			{ error: "Too many requests" },
+			{ status: 429 },
+		);
+	}
+
+	// Stricter cap on room creation — 10/hour per IP. Prevents resource
+	// exhaustion abuse while staying anonymous (local-first design).
+	const { limited: createLimited } = await checkCreateResourceRateLimit({ request });
+	if (createLimited) {
+		return Response.json(
+			{ error: "Too many rooms created. Please wait before creating another." },
 			{ status: 429 },
 		);
 	}

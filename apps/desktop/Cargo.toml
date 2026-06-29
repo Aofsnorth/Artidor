@@ -13,7 +13,7 @@ compositor = { version = "0.1.0", path = "../../rust/crates/compositor" }
 gpu = { version = "0.1.0", path = "../../rust/crates/gpu" }
 effects = { version = "0.1.0", path = "../../rust/crates/effects" }
 masks = { version = "0.1.0", path = "../../rust/crates/masks" }
-time = { version = "0.1.0", path = "../../rust/crates/time" }
+artidor-time = { version = "0.1.0", path = "../../rust/crates/time" }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "webp"] }
 pollster = "0.3"
 serde = { version = "1", features = ["derive"] }
