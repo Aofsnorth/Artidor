@@ -1,11 +1,10 @@
 import { useCallback, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
-import { extractClipAudio } from "@/lib/media/mediabunny";
-import { decodeAudioToFloat32 } from "@/lib/media/audio";
-import { detectBeatsAsync } from "@/lib/media/beat-detection";
+import { analyzeBeats } from "@/lib/media/beat-analysis";
 import { toast } from "sonner";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { hasMediaId } from "@/lib/timeline/element-utils";
 import type { DetectedBeat } from "@/lib/media/beat-detection-types";
-import type { AudioElement, VideoElement } from "@/lib/timeline";
 
 export interface BeatSyncState {
 	isAnalyzing: boolean;
@@ -54,17 +53,21 @@ export function useBeatSync(): {
 		const id = toast.loading("Detecting beats...");
 
 		try {
-			const blob = await extractClipAudio({
-				element: element as AudioElement | VideoElement,
-				mediaAssets: editor.media.getAssets(),
-			});
-			const { samples, sampleRate } = await decodeAudioToFloat32({
-				audioBlob: blob,
-				sampleRate: 22050,
-			});
-			const beats = await detectBeatsAsync({
-				samples,
-				sampleRate,
+			// Full pipeline runs in a Web Worker — zero UI freeze.
+			const mediaAssets = editor.media.getAssets();
+			const mediaAsset = hasMediaId(element)
+				? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+				: null;
+			if (!mediaAsset?.file) {
+				toast.error("Media file not found", { id });
+				setState(DEFAULT_STATE);
+				return;
+			}
+			const beats = await analyzeBeats({
+				file: mediaAsset.file,
+				trimStartSeconds: (element.trimStart ?? 0) / TICKS_PER_SECOND,
+				durationSeconds: element.duration / TICKS_PER_SECOND,
+				targetSampleRate: 8000,
 				onProgress: (progress) => {
 					const pct = Math.round(progress * 100);
 					toast.loading(`Detecting beats… ${pct}%`, { id });

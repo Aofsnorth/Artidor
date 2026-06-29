@@ -99,7 +99,26 @@ function getWorker(): Worker {
 	worker = new Worker(new URL("./beat-detection-worker.ts", import.meta.url), {
 		type: "module",
 	});
+	// Terminate the singleton worker when the page is unloaded to avoid
+	// leaking it in environments where the page lifecycle is extended
+	// (e.g. bfcache, Tauri webview).
+	if (typeof window !== "undefined") {
+		window.addEventListener("pagehide", () => terminateBeatWorker(), {
+			once: true,
+		});
+	}
 	return worker;
+}
+
+/**
+ * Terminate the singleton beat-detection worker and release its resources.
+ * Safe to call multiple times. The worker will be recreated on next use.
+ */
+export function terminateBeatWorker(): void {
+	if (worker) {
+		worker.terminate();
+		worker = null;
+	}
 }
 
 /**

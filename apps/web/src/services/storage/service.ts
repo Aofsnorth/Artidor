@@ -313,6 +313,12 @@ class StorageService {
 
 		if (!file || !metadata) return null;
 
+		// NOTE: The object URLs created below are intentionally tied to the
+		// MediaAsset lifecycle — they are returned on the asset's `url` field
+		// and must be revoked by the caller (e.g. via URL.revokeObjectURL)
+		// when the asset is removed from the media library or the project is
+		// deleted. This service does not track them to avoid complex
+		// bookkeeping that could introduce stale-reference bugs.
 		let url: string;
 		if (metadata.type === "image" && (!file.type || file.type === "")) {
 			try {

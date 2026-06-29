@@ -1679,6 +1679,20 @@ export class AIManager {
 	}
 
 	/**
+	 * Dispose of the manager's resources. Clears the retry timer and
+	 * aborts any in-flight request. Safe to call multiple times —
+	 * subsequent calls are no-ops once everything has been cleaned up.
+	 */
+	dispose(): void {
+		this.clearRetryTimer();
+		if (this.abortController) {
+			this.abortController.abort();
+			this.abortController = null;
+		}
+		console.debug("[AIManager] dispose() — retry timer and abort controller cleaned up");
+	}
+
+	/**
 	 * If the conversation exceeds the compaction thresholds, summarize
 	 * the older messages and replace them with a compact system note.
 	 * The most recent `COMPACTION_KEEP_LAST` messages are always kept

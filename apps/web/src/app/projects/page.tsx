@@ -137,10 +137,6 @@ const VIEW_MODE_OPTIONS = [
 	{ mode: "list" as const, icon: LeftToRightListDashIcon, label: "List view" },
 ];
 
-/** Show the full wallpaper + atmospheric overlay only on localhost.
- *  Production (Vercel) gets a minimal solid background. */
-const isDev = process.env.NODE_ENV !== "production";
-
 export default function ProjectsPage() {
 	const { searchQuery, sortKey, sortOrder, viewMode } = useProjectsStore();
 	const editor = useEditor();
@@ -259,66 +255,40 @@ export default function ProjectsPage() {
 			   layers on top to keep the chrome (white text on
 			   glass cards) legible. */}
 				<div className="relative flex h-screen flex-col overflow-hidden">
-					{isDev ? (
-						<>
-							{/* Background layer — rendered sharp at native quality (no blur,
-						   no upscale) so the artwork stays crisp. Negative z-index so
-						   the page chrome renders on top. */}
-							<div
-								aria-hidden
-								className="pointer-events-none absolute inset-0 -z-20"
-								style={{
-									backgroundImage: "url(/wallpaper/projects-covenant.webp)",
-									backgroundRepeat: "no-repeat",
-									backgroundSize: "cover",
-									backgroundPosition: "center",
-								}}
-							/>
-							{/* Dreamy atmospheric overlay — three soft radial
-						   glows (cool indigo, warm amber, soft pink) that
-						   bloom across the artwork, evoking the "liminal
-						   dream" aesthetic. Plus a vignette at the edges
-						   so the centre pops. */}
-							<div
-								aria-hidden
-								className="pointer-events-none absolute inset-0 -z-10"
-								style={{
-									background: [
-										// Soft colour blooms
-										"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
-										"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
-										"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
-										// Edge vignette for cinematic depth
-										"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
-										// Top-to-bottom legibility wash
-										"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
-									].join(", "),
-								}}
-							/>
-						</>
-					) : (
-						/* Production: minimal background — solid base with two
-						   very soft radial glows for subtle depth. No wallpaper,
-						   no heavy assets. Keeps the page lightweight and clean
-						   for Vercel deployments while avoiding a flat look. */
-						<>
-							<div
-								aria-hidden
-								className="pointer-events-none absolute inset-0 -z-20 bg-[#08080c]"
-							/>
-							<div
-								aria-hidden
-								className="pointer-events-none absolute inset-0 -z-10"
-								style={{
-									background: [
-										"radial-gradient(ellipse 60% 50% at 20% 0%, rgba(100, 120, 200, 0.08), transparent 60%)",
-										"radial-gradient(ellipse 50% 40% at 80% 100%, rgba(180, 140, 200, 0.06), transparent 60%)",
-										"linear-gradient(180deg, rgba(8, 8, 10, 0) 0%, rgba(8, 8, 10, 0.15) 100%)",
-									].join(", "),
-								}}
-							/>
-						</>
-					)}
+					{/* Background layer — rendered sharp at native quality (no blur,
+					   no upscale) so the artwork stays crisp. Negative z-index so
+					   the page chrome renders on top. */}
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 -z-20"
+						style={{
+							backgroundImage: "url(/wallpaper/projects-covenant.webp)",
+							backgroundRepeat: "no-repeat",
+							backgroundSize: "cover",
+							backgroundPosition: "center",
+						}}
+					/>
+					{/* Dreamy atmospheric overlay — three soft radial
+					   glows (cool indigo, warm amber, soft pink) that
+					   bloom across the artwork, evoking the "liminal
+					   dream" aesthetic. Plus a vignette at the edges
+					   so the centre pops. */}
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 -z-10"
+						style={{
+							background: [
+								// Soft colour blooms
+								"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
+								"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
+								"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
+								// Edge vignette for cinematic depth
+								"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
+								// Top-to-bottom legibility wash
+								"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
+							].join(", "),
+						}}
+					/>
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
 						<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">

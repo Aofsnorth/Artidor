@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { shares } from "@/lib/db/schema";
 import { verifyManageToken } from "@/lib/share/secret";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,11 @@ export async function DELETE(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	const { id } = await params;
 	const json = await request.json().catch(() => null);
 	const parsed = deleteSchema.safeParse(json);
