@@ -28,7 +28,7 @@ const createSchema = z.object({
 	name: z.string().min(1).max(200),
 	// Opaque JSON written by the owner; capped so a share row stays small.
 	payload: z.string().min(1).max(200_000),
-	password: z.string().min(1).max(200).optional(),
+	password: z.string().min(4).max(200).optional(),
 });
 
 export async function POST(request: Request) {

@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the Puter model search UI fix", () => {
+	test("the newest entry is the security hardening pass", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-09-puter-model-search-ui-fix",
+			"2026-07-09-security-hardening-pass",
 		);
 	});
 });

@@ -13,19 +13,19 @@ The single source of truth for all non-UI code. Everything platform-agnostic bel
 Each app is a frontend that calls into Rust. Logic is never duplicated between apps — only UI is, because each platform may use an entirely different framework and language to build it.
 
 - `web/` — Next.js
-- `desktop/` — Tauri 2.0 (native shell with web frontend + Rust backend)
+- `desktop-web/` — Tauri 2.0 (native shell with web frontend + Rust backend)
 
-#### `apps/desktop/`
+#### `apps/desktop-web/`
 
 The desktop app uses Tauri 2.0 as a native shell. The web frontend
 (Next.js/React) runs unchanged in the system WebView. Native Rust
 commands (in `src-tauri/`) expose the WGPU compositor and native file
 I/O to the frontend via Tauri IPC.
 
-- `apps/desktop/src-tauri/` — Tauri Rust backend (commands, config)
+- `apps/desktop-web/src-tauri/` — Tauri Rust backend (commands, config)
 - `apps/web/src/lib/tauri/` — Tauri detection + IPC bridge (web side)
 
-The old GPUI code (`apps/desktop/src/ui/`, `app.rs`, etc.) is being
+The old GPUI code (`apps/desktop-web/src/ui/`, `app.rs`, etc.) is being
 phased out. It still compiles but is not the active desktop path.
 
 ## Web

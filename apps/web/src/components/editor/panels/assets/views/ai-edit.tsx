@@ -153,19 +153,21 @@ import {
 } from "@/stores/assets-panel-store";
 
 /**
- * Sanitize schema for AI-generated markdown. Extends the rehype-sanitize
- * default (which strips event-handler attributes, javascript: URLs, and
- * other XSS vectors) to allow the subset of elements the AI panel renders.
- * Without this, `allowedElements` alone only filters tag names — malicious
- * attributes like `onmouseover` or `href="javascript:..."` pass through.
+ * Sanitize schema for AI-generated markdown. Restricts the rehype-sanitize
+ * default schema to the subset of elements the AI panel renders.
+ *
+ * The default schema already handles the critical XSS vectors:
+ *  - `protocols.href` blocks `javascript:` URLs (only http/https/mailto/etc)
+ *  - `strip: ['script']` removes script tags entirely
+ *  - Event-handler attributes (onmouseover, onclick, etc.) are not in the
+ *    allowlist so they're stripped
+ *  - `code` className is allowed only if it matches `/^language-./` (syntax
+ *    highlighting classes)
+ *
+ * We only need to restrict `tagNames` to the elements the AI panel uses.
  */
 const aiMarkdownSchema = {
 	...defaultSchema,
-	attributes: {
-		...defaultSchema.attributes,
-		a: [...(defaultSchema.attributes?.a ?? []), "href"],
-		code: [...(defaultSchema.attributes?.code ?? []), "className"],
-	},
 	tagNames: ["p", "strong", "em", "code", "pre", "ul", "ol", "li", "a", "br"],
 };
 

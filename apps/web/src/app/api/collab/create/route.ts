@@ -9,6 +9,7 @@ import { checkRateLimit, checkCreateResourceRateLimit } from "@/lib/rate-limit";
 import { createRoomStore } from "@/lib/collab/room-store";
 import { buildJoinUrl } from "@/lib/collab/client";
 import type { CreateRoomResult } from "@/lib/collab/types";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +21,11 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+	const session = await getOptionalSession();
+	if (!session) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return Response.json(

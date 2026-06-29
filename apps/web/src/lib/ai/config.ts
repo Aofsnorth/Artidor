@@ -3,21 +3,18 @@
  * /api/ai/chat route + the landing-page AI showcase).
  *
  * Security hardening is now in place:
- *   1. Authenticated-session check required when the server falls back to
- *      its own env-var LLM key (reject anonymous callers for server-key
- *      usage). Anonymous access is allowed ONLY when the client supplies
- *      its own provider config (BYOK — bring your own key), since that
- *      path never touches the server's key. ✅
+ *   1. Authenticated-session check required for all AI routes (including
+ *      BYOK) to prevent anonymous abuse and provide an audit trail. ✅
  *   2. checkRateLimit({ request }) keyed on the real client IP ✅
  *   3. SSRF protection via assertSafeProviderBaseUrl ✅
  *
  * When this is `true`:
- *   - the API route accepts authenticated requests (server key) and
- *     anonymous BYOK requests (client-supplied provider),
+ *   - the API route accepts authenticated requests,
  *   - the "AI Edit" tab is visible in the editor sidebar,
  *   - the AI showcase is visible on the marketing page.
  *
- * This is a plain constant (not an env var) on purpose: a code-level default
- * makes the security posture explicit and auditable.
+ * Controlled by the AI_FEATURE_ENABLED env var. Defaults to true for
+ * backwards compatibility. Set AI_FEATURE_ENABLED=false to disable.
  */
-export const AI_FEATURE_ENABLED = true;
+export const AI_FEATURE_ENABLED =
+	process.env.AI_FEATURE_ENABLED !== "false";

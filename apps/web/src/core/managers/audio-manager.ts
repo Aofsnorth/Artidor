@@ -598,7 +598,7 @@ export class AudioManager {
 					clipGain.disconnect();
 					this.queuedSources.delete(node);
 					this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
-				});
+				}, { once: true });
 
 				const aheadTime = timelineTime - this.getPlaybackTime();
 				if (aheadTime >= 1) {
@@ -694,7 +694,7 @@ export class AudioManager {
 			node.disconnect();
 			clipGain.disconnect();
 			this.queuedSources.delete(node);
-		});
+		}, { once: true });
 	}
 
 	private waitUntilCaughtUp({
