@@ -1,9 +1,33 @@
-import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
+import {
+	Input,
+	ALL_FORMATS,
+	BlobSource,
+	AudioBufferSink,
+	type InputAudioTrack,
+} from "mediabunny";
 import { createTimelineAudioBuffer } from "@/lib/media/audio";
 import type { AudioElement, SceneTracks, VideoElement } from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { yieldToEventLoop } from "@/lib/media/yield";
+
+/**
+ * Metadata for a single embedded audio track in a media file. Used to
+ * populate the dubbing/track selector in the properties panel when a
+ * video has multiple audio tracks (e.g. MKV with multiple language
+ * dubs). The `index` is the 0-based position in `Input.getAudioTracks()`
+ * and is the value stored on `VideoElement.selectedAudioTrackIndex`.
+ */
+export interface AudioTrackInfo {
+	/** 0-based index among all audio tracks in file order. */
+	index: number;
+	/** ISO 639-2/T language code, or `'und'` if unknown. */
+	languageCode: string;
+	/** User-defined track name from the container, or `null`. */
+	name: string | null;
+	/** Codec identifier string (e.g. `'aac'`, `'mp3'`), or `null`. */
+	codec: string | null;
+}
 
 export async function getVideoInfo({
 	videoFile,
@@ -15,6 +39,7 @@ export async function getVideoInfo({
 	height: number;
 	fps: number;
 	hasAudio: boolean;
+	audioTracks: AudioTrackInfo[];
 }> {
 	const input = new Input({
 		source: new BlobSource(videoFile),
@@ -31,14 +56,37 @@ export async function getVideoInfo({
 
 		const packetStats = await videoTrack.computePacketStats(100);
 		const fps = packetStats.averagePacketRate;
-		const audioTrack = await input.getPrimaryAudioTrack();
+		const audioTracks = await input.getAudioTracks();
+
+		// Build track metadata list. Each track's codec is resolved
+		// lazily by mediabunny, so we await it here. If a codec fails
+		// to resolve, we store null rather than failing the entire
+		// import — the track can still be selected by index/language.
+		const trackInfos: AudioTrackInfo[] = [];
+		for (let i = 0; i < audioTracks.length; i++) {
+			const track = audioTracks[i];
+			let codec: string | null = null;
+			try {
+				const resolvedCodec = await track.getCodec();
+				codec = resolvedCodec ? String(resolvedCodec) : null;
+			} catch {
+				codec = null;
+			}
+			trackInfos.push({
+				index: i,
+				languageCode: await track.getLanguageCode(),
+				name: await track.getName(),
+				codec,
+			});
+		}
 
 		return {
 			duration,
 			width: videoTrack.displayWidth,
 			height: videoTrack.displayHeight,
 			fps,
-			hasAudio: audioTrack !== null,
+			hasAudio: audioTracks.length > 0,
+			audioTracks: trackInfos,
 		};
 	} finally {
 		input.dispose();
@@ -49,6 +97,28 @@ const SAMPLE_RATE = 44100;
 const NUM_CHANNELS = 2;
 const EMPTY_TIMELINE_SILENT_DURATION_SECONDS = 0.1;
 const MIN_SILENT_DURATION_SECONDS = 0.001;
+
+/**
+ * Resolves a specific audio track from an input by 0-based index.
+ * Falls back to the primary audio track when the index is out of
+ * range or absent, matching the pre-multi-track behavior. Returns
+ * `null` when the file has no audio tracks at all.
+ */
+export async function resolveAudioTrackByIndex({
+	input,
+	trackIndex,
+}: {
+	input: Input;
+	trackIndex?: number;
+}): Promise<InputAudioTrack | null> {
+	if (trackIndex === undefined || trackIndex < 0) {
+		return input.getPrimaryAudioTrack();
+	}
+	const tracks = await input.getAudioTracks();
+	if (tracks.length === 0) return null;
+	const safeIndex = Math.min(trackIndex, tracks.length - 1);
+	return tracks[safeIndex] ?? input.getPrimaryAudioTrack();
+}
 
 export const extractTimelineAudio = async ({
 	tracks,
@@ -203,6 +273,10 @@ export async function extractClipAudio({
 
 	const startSeconds = (element.trimStart ?? 0) / TICKS_PER_SECOND;
 	const endSeconds = startSeconds + element.duration / TICKS_PER_SECOND;
+	// For video elements, use the selected dubbing track index if present.
+	// Audio elements don't have multi-track selection.
+	const audioTrackIndex =
+		element.type === "video" ? element.selectedAudioTrackIndex : undefined;
 
 	let input: Input | null = null;
 	try {
@@ -210,7 +284,10 @@ export async function extractClipAudio({
 			source: new BlobSource(asset.file),
 			formats: ALL_FORMATS,
 		});
-		const audioTrack = await input.getPrimaryAudioTrack();
+		const audioTrack = await resolveAudioTrackByIndex({
+			input,
+			trackIndex: audioTrackIndex,
+		});
 		if (!audioTrack) {
 			return createWavBlob({ samples: new Float32Array(0) });
 		}

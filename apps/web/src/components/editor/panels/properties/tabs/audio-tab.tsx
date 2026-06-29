@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NumberField } from "@/components/ui/number-field";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { VOLUME_DB_MAX, VOLUME_DB_MIN } from "@/lib/timeline/audio-constants";
 import { isSourceAudioSeparated } from "@/lib/timeline/audio-separation";
 import { DEFAULTS } from "@/lib/timeline/defaults";
@@ -221,6 +228,21 @@ export function AudioTab({
 		element.type === "video" &&
 		isSourceAudioSeparated({ element });
 
+	// Dubbing track selector: only shown for video elements whose media
+	// asset has more than one embedded audio track. When the user picks
+	// a different track, the audio manager creates a fresh sink (the
+	// sourceKey includes the track index) and preview/export switch to
+	// the selected dubbing track.
+	const mediaAssets = useEditor((e) => e.media.getAssets());
+	const isVideoElement = element.type === "video";
+	const videoMediaAsset = isVideoElement
+		? mediaAssets.find((a) => a.id === element.mediaId)
+		: undefined;
+	const dubbingTracks = videoMediaAsset?.audioTracks;
+	const selectedAudioTrackIndex = isVideoElement
+		? (element.selectedAudioTrackIndex ?? 0)
+		: 0;
+
 	return (
 		<div className="flex flex-col gap-3 px-3.5 py-3">
 			{isSeparated && (
@@ -240,6 +262,66 @@ export function AudioTab({
 						Recover audio
 					</Button>
 				</div>
+			)}
+			{dubbingTracks && dubbingTracks.length > 1 && !isSeparated && (
+				<Section
+					collapsible
+					defaultOpen
+					sectionKey={`${element.id}:dubbing`}
+					className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
+				>
+					<SectionHeader className="h-10 px-3">
+						<SectionTitle className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+							<HugeiconsIcon icon={MusicNote03Icon} size={14} />
+							Dubbing Track
+						</SectionTitle>
+					</SectionHeader>
+					<SectionContent className="px-3 pb-3 pt-0">
+						<SectionFields className="gap-4">
+							<SectionField label="Audio Source">
+								<Select
+									value={String(selectedAudioTrackIndex)}
+									onValueChange={(value) => {
+										editor.timeline.updateElements({
+											updates: [
+												{
+													trackId,
+													elementId: element.id,
+													patch: {
+														selectedAudioTrackIndex: Number(value),
+													},
+												},
+											],
+										});
+									}}
+								>
+									<SelectTrigger className="h-7 w-full text-xs">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{dubbingTracks.map((track) => {
+											const langLabel =
+												track.languageCode && track.languageCode !== "und"
+													? track.languageCode.toUpperCase()
+													: "Unknown";
+											const trackLabel = track.name
+												? `${langLabel} — ${track.name}`
+												: langLabel;
+											return (
+												<SelectItem
+													key={track.index}
+													value={String(track.index)}
+												>
+													{track.index + 1}. {trackLabel}
+												</SelectItem>
+											);
+										})}
+									</SelectContent>
+								</Select>
+							</SectionField>
+						</SectionFields>
+					</SectionContent>
+				</Section>
 			)}
 			{variant === "audio-element" && !isHelperHidden && (
 				<div className="relative rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 pr-7 text-[0.7rem] leading-relaxed text-white/60">

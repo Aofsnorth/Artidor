@@ -18,6 +18,26 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-10-mkv-dubbing-track-switching",
+		date: "2026-07-10",
+		tag: "feature",
+		title: "Switch between dubbing tracks in MKV videos with multiple audio tracks",
+		items: [
+			"MKV videos often contain multiple audio tracks — different language dubs, director's commentary, etc. Previously the editor always used the primary track and there was no way to pick another. When a video has more than one audio track, a \"Dubbing Track\" selector now appears in the Audio tab of the properties panel. Pick any track and both preview playback and export switch to it.",
+			"Track names show the language code (when the container provides one) and the track's custom name, so you can tell \"ENG — Director's Commentary\" from \"JPN\" at a glance. Videos with a single audio track are unaffected — the selector only appears when there's a choice to make.",
+		],
+	},
+	{
+		id: "2026-07-10-silent-audio-meter-fix",
+		date: "2026-07-10",
+		tag: "fix",
+		title: "Audio meter no longer lights up for videos with no sound",
+		items: [
+			"Playing a video that has no audio track (or whose audio is muted) used to make the preview audio meter light up — green bars rising to around -6 dB even though nothing audible was playing. The meter now stays flat and idle when there is no audible content on the timeline, so you can trust it reflects real audio.",
+			"The fix applies to both the preview meters card and the properties-panel peak meter, and also stops the starfield visualizer from animating during silent playback. Videos with real audio are unaffected — the meter still reacts normally.",
+		],
+	},
+	{
 		id: "2026-07-10-font-picker-tabs-fix",
 		date: "2026-07-10",
 		tag: "fix",

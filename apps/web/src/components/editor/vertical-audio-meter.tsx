@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
+import { timelineHasAudio } from "@/lib/media/audio";
 import { cn } from "@/utils/ui";
 
 /**
@@ -24,6 +25,21 @@ const CLIP_DECAY_PER_FRAME = 2;
 export function VerticalAudioMeter() {
 	const editor = useEditor();
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	// Whether the timeline currently has any audible candidate. When
+	// false (e.g. a video with no audio track, or all elements/tracks
+	// muted), the meter must stay flat instead of reading the analyser
+	// — which can report a non-silent baseline even for silent content.
+	// The selector returns a primitive boolean, so `useEditor`'s
+	// shallow-equality memoization prevents re-renders unless the value
+	// actually flips.
+	const hasAudio = useEditor((e) => {
+		const scene = e.scenes.getActiveSceneOrNull();
+		if (!scene) return false;
+		return timelineHasAudio({
+			tracks: scene.tracks,
+			mediaAssets: e.media.getAssets(),
+		});
+	});
 	const [dimmed, setDimmed] = useState(false);
 	// `isAudioVisualizerOpen` is the global toggle in the preview
 	// toolbar. When on, the meter swaps its dB bars for a compact
@@ -72,17 +88,30 @@ export function VerticalAudioMeter() {
 		clipRightAt: 0,
 		visLevels: new Array<number>(VIS_BAR_COUNT).fill(0),
 		isPlaying: false,
+		hasAudio: true,
 	});
 	useEffect(() => {
 		stateRef.current.isPlaying = isPlaying;
 	}, [isPlaying]);
+	useEffect(() => {
+		stateRef.current.hasAudio = hasAudio;
+	}, [hasAudio]);
 
 	useEffect(() => {
 		let frameId: number;
 		const tick = () => {
 			const state = stateRef.current;
-			const { left: leftAnalyser, right: rightAnalyser } =
+			let { left: leftAnalyser, right: rightAnalyser } =
 				editor.audio.getAnalysers();
+			// When the timeline has no audible candidate (e.g. a video
+			// with no audio track, or all elements/tracks muted), do not
+			// read the analyser at all — it can report a non-silent
+			// baseline even for silent content, making the meter light
+			// up. Treat both channels as absent so the bars decay to 0.
+			if (!state.hasAudio) {
+				leftAnalyser = null;
+				rightAnalyser = null;
+			}
 			// Prefer the left channel for the visual but fall back to the
 			// right if left isn't wired up. If neither is present, the bars
 			// just decay toward 0 — we don't want to crash on a fresh load.

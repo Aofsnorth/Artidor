@@ -275,6 +275,14 @@ export interface VideoElement extends BaseTimelineElement {
 	pan?: number;
 	fadeInDuration?: number;
 	fadeOutDuration?: number;
+	/**
+	 * 0-based index of the embedded audio track (dubbing) to use for
+	 * preview and export. Defaults to 0 (primary track) when absent.
+	 * Only meaningful when the media asset has multiple audio tracks
+	 * (see `MediaAssetData.audioTracks`). Changing this switches which
+	 * dubbing track plays.
+	 */
+	selectedAudioTrackIndex?: number;
 }
 
 export interface ImageElement extends BaseTimelineElement {
