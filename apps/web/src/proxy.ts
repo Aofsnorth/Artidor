@@ -29,7 +29,7 @@
  * As a last resort, delete this file to fall back to the broader CSP
  * in next.config.ts (which keeps `'unsafe-inline'` for scripts).
  */
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 // Reuse the same directive set as next.config.ts but swap script-src
 // to nonce-based. Imported lazily to avoid pulling next.config into the

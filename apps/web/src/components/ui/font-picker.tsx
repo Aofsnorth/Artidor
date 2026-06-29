@@ -335,21 +335,16 @@ function FontRow({
 		<div
 			style={style as CSSProperties}
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-2 px-3 outline-hidden hover:bg-popover-hover",
+				"flex w-full items-center gap-2 px-3",
 				isSelected && "bg-popover-hover",
 			)}
-			onClick={() => onFontSelect({ family: fontName })}
-			onKeyDown={(event) => {
-				if (event.key === "Enter" || event.key === " ") {
-					event.preventDefault();
-					onFontSelect({ family: fontName });
-				}
-			}}
-			role="button"
-			tabIndex={0}
-			aria-label={displayName}
 		>
-			<div className="min-w-0 overflow-hidden flex items-center gap-2 flex-1">
+			<button
+				type="button"
+				className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 outline-hidden hover:bg-popover-hover"
+				onClick={() => onFontSelect({ family: fontName })}
+				aria-label={displayName}
+			>
 				{isSystemFont || isCustomFont ? (
 					<span
 						className="text-xl text-foreground/85"
@@ -367,7 +362,7 @@ function FontRow({
 						custom
 					</span>
 				)}
-			</div>
+			</button>
 			<button
 				type="button"
 				className="shrink-0 p-1 rounded hover:bg-white/[0.08] transition"
