@@ -10,11 +10,26 @@ function run(command) {
   }
 }
 
-const changed =
-  run("git diff --name-only origin/main...HEAD") ||
-  run("git diff --name-only HEAD~1 HEAD");
+// Gather changed files from multiple sources so the check works both in
+// CI (committed changes) and locally (staged + unstaged changes before
+// committing). We merge all sources into a single set to avoid duplicates.
+//
+// Priority:
+//  1. origin/main...HEAD — all unpushed commits (CI scenario)
+//  2. HEAD~3..HEAD — last 3 commits (local scenario after pushing)
+//  3. staged + unstaged — uncommitted local changes
+const unpushedChanged = run("git diff --name-only origin/main...HEAD");
+const recentChanged = run("git diff --name-only HEAD~3..HEAD");
+const stagedChanged = run("git diff --cached --name-only");
+const unstagedChanged = run("git diff --name-only");
 
-const files = changed.split("\n").filter(Boolean);
+const files = [
+  ...new Set(
+    [unpushedChanged, recentChanged, stagedChanged, unstagedChanged]
+      .flatMap((s) => s.split("\n"))
+      .filter(Boolean),
+  ),
+];
 
 // Normalize Windows backslashes to forward slashes so the same patterns
 // match regardless of how the runner formats git output.
