@@ -82,6 +82,22 @@ declare global {
 
 const PUTER_SDK_URL = "https://js.puter.com/v2/";
 
+/**
+ * SECURITY NOTE — SRI / supply-chain protection:
+ * The Puter.js SDK is loaded from a versionless URL (`/v2/`). Adding SRI
+ * (Subresource Integrity) would require pinning a content hash, but
+ * because Puter can update the SDK at this URL at any time, a pinned hash
+ * would break the Puter provider on the next Puter update.
+ *
+ * Current protection: CSP `script-src` in next.config.ts allowlists only
+ * `https://js.puter.com`, so no other origin can inject scripts even if
+ * an XSS is found.
+ *
+ * Follow-up: self-host the Puter.js SDK (vendored + hashed) so SRI can
+ * be applied without breaking on upstream updates. Tracked as a known
+ * risk in SECURITY.md.
+ */
+
 /** Tracks the in-flight SDK load so concurrent callers share one promise. */
 let sdkLoadPromise: Promise<PuterSDK> | null = null;
 

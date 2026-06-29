@@ -15,6 +15,7 @@
 
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -133,6 +134,19 @@ export async function POST(request: Request): Promise<NextResponse> {
 	if (!isAllowedUrl(url)) {
 		return NextResponse.json(
 			{ ok: false, error: "URL is not allowed" },
+			{ status: 400 },
+		);
+	}
+
+	// DNS rebinding defense — resolve the hostname and verify the IP is
+	// not private/link-local before fetching. The sync isAllowedUrl check
+	// above blocks literal IPs and known-bad hostnames, but a domain can
+	// resolve to a private IP at fetch time.
+	try {
+		await assertSafeProviderUrlDns(new URL(url));
+	} catch {
+		return NextResponse.json(
+			{ ok: false, error: "URL resolves to a blocked address" },
 			{ status: 400 },
 		);
 	}

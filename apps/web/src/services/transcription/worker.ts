@@ -1,7 +1,6 @@
-import {
-	pipeline,
-	type AutomaticSpeechRecognitionPipeline,
-	type AutomaticSpeechRecognitionOutput,
+import type {
+	AutomaticSpeechRecognitionPipeline,
+	AutomaticSpeechRecognitionOutput,
 } from "@huggingface/transformers";
 import type {
 	TranscriptionSegment,
@@ -60,6 +59,11 @@ async function handleInit({ modelId }: { modelId: string }) {
 	fileBytes.clear();
 
 	try {
+		// Dynamic import — @huggingface/transformers is a very heavy ML
+		// library (multiple MB). Loading it only when the user actually
+		// starts transcription avoids bloating the worker's initial load
+		// for users who never use the feature.
+		const { pipeline } = await import("@huggingface/transformers");
 		transcriber = (await pipeline("automatic-speech-recognition", modelId, {
 			dtype: "q4",
 			device: "auto",

@@ -245,7 +245,7 @@ export function AIProvidersManager({
 					<button
 						type="button"
 						onClick={handleAdd}
-						className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/[0.1] bg-white/[0.02] text-[11.5px] font-medium text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.04] hover:text-white/85"
+						className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/[0.1] bg-white/[0.02] text-[0.71875rem] font-medium text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.04] hover:text-white/85"
 					>
 						<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
 						Add Provider
@@ -286,8 +286,8 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 				<HugeiconsIcon icon={PlugIcon} className="size-5 text-white/40" />
 			</div>
 			<div className="space-y-1.5">
-				<p className="text-[13px] font-medium text-white/80">No AI providers yet</p>
-				<p className="max-w-[300px] text-[11px] leading-relaxed text-white/40">
+				<p className="text-[0.8125rem] font-medium text-white/80">No AI providers yet</p>
+				<p className="max-w-[300px] text-[0.6875rem] leading-relaxed text-white/40">
 					Add a provider to use AI features. OpenAI, Together, Groq, OpenRouter,
 					LM Studio, Ollama, and any other OpenAI-compatible endpoint work.
 				</p>
@@ -295,7 +295,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 			<button
 				type="button"
 				onClick={onAdd}
-				className="mt-1 flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[11.5px] font-medium text-[#0a0a0c] transition hover:bg-white/90"
+				className="mt-1 flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[0.71875rem] font-medium text-[#0a0a0c] transition hover:bg-white/90"
 			>
 				<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
 				Add your first provider
@@ -368,7 +368,7 @@ function ProviderCard({
 					<div className="flex items-center gap-1.5">
 						<span
 							className={cn(
-								"truncate text-[13px] font-semibold leading-tight",
+								"truncate text-[0.8125rem] font-semibold leading-tight",
 								provider.enabled ? "text-white" : "text-white/70",
 							)}
 						>
@@ -377,18 +377,18 @@ function ProviderCard({
 						{provider.isDefault && (
 							<span
 								title="Default provider — used by Arth"
-								className="shrink-0 rounded border border-cyan-300/30 bg-cyan-400/15 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-cyan-200"
+								className="shrink-0 rounded border border-cyan-300/30 bg-cyan-400/15 px-1.5 py-px text-[0.5625rem] font-semibold uppercase tracking-wider text-cyan-200"
 							>
 								Default
 							</span>
 						)}
 					</div>
 					{/* Kind label — small uppercase tag */}
-					<div className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-white/35">
+					<div className="mt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-white/35">
 						{kindLabel}
 					</div>
 					{/* Model + base url */}
-					<div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10.5px]">
+					<div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.65625rem]">
 						<span
 							className={cn(
 								"rounded font-mono",
@@ -407,7 +407,7 @@ function ProviderCard({
 						)}
 					</div>
 					{/* Status row: test result + enabled state */}
-					<div className="mt-1.5 flex items-center gap-2 text-[10px]">
+					<div className="mt-1.5 flex items-center gap-2 text-[0.625rem]">
 						{provider.lastTestOk === true && (
 							<span className="flex items-center gap-1 text-emerald-300/80">
 								<HugeiconsIcon
@@ -427,7 +427,7 @@ function ProviderCard({
 							<span className="text-white/35">{lastTestLabel}</span>
 						)}
 						{!provider.enabled && (
-							<span className="ml-auto rounded bg-white/[0.06] px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-white/40">
+							<span className="ml-auto rounded bg-white/[0.06] px-1.5 py-px text-[0.5625rem] font-medium uppercase tracking-wide text-white/40">
 								Disabled
 							</span>
 						)}
@@ -441,7 +441,7 @@ function ProviderCard({
 					<button
 						type="button"
 						onClick={onSetDefault}
-						className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+						className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
 						title="Use this provider for Arth"
 					>
 						<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
@@ -452,7 +452,7 @@ function ProviderCard({
 					type="button"
 					onClick={onTest}
 					disabled={testing}
-					className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-40"
+					className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-40"
 					title="Send a tiny test request to verify the connection"
 				>
 					{testing ? (
@@ -468,7 +468,7 @@ function ProviderCard({
 				<button
 					type="button"
 					onClick={onEdit}
-					className="flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+					className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
 				>
 					<HugeiconsIcon icon={Edit01Icon} className="size-3" />
 					Edit
@@ -478,7 +478,7 @@ function ProviderCard({
 						type="button"
 						onClick={onToggleEnabled}
 						className={cn(
-							"flex h-6 items-center gap-1 rounded-md px-2 text-[10px] font-medium transition",
+							"flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium transition",
 							provider.enabled
 								? "text-white/55 hover:bg-white/[0.06] hover:text-white"
 								: "text-white/40 hover:bg-white/[0.06] hover:text-white/80",
@@ -891,7 +891,7 @@ function ProviderFormDialog({
 				<DialogBody className="max-h-[70vh] gap-4 overflow-y-auto px-6 py-4">
 					{/* Name */}
 					<div className="space-y-1.5">
-						<Label htmlFor="provider-name" className="text-[11px] text-white/70">
+						<Label htmlFor="provider-name" className="text-[0.6875rem] text-white/70">
 							Name
 						</Label>
 						<Input
@@ -902,13 +902,13 @@ function ProviderFormDialog({
 							className={cn(errors.name && "border-red-400/40")}
 						/>
 						{errors.name && (
-							<p className="text-[10.5px] text-red-300/90">{errors.name}</p>
+							<p className="text-[0.65625rem] text-red-300/90">{errors.name}</p>
 						)}
 					</div>
 
 					{/* Type selector */}
 					<div className="space-y-1.5">
-						<Label className="text-[11px] text-white/70">Type</Label>
+						<Label className="text-[0.6875rem] text-white/70">Type</Label>
 						<div className="grid grid-cols-2 gap-2">
 							{(Object.keys(KIND_LABELS) as ProviderKind[]).map((k) => {
 								const meta = KIND_LABELS[k];
@@ -925,10 +925,10 @@ function ProviderFormDialog({
 												: "border-white/[0.08] bg-white/[0.02] text-white/60 hover:border-white/15 hover:bg-white/[0.04] hover:text-white/85",
 										)}
 									>
-										<span className="text-[11px] font-medium">
+										<span className="text-[0.6875rem] font-medium">
 											{meta.label}
 										</span>
-										<span className="text-[9.5px] leading-snug text-white/40">
+										<span className="text-[0.59375rem] leading-snug text-white/40">
 											{meta.hint}
 										</span>
 									</button>
@@ -945,17 +945,17 @@ function ProviderFormDialog({
 									className="mt-0.5 size-4 shrink-0 text-amber-300"
 								/>
 								<div className="flex flex-col gap-1">
-									<p className="text-[11px] font-semibold text-amber-200">
+									<p className="text-[0.6875rem] font-semibold text-amber-200">
 										Puter.js — Data Usage Warning
 									</p>
-									<p className="text-[10px] leading-relaxed text-amber-100/80">
+									<p className="text-[0.625rem] leading-relaxed text-amber-100/80">
 										Puter.js is a free, browser-based AI provider. It runs
 										entirely in your browser using your Puter account — no API
 										key needed. However, Puter may use your conversation data
 										for model training. Do not use Puter.js with sensitive or
 										private content.
 									</p>
-									<p className="text-[10px] text-amber-100/60">
+									<p className="text-[0.625rem] text-amber-100/60">
 										You will see a mandatory confirmation dialog before Puter.js
 										is activated.
 									</p>
@@ -968,7 +968,7 @@ function ProviderFormDialog({
 						<div className="space-y-1.5">
 							<Label
 								htmlFor="provider-base-url"
-								className="flex items-center gap-1.5 text-[11px] text-white/70"
+								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 							>
 								<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
 								Base URL
@@ -981,7 +981,7 @@ function ProviderFormDialog({
 								className={cn("font-mono", errors.baseUrl && "border-red-400/40")}
 							/>
 							{errors.baseUrl && (
-								<p className="text-[10.5px] text-red-300/90">{errors.baseUrl}</p>
+								<p className="text-[0.65625rem] text-red-300/90">{errors.baseUrl}</p>
 							)}
 						</div>
 
@@ -989,12 +989,12 @@ function ProviderFormDialog({
 						<div className="space-y-1.5">
 							<Label
 								htmlFor="provider-api-key"
-								className="flex items-center gap-1.5 text-[11px] text-white/70"
+								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 							>
 								<HugeiconsIcon icon={Key01Icon} className="size-3" />
 								API Key
 								{kind === "ollama" && (
-									<span className="text-[10px] font-normal text-white/40">
+									<span className="text-[0.625rem] font-normal text-white/40">
 										— not required for Ollama
 									</span>
 								)}
@@ -1009,7 +1009,7 @@ function ProviderFormDialog({
 								disabled={kind === "ollama"}
 							/>
 							{errors.apiKey && (
-								<p className="text-[10.5px] text-red-300/90">{errors.apiKey}</p>
+								<p className="text-[0.65625rem] text-red-300/90">{errors.apiKey}</p>
 							)}
 						</div>
 					</>
@@ -1019,19 +1019,19 @@ function ProviderFormDialog({
 					<div className="space-y-1.5">
 						<Label
 							htmlFor="provider-model"
-							className="flex items-center gap-1.5 text-[11px] text-white/70"
+							className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-3" />
 							Model
 							{kind === "puter" && puterModelsLoading && (
-								<span className="text-[10px] font-normal text-white/40">
+								<span className="text-[0.625rem] font-normal text-white/40">
 									— fetching available models…
 								</span>
 							)}
 						</Label>
 						{kind === "puter" ? (
 							puterModelsLoading ? (
-								<div className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 text-[11px] text-white/40">
+								<div className="flex h-9 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-3 text-[0.6875rem] text-white/40">
 									<HugeiconsIcon
 										icon={Loading02Icon}
 										className="size-3.5 animate-spin"
@@ -1050,7 +1050,7 @@ function ProviderFormDialog({
 											errors.model && "border-red-400/40",
 										)}
 									/>
-									<p className="text-[10px] text-amber-300/80">
+									<p className="text-[0.625rem] text-amber-300/80">
 										{puterModelsError} — enter model id manually.
 									</p>
 								</div>
@@ -1081,7 +1081,7 @@ function ProviderFormDialog({
 										type="button"
 										onClick={handleFetchModels}
 										disabled={fetchedModelsLoading}
-										className="self-start text-[10px] text-white/40 transition-colors hover:text-white/60"
+										className="self-start text-[0.625rem] text-white/40 transition-colors hover:text-white/60"
 									>
 										{fetchedModelsLoading ? "Refreshing…" : "Refresh models"}
 									</button>
@@ -1111,7 +1111,7 @@ function ProviderFormDialog({
 													: "Fetch available models from this provider"
 											}
 											className={cn(
-												"flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[10.5px] font-medium transition-colors",
+												"flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[0.65625rem] font-medium transition-colors",
 												fetchedModelsLoading || !baseUrl.trim()
 													? "cursor-not-allowed border-white/10 text-white/25"
 													: "border-white/15 text-white/70 hover:border-white/30 hover:bg-white/[0.06] hover:text-white",
@@ -1128,12 +1128,12 @@ function ProviderFormDialog({
 										</button>
 									</div>
 									{fetchedModelsError && (
-										<p className="text-[10px] text-amber-300/80">
+										<p className="text-[0.625rem] text-amber-300/80">
 											{fetchedModelsError} — you can still type a model id manually.
 										</p>
 									)}
 									{!fetchedModelsError && (
-										<p className="text-[10px] text-white/25">
+										<p className="text-[0.625rem] text-white/25">
 											Type a model id or click Fetch to load available models.
 										</p>
 									)}
@@ -1149,7 +1149,7 @@ function ProviderFormDialog({
 							/>
 						)}
 						{errors.model && (
-							<p className="text-[10.5px] text-red-300/90">{errors.model}</p>
+							<p className="text-[0.65625rem] text-red-300/90">{errors.model}</p>
 						)}
 					</div>
 
@@ -1157,12 +1157,12 @@ function ProviderFormDialog({
 					<div className="flex flex-col gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-3">
 						<div className="flex items-center gap-1.5">
 							<HugeiconsIcon icon={SparklesIcon} className="size-3 text-white/40" />
-							<span className="text-[11px] font-medium text-white/60">
+							<span className="text-[0.6875rem] font-medium text-white/60">
 								Media generation models
 							</span>
-							<span className="text-[9.5px] text-white/30">(optional)</span>
+							<span className="text-[0.59375rem] text-white/30">(optional)</span>
 						</div>
-						<p className="text-[10px] leading-relaxed text-white/30">
+						<p className="text-[0.625rem] leading-relaxed text-white/30">
 							{kind === "puter"
 								? "Select from the available models fetched from your Puter account. When a field is empty, the AI cannot call that type of generation tool."
 								: "Fill in only the models your provider supports. When a field is empty, the AI cannot call that type of generation tool."}
@@ -1205,7 +1205,7 @@ function ProviderFormDialog({
 
 					{/* Test result / hint */}
 					{testError ? (
-						<div className="flex items-start gap-2 rounded-lg border border-red-400/25 bg-red-500/[0.08] p-2.5 text-[11px] text-red-200">
+						<div className="flex items-start gap-2 rounded-lg border border-red-400/25 bg-red-500/[0.08] p-2.5 text-[0.6875rem] text-red-200">
 							<HugeiconsIcon
 								icon={AlertCircleIcon}
 								className="mt-0.5 size-3.5 shrink-0"
@@ -1214,7 +1214,7 @@ function ProviderFormDialog({
 						</div>
 					) : (
 						!testing && (
-							<p className="text-[10px] leading-relaxed text-white/35">
+							<p className="text-[0.625rem] leading-relaxed text-white/35">
 								Click <span className="text-white/55">Test</span> to verify the
 								connection before saving — one tiny prompt, max_tokens=1.
 							</p>
@@ -1232,16 +1232,16 @@ function ProviderFormDialog({
 									/>
 								</div>
 							</div>
-							<h3 className="mb-2 text-center text-[14px] font-bold text-amber-200">
+							<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
 								Puter.js Data Usage Warning
 							</h3>
-							<p className="mb-3 text-center text-[11px] leading-relaxed text-amber-100/80">
+							<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
 								Puter.js is a free, browser-based AI provider that uses your
 								Puter account. <strong>Puter may use your conversation data
 								for model training.</strong> Do not use Puter.js with
 								sensitive, private, or confidential content.
 							</p>
-							<p className="mb-4 text-center text-[11px] text-amber-100/60">
+							<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
 								By clicking "I Understand & Accept", you acknowledge that
 								your data may be used for training purposes.
 							</p>
@@ -1251,7 +1251,7 @@ function ProviderFormDialog({
 									onClick={handlePuterConfirm}
 									disabled={puterCountdown > 0}
 									className={cn(
-										"w-full rounded-lg border px-4 py-2.5 text-[12px] font-semibold transition-all",
+										"w-full rounded-lg border px-4 py-2.5 text-[0.75rem] font-semibold transition-all",
 										puterCountdown > 0
 											? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
 											: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
@@ -1266,7 +1266,7 @@ function ProviderFormDialog({
 									onClick={handlePuterCancel}
 									disabled={puterCountdown > 0}
 									className={cn(
-										"w-full rounded-lg border px-4 py-2 text-[11px] transition-all",
+										"w-full rounded-lg border px-4 py-2 text-[0.6875rem] transition-all",
 										puterCountdown > 0
 											? "cursor-not-allowed border-white/5 text-white/20"
 											: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
@@ -1276,7 +1276,7 @@ function ProviderFormDialog({
 								</button>
 							</div>
 							{puterCountdown > 0 && (
-								<p className="mt-3 text-center text-[9px] text-white/30">
+								<p className="mt-3 text-center text-[0.5625rem] text-white/30">
 									This warning cannot be dismissed for {puterCountdown} more
 									second{puterCountdown > 1 ? "s" : ""}.
 								</p>
@@ -1496,7 +1496,7 @@ function SearchableModelSelect({
 					id={id}
 					onClick={() => setOpen(true)}
 					className={cn(
-						"flex h-9 w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 font-mono text-[12px] text-white/90 outline-none transition-colors hover:border-white/20 focus:border-white/25",
+						"flex h-9 w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-3 font-mono text-[0.75rem] text-white/90 outline-none transition-colors hover:border-white/20 focus:border-white/25",
 						className,
 					)}
 				>
@@ -1534,7 +1534,7 @@ function SearchableModelSelect({
 							onChange={(e) => handleQueryChange(e.target.value)}
 							onKeyDown={handleKeyDown}
 							placeholder="Search models…"
-							className="h-full w-full bg-transparent font-mono text-[12px] text-white/90 outline-none placeholder:text-white/30"
+							className="h-full w-full bg-transparent font-mono text-[0.75rem] text-white/90 outline-none placeholder:text-white/30"
 						/>
 					</div>
 					{/*
@@ -1553,7 +1553,7 @@ function SearchableModelSelect({
 									}}
 									onMouseEnter={() => setHighlightedIndex(i)}
 									className={cn(
-										"flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-[11px] transition-colors",
+										"flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-[0.6875rem] transition-colors",
 										i === safeIndex
 											? "bg-white/10 text-white"
 											: "text-white/70 hover:bg-white/5",
@@ -1563,7 +1563,7 @@ function SearchableModelSelect({
 									<span className="truncate">
 										{m.name ?? m.id}
 									</span>
-									<span className="ml-2 shrink-0 text-[9px] text-white/35">
+									<span className="ml-2 shrink-0 text-[0.5625rem] text-white/35">
 										{m.provider}
 									</span>
 								</button>
@@ -1571,7 +1571,7 @@ function SearchableModelSelect({
 						</div>
 					)}
 					{filtered.length === 0 && (
-						<div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[11px] text-white/40 shadow-xl">
+						<div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[0.6875rem] text-white/40 shadow-xl">
 							No models match &ldquo;{query}&rdquo;
 						</div>
 					)}
@@ -1611,7 +1611,7 @@ function MediaModelField({
 		];
 		return (
 			<div className="flex flex-col gap-1">
-				<label htmlFor={id} className="text-[10px] text-white/45">
+				<label htmlFor={id} className="text-[0.625rem] text-white/45">
 					{label}
 				</label>
 				<SearchableModelSelect
@@ -1620,14 +1620,14 @@ function MediaModelField({
 					onChange={onChange}
 					options={optsWithNone}
 					placeholder="— None —"
-					className="h-8 text-[11px]"
+					className="h-8 text-[0.6875rem]"
 				/>
 			</div>
 		);
 	}
 	return (
 		<div className="flex flex-col gap-1">
-			<label htmlFor={id} className="text-[10px] text-white/45">
+			<label htmlFor={id} className="text-[0.625rem] text-white/45">
 				{label}
 			</label>
 			<Input
@@ -1635,7 +1635,7 @@ function MediaModelField({
 				value={value}
 				placeholder={placeholder}
 				onChange={(e) => onChange(e.target.value)}
-				className="h-8 font-mono text-[11px]"
+				className="h-8 font-mono text-[0.6875rem]"
 			/>
 		</div>
 	);

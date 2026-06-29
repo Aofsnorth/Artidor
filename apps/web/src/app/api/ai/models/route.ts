@@ -22,7 +22,7 @@
 import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeProviderBaseUrl } from "@/lib/ai/provider-url";
+import { normalizeProviderBaseUrl, assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -166,6 +166,10 @@ async function fetchModelsFromProvider({
 			headers.Authorization = `Bearer ${apiKey}`;
 		}
 	}
+
+	// DNS rebinding defense — resolve the hostname and verify the IP is
+	// not private/link-local before fetching.
+	await assertSafeProviderUrlDns(new URL(url));
 
 	const response = await fetch(url, {
 		method: "GET",

@@ -29,25 +29,24 @@ export function clientIpOf(request: Request): string {
 }
 
 /**
- * In-memory fallback rate limiter used when Upstash Redis is
+ * In-memory fallback rate limiters used when Upstash Redis is
  * unreachable. This prevents the fail-open vulnerability where an
  * attacker could bypass all rate limits by causing Redis to be
  * unavailable.
  *
- * Uses a simple Map with per-IP counters that reset every 60s.
- * The Map is capped at 10,000 entries to prevent unbounded memory
+ * Both stores are capped at 10,000 entries to prevent unbounded memory
  * growth — oldest entries are evicted when the cap is reached.
  */
+const LOCAL_MAX_ENTRIES = 10_000;
+
 const LOCAL_LIMIT = 100; // 100 requests per minute (matches Redis)
 const LOCAL_WINDOW_MS = 60_000;
-const LOCAL_MAX_ENTRIES = 10_000;
 const localStore = new Map<string, { count: number; resetAt: number }>();
 
 function checkLocalRateLimit(ip: string): { success: boolean; limited: boolean } {
 	const now = Date.now();
 	const entry = localStore.get(ip);
 	if (!entry || now > entry.resetAt) {
-		// Evict oldest entries if we're at capacity.
 		if (localStore.size >= LOCAL_MAX_ENTRIES) {
 			const oldestKey = localStore.keys().next().value;
 			if (oldestKey) localStore.delete(oldestKey);
@@ -69,9 +68,60 @@ export async function checkRateLimit({ request }: { request: Request }) {
 		return { success, limited: !success };
 	} catch (err) {
 		// Fail CLOSED with local fallback instead of failing open.
-		// This prevents attackers from bypassing rate limits by
-		// causing Redis to be unavailable.
 		console.warn("[rate-limit] Redis unreachable, using local fallback:", err);
 		return checkLocalRateLimit(ip);
+	}
+}
+
+/**
+ * Stricter limiter for resource-creation endpoints (collab rooms, share
+ * links). These are anonymous by design (local-first philosophy), but
+ * without a tighter cap an attacker could create unlimited rooms/shares
+ * for resource exhaustion or abuse. 10 creates per hour per IP is
+ * generous for legitimate use (a user rarely creates more than a few
+ * rooms/shares in a session) while making bulk abuse impractical.
+ */
+export const createResourceRateLimit = new Ratelimit({
+	redis,
+	limiter: Ratelimit.slidingWindow(10, "1 h"), // 10 creates per hour
+	analytics: true,
+	prefix: "rate-limit:create",
+});
+
+const LOCAL_CREATE_LIMIT = 10; // 10 creates per hour (matches Redis)
+const LOCAL_CREATE_WINDOW_MS = 60 * 60_000;
+const localCreateStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkLocalCreateRateLimit(ip: string): { success: boolean; limited: boolean } {
+	const now = Date.now();
+	const entry = localCreateStore.get(ip);
+	if (!entry || now > entry.resetAt) {
+		if (localCreateStore.size >= LOCAL_MAX_ENTRIES) {
+			const oldestKey = localCreateStore.keys().next().value;
+			if (oldestKey) localCreateStore.delete(oldestKey);
+		}
+		localCreateStore.set(ip, { count: 1, resetAt: now + LOCAL_CREATE_WINDOW_MS });
+		return { success: true, limited: false };
+	}
+	entry.count++;
+	if (entry.count > LOCAL_CREATE_LIMIT) {
+		return { success: false, limited: true };
+	}
+	return { success: true, limited: false };
+}
+
+/**
+ * Stricter rate-limit check for resource-creation endpoints. Falls back
+ * to an in-memory hourly limiter if Redis is unreachable (fail-closed,
+ * same pattern as the base limiter).
+ */
+export async function checkCreateResourceRateLimit({ request }: { request: Request }) {
+	const ip = clientIpOf(request);
+	try {
+		const { success } = await createResourceRateLimit.limit(ip);
+		return { success, limited: !success };
+	} catch (err) {
+		console.warn("[rate-limit] Redis unreachable (create), using local fallback:", err);
+		return checkLocalCreateRateLimit(ip);
 	}
 }

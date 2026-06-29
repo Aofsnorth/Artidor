@@ -188,6 +188,7 @@ checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
 name = "artidor-desktop"
 version = "0.1.0"
 dependencies = [
+ "artidor-time",
  "compositor",
  "effects",
  "env_logger",
@@ -200,7 +201,6 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "time 0.1.0",
  "uuid",
 ]
 
@@ -220,9 +220,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "artidor-time"
+version = "0.1.0"
+dependencies = [
+ "bridge",
+ "num-traits",
+ "serde",
+ "tsify-next",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "artidor-wasm"
 version = "0.2.5"
 dependencies = [
+ "artidor-time",
  "bridge",
  "compositor",
  "console_error_panic_hook",
@@ -233,7 +245,6 @@ dependencies = [
  "num-traits",
  "serde",
  "serde-wasm-bindgen",
- "time 0.1.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1343,7 +1354,7 @@ version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ddef33a339a91ea89fb53151bd0a4689cfce27055c291dfa69945475d22c747"
 dependencies = [
- "time 0.3.51",
+ "time",
  "version_check",
 ]
 
@@ -5342,7 +5353,7 @@ dependencies = [
  "indexmap 2.14.0",
  "quick-xml 0.39.4",
  "serde",
- "time 0.3.51",
+ "time",
 ]
 
 [[package]]
@@ -6580,7 +6591,7 @@ dependencies = [
  "serde_core",
  "serde_json",
  "serde_with_macros",
- "time 0.3.51",
+ "time",
 ]
 
 [[package]]
@@ -7395,7 +7406,7 @@ dependencies = [
  "syn 2.0.118",
  "tauri-utils",
  "thiserror 2.0.18",
- "time 0.3.51",
+ "time",
  "url",
  "uuid",
  "walkdir",
@@ -7647,17 +7658,6 @@ dependencies = [
  "quick-error",
  "weezl",
  "zune-jpeg",
-]
-
-[[package]]
-name = "time"
-version = "0.1.0"
-dependencies = [
- "bridge",
- "num-traits",
- "serde",
- "tsify-next",
- "wasm-bindgen",
 ]
 
 [[package]]
