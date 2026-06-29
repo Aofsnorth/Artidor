@@ -192,11 +192,49 @@ const VIDEO_PATTERNS = [
 	"sora", "seedance", "kling", "minimax", "luma",
 	"runway", "pika", "hunyuan", "vidu", "wan",
 ];
-const IMAGE_PATTERNS = [
-	"dall-e", "dalle", "flux", "gpt-image", "stable-diffusion",
-	"ideogram", "recraft", "imagen", "sdxl", "playground",
-	"midjourney", "leonardo", "dream", "diffusion", "sd-",
-	"sd1", "sd2", "sd3", "sd-turbo", "sdxl-turbo",
+/**
+ * Known Puter.js image generation models.
+ *
+ * Unlike chat/completion models, image generation models are NOT returned
+ * by `puter.ai.listModels()` — they are a separate set of models used with
+ * `puter.ai.txt2img()`. This list is sourced from the official Puter.js
+ * documentation (developer.puter.com) and allows the provider dialog to
+ * show a searchable dropdown instead of a free-text input.
+ *
+ * Maintained manually — update when Puter adds or removes image models.
+ */
+export const PUTER_IMAGE_MODELS: PuterModel[] = [
+	{ id: "gpt-image-1-mini", provider: "openai", name: "GPT Image 1 Mini" },
+	{ id: "gpt-image-1", provider: "openai", name: "GPT Image 1" },
+	{ id: "gpt-image-1.5", provider: "openai", name: "GPT Image 1.5" },
+	{ id: "gpt-image-2", provider: "openai", name: "GPT Image 2" },
+	{ id: "openai/dall-e-3", provider: "openai", name: "DALL-E 3" },
+	{ id: "openai/dall-e-2", provider: "openai", name: "DALL-E 2" },
+	{ id: "gemini-2.5-flash-image-preview", provider: "gemini", name: "Gemini 2.5 Flash Image (Nano Banana)" },
+	{ id: "gemini-3-pro-image-preview", provider: "gemini", name: "Gemini 3 Pro Image" },
+	{ id: "gemini-3.1-flash-image-preview", provider: "gemini", name: "Gemini 3.1 Flash Image" },
+	{ id: "google/flash-image-2.5", provider: "google", name: "Google Flash Image 2.5" },
+	{ id: "google/imagen-4.0-fast", provider: "google", name: "Google Imagen 4.0 Fast" },
+	{ id: "google/imagen-4.0-preview", provider: "google", name: "Google Imagen 4.0 Preview" },
+	{ id: "google/imagen-4.0-ultra", provider: "google", name: "Google Imagen 4.0 Ultra" },
+	{ id: "black-forest-labs/flux-schnell", provider: "black-forest-labs", name: "FLUX.1 Schnell" },
+	{ id: "black-forest-labs/flux-1.1-pro", provider: "black-forest-labs", name: "FLUX 1.1 Pro" },
+	{ id: "black-forest-labs/FLUX.1-kontext-pro", provider: "black-forest-labs", name: "FLUX.1 Kontext Pro" },
+	{ id: "black-forest-labs/FLUX.1-kontext-max", provider: "black-forest-labs", name: "FLUX.1 Kontext Max" },
+	{ id: "black-forest-labs/FLUX.1-krea-dev", provider: "black-forest-labs", name: "FLUX.1 Krea Dev" },
+	{ id: "black-forest-labs/FLUX.1-Canny-pro", provider: "black-forest-labs", name: "FLUX.1 Canny Pro" },
+	{ id: "stabilityai/stable-diffusion-3-medium", provider: "stabilityai", name: "Stable Diffusion 3 Medium" },
+	{ id: "stabilityai/stable-diffusion-xl-base-1.0", provider: "stabilityai", name: "Stable Diffusion XL Base 1.0" },
+	{ id: "ideogram/ideogram-3.0", provider: "ideogram", name: "Ideogram 3.0" },
+	{ id: "ByteDance-Seed/Seedream-3.0", provider: "bytedance", name: "Seedream 3.0" },
+	{ id: "ByteDance-Seed/Seedream-4.0", provider: "bytedance", name: "Seedream 4.0" },
+	{ id: "HiDream-ai/HiDream-I1-Dev", provider: "hidream", name: "HiDream I1 Dev" },
+	{ id: "HiDream-ai/HiDream-I1-Fast", provider: "hidream", name: "HiDream I1 Fast" },
+	{ id: "HiDream-ai/HiDream-I1-Full", provider: "hidream", name: "HiDream I1 Full" },
+	{ id: "Qwen/Qwen-Image", provider: "qwen", name: "Qwen Image" },
+	{ id: "Lykon/DreamShaper", provider: "lykon", name: "DreamShaper" },
+	{ id: "RunDiffusion/Juggernaut-pro-flux", provider: "rundiffusion", name: "Juggernaut Pro Flux" },
+	{ id: "Rundiffusion/Juggernaut-Lightning-Flux", provider: "rundiffusion", name: "Juggernaut Lightning Flux" },
 ];
 const AUDIO_PATTERNS = [
 	"tts", "speech", "polly", "bark", "elevenlabs",
@@ -223,7 +261,11 @@ function filterMediaModels(all: PuterModel[]): {
 } {
 	return {
 		video: all.filter((m) => matchAny(m.id, VIDEO_PATTERNS)),
-		image: all.filter((m) => matchAny(m.id, IMAGE_PATTERNS)),
+		// Image generation models are NOT included in listModels() — they
+		// are a separate set exposed via puter.ai.txt2img(). Use the
+		// curated list from the Puter.js docs instead of filtering chat
+		// models (which never match image-gen model ids).
+		image: PUTER_IMAGE_MODELS,
 		audio: all.filter((m) => matchAny(m.id, AUDIO_PATTERNS)),
 		media: all.filter((m) => matchAny(m.id, MEDIA_PATTERNS)),
 	};
