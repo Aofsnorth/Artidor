@@ -1409,10 +1409,29 @@ function SearchableModelSelect({
 		});
 	}, [options, query]);
 
+	// Clamp highlightedIndex into valid bounds whenever the filtered list
+	// changes. Without this, the index can point past the end of the list
+	// (e.g. when puterModels finish loading while the dropdown is open, or
+	// when the user types a query that shrinks the result set). An
+	// out-of-bounds index makes Enter silently select nothing, leaving the
+	// dropdown "stuck" open with no visible feedback.
+	const safeIndex = filtered.length > 0
+		? Math.min(highlightedIndex, filtered.length - 1)
+		: 0;
+
 	const handleQueryChange = (next: string) => {
 		setQuery(next);
 		setHighlightedIndex(0);
 	};
+
+	// Reset transient state (query + highlight) whenever the dropdown
+	// closes, so reopening starts from a clean state instead of a stale
+	// query or an out-of-bounds highlight from a previous session.
+	useEffect(() => {
+		if (open) return;
+		setQuery("");
+		setHighlightedIndex(0);
+	}, [open]);
 
 	// Close on click outside
 	useEffect(() => {
@@ -1423,7 +1442,6 @@ function SearchableModelSelect({
 				!containerRef.current.contains(e.target as Node)
 			) {
 				setOpen(false);
-				setQuery("");
 			}
 		};
 		document.addEventListener("mousedown", handler);
@@ -1437,24 +1455,36 @@ function SearchableModelSelect({
 
 	const selectedModel = options.find((m) => m.id === value);
 
+	const closeDropdown = useCallback(() => {
+		setOpen(false);
+	}, []);
+
 	const handleKeyDown = (e: React.KeyboardEvent) => {
 		if (e.key === "ArrowDown") {
 			e.preventDefault();
+			if (filtered.length === 0) return;
 			setHighlightedIndex((i) => Math.min(i + 1, filtered.length - 1));
 		} else if (e.key === "ArrowUp") {
 			e.preventDefault();
+			if (filtered.length === 0) return;
 			setHighlightedIndex((i) => Math.max(i - 1, 0));
 		} else if (e.key === "Enter") {
 			e.preventDefault();
-			if (filtered[highlightedIndex]) {
-				onChange(filtered[highlightedIndex].id);
-				setOpen(false);
-				setQuery("");
+			const pick = filtered[safeIndex];
+			if (pick) {
+				onChange(pick.id);
+				closeDropdown();
+			} else if (filtered.length > 0) {
+				// Index was out of bounds — select the first item instead of
+				// leaving the dropdown stuck open with no action.
+				onChange(filtered[0].id);
+				closeDropdown();
 			}
+			// If filtered is empty, do nothing — user must refine the query
+			// or press Escape to close.
 		} else if (e.key === "Escape") {
 			e.preventDefault();
-			setOpen(false);
-			setQuery("");
+			closeDropdown();
 		}
 	};
 
@@ -1481,8 +1511,19 @@ function SearchableModelSelect({
 					/>
 				</button>
 			) : (
-				<div className="absolute inset-0 z-50">
-					<div className="flex h-full w-full items-center gap-2 rounded-lg border border-white/25 bg-[#1a1a1e] px-3 shadow-lg">
+				<>
+					{/*
+					 * Search bar is rendered in normal flow (not absolute) so the
+					 * parent container keeps its height. The previous version used
+					 * `absolute inset-0` which collapsed the parent to 0px when the
+					 * closed button was unmounted, making the input invisible.
+					 */}
+					<div
+						className={cn(
+							"flex h-9 w-full items-center gap-2 rounded-lg border border-white/25 bg-[#1a1a1e] px-3 shadow-lg",
+							className,
+						)}
+					>
 						<HugeiconsIcon
 							icon={Search01Icon}
 							className="size-3.5 shrink-0 text-white/40"
@@ -1496,21 +1537,24 @@ function SearchableModelSelect({
 							className="h-full w-full bg-transparent font-mono text-[12px] text-white/90 outline-none placeholder:text-white/30"
 						/>
 					</div>
+					{/*
+					 * Dropdown is absolutely positioned below the search bar so it
+					 * overlays subsequent form fields without pushing layout.
+					 */}
 					{filtered.length > 0 && (
-						<div className="mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
+						<div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
 							{filtered.map((m, i) => (
 								<button
 									type="button"
 									key={m.id}
 									onClick={() => {
 										onChange(m.id);
-										setOpen(false);
-										setQuery("");
+										closeDropdown();
 									}}
 									onMouseEnter={() => setHighlightedIndex(i)}
 									className={cn(
 										"flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-[11px] transition-colors",
-										i === highlightedIndex
+										i === safeIndex
 											? "bg-white/10 text-white"
 											: "text-white/70 hover:bg-white/5",
 										m.id === value && "text-white",
@@ -1527,11 +1571,11 @@ function SearchableModelSelect({
 						</div>
 					)}
 					{filtered.length === 0 && (
-						<div className="mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[11px] text-white/40 shadow-xl">
-							No models match "{query}"
+						<div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[11px] text-white/40 shadow-xl">
+							No models match &ldquo;{query}&rdquo;
 						</div>
 					)}
-				</div>
+				</>
 			)}
 		</div>
 	);

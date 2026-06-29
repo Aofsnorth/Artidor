@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-09-puter-model-search-ui-fix",
+		date: "2026-07-09",
+		tag: "fix",
+		title: "Puter.js model picker fixed — image models now selectable",
+		items: [
+			"The model search dropdown in the AI Providers dialog was broken: when opened, the search input rendered with zero height because it used `absolute inset-0` over a parent that had collapsed (the closed button was unmounted). The input was invisible and the dropdown appeared stuck. The search bar now renders in normal flow with the dropdown overlaying below it, so the input is always visible and clickable.",
+			"Image generation models for the Puter.js provider were never populated — `puter.ai.listModels()` only returns chat/completion models, not image-gen models. The Image model field always fell back to a free-text input with no dropdown. Added a curated list of Puter.js image generation models (GPT Image, DALL-E, FLUX, Stable Diffusion, Gemini Nano Banana, Imagen, Ideogram, Seedream, etc.) sourced from the official Puter.js docs, so the Image model field now shows a searchable dropdown for Puter providers.",
+			"Also fixed several dropdown 'stuck' edge cases: the highlighted index is now clamped to valid bounds (previously an out-of-bounds index after the model list loaded or the query shrank made Enter silently select nothing), query and highlight reset when the dropdown closes, and Enter falls back to the first match when the index is out of bounds instead of leaving the dropdown open with no action.",
+		],
+	},
+	{
 		id: "2026-07-09-beat-detection-worker-fix",
 		date: "2026-07-09",
 		tag: "fix",
