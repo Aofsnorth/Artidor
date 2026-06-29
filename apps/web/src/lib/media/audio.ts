@@ -20,7 +20,13 @@ import { canElementHaveAudio, hasMediaId } from "@/lib/timeline/element-utils";
 import { canTrackHaveAudio } from "@/lib/timeline";
 import { mediaSupportsAudio } from "@/lib/media/media-utils";
 import { getSourceTimeAtClipTime, renderRetimedBuffer } from "@/lib/retime";
-import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
+import {
+	Input,
+	ALL_FORMATS,
+	BlobSource,
+	AudioBufferSink,
+} from "mediabunny";
+import { resolveAudioTrackByIndex } from "@/lib/media/mediabunny";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { yieldToEventLoop } from "@/lib/media/yield";
 
@@ -202,6 +208,7 @@ export async function collectAudioElements({
 					audioContext,
 					trimStartSeconds: element.trimStart / TICKS_PER_SECOND,
 					durationSeconds: element.duration / TICKS_PER_SECOND,
+					audioTrackIndex: element.selectedAudioTrackIndex,
 				}).then((audioBuffer) => {
 					trackProgress();
 					if (!audioBuffer) return null;
@@ -285,6 +292,7 @@ export async function decodeMediaFileAudioBuffer({
 	audioContext,
 	trimStartSeconds = 0,
 	durationSeconds,
+	audioTrackIndex,
 }: {
 	file: File;
 	audioContext: AudioContext;
@@ -292,6 +300,11 @@ export async function decodeMediaFileAudioBuffer({
 	trimStartSeconds?: number;
 	/** Maximum duration to decode (seconds). If omitted, decodes to end of file. */
 	durationSeconds?: number;
+	/**
+	 * 0-based index of the embedded audio track (dubbing) to decode.
+	 * When omitted or out of range, falls back to the primary track.
+	 */
+	audioTrackIndex?: number;
 }): Promise<AudioBuffer | null> {
 	const input = new Input({
 		source: new BlobSource(file),
@@ -299,7 +312,10 @@ export async function decodeMediaFileAudioBuffer({
 	});
 
 	try {
-		const audioTrack = await input.getPrimaryAudioTrack();
+		const audioTrack = await resolveAudioTrackByIndex({
+			input,
+			trackIndex: audioTrackIndex,
+		});
 		if (!audioTrack) return null;
 
 		const sink = new AudioBufferSink(audioTrack);
@@ -396,17 +412,20 @@ async function resolveAudioBufferForVideoElement({
 	audioContext,
 	trimStartSeconds = 0,
 	durationSeconds,
+	audioTrackIndex,
 }: {
 	mediaAsset: MediaAsset;
 	audioContext: AudioContext;
 	trimStartSeconds?: number;
 	durationSeconds?: number;
+	audioTrackIndex?: number;
 }): Promise<AudioBuffer | null> {
 	return decodeMediaFileAudioBuffer({
 		file: mediaAsset.file,
 		audioContext,
 		trimStartSeconds,
 		durationSeconds,
+		audioTrackIndex,
 	});
 }
 
@@ -435,6 +454,12 @@ export interface AudioClipSource {
 	muted: boolean;
 	lastAppliedGain?: number;
 	retime?: RetimeConfig;
+	/**
+	 * 0-based index of the embedded audio track (dubbing) to use.
+	 * Only meaningful for video elements whose media asset has
+	 * multiple audio tracks. When absent, the primary track is used.
+	 */
+	audioTrackIndex?: number;
 }
 
 async function fetchLibraryAudioSource({
@@ -545,11 +570,21 @@ function collectMediaAudioClip({
 	muted: boolean;
 	volume: number;
 }): AudioClipSource {
+	// For video elements with a selected dubbing track, include the
+	// track index in the sourceKey so the audio manager creates a
+	// separate sink/input per track. Switching tracks then produces a
+	// new cache key rather than reusing the previous track's sink.
+	const audioTrackIndex =
+		element.type === "video" ? element.selectedAudioTrackIndex : undefined;
+	const sourceKey =
+		audioTrackIndex !== undefined
+			? `${mediaAsset.id}#audio${audioTrackIndex}`
+			: mediaAsset.id;
 	return {
 		timelineElement: element,
 		id: element.id,
 		trackId: "", // populated by caller
-		sourceKey: mediaAsset.id,
+		sourceKey,
 		file: mediaAsset.file,
 		startTime: element.startTime / TICKS_PER_SECOND,
 		duration: element.duration / TICKS_PER_SECOND,
@@ -558,6 +593,7 @@ function collectMediaAudioClip({
 		volume,
 		muted,
 		retime: element.retime,
+		audioTrackIndex,
 	};
 }
 

@@ -4,7 +4,7 @@ import { getMediaTypeFromFile } from "@/lib/media/media-utils";
 import { formatStorageBytes } from "@/services/storage/quota";
 import { storageService } from "@/services/storage/service";
 import type { MediaAsset } from "@/lib/media/types";
-import { getVideoInfo } from "./mediabunny";
+import { getVideoInfo, type AudioTrackInfo } from "./mediabunny";
 
 export interface ProcessedMediaAsset extends Omit<MediaAsset, "id"> {}
 
@@ -250,6 +250,7 @@ export async function processMediaAssets({
 			let height: number | undefined;
 			let fps: number | undefined;
 			let hasAudio: boolean | undefined;
+			let audioTracks: AudioTrackInfo[] | undefined;
 
 			try {
 				if (fileType === "image") {
@@ -267,6 +268,12 @@ export async function processMediaAssets({
 							? Math.round(videoInfo.fps)
 							: undefined;
 						hasAudio = videoInfo.hasAudio;
+						// Only store the track list if there is more than
+						// one audio track — single-track videos don't need
+						// the dubbing selector.
+						if (videoInfo.audioTracks.length > 1) {
+							audioTracks = videoInfo.audioTracks;
+						}
 
 						thumbnailUrl = await generateThumbnail({
 							videoFile: file,
@@ -290,6 +297,7 @@ export async function processMediaAssets({
 					height,
 					fps,
 					hasAudio,
+					audioTracks,
 				});
 
 				completed += 1;

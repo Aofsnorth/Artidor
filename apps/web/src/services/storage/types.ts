@@ -1,4 +1,5 @@
 import type { MediaType } from "@/lib/media/types";
+import type { AudioTrackInfo } from "@/lib/media/mediabunny";
 import type {
 	TProject,
 	TProjectMetadata,
@@ -25,6 +26,13 @@ export interface MediaAssetData {
 	duration?: number;
 	fps?: number;
 	hasAudio?: boolean;
+	/**
+	 * List of embedded audio tracks (dubbing tracks) for video files
+	 * that have multiple audio tracks. Populated at import time from
+	 * `getVideoInfo`. When absent or empty, the video has a single
+	 * (or no) audio track and the dubbing selector is not shown.
+	 */
+	audioTracks?: AudioTrackInfo[];
 	ephemeral?: boolean;
 	thumbnailUrl?: string;
 	folderId?: string | null;

@@ -2,6 +2,7 @@
 
 import { useEditor } from "@/hooks/use-editor";
 import { useEffect, useRef, useState } from "react";
+import { timelineHasAudio } from "@/lib/media/audio";
 
 const DB_LABELS = [
 	"0",
@@ -30,24 +31,43 @@ interface Particle {
 export function AudioMetersCard() {
 	const editor = useEditor();
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	// Whether the timeline currently has any audible candidate. When
+	// false (e.g. a video with no audio track, or all elements/tracks
+	// muted), the meter must stay flat instead of reading the analyser
+	// — which can report a non-silent baseline even for silent content.
+	// The selector returns a primitive boolean, so `useEditor`'s
+	// shallow-equality memoization prevents re-renders unless the value
+	// actually flips.
+	const hasAudio = useEditor((e) => {
+		const scene = e.scenes.getActiveSceneOrNull();
+		if (!scene) return false;
+		return timelineHasAudio({
+			tracks: scene.tracks,
+			mediaAssets: e.media.getAssets(),
+		});
+	});
 
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number | null>(null);
 
 	// Meter levels
-	const [levels, setLevels] = useState({ left: 5, right: 5 });
+	const [levels, setLevels] = useState({ left: 0, right: 0 });
 
 	// References to hold animation state values for the loop
 	const animState = useRef({
-		left: 5,
-		right: 5,
+		left: 0,
+		right: 0,
 		isPlaying: false,
+		hasAudio: true,
 	});
 
-	// Keep animation state sync'd with React playback state
+	// Keep animation state sync'd with React playback + audio state
 	useEffect(() => {
 		animState.current.isPlaying = isPlaying;
 	}, [isPlaying]);
+	useEffect(() => {
+		animState.current.hasAudio = hasAudio;
+	}, [hasAudio]);
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -75,7 +95,12 @@ export function AudioMetersCard() {
 				editor.audio.getAnalysers();
 
 			// 1. Update Levels
-			if (state.isPlaying && leftAnalyser && rightAnalyser) {
+			// Only read the analyser when there is audible content on the
+			// timeline. Without this gate, a video with no audio track (or
+			// with all elements/tracks muted) can still drive the meter via
+			// a non-silent analyser baseline, making the bars light up even
+			// though nothing audible is playing.
+			if (state.isPlaying && state.hasAudio && leftAnalyser && rightAnalyser) {
 				const bufferLengthL = leftAnalyser.frequencyBinCount;
 				const dataArrayL = new Uint8Array(bufferLengthL);
 				leftAnalyser.getByteTimeDomainData(dataArrayL);
@@ -119,13 +144,15 @@ export function AudioMetersCard() {
 					state.right -= 3;
 				}
 
-				// Clamp to min/max
-				state.left = Math.max(5, Math.min(100, state.left));
-				state.right = Math.max(5, Math.min(100, state.right));
+				// Clamp to min/max. Floor is 0 (true silence), not a
+				// visible baseline, so the bar rests fully hidden when
+				// there is no signal.
+				state.left = Math.max(0, Math.min(100, state.left));
+				state.right = Math.max(0, Math.min(100, state.right));
 			} else {
-				// Decay to quiet floor
-				state.left = Math.max(5, state.left - 4);
-				state.right = Math.max(5, state.right - 4);
+				// Decay to quiet floor (0 = fully hidden bar).
+				state.left = Math.max(0, state.left - 4);
+				state.right = Math.max(0, state.right - 4);
 			}
 
 			// Push levels to React state for UI rendering
@@ -137,8 +164,9 @@ export function AudioMetersCard() {
 			// 2. Particle Starfield Visualizer
 			const maxVal = Math.max(state.left, state.right) / 100;
 
-			// Spawn particles
-			if (state.isPlaying && Math.random() < 0.35 + maxVal * 0.3) {
+			// Spawn particles — only when audible content is playing,
+			// so the starfield does not animate for silent videos.
+			if (state.isPlaying && state.hasAudio && Math.random() < 0.35 + maxVal * 0.3) {
 				particles.push({
 					x: w * 0.8,
 					y: h * (0.4 + Math.random() * 0.5),

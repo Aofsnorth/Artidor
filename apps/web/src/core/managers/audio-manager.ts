@@ -22,6 +22,7 @@ import {
 	Input,
 	type WrappedAudioBuffer,
 } from "mediabunny";
+import { resolveAudioTrackByIndex } from "@/lib/media/mediabunny";
 import { yieldToEventLoop } from "@/lib/media/yield";
 
 import { useTimelineStore } from "@/stores/timeline-store";
@@ -930,7 +931,10 @@ export class AudioManager {
 		});
 
 		try {
-			const audioTrack = await input.getPrimaryAudioTrack();
+			const audioTrack = await resolveAudioTrackByIndex({
+				input,
+				trackIndex: clip.audioTrackIndex,
+			});
 			if (!audioTrack) {
 				return null;
 			}
@@ -1014,7 +1018,10 @@ export class AudioManager {
 				source: new BlobSource(clip.file),
 				formats: ALL_FORMATS,
 			});
-			const audioTrack = await input.getPrimaryAudioTrack();
+			const audioTrack = await resolveAudioTrackByIndex({
+				input,
+				trackIndex: clip.audioTrackIndex,
+			});
 			if (!audioTrack) {
 				input.dispose();
 				return null;

@@ -88,6 +88,20 @@ AI agents must read this file before implementing new features.
   Tauri remains the roadmap-default desktop shell; Win32 is an explicit
   parallel path, not a replacement.
 
+- **2026-06-29 — MKV multi-track dubbing/subtitle switching**
+  (`features/mkv-multitrack-switching/`): the owner approved a new
+  web-only feature that lets users switch the active embedded audio
+  (dubbing) track and subtitle track on multi-track MKV files (and
+  other supported multi-track containers), plus toggle subtitles
+  on/off. This is off the Q3 2026 stabilization focus and overrides
+  the "Do not add off-roadmap features without approval" rule. Scope
+  is explicitly limited to **track switching + toggle** — no subtitle
+  text editing, no re-dubbing, no desktop paths. MKV playback already
+  works in the web preview per owner. Phase 0 (mediabunny API audit)
+  gates any feature code; no new dependency without owner approval
+  and `docs/harness/DEPENDENCY_POLICY.md` compliance. See
+  `features/mkv-multitrack-switching/`.
+
 ## Feature Priorities
 
 ### P0 — Critical (must fix before any new features)
