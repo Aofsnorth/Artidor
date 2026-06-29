@@ -889,7 +889,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "time"
+name = "artidor-time"
 version = "0.1.0"
 dependencies = [
  "bridge",

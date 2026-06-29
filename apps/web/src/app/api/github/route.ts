@@ -12,6 +12,7 @@
  */
 
 import { z } from "zod";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const repoSchema = z.object({
 	full_name: z.string(),
@@ -43,7 +44,12 @@ const REPO = "Artidor";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return Response.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	if (cache && cache.expiresAt > Date.now()) {
 		return Response.json(cache.value, {
 			headers: {

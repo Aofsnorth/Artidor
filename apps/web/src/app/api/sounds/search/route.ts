@@ -2,6 +2,7 @@ import { webEnv } from "@/lib/env/web";
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 const searchParamsSchema = z.object({
 	q: z.string().max(500, "Query too long").optional(),
@@ -149,6 +150,14 @@ function transformFreesoundResult(
 
 export async function GET(request: NextRequest) {
 	try {
+		// Auth-gated: this route proxies to Freesound's API using a
+		// server-side API key. Without auth, anonymous callers could
+		// drain the Freesound API quota. Same model as /api/stock/videos.
+		const session = await getOptionalSession();
+		if (!session) {
+			return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+		}
+
 		const { limited } = await checkRateLimit({ request });
 		if (limited) {
 			return NextResponse.json({ error: "Too many requests" }, { status: 429 });

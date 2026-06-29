@@ -149,3 +149,170 @@ entry should be dismissed on GitHub Dependabot with the documented reason.
   so no other origin can inject scripts even if an XSS is found.
 - **Follow-up**: Self-host the Puter.js SDK (vendored + hashed) so SRI
   can be applied without breaking on upstream updates.
+
+## Security Audit — Full Pass
+
+A full security audit was performed covering all API routes, auth, AI
+lib, CSP/headers, XSS surfaces, MCP server, Tauri/desktop, CI workflows,
+secrets scan, and dependencies. Findings and fixes:
+
+### Fixed
+
+#### Desktop app CSP was disabled (`csp: null`) — CRITICAL
+
+- **Status**: Fixed.
+- **Was**: `apps/desktop-web/src-tauri/tauri.conf.json` set `"csp": null`,
+  disabling Content-Security-Policy for the desktop webview entirely. The
+  web app has a strong CSP (nonce-based for editor, allowlist for other
+  routes), but the desktop app had none — an XSS in the desktop app would
+  have unrestricted access to Tauri IPC.
+- **Fix**: Set a restrictive CSP in `tauri.conf.json`:
+  `default-src 'self'`, `script-src 'self' 'wasm-unsafe-eval'` (no
+  `unsafe-inline`), `connect-src` limited to `ipc:`, `asset:`, `https:`,
+  `ws:`, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`,
+  `form-action 'self'`.
+
+#### Tauri custom commands accepted arbitrary file paths — CRITICAL
+
+- **Status**: Fixed.
+- **Was**: `read_file_bytes`, `read_file_text`, `get_file_metadata`, and
+  `file_to_asset_url` in `apps/desktop-web/src-tauri/src/lib.rs` accepted
+  a `path: String` from the webview and passed it directly to
+  `tokio::fs::read` / `tokio::fs::metadata`. These commands bypass the
+  Tauri fs plugin's scope. Combined with the disabled CSP, a compromised
+  webview could read `~/.ssh/id_rsa`, `~/.aws/credentials`, etc.
+- **Fix**: Added `validate_user_path()` helper that rejects paths
+  containing `..` traversal components and blocks known-sensitive
+  credential directories (`.ssh`, `.aws`, `.gnupg`, `.docker`, `.kube`,
+  `.azure`, `.config/gcloud`, `.terraform.d`, `.npmrc`, `.pypirc`,
+  `.netrc`). Applied to all four path-accepting commands.
+
+#### Collab lock DELETE had no auth check — HIGH
+
+- **Status**: Fixed.
+- **Was**: `apps/web/src/app/api/collab/[roomId]/lock/route.ts` DELETE
+  handler did not call `getOptionalSession()` or `checkRateLimit()`,
+  unlike the POST handler and all other collab routes. An
+  unauthenticated caller could release element locks if they knew the
+  sessionId (UUID, hard to guess, but still an auth bypass).
+- **Fix**: Added `getOptionalSession()` + `checkRateLimit()` to the
+  DELETE handler, matching the POST handler and all other collab routes.
+
+#### Rate limit gaps on public GET endpoints — MEDIUM
+
+- **Status**: Fixed.
+- **Was**: Three public GET endpoints lacked rate limiting:
+  - `/api/share/[id]` GET (metadata) — share ID is 72-bit random so
+    enumeration is impractical, but inconsistent with other share routes.
+  - `/api/github` GET (repo metadata proxy) — cached 10 min, but an
+    attacker could force cache misses to drain the GitHub API rate limit.
+  - `/api/health` GET — trivial endpoint, but no limit on health-check
+    spam.
+- **Fix**: Added `checkRateLimit({ request })` to all three.
+
+#### Sounds search endpoint had no auth (API key drain) — MEDIUM
+
+- **Status**: Fixed.
+- **Was**: `/api/sounds/search` proxied to Freesound's API using a
+  server-side `FREESOUND_API_KEY` but did not require authentication.
+  Anonymous callers could drain the Freesound API quota. This was
+  inconsistent with `/api/stock/videos` (Pexels proxy) which already
+  required auth.
+- **Fix**: Added `getOptionalSession()` check, matching `/api/stock/videos`.
+
+#### AI chat route had no array size limits (DoS) — MEDIUM
+
+- **Status**: Fixed.
+- **Was**: `/api/ai/chat` validated the `messages` array with `.min(1)`
+  but no `.max()`. An authenticated caller could send a massive messages
+  array (or `recentEvents`/`recentCommands`/`externalTools` arrays) to
+  exhaust server memory and CPU during zod parsing and AI provider
+  forwarding. This route is authenticated, so the risk is medium, but
+  the missing bounds were an oversight.
+- **Fix**: Added `.max(500)` to `messages`, `.max(200)` to
+  `recentEvents` and `recentCommands`, `.max(100)` to `externalTools`.
+  These limits are well above any legitimate editor session size.
+
+#### Docker compose missing PEXELS_API_KEY — MEDIUM
+
+- **Status**: Fixed.
+- **Was**: `docker-compose.yml` passed `FREESOUND_CLIENT_ID` and
+  `FREESOUND_API_KEY` to the web service but not `PEXELS_API_KEY`. The
+  `webEnv` zod schema requires `PEXELS_API_KEY` and throws in
+  production if missing. A docker deployment would crash on startup.
+- **Fix**: Added `PEXELS_API_KEY=${PEXELS_API_KEY:?...}` to the web
+  service environment in `docker-compose.yml`.
+
+#### Web fetch proxy had no rate limit — MEDIUM
+
+- **Status**: Fixed.
+- **Was**: `/api/web/fetch` is a server-side fetch proxy that downloads
+  up to 500 KB per request. It had auth, SSRF protection, size limit,
+  and timeout, but no rate limiting. An authenticated caller could
+  spam it to exhaust server bandwidth and outbound connections.
+- **Fix**: Added `checkRateLimit({ request })` after the auth check.
+
+### Accepted (documented trade-offs)
+
+- **CSP `connect-src` allows all `http:`/`https:`/`ws:`/`wss:`**: Intentional
+  for MCP servers (user-added, arbitrary URLs). Documented in `next.config.ts`.
+- **Plugin sandbox uses `new Function`**: Function-scope shadowing, not a
+  true sandbox, but plugins are user-installed with a trust warning. See
+  `apps/web/src/lib/plugins/sandbox.ts` security comment.
+- **Scripting worker uses `new Function`**: User-authored macro in an
+  isolated Web Worker (no DOM/fetch/network). See
+  `apps/web/src/services/scripting/worker.ts` security comment.
+- **MCP relay has no auth (`ws://127.0.0.1:8765`)**: By design (local
+  relay). Any local process can connect. Acceptable for local threat model.
+- **`proxy.ts` nonce CSP not tested with live build**: Documented in the
+  file itself. Third-party components (BotIdClient, Vercel Analytics) may
+  break under nonce-based CSP. Follow-up: test editor route for CSP
+  console violations after deploy.
+- **Collab & Share routes anonymous by design**: See section above.
+- **Tauri fs plugin permissions are broad (no scope)**: The capabilities
+  file grants `fs:allow-read-file`, `fs:allow-write-file`, etc. without
+  directory scope restrictions. The frontend does NOT use the fs plugin
+  directly (it uses custom commands with path validation), so this is not
+  a direct risk. But if an attacker bypasses CSP and gains JS execution
+  in the webview, they could call the fs plugin directly. Follow-up:
+  restrict fs plugin scope to the user's project/media directories, or
+  remove fs plugin permissions entirely if no code path uses them.
+- **Tauri asset protocol scope not configured**: The frontend uses
+  `convertFileSrc()` from `@tauri-apps/api/core` (not the hardened
+  `file_to_asset_url` custom command) to generate `asset://localhost/`
+  URLs for media files. The asset protocol scope is not set in
+  `tauri.conf.json` under `app.security.assetProtocol.scope`. A
+  compromised webview could use `convertFileSrc()` to load any file
+  (e.g. `~/.ssh/id_rsa`) into an `<img>` tag and exfiltrate it via
+  canvas. The CSP allows `asset:` in `img-src`/`media-src`. Follow-up:
+  set `assetProtocol.scope` to only allow directories the user has
+  explicitly selected via the file picker dialog, or implement a custom
+  asset protocol handler that validates paths with `validate_user_path`.
+- **Desktop CSP needs live testing**: The restrictive CSP set in
+  `tauri.conf.json` may break Next.js inline bootstrap scripts. If the
+  desktop app shows blank pages or CSP violations, temporarily add
+  `'unsafe-inline'` to `script-src` as a fallback while investigating.
+- **better-auth password policy uses library defaults**: The auth config
+  in `apps/web/src/lib/auth/server.ts` enables `emailAndPassword` but
+  does not set `minPasswordLength`, `requireEmailVerification`, or
+  account lockout. better-auth 1.6.20 defaults to `minPasswordLength: 8`
+  which is acceptable. Adding stricter policy (email verification,
+  lockout after N failed attempts) is a sensitive auth change
+  (PERMISSIONS.md Level 2) and requires explicit approval. Follow-up:
+  evaluate adding `requireEmailVerification: true` and
+  `maxRetries`/lockout for production deployments.
+- **`BETTER_AUTH_SECRET` has no minimum length validation**: The zod
+  schema in `apps/web/src/lib/env/web.ts` validates `BETTER_AUTH_SECRET`
+  as `z.string()` with no `.min()` constraint. An empty or 1-character
+  secret would pass validation but be cryptographically weak, allowing
+  session forgery. The docker-compose.yml uses
+  `${BETTER_AUTH_SECRET:?...}` to require it be set, but does not
+  enforce length. Adding `.min(32)` to the zod schema is a sensitive
+  auth change (PERMISSIONS.md Level 2) and requires explicit approval.
+  Follow-up: add `BETTER_AUTH_SECRET: z.string().min(32)` to the env
+  schema after approval.
+
+
+
+
+

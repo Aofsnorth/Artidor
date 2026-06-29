@@ -4322,7 +4322,7 @@ dependencies = [
  "log",
  "objc2",
  "objc2-foundation",
- "time 0.3.51",
+ "time",
  "uuid",
 ]
 
@@ -7583,7 +7583,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.18",
- "time 0.3.51",
+ "time",
  "url",
 ]
 

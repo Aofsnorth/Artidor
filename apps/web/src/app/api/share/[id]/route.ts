@@ -16,9 +16,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(
-	_request: Request,
+	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	const { id } = await params;
 	const [row] = await db
 		.select({ name: shares.name, passwordHash: shares.passwordHash })

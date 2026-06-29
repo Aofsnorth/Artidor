@@ -7,6 +7,7 @@ mod gpu;
 #[cfg(target_arch = "wasm32")]
 mod masks;
 
+pub use artidor_time::*;
 #[cfg(target_arch = "wasm32")]
 pub use compositor::*;
 #[cfg(target_arch = "wasm32")]
@@ -15,4 +16,3 @@ pub use effects::*;
 pub use gpu::*;
 #[cfg(target_arch = "wasm32")]
 pub use masks::*;
-pub use artidor_time::*;

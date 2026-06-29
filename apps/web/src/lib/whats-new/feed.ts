@@ -18,6 +18,32 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-10-font-picker-tabs-fix",
+		date: "2026-07-10",
+		tag: "fix",
+		title: "Font picker tabs now work — My fonts and Favorites filter correctly",
+		items: [
+			"The font picker's \"My fonts\" and \"Favorites\" tabs were visually present but did nothing — clicking them changed the highlighted tab but the list still showed all fonts. The tab state was set but never used to filter. The list now filters by the active tab: \"My fonts\" shows only your imported custom fonts, \"Favorites\" shows only fonts you've starred.",
+			"Added a star button on each font row so you can pin fonts to the Favorites tab. Favorites persist to localStorage and survive page refreshes. Custom fonts are not persisted (the FontFace is gone on reload), but your starred Google/system fonts will still be there when you come back.",
+			"Empty states now guide you when a tab has no fonts: \"My fonts\" prompts you to import a font file, \"Favorites\" prompts you to star a font. Previously both tabs showed the generic \"No fonts found\" message even when the issue was an empty tab, not a failed search.",
+		],
+	},
+	{
+		id: "2026-07-10-security-audit-desktop-csp-path-validation",
+		date: "2026-07-10",
+		tag: "security",
+		title: "Desktop app security hardened — CSP and file path validation",
+		items: [
+			"The desktop app's webview was running with Content-Security-Policy disabled (`csp: null`), while the web app had a strong nonce-based CSP. An XSS in the desktop app would have had unrestricted access to the Tauri IPC bridge. A restrictive CSP is now enforced: scripts limited to 'self' and wasm-unsafe-eval (no unsafe-inline), connect-src limited to ipc/asset/https/ws, frame-ancestors none, object-src none.",
+			"Native file commands (read_file_bytes, read_file_text, get_file_metadata, file_to_asset_url) accepted arbitrary file paths from the webview and bypassed the Tauri fs plugin's scope. Combined with the disabled CSP, a compromised webview could read sensitive files like ~/.ssh/id_rsa or ~/.aws/credentials. A path validator now rejects '..' traversal and blocks known-sensitive credential directories (.ssh, .aws, .gnupg, .docker, .kube, .azure, .config/gcloud, .terraform.d, .npmrc, .pypirc, .netrc).",
+			"Collaboration lock release (DELETE) was missing the auth and rate-limit checks that every other collab route has. An unauthenticated caller could release element locks if they knew the session ID. Auth and rate limiting are now enforced on the DELETE handler.",
+			"Three public GET endpoints (share metadata, GitHub repo stats, health check) were missing rate limiting, allowing unbounded requests. All three now enforce the standard per-IP rate limit.",
+			"The sound search endpoint (Freesound API proxy) was missing authentication, allowing anonymous callers to drain the server-side Freesound API key quota. It now requires a signed-in session, matching the stock video search endpoint.",
+			"The AI chat route accepted unbounded array sizes for messages, recent events, and external tools — an authenticated caller could exhaust server memory with a massive payload. Array size limits are now enforced (500 messages, 200 recent events, 100 external tools), well above any legitimate session size.",
+			"The web-fetch proxy (server-side URL fetch for the AI copilot) was missing rate limiting despite downloading up to 500 KB per request. An authenticated caller could spam it to exhaust server bandwidth. It now enforces the standard per-IP rate limit.",
+		],
+	},
+	{
 		id: "2026-07-09-security-hardening-pass",
 		date: "2026-07-09",
 		tag: "security",

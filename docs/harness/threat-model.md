@@ -36,3 +36,21 @@ Controls:
 - argument validation
 - MCP tool allowlist
 - safe failure messages
+
+### T6: Desktop app webview compromise (XSS → IPC → file exfiltration)
+Controls:
+- Content-Security-Policy in `tauri.conf.json` (no `unsafe-inline` for scripts)
+- Path validation in custom Tauri commands (`validate_user_path`)
+- Blocked sensitive credential directories (`.ssh`, `.aws`, `.gnupg`, etc.)
+- No `shell:allow-execute` permission
+- See `SECURITY.md` "Security Audit — Full Pass" section for details
+
+### T7: Server-side fetch proxy SSRF / bandwidth abuse
+Controls:
+- `assertSafeProviderUrlDns` (DNS rebinding defense) on all server-side fetches
+- Private IP range blocking (IPv4 + IPv6)
+- Cloud metadata hostname blocklist
+- Rate limiting on all proxy routes
+- Response size cap (500 KB) on web fetch
+- Timeout (15-30s) on all outbound fetches
+

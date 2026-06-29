@@ -57,6 +57,16 @@ export async function DELETE(
 	request: Request,
 	{ params }: { params: Promise<{ roomId: string }> },
 ) {
+	const session = await getOptionalSession();
+	if (!session) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return Response.json({ error: "Too many requests" }, { status: 429 });
+	}
+
 	const { roomId } = await params;
 
 	let body: z.infer<typeof deleteSchema>;
