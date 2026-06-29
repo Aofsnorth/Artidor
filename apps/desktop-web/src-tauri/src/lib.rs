@@ -13,9 +13,79 @@
 
 use compositor::{Compositor, FrameDescriptor};
 use gpu::GpuContext;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 use tauri_plugin_dialog::DialogExt;
+
+// ---------------------------------------------------------------------------
+// Path validation — prevents arbitrary file reads/writes from the webview.
+//
+// The custom commands below accept a `path: String` from the frontend and
+// pass it to `tokio::fs`. Without validation, a compromised webview (XSS,
+// malicious plugin) could read `~/.ssh/id_rsa`, `~/.aws/credentials`, etc.
+// Tauri's fs *plugin* has its own scope, but these custom commands bypass it.
+//
+// `validate_user_path` rejects:
+//   - paths containing `..` components (traversal)
+//   - non-normalized paths (symlinks are resolved by the OS at access time,
+//     but we block the obvious traversal vector here)
+//   - paths under known-sensitive directories (SSH, AWS, GPG, etc.)
+//
+// This is defense-in-depth — the CSP set in tauri.conf.json is the primary
+// barrier against webview compromise.
+// ---------------------------------------------------------------------------
+
+fn validate_user_path(raw: &str) -> Result<PathBuf, String> {
+    let path = Path::new(raw);
+
+    // Reject any path containing parent-directory components — this blocks
+    // traversal attacks (`/home/user/../../../etc/passwd`).
+    for component in path.components() {
+        if matches!(component, Component::ParentDir) {
+            return Err(format!(
+                "Path contains '..' traversal, which is not allowed: {raw}"
+            ));
+        }
+    }
+
+    // Block known-sensitive directories. We check the string form so this
+    // works on both Unix (`~/.ssh`) and Windows (`C:\Users\x\.ssh`) without
+    // needing to expand `~`.
+    let lower = raw.to_lowercase();
+    const BLOCKED_SEGMENTS: &[&str] = &[
+        "/.ssh/",
+        "\\.ssh\\",
+        "/.aws/",
+        "\\.aws\\",
+        "/.gnupg/",
+        "\\.gnupg\\",
+        "/.docker/",
+        "\\.docker\\",
+        "/.kube/",
+        "\\.kube\\",
+        "/.config/gcloud/",
+        "\\.config\\gcloud\\",
+        "/.azure/",
+        "\\.azure\\",
+        "/.terraform.d/",
+        "\\.terraform.d\\",
+        "/.npmrc",
+        "\\.npmrc",
+        "/.pypirc",
+        "\\.pypirc",
+        "/.netrc",
+        "\\.netrc",
+    ];
+    for seg in BLOCKED_SEGMENTS {
+        if lower.contains(seg) {
+            return Err(format!(
+                "Path targets a sensitive credential directory and is blocked: {raw}"
+            ));
+        }
+    }
+
+    Ok(path.to_path_buf())
+}
 
 // ---------------------------------------------------------------------------
 // Compositor state
@@ -198,7 +268,8 @@ async fn pick_media_files(app: AppHandle) -> Result<Vec<String>, String> {
 /// Read a native file as bytes (for media that needs to be loaded into memory).
 #[tauri::command]
 async fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
-    tokio::fs::read(&path)
+    let validated = validate_user_path(&path)?;
+    tokio::fs::read(&validated)
         .await
         .map_err(|e| format!("Failed to read file {path}: {e}"))
 }
@@ -206,7 +277,8 @@ async fn read_file_bytes(path: String) -> Result<Vec<u8>, String> {
 /// Read a native file as text (for project files).
 #[tauri::command]
 async fn read_file_text(path: String) -> Result<String, String> {
-    tokio::fs::read_to_string(&path)
+    let validated = validate_user_path(&path)?;
+    tokio::fs::read_to_string(&validated)
         .await
         .map_err(|e| format!("Failed to read file {path}: {e}"))
 }
@@ -214,11 +286,12 @@ async fn read_file_text(path: String) -> Result<String, String> {
 /// Get file metadata (size, name) without reading the full file.
 #[tauri::command]
 async fn get_file_metadata(path: String) -> Result<FileMetadata, String> {
-    let metadata = tokio::fs::metadata(&path)
+    let validated = validate_user_path(&path)?;
+    let metadata = tokio::fs::metadata(&validated)
         .await
         .map_err(|e| format!("Failed to stat file {path}: {e}"))?;
 
-    let name = std::path::Path::new(&path)
+    let name = validated
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
@@ -242,10 +315,11 @@ struct FileMetadata {
 /// memory and creating a blob URL — the webview streams from disk.
 #[tauri::command]
 async fn file_to_asset_url(path: String) -> Result<String, String> {
-    // Tauri's `convertFileSrc` on the JS side does this, but we also
-    // expose it here for convenience. The JS side should prefer
-    // `@tauri-apps/api/core.convertFileSrc` directly.
-    let normalized = path.replace('\\', "/");
+    // Validate before converting — prevents a compromised webview from
+    // loading sensitive files (e.g. ~/.ssh/id_rsa) into the webview via
+    // the asset:// protocol.
+    let validated = validate_user_path(&path)?;
+    let normalized = validated.to_string_lossy().replace('\\', "/");
     Ok(format!("asset://localhost/{}", normalized))
 }
 

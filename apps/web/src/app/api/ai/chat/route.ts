@@ -80,7 +80,8 @@ const bodySchema = z.object({
 					.optional(),
 			}),
 		)
-		.min(1),
+		.min(1)
+		.max(500),
 	context: z
 		.object({
 			projectName: z.string().optional(),
@@ -97,7 +98,7 @@ const bodySchema = z.object({
 					}),
 				)
 				.optional(),
-			recentCommands: z.array(z.record(z.string(), z.unknown())).optional(),
+			recentCommands: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
 			styleProfile: z.unknown().optional(),
 		})
 		.optional(),
@@ -111,6 +112,7 @@ const bodySchema = z.object({
 				source: z.enum(["user", "ai"]),
 			}),
 		)
+		.max(200)
 		.optional(),
 	/**
 	 * Optional client-provided provider config. When present, the
@@ -157,6 +159,7 @@ const bodySchema = z.object({
 				}),
 			}),
 		)
+		.max(100)
 		.optional(),
 	/**
 	 * Controls how the AI references recent edits in the system prompt:

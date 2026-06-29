@@ -70,6 +70,7 @@ services:
       - MARBLE_WORKSPACE_KEY=${MARBLE_WORKSPACE_KEY:?Set MARBLE_WORKSPACE_KEY in your .env}
       - FREESOUND_CLIENT_ID=${FREESOUND_CLIENT_ID:?Set FREESOUND_CLIENT_ID in your .env}
       - FREESOUND_API_KEY=${FREESOUND_API_KEY:?Set FREESOUND_API_KEY in your .env}
+      - PEXELS_API_KEY=${PEXELS_API_KEY:?Set PEXELS_API_KEY in your .env}
     depends_on:
       db:
         condition: service_healthy

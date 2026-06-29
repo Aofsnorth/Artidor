@@ -15,7 +15,7 @@
 //! local-first. They can be added when a cloud feature lands here.
 
 use serde::{Deserialize, Serialize};
-use time::{FrameRate, MediaTime};
+use artidor_time::{FrameRate, MediaTime};
 
 /// Timeline track type. Subset of web `TrackType`
 /// (`apps/web/src/lib/timeline/types.ts`). The native shell starts with
@@ -412,7 +412,7 @@ impl ProjectMetadata {
 }
 
 /// Project render settings. Mirrors web `TProjectSettings` (subset).
-/// `fps` reuses the repo's `time::FrameRate` (shared timeline math).
+/// `fps` reuses the repo's `artidor_time::FrameRate` (shared timeline math).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectSettings {
     pub fps: FrameRate,
@@ -455,8 +455,8 @@ pub fn frame_rate_from_u32(fps: u32) -> FrameRate {
     }
 }
 
-/// Playhead position. A thin wrapper around `time::MediaTime` so the
-/// model reads clearly and the timeline math stays in the `time` crate.
+/// Playhead position. A thin wrapper around `artidor_time::MediaTime` so the
+/// model reads clearly and the timeline math stays in the `artidor-time` crate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Playhead(pub MediaTime);

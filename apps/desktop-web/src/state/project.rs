@@ -3,7 +3,7 @@
 //! This mirrors the web app's project structure: a canvas size, a frame
 //! rate, a list of tracks, and each track contains elements positioned on
 //! the timeline. All logic (timebase conversion, frame math) is delegated
-//! to the `time` crate.
+//! to the `artidor-time` crate.
 
 use compositor::{BlendMode, EffectPassDescriptor, LayerMaskDescriptor, QuadTransformDescriptor};
 use serde::{Deserialize, Serialize};

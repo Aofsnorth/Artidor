@@ -22,7 +22,7 @@ import type { FontAtlas, FontAtlasEntry } from "@/lib/fonts/types";
 import { useFontAtlas } from "@/hooks/use-font-atlas";
 import { useCustomFontsStore } from "@/stores/custom-fonts-store";
 import { cn } from "@/utils/ui";
-import { ChevronDown, Search, Upload } from "lucide-react";
+import { ChevronDown, Search, Star, Upload } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { TextIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
@@ -64,6 +64,8 @@ export function FontPicker({
 	} = useFontAtlas({ open });
 	const customFonts = useCustomFontsStore((s) => s.fonts);
 	const importFont = useCustomFontsStore((s) => s.importFont);
+	const favorites = useCustomFontsStore((s) => s.favorites);
+	const toggleFavorite = useCustomFontsStore((s) => s.toggleFavorite);
 	const fontFileInputRef = useRef<HTMLInputElement>(null);
 
 	// Merge custom fonts with atlas fonts (custom fonts appear at the top).
@@ -95,10 +97,21 @@ export function FontPicker({
 	);
 
 	const filteredFonts = useMemo(() => {
-		if (!search) return allFontNames;
+		// Filter by active tab first, then by search query.
+		const customSet = new Set(customFonts.map((f) => f.family));
+		const favSet = new Set(favorites);
+		let pool: string[];
+		if (activeTab === "my-fonts") {
+			pool = allFontNames.filter((name) => customSet.has(name));
+		} else if (activeTab === "favorites") {
+			pool = allFontNames.filter((name) => favSet.has(name));
+		} else {
+			pool = allFontNames;
+		}
+		if (!search) return pool;
 		const query = search.toLowerCase();
-		return allFontNames.filter((name) => name.toLowerCase().includes(query));
-	}, [allFontNames, search]);
+		return pool.filter((name) => name.toLowerCase().includes(query));
+	}, [allFontNames, activeTab, customFonts, favorites, search]);
 
 	const listHeight = Math.min(
 		MAX_LIST_HEIGHT,
@@ -234,7 +247,11 @@ export function FontPicker({
 					fontNames.length > 0 &&
 					filteredFonts.length === 0 && (
 						<div className="py-6 text-center text-sm text-muted-foreground">
-							No fonts found.
+							{activeTab === "my-fonts"
+								? "No custom fonts yet. Import a .ttf, .otf, or .woff2 file."
+								: activeTab === "favorites"
+									? "No favorite fonts yet. Click the star next to a font to pin it here."
+									: "No fonts found."}
 						</div>
 					)}
 				{status === "idle" && atlas && filteredFonts.length > 0 && (
@@ -249,6 +266,8 @@ export function FontPicker({
 							selectedFont: defaultValue,
 							onFontSelect: handleSelect,
 							customFontFamilies: new Set(customFonts.map((f) => f.family)),
+							favoriteFamilies: new Set(favorites),
+							onToggleFavorite: toggleFavorite,
 						}}
 						style={{ height: listHeight, width: LIST_WIDTH }}
 					/>
@@ -285,6 +304,8 @@ type FontRowProps = {
 	selectedFont: string | undefined;
 	onFontSelect: (params: { family: string }) => void;
 	customFontFamilies: Set<string>;
+	favoriteFamilies: Set<string>;
+	onToggleFavorite: (family: string) => void;
 };
 
 function FontRow({
@@ -295,12 +316,15 @@ function FontRow({
 	selectedFont,
 	onFontSelect,
 	customFontFamilies,
+	favoriteFamilies,
+	onToggleFavorite,
 }: RowComponentProps<FontRowProps>) {
 	const fontName = filteredFonts[index];
 	const entry = atlas?.fonts[fontName];
 	const isSelected = fontName === selectedFont;
 	const isSystemFont = SYSTEM_FONTS.has(fontName);
 	const isCustomFont = customFontFamilies.has(fontName);
+	const isFavorite = favoriteFamilies.has(fontName);
 
 	// Custom fonts show their display name (without the prefix).
 	const displayName = isCustomFont
@@ -308,8 +332,7 @@ function FontRow({
 		: fontName;
 
 	return (
-		<button
-			type="button"
+		<div
 			style={style as CSSProperties}
 			className={cn(
 				"flex w-full cursor-pointer items-center gap-2 px-3 outline-hidden hover:bg-popover-hover",
@@ -322,9 +345,11 @@ function FontRow({
 					onFontSelect({ family: fontName });
 				}
 			}}
+			role="button"
+			tabIndex={0}
 			aria-label={displayName}
 		>
-			<div className="min-w-0 overflow-hidden flex items-center gap-2">
+			<div className="min-w-0 overflow-hidden flex items-center gap-2 flex-1">
 				{isSystemFont || isCustomFont ? (
 					<span
 						className="text-xl text-foreground/85"
@@ -343,6 +368,25 @@ function FontRow({
 					</span>
 				)}
 			</div>
-		</button>
+			<button
+				type="button"
+				className="shrink-0 p-1 rounded hover:bg-white/[0.08] transition"
+				onClick={(event) => {
+					event.stopPropagation();
+					onToggleFavorite(fontName);
+				}}
+				aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+				aria-pressed={isFavorite}
+			>
+				<Star
+					className={cn(
+						"size-3.5 transition",
+						isFavorite
+							? "fill-yellow-400 text-yellow-400"
+							: "text-muted-foreground hover:text-foreground",
+					)}
+				/>
+			</button>
+		</div>
 	);
 }

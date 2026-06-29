@@ -17,6 +17,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
 import { getOptionalSession } from "@/lib/auth/require-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -143,6 +144,17 @@ export async function POST(request: Request): Promise<NextResponse> {
 	const session = await getOptionalSession();
 	if (!session) {
 		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	// Rate limit — this route downloads up to 500 KB per request; without
+	// a cap, an authenticated caller could spam it to exhaust server
+	// bandwidth and outbound connections.
+	const { limited } = await checkRateLimit({ request });
+	if (limited) {
+		return NextResponse.json(
+			{ ok: false, error: "Too many requests" },
+			{ status: 429 },
+		);
 	}
 
 	// DNS rebinding defense — resolve the hostname and verify the IP is
