@@ -28,9 +28,7 @@ import {
 	clearActiveScope,
 	type ScopeEntry,
 } from "@/lib/selection/scope";
-import { extractClipAudio } from "@/lib/media/mediabunny";
-import { decodeAudioToFloat32 } from "@/lib/media/audio";
-import { detectBeatsAsync } from "@/lib/media/beat-detection";
+import { analyzeBeats } from "@/lib/media/beat-analysis";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -951,27 +949,17 @@ export function useEditorActions() {
 			toast.loading("Analyzing beats...", { id: "beat-analysis" });
 
 			try {
-				// Use the same fast path as the AI detect_beats tool:
-				// extractClipAudio (mediabunny, has yielding) →
-				// decodeAudioToFloat32 at 8kHz mono (minimal data) →
-				// detectBeatsAsync (Web Worker — no UI freeze).
-				//
-				// This replaces the old main-thread path that called
-				// decodeAndCache (full-quality decode + peak scan on main
-				// thread), which blocked the UI for 5-10 seconds on long
-				// audio files.
-				const blob = await extractClipAudio({
-					element: element as never,
-					mediaAssets,
-				});
-				const { samples, sampleRate } = await decodeAudioToFloat32({
-					audioBlob: blob,
-					sampleRate: 8000,
-				});
-
-				const beats = await detectBeatsAsync({
-					samples,
-					sampleRate,
+				// Full pipeline runs in a Web Worker — zero UI freeze.
+				// The worker handles: decode → trim → mono mixdown → detect.
+				if (!mediaAsset?.file) {
+					toast.error("Media file not found", { id: "beat-analysis" });
+					return;
+				}
+				const beats = await analyzeBeats({
+					file: mediaAsset.file,
+					trimStartSeconds: (element.trimStart ?? 0) / TICKS_PER_SECOND,
+					durationSeconds: element.duration / TICKS_PER_SECOND,
+					targetSampleRate: 8000,
 					onProgress: (progress) => {
 						const pct = Math.round(progress * 100);
 						toast.loading(`Analyzing beats… ${pct}%`, { id: "beat-analysis" });

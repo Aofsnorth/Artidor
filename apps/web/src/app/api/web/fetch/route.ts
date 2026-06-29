@@ -16,6 +16,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -136,6 +137,12 @@ export async function POST(request: Request): Promise<NextResponse> {
 			{ ok: false, error: "URL is not allowed" },
 			{ status: 400 },
 		);
+	}
+
+	// Auth check — the web-fetch proxy must not be usable anonymously.
+	const session = await getOptionalSession();
+	if (!session) {
+		return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 	}
 
 	// DNS rebinding defense — resolve the hostname and verify the IP is

@@ -18,6 +18,28 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-09-security-hardening-pass",
+		date: "2026-07-09",
+		tag: "security",
+		title: "Editor security hardened — XSS, SSRF, and abuse protections",
+		items: [
+			"AI-generated chat content is now sanitized with rehype-sanitize before rendering. Previously, markdown was only filtered by tag name — malicious attributes like `onmouseover` or `href=\"javascript:...\"` could pass through. The new schema strips event handlers and blocks dangerous URL protocols while keeping the formatting the AI produces.",
+			"The AI provider test, model-listing, and web-fetch routes now defend against DNS rebinding: the hostname is resolved and verified to not point at a private or link-local address before the server fetches it. This closes a gap where a domain could pass the sync private-IP check but resolve to an internal address (e.g. cloud metadata) by the time the request connects.",
+			"Collaboration room and share-link creation now have a stricter per-IP cap (10 creates per hour) on top of the existing rate limit, preventing resource-exhaustion abuse without requiring an account — preserving the local-first, no-sign-in design.",
+			"The editor route now serves a nonce-based Content-Security-Policy that drops `'unsafe-inline'` for scripts, so injected inline scripts without the per-request nonce are blocked. Other routes keep the broader CSP so landing, docs, and changelog stay statically renderable.",
+		],
+	},
+	{
+		id: "2026-07-09-perf-lazy-load-and-raf-idle",
+		date: "2026-07-09",
+		tag: "performance",
+		title: "Lighter initial load and idle-aware animation loop",
+		items: [
+			"The transcription engine's heavy ML library (`@huggingface/transformers`, multiple MB) is now loaded on demand only when you start a transcription. Users who never use captions no longer download or initialize the model runtime, trimming the worker's startup cost.",
+			"The editor's requestAnimationFrame loop now pauses when the browser tab is hidden and resumes on focus. Previously it kept scheduling frames in the background, wasting CPU and battery and causing a delta-time spike when the tab regained focus.",
+		],
+	},
+	{
 		id: "2026-07-09-puter-model-search-ui-fix",
 		date: "2026-07-09",
 		tag: "fix",

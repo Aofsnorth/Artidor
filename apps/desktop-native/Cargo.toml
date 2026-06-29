@@ -1,0 +1,33 @@
+[package]
+name = "artidor-desktop-native"
+version = "0.1.0"
+description = "Artidor native desktop app — Win32 API shell (incremental 1:1 rewrite of the web app)"
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Standalone crate, intentionally decoupled from the repo root workspace.
+# The root `Cargo.toml` (a sensitive path per AGENTS.md) is therefore NOT
+# edited. Opting into the root workspace (editing root `Cargo.toml`
+# `members`) is deferred to Increment 7 and requires explicit approval.
+# See features/desktop-native-win32/PLAN.md and RISKS.md.
+[workspace]
+
+# The `windows` dependency is added via `cargo add` so the exact resolved
+# version is pinned here. See the dependency decision in
+# features/desktop-native-win32/PLAN.md.
+
+[[bin]]
+name = "artidor-desktop-native"
+path = "src/main.rs"
+
+[dependencies]
+compositor = { version = "0.1.0", path = "../../rust/crates/compositor" }
+ffmpeg-sidecar = { version = "2.5.2", default-features = false }
+gpu = { version = "0.1.0", path = "../../rust/crates/gpu" }
+pollster = "0.4.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.150"
+thiserror = "2.0.18"
+time = { version = "0.1.0", path = "../../rust/crates/time" }
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Controls", "Win32_UI_Controls_Dialogs", "Win32_Graphics_Gdi", "Win32_System_LibraryLoader", "Win32_UI_Input_KeyboardAndMouse"] }

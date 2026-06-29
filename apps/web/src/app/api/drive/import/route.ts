@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildDriveDirectUrl, parseDriveUrl } from "@/lib/drive/parse";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,11 @@ export type DriveFileImport = {
 export type DriveImportResult = DriveFileImport | DriveFolderImport;
 
 export async function POST(request: Request) {
+	const session = await getOptionalSession();
+	if (!session) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	// This route is a server-side fetch proxy (bytes flow through our server),
 	// so it must be rate-limited like the other public endpoints to blunt abuse
 	// and bandwidth amplification.

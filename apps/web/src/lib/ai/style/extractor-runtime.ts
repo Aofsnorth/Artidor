@@ -69,7 +69,15 @@ export async function extractStyle({
 			video.addEventListener("loadedmetadata", onLoaded, { once: true });
 			video.addEventListener("error", onError, { once: true });
 			// Safety timeout for exotic codecs.
-			setTimeout(() => reject(new Error("Decoder timed out")), 15_000);
+			const timeoutId = setTimeout(
+				() => reject(new Error("Decoder timed out")),
+				15_000,
+			);
+			// Clear timeout once settled to avoid late rejection on a
+			// settled promise (no-op but cleaner).
+			const clear = () => clearTimeout(timeoutId);
+			video.addEventListener("loadedmetadata", clear, { once: true });
+			video.addEventListener("error", clear, { once: true });
 		});
 
 		const duration = Math.max(0, video.duration);
@@ -288,15 +296,15 @@ function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
  * only fails on real errors, never on "no music detected".
  */
 async function estimateTempo(file: File): Promise<number> {
+	let ctx: AudioContext | null = null;
 	try {
 		const arrayBuffer = await file.arrayBuffer();
-		const ctx = new (
+		ctx = new (
 			window.AudioContext ||
 			(window as unknown as { webkitAudioContext: typeof AudioContext })
 				.webkitAudioContext
 		)();
 		const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
-		await ctx.close();
 
 		// Mix to mono.
 		const channels = audioBuffer.numberOfChannels;
@@ -327,5 +335,7 @@ async function estimateTempo(file: File): Promise<number> {
 		return bestBpm;
 	} catch {
 		return 0;
+	} finally {
+		if (ctx) ctx.close().catch(() => {});
 	}
 }
