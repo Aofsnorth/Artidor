@@ -19,8 +19,8 @@ use crate::state::{self, Element, Project, Track, TrackType};
 use crate::theme::PLAYBACK_TIMER_ID;
 use crate::ui::layout::Layout;
 use crate::window::{
-    DragMode, DragState, WindowState, child_hwnd, clamp_scroll, clamp_zoom, timeline_duration,
-    window_state, window_state_mut,
+    DragMode, DragState, child_hwnd, clamp_scroll, clamp_zoom, timeline_duration, window_state,
+    window_state_mut,
 };
 
 /// Handle a WM_KEYDOWN message. Returns true if the window should repaint.
@@ -58,11 +58,25 @@ pub unsafe fn handle_keydown(hwnd: HWND, wparam: WPARAM) -> bool {
                     state.zoom_pps = clamp_zoom(state.zoom_pps / 1.25);
                     dirty = true;
                 }
-                // Esc = go back to welcome screen (from editor).
+                // Esc = go back to home screen (from editor).
                 0x1B => {
-                    state.mode = crate::window::AppMode::Welcome;
-                    state.welcome = crate::ui::welcome::WelcomeState::new();
+                    state.mode = crate::window::AppMode::Home;
+                    state.home = crate::ui::home::HomeState::new();
+                    state.projects = crate::ui::projects::ProjectsState::new();
                     dirty = true;
+                }
+                // Ctrl+N = new project from the home / project hub screens.
+                0x4E if GetKeyState(VK_CONTROL.0 as i32) < 0 => {
+                    if state.mode != crate::window::AppMode::Editor {
+                        let now_ms = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as i64)
+                            .unwrap_or(0);
+                        state.project = Project::new_untitled("untitled", now_ms);
+                        state.mode = crate::window::AppMode::Editor;
+                        state.history.clear();
+                        dirty = true;
+                    }
                 }
                 0x54 => {
                     let types = [
@@ -214,11 +228,24 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
         let x = (lparam.0 & 0xFFFF) as i16 as i32;
         let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
         if let Some(state) = window_state_mut(hwnd) {
-            // --- Welcome mode: handle New Project + recent project clicks ---
-            if state.mode == crate::window::AppMode::Welcome {
-                let btn = state.welcome.new_project_btn.rect;
-                if x >= btn.left && x <= btn.right && y >= btn.top && y <= btn.bottom {
-                    // New Project: create fresh untitled project, switch to editor.
+            // --- Home mode: navigation, new/open project, recent cards ---
+            if state.mode == crate::window::AppMode::Home {
+                // Projects tab / view-all-projects button.
+                if (x >= state.home.projects_tab.rect.left
+                    && x <= state.home.projects_tab.rect.right
+                    && y >= state.home.projects_tab.rect.top
+                    && y <= state.home.projects_tab.rect.bottom)
+                    || (x >= state.home.view_projects_btn.rect.left
+                        && x <= state.home.view_projects_btn.rect.right
+                        && y >= state.home.view_projects_btn.rect.top
+                        && y <= state.home.view_projects_btn.rect.bottom)
+                {
+                    state.mode = crate::window::AppMode::Projects;
+                    return true;
+                }
+                // New project button.
+                let new = state.home.new_project_btn.rect;
+                if x >= new.left && x <= new.right && y >= new.top && y <= new.bottom {
                     let now_ms = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .map(|d| d.as_millis() as i64)
@@ -228,13 +255,16 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     state.history.clear();
                     return true;
                 }
-                // Check recent project card clicks.
-                // Hit-test using the click coords (client space) against
-                // the card rects stored during the last paint. This avoids
-                // relying on stale hover state from WM_MOUSEMOVE.
-                if let Some(idx) = state.welcome.hit_test_card(x, y) {
-                    if idx < state.welcome.recent.len() {
-                        let rp = state.welcome.recent[idx].clone();
+                // Open project button.
+                let open = state.home.open_project_btn.rect;
+                if x >= open.left && x <= open.right && y >= open.top && y <= open.bottom {
+                    drop(state);
+                    return handle_open(hwnd);
+                }
+                // Recent project card clicks.
+                if let Some(idx) = state.home.hit_test_card(x, y) {
+                    if idx < state.home.recent.len() {
+                        let rp = state.home.recent[idx].clone();
                         match crate::state::persistence::load_project(&rp.path) {
                             Ok(project) => {
                                 state.project = project;
@@ -246,6 +276,55 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                             }
                             Err(e) => {
                                 let msg = format!("Failed to open recent project:\n\n{e}");
+                                message_box(&msg, true);
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+
+            // --- Projects mode: navigation, new/open project, full project list ---
+            if state.mode == crate::window::AppMode::Projects {
+                // Home tab.
+                let home = state.projects.home_tab.rect;
+                if x >= home.left && x <= home.right && y >= home.top && y <= home.bottom {
+                    state.mode = crate::window::AppMode::Home;
+                    return true;
+                }
+                // New project button.
+                let new = state.projects.new_project_btn.rect;
+                if x >= new.left && x <= new.right && y >= new.top && y <= new.bottom {
+                    let now_ms = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as i64)
+                        .unwrap_or(0);
+                    state.project = Project::new_untitled("untitled", now_ms);
+                    state.mode = crate::window::AppMode::Editor;
+                    state.history.clear();
+                    return true;
+                }
+                // Open project button.
+                let open = state.projects.open_project_btn.rect;
+                if x >= open.left && x <= open.right && y >= open.top && y <= open.bottom {
+                    drop(state);
+                    return handle_open(hwnd);
+                }
+                // Project card clicks.
+                if let Some(idx) = state.projects.hit_test_card(x, y) {
+                    if idx < state.projects.recent.len() {
+                        let rp = state.projects.recent[idx].clone();
+                        match crate::state::persistence::load_project(&rp.path) {
+                            Ok(project) => {
+                                state.project = project;
+                                state.mode = crate::window::AppMode::Editor;
+                                state.history.clear();
+                                state.selected_track = 0;
+                                state.selected_element = None;
+                                return true;
+                            }
+                            Err(e) => {
+                                let msg = format!("Failed to open project:\n\n{e}");
                                 message_box(&msg, true);
                             }
                         }
@@ -812,6 +891,9 @@ pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::L
                     return true;
                 }
             }
+            if state.mode != crate::window::AppMode::Editor {
+                return true;
+            }
         }
         false
     }
@@ -838,16 +920,25 @@ pub unsafe fn handle_mousewheel(hwnd: HWND, wparam: WPARAM) -> bool {
         let wheel_delta = ((wparam.0 >> 16) & 0xFFFF) as i16 as i32;
         let ctrl_down = GetKeyState(VK_CONTROL.0 as i32) < 0;
         if let Some(state) = window_state_mut(hwnd) {
-            if ctrl_down {
-                // Zoom: each 120 delta = 1.25x factor.
-                let factor = 1.25_f64.powi(wheel_delta / 120);
-                state.zoom_pps = clamp_zoom(state.zoom_pps * factor);
-            } else {
-                // Horizontal scroll: each 120 delta = 2 seconds.
-                let delta_seconds = -(wheel_delta as f64 / 120.0) * 2.0;
-                state.scroll_seconds = clamp_scroll(state.scroll_seconds + delta_seconds);
+            match state.mode {
+                crate::window::AppMode::Projects => {
+                    state.projects.scroll_by(-wheel_delta / 3);
+                    return true;
+                }
+                crate::window::AppMode::Editor => {
+                    if ctrl_down {
+                        // Zoom: each 120 delta = 1.25x factor.
+                        let factor = 1.25_f64.powi(wheel_delta / 120);
+                        state.zoom_pps = clamp_zoom(state.zoom_pps * factor);
+                    } else {
+                        // Horizontal scroll: each 120 delta = 2 seconds.
+                        let delta_seconds = -(wheel_delta as f64 / 120.0) * 2.0;
+                        state.scroll_seconds = clamp_scroll(state.scroll_seconds + delta_seconds);
+                    }
+                    return true;
+                }
+                _ => {}
             }
-            return true;
         }
         false
     }

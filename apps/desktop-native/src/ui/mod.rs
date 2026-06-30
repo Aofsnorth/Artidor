@@ -13,13 +13,15 @@ pub mod layout;
 pub mod tab_bar;
 pub mod timeline;
 pub mod viewport_toolbar;
-pub mod welcome;
+#[path = "welcome.rs"]
+pub mod home;
+pub mod projects;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::Project;
-use crate::theme::{BG, BORDER_FAINT};
+use crate::theme::{BG, BORDER, PANEL_BG};
 use crate::ui::gfx::{border_rect, draw_text_centered, fill_rect};
 use crate::window::timeline_duration;
 
@@ -51,19 +53,19 @@ pub unsafe fn paint_chrome(
         tab_bar::draw_tab_bar(hdc, &layout.tabbar, active_tab, tab_rects);
 
         // Tools panel: assets + copilot.
-        fill_rect(hdc, &layout.tools, BG);
-        border_rect(hdc, &layout.tools, BORDER_FAINT);
+        fill_rect(hdc, &layout.tools, 0xFF0000);
+        border_rect(hdc, &layout.tools, BORDER);
         assets::draw_assets_list(hdc, &layout.tools, project, active_tab);
         ai::draw_copilot_suggestions(hdc, &layout.tools, project);
 
         // Properties panel.
-        fill_rect(hdc, &layout.properties, BG);
-        border_rect(hdc, &layout.properties, BORDER_FAINT);
+        fill_rect(hdc, &layout.properties, PANEL_BG);
+        border_rect(hdc, &layout.properties, BORDER);
         inspector::draw_properties_panel(hdc, &layout.properties, project, selected_element);
 
         // Timeline panel.
-        fill_rect(hdc, &layout.timeline, BG);
-        border_rect(hdc, &layout.timeline, BORDER_FAINT);
+        fill_rect(hdc, &layout.timeline, PANEL_BG);
+        border_rect(hdc, &layout.timeline, BORDER);
         timeline::draw_timeline_tracks(
             hdc,
             &layout.timeline,
@@ -76,7 +78,8 @@ pub unsafe fn paint_chrome(
         );
 
         // Preview panel frame.
-        border_rect(hdc, &layout.preview, BORDER_FAINT);
+        fill_rect(hdc, &layout.preview, PANEL_BG);
+        border_rect(hdc, &layout.preview, BORDER);
 
         // Viewport toolbar (transport controls at bottom of preview).
         viewport_toolbar::draw_viewport_toolbar(

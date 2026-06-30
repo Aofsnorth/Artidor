@@ -6,8 +6,8 @@ use windows::Win32::Foundation::{COLORREF, RECT};
 use windows::Win32::Graphics::Gdi::{CreatePen, DeleteObject, PS_SOLID, Rectangle, SelectObject};
 
 use crate::state::Project;
-use crate::theme::{PLAYHEAD_COLOR, TRACK_PAD, rgb};
-use crate::window::timeline_duration;
+use crate::theme::{PLAYHEAD_COLOR, PANEL_BG, TRACK_PAD, rgb};
+use crate::ui::gfx::fill_rect;
 
 /// Draw the playhead vertical line + the readout strip at the bottom.
 /// Uses zoom (pps) + scroll (seconds) for pixel-accurate placement.
@@ -48,6 +48,7 @@ pub unsafe fn draw_playhead(
             right: panel.right,
             bottom: panel.bottom,
         };
+        fill_rect(hdc, &readout, PANEL_BG);
         let frame = project
             .playhead
             .frame_floor(project.settings.fps)

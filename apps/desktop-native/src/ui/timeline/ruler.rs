@@ -10,7 +10,7 @@
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
-use crate::theme::{BG_DARK, BORDER, BORDER_FAINT, RULER_H, TEXT_DIM, TEXT_FAINT, TRACK_PAD};
+use crate::theme::{BORDER, BORDER_FAINT, PANEL_BG, RULER_H, TEXT_FAINT, TRACK_PAD};
 use crate::ui::gfx::{border_rect, draw_text_left, fill_rect};
 
 /// Draw the timeline ruler: background + tick marks + time labels.
@@ -23,7 +23,7 @@ pub unsafe fn draw_ruler(
     playhead_seconds: f64,
 ) {
     unsafe {
-        fill_rect(hdc, ruler, BG_DARK);
+        fill_rect(hdc, ruler, PANEL_BG);
         border_rect(hdc, ruler, BORDER_FAINT);
 
         let panel_w = ruler.right - ruler.left;

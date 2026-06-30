@@ -5,8 +5,8 @@
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
-use crate::state::{Project, Track, TrackType};
-use crate::theme::{BG_DARK, TEXT_BRIGHT, TEXT_DIM, TRACK_PAD, TRACK_ROW_H};
+use crate::state::{Track, TrackType};
+use crate::theme::{TEXT_BRIGHT, TEXT_DIM, TRACK_BG, TRACK_PAD, TRACK_ROW_H, TRACK_SELECTED_BORDER};
 use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
 
 /// Draw a single track row: type tag + name + clip blocks.
@@ -35,9 +35,9 @@ pub unsafe fn draw_track_row(
             right: panel.left + panel_w - TRACK_PAD,
             bottom: row_y + TRACK_ROW_H - 2,
         };
-        fill_rect(hdc, &row, BG_DARK);
+        fill_rect(hdc, &row, TRACK_BG);
         if track_index == selected_track {
-            border_rect(hdc, &row, 0x4D4D52);
+            border_rect(hdc, &row, TRACK_SELECTED_BORDER);
         }
 
         let tag_color = match track.track_type {

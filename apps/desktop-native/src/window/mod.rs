@@ -5,7 +5,9 @@
 pub mod shortcuts;
 
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::UI::WindowsAndMessaging::{GWLP_USERDATA, GetClientRect, GetWindowLongPtrW};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GWLP_USERDATA, GetClientRect, GetWindowLongPtrW, MoveWindow, ShowWindow, SW_HIDE, SW_SHOW,
+};
 
 use crate::render::Renderer;
 use crate::state::AssetsTab;
@@ -14,13 +16,16 @@ use crate::theme::TIMELINE_MIN_SECONDS;
 use crate::ui::font::FontCache;
 use crate::ui::header::HeaderButtons;
 use crate::ui::viewport_toolbar::ToolbarButtons;
-use crate::ui::welcome::WelcomeState;
+use crate::ui::home::HomeState;
+use crate::ui::projects::ProjectsState;
 
-/// App mode: welcome screen (no project open) vs editor (project loaded).
+/// App mode: home screen, project hub, or editor.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AppMode {
-    /// Welcome/homepage screen with recent projects + New Project button.
-    Welcome,
+    /// Home / landing screen with hero + primary CTAs.
+    Home,
+    /// Project hub with the full recent-projects list.
+    Projects,
     /// Editor mode with the full panel layout.
     Editor,
 }
@@ -78,10 +83,12 @@ pub struct WindowState {
     /// Cached GDI fonts (Segoe UI at 5 sizes). Created once, reused
     /// across paints. Deleted on window destroy.
     pub fonts: FontCache,
-    /// App mode: welcome screen vs editor.
+    /// App mode: home, project hub, or editor.
     pub mode: AppMode,
-    /// Welcome screen state (recent projects + button hover).
-    pub welcome: WelcomeState,
+    /// Home screen state (hero, CTAs, recent-preview).
+    pub home: HomeState,
+    /// Project hub state (full recent-projects list).
+    pub projects: ProjectsState,
     /// Last auto-save timestamp (Unix epoch ms). Auto-save runs every
     /// 30s if `dirty` is true.
     pub last_autosave_ms: i64,
@@ -115,8 +122,9 @@ impl WindowState {
             zoom_pps: 20.0,
             scroll_seconds: 0.0,
             fonts: FontCache::new(),
-            mode: AppMode::Welcome,
-            welcome: WelcomeState::new(),
+            mode: AppMode::Home,
+            home: HomeState::new(),
+            projects: ProjectsState::new(),
             last_autosave_ms: 0,
             dirty: false,
             header_btns: HeaderButtons::default(),
@@ -201,6 +209,34 @@ pub fn client_height(hwnd: HWND) -> u32 {
     match unsafe { GetClientRect(hwnd, &mut rect) } {
         Ok(()) => (rect.bottom - rect.top).max(0) as u32,
         Err(_) => 0,
+    }
+}
+
+/// Show, hide, or reposition the viewport child window based on the
+/// current `AppMode`. The child must be hidden on Home/Projects so it
+/// does not obscure the landing UI, and shown + sized inside the editor
+/// preview panel.
+pub fn sync_viewport_child(hwnd: HWND) {
+    unsafe {
+        if let Some(child) = child_hwnd(hwnd) {
+            if let Some(state) = window_state(hwnd) {
+                if state.mode == AppMode::Editor {
+                    let mut client = RECT::default();
+                    if GetClientRect(hwnd, &mut client).is_ok() {
+                        let layout = crate::ui::layout::Layout::compute(
+                            client.right - client.left,
+                            client.bottom - client.top,
+                        );
+                        let vw = (layout.viewport.right - layout.viewport.left).max(0);
+                        let vh = (layout.viewport.bottom - layout.viewport.top).max(0);
+                        let _ = MoveWindow(child, layout.viewport.left, layout.viewport.top, vw, vh, true);
+                    }
+                    let _ = ShowWindow(child, SW_SHOW);
+                } else {
+                    let _ = ShowWindow(child, SW_HIDE);
+                }
+            }
+        }
     }
 }
 
