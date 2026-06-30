@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ProjectsBackground } from "./projects-background";
 import type { EditorCore } from "@/core";
 import { MigrationDialog } from "@/components/editor/dialogs/migration-dialog";
 import { StoragePersistenceDialog } from "@/components/editor/dialogs/storage-persistence-dialog";
@@ -247,48 +248,11 @@ export default function ProjectsPage() {
 			   the document taller. If a sub-region (the project
 			   grid) needs its own scroll, it gets its own
 			   `overflow-auto` — the page chrome itself never
-			   scrolls. The Covenant artwork (gothic cathedral +
-			   figure) sits in its own absolutely-positioned layer
-			   behind everything, scaled up slightly + blurred so
-			   the dark detail shows through but doesn't compete
-			   with the foreground cards. A dark gradient overlay
-			   layers on top to keep the chrome (white text on
-			   glass cards) legible. */}
+			   scrolls. The PinedIn-style background (dark canvas,
+			   hex pattern, animated wash, vignette) sits behind
+			   everything via <ProjectsBackground />. */}
 				<div className="relative flex h-screen flex-col overflow-hidden">
-					{/* Background layer — rendered sharp at native quality (no blur,
-					   no upscale) so the artwork stays crisp. Negative z-index so
-					   the page chrome renders on top. */}
-					<div
-						aria-hidden
-						className="pointer-events-none absolute inset-0 -z-20"
-						style={{
-							backgroundImage: "url(/wallpaper/projects-covenant.webp)",
-							backgroundRepeat: "no-repeat",
-							backgroundSize: "cover",
-							backgroundPosition: "center",
-						}}
-					/>
-					{/* Dreamy atmospheric overlay — three soft radial
-					   glows (cool indigo, warm amber, soft pink) that
-					   bloom across the artwork, evoking the "liminal
-					   dream" aesthetic. Plus a vignette at the edges
-					   so the centre pops. */}
-					<div
-						aria-hidden
-						className="pointer-events-none absolute inset-0 -z-10"
-						style={{
-							background: [
-								// Soft colour blooms
-								"radial-gradient(ellipse 50% 40% at 30% 20%, rgba(120, 140, 220, 0.18), transparent 70%)",
-								"radial-gradient(ellipse 40% 50% at 70% 60%, rgba(220, 180, 200, 0.15), transparent 70%)",
-								"radial-gradient(ellipse 60% 50% at 50% 90%, rgba(200, 160, 100, 0.13), transparent 70%)",
-								// Edge vignette for cinematic depth
-								"radial-gradient(ellipse at center, transparent 50%, rgba(8, 8, 10, 0.45) 100%)",
-								// Top-to-bottom legibility wash
-								"linear-gradient(180deg, rgba(8, 8, 10, 0.35) 0%, rgba(8, 8, 10, 0.10) 35%, rgba(8, 8, 10, 0.20) 70%, rgba(8, 8, 10, 0.50) 100%)",
-							].join(", "),
-						}}
-					/>
+					<ProjectsBackground />
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
 						<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
