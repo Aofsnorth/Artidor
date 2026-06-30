@@ -251,8 +251,8 @@ export default function ProjectsPage() {
 			   scrolls. The PinedIn-style background (dark canvas,
 			   hex pattern, animated wash, vignette) sits behind
 			   everything via <ProjectsBackground />. */}
-				<div className="relative flex h-screen flex-col overflow-hidden">
-					<ProjectsBackground />
+				<div className="relative z-20 flex h-screen flex-col overflow-hidden">
+									<ProjectsBackground />
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
 						<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
