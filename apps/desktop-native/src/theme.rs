@@ -1,51 +1,97 @@
-//! Theme constants — 1:1 with the web editor's Tailwind tokens
-//! (Increment: SOLID refactor, extracted from main.rs).
+//! Theme constants — 1:1 with the web editor's Tailwind tokens.
+//!
+//! Values are derived from `apps/web/src/app/globals.css` and the editor
+//! chrome components (header, footer, tab bar, panels, timeline). They
+//! are kept as `0xRRGGBB` and converted to Win32 `COLORREF` via `rgb()`.
 
-/// Editor background `#111114`.
+// Backgrounds (editor page uses dark-only pinning).
+/// Main editor background `#111114`.
 pub const BG: u32 = 0x111114;
-/// Footer bottom gradient `#08080a`.
+/// Deep footer bottom `#08080a`.
 pub const BG_DARK: u32 = 0x08080a;
+/// Panel surface `#0c0c10` (solid approximation of web glass `rgba(15,15,18,0.55)`).
+pub const PANEL_BG: u32 = 0x0c0c10;
+
+// Borders (white overlaid on dark backgrounds).
 /// `white/10` border ≈ RGB(26,26,30).
 pub const BORDER: u32 = 0x1A1A1E;
-/// `white/[0.08]` border ≈ RGB(20,20,24).
+/// `white/[0.06]` border ≈ RGB(20,20,24).
 pub const BORDER_FAINT: u32 = 0x141418;
-/// `white/[0.48]` text ≈ RGB(122,122,127).
-pub const TEXT_DIM: u32 = 0x7A7A7F;
-/// `white/[0.32]` text ≈ RGB(81,81,86).
-pub const TEXT_FAINT: u32 = 0x515156;
-/// `white/85` storage bar ≈ RGB(216,216,219).
+/// Top hairline `white/10` used on panels/header.
+pub const BORDER_TOP: u32 = 0x1C1C20;
+
+// Text.
+/// `white/85` ≈ RGB(216,216,219).
 pub const TEXT_BRIGHT: u32 = 0xD8D8DB;
+/// `white/70` ≈ RGB(178,178,183).
+pub const TEXT_MUTED: u32 = 0xB2B2B7;
+/// `white/55` ≈ RGB(140,140,145).
+pub const TEXT_DIM: u32 = 0x8C8C91;
+/// `white/40` ≈ RGB(102,102,107).
+pub const TEXT_FAINT: u32 = 0x66666B;
+
+// Accents / controls.
+/// Active/hover button background `white/14` ≈ RGB(36,36,40).
+pub const ACCENT_BG: u32 = 0x242428;
+/// Subtle hover background `white/6` ≈ RGB(19,19,23).
+pub const ACCENT_SUBTLE: u32 = 0x131317;
+/// Primary blue (export, active transport, brand actions).
+pub const BLUE: u32 = 0x2A3F8C;
+/// Cyan used for the web footer "BETA" badge.
+pub const CYAN: u32 = 0x67E8F9;
+/// Emerald indicator dot.
+pub const EMERALD: u32 = 0x6EE7B7;
+
+// Timeline / playback.
+/// Playhead indicator colour (white/70).
+pub const PLAYHEAD_COLOR: u32 = 0xB2B2B7;
+/// Track header background.
+pub const TRACK_BG: u32 = 0x141418;
+/// Selected track border.
+pub const TRACK_SELECTED_BORDER: u32 = 0x4D4D52;
+
 /// Editor background clear for the compositor, normalised RGBA.
 pub const EDITOR_BG_CLEAR: [f32; 4] = [17.0 / 255.0, 17.0 / 255.0, 20.0 / 255.0, 1.0];
-/// Playhead indicator colour (bright white/70 ≈ RGB(179,179,184)).
-pub const PLAYHEAD_COLOR: u32 = 0xB3B3B8;
 
-// Layout constants
+// Layout constants — match the web editor Tailwind classes.
+/// Header height `h-12`.
 pub const HEADER_H: i32 = 48;
+/// Footer height `h-9`.
 pub const FOOTER_H: i32 = 36;
+/// Vertical tab bar width `w-[4.5rem]`.
 pub const TABBAR_W: i32 = 72;
+/// Outer padding around the panel grid.
 pub const PAD: i32 = 8;
+/// Gap between panels.
 pub const GAP: i32 = 8;
+/// Percent of the middle column given to the top row (panels above timeline).
 pub const MAIN_CONTENT_PCT: f32 = 0.64;
+/// Top-row allocation for the tools/assets panel.
 pub const TOOLS_PCT: f32 = 0.28;
+/// Top-row allocation for the preview panel.
 pub const PREVIEW_PCT: f32 = 0.47;
 
-// Timeline constants
+// Timeline constants.
+/// Track row height.
 pub const TRACK_ROW_H: i32 = 28;
+/// Inner padding inside the timeline panel.
 pub const TRACK_PAD: i32 = 8;
+/// Ruler strip height.
 pub const RULER_H: i32 = 24;
+/// Minimum timeline duration in seconds.
 pub const TIMELINE_MIN_SECONDS: f64 = 30.0;
+/// Timer ID for the playback timer.
 pub const PLAYBACK_TIMER_ID: usize = 1;
 
-// Asset panel constants
+// Asset panel constants.
 pub const ASSET_ROW_H: i32 = 28;
 pub const ASSET_PAD: i32 = 8;
 
-// Properties panel constants
+// Properties panel constants.
 pub const PROP_PAD: i32 = 10;
 pub const PROP_ROW_H: i32 = 20;
 
-// Window constants
+// Window constants.
 pub const WINDOW_WIDTH: i32 = 1280;
 pub const WINDOW_HEIGHT: i32 = 800;
 

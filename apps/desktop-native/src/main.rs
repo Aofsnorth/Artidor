@@ -20,13 +20,12 @@ mod window;
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
     BeginPaint, COLOR_WINDOW, EndPaint, HBRUSH, InvalidateRect, PAINTSTRUCT, UpdateWindow,
-    ValidateRect,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW,
-    KillTimer, LoadCursorW, MB_ICONERROR, MB_OK, MSG, MessageBoxW, MoveWindow, PostQuitMessage,
-    RegisterClassW, SW_SHOW, SetWindowLongPtrW, ShowWindow, TranslateMessage, WINDOW_EX_STYLE,
+    KillTimer, LoadCursorW, MB_ICONERROR, MB_OK, MSG, MessageBoxW, PostQuitMessage, RegisterClassW,
+    SW_SHOW, SetWindowLongPtrW, ShowWindow, TranslateMessage, WINDOW_EX_STYLE,
     WM_DESTROY, WM_ERASEBKGND, WM_KEYDOWN, WM_LBUTTONDOWN, WM_PAINT, WM_SIZE, WM_TIMER, WNDCLASSW,
     WS_CHILD, WS_CLIPCHILDREN, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
@@ -35,15 +34,14 @@ use windows::core::{Error, HRESULT, PCWSTR, w};
 use crate::render::viewport::viewport_proc;
 use crate::state::Project;
 use crate::theme::{WINDOW_HEIGHT, WINDOW_WIDTH};
+
 use crate::ui::layout::Layout;
 use crate::ui::paint_chrome;
 use crate::window::shortcuts::{
     handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_mousewheel,
     handle_timer,
 };
-use crate::window::{
-    WindowState, child_hwnd, client_height, client_width, window_state, window_state_mut,
-};
+use crate::window::{WindowState, sync_viewport_child, window_state_mut};
 
 const CLASS_NAME: PCWSTR = w!("ArtidorNativeWndClass");
 const CHILD_CLASS_NAME: PCWSTR = w!("ArtidorNativeViewportClass");
@@ -78,12 +76,21 @@ unsafe extern "system" fn main_proc(
                             state.fonts.body.into(),
                         );
                         match state.mode {
-                            crate::window::AppMode::Welcome => {
-                                crate::ui::welcome::draw_welcome(
+                            crate::window::AppMode::Home => {
+                                crate::ui::home::draw_home(
                                     hdc,
                                     hwnd,
                                     &client,
-                                    &mut state.welcome,
+                                    &mut state.home,
+                                    &state.fonts,
+                                );
+                            }
+                            crate::window::AppMode::Projects => {
+                                crate::ui::projects::draw_projects(
+                                    hdc,
+                                    hwnd,
+                                    &client,
+                                    &mut state.projects,
                                     &state.fonts,
                                 );
                             }
@@ -139,32 +146,18 @@ unsafe extern "system" fn main_proc(
                 LRESULT(0)
             }
             WM_SIZE => {
-                if let Some(child) = child_hwnd(hwnd) {
-                    let mut client = RECT::default();
-                    if GetClientRect(hwnd, &mut client).is_ok() {
-                        let layout =
-                            Layout::compute(client.right - client.left, client.bottom - client.top);
-                        let vw = (layout.viewport.right - layout.viewport.left).max(0);
-                        let vh = (layout.viewport.bottom - layout.viewport.top).max(0);
-                        let _ = MoveWindow(
-                            child,
-                            layout.viewport.left,
-                            layout.viewport.top,
-                            vw,
-                            vh,
-                            true,
-                        );
-                    }
-                }
+                sync_viewport_child(hwnd);
                 let _ = InvalidateRect(Some(hwnd), None, false);
                 LRESULT(0)
             }
             WM_KEYDOWN => {
                 handle_keydown(hwnd, wparam);
+                sync_viewport_child(hwnd);
                 LRESULT(0)
             }
             WM_LBUTTONDOWN => {
                 handle_lbuttondown(hwnd, lparam);
+                sync_viewport_child(hwnd);
                 let _ = InvalidateRect(Some(hwnd), None, false);
                 LRESULT(0)
             }
@@ -297,7 +290,7 @@ fn main() -> Result<(), Error> {
         );
 
         let _ = ShowWindow(hwnd, SW_SHOW);
-        let _ = ShowWindow(child, SW_SHOW);
+        sync_viewport_child(hwnd);
         if UpdateWindow(hwnd).0 == 0 {
             return Err(last_error());
         }

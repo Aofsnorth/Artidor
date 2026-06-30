@@ -1,6 +1,6 @@
 //! Assets panel — imported media list + effects library.
 //!
-//! Mirrors `apps/desktop-web/src/ui/assets/mod.rs`.
+//! Mirrors `apps/desktop-web/src/components/editor/panels/assets/index.tsx`.
 
 pub mod effects;
 
@@ -8,7 +8,7 @@ use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::{AssetsTab, MediaKind, Project};
-use crate::theme::{ASSET_PAD, ASSET_ROW_H, BG_DARK, TEXT_DIM, TEXT_FAINT};
+use crate::theme::{ACCENT_SUBTLE, ASSET_PAD, ASSET_ROW_H, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT};
 use crate::ui::gfx::{draw_text_centered, draw_text_left, fill_rect};
 
 /// Draw the tools panel content based on the active tab.
@@ -44,9 +44,9 @@ unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
         let panel_w = panel.right - panel.left;
 
         let header = RECT {
-            left: panel.left,
-            top: panel.top,
-            right: panel.right,
+            left: panel.left + ASSET_PAD,
+            top: panel.top + 6,
+            right: panel.right - ASSET_PAD,
             bottom: panel.top + 24,
         };
         let header_label = format!("Assets  ({})", project.assets.len());
@@ -74,7 +74,7 @@ unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
                 right: panel.left + panel_w - ASSET_PAD,
                 bottom: y + ASSET_ROW_H - 2,
             };
-            fill_rect(hdc, &row, BG_DARK);
+            fill_rect(hdc, &row, ACCENT_SUBTLE);
 
             let tag_color = match asset.kind {
                 MediaKind::Image => 0xFAB005,
@@ -97,7 +97,7 @@ unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
                 right: row.right - 4,
                 bottom: row.bottom,
             };
-            draw_text_left(hdc, &asset.name, &name_rect, TEXT_DIM);
+            draw_text_left(hdc, &asset.name, &name_rect, TEXT_BRIGHT);
             y += ASSET_ROW_H;
         }
     }

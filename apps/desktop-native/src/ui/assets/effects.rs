@@ -7,7 +7,7 @@
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
-use crate::theme::{BG_DARK, BORDER_FAINT, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT};
+use crate::theme::{ACCENT_SUBTLE, BORDER_FAINT, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT};
 use crate::ui::gfx::{border_rect, draw_text_left, fill_rect};
 
 /// An effect definition — shader ID, display name, and category.
@@ -331,7 +331,7 @@ pub unsafe fn draw_effects_library(hdc: HDC, panel: &RECT) {
                     right: panel.right - pad,
                     bottom: y + card_h,
                 };
-                fill_rect(hdc, &card_rect, BG_DARK);
+                fill_rect(hdc, &card_rect, ACCENT_SUBTLE);
                 border_rect(hdc, &card_rect, BORDER_FAINT);
 
                 // Category color tag (left strip).

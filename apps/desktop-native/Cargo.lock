@@ -33,6 +33,7 @@ checksum = "f02882884d3e1bc524fb12c79f107f6ad0e1cfd498c536ffb494301740995dfe"
 name = "artidor-desktop-native"
 version = "0.1.0"
 dependencies = [
+ "artidor-time",
  "compositor",
  "ffmpeg-sidecar",
  "gpu",
@@ -40,8 +41,16 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
- "time",
  "windows",
+]
+
+[[package]]
+name = "artidor-time"
+version = "0.1.0"
+dependencies = [
+ "bridge",
+ "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -886,15 +895,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "artidor-time"
-version = "0.1.0"
-dependencies = [
- "bridge",
- "num-traits",
- "serde",
 ]
 
 [[package]]
