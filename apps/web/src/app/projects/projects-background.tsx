@@ -2,15 +2,20 @@
 
 /**
  * ProjectsBackground — PinedIn-inspired background layer for the
- * projects page. Replaces the old Covenant artwork wallpaper with a
- * dark canvas, subtle hex pattern top-left, soft animated gradient
- * wash, and a legibility vignette. No external dependencies, no image
- * fetch.
+ * projects page. Dark canvas with a top-left hex pattern, animated
+ * horizontal wave lines, a soft white radial glow top-centre, and a
+ * vignette + bottom fade for legibility. No external dependencies, no
+ * image fetch.
  *
  * Layout contract:
  *   - absolutely positioned, full bleed, behind all page chrome
+ *   - uses positive z-index (z-0 → z-1) because the <body> element
+ *     carries its own bg-background layer that would cover any
+ *     negative z-index elements
  *   - `aria-hidden` so screen readers skip it
  *   - respects `prefers-reduced-motion`
+ *   - the parent page container MUST have `z-20` (or higher) so
+ *     the page chrome renders above these background layers
  */
 
 import { useEffect, useRef } from "react";
@@ -44,62 +49,44 @@ export function ProjectsBackground() {
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		};
 
+		// Draw horizontal wave lines — thin, low-opacity sine curves
+		// that drift slowly, matching the PinedIn "line-waves" aesthetic.
 		const draw = (timeSeconds: number) => {
 			ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-			// Soft drifting wash — three low-opacity radial gradients
-			// that slowly drift. Hues stay away from the banned
-			// 260-310 (purple/violet) and 160-200 (cyan) AI bands.
-			const drift = Math.sin(timeSeconds * 0.25) * 18;
-			const driftY = Math.cos(timeSeconds * 0.18) * 14;
+			const lineCount = 18;
+			const baseSpacing = cssHeight / (lineCount + 1);
 
-			const washes: Array<{
-				x: number;
-				y: number;
-				rx: number;
-				ry: number;
-				color: string;
-			}> = [
-				{
-					x: cssWidth * 0.28 + drift,
-					y: cssHeight * 0.22 + driftY,
-					rx: cssWidth * 0.48,
-					ry: cssHeight * 0.38,
-					color: "rgba(90, 110, 190, 0.055)",
-				},
-				{
-					x: cssWidth * 0.72 - drift,
-					y: cssHeight * 0.62 - driftY,
-					rx: cssWidth * 0.38,
-					ry: cssHeight * 0.46,
-					color: "rgba(180, 150, 170, 0.045)",
-				},
-				{
-					x: cssWidth * 0.5,
-					y: cssHeight * 0.92 + driftY * 0.5,
-					rx: cssWidth * 0.55,
-					ry: cssHeight * 0.42,
-					color: "rgba(160, 130, 90, 0.04)",
-				},
-			];
+			for (let i = 1; i <= lineCount; i++) {
+				const baseY = baseSpacing * i;
+				const phase = timeSeconds * 0.12 + i * 0.7;
+				const amplitude = 12 + Math.sin(timeSeconds * 0.08 + i) * 6;
+				const frequency = 0.003 + Math.sin(timeSeconds * 0.05 + i * 1.3) * 0.001;
 
-		for (const wash of washes) {
-				ctx.save();
+				// Fade lines towards edges
+				const yNorm = baseY / cssHeight;
+				const edgeFade = Math.sin(yNorm * Math.PI);
+				const alpha = 0.04 * edgeFade;
+
+				if (alpha < 0.002) continue;
+
 				ctx.beginPath();
-				ctx.ellipse(wash.x, wash.y, wash.rx, wash.ry, 0, 0, Math.PI * 2);
-				const grad = ctx.createRadialGradient(
-					wash.x,
-					wash.y,
-					0,
-					wash.x,
-					wash.y,
-					Math.max(wash.rx, wash.ry),
-				);
-				grad.addColorStop(0, wash.color);
-				grad.addColorStop(1, "rgba(0,0,0,0)");
-				ctx.fillStyle = grad;
-				ctx.fill();
-				ctx.restore();
+				ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+				ctx.lineWidth = 0.8;
+
+				for (let x = 0; x <= cssWidth; x += 4) {
+					const y =
+						baseY +
+						Math.sin(x * frequency + phase) * amplitude +
+						Math.sin(x * frequency * 2.3 + phase * 1.4) * amplitude * 0.3;
+
+					if (x === 0) {
+						ctx.moveTo(x, y);
+					} else {
+						ctx.lineTo(x, y);
+					}
+				}
+				ctx.stroke();
 			}
 		};
 
@@ -121,26 +108,25 @@ export function ProjectsBackground() {
 
 	return (
 		<>
-			{/* Base canvas — off-black matching PinedIn (#050507), not pure #000. */}
+			{/* Base canvas — pure black matching PinedIn (--bg: #000).
+			    z-0 places this above the body's bg-background layer. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-20 bg-[#050507]"
+				className="pointer-events-none absolute inset-0 z-0 bg-black"
 			/>
 
-			{/* Hex pattern — top-left decorative tile, faded radially. */}
+			{/* Hex pattern — top-left decorative tile, faded radially.
+			    Opacity 0.8 + 12% white matches PinedIn's hex treatment. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-20 opacity-[0.08]"
-				style={{
-					maskImage:
-						"radial-gradient(ellipse 38% 48% at 10% 12%, black 0%, transparent 100%)",
-					WebkitMaskImage:
-						"radial-gradient(ellipse 38% 48% at 10% 12%, black 0%, transparent 100%)",
-				}}
+				className="pointer-events-none absolute top-0 left-0 z-0 size-[320px] opacity-80"
+				style={{ color: "rgba(255, 255, 255, 0.12)" }}
 			>
 				<svg
-					width="100%"
-					height="100%"
+					width="320"
+					height="320"
+					viewBox="0 0 320 320"
+					fill="none"
 					xmlns="http://www.w3.org/2000/svg"
 					role="presentation"
 				>
@@ -156,31 +142,71 @@ export function ProjectsBackground() {
 							<polygon
 								points="20,2 38,12 38,34 20,44 2,34 2,12"
 								fill="none"
-								stroke="white"
+								stroke="currentColor"
 								strokeWidth="0.8"
 							/>
 						</pattern>
+						<mask id="projects-hex-fade">
+							<radialGradient
+								id="projects-hex-rg"
+								cx="0"
+								cy="0"
+								r="320"
+								gradientUnits="userSpaceOnUse"
+							>
+								<stop offset="0%" stopColor="white" stopOpacity="1" />
+								<stop offset="100%" stopColor="white" stopOpacity="0" />
+							</radialGradient>
+							<rect width="320" height="320" fill="url(#projects-hex-rg)" />
+						</mask>
 					</defs>
-					<rect width="100%" height="100%" fill="url(#projects-hex)" />
+					<rect
+						width="320"
+						height="320"
+						fill="url(#projects-hex)"
+						mask="url(#projects-hex-fade)"
+					/>
 				</svg>
 			</div>
 
-			{/* Animated wash — very low opacity drifting radial gradients. */}
+			{/* Animated wave lines — thin horizontal sine waves that
+			    drift slowly, matching PinedIn's line-waves-container. */}
 			<canvas
 				ref={canvasRef}
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-20 size-full"
+				className="pointer-events-none absolute inset-0 z-0 size-full"
 			/>
 
-			{/* Vignette + legibility wash — keeps foreground chrome readable. */}
+			{/* White radial glow — the signature PinedIn "light bloom"
+			    at the top-centre that gives the page depth. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10"
+				className="pointer-events-none absolute inset-0 z-[1]"
 				style={{
-					background: [
-						"radial-gradient(ellipse at center, transparent 55%, rgba(5, 5, 7, 0.55) 100%)",
-						"linear-gradient(180deg, rgba(5, 5, 7, 0.40) 0%, rgba(5, 5, 7, 0.10) 35%, rgba(5, 5, 7, 0.18) 70%, rgba(5, 5, 7, 0.55) 100%)",
-					].join(", "),
+					background:
+						"radial-gradient(ellipse 900px 600px at 50% -10%, rgba(255, 255, 255, 0.04) 0%, transparent 70%)",
+				}}
+			/>
+
+			{/* Vignette — darkens edges for cinematic depth,
+			    matching PinedIn's body::before treatment. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-[1]"
+				style={{
+					background:
+						"radial-gradient(ellipse 100% 100% at 50% 0%, transparent 50%, rgba(0, 0, 0, 0.4) 100%)",
+				}}
+			/>
+
+			{/* Bottom fade — smooth transition from content area to
+			    the black base, matching PinedIn's hero-overlay-gradient. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 z-[1]"
+				style={{
+					background:
+						"linear-gradient(to bottom, transparent 80%, black 100%)",
 				}}
 			/>
 		</>
