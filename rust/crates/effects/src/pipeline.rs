@@ -49,6 +49,9 @@ const CHROMATIC_ABERRATION_SHADER_SOURCE: &str = include_str!("shaders/chromatic
 const CHROMA_KEY_SHADER_ID: &str = "chroma-key";
 const CHROMA_KEY_SHADER_SOURCE: &str = include_str!("shaders/chroma-key.wgsl");
 
+const REMOVE_BACKGROUND_SHADER_ID: &str = "remove-background";
+const REMOVE_BACKGROUND_SHADER_SOURCE: &str = include_str!("shaders/remove-background.wgsl");
+
 const POSTERIZE_SHADER_ID: &str = "posterize";
 const POSTERIZE_SHADER_SOURCE: &str = include_str!("shaders/posterize.wgsl");
 
@@ -301,6 +304,13 @@ impl EffectPipeline {
                 .create_shader_module(wgpu::ShaderModuleDescriptor {
                     label: Some("effects-chroma-key-shader"),
                     source: wgpu::ShaderSource::Wgsl(CHROMA_KEY_SHADER_SOURCE.into()),
+                });
+        let remove_background_shader_module =
+            context
+                .device()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("effects-remove-background-shader"),
+                    source: wgpu::ShaderSource::Wgsl(REMOVE_BACKGROUND_SHADER_SOURCE.into()),
                 });
         let posterize_shader_module =
             context
@@ -617,6 +627,13 @@ impl EffectPipeline {
         pipelines.insert(
             CHROMA_KEY_SHADER_ID.to_string(),
             build_pipeline("effects-chroma-key-pipeline", &chroma_key_shader_module),
+        );
+        pipelines.insert(
+            REMOVE_BACKGROUND_SHADER_ID.to_string(),
+            build_pipeline(
+                "effects-remove-background-pipeline",
+                &remove_background_shader_module,
+            ),
         );
         pipelines.insert(
             POSTERIZE_SHADER_ID.to_string(),
@@ -992,6 +1009,27 @@ fn pack_effect_uniforms(
                 });
             }
         }
+        REMOVE_BACKGROUND_SHADER_ID => {
+            // Auto-keyer: the key colour is sampled from border texels
+            // inside the shader, so only the three knobs are passed in.
+            // scalars.x = tolerance, scalars.y = smoothness, scalars.z = spill.
+            let tolerance = read_number_uniform(pass, "u_tolerance")?;
+            let smoothness = read_number_uniform(pass, "u_smoothness")?;
+            let spill = read_number_uniform(pass, "u_spill")?;
+            scalars[0] = tolerance;
+            scalars[1] = smoothness;
+            scalars[2] = spill;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_tolerance" || uniform == "u_smoothness" || uniform == "u_spill" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
         WAVE_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
@@ -1234,6 +1272,7 @@ mod tests {
             CHROMATIC_ABERRATION_SHADER_SOURCE,
         ),
         (CHROMA_KEY_SHADER_ID, CHROMA_KEY_SHADER_SOURCE),
+        (REMOVE_BACKGROUND_SHADER_ID, REMOVE_BACKGROUND_SHADER_SOURCE),
         (POSTERIZE_SHADER_ID, POSTERIZE_SHADER_SOURCE),
         (EDGE_DETECT_SHADER_ID, EDGE_DETECT_SHADER_SOURCE),
         (HALFTONE_SHADER_ID, HALFTONE_SHADER_SOURCE),

@@ -86,6 +86,9 @@ export const SUGGESTIONS: Suggestion[] = [
 	{ label: "Color match", text: "Match the color grade of clip 1 to all other clips." },
 
 	// ── Effects & Filters ──────────────────────────────────────────
+	{ label: "Remove background", text: "Remove the background from this clip — isolate the subject and drop the backdrop to transparent." },
+	{ label: "Cut out subject", text: "Apply the Remove Background effect to all video clips so only the subjects remain." },
+	{ label: "Green screen", text: "Apply a chroma key to remove the green screen background from this clip." },
 	{ label: "Vignette", text: "Add a subtle vignette to all clips, darkening the edges by 20%." },
 	{ label: "Gaussian blur", text: "Add a 5px Gaussian blur to the background layer only." },
 	{ label: "Glow effect", text: "Add a soft glow effect to the bright areas of each clip." },

@@ -191,6 +191,7 @@ export async function runParallelExport({
 				// sending progress messages, so this only fires when a worker is
 				// truly stuck.
 				timeoutMs: 60_000,
+				reuseWorker: false,
 				onProgress: ({ progress }) => {
 					segmentProgress[plan.index] = progress;
 					reportProgress();

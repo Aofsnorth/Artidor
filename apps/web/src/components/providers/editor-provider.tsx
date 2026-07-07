@@ -203,6 +203,25 @@ function EditorRuntimeBindings() {
 		return () => manager.disconnectAll();
 	}, []);
 
+	// Preload the WASM GPU module during idle time so the export worker's
+	// dynamic import hits the browser's module cache on first export.
+	// Progressive enhancement — silently no-ops if WASM is unavailable.
+	useEffect(() => {
+		void import("@/services/renderer/wasm-preload").then(({ preloadWasmModule }) => {
+			preloadWasmModule();
+		});
+	}, []);
+
+	// Dispose the warm export worker when the editor unmounts to release
+	// ~50-100MB of GPU/WASM memory held between exports.
+	useEffect(() => {
+		return () => {
+			void import("@/services/renderer/export-worker-bridge").then(
+				({ disposeWarmWorker }) => disposeWarmWorker(),
+			);
+		};
+	}, []);
+
 	useEditorActions();
 	useKeybindingsListener();
 	return <CommandPalette />;

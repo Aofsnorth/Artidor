@@ -457,3 +457,114 @@ pipeline frameworks need approval). Candidate crates to evaluate then:
 Decision deferred to Increment 6 per
 `features/desktop-native-win32/PLAN.md`.
 
+## 2026-07-07 — @mediapipe/tasks-vision
+
+Package: @mediapipe/tasks-vision
+Version: 0.10.35
+Ecosystem: npm
+
+Problem: Background removal for people (person segmentation) requires ML
+inference. No existing repo code does ML segmentation — `auto-reframe/
+detection.ts` uses non-ML frame-differencing. A real person segmentation
+tool needs a trained model.
+
+Decision: Use Google's MediaPipe Tasks Vision library, which provides
+an ImageSegmenter with a Selfie Segmenter model optimised for in-browser
+WASM/WebGPU inference. Lazy dynamic import (zero initial bundle cost);
+the WASM fileset + model (~10MB) are fetched from Google's CDN on first
+use and cached by the browser. Runs fully local — no server, no telemetry.
+
+Alternatives considered:
+1. **@tensorflow-models/body-seg** — heavier (TF.js runtime), larger bundle
+2. **@xenova/transformers** — used for Option C (general subjects), but
+   person segmentation with MediaPipe is lighter and purpose-built
+3. **@imgly/background-removal** — AGPL-3.0 (license conflict with MIT)
+4. **MediaPipe Tasks Vision** — Google, Apache-2.0, purpose-built, lightest
+
+Security review:
+- Known vulnerabilities: None
+- Install scripts: None
+- Transitive dependency risk: Zero dependencies
+- Browser/server safety: Runs fully in-browser (WASM), no network calls
+  except model fetch from Google CDN (cached after first load)
+- Supply-chain: Google-maintained, 537 published versions, very active
+
+Maintenance:
+- Last release: 0.10.35 (active development)
+- Activity: Google MediaPipe team, regular releases
+- Docs: Excellent (mediapipe.dev)
+- API stability: Stable within 0.10.x
+
+License: Apache-2.0 (compatible with Artidor's MIT)
+
+Bundle/performance impact:
+- Zero initial bundle (lazy dynamic import)
+- ~10MB WASM + model fetched on first use, cached by browser
+- Segmentation runs at 256px internally, ~100-300ms per image
+
+Rollback plan:
+1. `bun remove @mediapipe/tasks-vision`
+2. Delete `apps/web/src/lib/segmentation/person-segmenter.ts`
+3. Remove `cutout_person` tool from registry.ts and executor.ts
+4. Remove What's New entry
+
+Approved by: User (explicit "go" approval for A+B+C background removal)
+
+## 2026-07-07 — @xenova/transformers
+
+Package: @xenova/transformers
+Version: 2.17.2
+Ecosystem: npm
+
+Problem: General-subject background removal (any object, not just people)
+requires ML inference with a model trained on diverse subjects. MediaPipe's
+Selfie Segmenter only handles people. A general-purpose model is needed
+for product/object cutouts.
+
+Decision: Use transformers.js (Xenova fork) with the Xenova/modnet model
+for general background removal. Lazy dynamic import (zero initial bundle
+cost); the ONNX runtime + model (~44MB) are fetched from HuggingFace Hub
+on first use and cached. Runs fully local — no server, no telemetry.
+
+Originally proposed @imgly/background-removal, but it is AGPL-3.0 which
+conflicts with Artidor's MIT license and requires explicit approval per
+DEPENDENCY_POLICY. transformers.js is Apache-2.0 (compatible).
+
+Alternatives considered:
+1. **@imgly/background-removal** — AGPL-3.0 (license conflict, rejected)
+2. **@huggingface/transformers** (v4) — includes onnxruntime-node and
+   sharp as hard deps, heavier for browser-only use
+3. **@xenova/transformers** (v2) — Apache-2.0, browser-focused, lighter
+4. **MediaPipe Image Segmenter with general model** — no good general-
+   subject model available in MediaPipe
+
+Security review:
+- Known vulnerabilities: None
+- Install scripts: None
+- Transitive dependency risk: 3 deps (onnxruntime-web, sharp, @huggingface/jinja).
+  sharp is already in the project. onnxruntime-web is the browser ONNX runtime.
+- Browser/server safety: Runs fully in-browser (WASM), model fetched from
+  HuggingFace CDN (cached after first load)
+- Supply-chain: Xenova/HuggingFace, well-maintained, 75 versions
+
+Maintenance:
+- Last release: 2.17.2 (mature; v3+ continues as @huggingface/transformers)
+- Activity: Active development under @huggingface/transformers
+- Docs: Good (huggingface.co/docs/transformers.js)
+- API stability: Stable within 2.x
+
+License: Apache-2.0 (compatible with Artidor's MIT)
+
+Bundle/performance impact:
+- Zero initial bundle (lazy dynamic import)
+- ~44MB ONNX model fetched on first use, cached by browser
+- Inference capped at 1024px, ~1-3s per image
+
+Rollback plan:
+1. `bun remove @xenova/transformers`
+2. Delete `apps/web/src/lib/segmentation/ai-cutout.ts`
+3. Remove `ai_cutout` tool from registry.ts and executor.ts
+4. Remove What's New entry
+
+Approved by: User (explicit "go" approval for A+B+C background removal)
+

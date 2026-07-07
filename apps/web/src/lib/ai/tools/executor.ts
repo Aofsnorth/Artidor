@@ -2106,4 +2106,220 @@ const HANDLERS: Record<string, Handler> = {
 			data: { dirty },
 		};
 	},
+
+	/* ----------------------- Background removal (ML) ----------------------- */
+	cutout_person: async (editor, args) => {
+		const trackId = asString(args.trackId);
+		const elementId = asString(args.elementId);
+		const track = editor.timeline.getTrackById({ trackId });
+		const element = track?.elements.find((e) => e.id === elementId);
+		if (!element) {
+			return { ok: false, message: "Element not found" };
+		}
+
+		// For video elements, apply the real-time shader effect instead
+		// of running per-frame ML (which would be too expensive).
+		if (element.type === "video") {
+			const effectId = editor.timeline.addClipEffect({
+				trackId,
+				elementId,
+				effectType: "remove-background",
+			});
+			return {
+				ok: true,
+				message:
+					"Applied Remove Background effect (real-time shader) to video clip. For person-specific ML cutout on images, use cutout_person on an image element.",
+				data: { effectId, mode: "shader" },
+			};
+		}
+
+		if (element.type !== "image") {
+			return {
+				ok: false,
+				message: "Person cutout works on image or video elements only",
+			};
+		}
+
+		// Get the media asset for the image element.
+		const mediaAssets = editor.media.getAssets();
+		const mediaAsset = hasMediaId(element)
+			? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+			: null;
+		if (!mediaAsset?.file) {
+			return { ok: false, message: "Media file not found for person cutout" };
+		}
+
+		try {
+			// Load the image into an HTMLImageElement.
+			const url = URL.createObjectURL(mediaAsset.file);
+			const img = new Image();
+			img.src = url;
+			await new Promise<void>((resolve, reject) => {
+				img.onload = () => resolve();
+				img.onerror = () => reject(new Error("Image load failed"));
+			});
+
+			// Run person segmentation.
+			const { segmentPerson } = await import("@/lib/segmentation/person-segmenter");
+			const result = await segmentPerson({ source: img });
+			URL.revokeObjectURL(url);
+
+			// Convert the transparent canvas to a PNG blob and import
+			// it as a new media asset, then replace the element's source.
+			const outCanvas = result.canvas as HTMLCanvasElement;
+			const blob = await new Promise<Blob | null>((resolve) =>
+				outCanvas.toBlob((b) => resolve(b), "image/png"),
+			);
+			if (!blob) {
+				return { ok: false, message: "Failed to produce transparent PNG" };
+			}
+
+			const cutoutFile = new File(
+				[blob],
+				`${mediaAsset.name}-cutout.png`,
+				{ type: "image/png" },
+			);
+
+			// Process and import the new asset.
+			const { processMediaAssets } = await import("@/lib/media/processing");
+			const processed = await processMediaAssets({ files: [cutoutFile] });
+			if (processed.length === 0) {
+				return { ok: false, message: "Failed to process cutout asset" };
+			}
+			const project = editor.project.getActive();
+			const newAsset = await editor.media.addMediaAsset({
+				projectId: project.metadata.id,
+				asset: processed[0],
+			});
+			if (!newAsset) {
+				return { ok: false, message: "Failed to add cutout asset to project" };
+			}
+
+			// Update the element to use the new asset.
+			const { UpdateElementsCommand } = await import("@/lib/commands/timeline/element/update-elements");
+			const cmd = new UpdateElementsCommand({
+				updates: [{
+					trackId,
+					elementId,
+					patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
+				}],
+			});
+			dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+
+			return {
+				ok: true,
+				message: `Person cutout complete — background removed and replaced with transparent PNG (${result.width}x${result.height}).`,
+				data: { assetId: newAsset.id, mode: "ml-person", width: result.width, height: result.height },
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				message: `Person cutout failed: ${error instanceof Error ? error.message : "unknown error"}`,
+			};
+		}
+	},
+
+	ai_cutout: async (editor, args) => {
+		const trackId = asString(args.trackId);
+		const elementId = asString(args.elementId);
+		const track = editor.timeline.getTrackById({ trackId });
+		const element = track?.elements.find((e) => e.id === elementId);
+		if (!element) {
+			return { ok: false, message: "Element not found" };
+		}
+
+		// For video elements, apply the real-time shader effect.
+		if (element.type === "video") {
+			const effectId = editor.timeline.addClipEffect({
+				trackId,
+				elementId,
+				effectType: "remove-background",
+			});
+			return {
+				ok: true,
+				message:
+					"Applied Remove Background effect (real-time shader) to video clip. For AI cutout on images, use ai_cutout on an image element.",
+				data: { effectId, mode: "shader" },
+			};
+		}
+
+		if (element.type !== "image") {
+			return {
+				ok: false,
+				message: "AI cutout works on image or video elements only",
+			};
+		}
+
+		const mediaAssets = editor.media.getAssets();
+		const mediaAsset = hasMediaId(element)
+			? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+			: null;
+		if (!mediaAsset?.file) {
+			return { ok: false, message: "Media file not found for AI cutout" };
+		}
+
+		try {
+			const url = URL.createObjectURL(mediaAsset.file);
+			const img = new Image();
+			img.src = url;
+			await new Promise<void>((resolve, reject) => {
+				img.onload = () => resolve();
+				img.onerror = () => reject(new Error("Image load failed"));
+			});
+
+			// Run general-subject background removal.
+			const { removeBackground } = await import("@/lib/segmentation/ai-cutout");
+			const result = await removeBackground({ source: img });
+			URL.revokeObjectURL(url);
+
+			const outCanvas = result.canvas as HTMLCanvasElement;
+			const blob = await new Promise<Blob | null>((resolve) =>
+				outCanvas.toBlob((b) => resolve(b), "image/png"),
+			);
+			if (!blob) {
+				return { ok: false, message: "Failed to produce transparent PNG" };
+			}
+
+			const cutoutFile = new File(
+				[blob],
+				`${mediaAsset.name}-cutout.png`,
+				{ type: "image/png" },
+			);
+
+			const { processMediaAssets } = await import("@/lib/media/processing");
+			const processed = await processMediaAssets({ files: [cutoutFile] });
+			if (processed.length === 0) {
+				return { ok: false, message: "Failed to process cutout asset" };
+			}
+			const project = editor.project.getActive();
+			const newAsset = await editor.media.addMediaAsset({
+				projectId: project.metadata.id,
+				asset: processed[0],
+			});
+			if (!newAsset) {
+				return { ok: false, message: "Failed to add cutout asset to project" };
+			}
+
+			const { UpdateElementsCommand } = await import("@/lib/commands/timeline/element/update-elements");
+			const cmd = new UpdateElementsCommand({
+				updates: [{
+					trackId,
+					elementId,
+					patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
+				}],
+			});
+			dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
+
+			return {
+				ok: true,
+				message: `AI cutout complete — background removed and replaced with transparent PNG (${result.width}x${result.height}).`,
+				data: { assetId: newAsset.id, mode: "ml-general", width: result.width, height: result.height },
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				message: `AI cutout failed: ${error instanceof Error ? error.message : "unknown error"}`,
+			};
+		}
+	},
 };
