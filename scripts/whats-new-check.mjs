@@ -2,9 +2,11 @@
 
 import { execSync } from "node:child_process";
 
-function run(command) {
+function runGitDiff(...args) {
   try {
-    return execSync(command, { encoding: "utf8" }).trim();
+    return execSync("git", ["diff", "--name-only", ...args], {
+      encoding: "utf8",
+    }).trim();
   } catch {
     return "";
   }
@@ -18,10 +20,10 @@ function run(command) {
 //  1. origin/main...HEAD — all unpushed commits (CI scenario)
 //  2. HEAD~3..HEAD — last 3 commits (local scenario after pushing)
 //  3. staged + unstaged — uncommitted local changes
-const unpushedChanged = run("git diff --name-only origin/main...HEAD");
-const recentChanged = run("git diff --name-only HEAD~3..HEAD");
-const stagedChanged = run("git diff --cached --name-only");
-const unstagedChanged = run("git diff --name-only");
+const unpushedChanged = runGitDiff("origin/main...HEAD");
+const recentChanged = runGitDiff("HEAD~3..HEAD");
+const stagedChanged = runGitDiff("--cached");
+const unstagedChanged = runGitDiff();
 
 const files = [
   ...new Set(
