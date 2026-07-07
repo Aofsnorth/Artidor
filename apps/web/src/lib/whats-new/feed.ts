@@ -18,6 +18,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-12-cleanup-untracked-files",
+		date: "2026-07-12",
+		tag: "fix",
+		title: "Repository cleanup: committed remaining implementation files",
+		items: [
+			"Committed the missing implementation files that were referenced by earlier releases but accidentally left untracked: the AI background-removal effect definition and shader, the MediaPipe person segmenter and general-subject AI cutout modules, and the WASM preload helper used for export warm-start. No user-facing behavior change — these files were already in use on existing installs.",
+		],
+	},
+	{
 		id: "2026-07-11-export-and-preview-performance",
 		date: "2026-07-11",
 		tag: "performance",
