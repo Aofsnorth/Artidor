@@ -1,22 +1,24 @@
 # Dependency and Framework Policy
 
-This repository prefers proven frameworks, existing project patterns, and safe dependencies
-over writing complex code from scratch.
+This repository prefers proven frameworks, existing project patterns, and safe
+dependencies over writing complex code from scratch.
 
-AI agents and human contributors must follow this policy before adding, replacing, or upgrading
-any framework, package, crate, plugin, SDK, or tool.
+AI agents and human contributors must follow this policy before adding,
+replacing, or upgrading any framework, package, crate, plugin, SDK, or tool.
 
 ## Prime Rule
 
-Do not write complex functionality from scratch when a safe, maintained, already-adopted
-framework or library can solve it better.
+Do not write complex functionality from scratch when a safe, maintained,
+already-adopted framework or library can solve it better.
 
-Do not install new dependencies without checking safety, maintenance, license, and project fit.
+Do not install new dependencies without checking safety, maintenance, license,
+and project fit.
 
 ## Existing Framework First
 
-Before writing new code, the agent must check whether the repository already has a framework,
-utility, helper, component, hook, manager, service, crate, or package that solves the problem.
+Before writing new code, the agent must check whether the repository already has
+framework, utility, helper, component, hook, manager, service, crate, or package
+that solves the problem.
 
 The agent must prefer:
 
@@ -53,7 +55,8 @@ unless there is a strong reason and approval.
 
 ## Do Not Add Dependencies For Tiny Problems
 
-Do not install a package for trivial logic that can be safely implemented in a few clear lines.
+Do not install a package for trivial logic that can be safely implemented in
+a few clear lines.
 
 Bad reasons to add dependency:
 
@@ -256,7 +259,8 @@ The agent must not install:
 
 ## Framework Use Rule
 
-When using an existing framework, follow its official patterns and the existing project conventions.
+When using an existing framework, follow its official patterns and the existing
+project conventions.
 
 Do not fight the framework.
 

@@ -1,6 +1,7 @@
 # Dependency Decisions
 
-Track every new dependency, framework, crate, SDK, plugin, or GitHub Action added to Artidor.
+Track every new dependency, framework, crate, SDK, plugin, or GitHub Action
+added to Artidor.
 
 ## Template
 
@@ -309,7 +310,7 @@ and delete `src/persist.rs` + the Ctrl+S wiring. `rust/**` never edited.
 Approved by: User (implicit via owner override 2026-06-27 for the Win32
 path; these are standard serde-ecosystem deps already used in-repo).
 
-## PENDING APPROVAL — Increment 6b: top-1 export via ffmpeg-sidecar (DRAFTED, NOT yet added)
+## PENDING APPROVAL — Increment 6b: top-1 export via ffmpeg-sidecar (DRAFT)
 
 > **Status: APPROVED 2026-06-27** — user delegated the choice ("yang
 > terbaik") after reviewing the drafted decision; ffmpeg-sidecar (the
@@ -575,7 +576,8 @@ Security review:
 
 - Known vulnerabilities: None
 - Install scripts: None
-- Transitive dependency risk: 3 deps (onnxruntime-web, sharp, @huggingface/jinja).
+- Transitive dependency risk: 3 deps (onnxruntime-web, sharp,
+  @huggingface/jinja).
   sharp is already in the project. onnxruntime-web is the browser ONNX runtime.
 - Browser/server safety: Runs fully in-browser (WASM), model fetched from
   HuggingFace CDN (cached after first load)
