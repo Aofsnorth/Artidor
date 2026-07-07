@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the MKV dubbing track switching feature", () => {
+	test("the newest entry is the export and preview performance fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-10-mkv-dubbing-track-switching",
+			"2026-07-11-export-and-preview-performance",
 		);
 	});
 });

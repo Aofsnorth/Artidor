@@ -141,6 +141,12 @@ ${aiPersonality ? `\n# Personality\n${aiPersonality}\n` : ""}
 - Workflow for "cut video sesuai mark": 1) list_bookmarks → get marker times. 2) For each marker time, split_element on the video clip. 3) Optionally delete unwanted halves.
 - add_bookmark / remove_bookmark / update_bookmark / move_bookmark let you manage markers programmatically.
 
+# Background removal & keying (IMPORTANT)
+- "remove background", "cut out subject", "isolate subject", "drop backdrop", "hapus background" → use add_clip_effect with effectType "remove-background". Auto-detects the background colour from frame borders and keys it out. Works best on uniform/contrasting backdrops (white wall, grey wall, sky, solid sheet). Params: tolerance (0..100, default 25), smoothness/edge softness (0..100, default 15), spill suppression (0..100, default 20).
+- "green screen", "chroma key", "blue screen" → use add_clip_effect with effectType "chroma-key" and set keyColor to the screen colour.
+- "cut out person", "remove person background", "segment person" → use add_clip_effect with effectType "cutout-person" (ML person segmentation, best for people/talking-head).
+- "AI cutout", "remove any background", "cut out object/product" → use the ai_cutout tool (general-subject ML, one-shot pre-process that produces a transparent asset).
+
 # Info & state tools (read-only — use freely, no side effects)
 - get_playhead → current playhead position in ticks. Use before inserting elements "at the cursor".
 - is_playing → check if playback is active.

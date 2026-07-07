@@ -33,6 +33,15 @@ export type TextureUploadDescriptor = {
 	height: number;
 };
 
+// ── Per-frame allocation pool ────────────────────────────────────────
+// The render loop calls buildFrameDescriptor every frame (60fps). Each
+// call previously allocated a new Map + array spread, causing GC churn.
+// We reuse a single Map across frames — .clear() is O(n) but avoids
+// allocation, and the Map is only accessed within one render pass at a
+// time (preview has a renderingRef lock; export runs sequentially in
+// the worker).
+const pooledTextureMap = new Map<string, TextureUploadDescriptor>();
+
 export async function buildFrameDescriptor({
 	node,
 	renderer,
@@ -44,7 +53,8 @@ export async function buildFrameDescriptor({
 	textures: TextureUploadDescriptor[];
 }> {
 	const items: FrameItemDescriptor[] = [];
-	const textures = new Map<string, TextureUploadDescriptor>();
+	const textures = pooledTextureMap;
+	textures.clear();
 
 	await collectNode({
 		node,
@@ -53,6 +63,13 @@ export async function buildFrameDescriptor({
 		items,
 		textures,
 	});
+
+	// Copy values to an array for the compositor. The Map is cleared on
+	// the next frame, so the array is the stable return value.
+	const textureArray: TextureUploadDescriptor[] = [];
+	for (const value of textures.values()) {
+		textureArray.push(value);
+	}
 
 	return {
 		frame: {
@@ -63,8 +80,42 @@ export async function buildFrameDescriptor({
 			},
 			items,
 		},
-		textures: [...textures.values()],
+		textures: textureArray,
 	};
+}
+
+// ── Blur background canvas cache ─────────────────────────────────────
+// The blur background draws the backdrop source onto a full-canvas
+// OffscreenCanvas every frame. The result is identical across frames
+// when the source and dimensions don't change, so we cache it keyed by
+// source identity + size. This avoids a ~8MB OffscreenCanvas allocation
+// per frame (1920x1080) and the drawImage call to fill it.
+const blurBackgroundCache = new WeakMap<
+	object, // CanvasImageSource (HTMLVideoElement, HTMLImageElement, etc.)
+	{ canvas: HTMLCanvasElement | OffscreenCanvas; width: number; height: number }
+>();
+
+function getOrCreateBlurBackdrop({
+	source,
+	width,
+	height,
+}: {
+	source: CanvasImageSource;
+	width: number;
+	height: number;
+}): HTMLCanvasElement | OffscreenCanvas {
+	const sourceKey = source as object;
+	const cached = blurBackgroundCache.get(sourceKey);
+	if (
+		cached &&
+		cached.width === width &&
+		cached.height === height
+	) {
+		return cached.canvas;
+	}
+	const canvas = createOffscreenCanvas({ width, height });
+	blurBackgroundCache.set(sourceKey, { canvas, width, height });
+	return canvas;
 }
 
 async function collectNode({
@@ -152,7 +203,11 @@ async function collectNode({
 			return;
 		}
 		const textureId = `${path}:blur-background`;
-		const backdropCanvas = createOffscreenCanvas({
+		const { backdropSource, passes } = node.resolved;
+		// Reuse the cached backdrop canvas when the source + size haven't
+		// changed — avoids a full-canvas OffscreenCanvas allocation per frame.
+		const backdropCanvas = getOrCreateBlurBackdrop({
+			source: backdropSource.source,
 			width: renderer.width,
 			height: renderer.height,
 		});
@@ -161,7 +216,6 @@ async function collectNode({
 			| OffscreenCanvasRenderingContext2D
 			| null;
 		if (!backdropCtx) return;
-		const { backdropSource, passes } = node.resolved;
 		const coverScale = Math.max(
 			renderer.width / backdropSource.width,
 			renderer.height / backdropSource.height,
@@ -170,6 +224,9 @@ async function collectNode({
 		const scaledHeight = backdropSource.height * coverScale;
 		const offsetX = (renderer.width - scaledWidth) / 2;
 		const offsetY = (renderer.height - scaledHeight) / 2;
+		// Redraw onto the cached canvas — the drawImage is cheap (GPU-accelerated)
+		// and ensures the canvas reflects the current video frame.
+		backdropCtx.clearRect(0, 0, renderer.width, renderer.height);
 		backdropCtx.drawImage(
 			backdropSource.source,
 			offsetX,

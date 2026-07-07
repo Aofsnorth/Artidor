@@ -85,6 +85,7 @@ type WorkerInMessage = {
 
 type WorkerOutMessage =
 	| { type: "progress"; progress: number }
+	| { type: "init-progress"; phase: string; progress: number }
 	| { type: "complete"; buffer: ArrayBuffer }
 	| { type: "error"; error: string }
 	| { type: "cancelled" }
@@ -106,6 +107,11 @@ self.addEventListener("unhandledrejection", (event) => {
 });
 
 // ── Message handler ──────────────────────────────────────────────────
+// The worker supports warm-reuse: after an export completes (or errors),
+// it re-sends the "ready" signal and waits for the next "init" message.
+// This eliminates the WASM import + GPU init cost (~5-30s) on subsequent
+// exports. The bridge controls whether to reuse or terminate via the
+// `reuseWorker` flag.
 self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
 	const data = event.data;
 
@@ -176,17 +182,37 @@ async function handleExport(msg: WorkerInMessage) {
 	// ── 1. Initialize WASM GPU + compositor in the worker ──
 	// Dynamic import the WASM module (artidor-wasm)
 	console.info("[export-worker] importing wasm module");
+	self.postMessage({
+		type: "init-progress",
+		phase: "Loading render engine",
+		progress: 0.01,
+	} satisfies WorkerOutMessage);
 	const wasm = await import("artidor-wasm");
 
 	console.info("[export-worker] initializing GPU");
+	self.postMessage({
+		type: "init-progress",
+		phase: "Initializing GPU",
+		progress: 0.02,
+	} satisfies WorkerOutMessage);
 	await wasm.initializeGpu();
 	console.info("[export-worker] GPU initialized");
+	self.postMessage({
+		type: "init-progress",
+		phase: "GPU ready",
+		progress: 0.04,
+	} satisfies WorkerOutMessage);
 
 	// Initialize compositor with the worker's OffscreenCanvas
 	const { wasmCompositor } = await import("./compositor/wasm-compositor");
 	console.info("[export-worker] initializing compositor");
 	wasmCompositor.ensureInitializedWithCanvas({ canvas, width, height });
 	console.info("[export-worker] compositor initialized");
+	self.postMessage({
+		type: "init-progress",
+		phase: "Compositor ready",
+		progress: 0.06,
+	} satisfies WorkerOutMessage);
 
 	// Signal readiness so the parallel launcher can start the next worker's
 	// GPU init — staggering avoids adapter-request deadlocks when many workers
@@ -194,9 +220,19 @@ async function handleExport(msg: WorkerInMessage) {
 	self.postMessage({ type: "ready" } satisfies WorkerOutMessage);
 
 	// ── 2. Reconstruct scene tree ──
+	self.postMessage({
+		type: "init-progress",
+		phase: "Loading media assets",
+		progress: 0.08,
+	} satisfies WorkerOutMessage);
 	const files = new Map(fileEntries.map((e) => [e.mediaId, e.file]));
 	const rootNode = deserializeSceneTree(serializedTree, files);
 	console.info("[export-worker] scene tree reconstructed");
+	self.postMessage({
+		type: "init-progress",
+		phase: "Preparing encoder",
+		progress: 0.10,
+	} satisfies WorkerOutMessage);
 
 	// ── 3. Create renderer ──
 	const renderer = new CanvasRenderer({ width, height, fps });

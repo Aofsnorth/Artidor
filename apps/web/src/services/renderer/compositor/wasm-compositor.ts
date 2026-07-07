@@ -48,7 +48,11 @@ export type TextureUploadDescriptor = {
 class WasmCompositor {
 	private canvas: HTMLCanvasElement | OffscreenCanvas | null = null;
 	private initializedSize: { width: number; height: number } | null = null;
-	private retainedTextureIds = new Set<string>();
+	// Double-buffered texture ID sets for zero-allocation syncTextures.
+	// Each frame: fill the "next" set, diff against "retained", then swap.
+	// Both sets are reused across frames — no per-frame Set allocation.
+	private retainedTextureIdsA = new Set<string>();
+	private retainedTextureIdsB = new Set<string>();
 	private uploadedTextures = new Map<
 		string,
 		{ source: CanvasImageSource; width: number; height: number }
@@ -110,8 +114,16 @@ class WasmCompositor {
 	}
 
 	syncTextures(textures: TextureUploadDescriptor[]) {
-		const nextIds = new Set(textures.map((texture) => texture.id));
-		for (const previousId of this.retainedTextureIds) {
+		// Double-buffer swap pattern for zero per-frame Set allocation:
+		//   - retainedTextureIdsA holds the previous frame's IDs (read-only)
+		//   - retainedTextureIdsB is cleared and filled with this frame's IDs
+		//   - After diffing, swap: A↔B so A holds the new frame's IDs.
+		const nextIds = this.retainedTextureIdsB;
+		nextIds.clear();
+		for (const texture of textures) {
+			nextIds.add(texture.id);
+		}
+		for (const previousId of this.retainedTextureIdsA) {
 			if (!nextIds.has(previousId)) {
 				releaseTexture(previousId);
 				this.uploadedTextures.delete(previousId);
@@ -147,7 +159,12 @@ class WasmCompositor {
 			});
 		}
 
-		this.retainedTextureIds = nextIds;
+		// Swap: B (now filled with this frame's IDs) becomes the new
+		// retained set (A), and the old A becomes the buffer to clear
+		// and fill next frame (B).
+		const tmp = this.retainedTextureIdsA;
+		this.retainedTextureIdsA = nextIds;
+		this.retainedTextureIdsB = tmp;
 	}
 
 	render(frame: FrameDescriptor) {

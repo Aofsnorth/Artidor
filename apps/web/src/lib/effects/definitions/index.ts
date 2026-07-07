@@ -27,6 +27,7 @@ import {
 } from "./adjustments/color-grading";
 import { chromaticAberrationEffectDefinition } from "./video/chromatic-aberration";
 import { chromaKeyEffectDefinition } from "./video/chroma-key";
+import { removeBackgroundEffectDefinition } from "./video/remove-background";
 import { motionBlurEffectDefinition } from "./video/motion-blur";
 import { waveEffectDefinition } from "./video/wave";
 import { rippleEffectDefinition } from "./video/ripple";
@@ -93,6 +94,7 @@ const defaultEffects = [
 	lutAdjustmentDefinition,
 	chromaticAberrationEffectDefinition,
 	chromaKeyEffectDefinition,
+	removeBackgroundEffectDefinition,
 	motionBlurEffectDefinition,
 	waveEffectDefinition,
 	rippleEffectDefinition,

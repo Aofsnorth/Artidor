@@ -4,6 +4,13 @@
  * Spawns the export Web Worker, transfers the OffscreenCanvas and
  * serialized scene tree, and listens for progress/completion/error
  * messages. The main thread is 100% unblocked during the export.
+ *
+ * Warm-reuse: when `reuseWorker` is true (default for single-worker
+ * exports), the worker is kept alive after the export completes and
+ * reused for the next export. This eliminates the WASM import + GPU
+ * init cost (~5-30s) on subsequent exports. The parallel pipeline
+ * passes `reuseWorker: false` because it spawns multiple concurrent
+ * workers that are terminated after their segment completes.
  */
 
 import type { FrameRate } from "artidor-wasm";
@@ -19,6 +26,62 @@ export type ExportWorkerResult =
 	| { success: true; buffer: ArrayBuffer }
 	| { success: false; cancelled: true }
 	| { success: false; error: string };
+
+// ── Warm worker pool ─────────────────────────────────────────────────
+// A single warm worker kept alive between exports to avoid re-paying
+// WASM import + GPU init on every export. Only the single-worker path
+// uses this; the parallel pipeline creates fresh workers per segment.
+let warmWorker: Worker | null = null;
+let warmWorkerBusy = false;
+
+/**
+ * Get a warm worker from the pool, or create a new one if the pool is
+ * empty. Returns the worker and whether it was reused (already warm).
+ * A warm worker has already passed module evaluation and can receive
+ * "init" immediately — no need to wait for "ready".
+ */
+function acquireWarmWorker(): { worker: Worker; isWarm: boolean } {
+	if (warmWorker && !warmWorkerBusy) {
+		warmWorkerBusy = true;
+		return { worker: warmWorker, isWarm: true };
+	}
+	const worker = new Worker(new URL("./export-worker.ts", import.meta.url), {
+		type: "module",
+	});
+	warmWorker = worker;
+	warmWorkerBusy = true;
+	return { worker, isWarm: false };
+}
+
+/**
+ * Return a worker to the pool (keep alive) or terminate it.
+ * Called after the export completes, errors, or is cancelled.
+ */
+function releaseWarmWorker(worker: Worker, keepAlive: boolean): void {
+	warmWorkerBusy = false;
+	if (keepAlive && worker === warmWorker) {
+		// Keep the worker alive for reuse. It will re-send "ready" after
+		// the current export's completion message, signaling it's ready
+		// for the next "init".
+		return;
+	}
+	worker.terminate();
+	if (worker === warmWorker) {
+		warmWorker = null;
+	}
+}
+
+/**
+ * Terminate the warm worker (if any). Called when the editor unmounts
+ * to release ~50-100MB of GPU/WASM memory.
+ */
+export function disposeWarmWorker(): void {
+	if (warmWorker) {
+		warmWorker.terminate();
+		warmWorker = null;
+		warmWorkerBusy = false;
+	}
+}
 
 /**
  * Feature detection: check if the browser supports the Worker +
@@ -69,6 +132,7 @@ export async function runExportInWorker({
 	onReady,
 	getCancelled,
 	timeoutMs = 0,
+	reuseWorker = true,
 }: {
 	sceneTree: SerializedNode;
 	files: Array<{ mediaId: string; file: File }>;
@@ -101,11 +165,30 @@ export async function runExportInWorker({
 	 * A value of 0 (default) disables the timeout.
 	 */
 	timeoutMs?: number;
+	/**
+	 * When true (default), keep the worker alive after the export completes
+	 * so subsequent exports skip WASM import + GPU init (~5-30s savings).
+	 * The parallel pipeline passes false because it spawns fresh workers
+	 * per segment.
+	 */
+	reuseWorker?: boolean;
 }): Promise<ExportWorkerResult> {
 	return new Promise((resolve) => {
-		const worker = new Worker(new URL("./export-worker.ts", import.meta.url), {
-			type: "module",
-		});
+		// Warm-reuse: if the worker came from the pool, it's already past
+		// module evaluation and has its onmessage handler registered. We
+		// can send init immediately. Fresh workers send a "ready" signal
+		// after module evaluation — we wait for that before sending init.
+		let worker: Worker;
+		let isWarmWorker = false;
+		if (reuseWorker) {
+			const acquired = acquireWarmWorker();
+			worker = acquired.worker;
+			isWarmWorker = acquired.isWarm;
+		} else {
+			worker = new Worker(new URL("./export-worker.ts", import.meta.url), {
+				type: "module",
+			});
+		}
 
 		// Build transferables. The OffscreenCanvas is created INSIDE the worker
 		// (not transferred) because transferring OffscreenCanvas via postMessage
@@ -192,12 +275,15 @@ export async function runExportInWorker({
 		const cleanup = () => {
 			if (timeout) clearTimeout(timeout);
 			if (cancelInterval) clearInterval(cancelInterval);
-			worker.terminate();
+			// Warm-reuse: keep the worker alive for the next export.
+			// Parallel/fresh: terminate immediately.
+			releaseWarmWorker(worker, reuseWorker);
 		};
 
 		worker.onmessage = (
 			event: MessageEvent<
 				| { type: "progress"; progress: number }
+				| { type: "init-progress"; phase: string; progress: number }
 				| { type: "complete"; buffer: ArrayBuffer }
 				| { type: "error"; error: string }
 				| { type: "cancelled" }
@@ -219,6 +305,14 @@ export async function runExportInWorker({
 						initSent = true;
 						sendInit();
 					}
+					break;
+
+				case "init-progress":
+					// Forward init-phase progress to the same onProgress callback.
+					// The init-progress values (0.01–0.10) map onto the worker's
+					// share of the bar (5%–100% when audio is included), so the
+					// user sees movement during the previously-silent init phase.
+					onProgress?.({ progress: data.progress });
 					break;
 
 				case "progress":
@@ -265,7 +359,10 @@ export async function runExportInWorker({
 		// worker sends a "ready" signal after registering its onmessage
 		// handler. We wait for that before sending init to avoid the message
 		// being silently lost during module evaluation.
-		let initSent = false;
+		//
+		// Warm-reuse exception: a warm worker has already passed module
+		// evaluation and is waiting for its next "init". Send immediately.
+		let initSent = isWarmWorker;
 
 		const sendInit = () => {
 			worker.postMessage(
@@ -290,6 +387,10 @@ export async function runExportInWorker({
 			);
 		};
 
-		// Don't send init immediately — wait for the worker's "ready" signal.
+		// Don't send init immediately for fresh workers — wait for "ready".
+		// Warm workers already have their handler registered, so send now.
+		if (isWarmWorker) {
+			sendInit();
+		}
 	});
 }

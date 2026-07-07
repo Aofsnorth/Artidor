@@ -18,6 +18,18 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-11-export-and-preview-performance",
+		date: "2026-07-11",
+		tag: "performance",
+		title: "Export no longer stalls at 5% and preview rendering is significantly smoother",
+		items: [
+			"Export stall at 5% fixed. The progress bar now shows granular progress during worker initialization (Loading render engine → Initializing GPU → Compositor ready → Loading media assets → Preparing encoder) instead of freezing silently. The WASM GPU module is also preloaded during editor idle time, so the first export's module fetch+compile is cached before you even click export.",
+			"Subsequent exports are now near-instant to start. The export worker is kept warm between exports instead of being terminated and re-spawned, eliminating the 5-30 second GPU re-initialization cost on every export after the first. The worker is automatically disposed when the editor unmounts to release memory.",
+			"Preview rendering lag eliminated. The loading overlay was previously toggled via React state inside the requestAnimationFrame render loop, causing a full React re-render (5-16ms jank) whenever a frame exceeded 80ms. It now uses direct DOM manipulation via a ref — under 0.1ms, zero React reconciliation.",
+			"Per-frame memory allocations reduced. The frame descriptor builder and texture compositor now reuse pooled Map/Set objects across frames instead of allocating new ones every frame, reducing garbage collection pressure. The blur background canvas is also cached and reused when the source hasn't changed, avoiding a full-canvas OffscreenCanvas allocation per frame.",
+		],
+	},
+	{
 		id: "2026-07-10-mkv-dubbing-track-switching",
 		date: "2026-07-10",
 		tag: "feature",
@@ -151,6 +163,27 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"The desktop shell includes the full editor layout: header (project name, resolution, fps, import/save/export), left toolbar (8 tools), center viewport (WGPU-rendered preview), right inspector (element properties), right assets panel (50+ shader effects library organized by category), bottom timeline (ruler with frame markers, multi-track clips, playhead scrubbing, zoom controls), footer (transport controls, timecode, status), and an AI copilot panel placeholder.",
 			"Keyboard shortcuts are registered globally via GPUI actions: Space (play/pause), S (split), Delete (delete), Ctrl+S (save), Ctrl+I (import), Ctrl+E (export), plus zoom, panel toggles, and transport controls. All shortcuts map to the same logical operations as the web editor.",
 			"This is a foundational scaffold — the UI renders and compiles cleanly, but media import, effect application, and export are not yet wired to the compositor. The next phase connects the WGPU viewport to real frame rendering and enables end-to-end editing on desktop.",
+		],
+	},
+	{
+		id: "2026-07-07-background-removal-three-ways",
+		date: "2026-07-07",
+		tag: "feature",
+		title: "Remove backgrounds three ways — shader keyer, person segmentation, and AI cutout",
+		items: [
+			"Three complementary background removal tools now available. \"Remove Background\" is a real-time GPU shader that auto-detects the backdrop colour from frame borders and keys it out — zero configuration, works on uniform/contrasting backgrounds (white wall, grey wall, sky, solid sheet), and runs at full frame rate with no ML overhead.",
+			"\"Cutout Person\" uses MediaPipe person segmentation (ML) to isolate people in images with high-quality edges — perfect for portraits and talking-head content. Runs fully in-browser, no server, no telemetry. The AI copilot can invoke it with \"cut out the person from this image\".",
+			"\"AI Cutout\" uses transformers.js with the RMBG/MODNet model for general-subject background removal — works on ANY subject (people, products, objects). Heavier than person segmentation but handles non-human subjects. The AI copilot can invoke it with \"remove the background from this image\".",
+			"All three are AI-usable: the copilot knows when to use each one based on the user's request. For video clips, the AI applies the real-time shader effect (no per-frame ML overhead). For images, it runs the appropriate ML model and produces a transparent PNG.",
+		],
+	},
+	{
+		id: "2026-07-07-projects-page-elegant-gray",
+		date: "2026-07-07",
+		tag: "improvement",
+		title: "Projects page background refined to elegant gray with diamond pattern",
+		items: [
+			"The projects page background has been redesigned from pure black to an elegant layered gray gradient (#1a1a1d → #232328) with a subtle diamond grid pattern, soft animated wave lines tuned for a light-on-gray aesthetic, and a cool blue-gray radial glow. The design adds depth and sophistication without drawing attention from the project cards.",
 		],
 	},
 	{

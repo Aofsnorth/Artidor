@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import useDeepCompareEffect from "use-deep-compare-effect";
 import { useEditor } from "@/hooks/use-editor";
 import { useRafLoop } from "@/hooks/use-raf-loop";
@@ -36,7 +36,7 @@ import {
 import { RenderPerfTracker } from "@/lib/perf/render-perf-tracker";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
-import { PreviewLoadingOverlay } from "./preview-loading-overlay";
+import { Spinner } from "@/components/ui/spinner";
 
 function usePreviewSize() {
 	const canvasSize = useEditor(
@@ -136,7 +136,13 @@ function PreviewCanvas({
 	// so we can resume after the render completes.
 	const wasPlayingBeforeRenderRef = useRef(false);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
-	const [isLoading, setIsLoading] = useState(false);
+	// Loading overlay: toggled via direct DOM class manipulation instead of
+	// React state. Setting React state inside the requestAnimationFrame render
+	// loop triggers a full re-render (5-16ms jank) every time a slow frame
+	// exceeds the threshold. Direct DOM toggle is <0.1ms and never touches
+	// React's reconciliation.
+	const loadingOverlayRef = useRef<HTMLDivElement | null>(null);
+	const isLoadingRef = useRef(false);
 	// Cache scale inputs to skip recalculation for manual quality tiers.
 	const lastScaleInputsRef = useRef("");
 	const idleScaleRef = useRef(0);
@@ -181,16 +187,18 @@ function PreviewCanvas({
 		if (!canvasRef.current || !renderTree) return;
 
 		// Loading overlay check: if a render is in flight and has exceeded
-		// the 80 ms threshold, show the overlay. This is checked here in
-		// the main render callback instead of a separate rAF loop to
-		// eliminate the second rAF overhead.
+		// the 80 ms threshold, show the overlay via direct DOM manipulation
+		// (NOT React state — setState inside rAF causes re-render jank).
 		const LOADING_THRESHOLD_MS = 80;
 		if (
 			renderingRef.current &&
 			renderStartRef.current > 0 &&
 			performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
 		) {
-			setIsLoading(true);
+			if (!isLoadingRef.current && loadingOverlayRef.current) {
+				isLoadingRef.current = true;
+				loadingOverlayRef.current.style.opacity = "1";
+			}
 		}
 
 		if (renderingRef.current) {
@@ -317,7 +325,10 @@ function PreviewCanvas({
 					const duration = performance.now() - renderStartRef.current;
 					perfTrackerRef.current.recordRender(duration);
 					renderingRef.current = false;
-					setIsLoading(false);
+					if (isLoadingRef.current && loadingOverlayRef.current) {
+						isLoadingRef.current = false;
+						loadingOverlayRef.current.style.opacity = "0";
+					}
 					// Resume playback if we froze it for this render.
 					if (wasPlayingBeforeRenderRef.current) {
 						wasPlayingBeforeRenderRef.current = false;
@@ -485,7 +496,20 @@ function PreviewCanvas({
 												: activeProject?.settings.background.color,
 									}}
 								/>
-								<PreviewLoadingOverlay isVisible={isLoading} />
+								{/* Loading overlay — toggled via direct DOM manipulation (ref)
+								    to avoid React re-renders inside the rAF render loop. */}
+								<div
+									ref={loadingOverlayRef}
+									aria-hidden
+									className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center transition-opacity duration-150 opacity-0"
+								>
+									<div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/60 px-3 py-1.5 backdrop-blur-md">
+										<Spinner className="size-3.5 text-white/80" />
+										<span className="text-[0.7rem] font-medium text-white/80">
+											Rendering…
+										</span>
+									</div>
+								</div>
 								<GuideOverlay />
 								<MediaAssetPreview />
 								<PreviewInteractionOverlay />

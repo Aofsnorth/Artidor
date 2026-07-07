@@ -1384,6 +1384,34 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"Check whether the project has unsaved changes (true = needs save, false = all changes saved).",
 		objectSchema({}),
 	),
+
+	/* --------------------------- Background removal -------------------------- */
+	tool(
+		"effect",
+		"cutout_person",
+		"cutout_person",
+		"Remove the background from an image element using ML person segmentation (MediaPipe). Isolates people and drops the backdrop to transparent. For video elements, applies the 'remove-background' shader effect instead (real-time, no ML overhead). Use this for talking-head content, portraits, and people.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+			},
+			["trackId", "elementId"],
+		),
+	),
+	tool(
+		"effect",
+		"ai_cutout",
+		"ai_cutout",
+		"Remove the background from an image element using AI general-subject segmentation (transformers.js RMBG model). Works on ANY subject — people, products, objects. Heavier than cutout_person (~1-3s) but handles non-human subjects. For video elements, applies the 'remove-background' shader effect instead.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+			},
+			["trackId", "elementId"],
+		),
+	),
 ];
 
 /* -------------------------------------------------------------------------- */

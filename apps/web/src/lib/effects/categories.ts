@@ -51,6 +51,7 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	"cinematic-pop": "Cinematic",
 	// Basic
 	"chroma-key": "Basic",
+	"remove-background": "Basic",
 	// Stylize / Distort
 	posterize: "Stylize",
 	"edge-detect": "Stylize",
