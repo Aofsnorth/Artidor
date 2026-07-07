@@ -371,7 +371,7 @@ function ProjectsHeader() {
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
 	return (
-		<header className="sticky top-0 z-20 relative">
+		<header className="sticky top-0 z-20">
 			{/* Glassmorphism backdrop for the header. The bottom edge fades
 					   into transparent so the header feels weightless against the
 					   artwork underneath, instead of leaving a hard seam. The
