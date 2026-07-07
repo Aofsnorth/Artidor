@@ -55,11 +55,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the export and preview performance fix", () => {
+	test("the newest entry is the cleanup of untracked files", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-11-export-and-preview-performance",
+			"2026-07-12-cleanup-untracked-files",
 		);
 	});
 });
