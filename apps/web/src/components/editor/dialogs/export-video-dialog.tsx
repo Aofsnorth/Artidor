@@ -94,8 +94,8 @@ export function ExportVideoDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
 				className={cn(
-					"sm:max-w-[520px] p-0 overflow-hidden",
-					"bg-gradient-to-b from-[#0c0c10] to-[#08080c]",
+					"sm:max-w-130 p-0 overflow-hidden",
+					"bg-linear-to-b from-[#0c0c10] to-[#08080c]",
 					"border border-white/[0.07]",
 					"shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75),0_0_80px_-20px_rgba(255,255,255,0.06)]",
 				)}
@@ -129,7 +129,7 @@ export function ExportVideoDialog({
 							<div
 								className={cn(
 									"grid size-11 place-items-center rounded-xl",
-									"border border-white/15 bg-white/[0.06]",
+									"border border-white/15 bg-white/6",
 									"shadow-[0_0_30px_rgba(255,255,255,0.08)]",
 								)}
 							>
@@ -151,13 +151,13 @@ export function ExportVideoDialog({
 
 					{/* Stepped Art Deco divider */}
 					<div className="mx-6 flex items-center gap-2">
-						<div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+						<div className="h-px flex-1 bg-linear-to-r from-transparent via-white/8 to-transparent" />
 						<div className="flex gap-0.5">
 							<div className="size-1 bg-white/20" />
 							<div className="size-1 bg-white/30" />
 							<div className="size-1 bg-white/20" />
 						</div>
-						<div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+						<div className="h-px flex-1 bg-linear-to-r from-transparent via-white/8 to-transparent" />
 					</div>
 
 					<div className="p-6 space-y-5 max-h-[55vh] overflow-y-auto">
@@ -257,11 +257,11 @@ export function ExportVideoDialog({
 						</Section>
 					</div>
 
-					<DialogFooter className="p-6 pt-4 border-t border-white/[0.06]">
+					<DialogFooter className="p-6 pt-4 border-t border-white/6">
 						<Button
 							variant="outline"
 							onClick={() => onOpenChange(false)}
-							className="h-10 border-white/[0.08] bg-white/[0.03] text-white/70 hover:bg-white/[0.06] hover:text-white text-xs"
+							className="h-10 border-white/8 bg-white/3 text-white/70 hover:bg-white/6 hover:text-white text-xs"
 						>
 							Cancel
 						</Button>
@@ -269,7 +269,7 @@ export function ExportVideoDialog({
 							onClick={handleExport}
 							disabled={busy}
 							className={cn(
-								"h-10 gap-2 text-xs font-semibold min-w-[140px]",
+								"h-10 gap-2 text-xs font-semibold min-w-35",
 								"bg-white text-black",
 								"hover:bg-white/90",
 								"shadow-[0_4px_24px_rgba(255,255,255,0.15),0_0_40px_rgba(255,255,255,0.06)]",
@@ -312,7 +312,7 @@ function Section({
 				<span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
 					{label}
 				</span>
-				<div className="h-px flex-1 bg-white/[0.04]" />
+				<div className="h-px flex-1 bg-white/4" />
 			</div>
 			{children}
 		</div>

@@ -4,6 +4,8 @@
 //! zoom level, and panel visibility. It is owned by the root GPUI entity
 //! and observed by all panels.
 
+#![allow(dead_code)]
+
 use crate::state::project::{ElementType, Project};
 use std::path::PathBuf;
 

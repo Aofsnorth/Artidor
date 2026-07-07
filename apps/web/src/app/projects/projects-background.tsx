@@ -137,7 +137,7 @@ export function ProjectsBackground() {
 			    that adds depth without drawing attention. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute top-0 left-0 z-0 size-[360px] opacity-60"
+				className="pointer-events-none absolute top-0 left-0 z-0 size-90 opacity-60"
 				style={{ color: "rgba(255, 255, 255, 0.06)" }}
 			>
 				<svg
@@ -201,7 +201,7 @@ export function ProjectsBackground() {
 			    top-centre that gives the page depth and elegance. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 z-[1]"
+				className="pointer-events-none absolute inset-0 z-1"
 				style={{
 					background:
 						"radial-gradient(ellipse 900px 600px at 50% -10%, rgba(180, 190, 210, 0.05) 0%, transparent 70%)",
@@ -212,7 +212,7 @@ export function ProjectsBackground() {
 			    focus on the centre content area. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 z-[1]"
+				className="pointer-events-none absolute inset-0 z-1"
 				style={{
 					background:
 						"radial-gradient(ellipse 100% 100% at 50% 0%, transparent 50%, rgba(10, 10, 12, 0.5) 100%)",
@@ -223,7 +223,7 @@ export function ProjectsBackground() {
 			    the darker base, grounding the page. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 z-[1]"
+				className="pointer-events-none absolute inset-0 z-1"
 				style={{
 					background:
 						"linear-gradient(to bottom, transparent 80%, #161618 100%)",

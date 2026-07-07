@@ -2,6 +2,8 @@
 //! viewport renderer, and playback engine. Implements `Render` to build
 //! the full editor layout tree on every frame.
 
+#![allow(dead_code)]
+
 use compositor::CompositorError;
 use gpui::{
     App, Application, Bounds, Context, Entity, Menu, MenuItem, SharedString, TitlebarOptions,

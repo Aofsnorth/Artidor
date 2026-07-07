@@ -55,7 +55,7 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 			role="dialog"
 			aria-modal="true"
 			aria-label="Export progress"
-			className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-md select-none"
+			className="fixed inset-0 z-10000 flex items-center justify-center bg-black/80 backdrop-blur-md select-none"
 			onPointerDownCapture={handleBackdropMouseDown}
 			onContextMenu={(e) => {
 				e.preventDefault();
@@ -64,7 +64,7 @@ export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
 		>
 			{/* Card: stopPropagation so clicks inside don't bubble up */}
 			<div
-				className="relative w-full max-w-md mx-4 rounded-xl border border-white/10 bg-gradient-to-b from-[#0a0a0a] to-[#050505] p-8 shadow-2xl"
+				className="relative w-full max-w-md mx-4 rounded-xl border border-white/10 bg-linear-to-b from-[#0a0a0a] to-[#050505] p-8 shadow-2xl"
 				onPointerDownCapture={(e) => e.stopPropagation()}
 			>
 				{/* Close button - top right (only way to cancel besides Cancel button) */}

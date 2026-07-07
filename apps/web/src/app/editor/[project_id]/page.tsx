@@ -153,8 +153,8 @@ function FeedbackPrompt() {
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent
 				className={cn(
-					"sm:max-w-[440px] p-0 overflow-hidden",
-					"bg-gradient-to-b from-[#0c0c10] to-[#08080c]",
+					"sm:max-w-110 p-0 overflow-hidden",
+					"bg-linear-to-b from-[#0c0c10] to-[#08080c]",
 					"border border-white/[0.07]",
 					"shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75),0_0_80px_-20px_rgba(255,255,255,0.06)]",
 				)}
@@ -183,7 +183,7 @@ function FeedbackPrompt() {
 				<div className="relative">
 					{/* Header */}
 					<div className="flex items-center gap-3 px-6 pt-6 pb-4">
-						<div className="grid size-10 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+						<div className="grid size-10 place-items-center rounded-xl border border-white/8 bg-white/4">
 							<HugeiconsIcon
 								icon={SparklesIcon}
 								className="size-5 text-white/70"
@@ -200,7 +200,7 @@ function FeedbackPrompt() {
 					</div>
 
 					{/* Divider */}
-					<div className="mx-6 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+					<div className="mx-6 h-px bg-linear-to-r from-transparent via-white/8 to-transparent" />
 
 					{/* Body */}
 					<div className="px-6 py-5">
@@ -211,7 +211,7 @@ function FeedbackPrompt() {
 					</div>
 
 					{/* Footer */}
-					<div className="flex items-center justify-between border-t border-white/[0.06] px-6 py-4">
+					<div className="flex items-center justify-between border-t border-white/6 px-6 py-4">
 						<button
 							type="button"
 							onClick={() => setOpen(false)}
@@ -225,8 +225,8 @@ function FeedbackPrompt() {
 							rel="noreferrer"
 							onClick={() => setOpen(false)}
 							className={cn(
-								"flex items-center gap-2 rounded-lg border border-white/15 bg-white/[0.08] px-4 py-2 text-xs font-medium text-white transition-all",
-								"hover:bg-white/[0.12] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
+								"flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-xs font-medium text-white transition-all",
+								"hover:bg-white/12 hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
 							)}
 						>
 							Open form
@@ -281,7 +281,7 @@ function ReadOnlyBanner() {
 	if (!isViewer) return null;
 
 	return (
-		<div className="flex h-9 items-center justify-center gap-2 border-b border-white/10 bg-white/[0.04] text-xs text-white/70">
+		<div className="flex h-9 items-center justify-center gap-2 border-b border-white/10 bg-white/4 text-xs text-white/70">
 			<HugeiconsIcon icon={ViewIcon} className="size-3.5" />
 			<span>
 				You're viewing a shared project in read-only mode. Edits are disabled.
@@ -663,7 +663,7 @@ function AITakeoverChatBoost({ children }: { children: React.ReactNode }) {
 	const takeoverActive = useAIControlStoreSafe((s) => s.takeoverState === "active");
 	return (
 		<div
-			className={takeoverActive ? "relative z-[210]" : "contents"}
+			className={takeoverActive ? "relative z-210" : "contents"}
 		>
 			{children}
 		</div>

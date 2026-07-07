@@ -10,6 +10,8 @@
 //! - White-alpha overlays (`bg-white/[0.04]`, `text-white/70`, …)
 //! - Tailwind accent palette (`cyan-300`, `emerald-300`, …)
 
+#![allow(dead_code)]
+
 use crate::state::ElementType;
 use gpui::{Hsla, Pixels, px};
 

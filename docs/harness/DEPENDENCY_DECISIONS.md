@@ -40,12 +40,14 @@ unchanged in the system WebView. Rust commands expose native WGPU
 compositor and FFmpeg export to the frontend via IPC.
 
 Alternatives considered:
+
 1. **GPUI (current)** — requires full UI rewrite, no export advantage
 2. **Electron** — bundles Chromium (~150MB), known CVE surface, heavy
 3. **Tauri 2.0** — system WebView (~10MB binary), MIT/Apache, Rust-native
 4. **Wails (Go)** — requires Go toolchain, conflicts with Rust direction
 
 Security review:
+
 - Known vulnerabilities: None critical in 2.x (checked GitHub advisories)
 - Install scripts: No postinstall scripts (Rust crate, not npm)
 - Transitive dependency risk: Low — Tauri has tight dep tree, mostly
@@ -56,6 +58,7 @@ Security review:
   regular releases (1629 releases, latest 2026-06-17)
 
 Maintenance:
+
 - Last release: 2026-06-17 (v2.11.3)
 - Activity: Very active — 450 contributors, weekly releases
 - Docs: Excellent (v2.tauri.app)
@@ -64,12 +67,14 @@ Maintenance:
 License: MIT OR Apache-2.0 (dual, compatible with Artidor)
 
 Bundle/performance impact:
+
 - Binary size: ~10MB (system WebView, no bundled Chromium)
 - vs Electron: ~150MB smaller
 - vs GPUI: similar, but Tauri reuses web UI (saves weeks of dev time)
 - Runtime: native Rust process + system WebView, low memory
 
 Rollback plan:
+
 1. Remove `apps/desktop/src-tauri` from `Cargo.toml` workspace members
 2. Remove `@tauri-apps/api` from `package.json` if added
 3. `git checkout -- apps/desktop/` to restore GPUI version
@@ -96,6 +101,7 @@ third-party dependency. It keeps one toolchain for the whole repo and
 lets the shell reuse the existing Rust core crates via path deps later.
 
 Alternatives considered:
+
 1. **Existing repo code** — none; Tauri hides raw Win32 windowing.
 2. **Raw `extern "system"` FFI** — reinvents the wheel; violates the
    "Do Not Reinvent" / "prefer existing library" rules.
@@ -107,6 +113,7 @@ Alternatives considered:
    Win32 access, integrates with Rust crates. Chosen.
 
 Security review:
+
 - Known vulnerabilities: None known for the windowing feature set used.
   `windows` is generated bindings (no runtime logic of its own).
 - Install scripts: None (Rust crate, not npm).
@@ -121,6 +128,7 @@ Security review:
   releases.
 
 Maintenance:
+
 - Last release: 0.62.2 (resolved by `cargo add` as latest
   Rust-1.96-compatible).
 - Activity: Microsoft, very active, regular releases.
@@ -131,11 +139,13 @@ Maintenance:
 License: MIT (compatible with Artidor's MIT LICENSE).
 
 Bundle/performance impact:
+
 - Zero runtime cost — generated FFI bindings only.
 - Only the requested Win32 features are compiled in.
 - Binary: the increment-0 exe is ~159 KB (debug).
 
 Rollback plan:
+
 1. Delete `apps/desktop-native/` (fully isolated — no shared files).
 2. Revert the `ROADMAP.md` approval note and this decision entry.
 3. Root `Cargo.toml` was never edited, so nothing else needs cleanup.
@@ -163,6 +173,7 @@ for a single one-shot await; we do NOT need tokio/async-std here (the
 Tauri crate uses tokio because it runs many concurrent IPC handlers).
 
 Alternatives considered:
+
 1. **tokio** (already used by the Tauri crate) — full runtime, heavy for
    a single one-shot await; over-engineered for this shell.
 2. **async-std / smol / blocking** — same over-engineering concern.
@@ -172,6 +183,7 @@ Alternatives considered:
    "Do Not Reinvent" rule.
 
 Security review:
+
 - Known vulnerabilities: None.
 - Install scripts: None (Rust crate).
 - Transitive dependency risk: None — zero dependencies.
@@ -179,6 +191,7 @@ Security review:
 - Supply-chain: well-known tiny crate, stable since 2020.
 
 Maintenance:
+
 - Last release: 0.4.0 (mature, rarely needs updates by design).
 - Activity: stable, intentionally minimal.
 - Docs: minimal but clear.
@@ -215,6 +228,7 @@ feature, `#[export]` is a no-op, so `time` compiles as pure native
 logic. `rust/**` is NOT edited (read-only dependency).
 
 Alternatives considered:
+
 1. **Reimplement FrameRate/MediaTime** — duplicates domain logic,
    forbidden.
 2. **Depend on `time` via path** (chosen) — zero duplication, shared
@@ -249,6 +263,7 @@ needs direct file I/O (no browser IndexedDB). Needs: derive
 `Serialize`/`Deserialize` on the model, JSON codec, typed errors.
 
 Decision:
+
 - `serde` (+ `derive`): the repo's standard serde ecosystem, already a
   transitive dep (via `time`, `compositor`). Promoted to direct — this
   is "Existing installed dependency" (RULES.md order #2), not a new
@@ -262,6 +277,7 @@ Decision:
   `PersistError`. Standard, zero-runtime-cost.
 
 Alternatives considered:
+
 1. **Hand-rolled JSON** — reinvents serde_json, violates "Do Not
    Reinvent".
 2. **A binary format (bincode/postcard)** — smaller/faster but not
@@ -271,6 +287,7 @@ Alternatives considered:
    keeps errors typed (RULES.md "Typed over dynamic").
 
 Security review:
+
 - Known vulnerabilities: none for any of the three (serde ecosystem is
   ubiquitous, audited).
 - Install scripts: none (Rust crates).
@@ -321,6 +338,7 @@ the FFmpeg **CLI binary** (no FFI linking). Pipeline:
   .mp4 file.
 
 Why ffmpeg-sidecar over ffmpeg-next (the FFI binding):
+
 1. **Build pain**: ffmpeg-next links against FFmpeg's libav source,
    requiring a full C toolchain + libav dev headers. This is notoriously
    painful on Windows and would complicate CI + every contributor's
@@ -339,6 +357,7 @@ Why ffmpeg-sidecar over ffmpeg-next (the FFI binding):
    developed (latest 2.5.2, regular releases).
 
 Alternatives considered:
+
 1. **ffmpeg-next** (FFI bindings) — rejected: build pain on Windows,
    maintenance-mode, GPL-linking, WTFPL license (permissive but unusual;
    MIT preferred).
@@ -350,6 +369,7 @@ Alternatives considered:
    not top-1 (the whole point of the native shell is to beat this).
 
 Security review:
+
 - **Supply-chain — CRITICAL mitigation**: ffmpeg-sidecar's default
   feature `download_ffmpeg` auto-downloads an FFmpeg binary from the
   internet at runtime. That violates "no network by default" +
@@ -366,6 +386,7 @@ Security review:
   unencrypted-intermediate; output is the user-chosen `.mp4`.
 
 License:
+
 - `ffmpeg-sidecar`: **MIT** (compatible with Artidor's MIT LICENSE).
 - The bundled FFmpeg binary: FFmpeg is LGPL/GPL depending on build
   config. We will bundle an **LGPL build** (no non-free codecs) and
@@ -373,17 +394,20 @@ License:
   the same licensing model many commercial editors use with FFmpeg.
 
 Maintenance:
+
 - ffmpeg-sidecar: MIT, active (2.5.2 latest, regular releases since
   2023), 28 versions.
 - FFmpeg binary: upstream FFmpeg, very active.
 
 Bundle/performance impact:
+
 - Bundle: ~30-80MB FFmpeg binary (LGPL build, zipped). Adds to install
   size but is the cost of native export.
 - Performance: top-1 — hardware-accelerated encode, far faster than
   browser MediaRecorder. This is the explicit goal.
 
 Rollback plan:
+
 1. Remove `ffmpeg-sidecar` from `apps/desktop-native/Cargo.toml`.
 2. Delete the export module (to be created in `src/export.rs`).
 3. Remove the bundled FFmpeg binary from the install dir.
@@ -391,6 +415,7 @@ Rollback plan:
    (Increment 6a) stays — export is independent of save/load.
 
 Open question for the user (blocks implementation):
+
 - Approve adding `ffmpeg-sidecar` (MIT, CLI wrapper, hwaccel) with
   `default-features = false` (no runtime binary download) + bundling a
   pinned LGPL FFmpeg binary? Or prefer `ffmpeg-next` (FFI) despite the
@@ -419,6 +444,7 @@ Decision: Depend on the repo's own crates via `path =
 NO edits to `rust/**` (sensitive path — read-only dependency).
 
 Alternatives considered:
+
 1. **Reimplement compositor/gpu in the native crate** — massive
    duplication, violates "No duplicate domain logic".
 2. **Depend on them** (chosen) — zero duplication, shared logic, matches
@@ -446,6 +472,7 @@ Approved by: User (implicit via owner override 2026-06-27).
 
 The owner asked for the top-1 fastest **export** path too. The leading
 candidate is a native FFmpeg integration driven by the compositor:
+
 - Render frames to a shared GPU texture (avoid CPU readback) and feed an
   FFmpeg hardware pipeline, OR
 - Per-frame `compositor.render_frame_to_bytes` -> FFmpeg software encode.
@@ -475,6 +502,7 @@ the WASM fileset + model (~10MB) are fetched from Google's CDN on first
 use and cached by the browser. Runs fully local — no server, no telemetry.
 
 Alternatives considered:
+
 1. **@tensorflow-models/body-seg** — heavier (TF.js runtime), larger bundle
 2. **@xenova/transformers** — used for Option C (general subjects), but
    person segmentation with MediaPipe is lighter and purpose-built
@@ -482,6 +510,7 @@ Alternatives considered:
 4. **MediaPipe Tasks Vision** — Google, Apache-2.0, purpose-built, lightest
 
 Security review:
+
 - Known vulnerabilities: None
 - Install scripts: None
 - Transitive dependency risk: Zero dependencies
@@ -490,6 +519,7 @@ Security review:
 - Supply-chain: Google-maintained, 537 published versions, very active
 
 Maintenance:
+
 - Last release: 0.10.35 (active development)
 - Activity: Google MediaPipe team, regular releases
 - Docs: Excellent (mediapipe.dev)
@@ -498,11 +528,13 @@ Maintenance:
 License: Apache-2.0 (compatible with Artidor's MIT)
 
 Bundle/performance impact:
+
 - Zero initial bundle (lazy dynamic import)
 - ~10MB WASM + model fetched on first use, cached by browser
 - Segmentation runs at 256px internally, ~100-300ms per image
 
 Rollback plan:
+
 1. `bun remove @mediapipe/tasks-vision`
 2. Delete `apps/web/src/lib/segmentation/person-segmenter.ts`
 3. Remove `cutout_person` tool from registry.ts and executor.ts
@@ -531,6 +563,7 @@ conflicts with Artidor's MIT license and requires explicit approval per
 DEPENDENCY_POLICY. transformers.js is Apache-2.0 (compatible).
 
 Alternatives considered:
+
 1. **@imgly/background-removal** — AGPL-3.0 (license conflict, rejected)
 2. **@huggingface/transformers** (v4) — includes onnxruntime-node and
    sharp as hard deps, heavier for browser-only use
@@ -539,6 +572,7 @@ Alternatives considered:
    subject model available in MediaPipe
 
 Security review:
+
 - Known vulnerabilities: None
 - Install scripts: None
 - Transitive dependency risk: 3 deps (onnxruntime-web, sharp, @huggingface/jinja).
@@ -548,6 +582,7 @@ Security review:
 - Supply-chain: Xenova/HuggingFace, well-maintained, 75 versions
 
 Maintenance:
+
 - Last release: 2.17.2 (mature; v3+ continues as @huggingface/transformers)
 - Activity: Active development under @huggingface/transformers
 - Docs: Good (huggingface.co/docs/transformers.js)
@@ -556,11 +591,13 @@ Maintenance:
 License: Apache-2.0 (compatible with Artidor's MIT)
 
 Bundle/performance impact:
+
 - Zero initial bundle (lazy dynamic import)
 - ~44MB ONNX model fetched on first use, cached by browser
 - Inference capped at 1024px, ~1-3s per image
 
 Rollback plan:
+
 1. `bun remove @xenova/transformers`
 2. Delete `apps/web/src/lib/segmentation/ai-cutout.ts`
 3. Remove `ai_cutout` tool from registry.ts and executor.ts

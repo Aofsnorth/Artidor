@@ -357,7 +357,7 @@ function ProjectsSettingsButton() {
 	return (
 		<button
 			type="button"
-			className="fixed bottom-5 right-5 z-50 grid size-10 cursor-pointer place-items-center rounded-full border border-white/[0.10] bg-white/[0.06] text-white/50 shadow-lg shadow-black/30 backdrop-blur-md transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white hover:shadow-xl"
+			className="fixed bottom-5 right-5 z-50 grid size-10 cursor-pointer place-items-center rounded-full border border-white/10 bg-white/6 text-white/50 shadow-lg shadow-black/30 backdrop-blur-md transition hover:border-white/20 hover:bg-white/12 hover:text-white hover:shadow-xl"
 			onClick={() => setOpen("settings", true)}
 			title="Settings"
 			aria-label="Open settings"
@@ -379,7 +379,7 @@ function ProjectsHeader() {
 					   blur reads through more before trailing into the seam. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -bottom-6 -z-10 border-b border-white/[0.06] bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+				className="pointer-events-none absolute inset-x-0 top-0 -bottom-6 -z-10 border-b border-white/6 bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
 				style={{
 					maskImage:
 						"linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.85) 70%, transparent 100%)",
@@ -391,7 +391,7 @@ function ProjectsHeader() {
 				   crisp against the artwork below. */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-gradient-to-b from-white/[0.045] via-white/[0.02] to-transparent"
+				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b from-white/4.5 via-white/2 to-transparent"
 			/>
 			{/* The header content spans the full viewport so the left
 				   controls (breadcrumb + view toggle) pin to the left
@@ -421,17 +421,17 @@ function ProjectsHeader() {
 							</BreadcrumbList>
 						</Breadcrumb>
 
-						<div className="hidden h-9 items-center rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur-sm md:flex">
+						<div className="hidden h-9 items-center rounded-full border border-white/8 bg-white/3.5 p-1 shadow-inner shadow-white/2 backdrop-blur-sm md:flex">
 							{VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => (
 								<Button
 									key={mode}
 									variant="ghost"
 									size="icon"
 									className={cn(
-										"size-7 rounded-full text-white/50 hover:bg-white/[0.08] hover:text-white",
+										"size-7 rounded-full text-white/50 hover:bg-white/8 hover:text-white",
 										isHydrated &&
 											viewMode === mode &&
-											"!bg-white !text-black shadow-sm",
+											"bg-white! text-black! shadow-sm",
 									)}
 									onClick={() => setViewMode({ viewMode: mode })}
 									aria-label={label}
@@ -444,12 +444,12 @@ function ProjectsHeader() {
 					</div>
 
 					<div className="flex min-w-0 items-center justify-end gap-2 lg:gap-2.5">
-						<SearchBar className="hidden w-[220px] xl:block" />
+						<SearchBar className="hidden w-55 xl:block" />
 						<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
 							<ShortcutHint label="Search" keys={["/"]} />
 							<ShortcutHint label="New" keys={["N"]} />
 						</div>
-						<div className="hidden h-5 w-px bg-white/[0.08] xl:block" />
+						<div className="hidden h-5 w-px bg-white/8 xl:block" />
 						<TemplatesButton />
 						<ImportDriveButton />
 						<NewProjectButton />
@@ -891,11 +891,11 @@ function NewProjectButton() {
 	};
 
 	return (
-		<div className="flex shrink-0 items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.035] p-1 shadow-inner shadow-white/[0.02] backdrop-blur">
+		<div className="flex shrink-0 items-center gap-1 rounded-full border border-white/8 bg-white/3.5 p-1 shadow-inner shadow-white/2 backdrop-blur">
 			<Button
 				size="sm"
 				variant="ghost"
-				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/[0.08] hover:text-white"
+				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/8 hover:text-white"
 				onClick={handleImportProject}
 			>
 				<span className="hidden xl:inline">Import project</span>
@@ -904,7 +904,7 @@ function NewProjectButton() {
 			<Button
 				size="sm"
 				variant="ghost"
-				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/[0.08] hover:text-white"
+				className="h-8 rounded-full px-3 text-[12px] font-medium text-white/65 hover:bg-white/8 hover:text-white"
 				onClick={() => setIsPresetDialogOpen(true)}
 			>
 				<span className="hidden xl:inline">New Preset</span>
@@ -964,7 +964,7 @@ function NewPresetDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[420px]">
+			<DialogContent className="sm:max-w-105">
 				<form onSubmit={handleSave}>
 					<DialogHeader>
 						<DialogTitle>New Preset</DialogTitle>
@@ -1021,7 +1021,7 @@ function TemplatesButton() {
 			variant="outline"
 			title="Browse templates"
 			onClick={() => router.push("/editor?dialog=templates")}
-			className="relative hidden h-9 cursor-pointer items-center gap-1.5 rounded-full border-white/[0.08] bg-white/[0.03] px-3 text-[12px] hover:bg-white/[0.05] lg:flex"
+			className="relative hidden h-9 cursor-pointer items-center gap-1.5 rounded-full border-white/8 bg-white/3 px-3 text-[12px] hover:bg-white/5 lg:flex"
 		>
 			<HugeiconsIcon icon={LayoutGridIcon} className="size-3.5" />
 			<span className="hidden font-medium xl:block">Templates</span>
@@ -1585,7 +1585,7 @@ function ProjectMenu({
 						className={
 							isGrid
 								? `absolute z-10 top-3 right-3 ${isOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`
-								: "!bg-transparent !shadow-none"
+								: "bg-transparent! shadow-none!"
 						}
 						size="icon"
 						aria-label="Project menu"
@@ -1737,8 +1737,8 @@ function EmptyState({
 	// generic placeholder.
 	if (savedProjects.length > 0) {
 		return (
-			<div className="panel glass-strong mx-auto mt-12 flex w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-white/[0.08] p-10 text-center">
-				<div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/70">
+			<div className="panel glass-strong mx-auto mt-12 flex w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-white/8 p-10 text-center">
+				<div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
 					<HugeiconsIcon icon={Search01Icon} className="size-6" />
 				</div>
 				<div className="flex flex-col gap-2">
@@ -1755,7 +1755,7 @@ function EmptyState({
 					onClick={() => setSearchQuery({ query: "" })}
 					variant="outline"
 					size="sm"
-					className="h-9 rounded-full border-white/15 bg-white/[0.04] px-4 text-[12.5px] text-white/85 hover:bg-white/[0.08]"
+					className="h-9 rounded-full border-white/15 bg-white/4 px-4 text-[12.5px] text-white/85 hover:bg-white/8"
 				>
 					Clear search
 				</Button>
@@ -1770,9 +1770,9 @@ function EmptyState({
 	// quick-tip rows teach the visitor what Artidor can do for
 	// them in their first session.
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-3xl border border-white/[0.08] bg-black/35 p-7 text-center shadow-[0_40px_120px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl md:p-9">
+		<div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-3xl border border-white/8 bg-black/35 p-7 text-center shadow-[0_40px_120px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl md:p-9">
 			{/* Status pill — single line, anchored at the top. */}
-			<div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10.5px] font-medium tracking-wide text-white/65 backdrop-blur">
+			<div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10.5px] font-medium tracking-wide text-white/65 backdrop-blur">
 				<span className="relative flex size-1.5">
 					<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
 					<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
@@ -1782,7 +1782,7 @@ function EmptyState({
 
 			{/* Hero block — icon + headline + sub. Three lines max. */}
 			<div className="flex flex-col items-center gap-2">
-				<div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/85 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+				<div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/85 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
 					<HugeiconsIcon icon={Video01Icon} className="size-5" />
 				</div>
 				<h2 className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white md:text-[1.7rem]">
@@ -1812,7 +1812,7 @@ function EmptyState({
 				].map((tip) => (
 					<div
 						key={tip.title}
-						className="rounded-lg border border-white/[0.06] bg-white/[0.025] p-2"
+						className="rounded-lg border border-white/6 bg-white/2.5 p-2"
 					>
 						<div className="text-[11.5px] font-semibold text-white/90">
 							{tip.title}

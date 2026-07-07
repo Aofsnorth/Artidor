@@ -9,6 +9,8 @@
 //! are appended after the Export button, matching the user's request for
 //! "button x kotak dan - di samping export".
 
+#![allow(dead_code)]
+
 use gpui::{
     App, ClickEvent, Entity, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px,
