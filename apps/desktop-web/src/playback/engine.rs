@@ -6,6 +6,8 @@
 //! than running its own thread, which avoids race conditions with the
 //! UI state.
 
+#![allow(dead_code)]
+
 use std::time::Instant;
 
 /// The playback engine tracks elapsed time and converts it to frame deltas.

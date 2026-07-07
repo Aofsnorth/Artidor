@@ -546,8 +546,8 @@ function PreviewOverlayControls({
 					type="button"
 					onClick={fitToScreen}
 					className={cn(
-						"h-6 rounded-md px-2 text-[0.62rem] transition hover:bg-white/[0.08] hover:text-white",
-						isAtFit ? "bg-white/[0.1] text-white" : "text-white/70",
+						"h-6 rounded-md px-2 text-[0.62rem] transition hover:bg-white/8 hover:text-white",
+						isAtFit ? "bg-white/10 text-white" : "text-white/70",
 					)}
 				>
 					Fit
@@ -556,13 +556,13 @@ function PreviewOverlayControls({
 					type="button"
 					onClick={() => setAssetsTab("settings")}
 					title="Canvas aspect ratio (open project settings)"
-					className="h-6 rounded-md px-2 text-[0.62rem] text-white/70 hover:bg-white/[0.08] hover:text-white"
+					className="h-6 rounded-md px-2 text-[0.62rem] text-white/70 hover:bg-white/8 hover:text-white"
 				>
 					{aspectLabel}
 				</button>
 				<button
 					type="button"
-					className="grid size-6 place-items-center rounded-md text-white/70 hover:bg-white/[0.08] hover:text-white"
+					className="grid size-6 place-items-center rounded-md text-white/70 hover:bg-white/8 hover:text-white"
 					onClick={onToggleFullscreen}
 					aria-label="Fullscreen preview"
 				>
@@ -571,7 +571,7 @@ function PreviewOverlayControls({
 				<button
 					type="button"
 					onClick={() => setAssetsTab("settings")}
-					className="grid size-6 place-items-center rounded-md text-white/70 hover:bg-white/[0.08] hover:text-white"
+					className="grid size-6 place-items-center rounded-md text-white/70 hover:bg-white/8 hover:text-white"
 					aria-label="More preview tools"
 				>
 					<HugeiconsIcon icon={MoreHorizontalIcon} size={12} />

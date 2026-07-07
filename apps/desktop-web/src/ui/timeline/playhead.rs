@@ -4,6 +4,8 @@
 //! The playhead is rendered as an overlay on top of all tracks. It is
 //! positioned based on the current frame and zoom level.
 
+#![allow(dead_code)]
+
 use gpui::{IntoElement, ParentElement, Styled, div, px};
 
 use crate::theme;

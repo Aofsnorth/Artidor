@@ -5,6 +5,8 @@
 //! the timeline. All logic (timebase conversion, frame math) is delegated
 //! to the `artidor-time` crate.
 
+#![allow(dead_code)]
+
 use compositor::{BlendMode, EffectPassDescriptor, LayerMaskDescriptor, QuadTransformDescriptor};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

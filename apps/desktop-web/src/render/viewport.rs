@@ -14,6 +14,8 @@
 //! ping-pong textures stay on the GPU. At 1080p this is ~8MB/frame which
 //! DX12 can DMA to system memory in under 1ms on modern hardware.
 
+#![allow(dead_code)]
+
 use compositor::{Compositor, CompositorError, FrameDescriptor};
 use gpu::{GpuContext, wgpu};
 use gpui::{ImageSource, RenderImage};

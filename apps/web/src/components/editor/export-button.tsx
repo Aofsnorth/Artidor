@@ -203,12 +203,12 @@ export function ExportButton() {
 						{/* Slow-pulsing aura so the button feels alive even when untouched */}
 						<div
 							aria-hidden="true"
-							className="pointer-events-none absolute -inset-1 rounded-full bg-gradient-to-r from-white/0 via-white/35 to-white/0 opacity-60 blur-md export-pulse"
+							className="pointer-events-none absolute -inset-1 rounded-full bg-linear-to-r from-white/0 via-white/35 to-white/0 opacity-60 blur-md export-pulse"
 						/>
 						{/* Hover boost: a faster, brighter pulse layered on top */}
 						<div
 							aria-hidden="true"
-							className="pointer-events-none absolute -inset-0.5 rounded-full bg-gradient-to-r from-white/0 via-white/55 to-white/0 opacity-0 blur-md transition-opacity duration-300 group-hover/export:opacity-100 group-hover/export:export-pulse-strong"
+							className="pointer-events-none absolute -inset-0.5 rounded-full bg-linear-to-r from-white/0 via-white/55 to-white/0 opacity-0 blur-md transition-opacity duration-300 group-hover/export:opacity-100 group-hover/export:export-pulse-strong"
 						/>
 						{/* Inner highlight ring (permanent) */}
 						<div
@@ -218,7 +218,7 @@ export function ExportButton() {
 						{/* Icon: extra drop-shadow so it doesn't get lost in the glow */}
 						<HugeiconsIcon
 							icon={TransitionTopIcon}
-							className="z-10 size-3.5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.85)] transition-transform duration-300 group-hover/export:-translate-y-[1px] group-hover/export:drop-shadow-[0_0_8px_rgba(255,255,255,1)]"
+							className="z-10 size-3.5 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.85)] transition-transform duration-300 group-hover/export:-translate-y-px group-hover/export:drop-shadow-[0_0_8px_rgba(255,255,255,1)]"
 						/>
 						<span className="z-10 font-sans text-xs font-semibold tracking-wide">
 							Export
@@ -343,7 +343,7 @@ function ExportPopover({
 		<PopoverContent
 			className={cn(
 				"mr-4 flex w-80 flex-col p-0 overflow-hidden rounded-xl select-none",
-				"bg-gradient-to-b from-[#0a0a0a] to-[#050505] border border-stone-900",
+				"bg-linear-to-b from-[#0a0a0a] to-[#050505] border border-stone-900",
 				"shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-200",
 			)}
 			style={
@@ -373,7 +373,7 @@ function ExportPopover({
 				/>
 			) : (
 				<>
-					<div className="flex flex-col items-center justify-center pt-6 pb-4 px-4 border-b border-stone-900 bg-gradient-to-b from-stone-900/10 to-transparent relative">
+					<div className="flex flex-col items-center justify-center pt-6 pb-4 px-4 border-b border-stone-900 bg-linear-to-b from-stone-900/10 to-transparent relative">
 						{/* Ambient light streak behind the emblem */}
 						<div className="absolute top-0 w-32 h-10 bg-radial-gradient from-white/5 to-transparent blur-md pointer-events-none" />
 
@@ -683,7 +683,7 @@ function ExportCompletionOverlay({
 		<div
 			role="button"
 			tabIndex={0}
-			className={`fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`}
+			className={`fixed inset-0 z-9999 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`}
 			onClick={handleClose}
 			onKeyDown={(e) => {
 				if (e.key === "Escape") handleClose();
@@ -693,15 +693,15 @@ function ExportCompletionOverlay({
 			<div
 				role="button"
 				tabIndex={0}
-				className={`relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-[#111114] to-[#0a0a0a] shadow-[0_24px_80px_rgba(0,0,0,0.6)] transition-all duration-300 ${isVisible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}
+				className={`relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-linear-to-b from-[#111114] to-[#0a0a0a] shadow-[0_24px_80px_rgba(0,0,0,0.6)] transition-all duration-300 ${isVisible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"}`}
 				onClick={(e) => e.stopPropagation()}
 				onKeyDown={(e) => e.stopPropagation()}
 			>
 				{/* Header glow */}
-				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 bg-gradient-to-b from-emerald-500/20 to-transparent blur-2xl pointer-events-none" />
+				<div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 bg-linear-to-b from-emerald-500/20 to-transparent blur-2xl pointer-events-none" />
 
 				{/* Video preview */}
-				<div className="relative overflow-hidden border-b border-white/[0.06]">
+				<div className="relative overflow-hidden border-b border-white/6">
 					{previewUrl ? (
 						<video
 							controls
@@ -742,7 +742,7 @@ function ExportCompletionOverlay({
 					</div>
 
 					<div className="grid grid-cols-3 gap-2">
-						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+						<div className="rounded-lg border border-white/6 bg-white/2 p-2 text-center">
 							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
 								Format
 							</p>
@@ -750,7 +750,7 @@ function ExportCompletionOverlay({
 								{mimeType.split("/")[1]?.toUpperCase() || "MP4"}
 							</p>
 						</div>
-						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+						<div className="rounded-lg border border-white/6 bg-white/2 p-2 text-center">
 							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
 								Size
 							</p>
@@ -758,7 +758,7 @@ function ExportCompletionOverlay({
 								{formatBytes(result.buffer?.byteLength ?? 0)}
 							</p>
 						</div>
-						<div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2 text-center">
+						<div className="rounded-lg border border-white/6 bg-white/2 p-2 text-center">
 							<p className="text-[0.6rem] uppercase tracking-wider text-white/40">
 								Source
 							</p>

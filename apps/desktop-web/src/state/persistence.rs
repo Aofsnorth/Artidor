@@ -3,6 +3,8 @@
 //! The project format is JSON, matching the web app's `camelCase` serde
 //! conventions so projects are interchangeable between desktop and web.
 
+#![allow(dead_code)]
+
 use crate::state::project::Project;
 use std::path::{Path, PathBuf};
 

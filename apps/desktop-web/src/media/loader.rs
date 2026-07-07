@@ -4,6 +4,8 @@
 //! The decoded RGBA bytes are then uploaded to the WGPU compositor as a
 //! named texture.
 
+#![allow(dead_code)]
+
 use crate::state::project::ElementType;
 use image::ImageReader;
 use std::path::Path;
