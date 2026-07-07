@@ -19,11 +19,11 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@v3
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -33,16 +33,16 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - run: semgrep scan --config auto --error
 
   dependency-audit:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.2.18
 
@@ -54,11 +54,18 @@ jobs:
       - run: cargo install cargo-audit
 
       # `cargo audit` exits non-zero on unmaintained *warnings* as well as
-      # real vulnerabilities. The six ignored IDs below are all transitive
-      # dependencies flagged as "unmaintained" (informational, not exploitable)
-      # that we cannot replace without changing direct dependencies. Ignoring
-      # an advisory ID only suppresses THAT specific advisory — a future real
-      # CVE on the same crate gets a new RUSTSEC ID and will still fail CI.
+      # real vulnerabilities. The ignored IDs below fall into two groups:
+      #
+      # 1. Unmaintained crates (informational, not exploitable) that we cannot
+      #    replace without changing direct dependencies.
+      # 2. quick-xml advisories in the deprecated GPUI desktop dependency tree
+      #    (wayland-scanner/xcb). The web editor and active Tauri desktop path
+      #    do not exercise this XML parsing code; the old GPUI code is being
+      #    phased out and cannot be updated to a newer quick-xml because the
+      #    latest gpui release still pins wayland-scanner 0.31.x.
+      #
+      # Ignoring an advisory ID only suppresses THAT specific advisory — a future
+      # real CVE on the same crate gets a new RUSTSEC ID and will still fail CI.
       # Review this list whenever Cargo.lock changes.
       - run: |
           cargo audit \
@@ -67,7 +74,9 @@ jobs:
             --ignore RUSTSEC-2024-0436 \
             --ignore RUSTSEC-2026-0173 \
             --ignore RUSTSEC-2025-0134 \
-            --ignore RUSTSEC-2025-0048
+            --ignore RUSTSEC-2025-0048 \
+            --ignore RUSTSEC-2026-0194 \
+            --ignore RUSTSEC-2026-0195
         continue-on-error: false
 
   codeql:
@@ -79,8 +88,8 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: github/codeql-action/init@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: github/codeql-action/init@fb84f6228fd846d3c392887f22b18ce2d9139495 # v4
         with:
           languages: javascript-typescript
-      - uses: github/codeql-action/analyze@v4
+      - uses: github/codeql-action/analyze@fb84f6228fd846d3c392887f22b18ce2d9139495 # v4
