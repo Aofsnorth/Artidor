@@ -41,8 +41,14 @@ export function useTimelinePlayhead({
 	playheadRef,
 }: UseTimelinePlayheadProps) {
 	const editor = useEditor();
-	const isScrubbing = useEditor((e) => e.playback.getIsScrubbing());
-	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const isScrubbing = useEditor(
+		(e) => e.playback.getIsScrubbing(),
+		["playback"],
+	);
+	const isPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
 	const activeProject = editor.project.getActive();
 	const duration = editor.timeline.getTotalDuration();
 	const isShiftHeldRef = useShiftKey();

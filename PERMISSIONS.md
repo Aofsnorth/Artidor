@@ -3,6 +3,7 @@
 ## Level 0 — Read Only
 
 Allowed:
+
 - Read files
 - Explain code
 - Propose plan
@@ -10,6 +11,7 @@ Allowed:
 - Suggest tests
 
 Not allowed:
+
 - Edit files
 - Run destructive commands
 - Create commits
@@ -17,12 +19,14 @@ Not allowed:
 ## Level 1 — Safe Edit
 
 Allowed:
+
 - Edit non-sensitive source files
 - Add tests
 - Update docs
 - Run lint/test/build commands
 
 Not allowed:
+
 - Edit secrets
 - Edit GitHub workflow/security policy
 - Edit auth/payment/license
@@ -35,6 +39,7 @@ Not allowed:
 Requires explicit human approval.
 
 Sensitive paths:
+
 ```txt
 .github/**
 packages/mcp-server/**
@@ -54,6 +59,7 @@ PERMISSIONS.md
 ## Level 3 — Release/Admin
 
 Human only unless explicitly approved:
+
 - Publishing releases
 - Rotating secrets
 - Changing branch protection

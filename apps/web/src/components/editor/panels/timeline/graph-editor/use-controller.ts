@@ -23,8 +23,9 @@ export function useGraphEditorController() {
 	const selectedElements = useEditor((currentEditor) =>
 		currentEditor.selection.getSelectedElements(),
 	);
-	const playheadTime = useEditor((currentEditor) =>
-		currentEditor.playback.getCurrentTime(),
+	const playheadTime = useEditor(
+		(currentEditor) => currentEditor.playback.getCurrentTime(),
+		["playback"],
 	);
 	const [open, setOpen] = useState(false);
 	const [activeComponentKey, setActiveComponentKey] = useState<string | null>(

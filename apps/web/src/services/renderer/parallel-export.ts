@@ -130,14 +130,15 @@ export async function runParallelExport({
 	// Pin one codec for every segment up-front so the bitstreams are mutually
 	// compatible and can be stitched without a re-encode.
 	console.info("[parallel-export] negotiating video codec");
-	const videoCodec = await negotiateVideoCodec({
-		format,
-		quality,
-		width,
-		height,
-		fpsFloat,
-	});
-	console.info(`[parallel-export] codec: ${videoCodec}`);
+	const { codec: videoCodec, outputFormat: negotiatedFormat } =
+		await negotiateVideoCodec({
+			format,
+			quality,
+			width,
+			height,
+			fpsFloat,
+		});
+	console.info(`[parallel-export] codec: ${videoCodec}, format: ${negotiatedFormat}`);
 
 	console.info(
 		`[parallel-export] starting ${segmentCount} segments, ${totalFrames} frames total`,
@@ -201,10 +202,12 @@ export async function runParallelExport({
 		);
 
 		// Wait before launching the next worker to avoid GPU adapter request
-		// deadlocks on machines with multiple workers.
-		const staggerDelay = 3000;
+		// deadlocks on machines with multiple workers. The original 3s delay
+		// was extremely conservative — modern GPU drivers handle concurrent
+		// adapter requests within ~200ms. 500ms gives enough headroom for
+		// driver initialization while not wasting 9-21s on 4-8 worker launches.
+		const staggerDelay = 500;
 		if (i < plans.length - 1) {
-			console.info(`[parallel-export] worker ${plan.index} launched, waiting ${staggerDelay / 1000}s before next`);
 			await new Promise((r) => setTimeout(r, staggerDelay));
 		}
 	}
@@ -250,7 +253,7 @@ export async function runParallelExport({
 	const buffer = await concatenateSegments({
 		segmentBuffers,
 		segmentStartSeconds: plans.map((p) => p.startSeconds),
-		format,
+		format: negotiatedFormat,
 		videoCodec,
 		fpsFloat,
 		audioBuffer: shouldIncludeAudio ? audioBuffer : null,

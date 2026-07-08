@@ -18,7 +18,16 @@ export function useElementPreview<T extends TimelineElement>({
 	fallback: T;
 }) {
 	const editor = useEditor();
-	useEditor((e) => e.timeline.getPreviewTracks());
+	// Subscribe only to `timeline` and `scenes` — NOT `playback`. The
+	// `playback` subsystem fires every animation frame during playback,
+	// which would trigger `getSnapshot()` for every timeline clip card
+	// even though preview tracks don't change during normal playback.
+	// This is the single biggest re-render overhead reduction for the
+	// timeline during playback (N clip cards × 1 fewer subscription each).
+	useEditor(
+		(e) => e.timeline.getPreviewTracks(),
+		["timeline", "scenes"],
+	);
 
 	const previewTracks = editor.timeline.getPreviewTracks();
 	const renderElement =

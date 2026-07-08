@@ -1,6 +1,47 @@
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { EditorCore } from "@/core";
 
+/**
+ * Editor subsystem identifiers. Used by {@link useEditor} to limit which
+ * subsystems trigger re-renders.
+ *
+ * **Default behavior changed:** `useEditor(selector)` no longer subscribes
+ * to `playback` by default. The `playback` subsystem fires every animation
+ * frame during playback (60fps), which caused ~97 unnecessary
+ * `getSnapshot()` calls per frame across the editor — the single biggest
+ * source of editor-wide lag. Components that need per-frame playback state
+ * (timecode display, playhead position, audio meters) must pass
+ * `subsystems: ["playback"]` explicitly.
+ */
+export type EditorSubsystem =
+	| "playback"
+	| "timeline"
+	| "scenes"
+	| "project"
+	| "media"
+	| "renderer"
+	| "selection"
+	| "clipboard"
+	| "diagnostics";
+
+/**
+ * The set of subsystems `useEditor(selector)` subscribes to by default
+ * (when no `subsystems` argument is passed). `playback` is intentionally
+ * excluded — it fires every frame during playback and most components
+ * don't need per-frame updates. Components that DO need playback state
+ * pass `["playback"]` (or `["playback", ...]`) explicitly.
+ */
+const DEFAULT_SUBSYSTEMS: EditorSubsystem[] = [
+	"timeline",
+	"scenes",
+	"project",
+	"media",
+	"renderer",
+	"selection",
+	"clipboard",
+	"diagnostics",
+];
+
 function isShallowEqual(a: unknown, b: unknown): boolean {
 	if (Object.is(a, b)) return true;
 	// Empty/null short-circuit — both empty `null`/`undefined`
@@ -42,7 +83,12 @@ const subscribeNone = () => () => {};
 export function useEditor(): EditorCore;
 export function useEditor<T>(selector: (editor: EditorCore) => T): T;
 export function useEditor<T>(
+	selector: (editor: EditorCore) => T,
+	subsystems: EditorSubsystem[],
+): T;
+export function useEditor<T>(
 	selector?: (editor: EditorCore) => T,
+	subsystems?: EditorSubsystem[],
 ): EditorCore | T {
 	const editor = useMemo(() => EditorCore.getInstance(), []);
 	const selectorRef = useRef(selector);
@@ -50,26 +96,47 @@ export function useEditor<T>(
 
 	const snapshotCacheRef = useRef<unknown>(undefined);
 
-	const subscribeAll = useCallback(
+	// Stable string key for the subsystems array. Without this, a caller
+	// passing `["playback"]` as a literal would create a new array reference
+	// every render, causing `subscribe` to change every render, which causes
+	// `useSyncExternalStore` to tear down and re-create all subscriptions
+	// every render — a significant performance regression. The sorted+joined
+	// string is referentially stable across renders for the same set.
+	const subsystemsKey = subsystems
+		? subsystems.slice().sort().join(",")
+		: "default";
+	// biome-ignore lint/correctness/useExhaustiveDependencies: subsystemsKey is a stable string derived from subsystems; using subsystems directly would create a new array reference every render, defeating the memo.
+	const effectiveSubsystems = useMemo<EditorSubsystem[]>(
+		() => (subsystems ? subsystems.slice().sort() : DEFAULT_SUBSYSTEMS),
+		[subsystemsKey],
+	);
+
+	const subscribe = useCallback(
 		(onChange: () => void) => {
-			const unsubscribers = [
-				editor.playback.subscribe(onChange),
-				editor.timeline.subscribe(onChange),
-				editor.scenes.subscribe(onChange),
-				editor.project.subscribe(onChange),
-				editor.media.subscribe(onChange),
-				editor.renderer.subscribe(onChange),
-				editor.selection.subscribe(onChange),
-				editor.clipboard.subscribe(onChange),
-				editor.diagnostics.subscribe(onChange),
-			];
+			const all: Record<
+				EditorSubsystem,
+				{ subscribe: (fn: () => void) => () => void }
+			> = {
+				playback: editor.playback,
+				timeline: editor.timeline,
+				scenes: editor.scenes,
+				project: editor.project,
+				media: editor.media,
+				renderer: editor.renderer,
+				selection: editor.selection,
+				clipboard: editor.clipboard,
+				diagnostics: editor.diagnostics,
+			};
+			const unsubscribers = effectiveSubsystems.map((s) =>
+				all[s].subscribe(onChange),
+			);
 			return () => {
-				unsubscribers.forEach((unsubscribe) => {
+				for (const unsubscribe of unsubscribers) {
 					unsubscribe();
-				});
+				}
 			};
 		},
-		[editor],
+		[editor, effectiveSubsystems],
 	);
 
 	const getSnapshot = useCallback(() => {
@@ -82,7 +149,7 @@ export function useEditor<T>(
 	}, [editor]);
 
 	return useSyncExternalStore(
-		selector ? subscribeAll : subscribeNone,
+		selector ? subscribe : subscribeNone,
 		getSnapshot,
 		getSnapshot,
 	) as EditorCore | T;

@@ -414,6 +414,20 @@ body::-webkit-scrollbar,
 			box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 			backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 	}
+
+	/* Opt timeline clips out of the global box-shadow / backdrop-filter
+	   transitions. These properties are the most expensive to animate in
+	   Firefox and are unnecessary inside clip cards (which manage their own
+	   transitions explicitly). This measurably reduces paint cost during
+	   drag and scroll on Firefox. */
+	.timeline-clip,
+	.timeline-clip * {
+		transition:
+			background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+			border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+			color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+			opacity 0.15s ease-out !important;
+	}
 }
 
 @utility asset-preview-container {

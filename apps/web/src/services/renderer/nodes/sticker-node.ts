@@ -12,7 +12,7 @@ export interface StickerNodeParams extends VisualNodeParams {
 }
 
 interface CachedStickerSource {
-	source: HTMLImageElement;
+	source: HTMLImageElement | ImageBitmap;
 	width: number;
 	height: number;
 }
@@ -33,19 +33,16 @@ export function loadStickerSource({
 			options: { width: 200, height: 200 },
 		});
 
-		const image = new Image();
-
-		await new Promise<void>((resolve, reject) => {
-			image.onload = () => resolve();
-			image.onerror = () =>
-				reject(new Error(`Failed to load sticker: ${stickerId}`));
-			image.src = url;
-		});
+		// Use fetch + createImageBitmap so this path works in Web Worker
+		// contexts where `new Image()` (a DOM API) is unavailable.
+		const response = await fetch(url);
+		const blob = await response.blob();
+		const bitmap = await createImageBitmap(blob);
 
 		return {
-			source: image,
-			width: image.naturalWidth,
-			height: image.naturalHeight,
+			source: bitmap,
+			width: bitmap.width,
+			height: bitmap.height,
 		};
 	})();
 

@@ -29,7 +29,10 @@ export function MediaAssetPreview() {
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const previewAssetId = useAssetPreviewStore((s) => s.previewAssetId);
 	const clearPreview = useAssetPreviewStore((s) => s.clearPreview);
-	const timelineIsPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const timelineIsPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
 
 	const asset = previewAssetId
 		? mediaAssets.find((a) => a.id === previewAssetId)

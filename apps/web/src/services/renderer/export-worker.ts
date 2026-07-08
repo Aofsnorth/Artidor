@@ -81,6 +81,13 @@ type WorkerInMessage = {
 	videoCodec?: ExportVideoCodec;
 	/** Pinned audio codec (parallel single-worker-with-audio case). */
 	audioCodec?: ExportAudioCodec;
+	/**
+	 * Force software video encoding (skip hardware acceleration). Used by the
+	 * retry path after a hardware encoder configuration error —
+	 * `isConfigSupported` can report hardware as supported while the actual
+	 * `VideoEncoder.configure()` rejects it (Firefox).
+	 */
+	forceSoftwareEncoding?: boolean;
 };
 
 type WorkerOutMessage =
@@ -177,7 +184,29 @@ async function handleExport(msg: WorkerInMessage) {
 	// Create the OffscreenCanvas inside the worker. This avoids transferring
 	// an OffscreenCanvas via postMessage, which can silently fail in some
 	// browser/dev-server combinations.
-	const canvas = new OffscreenCanvas(width, height);
+	//
+	// WebCodecs requires the encode canvas dimensions to be even for AVC
+	// (H.264) and HEVC (H.265) — chroma subsampling needs sample-aligned
+	// coded sizes. Project canvas sizes that are odd (e.g. 6000x3375)
+	// would otherwise throw "dimensions 6000x3375 are not supported for
+	// codec 'avc'; both width and height must be even numbers" from the
+	// encoder. Round up to the next even — the 1-px difference is
+	// invisible on real content and the codec strings we generate below
+	// (avc1 / hev1) would otherwise reject the configuration.
+	const requiresEvenDimensions =
+		format === "mp4" || format === "hevc" || format === "av1";
+	const safeWidth = requiresEvenDimensions
+		? width + (width % 2)
+		: width;
+	const safeHeight = requiresEvenDimensions
+		? height + (height % 2)
+		: height;
+	if (safeWidth !== width || safeHeight !== height) {
+		console.info(
+			`[export-worker] rounded canvas from ${width}x${height} to ${safeWidth}x${safeHeight} for codec compatibility`,
+		);
+	}
+	const canvas = new OffscreenCanvas(safeWidth, safeHeight);
 
 	// ── 1. Initialize WASM GPU + compositor in the worker ──
 	// Dynamic import the WASM module (artidor-wasm)
@@ -206,7 +235,11 @@ async function handleExport(msg: WorkerInMessage) {
 	// Initialize compositor with the worker's OffscreenCanvas
 	const { wasmCompositor } = await import("./compositor/wasm-compositor");
 	console.info("[export-worker] initializing compositor");
-	wasmCompositor.ensureInitializedWithCanvas({ canvas, width, height });
+	wasmCompositor.ensureInitializedWithCanvas({
+		canvas,
+		width: safeWidth,
+		height: safeHeight,
+	});
 	console.info("[export-worker] compositor initialized");
 	self.postMessage({
 		type: "init-progress",
@@ -235,7 +268,11 @@ async function handleExport(msg: WorkerInMessage) {
 	} satisfies WorkerOutMessage);
 
 	// ── 3. Create renderer ──
-	const renderer = new CanvasRenderer({ width, height, fps });
+	const renderer = new CanvasRenderer({
+		width: safeWidth,
+		height: safeHeight,
+		fps,
+	});
 
 	// ── 4. Set up mediabunny encoder ──
 	const fpsFloat = frameRateToFloat(fps);
@@ -257,19 +294,45 @@ async function handleExport(msg: WorkerInMessage) {
 		`[export-worker] exporting frames ${startFrame}..${endFrame} (${segmentFrameCount} frames)`,
 	);
 
-	const outputFormat =
-		format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
-
-	const output = new Output({
-		format: outputFormat,
-		target: new BufferTarget(),
-	});
-
 	// Use the pinned codec when provided (parallel pipeline — every segment must
 	// share an identical codec to stitch losslessly), else negotiate.
-	const videoCodec: ExportVideoCodec =
-		msg.videoCodec ??
-		(await negotiateVideoCodec({ format, quality, width, height, fpsFloat }));
+	// negotiateVideoCodec also probes hardware acceleration support, so we carry
+	// its recommendation through to CanvasSource.
+	let videoCodec: ExportVideoCodec;
+	let hardwareAcceleration: "prefer-hardware" | "prefer-software";
+	// The output container format may change during negotiation — when AVC
+	// (hardware and software) is rejected at high resolutions, the negotiator
+	// falls back to VP9 which requires a WebM container. Start with the
+	// requested format; the negotiator can override it.
+	let effectiveFormat = format;
+	if (msg.videoCodec) {
+		videoCodec = msg.videoCodec;
+		hardwareAcceleration = msg.forceSoftwareEncoding
+			? "prefer-software"
+			: "prefer-hardware";
+	} else {
+		const negotiated = await negotiateVideoCodec({
+			format,
+			quality,
+			width,
+			height,
+			fpsFloat,
+			forceSoftware: msg.forceSoftwareEncoding ?? false,
+		});
+		videoCodec = negotiated.codec;
+		hardwareAcceleration = negotiated.hardwareAcceleration;
+		effectiveFormat = negotiated.outputFormat;
+	}
+
+	// Build the container after negotiation so we use the right format
+	// (VP9 fallback switches from MP4 to WebM).
+	const outputFormatInstance =
+		effectiveFormat === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
+
+	const output = new Output({
+		format: outputFormatInstance,
+		target: new BufferTarget(),
+	});
 
 	// The compositor canvas is now an OffscreenCanvas
 	const compositorCanvas = wasmCompositor.getCanvas();
@@ -278,8 +341,10 @@ async function handleExport(msg: WorkerInMessage) {
 		bitrate: EXPORT_QUALITY_MAP[quality],
 		// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
 		// This is the single biggest performance lever — hardware encoding
-		// is 10-100x faster than software encoding.
-		hardwareAcceleration: "prefer-hardware",
+		// is 10-100x faster than software encoding. Falls back to software
+		// automatically when the hardware encoder rejects this configuration
+		// (e.g. AVC High Profile Level 6.0 at >4K on some GPUs).
+		hardwareAcceleration,
 		// Log the actual encoder config so we can verify hardware accel.
 		onEncoderConfig: (config) => {
 			console.info(
@@ -321,7 +386,9 @@ async function handleExport(msg: WorkerInMessage) {
 		const audioCodec: ExportAudioCodec =
 			msg.audioCodec ??
 			(await negotiateAudioCodec({
-				format,
+				// Use the negotiated format (may have switched to WebM for VP9
+				// fallback) so the audio codec matches the container.
+				format: effectiveFormat,
 				sampleRate: audioBuffer.sampleRate,
 				numberOfChannels: audioBuffer.numberOfChannels,
 			}));
@@ -371,9 +438,18 @@ async function handleExport(msg: WorkerInMessage) {
 	//   Depth 1 (old):  [render][wait encode][render][wait encode]...
 	//   GPU idle ~90% of the time.
 	//
-	//   Depth 8 (new):  [render][render][render]...[render][wait oldest]
+	//   Depth 8 (old):  [render][render][render]...[render][wait oldest]
 	//   GPU renders continuously while encoder processes the queue.
-	const RENDER_QUEUE_DEPTH = 8;
+	//
+	//   Depth 16 (new): Same idea, but deeper pipeline. On multi-core
+	//   machines with hardware encoders (NVENC/QuickSync), the encoder can
+	//   process frames much faster than the compositor can produce them, so
+	//   a deeper queue keeps the GPU compositor busy while the encoder
+	//   pipeline drains. On software encoders, the encoder is the bottleneck
+	//   so the extra depth doesn't hurt — it just means more frames are
+	//   ready when the encoder finishes one. 16 frames ≈ 260ms at 60fps,
+	//   which is well within the VideoEncoder's internal queue limit.
+	const RENDER_QUEUE_DEPTH = 16;
 	const pendingEncodes: Promise<void>[] = [];
 	const frameDuration = 1 / fpsFloat;
 	const progressDenominator = Math.max(1, segmentFrameCount);

@@ -44,13 +44,24 @@ export class CanvasRenderer {
 		this.fps = fps;
 		this.maxSourceDim = undefined;
 
-		try {
-			this.canvas = new OffscreenCanvas(width, height);
-		} catch {
-			this.canvas = document.createElement("canvas");
-			this.canvas.width = width;
-			this.canvas.height = height;
+		// OffscreenCanvas is the only path that works in export workers
+		// (no `document` available). We don't fall back to
+		// `document.createElement` because:
+		// 1. Every browser the app targets (Chrome/Edge/Firefox/Safari ≥ TP)
+		//    supports OffscreenCanvas — the previous fallback only ever fired
+		//    inside the export Web Worker, where it would then throw
+		//    `ReferenceError: document is not defined` and stall the export
+		//    at 5% (worker fallback path used to time out and bail to main
+		//    thread, which then hit a second failure on AVC dimensions).
+		// 2. In the main thread, OffscreenCanvas works fine; constructing
+		//    one here lets the export path (which clones the same module
+		//    graph) and the preview path share the same shape.
+		if (typeof OffscreenCanvas === "undefined") {
+			throw new Error(
+				"CanvasRenderer requires OffscreenCanvas. Update to a browser with OffscreenCanvas support, or open the desktop app.",
+			);
 		}
+		this.canvas = new OffscreenCanvas(width, height);
 
 		const context = this.canvas.getContext("2d");
 		if (!context) {

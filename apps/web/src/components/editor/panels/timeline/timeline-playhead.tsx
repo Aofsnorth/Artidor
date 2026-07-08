@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	getCenteredLineLeft,
@@ -12,6 +12,7 @@ import { useKeyframeSelection } from "@/hooks/timeline/element/use-keyframe-sele
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
 import { useEditor } from "@/hooks/use-editor";
+import { useRafLoop } from "@/hooks/use-raf-loop";
 import { TIMELINE_SCROLLBAR_SIZE_PX, TIMELINE_CONTENT_LEFT_INSET_PX } from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
 
@@ -183,15 +184,73 @@ export function TimelinePlayhead({
 			(hasHorizontalScrollbar ? TIMELINE_SCROLLBAR_SIZE_PX - 5 : 0),
 	);
 
+	// Playhead position is updated via direct DOM manipulation in a rAF loop
+	// instead of React re-renders. This avoids a full React reconciliation
+	// (5-16ms jank) every frame during playback — the playhead just sets
+	// `style.left` directly on the DOM element, which is <0.1ms. The initial
+	// position is set in the render for the first frame, then the rAF loop
+	// takes over.
+
+	// Compute the current playhead position (used for initial render + rAF).
+	const updatePlayheadPosition = useCallback(() => {
+		const el = playheadRef.current;
+		if (!el) return;
+		const time = editor.playback.getCurrentTime();
+		const center = timelineTimeToSnappedPixels({ time, zoomLevel });
+		const scrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
+		const left =
+			getCenteredLineLeft({ centerPixel: center }) -
+			scrollLeft +
+			TIMELINE_CONTENT_LEFT_INSET_PX;
+		el.style.left = `${left}px`;
+	}, [editor.playback, zoomLevel, tracksScrollRef, playheadRef]);
+
+	// rAF loop to update playhead position directly on the DOM element.
+	// Only runs during playback (enabled flag) — when paused, position
+	// updates happen via the scroll listener and the initial render.
+	const isPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
+	useRafLoop(updatePlayheadPosition, isPlaying);
+
+	// Update position on scroll (when paused, the rAF loop isn't running).
+	useEffect(() => {
+		const scrollEl = tracksScrollRef.current;
+		if (!scrollEl) return;
+		let rafId: number | null = null;
+		const onScroll = () => {
+			if (rafId !== null) return;
+			rafId = requestAnimationFrame(() => {
+				rafId = null;
+				updatePlayheadPosition();
+			});
+		};
+		scrollEl.addEventListener("scroll", onScroll, { passive: true });
+		return () => {
+			scrollEl.removeEventListener("scroll", onScroll);
+			if (rafId !== null) cancelAnimationFrame(rafId);
+		};
+	}, [tracksScrollRef, updatePlayheadPosition]);
+
+	// Also update when playback pauses (to catch the final position after
+	// playback stops). zoomLevel changes are covered by updatePlayheadPosition's
+	// own dependency array.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isPlaying is intentionally included to trigger a position update when playback state changes (play→pause catches the final frame).
+	useEffect(() => {
+		updatePlayheadPosition();
+	}, [isPlaying, updatePlayheadPosition]);
+
+	// Initial position for first render (before rAF starts).
 	const currentTime = editor.playback.getCurrentTime();
-	const centerPosition = timelineTimeToSnappedPixels({
+	const initialCenter = timelineTimeToSnappedPixels({
 		time: currentTime,
 		zoomLevel,
 	});
-	const scrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
-	const leftPosition =
-		getCenteredLineLeft({ centerPixel: centerPosition }) -
-		scrollLeft +
+	const initialScrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
+	const initialLeft =
+		getCenteredLineLeft({ centerPixel: initialCenter }) -
+		initialScrollLeft +
 		TIMELINE_CONTENT_LEFT_INSET_PX;
 
 	const handlePlayheadKeyDown = (
@@ -225,7 +284,7 @@ export function TimelinePlayhead({
 			tabIndex={0}
 			className="pointer-events-none absolute"
 			style={{
-				left: `${leftPosition}px`,
+				left: `${initialLeft}px`,
 				top: 0,
 				height: `${totalHeight}px`,
 				width: `${TIMELINE_INDICATOR_LINE_WIDTH_PX}px`,

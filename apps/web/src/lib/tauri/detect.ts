@@ -5,9 +5,16 @@
  * or in a regular browser. When running in Tauri, the app switches from
  * the WASM compositor to native Tauri commands for better performance.
  *
- * Detection uses the `@tauri-apps/api` internal `isTauri()` check, which
- * inspects `window.__TAURI_INTERNALS__`. This is set by Tauri's WebView
- * injection and is not present in regular browsers.
+ * Detection uses the `__TAURI_INTERNALS__` injection on the global object.
+ * Tauri 2.0 sets `window.__TAURI_INTERNALS__` in the WebView, and Web
+ * Workers see `self.__TAURI_INTERNALS__` instead — we check both via the
+ * portable `globalThis` reference.
+ *
+ * IMPORTANT: this module is imported transitively by the export Web Worker
+ * (via `services/renderer/compositor/unified-compositor` → `lib/tauri/detect`).
+ * Anything we do at module load runs in a context where neither `window`
+ * nor `document` exist. Only `self`/`globalThis` is guaranteed available.
+ * All work must therefore be lazy — no top-level access of any DOM global.
  */
 
 let cachedIsTauri: boolean | null = null;
@@ -21,16 +28,18 @@ let cachedIsTauri: boolean | null = null;
 export function isTauri(): boolean {
 	if (cachedIsTauri !== null) return cachedIsTauri;
 
-	// Check for Tauri internals injection. Tauri 2.0 sets
-	// `window.__TAURI_INTERNALS__` with a `convertFileSrc` and
-	// `invoke` function.
-	if (typeof window === "undefined") {
-		cachedIsTauri = false;
-		return false;
-	}
-
+	// Use `globalThis` so the check is portable to Web Workers, where
+	// `window` is `undefined` but `self.__TAURI_INTERNALS__` is still set
+	// by Tauri's WebView injection. Checking only `window` (the previous
+	// implementation) was correct in the main thread but threw
+	// `ReferenceError: window is not defined` in the export worker, which
+	// then stalled the export at 5% and timed out to the main thread.
+	const g = globalThis as
+		| typeof globalThis
+		| (Window & typeof globalThis)
+		| (WorkerGlobalScope & typeof globalThis);
 	cachedIsTauri =
-		"__TAURI_INTERNALS__" in window || "__TAURI__" in window;
+		"__TAURI_INTERNALS__" in g || "__TAURI__" in g;
 
 	return cachedIsTauri;
 }

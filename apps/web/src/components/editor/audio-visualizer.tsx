@@ -41,7 +41,10 @@ const LARGE_PANEL_WIDTH_PX = 308;
 function useAudioBars(barCount: number) {
 	const editor = useEditor();
 	const refs = useRef<Array<HTMLDivElement | null>>([]);
-	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const isPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
 	const playingRef = useRef(isPlaying);
 	playingRef.current = isPlaying;
 
@@ -108,7 +111,10 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 	const isOpen = useUiOverlayStore((s) => s.isAudioVisualizerOpen);
 	const toggle = useUiOverlayStore((s) => s.toggleAudioVisualizer);
 	const barRefs = useAudioBars(MINI_BAR_COUNT);
-	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const isPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
 
 	return (
 		<button

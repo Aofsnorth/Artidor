@@ -26,7 +26,6 @@ export type ExportWorkerResult =
 	| { success: true; buffer: ArrayBuffer }
 	| { success: false; cancelled: true }
 	| { success: false; error: string };
-
 // ── Warm worker pool ─────────────────────────────────────────────────
 // A single warm worker kept alive between exports to avoid re-paying
 // WASM import + GPU init on every export. Only the single-worker path
@@ -128,6 +127,7 @@ export async function runExportInWorker({
 	videoOnly,
 	videoCodec,
 	audioCodec,
+	forceSoftwareEncoding = false,
 	onProgress,
 	onReady,
 	getCancelled,
@@ -153,6 +153,11 @@ export async function runExportInWorker({
 	videoCodec?: ExportVideoCodec;
 	/** Pinned audio codec. */
 	audioCodec?: ExportAudioCodec;
+	/**
+	 * Force software video encoding (skip hardware acceleration). Used by the
+	 * retry path after a hardware encoder configuration error.
+	 */
+	forceSoftwareEncoding?: boolean;
 	onProgress?: ({ progress }: { progress: number }) => void;
 	/** Called when the worker signals it has finished GPU init. */
 	onReady?: () => void;
@@ -382,6 +387,7 @@ export async function runExportInWorker({
 					videoOnly,
 					videoCodec,
 					audioCodec,
+					forceSoftwareEncoding,
 				},
 				transferables,
 			);

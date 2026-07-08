@@ -4,7 +4,13 @@ import type { ElementRef } from "@/lib/timeline/types";
 
 export function useElementSelection() {
 	const editor = useEditor();
-	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	// Only subscribe to `selection` — not `playback`. The `playback` subsystem
+	// fires every animation frame during playback, causing unnecessary
+	// `getSnapshot()` calls for every clip card that uses this hook.
+	const selectedElements = useEditor(
+		(e) => e.selection.getSelectedElements(),
+		["selection"],
+	);
 
 	const isElementSelected = useCallback(
 		({ trackId, elementId }: ElementRef) =>

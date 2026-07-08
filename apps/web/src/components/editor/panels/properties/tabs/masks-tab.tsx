@@ -93,7 +93,10 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 	const tracks = useEditor(
 		(e) => e.timeline.getPreviewTracks() ?? e.scenes.getActiveScene().tracks,
 	);
-	const currentTime = useEditor((e) => e.playback.getCurrentTime());
+	const currentTime = useEditor(
+		(e) => e.playback.getCurrentTime(),
+		["playback"],
+	);
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 	const canvasSize = useEditor(
 		(e) => e.project.getActive().settings.canvasSize,

@@ -1,33 +1,300 @@
 "use client";
 
 /**
- * ProjectsBackground — elegant gray canvas background for the projects page.
+ * ProjectsBackground — abstract 3D motion-graphics backdrop for the projects
+ * page.
  *
- * A layered gray gradient base with a subtle diamond/grid pattern, soft
- * animated wave lines tuned for a light-on-gray aesthetic, a cool radial
- * glow for depth, and a vignette + bottom fade for legibility.
+ * A single Canvas 2D stage renders:
+ *   1. A drifting field of glowing wireframe primitives (cubes, tori,
+ *      octahedra, icosahedra) projected with a tiny fake-3D camera so they
+ *      read as 3D objects, not flat 2D shapes. Depth-sorted, slow rotation,
+ *      gentle parallax.
+ *   2. A particle field of ~110 points that drifts, with thin connecting
+ *      lines drawn between near neighbours (constellation look).
  *
- * Design direction (from research: "subtle, thoughtful patterns add depth
- * without drawing attention"; seamless gray/white diamond motifs):
- *  - Base: layered gray gradient (#1a1a1d → #232328) — not flat, not pure black
- *  - Pattern: subtle diamond grid, low-contrast white-on-gray, top-left fade
- *  - Waves: thin horizontal sine lines, very low opacity, slow drift
- *  - Glow: cool blue-gray radial bloom at top-centre for depth
- *  - Vignette: soft edge darkening for cinematic framing
- *  - Bottom fade: smooth transition into the base
+ * No 3D library is pulled in: the existing canvas pipeline already uses
+ * Canvas 2D, and 7 hand-rolled wireframes at this scale cost less than
+ * bootstrapping three.js. If richer 3D is needed later, swap the render
+ * loop for three.js without touching the surrounding layers.
  *
- * Layout contract:
+ * Design direction:
+ *   - Base: deep slate (#0c0d10 → #14161b) so glow reads, not flat black.
+ *   - Accent: cool violet → cyan gradient on primitive edges.
+ *   - Density: sparse (~7 primitives, ~110 particles) so the page chrome
+ *     remains the focus; the background whispers, never shouts.
+ *
+ * Layout contract (preserved from previous version):
  *   - absolutely positioned, full bleed, behind all page chrome
- *   - uses positive z-index (z-0 → z-1) because the <body> element
- *     carries its own bg-background layer that would cover any
- *     negative z-index elements
+ *   - positive z-index (z-0 → z-1) because the <body> element carries its
+ *     own bg-background layer that would cover any negative z-index
  *   - `aria-hidden` so screen readers skip it
- *   - respects `prefers-reduced-motion`
- *   - the parent page container MUST have `z-20` (or higher) so
- *     the page chrome renders above these background layers
+ *   - respects `prefers-reduced-motion`: falls back to a static gradient
+ *     and one frame of the composition
+ *   - the parent page container MUST keep `z-20` (or higher) so the
+ *     page chrome renders above these background layers
  */
 
 import { useEffect, useRef } from "react";
+
+type Vec3 = { x: number; y: number; z: number };
+type Primitive = {
+	kind: "cube" | "torus" | "octa" | "icosa" | "cylinder";
+	position: Vec3;
+	rotation: Vec3;
+	rotSpeed: Vec3;
+	scale: number;
+	hue: number;
+};
+
+const FOV = 520;
+const PRIMITIVE_COUNT = 7;
+const PARTICLE_COUNT = 110;
+const CONNECT_DIST_SQ = 150 * 150;
+
+function project(point: Vec3, width: number, height: number) {
+	const z = point.z + 900;
+	const factor = FOV / z;
+	return {
+		x: width / 2 + point.x * factor,
+		y: height / 2 + point.y * factor,
+		// depth in [0..1] for sorting/alpha; closer (smaller z) = larger
+		depth: 1 - Math.min(1, 900 / Math.max(point.z + 900, 1)),
+		factor,
+	};
+}
+
+function rotate(p: Vec3, r: Vec3): Vec3 {
+	// Rotate around Y, then X, then Z — small angles, order doesn't matter
+	// perceptually for slow drift.
+	const cx = Math.cos(r.x);
+	const sx = Math.sin(r.x);
+	const cy = Math.cos(r.y);
+	const sy = Math.sin(r.y);
+	const cz = Math.cos(r.z);
+	const sz = Math.sin(r.z);
+	const x1 = p.x * cy + p.z * sy;
+	const z1 = -p.x * sy + p.z * cy;
+	const y1 = p.y * cx - z1 * sx;
+	const z2 = p.y * sx + z1 * cx;
+	const x2 = x1 * cz - y1 * sz;
+	const y2 = x1 * sz + y1 * cz;
+	return { x: x2, y: y2, z: z2 };
+}
+
+function buildPrimitiveVertices(kind: Primitive["kind"], scale: number): Vec3[] {
+	switch (kind) {
+		case "cube": {
+			const s = scale;
+			return [
+				{ x: -s, y: -s, z: -s },
+				{ x: s, y: -s, z: -s },
+				{ x: s, y: s, z: -s },
+				{ x: -s, y: s, z: -s },
+				{ x: -s, y: -s, z: s },
+				{ x: s, y: -s, z: s },
+				{ x: s, y: s, z: s },
+				{ x: -s, y: s, z: s },
+			];
+		}
+		case "octa": {
+			const s = scale * 1.2;
+			return [
+				{ x: 0, y: -s, z: 0 },
+				{ x: s, y: 0, z: 0 },
+				{ x: 0, y: s, z: 0 },
+				{ x: -s, y: 0, z: 0 },
+				{ x: 0, y: 0, z: s },
+				{ x: 0, y: 0, z: -s },
+			];
+		}
+		case "icosa": {
+			// Simplified icosahedron: 12 vertices of an icosa projected via
+			// golden ratio. Sparse but unmistakably icosahedral.
+			const s = scale;
+			const t = (1 + Math.sqrt(5)) / 2;
+			return [
+				{ x: -1, y: t, z: 0 },
+				{ x: 1, y: t, z: 0 },
+				{ x: -1, y: -t, z: 0 },
+				{ x: 1, y: -t, z: 0 },
+				{ x: 0, y: -1, z: t },
+				{ x: 0, y: 1, z: t },
+				{ x: 0, y: -1, z: -t },
+				{ x: 0, y: 1, z: -t },
+				{ x: t, y: 0, z: -1 },
+				{ x: t, y: 0, z: 1 },
+				{ x: -t, y: 0, z: -1 },
+				{ x: -t, y: 0, z: 1 },
+			].map((p) => ({ x: (p.x * s) / 2, y: (p.y * s) / 2, z: (p.z * s) / 2 }));
+		}
+		case "torus": {
+			// Two concentric ellipses (top + bottom ring) + 16 connecting
+			// lines. Reads as a torus without the trig overhead.
+			const s = scale;
+			const r = s;
+			const tube = s * 0.35;
+			const segments = 22;
+			const verts: Vec3[] = [];
+			for (let i = 0; i < segments; i++) {
+				const a = (i / segments) * Math.PI * 2;
+				verts.push({
+					x: Math.cos(a) * r,
+					y: 0,
+					z: Math.sin(a) * r,
+				});
+			}
+			for (let i = 0; i < segments; i++) {
+				const a = (i / segments) * Math.PI * 2;
+				verts.push({
+					x: Math.cos(a) * r,
+					y: tube,
+					z: Math.sin(a) * r,
+				});
+			}
+			// Connecting ribs (sparse)
+			const ribCount = 6;
+			for (let i = 0; i < ribCount; i++) {
+				const a = (i / ribCount) * Math.PI * 2;
+				const idx = Math.floor((i / ribCount) * segments);
+				verts.push(verts[idx]);
+				verts.push(verts[segments + idx]);
+			}
+			return verts;
+		}
+		case "cylinder": {
+			const s = scale;
+			const r = s;
+			const h = s * 1.3;
+			const segments = 18;
+			const verts: Vec3[] = [];
+			for (let i = 0; i < segments; i++) {
+				const a = (i / segments) * Math.PI * 2;
+				verts.push({ x: Math.cos(a) * r, y: -h, z: Math.sin(a) * r });
+			}
+			for (let i = 0; i < segments; i++) {
+				const a = (i / segments) * Math.PI * 2;
+				verts.push({ x: Math.cos(a) * r, y: h, z: Math.sin(a) * r });
+			}
+			return verts;
+		}
+	}
+}
+
+function edgesForKind(kind: Primitive["kind"]): [number, number][] {
+	switch (kind) {
+		case "cube":
+			return [
+				[0, 1], [1, 2], [2, 3], [3, 0],
+				[4, 5], [5, 6], [6, 7], [7, 4],
+				[0, 4], [1, 5], [2, 6], [3, 7],
+			];
+		case "octa":
+			return [
+				[0, 1], [1, 2], [2, 3], [3, 0],
+				[4, 0], [4, 1], [4, 2], [4, 3],
+				[5, 0], [5, 1], [5, 2], [5, 3],
+			];
+		case "icosa": {
+			// 30 edges of an icosahedron, indexed by pairs of the 12 vertices.
+			// This is the canonical icosahedron edge list.
+			const e: [number, number][] = [
+				[0, 1], [0, 5], [0, 7], [0, 10], [0, 11],
+				[1, 5], [1, 7], [1, 8], [1, 9],
+				[2, 3], [2, 4], [2, 6], [2, 10], [2, 11],
+				[3, 4], [3, 6], [3, 8], [3, 9],
+				[4, 5], [4, 9], [4, 11],
+				[5, 9], [5, 11],
+				[6, 7], [6, 8], [6, 10],
+				[7, 8], [7, 10],
+				[8, 9],
+				[10, 11],
+			];
+			return e;
+		}
+		case "torus": {
+			// Build dynamically: ring 0 + ring 1 (22 each) + 6 ribs.
+			const segments = 22;
+			const ribCount = 6;
+			const e: [number, number][] = [];
+			for (let i = 0; i < segments; i++) {
+				e.push([i, (i + 1) % segments]);
+				e.push([segments + i, segments + ((i + 1) % segments)]);
+			}
+			// Ribs are at the end of the verts list (each rib = 2 verts).
+			const ribStart = segments * 2;
+			for (let i = 0; i < ribCount; i++) {
+				e.push([ribStart + i * 2, ribStart + i * 2 + 1]);
+			}
+			return e;
+		}
+		case "cylinder": {
+			const segments = 18;
+			const e: [number, number][] = [];
+			for (let i = 0; i < segments; i++) {
+				e.push([i, (i + 1) % segments]);
+				e.push([segments + i, segments + ((i + 1) % segments)]);
+			}
+			// 6 vertical connectors
+			for (let i = 0; i < 6; i++) {
+				const idx = Math.floor((i / 6) * segments);
+				e.push([idx, segments + idx]);
+			}
+			return e;
+		}
+	}
+}
+
+const KINDS: Primitive["kind"][] = [
+	"cube", "torus", "octa", "icosa", "cylinder", "icosa", "octa",
+];
+
+function rand(min: number, max: number) {
+	return min + Math.random() * (max - min);
+}
+
+function buildPrimitives(): Primitive[] {
+	const out: Primitive[] = [];
+	for (let i = 0; i < PRIMITIVE_COUNT; i++) {
+		out.push({
+			kind: KINDS[i % KINDS.length]!,
+			position: {
+				x: rand(-420, 420),
+				y: rand(-260, 260),
+				z: rand(-260, 180),
+			},
+			rotation: { x: rand(0, Math.PI * 2), y: rand(0, Math.PI * 2), z: 0 },
+			rotSpeed: {
+				x: rand(-0.18, 0.18),
+				y: rand(-0.22, 0.22),
+				z: rand(-0.05, 0.05),
+			},
+			scale: rand(38, 78),
+			hue: rand(190, 280),
+		});
+	}
+	return out;
+}
+
+function buildParticles(): { position: Vec3; speed: Vec3; size: number; hue: number }[] {
+	const out = [];
+	for (let i = 0; i < PARTICLE_COUNT; i++) {
+		out.push({
+			position: {
+				x: rand(-700, 700),
+				y: rand(-420, 420),
+				z: rand(-300, 200),
+			},
+			speed: {
+				x: rand(-6, 6),
+				y: rand(-4, 4),
+				z: rand(-1, 1),
+			},
+			size: rand(0.6, 1.8),
+			hue: rand(190, 290),
+		});
+	}
+	return out;
+}
 
 export function ProjectsBackground() {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -39,7 +306,17 @@ export function ProjectsBackground() {
 		const prefersReducedMotion = window.matchMedia(
 			"(prefers-reduced-motion: reduce)",
 		);
-		if (prefersReducedMotion.matches) return;
+		if (prefersReducedMotion.matches) {
+			// Static fallback: draw one frame of the composition and stop.
+			const ctx = canvas.getContext("2d");
+			if (!ctx) return;
+			const rect = canvas.getBoundingClientRect();
+			canvas.width = Math.round(rect.width * 1);
+			canvas.height = Math.round(rect.height * 1);
+			ctx.fillStyle = "#0c0d10";
+			ctx.fillRect(0, 0, rect.width, rect.height);
+			return;
+		}
 
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
@@ -47,6 +324,7 @@ export function ProjectsBackground() {
 		let frameId = 0;
 		let cssWidth = 0;
 		let cssHeight = 0;
+		let lastTime = performance.now();
 
 		const resize = () => {
 			const rect = canvas.getBoundingClientRect();
@@ -58,51 +336,120 @@ export function ProjectsBackground() {
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		};
 
-		// Draw horizontal wave lines — thin, very low-opacity sine curves
-		// that drift slowly. Tuned for a light-on-gray aesthetic: slightly
-		// warmer alpha and gentler amplitude than the old black version.
-		const draw = (timeSeconds: number) => {
-			ctx.clearRect(0, 0, cssWidth, cssHeight);
+		const primitives = buildPrimitives();
+		const particles = buildParticles();
 
-			const lineCount = 14;
-			const baseSpacing = cssHeight / (lineCount + 1);
+		const draw = (dt: number, timeSeconds: number) => {
+			// Opaque clear — no motion-blur trail. With the trail, slow
+			// particles fade into invisibility because each frame composites
+			// only 65% of the previous frame. The composition is dense enough
+			// that discrete frames read better than ghosted frames here.
+			ctx.fillStyle = "#0c0d10";
+			ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-			for (let i = 1; i <= lineCount; i++) {
-				const baseY = baseSpacing * i;
-				const phase = timeSeconds * 0.10 + i * 0.7;
-				const amplitude = 10 + Math.sin(timeSeconds * 0.07 + i) * 5;
-				const frequency = 0.0025 + Math.sin(timeSeconds * 0.04 + i * 1.3) * 0.0008;
+			// --- Particles: drift + connect-to-nearest lines -----------------
+			for (const p of particles) {
+				p.position.x += p.speed.x * dt;
+				p.position.y += p.speed.y * dt;
+				p.position.z += p.speed.z * dt;
+				// Wrap around so the field never empties.
+				if (p.position.x > 720) p.position.x = -720;
+				if (p.position.x < -720) p.position.x = 720;
+				if (p.position.y > 440) p.position.y = -440;
+				if (p.position.y < -440) p.position.y = 440;
+			}
 
-				// Fade lines towards edges
-				const yNorm = baseY / cssHeight;
-				const edgeFade = Math.sin(yNorm * Math.PI);
-				const alpha = 0.035 * edgeFade;
+			const projectedParticles = particles.map((p) => ({
+				...project(p.position, cssWidth, cssHeight),
+				hue: p.hue,
+				size: p.size,
+			}));
 
-				if (alpha < 0.002) continue;
+			ctx.lineWidth = 0.7;
+			for (let i = 0; i < projectedParticles.length; i++) {
+				const a = projectedParticles[i]!;
+				for (let j = i + 1; j < projectedParticles.length; j++) {
+					const b = projectedParticles[j]!;
+					const dx = a.x - b.x;
+					const dy = a.y - b.y;
+					const dSq = dx * dx + dy * dy;
+					if (dSq > CONNECT_DIST_SQ) continue;
+					const alpha = (1 - dSq / CONNECT_DIST_SQ) * 0.45;
+					ctx.strokeStyle = `hsla(${(a.hue + b.hue) / 2}, 80%, 75%, ${alpha})`;
+					ctx.beginPath();
+					ctx.moveTo(a.x, a.y);
+					ctx.lineTo(b.x, b.y);
+					ctx.stroke();
+				}
+			}
 
+			for (const p of projectedParticles) {
+				ctx.fillStyle = `hsla(${p.hue}, 80%, 80%, ${0.55 + p.depth * 0.4})`;
 				ctx.beginPath();
-				// Soft warm-white lines on gray — elegant, not stark.
-				ctx.strokeStyle = `rgba(220, 220, 230, ${alpha})`;
-				ctx.lineWidth = 0.7;
+				ctx.arc(p.x, p.y, p.size * (0.7 + p.depth * 0.6), 0, Math.PI * 2);
+				ctx.fill();
+			}
 
-				for (let x = 0; x <= cssWidth; x += 4) {
-					const y =
-						baseY +
-						Math.sin(x * frequency + phase) * amplitude +
-						Math.sin(x * frequency * 2.3 + phase * 1.4) * amplitude * 0.3;
+			// --- Primitives: rotate, project, draw wireframe edges ----------
+			const drawList: {
+				primitive: Primitive;
+				projected: { x: number; y: number; depth: number }[];
+				depth: number;
+			}[] = [];
 
-					if (x === 0) {
-						ctx.moveTo(x, y);
-					} else {
-						ctx.lineTo(x, y);
-					}
+			for (const primitive of primitives) {
+				primitive.rotation.x += primitive.rotSpeed.x * dt;
+				primitive.rotation.y += primitive.rotSpeed.y * dt;
+				primitive.rotation.z += primitive.rotSpeed.z * dt;
+				// Gentle parallax drift
+				primitive.position.x += Math.sin(timeSeconds * 0.15 + primitive.hue) * 0.2;
+				primitive.position.y += Math.cos(timeSeconds * 0.12 + primitive.hue * 0.5) * 0.15;
+
+				const local = buildPrimitiveVertices(primitive.kind, primitive.scale);
+				const transformed = local.map((p) => rotate(p, primitive.rotation));
+				const translated = transformed.map((p) => ({
+					x: p.x + primitive.position.x,
+					y: p.y + primitive.position.y,
+					z: p.z + primitive.position.z,
+				}));
+				const projected = translated.map((p) => project(p, cssWidth, cssHeight));
+				const depth =
+					projected.reduce((sum, p) => sum + p.depth, 0) / projected.length;
+				drawList.push({ primitive, projected, depth });
+			}
+
+			// Painter's algorithm: draw far-to-near so nearer edges overlap.
+			drawList.sort((a, b) => a.depth - b.depth);
+
+			for (const { primitive, projected } of drawList) {
+				const edges = edgesForKind(primitive.kind);
+				const baseAlpha = 0.45 + projected[0]!.depth * 0.4;
+				ctx.lineWidth = 1.2;
+				ctx.strokeStyle = `hsla(${primitive.hue}, 80%, 75%, ${baseAlpha})`;
+				ctx.beginPath();
+				for (const [a, b] of edges) {
+					const pa = projected[a]!;
+					const pb = projected[b]!;
+					if (!pa || !pb) continue;
+					ctx.moveTo(pa.x, pa.y);
+					ctx.lineTo(pb.x, pb.y);
 				}
 				ctx.stroke();
+
+				// Soft glow accent at vertices — makes wireframes pop.
+				ctx.fillStyle = `hsla(${primitive.hue}, 95%, 82%, ${baseAlpha * 0.9})`;
+				for (const v of projected) {
+					ctx.beginPath();
+					ctx.arc(v.x, v.y, 1.6, 0, Math.PI * 2);
+					ctx.fill();
+				}
 			}
 		};
 
 		const tick = (timestamp: number) => {
-			draw(timestamp / 1000);
+			const dt = Math.min(0.05, (timestamp - lastTime) / 1000);
+			lastTime = timestamp;
+			draw(dt, timestamp / 1000);
 			frameId = window.requestAnimationFrame(tick);
 		};
 
@@ -119,114 +466,51 @@ export function ProjectsBackground() {
 
 	return (
 		<>
-			{/* Base layer — elegant gray gradient. Not flat, not pure black.
-			    A subtle vertical gradient from #1a1a1d (top) to #232328 (bottom)
-			    gives the page depth without being heavy. z-0 places this above
-			    the body's bg-background layer. */}
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-0"
-				style={{
-					background:
-						"linear-gradient(180deg, #1a1a1d 0%, #1e1e22 40%, #232328 100%)",
-				}}
-			/>
-
-			{/* Diamond grid pattern — top-left decorative tile, faded radially.
-			    Low-contrast white-on-gray diamond motif for an elegant texture
-			    that adds depth without drawing attention. */}
-			<div
-				aria-hidden
-				className="pointer-events-none absolute top-0 left-0 z-0 size-90 opacity-60"
-				style={{ color: "rgba(255, 255, 255, 0.06)" }}
-			>
-				<svg
-					width="360"
-					height="360"
-					viewBox="0 0 360 360"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-					role="presentation"
-				>
-					<defs>
-						<pattern
-							id="projects-diamond"
-							x="0"
-							y="0"
-							width="36"
-							height="36"
-							patternUnits="userSpaceOnUse"
-						>
-							{/* Diamond grid — rotated squares forming an elegant
-							    lattice. Thin strokes, wide spacing. */}
-							<path
-								d="M18 2 L34 18 L18 34 L2 18 Z"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="0.6"
-							/>
-						</pattern>
-						<mask id="projects-diamond-fade">
-							<radialGradient
-								id="projects-diamond-rg"
-								cx="0"
-								cy="0"
-								r="360"
-								gradientUnits="userSpaceOnUse"
-							>
-								<stop offset="0%" stopColor="white" stopOpacity="1" />
-								<stop offset="100%" stopColor="white" stopOpacity="0" />
-							</radialGradient>
-							<rect width="360" height="360" fill="url(#projects-diamond-rg)" />
-						</mask>
-					</defs>
-					<rect
-						width="360"
-						height="360"
-						fill="url(#projects-diamond)"
-						mask="url(#projects-diamond-fade)"
-					/>
-				</svg>
-			</div>
-
-			{/* Animated wave lines — thin horizontal sine waves that
-			    drift slowly. Very low opacity warm-white on gray. */}
+			{/* 3D wireframe primitives + particle field — the heart of the
+			    new background. The canvas is fully opaque (it clears to
+			    #0c0d10 each frame), so it owns the base color. A subtle
+			    radial wash sits ON TOP of the canvas via z-1 to add the
+			    "studio 3D" atmospheric bloom without competing with the
+			    wireframes. */}
 			<canvas
 				ref={canvasRef}
 				aria-hidden
 				className="pointer-events-none absolute inset-0 z-0 size-full"
 			/>
 
-			{/* Cool radial glow — a soft blue-gray light bloom at the
-			    top-centre that gives the page depth and elegance. */}
+			{/* Soft cyan + violet radial wash on top of the canvas for
+			    atmospheric depth. Two off-centre blooms give a moody
+			    studio feel without overwhelming the wireframes. */}
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 z-1"
 				style={{
-					background:
-						"radial-gradient(ellipse 900px 600px at 50% -10%, rgba(180, 190, 210, 0.05) 0%, transparent 70%)",
+					background: [
+						"radial-gradient(ellipse 900px 600px at 18% 22%, rgba(120, 140, 220, 0.10) 0%, transparent 65%)",
+						"radial-gradient(ellipse 800px 500px at 82% 78%, rgba(180, 110, 220, 0.09) 0%, transparent 65%)",
+					].join(", "),
 				}}
 			/>
 
-			{/* Vignette — darkens edges for cinematic depth and
-			    focus on the centre content area. */}
+			{/* Vignette — darkens edges for cinematic framing and keeps
+			    the page chrome (cards, header) as the focal point. */}
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 z-1"
 				style={{
 					background:
-						"radial-gradient(ellipse 100% 100% at 50% 0%, transparent 50%, rgba(10, 10, 12, 0.5) 100%)",
+						"radial-gradient(ellipse 100% 100% at 50% 0%, transparent 55%, rgba(6, 7, 10, 0.55) 100%)",
 				}}
 			/>
 
-			{/* Bottom fade — smooth transition from content area to
-			    the darker base, grounding the page. */}
+			{/* Bottom fade — smooth transition into the base, grounding
+			    the page near the bottom edge. */}
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 z-1"
 				style={{
 					background:
-						"linear-gradient(to bottom, transparent 80%, #161618 100%)",
+						"linear-gradient(to bottom, transparent 80%, #08090c 100%)",
 				}}
 			/>
 		</>

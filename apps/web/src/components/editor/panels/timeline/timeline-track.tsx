@@ -54,7 +54,12 @@ export function TimelineTrackContent({
 	targetElementId = null,
 }: TimelineTrackContentProps) {
 	const { isElementSelected } = useElementSelection();
-	const duration = useEditor((e) => e.timeline.getTotalDuration());
+	// Only subscribe to `timeline` and `scenes` — not `playback`. The
+	// `playback` subsystem fires every animation frame during playback.
+	const duration = useEditor(
+		(e) => e.timeline.getTotalDuration(),
+		["timeline", "scenes"],
+	);
 
 	// Stabilize callbacks per-track so React.memo on TimelineElement
 	// can skip re-renders when only unrelated elements change.
@@ -82,7 +87,7 @@ export function TimelineTrackContent({
 	);
 
 	return (
-		<div className="relative size-full overflow-hidden rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-[length:48px_100%,100%_100%]">
+		<div className="relative size-full overflow-hidden rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-size-[48px_100%,100%_100%]">
 			<button
 				type="button"
 				// `tabIndex={-1}` keeps the track button out of the tab
@@ -120,7 +125,7 @@ export function TimelineTrackContent({
 				}}
 			>
 				{track.elements.length === 0 ? (
-					<div className="pointer-events-none h-full w-full rounded-lg border border-dashed border-white/[0.08] bg-black/[0.12]">
+					<div className="pointer-events-none h-full w-full rounded-lg border border-dashed border-white/8 bg-black/12">
 						{/* Pin the label to the visible scroll viewport (sticky left-0
 						    + width = scroller clientWidth) so it stays centered on
 						    screen regardless of zoom/scroll, instead of drifting with
