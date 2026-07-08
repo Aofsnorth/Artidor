@@ -47,9 +47,9 @@ type Primitive = {
 };
 
 const FOV = 520;
-const PRIMITIVE_COUNT = 7;
-const PARTICLE_COUNT = 110;
-const CONNECT_DIST_SQ = 150 * 150;
+const PRIMITIVE_COUNT = 12;
+const PARTICLE_COUNT = 180;
+const CONNECT_DIST_SQ = 180 * 180;
 
 function project(point: Vec3, width: number, height: number) {
 	const z = point.z + 900;
@@ -245,7 +245,7 @@ function edgesForKind(kind: Primitive["kind"]): [number, number][] {
 }
 
 const KINDS: Primitive["kind"][] = [
-	"cube", "torus", "octa", "icosa", "cylinder", "icosa", "octa",
+	"cube", "torus", "octa", "icosa", "cylinder", "icosa", "octa", "cube", "torus", "cylinder", "icosa", "octa",
 ];
 
 function rand(min: number, max: number) {
@@ -258,18 +258,18 @@ function buildPrimitives(): Primitive[] {
 		out.push({
 			kind: KINDS[i % KINDS.length]!,
 			position: {
-				x: rand(-420, 420),
-				y: rand(-260, 260),
-				z: rand(-260, 180),
+				x: rand(-520, 520),
+				y: rand(-320, 320),
+				z: rand(-300, 200),
 			},
 			rotation: { x: rand(0, Math.PI * 2), y: rand(0, Math.PI * 2), z: 0 },
 			rotSpeed: {
-				x: rand(-0.18, 0.18),
-				y: rand(-0.22, 0.22),
-				z: rand(-0.05, 0.05),
+				x: rand(-0.22, 0.22),
+				y: rand(-0.28, 0.28),
+				z: rand(-0.06, 0.06),
 			},
-			scale: rand(38, 78),
-			hue: rand(190, 280),
+			scale: rand(55, 120),
+			hue: rand(180, 300),
 		});
 	}
 	return out;
@@ -280,17 +280,17 @@ function buildParticles(): { position: Vec3; speed: Vec3; size: number; hue: num
 	for (let i = 0; i < PARTICLE_COUNT; i++) {
 		out.push({
 			position: {
-				x: rand(-700, 700),
-				y: rand(-420, 420),
-				z: rand(-300, 200),
+				x: rand(-800, 800),
+				y: rand(-480, 480),
+				z: rand(-350, 250),
 			},
 			speed: {
-				x: rand(-6, 6),
-				y: rand(-4, 4),
-				z: rand(-1, 1),
+				x: rand(-8, 8),
+				y: rand(-5, 5),
+				z: rand(-1.5, 1.5),
 			},
-			size: rand(0.6, 1.8),
-			hue: rand(190, 290),
+			size: rand(1.0, 3.0),
+			hue: rand(180, 310),
 		});
 	}
 	return out;
@@ -340,11 +340,16 @@ export function ProjectsBackground() {
 		const particles = buildParticles();
 
 		const draw = (dt: number, timeSeconds: number) => {
-			// Opaque clear — no motion-blur trail. With the trail, slow
-			// particles fade into invisibility because each frame composites
-			// only 65% of the previous frame. The composition is dense enough
-			// that discrete frames read better than ghosted frames here.
-			ctx.fillStyle = "#0c0d10";
+			// Gradient clear — deep slate base with subtle hue shift so glow
+			// reads against a richer backdrop than flat black.
+			const grad = ctx.createRadialGradient(
+				cssWidth * 0.5, cssHeight * 0.35, 0,
+				cssWidth * 0.5, cssHeight * 0.5, Math.max(cssWidth, cssHeight) * 0.8,
+			);
+			grad.addColorStop(0, "#12141c");
+			grad.addColorStop(0.6, "#0c0d14");
+			grad.addColorStop(1, "#08090e");
+			ctx.fillStyle = grad;
 			ctx.fillRect(0, 0, cssWidth, cssHeight);
 
 			// --- Particles: drift + connect-to-nearest lines -----------------
@@ -353,10 +358,10 @@ export function ProjectsBackground() {
 				p.position.y += p.speed.y * dt;
 				p.position.z += p.speed.z * dt;
 				// Wrap around so the field never empties.
-				if (p.position.x > 720) p.position.x = -720;
-				if (p.position.x < -720) p.position.x = 720;
-				if (p.position.y > 440) p.position.y = -440;
-				if (p.position.y < -440) p.position.y = 440;
+				if (p.position.x > 820) p.position.x = -820;
+				if (p.position.x < -820) p.position.x = 820;
+				if (p.position.y > 500) p.position.y = -500;
+				if (p.position.y < -500) p.position.y = 500;
 			}
 
 			const projectedParticles = particles.map((p) => ({
@@ -365,7 +370,7 @@ export function ProjectsBackground() {
 				size: p.size,
 			}));
 
-			ctx.lineWidth = 0.7;
+			ctx.lineWidth = 1.0;
 			for (let i = 0; i < projectedParticles.length; i++) {
 				const a = projectedParticles[i]!;
 				for (let j = i + 1; j < projectedParticles.length; j++) {
@@ -374,8 +379,8 @@ export function ProjectsBackground() {
 					const dy = a.y - b.y;
 					const dSq = dx * dx + dy * dy;
 					if (dSq > CONNECT_DIST_SQ) continue;
-					const alpha = (1 - dSq / CONNECT_DIST_SQ) * 0.45;
-					ctx.strokeStyle = `hsla(${(a.hue + b.hue) / 2}, 80%, 75%, ${alpha})`;
+					const alpha = (1 - dSq / CONNECT_DIST_SQ) * 0.65;
+					ctx.strokeStyle = `hsla(${(a.hue + b.hue) / 2}, 85%, 78%, ${alpha})`;
 					ctx.beginPath();
 					ctx.moveTo(a.x, a.y);
 					ctx.lineTo(b.x, b.y);
@@ -384,9 +389,9 @@ export function ProjectsBackground() {
 			}
 
 			for (const p of projectedParticles) {
-				ctx.fillStyle = `hsla(${p.hue}, 80%, 80%, ${0.55 + p.depth * 0.4})`;
+				ctx.fillStyle = `hsla(${p.hue}, 90%, 82%, ${0.65 + p.depth * 0.35})`;
 				ctx.beginPath();
-				ctx.arc(p.x, p.y, p.size * (0.7 + p.depth * 0.6), 0, Math.PI * 2);
+				ctx.arc(p.x, p.y, p.size * (0.8 + p.depth * 0.8), 0, Math.PI * 2);
 				ctx.fill();
 			}
 
@@ -423,9 +428,9 @@ export function ProjectsBackground() {
 
 			for (const { primitive, projected } of drawList) {
 				const edges = edgesForKind(primitive.kind);
-				const baseAlpha = 0.45 + projected[0]!.depth * 0.4;
-				ctx.lineWidth = 1.2;
-				ctx.strokeStyle = `hsla(${primitive.hue}, 80%, 75%, ${baseAlpha})`;
+				const baseAlpha = 0.6 + projected[0]!.depth * 0.4;
+				ctx.lineWidth = 1.8;
+				ctx.strokeStyle = `hsla(${primitive.hue}, 88%, 78%, ${baseAlpha})`;
 				ctx.beginPath();
 				for (const [a, b] of edges) {
 					const pa = projected[a]!;
@@ -437,10 +442,16 @@ export function ProjectsBackground() {
 				ctx.stroke();
 
 				// Soft glow accent at vertices — makes wireframes pop.
-				ctx.fillStyle = `hsla(${primitive.hue}, 95%, 82%, ${baseAlpha * 0.9})`;
 				for (const v of projected) {
+					// Outer glow
+					ctx.fillStyle = `hsla(${primitive.hue}, 95%, 70%, ${baseAlpha * 0.3})`;
 					ctx.beginPath();
-					ctx.arc(v.x, v.y, 1.6, 0, Math.PI * 2);
+					ctx.arc(v.x, v.y, 5, 0, Math.PI * 2);
+					ctx.fill();
+					// Inner bright dot
+					ctx.fillStyle = `hsla(${primitive.hue}, 100%, 88%, ${baseAlpha})`;
+					ctx.beginPath();
+					ctx.arc(v.x, v.y, 2.5, 0, Math.PI * 2);
 					ctx.fill();
 				}
 			}
