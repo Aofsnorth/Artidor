@@ -250,6 +250,31 @@ function PreviewCanvas({
 		);
 		const frame = Math.floor(renderTime / ticksPerFrame);
 
+		// Read playback state early — needed for delta-frame skip and scale.
+		const isPlaying = editor.playback.getIsPlaying();
+
+		// Delta-frame skip: if the frame index, render tree, scale, AND
+		// playback state are all unchanged from the last successful render,
+		// the composited output is identical — skip the entire pipeline
+		// (resolve → build descriptor → texture upload → GPU render). This
+		// is the single biggest per-frame optimization for paused playback:
+		// when the user is not playing and not scrubbing, the rAF loop runs
+		// but produces zero GPU work. It also catches the case where
+		// playback reached the end of the timeline (frame stays the same).
+		//
+		// The frame cache check below handles the case where the frame IS
+		// different but was recently rendered (backward scrub). This check
+		// handles the case where nothing changed at all.
+		const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+		if (
+			frame === lastFrameRef.current &&
+			renderTree === lastSceneRef.current &&
+			lastScaleRef.current > 0 &&
+			scaleInputs === lastScaleInputsRef.current
+		) {
+			return;
+		}
+
 		// Resolution scaling: render the preview at a fraction of project
 		// resolution (and cap video decode to match) on weak machines /
 		// during playback. The output canvas keeps its native size and the
@@ -257,16 +282,14 @@ function PreviewCanvas({
 		// transform pipeline derives from renderer.width/height so it all
 		// scales coherently. Decode cap follows the *idle* tier so play/pause
 		// never rebuilds the video decoder.
-		const isPlaying = editor.playback.getIsPlaying();
-		const fps =
-			renderer.fps.numerator / renderer.fps.denominator || 30;
+		const fps = renderer.fps.numerator / renderer.fps.denominator || 30;
 		const frameBudgetMs = 1000 / fps;
 		const avgRenderMs = perfTrackerRef.current.getAverageRenderMs();
 		// For manual quality tiers, the scale is deterministic from
 		// (quality, isPlaying, gpuDegraded) — skip the recalculation when
 		// those inputs haven't changed. Auto mode always recalculates
 		// because avgRenderMs changes every frame.
-		const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+		// (scaleInputs is already computed above for the delta-frame skip.)
 		let scale: number;
 		if (
 			previewQuality !== "auto" &&

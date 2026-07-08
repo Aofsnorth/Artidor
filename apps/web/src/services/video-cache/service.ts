@@ -9,34 +9,31 @@ import { buildGOPIndex, type GOPIndex } from "./gop-index";
 
 /**
  * Maximum decoded frames to retain per video in the LRU frame cache.
- * At 60 fps this is ~0.8 s of video — enough to make backward scrubbing
- * and short-range re-seeks instant on long clips (the common case where a
- * far seek is followed by small back-and-forth nudges) without excessive
- * memory use. Each frame wraps a canvas (GPU-backed when available) decoded
- * at the *preview* resolution (capped by `maxDim`), so the cost is dominated
- * by the downscaled canvas backing-store, not full-res JS heap.
+ * At 60 fps this is ~1.1 s of video — enough to make backward scrubbing
+ * and short-range re-seeks instant on long clips. Each frame wraps a
+ * canvas (GPU-backed when available) decoded at the *preview* resolution
+ * (capped by `maxDim`), so the cost is dominated by the downscaled canvas
+ * backing-store, not full-res JS heap.
  */
-const MAX_CACHED_FRAMES_PER_MEDIA = 48;
+const MAX_CACHED_FRAMES_PER_MEDIA = 64;
 
 /**
  * Number of frames to prefetch ahead of the playhead during forward
- * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps
- * (one frame), which meant any decode jitter caused an immediate stall.
- * 6 frames gives ~100 ms of buffer — enough to absorb multi-frame decode
- * spikes (common on long/high-GOP clips where a single decode can hitch)
- * without stalling the preview, while staying well within the decoder's
- * pipeline depth.
+ * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps.
+ * 6 frames gave ~100 ms. 12 frames gives ~200 ms of buffer — enough to
+ * absorb multi-frame decode spikes on long/high-GOP clips and keep
+ * playback smooth even on slower machines. The prefetch runs async in
+ * the background, so a larger buffer doesn't slow down the current frame.
  */
-const PREFETCH_BUFFER_SIZE = 6;
+const PREFETCH_BUFFER_SIZE = 12;
 
 /**
  * CanvasSink pool size. Must comfortably exceed the prefetch buffer plus the
- * current frame plus any frame the compositor is still holding a reference to,
- * otherwise the sink recycles a canvas that is still in use and we pay an
- * allocation. With a prefetch buffer of 6 + current + compositor hold, 10
- * gives headroom for the next batch to decode without churn.
+ * current frame plus any frame the compositor is still holding a reference to.
+ * With a prefetch buffer of 12 + current + compositor hold, 18 gives
+ * headroom for the next batch to decode without churn.
  */
-const SINK_POOL_SIZE = 10;
+const SINK_POOL_SIZE = 18;
 
 interface VideoSinkData {
 	input: Input;
