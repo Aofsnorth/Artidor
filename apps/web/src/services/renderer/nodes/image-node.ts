@@ -10,7 +10,7 @@ export interface ImageNodeParams extends VisualNodeParams {
 }
 
 export interface CachedImageSource {
-	source: HTMLImageElement | OffscreenCanvas;
+	source: HTMLImageElement | OffscreenCanvas | ImageBitmap;
 	width: number;
 	height: number;
 }
@@ -27,16 +27,16 @@ export function loadImageSource(
 	if (cached) return cached;
 
 	const promise = (async (): Promise<CachedImageSource> => {
-		const image = new Image();
+		// Use createImageBitmap via fetch so this path works in both the main
+		// thread and Web Worker contexts (where `new Image()` is unavailable).
+		const bitmap = await (async () => {
+			const response = await fetch(url);
+			const blob = await response.blob();
+			return createImageBitmap(blob);
+		})();
 
-		await new Promise<void>((resolve, reject) => {
-			image.onload = () => resolve();
-			image.onerror = () => reject(new Error("Image load failed"));
-			image.src = url;
-		});
-
-		const naturalWidth = image.naturalWidth;
-		const naturalHeight = image.naturalHeight;
+		const naturalWidth = bitmap.width;
+		const naturalHeight = bitmap.height;
 		const exceedsLimit =
 			maxSourceSize &&
 			(naturalWidth > maxSourceSize || naturalHeight > maxSourceSize);
@@ -53,12 +53,15 @@ export function loadImageSource(
 			const ctx = offscreen.getContext("2d");
 
 			if (ctx) {
-				ctx.drawImage(image, 0, 0, scaledWidth, scaledHeight);
+				ctx.drawImage(bitmap, 0, 0, scaledWidth, scaledHeight);
+				bitmap.close();
 				return { source: offscreen, width: scaledWidth, height: scaledHeight };
 			}
 		}
 
-		return { source: image, width: naturalWidth, height: naturalHeight };
+		// Return the bitmap directly — it is drawable by CanvasRenderingContext2D
+		// in both main-thread and worker contexts, unlike HTMLImageElement.
+		return { source: bitmap, width: naturalWidth, height: naturalHeight };
 	})();
 
 	imageSourceCache.set(cacheKey, promise);

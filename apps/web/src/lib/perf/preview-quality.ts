@@ -5,13 +5,14 @@
 // the single biggest win for low-end ("potato") machines. Export is
 // unaffected: it builds its own full-res CanvasRenderer.
 
-export type PreviewQuality = "auto" | "high" | "medium" | "low";
+export type PreviewQuality = "auto" | "high" | "medium" | "low" | "ultra";
 
 export const PREVIEW_QUALITIES: PreviewQuality[] = [
 	"auto",
 	"high",
 	"medium",
 	"low",
+	"ultra",
 ];
 
 export const PREVIEW_QUALITY_LABELS: Record<PreviewQuality, string> = {
@@ -19,14 +20,19 @@ export const PREVIEW_QUALITY_LABELS: Record<PreviewQuality, string> = {
 	high: "High",
 	medium: "Medium",
 	low: "Low",
+	ultra: "Ultra Low",
 };
 
 // Static scale per explicit tier. `auto` resolves to one of these via
 // device detection. 1 = full project resolution.
+// `ultra` (0.25x) is for potato PCs — 480p from 1080p, 720p from 4K.
+// The compositor + decode + texture upload all scale together, so this
+// is a ~16x reduction in GPU work vs full-res.
 const TIER_SCALE: Record<Exclude<PreviewQuality, "auto">, number> = {
 	high: 1,
 	medium: 0.66,
 	low: 0.4,
+	ultra: 0.25,
 };
 
 // Extra multiplier applied only while the timeline is playing — frozen
@@ -36,6 +42,7 @@ const PLAYBACK_SCALE: Record<Exclude<PreviewQuality, "auto">, number> = {
 	high: 1,
 	medium: 0.75,
 	low: 0.6,
+	ultra: 0.6,
 };
 
 /**
@@ -45,7 +52,7 @@ const PLAYBACK_SCALE: Record<Exclude<PreviewQuality, "auto">, number> = {
 export function detectDeviceTier({
 	gpuDegraded = false,
 }: { gpuDegraded?: boolean } = {}): Exclude<PreviewQuality, "auto"> {
-	if (gpuDegraded) return "low";
+	if (gpuDegraded) return "ultra";
 	if (typeof navigator === "undefined") return "high";
 
 	const cores = navigator.hardwareConcurrency ?? 8;
@@ -53,6 +60,10 @@ export function detectDeviceTier({
 	const memory = (navigator as Navigator & { deviceMemory?: number })
 		.deviceMemory;
 
+	// 2 cores or ≤2GB RAM → ultra (potato tier). This covers Chromebooks,
+	// old laptops, and low-end machines that would otherwise stutter at
+	// the "low" tier.
+	if (cores <= 2 || (memory !== undefined && memory <= 2)) return "ultra";
 	if (cores <= 4 || (memory !== undefined && memory <= 4)) return "low";
 	if (cores <= 8 || (memory !== undefined && memory <= 8)) return "medium";
 	return "high";
@@ -74,7 +85,7 @@ export function resolvePreviewScale({
 	const tier = quality === "auto" ? detectDeviceTier({ gpuDegraded }) : quality;
 	const base = TIER_SCALE[tier];
 	const scale = isPlaying ? base * PLAYBACK_SCALE[tier] : base;
-	return Math.min(1, Math.max(0.2, scale));
+	return Math.min(1, Math.max(0.15, scale));
 }
 
 /**
@@ -104,6 +115,7 @@ export function resolveDecodeMaxDim({
  * one tier at a time instead of jumping straight to the floor/ceiling.
  */
 const ADAPTIVE_TIER_ORDER: Exclude<PreviewQuality, "auto">[] = [
+	"ultra",
 	"low",
 	"medium",
 	"high",
@@ -178,5 +190,5 @@ export function resolveAdaptiveScale({
 	const tier = ADAPTIVE_TIER_ORDER[tierIdx] ?? baseTier;
 	const base = TIER_SCALE[tier];
 	const scale = isPlaying ? base * PLAYBACK_SCALE[tier] : base;
-	return Math.min(1, Math.max(0.2, scale));
+	return Math.min(1, Math.max(0.15, scale));
 }

@@ -313,9 +313,21 @@ export class ProjectManager {
 		this.exportState = { isExporting: true, progress: 0, result: null };
 		this.notify();
 
+		// Track the maximum progress reported so far. The export pipeline can
+		// fall back and retry (parallel → single-worker → software retry →
+		// main-thread), each starting its progress from 0. Without this guard,
+		// the progress bar jumps backwards on every fallback — e.g. parallel
+		// reaches 40%, fails, single-worker restarts from 5%, the bar drops
+		// from 40% to 5%. With the guard, the bar only moves forward.
+		let maxProgress = 0;
+
 		const result = await this.editor.renderer.exportProject({
 			options,
 			onProgress: ({ progress }) => {
+				// Clamp to monotonically increasing — the bar must never
+				// move backwards, even if the pipeline retries from scratch.
+				if (progress <= maxProgress) return;
+				maxProgress = progress;
 				this.exportState = { ...this.exportState, progress };
 				this.notify();
 			},

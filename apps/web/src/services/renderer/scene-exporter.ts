@@ -19,6 +19,7 @@ import { frameRateToFloat } from "@/lib/fps/utils";
 import type { RootNode } from "./nodes/root-node";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
 import { CanvasRenderer } from "./canvas-renderer";
+import { negotiateVideoCodec } from "./export-codec";
 
 type ExportParams = {
 	width: number;
@@ -28,6 +29,14 @@ type ExportParams = {
 	quality: ExportQuality;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
+	/**
+	 * Force software video encoding (skip hardware acceleration). Used by the
+	 * retry path in `RendererManager` after a hardware encoder configuration
+	 * error — `isConfigSupported` can report hardware as supported while the
+	 * actual `VideoEncoder.configure()` rejects it (Firefox), so the only
+	 * reliable fallback is to force software encoding.
+	 */
+	forceSoftwareEncoding?: boolean;
 };
 
 const qualityMap = {
@@ -82,6 +91,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private quality: ExportQuality;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
+	private forceSoftwareEncoding: boolean;
 
 	private isCancelled = false;
 
@@ -93,11 +103,35 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		quality,
 		shouldIncludeAudio,
 		audioBuffer,
+		forceSoftwareEncoding = false,
 	}: ExportParams) {
 		super();
+		// The video codec is negotiated inside `export()`, but for the AVC
+		// (H.264) and HEVC (H.265) codecs WebCodecs requires width and height
+		// to be even (chroma subsampling needs sample-aligned coded sizes).
+		// The codec is known from the format here:
+		//   - webm → vp9 (odd OK)
+		//   - hevc → hevc (even required)  — we round conservatively because
+		//     `videoCodec` may fall back to avc on browsers without hevc.
+		//   - av1  → av1 (odd OK) — may still fall back to avc, see above.
+		//   - mp4  → avc (even required)
+		// We always round up to the next even for formats that *might* land
+		// on avc/hevc. The 1-px difference (e.g. 6000x3375 → 6000x3376) is
+		// invisible on real content and avoids the encoder error:
+		//   "dimensions 6000x3375 are not supported for codec 'avc'; both
+		//    width and height must be even numbers".
+		const requiresEven =
+			format === "mp4" || format === "hevc" || format === "av1";
+		const safeWidth = requiresEven ? width + (width % 2) : width;
+		const safeHeight = requiresEven ? height + (height % 2) : height;
+		if (safeWidth !== width || safeHeight !== height) {
+			console.info(
+				`[export] rounded canvas from ${width}x${height} to ${safeWidth}x${safeHeight} for codec compatibility`,
+			);
+		}
 		this.renderer = new CanvasRenderer({
-			width,
-			height,
+			width: safeWidth,
+			height: safeHeight,
 			fps,
 		});
 
@@ -105,6 +139,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		this.quality = quality;
 		this.shouldIncludeAudio = shouldIncludeAudio ?? false;
 		this.audioBuffer = audioBuffer;
+		this.forceSoftwareEncoding = forceSoftwareEncoding;
 	}
 
 	cancel(): void {
@@ -126,64 +161,38 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		const durationTicks = Math.round(rootNode.duration);
 		const frameCount = Math.floor(durationTicks / ticksPerFrame);
 
-		const outputFormat =
-			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
+		// Negotiate codec + hardware acceleration support via the shared helper so
+		// that fallback behaviour (AV1→AVC, hardware→software, AVC→VP9) is
+		// consistent across the main-thread, single-worker, and parallel-worker
+		// paths. The negotiator can change the output container format (e.g.
+		// MP4→WebM when falling back to VP9), so we build the container after.
+		const { codec: videoCodec, hardwareAcceleration, outputFormat: negotiatedFormat } =
+			await negotiateVideoCodec({
+				format: this.format,
+				quality: this.quality,
+				width: this.renderer.width,
+				height: this.renderer.height,
+				fpsFloat,
+				forceSoftware: this.forceSoftwareEncoding,
+			});
+
+		const outputFormatInstance =
+			negotiatedFormat === "webm"
+				? new WebMOutputFormat()
+				: new Mp4OutputFormat();
 
 		const output = new Output({
-			format: outputFormat,
+			format: outputFormatInstance,
 			target: new BufferTarget(),
 		});
-
-		// Pick the right video codec for the requested format.
-		// AV1 (best compression, ~88% encode support) > HEVC (H.265) > AVC (H.264).
-		// VP9 is the WebM default (99.99% support).
-		let videoCodec: "avc" | "vp9" | "hevc" | "av1" =
-			this.format === "webm"
-				? "vp9"
-				: this.format === "hevc"
-					? "hevc"
-					: this.format === "av1"
-						? "av1"
-						: "avc";
-
-		// Codec fallback chain: AV1 → VP9 → AVC, or HEVC → AVC.
-		// Check codec support and fall back to more compatible options.
-		// Some browsers throw a TypeError instead of returning {supported:false}
-		// when the bitrate isn't a valid unsigned long long, so wrap in try/catch.
-		if (
-			(videoCodec === "hevc" || videoCodec === "av1") &&
-			typeof VideoEncoder !== "undefined"
-		) {
-			try {
-				const codecString =
-					videoCodec === "av1" ? "av01.0.16M.08" : "hev1.1.6.L93.B0";
-				const bitrate = Math.max(
-					1,
-					Math.floor(Number(qualityMap[this.quality])),
-				);
-				const { supported } = await VideoEncoder.isConfigSupported({
-					codec: codecString,
-					width: this.renderer.width,
-					height: this.renderer.height,
-					bitrate,
-					framerate: fpsFloat,
-				});
-				if (!supported) {
-					// AV1 falls back to VP9 (for WebM) or AVC (for MP4).
-					// HEVC falls back to AVC.
-					videoCodec = this.format === "webm" ? "vp9" : "avc";
-				}
-			} catch {
-				videoCodec = this.format === "webm" ? "vp9" : "avc";
-			}
-		}
 
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: videoCodec,
 			bitrate: qualityMap[this.quality],
 			// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
-			// 10-100x faster than software encoding.
-			hardwareAcceleration: "prefer-hardware",
+			// 10-100x faster than software encoding. Automatically downgrades to
+			// software when the hardware encoder rejects the configuration.
+			hardwareAcceleration,
 		});
 
 		output.addVideoTrack(videoSource, { frameRate: fpsFloat });
@@ -192,8 +201,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		if (this.shouldIncludeAudio && this.audioBuffer) {
 			// AAC for MP4 (H.264 and H.265 share the same container / audio codec),
 			// Opus for WebM. If the browser can't encode AAC we silently fall back
-			// to Opus.
-			let audioCodec: "aac" | "opus" = this.format === "webm" ? "opus" : "aac";
+			// to Opus. Use the negotiated format (may have switched to WebM for
+			// VP9 fallback) instead of the original format.
+			let audioCodec: "aac" | "opus" =
+				negotiatedFormat === "webm" ? "opus" : "aac";
 
 			if (audioCodec === "aac" && typeof AudioEncoder !== "undefined") {
 				const { supported } = await AudioEncoder.isConfigSupported({

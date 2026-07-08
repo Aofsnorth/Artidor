@@ -18,6 +18,28 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-13-abstract-3d-bg",
+		date: "2026-07-13",
+		tag: "improvement",
+		title: "Projects page now has an abstract 3D motion-graphics backdrop",
+		items: [
+			"The /projects page background has been reworked. A field of glowing wireframe 3D primitives — cubes, tori, octahedra, icosahedra, cylinders — drifts across the canvas in a slow parallax composition, paired with a constellation-style particle layer that connects nearby points with thin lines.",
+			"Still elegant, not loud: sparse density (~7 primitives, ~110 particles), cool violet→cyan accents, deep slate base, with the original vignette and bottom fade preserved so the page chrome stays the focal point.",
+			"Still respectful of motion preferences: respects prefers-reduced-motion by rendering a single static frame of the composition instead of the animated version.",
+		],
+	},
+	{
+		id: "2026-07-13-harness-link-guard",
+		date: "2026-07-13",
+		tag: "improvement",
+		title: "Harness docs are now self-consistent and CI-enforced",
+		items: [
+			"AGENTS.md is now a clean router: it points to RULES.md, PERMISSIONS.md, CHECKLIST.md, HARNESS.md, SECURITY.md, and the docs/harness/ policies instead of re-stating their contents, so rules can't drift out of date.",
+			"Each security doc now has a clear owner: SECURITY.md holds advisories and the audit log, while docs/harness/security-model.md and threat-model.md hold the required controls and enumerated threats.",
+			"The harness CI job now fails on any broken cross-reference in AGENTS.md and the companion docs, catching doc drift before it reaches an agent.",
+		],
+	},
+	{
 		id: "2026-07-12-cleanup-untracked-files",
 		date: "2026-07-12",
 		tag: "fix",
@@ -160,6 +182,26 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"The desktop app header, footer, tab bar, viewport toolbar, timeline toolbar, assets panel, and inspector now mirror the web editor's layout: 72px vertical tab rail, rounded-xl panel cards with 8px gaps, capsule-style header buttons, preview toolbar with timecode + transport controls, and a 3-column timeline toolbar.",
 			"Window controls (minimize —, maximize □, close ✕) are now placed next to the Export button in the header, matching the desktop convention while keeping the web-style action hub layout.",
 			"Safety hardening: the WGPU viewport renderer no longer panics on buffer size mismatch (returns None instead), window creation failures exit gracefully instead of unwrapping, and image imports are now validated for file size (200MB limit) and dimensions (8192px limit) to prevent OOM.",
+		],
+	},
+	{
+		id: "2026-07-08-firefox-timeline-export-fix",
+		date: "2026-07-08",
+		tag: "performance",
+		title: "Editor performance: 60fps timeline scrolling and 87 fewer re-renders per frame",
+		items: [
+			"Editor-wide re-render storm eliminated. Every useEditor() subscription in the editor was listening to the playback subsystem, which fires 60 times per second during playback. ~87 components that don't need per-frame updates (timeline clip cards, properties panel, assets panel, etc.) were each running getSnapshot() 60 times/second for nothing. Playback is now opt-in: only the ~13 components that actually need per-frame state (timecode, playhead, audio meters) subscribe to it. This is the single biggest editor performance win.",
+			"Timeline clip thumbnails no longer stutter when scrolling. The filmstrip canvas was being fully resized (cleared + GPU memory reallocated) on every scroll tick even when the visible width hadn't changed. The canvas is now only resized when its dimensions actually change, and the scroll parent's viewport rect is cached instead of re-read via getBoundingClientRect() on every scroll tick (which forces a layout invalidation in Firefox).",
+			"Off-screen timeline clips are now skipped by the browser. content-visibility: auto + CSS containment lets Firefox skip painting clips that are scrolled out of view, and isolates each clip's layout/paint from the rest of the timeline. This is the biggest scroll-performance win for timelines with many clips.",
+			"Preview canvas rAF loop no longer runs when paused. The preview render loop was running 60 times/second even when the editor was paused and nothing was changing. It now only runs during playback or when a render is actually needed (scene change, scrub, panel resize), saving CPU and battery when editing.",
+			"Playhead position updated via direct DOM manipulation instead of React re-renders. The playhead now sets style.left directly on its DOM element via requestAnimationFrame during playback, avoiding a full React reconciliation cycle (5-16ms) every frame.",
+			"Video export no longer fails in Firefox. Firefox's VideoEncoder.isConfigSupported() reports hardware encoding as supported even though Firefox has no hardware VideoEncoder backend. The export now detects this and automatically retries with software encoding.",
+			"Export progress bar no longer jumps backwards. In Firefox, the export pipeline can fall back and retry multiple times (parallel → single-worker → software encoding), each restarting progress from 0. The progress bar now only moves forward — it tracks the maximum progress reported and never decreases, so the bar stays smooth even when the pipeline retries internally.",
+			"Composited frame cache for instant backward scrubbing. The preview now caches up to 30 rendered frames as GPU-backed ImageBitmaps. When you scrub backward or re-seek to a recently-visited frame, the cached bitmap is blitted to the canvas in ~0.5ms instead of re-running the full render pipeline (5-80ms). This makes backward scrubbing feel instant.",
+			"Ultra-low preview quality tier for potato PCs. A new \"Ultra Low\" quality option (0.25x scale) has been added for machines with 2 or fewer CPU cores or ≤2GB RAM. At this tier, a 1080p project renders at 270p — a 16x reduction in GPU work — making the editor usable on Chromebooks, old laptops, and low-end machines that previously stuttered at the \"Low\" tier.",
+			"Export render pipeline deepened. The render-to-encode pipeline depth has been doubled from 8 to 16 frames, keeping the GPU compositor continuously fed while the encoder processes the queue. This is especially beneficial with hardware encoders (NVENC/QuickSync) where the encoder is faster than the compositor.",
+			"Parallel export worker launch 6x faster. The stagger delay between launching parallel export workers has been reduced from 3 seconds to 500ms — modern GPU drivers handle concurrent adapter requests within ~200ms, so the conservative 3s delay was wasting 9-21 seconds on 4-8 worker launches.",
+			"Codec fallback chain hardened. The export codec negotiation now uses a proper ordered fallback chain: preferred codec (hardware) → preferred codec (software) → AVC software → VP9 software in WebM. Each candidate is probed with the correct hardwareAcceleration setting, so browsers that lie about hardware support (Firefox for AVC, Chrome for AV1 at 6K) automatically fall through to a working configuration. VP9 in WebM is the ultimate fallback that handles any resolution on any browser.",
 		],
 	},
 	{

@@ -6,16 +6,35 @@ It is the **feedforward** layer of the Artidor harness: it steers the agent
 before it acts. The **feedback** layer (sensors that let the agent self-correct
 after it acts) is described in [Sensors](#sensors-feedback) below.
 
-Companion files are the canonical source for the rules summarized here:
-- `RULES.md` — engineering rules (humans + agents)
-- `PERMISSIONS.md` — what an agent may do at each trust level
-- `CHECKLIST.md` — per-task completion gate
-- `HARNESS.md` — harness component map and maturity target
-- `SECURITY.md` — security model and advisories
-- `docs/harness/` — policies (dependency, documentation, MCP, security, testing, release)
+Companion files are the canonical source for the rules summarized here. This
+file is a **router**: it points to those files, it does not re-state their
+contents (cite, don't summarize — paraphrased rules drift out of date the
+moment the source changes). Read the linked file when a task touches that area.
+
+- `RULES.md` — engineering rules (humans + agents). The single source of truth
+  for core/production/architecture/bug-prevention rules.
+- `PERMISSIONS.md` — what an agent may do at each trust level (L0–L3), allowed
+  vs dangerous commands, git policy.
+- `CHECKLIST.md` — per-task completion gate (planning → implementation →
+  quality → docs → dependency → commands → roadmap → PR).
+- `HARNESS.md` — harness component map and maturity target (H5/H7).
+- `SECURITY.md` — **security advisories & audit log** (secret handling, known
+  dependency advisories, full security audit findings). Owner of "what we found
+  and accepted".
+- `docs/harness/` — **policies** (the *current required controls*):
+  - `docs/harness/security-model.md` — required security controls (Gitleaks, Semgrep, etc.)
+  - `docs/harness/threat-model.md` — enumerated threats T1–T7 and their defenses
+  - `docs/harness/agent-workflow.md` — standard 11-step flow + risk classification
+  - `docs/harness/testing-strategy.md`, `docs/harness/mcp-policy.md`,
+    `docs/harness/release-and-rollback.md`, `docs/harness/metrics.md`,
+    `docs/harness/DOCUMENTATION_POLICY.md`, `docs/harness/DEPENDENCY_POLICY.md`,
+    `docs/harness/DEPENDENCY_DECISIONS.md`
 
 When this file and a companion disagree, the companion is canonical. If you
-find a disagreement, fix one of them rather than working around it.
+find a disagreement, fix one of them rather than working around it. The
+`harness` CI job (`scripts/harness-check.mjs`) validates that every link above
+resolves to a real file, so a broken reference fails CI before it reaches an
+agent.
 
 ## Harness Model
 
@@ -190,19 +209,19 @@ to re-derive the fix each time.
 
 ## Forbidden Without Explicit Approval
 
-- Direct push to `main`
-- Force push
-- Deleting tests to make CI pass
-- Weakening security rules
-- Committing secrets
-- Editing `.env*`, private keys, tokens, or credentials
-- Changing license/legal text
-- Changing auth/payment/security flows
-- Adding dependencies without justification
-- Large rewrites
-- Generated/build output edits
-- Disabling CI/security checks
-- Ignoring failing tests
+The authoritative list of forbidden actions lives in `RULES.md` (Core Rules)
+and `PERMISSIONS.md` (L2/L3 sensitive paths). The most common ones:
+
+- Direct push to `main` / force push
+- Deleting or weakening tests to make CI pass
+- Committing secrets, or editing `.env*`, private keys, tokens, credentials
+- Weakening security rules or changing auth/payment/security flows
+- Changing license/legal text without approval
+- Adding dependencies without the justification in `docs/harness/DEPENDENCY_POLICY.md`
+
+When in doubt, the companion files are canonical — read them, do not guess.
+Also forbidden without approval: large rewrites, editing generated/build output,
+disabling CI/security checks, and ignoring failing tests.
 
 ## Code Quality Standard
 

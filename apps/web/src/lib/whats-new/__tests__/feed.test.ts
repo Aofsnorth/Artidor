@@ -59,7 +59,7 @@ describe("WHATS_NEW feed (real entries)", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-12-cleanup-untracked-files",
+			"2026-07-13-abstract-3d-bg",
 		);
 	});
 });

@@ -288,7 +288,10 @@ function ToolbarLeftSection() {
 	const [hasClipboardEntry, setHasClipboardEntry] = useState(() =>
 		editor.clipboard.hasEntry(),
 	);
-	const playhead = useEditor((e) => e.playback.getCurrentTime());
+	const playhead = useEditor(
+		(e) => e.playback.getCurrentTime(),
+		["playback"],
+	);
 	const canUndo = useEditor((e) => e.command.canUndo());
 	const canRedo = useEditor((e) => e.command.canRedo());
 	const alignDirection = useMemo(() => {

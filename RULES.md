@@ -9,7 +9,8 @@ These rules apply to humans and AI agents.
 3. Do not add dependencies unless explicitly justified.
 4. Do not edit generated files.
 5. Do not edit `.env*` files.
-6. Do not commit secrets, tokens, keys, private credentials, cookies, or session data.
+6. Do not commit secrets, tokens, keys, private credentials, cookies,
+   or session data.
 7. Do not weaken tests to make them pass.
 8. Do not suppress TypeScript errors with `any` unless justified.
 9. Do not ignore Rust warnings/errors without justification.
@@ -24,6 +25,7 @@ These rules apply to humans and AI agents.
 React components own rendering and interaction, not domain logic.
 
 Rust owns platform-agnostic core logic:
+
 - timeline math
 - compositor logic
 - media primitives
@@ -59,9 +61,12 @@ Use SOLID practically, not dogmatically.
 Each module/function should have one clear reason to change.
 
 Bad:
-- UI component that renders, validates, saves, logs, and transforms timeline data.
+
+- UI component that renders, validates, saves, logs, and transforms
+  timeline data.
 
 Good:
+
 - UI renders.
 - Hook coordinates.
 - Core validates.
@@ -69,7 +74,8 @@ Good:
 
 ### Open/Closed
 
-Prefer extending through typed interfaces or command/tool registries instead of editing many unrelated files.
+Prefer extending through typed interfaces or command/tool registries
+instead of editing many unrelated files.
 
 ### Liskov Substitution
 
@@ -81,7 +87,8 @@ Do not pass giant objects when a small typed interface is enough.
 
 ### Dependency Inversion
 
-Core logic should not depend directly on UI framework, browser-only APIs, or provider-specific AI code.
+Core logic should not depend directly on UI framework, browser-only
+APIs, or provider-specific AI code.
 
 ## Bug Prevention Rules
 
@@ -117,6 +124,7 @@ Avoid:
 ## Dependency Rules
 
 Before adding dependency:
+
 - Explain why existing platform/API is insufficient.
 - Check package maintenance.
 - Check license.
@@ -187,6 +195,7 @@ If skipped, document the reason.
 ## Done Definition
 
 A change is done only when:
+
 - Code is implemented.
 - QA is documented.
 - Tests are updated or skip reason is documented.

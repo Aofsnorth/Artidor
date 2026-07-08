@@ -13,6 +13,7 @@ import {
 } from "@/services/renderer/export-worker-bridge";
 import { runParallelExport } from "@/services/renderer/parallel-export";
 import { serializeSceneTree } from "@/services/renderer/scene-serializer";
+import { isEncoderConfigError } from "@/services/renderer/export-codec";
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -321,10 +322,45 @@ export class RendererManager {
 					if ("cancelled" in result && result.cancelled) {
 						return { success: false, cancelled: true };
 					}
+
+					// Retry with software encoding when the hardware encoder config
+					// was rejected. `isConfigSupported` can report hardware as
+					// supported while the actual `VideoEncoder.configure()` rejects
+					// it (Firefox has no hardware VideoEncoder backend but reports
+					// `supported: true`). The retry forces `prefer-software`.
+					const workerError = "error" in result ? result.error : "";
+					if (isEncoderConfigError(workerError)) {
+						console.info(
+							"[export] worker encoder config rejected, retrying with software encoding",
+						);
+						const swResult = await runExportInWorker({
+							sceneTree: tree,
+							files: fileEntries,
+							audioBuffer: audioBuffer || null,
+							width: canvasSize.width,
+							height: canvasSize.height,
+							fps: exportFps,
+							format,
+							quality,
+							shouldIncludeAudio: !!includeAudio,
+							forceSoftwareEncoding: true,
+							timeoutMs: 30_000,
+							onProgress: (p) =>
+								onProgress?.({ progress: mapProgress(p.progress) }),
+							getCancelled: onCancel,
+						});
+						if (swResult.success) {
+							return { success: true, buffer: swResult.buffer };
+						}
+						if ("cancelled" in swResult && swResult.cancelled) {
+							return { success: false, cancelled: true };
+						}
+					}
+
 					// Worker failed — fall through to main-thread path
 					console.warn(
 						"Worker export failed, falling back to main thread:",
-						"error" in result ? result.error : "unknown",
+						workerError || "unknown",
 					);
 				} catch (workerError) {
 					console.warn(
@@ -334,64 +370,91 @@ export class RendererManager {
 				}
 			}
 
-			// Main-thread fallback path
-			const exporter = new SceneExporter({
-				width: canvasSize.width,
-				height: canvasSize.height,
-				fps: exportFps,
-				format,
-				quality,
-				shouldIncludeAudio: !!includeAudio,
-				audioBuffer: audioBuffer || undefined,
-			});
+			// Main-thread fallback path.
+			//
+			// Runs the export on the main thread (blocking UI). If the hardware
+			// encoder config is rejected — which `isConfigSupported` can fail to
+			// predict in Firefox — retries once with `forceSoftwareEncoding` so
+			// the export still succeeds (software encoding is slower but handles
+			// any valid resolution).
+			const runMainThreadExport = async (
+				forceSoftwareEncoding: boolean,
+			): Promise<ExportResult> => {
+				const exporter = new SceneExporter({
+					width: canvasSize.width,
+					height: canvasSize.height,
+					fps: exportFps,
+					format,
+					quality,
+					shouldIncludeAudio: !!includeAudio,
+					audioBuffer: audioBuffer || undefined,
+					forceSoftwareEncoding,
+				});
 
-			exporter.on("progress", (progress) => {
-				const adjustedProgress = includeAudio
-					? 0.05 + progress * 0.95
-					: progress;
-				onProgress?.({ progress: adjustedProgress });
-			});
+				exporter.on("progress", (progress) => {
+					const adjustedProgress = includeAudio
+						? 0.05 + progress * 0.95
+						: progress;
+					onProgress?.({ progress: adjustedProgress });
+				});
 
-			let cancelled = false;
-			const checkCancel = () => {
-				if (onCancel?.()) {
-					cancelled = true;
-					exporter.cancel();
+				let cancelled = false;
+				const checkCancel = () => {
+					if (onCancel?.()) {
+						cancelled = true;
+						exporter.cancel();
+					}
+				};
+
+				const cancelInterval = setInterval(checkCancel, 100);
+
+				try {
+					const buffer = await Promise.race([
+						exporter.export({ rootNode: scene }),
+						new Promise<never>((_, reject) =>
+							setTimeout(() => {
+								exporter.cancel();
+								reject(
+									new Error(
+										"Main-thread export timed out after 120s",
+									),
+								);
+							}, 120_000),
+						),
+					]);
+					clearInterval(cancelInterval);
+
+					if (cancelled) {
+						return { success: false, cancelled: true };
+					}
+
+					if (!buffer) {
+						return { success: false, error: "Export failed to produce buffer" };
+					}
+
+					return {
+						success: true,
+						buffer,
+					};
+				} finally {
+					clearInterval(cancelInterval);
 				}
 			};
 
-			const cancelInterval = setInterval(checkCancel, 100);
-
 			try {
-				const buffer = await Promise.race([
-					exporter.export({ rootNode: scene }),
-					new Promise<never>((_, reject) =>
-						setTimeout(() => {
-							exporter.cancel();
-							reject(
-								new Error(
-									"Main-thread export timed out after 120s",
-								),
-							);
-						}, 120_000),
-					),
-				]);
-				clearInterval(cancelInterval);
-
-				if (cancelled) {
-					return { success: false, cancelled: true };
+				return await runMainThreadExport(false);
+			} catch (error) {
+				if (isEncoderConfigError(error)) {
+					console.info(
+						"[export] main-thread encoder config rejected, retrying with software encoding",
+					);
+					return await runMainThreadExport(true);
 				}
-
-				if (!buffer) {
-					return { success: false, error: "Export failed to produce buffer" };
-				}
-
+				console.error("Export failed:", error);
 				return {
-					success: true,
-					buffer,
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown export error",
 				};
-			} finally {
-				clearInterval(cancelInterval);
 			}
 		} catch (error) {
 			console.error("Export failed:", error);

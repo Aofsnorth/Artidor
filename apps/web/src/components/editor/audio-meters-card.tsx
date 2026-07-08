@@ -30,7 +30,10 @@ interface Particle {
 
 export function AudioMetersCard() {
 	const editor = useEditor();
-	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const isPlaying = useEditor(
+		(e) => e.playback.getIsPlaying(),
+		["playback"],
+	);
 	// Whether the timeline currently has any audible candidate. When
 	// false (e.g. a video with no audio track, or all elements/tracks
 	// muted), the meter must stay flat instead of reading the analyser

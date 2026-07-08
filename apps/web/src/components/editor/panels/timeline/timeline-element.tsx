@@ -317,7 +317,7 @@ function ElementEnvelope({
 							>
 								<span
 									className={cn(
-										"block size-4 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
+										"block size-4 transform-[scaleX(0.6)_rotate(45deg)] rounded-xs border border-black/80 bg-linear-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
 										isDimmed && "size-3 opacity-35",
 										isSelected &&
 											"size-5 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_10px_2px_rgba(255,255,255,0.72)]",
@@ -467,7 +467,13 @@ function TimelineElement({
 	isDropTarget = false,
 }: TimelineElementProps) {
 	const editor = useEditor();
-	const mediaAssets = useEditor((e) => e.media.getAssets());
+	// Only subscribe to `media` — not `playback`. The `playback` subsystem
+	// fires every animation frame during playback, causing unnecessary
+	// `getSnapshot()` calls for every clip card.
+	const mediaAssets = useEditor(
+		(e) => e.media.getAssets(),
+		["media"],
+	);
 	const lockedTrackIds = useTimelineStore((s) => s.lockedTrackIds);
 	const isTrackLocked = lockedTrackIds.has(track.id);
 	// AI takeover: when the AI is executing a tool that touches this
@@ -682,7 +688,7 @@ function TimelineElement({
 				<ContextMenuTrigger asChild>
 					<div
 						className={cn(
-							"absolute top-0 select-none",
+							"timeline-clip absolute top-0 select-none",
 							isAIActiveOnElement && "ai-element-active ai-element-transition",
 						)}
 						style={{
@@ -706,9 +712,20 @@ function TimelineElement({
 								isBeingDragged && dragState.dragElementIds.length > 0 ? "none" : undefined,
 							opacity:
 								isBeingDragged && dragState.dragElementIds.length > 0 ? 0 : undefined,
+							// Skip rendering for off-screen clips and isolate each clip's
+							// layout/paint from the rest of the timeline. This is the single
+							// biggest scroll-performance win in Firefox, which struggles with
+							// many absolutely-positioned elements containing gradients,
+							// shadows, and canvases. `content-visibility: auto` lets the
+							// browser skip painting clips that are scrolled out of view,
+							// and `contain: layout style paint` limits reflow/repaint to the
+							// clip itself when it does need to render.
+							contentVisibility: "auto",
+							containIntrinsicSize: `${elementWidth}px ${baseTrackHeight + expansionHeight}px`,
+							contain: "layout style paint",
 						}}
 					>
-						<ElementInner
+						<MemoizedElementInner
 							element={element}
 							track={track}
 							zoomLevel={zoomLevel}
@@ -1118,18 +1135,26 @@ function ElementInner({
 		customColor: track.color,
 	});
 
-	// Detect adjacent clips for adaptive corner radius
+	// Detect adjacent clips for adaptive corner radius.
+	// Memoized to avoid O(n) scans on every render — only recomputes when the
+	// track's element list or this element's position/duration change.
 	const SNAP_THRESHOLD = 2; // ticks tolerance for adjacency
-	const hasAdjacentLeft = track.elements.some(
-		(el) =>
-			el.id !== element.id &&
-			Math.abs(el.startTime + el.duration - element.startTime) < SNAP_THRESHOLD,
-	);
-	const hasAdjacentRight = track.elements.some(
-		(el) =>
-			el.id !== element.id &&
-			Math.abs(el.startTime - (element.startTime + element.duration)) < SNAP_THRESHOLD,
-	);
+	const { hasAdjacentLeft, hasAdjacentRight } = useMemo(() => {
+		const left = track.elements.some(
+			(el) =>
+				el.id !== element.id &&
+				Math.abs(el.startTime + el.duration - element.startTime) <
+					SNAP_THRESHOLD,
+		);
+		const right = track.elements.some(
+			(el) =>
+				el.id !== element.id &&
+				Math.abs(
+					el.startTime - (element.startTime + element.duration),
+				) < SNAP_THRESHOLD,
+		);
+		return { hasAdjacentLeft: left, hasAdjacentRight: right };
+	}, [track.elements, element.id, element.startTime, element.duration]);
 	// Full radius = 12px (rounded-xl), adjacent radius = 4px
 	const ADJACENT_RADIUS = "4px";
 	const FULL_RADIUS = "12px";
@@ -1143,6 +1168,10 @@ function ElementInner({
 			style={{
 				left: `${ELEMENT_RING_WIDTH_PX}px`,
 				right: `${ELEMENT_RING_WIDTH_PX}px`,
+				// CSS containment: isolate layout and paint to this card so that
+				// sibling cards don't trigger layout/paint on each other during
+				// drag and scroll. Improves Firefox performance significantly.
+				contain: "layout style paint",
 			}}
 		>
 			<div
@@ -1158,7 +1187,7 @@ function ElementInner({
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden border border-white/[0.04]",
+						"absolute inset-0 overflow-hidden border border-white/4",
 						isExpanded && "bg-background",
 					)}
 					style={{ borderRadius }}
@@ -1252,6 +1281,7 @@ function ElementInner({
 		</div>
 	);
 }
+const MemoizedElementInner = memo(ElementInner);
 
 function ResizeHandle({
 	side,
@@ -1420,7 +1450,7 @@ function KeyframeIndicators({
 					>
 						<span
 							className={cn(
-								"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity,transform] duration-150",
+								"block size-5 transform-[scaleX(0.6)_rotate(45deg)] rounded-xs border border-black/80 bg-linear-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity,transform] duration-150",
 								isDimmed &&
 									"size-3.5 opacity-35 shadow-[0_0_0_1px_rgba(255,255,255,0.25)]",
 								isIndicatorSelected &&
@@ -1661,7 +1691,7 @@ function ExpandedKeyframeLanes({
 									>
 										<span
 											className={cn(
-												"block size-5 [transform:scaleX(0.6)_rotate(45deg)] rounded-[2px] border border-black/80 bg-gradient-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
+												"block size-5 transform-[scaleX(0.6)_rotate(45deg)] rounded-xs border border-black/80 bg-linear-to-br from-white to-zinc-300 shadow-[0_0_0_1px_rgba(255,255,255,0.65),0_1px_2px_rgba(0,0,0,0.55)] transition-[box-shadow,background-color,width,height,opacity] duration-150",
 												isDimmed && "size-3.5 opacity-35",
 												isSelected &&
 													"size-6 border-2 border-white bg-white shadow-[0_0_0_2px_rgba(255,255,255,0.55),0_0_11px_3px_rgba(255,255,255,0.72)]",
@@ -1893,7 +1923,7 @@ function AudioElementContent({
 						}}
 					/>
 					<div
-						className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white/[0.04] to-transparent"
+						className="absolute inset-x-0 bottom-0 bg-linear-to-t from-white/4 to-transparent"
 						style={{ height: `${trackVolumePercent}%` }}
 					/>
 				</div>
@@ -1933,13 +1963,13 @@ function AudioFadeOverlay({
 		<div className="pointer-events-none absolute inset-0 overflow-hidden">
 			{fadeInPct > 0 && (
 				<div
-					className="absolute inset-y-0 left-0 bg-gradient-to-r from-black/60 to-transparent"
+					className="absolute inset-y-0 left-0 bg-linear-to-r from-black/60 to-transparent"
 					style={{ width: `${fadeInPct}%` }}
 				/>
 			)}
 			{fadeOutPct > 0 && (
 				<div
-					className="absolute inset-y-0 right-0 bg-gradient-to-l from-black/60 to-transparent"
+					className="absolute inset-y-0 right-0 bg-linear-to-l from-black/60 to-transparent"
 					style={{ width: `${fadeOutPct}%` }}
 				/>
 			)}
@@ -1993,6 +2023,21 @@ function VideoFilmstrip({
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const scrollParentRef = useRef<HTMLElement | null>(null);
+	// Cache the last canvas backing-store dimensions so we only resize the
+	// canvas (which clears it + reallocates GPU memory) when the visible
+	// width or DPR actually changes. Without this, every scroll event
+	// re-assigns canvas.width/height — even when the value is identical —
+	// which forces a full clear + realloc per frame and is especially
+	// expensive in Firefox. The CSS position/size updates are cheap and
+	// still applied every draw.
+	const lastCanvasWidthRef = useRef(0);
+	const lastCanvasHeightRef = useRef(0);
+	// Cache the scroll parent's viewport rect. It doesn't change during
+	// scroll (only `scrollLeft` changes) — re-reading it via
+	// `getBoundingClientRect()` on every scroll tick forces a layout
+	// invalidation in Firefox. Invalidated on resize/zoom via the draw
+	// dependency array.
+	const scrollParentRectRef = useRef<DOMRect | null>(null);
 
 	// Virtualized filmstrip: only the tiles inside the timeline's scroll
 	// viewport are drawn, and frames come from a shared per-file cache that
@@ -2023,7 +2068,14 @@ function VideoFilmstrip({
 		let clipLeft: number;
 		let clipRight: number;
 		if (scrollParent) {
-			const parentRect = scrollParent.getBoundingClientRect();
+			// Reuse cached scroll parent rect — it doesn't change during scroll
+			// (only scrollLeft changes). Re-reading it forces a layout
+			// invalidation in Firefox, which is expensive with many clips.
+			let parentRect = scrollParentRectRef.current;
+			if (!parentRect) {
+				parentRect = scrollParent.getBoundingClientRect();
+				scrollParentRectRef.current = parentRect;
+			}
 			clipLeft = Math.max(0, parentRect.left - containerRect.left);
 			clipRight = Math.min(elementWidth, parentRect.right - containerRect.left);
 		} else {
@@ -2037,12 +2089,28 @@ function VideoFilmstrip({
 		if (visibleWidth <= 0) return;
 
 		const dpr = window.devicePixelRatio || 1;
-		canvas.width = Math.round(visibleWidth * dpr);
-		canvas.height = Math.round(topHeight * dpr);
+		const targetWidth = Math.round(visibleWidth * dpr);
+		const targetHeight = Math.round(topHeight * dpr);
+		// Only re-assign canvas.width/height when the backing-store dimensions
+		// actually change. Re-assigning the same value still clears the canvas
+		// and triggers a GPU memory reallocation — a no-op assignment is NOT
+		// free. Skipping it when unchanged avoids a full clear + realloc on
+		// every scroll tick, which is the main source of filmstrip jank in
+		// Firefox (whose canvas backing-store reallocation is significantly
+		// slower than Chrome's).
+		const wasResized =
+			targetWidth !== lastCanvasWidthRef.current ||
+			targetHeight !== lastCanvasHeightRef.current;
+		if (wasResized) {
+			canvas.width = targetWidth;
+			canvas.height = targetHeight;
+			lastCanvasWidthRef.current = targetWidth;
+			lastCanvasHeightRef.current = targetHeight;
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		}
 		canvas.style.width = `${visibleWidth}px`;
 		canvas.style.height = `${topHeight}px`;
 		canvas.style.left = `${clipLeft}px`;
-		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, visibleWidth, topHeight);
 
 		const trimStartSeconds = element.trimStart / TICKS_PER_SECOND;
@@ -2087,9 +2155,14 @@ function VideoFilmstrip({
 		return unsubscribe;
 	}, [mediaFile]);
 
-	// Redraw on param/zoom changes.
+	// Redraw on param/zoom changes. RAF-deferred so rapid zoom events collapse
+	// into a single paint rather than redrawing on every intermediate state.
+	// Also invalidate the cached scroll parent rect — zoom changes can resize
+	// the scroll parent's viewport (e.g. when the timeline panel is resized).
 	useEffect(() => {
-		draw();
+		scrollParentRectRef.current = null;
+		const rafId = requestAnimationFrame(() => draw());
+		return () => cancelAnimationFrame(rafId);
 	}, [draw]);
 
 	// Redraw while scrolling the (virtualized) timeline.

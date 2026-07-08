@@ -30,10 +30,11 @@ assert(
 	"low playback < idle",
 );
 
-// gpu-degraded forces the low tier under auto
+// gpu-degraded forces the ultra tier under auto (potato tier for software
+// rendering — 0.25x scale, ~16x less GPU work than full-res)
 assert(
-	detectDeviceTier({ gpuDegraded: true }) === "low",
-	"degraded → low tier",
+	detectDeviceTier({ gpuDegraded: true }) === "ultra",
+	"degraded → ultra tier",
 );
 
 // decode cap: none at full quality, even longest-edge otherwise
@@ -48,10 +49,10 @@ assert(
 	"cap = longest * scale, rounded even",
 );
 
-// clamp floor
+// clamp floor (0.15 for ultra tier)
 assert(
-	resolvePreviewScale({ quality: "low", isPlaying: true }) >= 0.2,
-	"scale never below 0.2",
+	resolvePreviewScale({ quality: "low", isPlaying: true }) >= 0.15,
+	"scale never below 0.15",
 );
 
 // --- resolveAdaptiveScale: manual tiers delegate unchanged ---
@@ -110,17 +111,17 @@ assert(
 		avgRenderMs: 100, // 6x a 16ms budget → well into struggle
 		frameBudgetMs: 16,
 	});
-	// If base tier is already "low", it can't drop further → stays equal.
-	// Otherwise the adaptive scale must be strictly lower than the base.
-	if (baseTier !== "low") {
+	// If base tier is already at the floor (ultra), it can't drop further →
+	// stays equal. Otherwise the adaptive scale must be strictly lower.
+	if (baseTier === "ultra") {
 		assert(
-			slowScale < baseScale,
-			`auto drops scale when struggling (base ${baseTier}: ${baseScale} → ${slowScale})`,
+			Math.abs(slowScale - baseScale) < 1e-9,
+			"auto at ultra tier can't drop further → stays at ultra",
 		);
 	} else {
 		assert(
-			Math.abs(slowScale - baseScale) < 1e-9,
-			"auto at low tier can't drop further → stays at low",
+			slowScale < baseScale,
+			`auto drops scale when struggling (base ${baseTier}: ${baseScale} → ${slowScale})`,
 		);
 	}
 }
@@ -168,7 +169,7 @@ assert(
 	);
 }
 
-// --- resolveAdaptiveScale: clamps to [0.2, 1] ---
+// --- resolveAdaptiveScale: clamps to [0.15, 1] ---
 {
 	const scale = resolveAdaptiveScale({
 		quality: "auto",
@@ -176,7 +177,7 @@ assert(
 		avgRenderMs: 1000,
 		frameBudgetMs: 16,
 	});
-	assert(scale >= 0.2, "adaptive scale never below 0.2");
+	assert(scale >= 0.15, "adaptive scale never below 0.15");
 	assert(scale <= 1, "adaptive scale never above 1");
 }
 
