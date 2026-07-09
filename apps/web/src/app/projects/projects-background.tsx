@@ -154,7 +154,6 @@ function buildPrimitiveVertices(kind: Primitive["kind"], scale: number): Vec3[] 
 			// Connecting ribs (sparse)
 			const ribCount = 6;
 			for (let i = 0; i < ribCount; i++) {
-				const a = (i / ribCount) * Math.PI * 2;
 				const idx = Math.floor((i / ribCount) * segments);
 				verts.push(verts[idx]);
 				verts.push(verts[segments + idx]);
@@ -256,7 +255,7 @@ function buildPrimitives(): Primitive[] {
 	const out: Primitive[] = [];
 	for (let i = 0; i < PRIMITIVE_COUNT; i++) {
 		out.push({
-			kind: KINDS[i % KINDS.length]!,
+			kind: KINDS[i % KINDS.length] as Primitive["kind"],
 			position: {
 				x: rand(-520, 520),
 				y: rand(-320, 320),
