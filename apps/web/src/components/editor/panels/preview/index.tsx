@@ -477,6 +477,7 @@ function PreviewCanvas({
 	// rAF loop for one frame, which renders and then clears the flag.
 	// Also invalidate the composited frame cache — cached frames belong to
 	// the old render tree and must not be re-blitted after an edit.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the renderTree identity changes so the cached frame bitmaps are invalidated, even though the value itself is not read inside the body.
 	useEffect(() => {
 		needsRenderRef.current = true;
 		const cache = frameCacheRef.current;
@@ -487,6 +488,7 @@ function PreviewCanvas({
 	}, [renderTree]);
 
 	// Mark a render as needed when the canvas size changes (panel resize).
+	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the canvas size changes to request a fresh render, even though the dimensions are not read inside the body.
 	useEffect(() => {
 		needsRenderRef.current = true;
 	}, [nativeWidth, nativeHeight]);

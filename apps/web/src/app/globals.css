@@ -426,7 +426,7 @@ body::-webkit-scrollbar,
 			background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 			border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 			color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-			opacity 0.15s ease-out !important;
+			opacity 0.15s ease-out;
 	}
 }
 
