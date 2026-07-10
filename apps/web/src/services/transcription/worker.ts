@@ -10,6 +10,7 @@ import {
 } from "@/lib/transcription/audio";
 import { configureOnnxRuntime } from "./onnx-runtime";
 import { toTranscriptionSegments } from "./segments";
+import { getTranscriptionBackends, type TranscriptionBackend } from "./backend";
 
 export type WorkerMessage =
 	| { type: "init"; modelId: string }
@@ -17,9 +18,14 @@ export type WorkerMessage =
 	| { type: "cancel" };
 
 export type WorkerResponse =
-	| { type: "init-progress"; progress: number }
+	| {
+			type: "init-progress";
+			progress: number;
+			backend: TranscriptionBackend;
+	  }
 	| { type: "init-complete" }
 	| { type: "init-error"; error: string }
+	| { type: "backend-selected"; backend: TranscriptionBackend }
 	| { type: "transcribe-progress"; progress: number }
 	| {
 			type: "transcribe-complete";
@@ -65,63 +71,83 @@ async function handleInit({ modelId }: { modelId: string }) {
 		// for users who never use the feature.
 		const { env, pipeline } = await import("@huggingface/transformers");
 
-		configureOnnxRuntime(env);
+		const backends = getTranscriptionBackends({
+			webGpuAvailable:
+				typeof navigator !== "undefined" && Boolean(navigator.gpu),
+		});
 
-		// ponytail: always WASM + fp32. WebGPU in workers is unreliable;
-		// quantized (q4/q8) weights use MatMulNBits ops that WASM can't run.
-		// String "fp32" blanket-forces ALL sub-models (the old per-model
-		// object missed sub-models that fell back to default q8).
-		transcriber = (await pipeline("automatic-speech-recognition", modelId, {
-			dtype: "fp32",
-			device: "wasm",
-			progress_callback: (progressInfo: {
-				status?: string;
-				file?: string;
-				loaded?: number;
-				total?: number;
-			}) => {
-				const file = progressInfo.file;
-				if (!file) return;
+		let lastError: unknown = null;
+		for (const backend of backends) {
+			try {
+				configureOnnxRuntime({ runtime: env, backend });
 
-				const loaded = progressInfo.loaded ?? 0;
-				const total = progressInfo.total ?? 0;
+				transcriber = (await pipeline("automatic-speech-recognition", modelId, {
+					dtype: "fp32",
+					device: backend,
+					progress_callback: (progressInfo: {
+						status?: string;
+						file?: string;
+						loaded?: number;
+						total?: number;
+					}) => {
+						const file = progressInfo.file;
+						if (!file) return;
 
-				if (progressInfo.status === "progress" && total > 0) {
-					fileBytes.set(file, { loaded, total });
-				} else if (progressInfo.status === "done") {
-					const existing = fileBytes.get(file);
-					if (existing) {
-						fileBytes.set(file, {
-							loaded: existing.total,
-							total: existing.total,
-						});
-					}
-				}
+						const loaded = progressInfo.loaded ?? 0;
+						const total = progressInfo.total ?? 0;
 
-				// sum all bytes
-				let totalLoaded = 0;
-				let totalSize = 0;
-				for (const { loaded, total } of fileBytes.values()) {
-					totalLoaded += loaded;
-					totalSize += total;
-				}
+						if (progressInfo.status === "progress" && total > 0) {
+							fileBytes.set(file, { loaded, total });
+						} else if (progressInfo.status === "done") {
+							const existing = fileBytes.get(file);
+							if (existing) {
+								fileBytes.set(file, {
+									loaded: existing.total,
+									total: existing.total,
+								});
+							}
+						}
 
-				if (totalSize === 0) return;
+						// sum all bytes
+						let totalLoaded = 0;
+						let totalSize = 0;
+						for (const { loaded, total } of fileBytes.values()) {
+							totalLoaded += loaded;
+							totalSize += total;
+						}
 
-				const overallProgress = (totalLoaded / totalSize) * 100;
-				const roundedProgress = Math.floor(overallProgress);
+						if (totalSize === 0) return;
 
-				if (roundedProgress !== lastReportedProgress) {
-					lastReportedProgress = roundedProgress;
-					self.postMessage({
-						type: "init-progress",
-						progress: roundedProgress,
-					} satisfies WorkerResponse);
-				}
-			},
-		})) as unknown as AutomaticSpeechRecognitionPipeline;
+						const overallProgress = (totalLoaded / totalSize) * 100;
+						const roundedProgress = Math.floor(overallProgress);
 
-		self.postMessage({ type: "init-complete" } satisfies WorkerResponse);
+						if (roundedProgress !== lastReportedProgress) {
+							lastReportedProgress = roundedProgress;
+							self.postMessage({
+								type: "init-progress",
+								progress: roundedProgress,
+								backend,
+							} satisfies WorkerResponse);
+						}
+					},
+				})) as unknown as AutomaticSpeechRecognitionPipeline;
+
+				self.postMessage({
+					type: "backend-selected",
+					backend,
+				} satisfies WorkerResponse);
+				self.postMessage({
+					type: "init-complete",
+				} satisfies WorkerResponse);
+				return;
+			} catch (error) {
+				lastError = error;
+				transcriber = null;
+			}
+		}
+
+		// All backends failed
+		throw lastError ?? new Error("No transcription backend is available");
 	} catch (error) {
 		self.postMessage({
 			type: "init-error",
