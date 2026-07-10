@@ -2,6 +2,37 @@
 
 Living progress log for the Win32 native rewrite. Newest on top.
 
+## 2026-07-10 — Fix startup flicker (DONE)
+
+**What**: removed the white flash / flicker when the main window first
+appears.
+
+- **Root cause**: both the main and viewport child window classes used
+  `COLOR_WINDOW` (system white) as their background brush. The window was
+  made visible before `WM_PAINT` had a chance to draw the dark editor/home
+  background, causing a brief white flash.
+- **Fix** — set both `WNDCLASSW.hbrBackground` to `GetStockObject(BLACK_BRUSH)`
+  in `src/main.rs`.
+- **Startup ordering** — `Renderer` is now created and bound to the viewport
+  child *before* `ShowWindow`/`UpdateWindow`, so the first paint already has
+  the compositor ready and does not show an empty surface.
+
+**Files**:
+
+- `apps/desktop-native/src/main.rs` — black stock brush for both window
+  classes; deferred `ShowWindow`/`UpdateWindow` until after renderer init.
+
+**Verify**:
+
+- `cargo check`: clean.
+- `cargo test`: **104 passed, 0 failed**.
+- `cargo fmt`: applied.
+
+**Sensitive paths**: `rust/**` NOT edited. Root `Cargo.toml` untouched.
+No new dependency.
+
+**What's New**: NOT updated — the native shell is not yet shipped to end users.
+
 ## 2026-07-10 — Home/Projects parity + warning cleanup (DONE)
 
 **What**: finalised the 1:1 landing-page Home screen and project hub, and
@@ -127,9 +158,9 @@ packaging notes:
   lower third based on the playhead position (scroll fraction =
   playhead/duration). Word-wrap by char count. Empty text disables the
   overlay. `teleprompter_text` + `teleprompter_on` in `WindowState`.
-- **7a: ROADMAP + What's New** — ROADMAP.md updated with Inc 4d–4g + 5
-  + 6c status. What's New NOT updated because the native shell is not
-  yet shipped to end users (no release, no users) — per
+- **7a: ROADMAP + What's New** — ROADMAP.md updated with Inc 4d–4g,
+  5, and 6c status. What's New NOT updated because the native shell is
+  not yet shipped to end users (no release, no users) — per
   `docs/product/WHATS_NEW_POLICY.md` the feed is for user-facing
   changes in shipped products.
 - **7b: Packaging notes** — README.md updated with FFmpeg bundling
@@ -142,11 +173,11 @@ packaging notes:
 - `apps/desktop-native/src/copilot.rs` — NEW. `Suggestion` struct,
   `suggest(project) -> Vec<Suggestion>`. 6 tests (empty, no clips,
   missing audio, balanced, long-form, deterministic).
-- `apps/desktop-native/src/main.rs` — `mod copilot`. `draw_copilot_suggestions`
-  in tools panel. `teleprompter_text` + `teleprompter_on` in `WindowState`.
-  Ctrl+P handler (prompt dialog → set/clear teleprompter). `draw_teleprompter_overlay`
-  + `wrap_text` helper. `paint_chrome` signature extended with
-  teleprompter params.
+- `apps/desktop-native/src/main.rs` — `mod copilot`.
+  `draw_copilot_suggestions` in tools panel. `teleprompter_text` and
+  `teleprompter_on` in `WindowState`. Ctrl+P handler (prompt dialog →
+  set/clear teleprompter). `draw_teleprompter_overlay` and `wrap_text`
+  helper. `paint_chrome` signature extended with teleprompter params.
 - `apps/desktop-native/README.md` — Packaging section (FFmpeg bundling,
   release build, distribution).
 - `ROADMAP.md` — Inc 4d–4g + 5 + 6c status updated.
@@ -193,7 +224,7 @@ release yet.
   2 new tests (remove + recompute, unknown returns false) → **43 tests
   total**.
 - `apps/desktop-native/src/main.rs` — `WM_TIMER` handler (frame advance
-  + end-of-timeline wrap). Spacebar (0x20) in key match. VK_DELETE
+  and end-of-timeline wrap). Spacebar (0x20) in key match. VK_DELETE
   handler. `WM_LBUTTONDOWN` rewritten: first hit-tests clip blocks
   (iterates tracks × elements, checks x/y against clip rect), then
   falls back to click-to-seek. `selected_element` in `WindowState`.
@@ -238,9 +269,9 @@ that were deferred from Increment 4c. The native shell now has:
   mod (avoids adding more `windows` crate features for obscure constants
   like `SS_LEFT` which lives in `Win32_System_SystemServices`).
 - `apps/desktop-native/src/state.rs` — `Element` (id, name,
-  start_seconds, duration_seconds, `end_seconds()`), `Track.elements`
-  + `add_element` + `end_seconds()`, `Project::add_element` (by track
-  id, returns `None` if track not found) + `recompute_duration` (max
+  start_seconds, duration_seconds, `end_seconds()`), `Track.elements`,
+  `add_element`, `end_seconds()`, `Project::add_element` (by track id,
+  returns `None` if track not found), and `recompute_duration` (max
   element end across all tracks → `metadata.duration_seconds`). `Eq`
   removed from `Track`/`Scene` (f64 fields in `Element`). 6 new tests
   (element end, track end, add_element + duration update, unknown track,
