@@ -228,24 +228,30 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
         let x = (lparam.0 & 0xFFFF) as i16 as i32;
         let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
         if let Some(state) = window_state_mut(hwnd) {
-            // --- Home mode: navigation, new/open project, recent cards ---
+            // --- Home mode: navigation, open editor, recent cards ---
             if state.mode == crate::window::AppMode::Home {
-                // Projects tab / view-all-projects button.
-                if (x >= state.home.projects_tab.rect.left
-                    && x <= state.home.projects_tab.rect.right
-                    && y >= state.home.projects_tab.rect.top
-                    && y <= state.home.projects_tab.rect.bottom)
-                    || (x >= state.home.view_projects_btn.rect.left
-                        && x <= state.home.view_projects_btn.rect.right
-                        && y >= state.home.view_projects_btn.rect.top
-                        && y <= state.home.view_projects_btn.rect.bottom)
+                // Projects link in the top nav (navigate to the project hub).
+                let projects = state.home.projects_link.rect;
+                if x >= projects.left
+                    && x <= projects.right
+                    && y >= projects.top
+                    && y <= projects.bottom
                 {
                     state.mode = crate::window::AppMode::Projects;
                     return true;
                 }
-                // New project button.
-                let new = state.home.new_project_btn.rect;
-                if x >= new.left && x <= new.right && y >= new.top && y <= new.bottom {
+                // Primary hero CTA and header "Open editor" buttons create a new project.
+                let open_hero = state.home.open_editor_btn.rect;
+                let open_header = state.home.header_open_editor_btn.rect;
+                if (x >= open_hero.left
+                    && x <= open_hero.right
+                    && y >= open_hero.top
+                    && y <= open_hero.bottom)
+                    || (x >= open_header.left
+                        && x <= open_header.right
+                        && y >= open_header.top
+                        && y <= open_header.bottom)
+                {
                     let now_ms = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .map(|d| d.as_millis() as i64)
@@ -255,11 +261,25 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     state.history.clear();
                     return true;
                 }
-                // Open project button.
-                let open = state.home.open_project_btn.rect;
-                if x >= open.left && x <= open.right && y >= open.top && y <= open.bottom {
-                    drop(state);
-                    return handle_open(hwnd);
+                // GitHub buttons and nav links are visual only for now.
+                let github = state.home.github_btn.rect;
+                let github_pill = state.home.github_pill.rect;
+                if (x >= github.left && x <= github.right && y >= github.top && y <= github.bottom)
+                    || (x >= github_pill.left
+                        && x <= github_pill.right
+                        && y >= github_pill.top
+                        && y <= github_pill.bottom)
+                {
+                    return true;
+                }
+                for link in &state.home.nav_links {
+                    if x >= link.rect.left
+                        && x <= link.rect.right
+                        && y >= link.rect.top
+                        && y <= link.rect.bottom
+                    {
+                        return true;
+                    }
                 }
                 // Recent project card clicks.
                 if let Some(idx) = state.home.hit_test_card(x, y) {
@@ -286,8 +306,8 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
 
             // --- Projects mode: navigation, new/open project, full project list ---
             if state.mode == crate::window::AppMode::Projects {
-                // Home tab.
-                let home = state.projects.home_tab.rect;
+                // Home button.
+                let home = state.projects.home_btn.rect;
                 if x >= home.left && x <= home.right && y >= home.top && y <= home.bottom {
                     state.mode = crate::window::AppMode::Home;
                     return true;
@@ -304,11 +324,45 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     state.history.clear();
                     return true;
                 }
-                // Open project button.
-                let open = state.projects.open_project_btn.rect;
-                if x >= open.left && x <= open.right && y >= open.top && y <= open.bottom {
-                    drop(state);
-                    return handle_open(hwnd);
+                // Template cards create a new project with the template's canvas.
+                for (i, btn) in state.projects.templates.iter().enumerate() {
+                    if i >= crate::ui::projects::TEMPLATES.len() {
+                        break;
+                    }
+                    if x >= btn.rect.left
+                        && x <= btn.rect.right
+                        && y >= btn.rect.top
+                        && y <= btn.rect.bottom
+                    {
+                        let now_ms = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as i64)
+                            .unwrap_or(0);
+                        let mut project = Project::new_untitled("untitled", now_ms);
+                        project.settings.canvas = crate::ui::projects::TEMPLATES[i].canvas;
+                        state.project = project;
+                        state.mode = crate::window::AppMode::Editor;
+                        state.history.clear();
+                        return true;
+                    }
+                }
+                // Search/sort/view-mode buttons are visual only for now.
+                let search = state.projects.search_pill.rect;
+                let sort = state.projects.sort_btn.rect;
+                let view_grid = state.projects.view_grid_btn.rect;
+                let view_list = state.projects.view_list_btn.rect;
+                if (x >= search.left && x <= search.right && y >= search.top && y <= search.bottom)
+                    || (x >= sort.left && x <= sort.right && y >= sort.top && y <= sort.bottom)
+                    || (x >= view_grid.left
+                        && x <= view_grid.right
+                        && y >= view_grid.top
+                        && y <= view_grid.bottom)
+                    || (x >= view_list.left
+                        && x <= view_list.right
+                        && y >= view_list.top
+                        && y <= view_list.bottom)
+                {
+                    return true;
                 }
                 // Project card clicks.
                 if let Some(idx) = state.projects.hit_test_card(x, y) {
@@ -436,12 +490,12 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                     }
                     // Export button.
                     if x >= hb.export_btn.left && x <= hb.export_btn.right {
-                        drop(state);
+                        let _ = state;
                         return handle_export(hwnd);
                     }
                     // Settings button.
                     if x >= hb.settings_btn.left && x <= hb.settings_btn.right {
-                        drop(state);
+                        let _ = state;
                         return handle_settings(hwnd);
                     }
                 }
@@ -482,7 +536,7 @@ pub unsafe fn handle_lbuttondown(hwnd: HWND, lparam: windows::Win32::Foundation:
                         let row_bottom = row_y + 26;
                         let header_right = tl.left + 8 + 140;
                         let clip_area_left = header_right + 4;
-                        let clip_area_right = tl.left + panel_w - 8 - 4;
+                        let _clip_area_right = tl.left + panel_w - 8 - 4;
                         if y >= row_top && y <= row_bottom {
                             for (ei, element) in track.elements.iter().enumerate() {
                                 let clip_x = crate::window::time_to_x(
@@ -864,7 +918,7 @@ pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::L
                     let tl = &layout.timeline;
                     let panel_w = tl.right - tl.left;
                     let header_right = tl.left + 8 + 140;
-                    let clip_area_left = header_right + 4;
+                    let _clip_area_left = header_right + 4;
                     let _clip_area_right = tl.left + panel_w - 8 - 4;
                     // Delta in seconds = delta_px / zoom_pps.
                     let delta_px = (x - drag.start_x) as f64;
@@ -901,15 +955,13 @@ pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::L
 
 /// Handle WM_LBUTTONUP: end any active drag.
 pub unsafe fn handle_lbuttonup(hwnd: HWND) -> bool {
-    unsafe {
-        if let Some(state) = window_state_mut(hwnd) {
-            if state.drag.is_some() {
-                state.drag = None;
-                return true;
-            }
+    if let Some(state) = window_state_mut(hwnd) {
+        if state.drag.is_some() {
+            state.drag = None;
+            return true;
         }
-        false
     }
+    false
 }
 
 /// Handle WM_MOUSEWHEEL: Ctrl+wheel = zoom, wheel = horizontal scroll.

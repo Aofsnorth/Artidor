@@ -14,8 +14,8 @@
 //! AI provider override) are intentionally omitted — the native shell is
 //! local-first. They can be added when a cloud feature lands here.
 
-use serde::{Deserialize, Serialize};
 use artidor_time::{FrameRate, MediaTime};
+use serde::{Deserialize, Serialize};
 
 /// Timeline track type. Subset of web `TrackType`
 /// (`apps/web/src/lib/timeline/types.ts`). The native shell starts with
@@ -98,6 +98,7 @@ impl Default for BlendMode {
 
 impl BlendMode {
     /// All blend modes for the inspector dropdown.
+    #[allow(dead_code)] // used by the inspector dropdown once it is wired
     pub fn all() -> &'static [BlendMode] {
         &[
             BlendMode::Normal,
@@ -244,7 +245,7 @@ impl Scene {
 
     /// Add a track. Returns the track id for reference.
     pub fn add_track(&mut self, track: Track) -> &str {
-        let id = track.id.as_str();
+        let _id = track.id.as_str();
         self.tracks.push(track);
         // Return a stable reference into the vec's last element.
         self.tracks.last().unwrap().id.as_str()
@@ -482,6 +483,7 @@ impl Playhead {
     }
 
     /// Frame index at the project's frame rate (rounded).
+    #[allow(dead_code)] // used by tests and the timeline display once wired
     pub fn frame_round(self, rate: FrameRate) -> Option<i64> {
         self.0.to_frame_round(rate)
     }
@@ -605,7 +607,7 @@ impl Project {
     /// recomputes the project duration from the new element set.
     pub fn add_element(&mut self, track_id: &str, element: Element) -> Option<&str> {
         let track = self.scene.tracks.iter_mut().find(|t| t.id == track_id)?;
-        let id = track.add_element(element).to_string();
+        let _id = track.add_element(element).to_string();
         self.recompute_duration();
         // Re-borrow to return a stable reference.
         Some(

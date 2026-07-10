@@ -15,7 +15,9 @@ use crate::state::Project;
 use crate::theme::{
     ACCENT_BG, ACCENT_SUBTLE, BLUE, BORDER_FAINT, EMERALD, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT,
 };
-use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
+use crate::ui::gfx::{
+    draw_text_centered, draw_text_left, fill_rect, rounded_border_rect, rounded_fill_rect,
+};
 use crate::window::timeline_duration;
 
 /// Toolbar height (matches web `PREVIEW_TOOLBAR_HEIGHT` `h-11`).
@@ -149,7 +151,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: center_x + btn_size,
             bottom: btn_y + btn_size,
         };
-        fill_rect(hdc, &btns.jump_start, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.jump_start, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "\u{23EE}", &btns.jump_start, TEXT_DIM);
 
         // Step backward.
@@ -160,7 +162,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: x2 + btn_size,
             bottom: btn_y + btn_size,
         };
-        fill_rect(hdc, &btns.step_back, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.step_back, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "\u{23EA}", &btns.step_back, TEXT_DIM);
 
         // Play/Pause.
@@ -171,7 +173,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: x3 + btn_size,
             bottom: btn_y + btn_size,
         };
-        fill_rect(hdc, &btns.play_pause, BLUE);
+        rounded_fill_rect(hdc, &btns.play_pause, BLUE, 6);
         let play_glyph = if playing { "\u{23F8}" } else { "\u{25B6}" };
         draw_text_centered(hdc, play_glyph, &btns.play_pause, 0xFFFFFF);
 
@@ -183,7 +185,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: x4 + btn_size,
             bottom: btn_y + btn_size,
         };
-        fill_rect(hdc, &btns.step_fwd, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.step_fwd, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "\u{23E9}", &btns.step_fwd, TEXT_DIM);
 
         // Jump to end.
@@ -194,7 +196,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: x5 + btn_size,
             bottom: btn_y + btn_size,
         };
-        fill_rect(hdc, &btns.jump_end, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.jump_end, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "\u{23ED}", &btns.jump_end, TEXT_DIM);
 
         // --- Right: loop + draw + quality + fullscreen ---
@@ -208,7 +210,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: rx,
             bottom: btn_y + r_btn_size,
         };
-        fill_rect(hdc, &btns.fullscreen, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.fullscreen, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "\u{26F6}", &btns.fullscreen, TEXT_DIM);
         let rx2 = rx - r_btn_size - gap;
 
@@ -220,7 +222,7 @@ pub unsafe fn draw_viewport_toolbar(
             right: rx2,
             bottom: btn_y + r_btn_size,
         };
-        fill_rect(hdc, &btns.quality_btn, ACCENT_SUBTLE);
+        rounded_fill_rect(hdc, &btns.quality_btn, ACCENT_SUBTLE, 6);
         draw_text_centered(hdc, "Auto", &btns.quality_btn, TEXT_FAINT);
         let rx3 = rx2 - quality_w - gap;
 
@@ -232,8 +234,8 @@ pub unsafe fn draw_viewport_toolbar(
             right: rx3,
             bottom: btn_y + r_btn_size,
         };
-        fill_rect(hdc, &btns.draw_btn, ACCENT_SUBTLE);
-        border_rect(hdc, &btns.draw_btn, BORDER_FAINT);
+        rounded_fill_rect(hdc, &btns.draw_btn, ACCENT_SUBTLE, 6);
+        rounded_border_rect(hdc, &btns.draw_btn, BORDER_FAINT, 6);
         draw_text_centered(hdc, "Draw", &btns.draw_btn, TEXT_FAINT);
         let rx4 = rx3 - draw_w - gap;
 
@@ -245,7 +247,7 @@ pub unsafe fn draw_viewport_toolbar(
             bottom: btn_y + r_btn_size,
         };
         let loop_bg = if looping { ACCENT_BG } else { ACCENT_SUBTLE };
-        fill_rect(hdc, &btns.loop_btn, loop_bg);
+        rounded_fill_rect(hdc, &btns.loop_btn, loop_bg, 6);
         let loop_color = if looping { TEXT_BRIGHT } else { TEXT_DIM };
         draw_text_centered(hdc, "\u{21BB}", &btns.loop_btn, loop_color);
     }

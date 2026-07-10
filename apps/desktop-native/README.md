@@ -31,7 +31,7 @@ clip rendering and playback, and a local AI copilot. See
 ### Keyboard shortcuts
 
 | Key | Action |
-|-----|--------|
+| ----- | -------- |
 | `←` / `→` | Seek one frame back / forward |
 | `↑` / `↓` | Select previous / next track |
 | `T` | Add a track (cycles Video → Text → Audio → Graphic) |
@@ -75,7 +75,7 @@ window to exit.
 
 ## Layout
 
-```
+```text
 apps/desktop-native/
 ├── Cargo.toml      # standalone crate; deps: windows, compositor, gpu, pollster, serde, ffmpeg-sidecar
 ├── README.md       # this file
@@ -136,4 +136,3 @@ The release binary is a single `.exe` with no external DLLs (the
 
 No installer is generated yet — that's a future increment (Inno Setup
 or WiX). The crate is intentionally installer-agnostic.
-

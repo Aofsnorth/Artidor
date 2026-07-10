@@ -6,8 +6,12 @@ use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::{Track, TrackType};
-use crate::theme::{TEXT_BRIGHT, TEXT_DIM, TRACK_BG, TRACK_PAD, TRACK_ROW_H, TRACK_SELECTED_BORDER};
-use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
+use crate::theme::{
+    TEXT_BRIGHT, TEXT_DIM, TRACK_BG, TRACK_PAD, TRACK_ROW_H, TRACK_SELECTED_BORDER,
+};
+use crate::ui::gfx::{
+    border_rect, draw_text_centered, draw_text_left, fill_rect, rounded_fill_rect,
+};
 
 /// Draw a single track row: type tag + name + clip blocks.
 /// Uses zoom (pps) + scroll (seconds) for pixel-accurate clip placement.
@@ -35,7 +39,7 @@ pub unsafe fn draw_track_row(
             right: panel.left + panel_w - TRACK_PAD,
             bottom: row_y + TRACK_ROW_H - 2,
         };
-        fill_rect(hdc, &row, TRACK_BG);
+        rounded_fill_rect(hdc, &row, TRACK_BG, 4);
         if track_index == selected_track {
             border_rect(hdc, &row, TRACK_SELECTED_BORDER);
         }
@@ -52,7 +56,7 @@ pub unsafe fn draw_track_row(
             right: row.left + 52,
             bottom: row.bottom - 4,
         };
-        fill_rect(hdc, &tag, tag_color);
+        rounded_fill_rect(hdc, &tag, tag_color, 4);
         draw_text_centered(hdc, track.track_type.label(), &tag, 0x111114);
 
         let mut label = track.name.clone();

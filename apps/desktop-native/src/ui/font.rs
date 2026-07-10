@@ -7,8 +7,8 @@
 //! ClearType settings.
 
 use windows::Win32::Graphics::Gdi::{
-    CLIP_DEFAULT_PRECIS, CreateFontW, DEFAULT_CHARSET, DEFAULT_QUALITY, DeleteObject, FF_SWISS,
-    HFONT, OUT_DEFAULT_PRECIS,
+    CLIP_DEFAULT_PRECIS, CreateFontW, DEFAULT_CHARSET, DEFAULT_QUALITY, DeleteObject, FF_ROMAN,
+    FF_SWISS, FONT_FAMILY, HFONT, OUT_DEFAULT_PRECIS,
 };
 use windows::core::PCWSTR;
 
@@ -16,6 +16,7 @@ use windows::core::PCWSTR;
 const DEFAULT_PITCH: u8 = 0;
 
 /// Font sizes in pixels (matches web rem-based sizes at 96dpi).
+pub const FONT_SIZE_DISPLAY: i32 = 44; // hero headline
 pub const FONT_SIZE_TITLE: i32 = 20; // text-xl
 pub const FONT_SIZE_HEADER: i32 = 16; // text-base
 pub const FONT_SIZE_BODY: i32 = 14; // text-sm
@@ -56,21 +57,61 @@ pub fn create_font(size: i32, weight: i32) -> Option<HFONT> {
     if font.is_invalid() { None } else { Some(font) }
 }
 
+/// Create a font with explicit face name, pitch/family, and optional
+/// italic style. Used for the landing hero (Playfair-style serif).
+fn create_font_with_face(
+    size: i32,
+    weight: i32,
+    italic: bool,
+    face: &str,
+    family: FONT_FAMILY,
+) -> Option<HFONT> {
+    let face_name: Vec<u16> = face.encode_utf16().chain(std::iter::once(0)).collect();
+    let font = unsafe {
+        CreateFontW(
+            size,
+            0,
+            0,
+            0,
+            weight,
+            if italic { 1 } else { 0 },
+            0,
+            0,
+            DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,
+            CLIP_DEFAULT_PRECIS,
+            DEFAULT_QUALITY,
+            (family.0 | DEFAULT_PITCH) as u32,
+            PCWSTR(face_name.as_ptr()),
+        )
+    };
+    if font.is_invalid() { None } else { Some(font) }
+}
+
+/// Create a serif display font for the hero "respects" word.
+pub fn create_display_serif_italic(size: i32) -> Option<HFONT> {
+    create_font_with_face(size, FW_SEMIBOLD, true, "Times New Roman", FF_ROMAN)
+}
+
 /// A cached set of fonts at common sizes. Created once per window and
 /// reused across paints. All fonts are deleted on drop.
 pub struct FontCache {
-    pub title: HFONT,  // 20px semibold
-    pub header: HFONT, // 16px medium
-    pub body: HFONT,   // 14px regular
-    pub small: HFONT,  // 12px regular
-    pub tiny: HFONT,   // 11px regular
+    pub display: HFONT,       // 44px semibold landing headline
+    pub display_serif: HFONT, // 44px serif italic for the hero accent word
+    pub title: HFONT,         // 20px semibold
+    pub header: HFONT,        // 16px medium
+    pub body: HFONT,          // 14px regular
+    pub small: HFONT,         // 12px regular
+    pub tiny: HFONT,          // 11px regular
 }
 
 impl FontCache {
-    /// Create a font cache with all 5 sizes. Falls back to system
-    /// default if Segoe UI is unavailable (rare on Windows).
+    /// Create a font cache with all sizes. Falls back to system default
+    /// if the requested face is unavailable.
     pub fn new() -> Self {
         Self {
+            display: create_font(FONT_SIZE_DISPLAY, FW_SEMIBOLD).unwrap_or_default(),
+            display_serif: create_display_serif_italic(FONT_SIZE_DISPLAY).unwrap_or_default(),
             title: create_font(FONT_SIZE_TITLE, FW_SEMIBOLD).unwrap_or_default(),
             header: create_font(FONT_SIZE_HEADER, FW_MEDIUM).unwrap_or_default(),
             body: create_font(FONT_SIZE_BODY, FW_REGULAR).unwrap_or_default(),
@@ -83,6 +124,12 @@ impl FontCache {
 impl Drop for FontCache {
     fn drop(&mut self) {
         unsafe {
+            if !self.display.is_invalid() {
+                let _ = DeleteObject(self.display.into());
+            }
+            if !self.display_serif.is_invalid() {
+                let _ = DeleteObject(self.display_serif.into());
+            }
             if !self.title.is_invalid() {
                 let _ = DeleteObject(self.title.into());
             }

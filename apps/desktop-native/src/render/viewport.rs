@@ -9,12 +9,11 @@
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ValidateRect;
 use windows::Win32::UI::WindowsAndMessaging::{
-    DefWindowProcW, GWLP_USERDATA, GetWindowLongPtrW, WM_ERASEBKGND, WM_PAINT,
+    DefWindowProcW, GWLP_USERDATA, GetParent, GetWindowLongPtrW, WM_ERASEBKGND, WM_PAINT,
 };
 
 use crate::render::Renderer;
-use crate::window::client_height;
-use crate::window::client_width;
+use crate::window::{client_height, client_width, window_state};
 
 /// Fetch the per-window `Renderer` pointer stored in the child's
 /// `GWLP_USERDATA` (separate slot from the parent's `WindowState`).
@@ -42,7 +41,9 @@ pub unsafe extern "system" fn viewport_proc(
                 if let Some(renderer) = renderer_for(hwnd) {
                     let w = client_width(hwnd);
                     let h = client_height(hwnd);
-                    let _ = renderer.render(w, h);
+                    let parent = GetParent(hwnd).unwrap_or_default();
+                    let project = window_state(parent).map(|s| &s.project);
+                    let _ = renderer.render(w, h, project);
                 }
                 let _ = ValidateRect(Some(hwnd), None);
                 LRESULT(0)

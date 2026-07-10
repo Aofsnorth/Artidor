@@ -2,10 +2,119 @@
 
 Living progress log for the Win32 native rewrite. Newest on top.
 
+## 2026-07-10 — Home/Projects parity + warning cleanup (DONE)
+
+**What**: finalised the 1:1 landing-page Home screen and project hub, and
+removed the remaining `cargo check` warnings.
+
+- **Home screen (`src/ui/welcome.rs`)** — full landing-page header with nav
+  links, GitHub star pill, hero eyebrow, mixed serif/sans headline, primary
+  and secondary CTAs, glass preview frame, 4-column stats strip, and a
+  recent-projects card row. Mode switches to `Editor` (new untitled project)
+  or `Projects` on relevant clicks.
+- **Project hub (`src/ui/projects.rs`)** — breadcrumb nav, search/sort/view
+  pills, a "New project" button, project list with scroll support, and a
+  "Create from template" row. Template cards create a new project with the
+  chosen canvas size.
+- **Input wiring (`src/window/shortcuts.rs`)** — `handle_lbuttondown` updated
+  for the new `HomeState` and `ProjectsState` fields; `Esc` returns from
+  Editor to Home; `Ctrl+N` creates a new project from Home/Projects.
+- **Warning cleanup** — `cargo check` now reports zero warnings. Removed an
+  unused `ExportError` variant and theme constant; marked intentionally-dead
+  persistence/export/history helpers with `#[allow(dead_code)]` and
+  explanatory comments; removed unnecessary `unsafe` blocks and replaced
+  no-op `drop(state)` calls.
+
+**Files**:
+
+- `apps/desktop-native/src/ui/welcome.rs` — home/landing redesign.
+- `apps/desktop-native/src/ui/projects.rs` — project hub redesign.
+- `apps/desktop-native/src/window/shortcuts.rs` — mouse/keyboard handlers for
+  new buttons and screens.
+- `apps/desktop-native/src/state/{history,persistence,project}.rs` —
+  `#[allow(dead_code)]` annotations for helpers used in tests/future wiring.
+- `apps/desktop-native/src/export/mod.rs` — removed unused `Validation`
+  variant and `RenderFrameOptions` import.
+- `apps/desktop-native/src/theme.rs` — removed unused `LANDING_HEADER_BG`
+  constant.
+- `apps/desktop-native/src/ui/assets/effects.rs` — `#[allow(dead_code)]` on
+  `EffectDef::shader`.
+- `apps/desktop-native/src/window/mod.rs` — `#[allow(dead_code)]` on
+  `renderer_for_child`.
+
+**Verify**:
+
+- `cargo check`: clean.
+- `cargo test`: **104 passed, 0 failed**.
+- `cargo fmt`: applied.
+
+**Sensitive paths**: `rust/**` NOT edited. Root `Cargo.toml` untouched.
+No new crate. No new dependency. No secrets, no network code.
+
+**What's New**: NOT updated — the native shell is not yet shipped to end
+users.
+
+## 2026-07-10 — UI parity: editor chrome + preview/compositor (DONE)
+
+**What**: rounded the editor chrome and made the preview viewport render
+actual timeline clips as placeholder layers.
+
+- **Editor UI fidelity** — header, footer, tab bar, assets panel, effects
+  library, inspector, transport toolbar, and timeline track rows now use
+  the new `rounded_fill_rect` / `rounded_border_rect` helpers and vertical
+  gradient backgrounds. This matches the web landing-page glass/cyan/ember
+  palette and the rounded-xl corners from `apps/web`.
+- **Inspector polish** — property rows and section headers get subtle
+  rounded backgrounds; clip/project panels share a consistent header style.
+- **Preview/Compositor** — `Renderer::render` now builds a
+  `FrameDescriptor` from the live `Project` and renders one coloured layer
+  per active timeline element. Layer position, size, rotation, opacity,
+  flip, and blend mode are mapped from the element `Transform`. One-pixel
+  colour textures are cached per track type so the GPU upload is only done
+  once per colour.
+- **Viewport wiring** — `viewport_proc` pulls the current `Project` from the
+  parent `WindowState` and passes it to `Renderer::render` on `WM_PAINT`.
+
+**Files**:
+
+- `apps/desktop-native/src/ui/header.rs` — gradient header, rounded logo,
+  identity pod, zoom capsule, and action-hub buttons.
+- `apps/desktop-native/src/ui/footer.rs` — gradient footer, rounded timer
+  capsule and BETA badge.
+- `apps/desktop-native/src/ui/tab_bar.rs` — rounded glass rail, rounded tab
+  buttons, rounded storage card.
+- `apps/desktop-native/src/ui/assets/mod.rs` — rounded asset rows and kind
+  tags.
+- `apps/desktop-native/src/ui/assets/effects.rs` — rounded effect cards and
+  category tags.
+- `apps/desktop-native/src/ui/viewport_toolbar.rs` — rounded transport and
+  draw/quality/fullscreen buttons.
+- `apps/desktop-native/src/ui/timeline/track.rs` — rounded track rows and
+  type tags.
+- `apps/desktop-native/src/ui/inspector/mod.rs` — rounded property rows and
+  section headers, shared `draw_property_row` helper.
+- `apps/desktop-native/src/render/mod.rs` — `FrameDescriptor` construction,
+  per-track-type colour texture cache, blend-mode conversion.
+- `apps/desktop-native/src/render/viewport.rs` — `WM_PAINT` now reads the
+  parent `WindowState` and passes the live `Project` to `render`.
+
+**Verify**:
+
+- `cargo check`: clean.
+- `cargo test`: **104 passed, 0 failed**.
+- `cargo fmt`: applied.
+
+**Sensitive paths**: `rust/**` NOT edited. Root `Cargo.toml` untouched.
+No new crate. No new dependency. No secrets, no network code.
+
+**What's New**: NOT updated — the native shell is not yet shipped to end
+users.
+
 ## 2026-06-27 — Increment 5 + 7: AI copilot stub + teleprompter + packaging (DONE)
 
 **What**: completed the AI copilot stub, teleprompter overlay, and
 packaging notes:
+
 - **5: AI copilot stub** — `copilot.rs` module with `suggest(project)`
   returning context-aware canned suggestions (no network, no API keys,
   no secrets). Suggestions cover: empty project, no clips, missing
@@ -29,6 +138,7 @@ packaging notes:
   increment — Inno Setup or WiX).
 
 **Files**:
+
 - `apps/desktop-native/src/copilot.rs` — NEW. `Suggestion` struct,
   `suggest(project) -> Vec<Suggestion>`. 6 tests (empty, no clips,
   missing audio, balanced, long-form, deterministic).
@@ -42,6 +152,7 @@ packaging notes:
 - `ROADMAP.md` — Inc 4d–4g + 5 + 6c status updated.
 
 **Verify**:
+
 - `cargo build`: clean.
 - `cargo test`: **49 passed, 0 failed** (43 + 6 copilot).
 - `cargo fmt`: applied, `cargo fmt --check` clean.
@@ -61,6 +172,7 @@ release yet.
 ## 2026-06-27 — Increment 4e/4f/4g: playback + clip selection + transport UI (DONE)
 
 **What**: completed the playback and clip-interaction layer:
+
 - **4e: Playback** — Spacebar toggles play/pause. When playing, a
   `WM_TIMER` (interval = 1000/fps ms) advances the playhead one frame
   per tick via `seek_relative_frame(1)`. At end of timeline, playback
@@ -75,6 +187,7 @@ release yet.
   (▶/⏸) + timecode (current/duration) on the left, settings in center.
 
 **Files**:
+
 - `apps/desktop-native/src/state.rs` — `Project::remove_element` (by
   track_id + element_id, retains non-matching, recomputes duration).
   2 new tests (remove + recompute, unknown returns false) → **43 tests
@@ -91,6 +204,7 @@ release yet.
   `KillTimer`/`SetTimer`/`WM_TIMER`/`VK_DELETE` imports added.
 
 **Verify**:
+
 - `cargo build`: clean.
 - `cargo test`: **43 passed, 0 failed** (41 + 2 remove_element).
 - `cargo fmt`: applied.
@@ -101,6 +215,7 @@ release yet.
 
 **What**: completed the remaining panel content and timeline interactions
 that were deferred from Increment 4c. The native shell now has:
+
 - A native rename-project dialog (Ctrl+R) — the first text-input dialog
   in the shell, built from an in-memory `DLGTEMPLATE` (no resource file).
 - Click-to-seek on the timeline — clicking in the track list area moves
@@ -112,6 +227,7 @@ that were deferred from Increment 4c. The native shell now has:
   rendering on each track row, and a 'E' shortcut to add a test clip.
 
 **Files**:
+
 - `apps/desktop-native/src/dialogs.rs` — `prompt_dialog(owner, title,
   label, default) -> Result<Option<String>, DialogError>` via
   `DialogBoxIndirectParamW` with an in-memory `DLGTEMPLATE`. `TemplateBuilder`
@@ -145,6 +261,7 @@ that were deferred from Increment 4c. The native shell now has:
   handler imports.
 
 **Verify**:
+
 - `cargo build`: clean (zero dead-code warnings — `rename` and
   `seek_seconds` are now wired, resolving the last two warnings from
   Inc 4c).
@@ -173,6 +290,7 @@ media is stored as a `MediaAsset` with a native file path (read via
 `std::fs`, no blob URLs — unlike the web app's browser-sandboxed blobs).
 
 **Files**:
+
 - `apps/desktop-native/src/dialogs.rs` (new) — typed wrappers around the
   Win32 common dialogs. `save_dialog(owner, title, filters, default_ext,
   default_name) -> Result<Option<PathBuf>, DialogError>` and
@@ -204,6 +322,7 @@ media is stored as a `MediaAsset` with a native file path (read via
   API). No new crate.
 
 **Verify**:
+
 - `cargo build`: clean (warnings = `rename`/`seek_seconds` defer +
   unused-var suggestions — pre-existing, not introduced here).
 - `cargo test`: **35 passed, 0 failed** (30 prior + 5 media asset).
@@ -227,6 +346,7 @@ persistable before frames can be exported). First real user-facing
 capability of the native shell: persist your work to disk.
 
 **Files**:
+
 - `apps/desktop-native/src/persist.rs` (new) — `ProjectFile` wrapper
   with a `file_version` for future migrations, `save_project` (atomic
   write: `<path>.tmp` then rename, no corruption on mid-write failure),
@@ -254,6 +374,7 @@ full dependency decision + approval (media pipeline framework —
 "Forbidden Without Explicit Approval" per DEPENDENCY_POLICY).
 
 **Verify**:
+
 - `cargo build`: clean (8 warnings: `rename`/`seek_seconds` defer +
   unused-var suggestions).
 - `cargo test`: **24 passed, 0 failed** (19 model + 5 persistence).
@@ -308,6 +429,7 @@ the drafted decision; `ffmpeg-sidecar` (the recommended option) approved
 2026-06-27. Recorded in `docs/harness/DEPENDENCY_DECISIONS.md`.
 
 **Files**:
+
 - `apps/desktop-native/src/export.rs` (new) — `ExportOptions` (built
   from `Project` settings + frame count, with `validate()`), typed
   `ExportError` (`thiserror`), `export_video()` (spawns FFmpeg via
@@ -339,6 +461,7 @@ clear error MessageBox ("Is ffmpeg installed or bundled?") — no silent
 failure. End-to-end export runs once ffmpeg is available.
 
 **Verify**:
+
 - `cargo build`: clean (warnings = `rename`/`seek_seconds` defer + unused
   var suggestions).
 - `cargo test`: **30 passed, 0 failed** (24 prior + 6 export validation).
@@ -364,12 +487,14 @@ user can add tracks, select tracks, and toggle mute — all without a
 mouse, matching a keyboard-first editor workflow.
 
 **Shortcuts** (no text fields yet, so raw keys are safe):
+
 - `\u{2190}` / `\u{2192}`: seek one frame back / forward (Inc 4b)
 - `\u{2191}` / `\u{2193}`: select previous / next track
 - `T`: add a new track (cycles Video → Text → Audio → Graphic)
 - `M`: toggle mute on the selected track
 
 **Files**: `apps/desktop-native/src/main.rs`
+
 - `WindowState.selected_track: usize` — UI state (kept out of the model
   so `Project` stays pure domain state). Defaults to track 0.
 - `draw_timeline_tracks` takes `selected_track`: selected row gets a
@@ -381,6 +506,7 @@ mouse, matching a keyboard-first editor workflow.
   `toggle_track_mute` (resolves their dead-code warnings).
 
 **What remains wired-later (2 dead-code warnings)**:
+
 - `rename` — needs an input dialog (Win32 dialog or in-place edit
   control); deferred to a dialog-focused increment.
 - `seek_seconds` — needs click-to-seek with x→time mapping, which needs
@@ -389,6 +515,7 @@ mouse, matching a keyboard-first editor workflow.
 - Both are tested logic, not removable.
 
 **Verify**:
+
 - `cargo build`: clean (5 warnings: `rename`, `seek_seconds` + 3 unused
   var suggestions — expected, wired-later).
 - `cargo test`: **19 passed, 0 failed** (model logic unchanged).
@@ -411,6 +538,7 @@ one frame back / forward). This is the first interactive panel content
 and the first keyboard wiring.
 
 **Files**:
+
 - `apps/desktop-native/src/state.rs` — added `TrackType` (Video/Text/
   Audio/Graphic), `Track` (id/name/type/muted/hidden), `Scene`
   (id/name/tracks, with `add_track` + `toggle_mute`). `Project` now
@@ -436,6 +564,7 @@ remain dead-code-warning (wired to menu/dialog/click-seek interactions
 later) — they are tested logic, not removable.
 
 **Verify**:
+
 - `cargo build`: clean (4 dead-code warnings for not-yet-wired
   interactions — expected).
 - `cargo test`: **19 passed, 0 failed**.
@@ -458,6 +587,7 @@ editor chrome (Increment 2) so the UI renders from live project data,
 not hard-coded labels.
 
 **Files**: `apps/desktop-native/src/main.rs`
+
 - `WindowState` struct holds the editor `Project` + the viewport child
   HWND, stored boxed in the parent's `GWLP_USERDATA` (idiomatic Win32
   per-window state — NO globals, per RULES.md "Avoid global side
@@ -484,6 +614,7 @@ lifetime. Boxing per-window state in `GWLP_USERDATA` is the idiomatic
 Win32 pattern and keeps the shell ready for multi-window later.
 
 **Verify**:
+
 - `cargo build`: clean (3 dead-code warnings for `rename`/`seek_*` —
   those are wired to keyboard/mouse interaction in Increment 5).
 - `cargo test`: 13 passed, 0 failed (model logic unchanged).
@@ -506,6 +637,7 @@ NOT reimplemented — it reuses the repo's `time` crate (`FrameRate`,
 `MediaTime`) via path-dep, per AGENTS.md "No duplicate domain logic".
 
 **Files**:
+
 - `apps/desktop-native/Cargo.toml` — added path-dep `time`
   (`../../rust/crates/time`, default features = no wasm). `bridge`
   proc-macro comes in transitively (time uses `#[export]`).
@@ -530,6 +662,7 @@ per-project AI provider override — the native shell is local-first.
 Add when a cloud feature lands here.
 
 **Verify**:
+
 - `cargo build`: clean (11 dead-code warnings expected — model not yet
   wired to UI; that is Increment 4).
 - `cargo test`: **13 passed, 0 failed.** Covers: default canvas/aspect,
@@ -548,6 +681,7 @@ Reason per RULES.md documented here.
 
 **What**: reproduced the web editor's top-level chrome 1:1 around the
 native D3D12 viewport, using a child-window architecture:
+
 - Parent window = GDI chrome: header bar (h=48, `#111114` + hairline +
   "Artidor"), footer (h=36, `#111114`→`#08080a` two-band gradient +
   "1080p • 30 fps • 16:9 • Stereo"), TabBar rail (w=72, `#08080a` +
@@ -580,6 +714,7 @@ via `GWLP_USERDATA`; `WM_DESTROY` destroys the child first (drops the
 surface while the child HWND is still valid = wgpu safety contract).
 
 **Verify**:
+
 - `cargo build`: clean, zero warnings.
 - Launch: process alive 5s+ — chrome + child viewport + D3D12 surface
   all init without crash.
@@ -606,6 +741,7 @@ possible preview path, and the same Rust compositor the web app uses
 (shared logic), but native instead of WASM/WebGL.
 
 **Files**:
+
 - `apps/desktop-native/Cargo.toml` — added path-deps `compositor`,
   `gpu` (the repo's own crates, same pattern as
   `apps/desktop-web/src-tauri`) and `pollster` (minimal executor to
@@ -627,6 +763,7 @@ surface from the HWND skips both copies. This is the path the owner
 asked for ("top 1 biar makin ngebut").
 
 **Verify**:
+
 - `cargo build` (in `apps/desktop-native/`): clean, zero warnings.
 - Launch: process stays alive in the message loop; `GpuContext::new()`
   (D3D12 adapter/device) and `create_surface_unsafe` (D3D12 swap chain

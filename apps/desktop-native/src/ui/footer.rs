@@ -15,36 +15,20 @@ use crate::theme::{
     ACCENT_SUBTLE, BG, BG_DARK, BORDER_FAINT, CYAN, EMERALD, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT,
     TEXT_MUTED,
 };
-use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
+use crate::ui::gfx::{
+    draw_hline, draw_text_centered, draw_text_left, fill_rect, gradient_fill_v,
+    rounded_border_rect, rounded_fill_rect,
+};
 
 /// Draw the footer: gradient strip, top border, left timer, centre BETA badge,
 /// right project metadata.
 pub unsafe fn draw_footer(hdc: HDC, rect: &RECT, project: &Project, _playing: bool) {
     unsafe {
-        // Two-band gradient approximation (#111114 -> #08080a).
         let fh = rect.bottom - rect.top;
-        let top_band = RECT {
-            left: rect.left,
-            top: rect.top,
-            right: rect.right,
-            bottom: rect.top + fh / 2,
-        };
-        let bot_band = RECT {
-            left: rect.left,
-            top: rect.top + fh / 2,
-            right: rect.right,
-            bottom: rect.bottom,
-        };
-        fill_rect(hdc, &top_band, BG);
-        fill_rect(hdc, &bot_band, BG_DARK);
+        // Gradient footer background (#111114 -> #08080a).
+        gradient_fill_v(hdc, rect, BG, BG_DARK);
         // Top hairline `border-t border-white/[0.08]`.
-        let hairline = RECT {
-            left: rect.left,
-            top: rect.top,
-            right: rect.right,
-            bottom: rect.top + 1,
-        };
-        fill_rect(hdc, &hairline, BORDER_FAINT);
+        draw_hline(hdc, rect.left, rect.right, rect.top, BORDER_FAINT);
 
         // Left: "Worked on" timer capsule.
         let elapsed = project_elapsed_seconds(project.metadata.created_at_ms);
@@ -57,8 +41,8 @@ pub unsafe fn draw_footer(hdc: HDC, rect: &RECT, project: &Project, _playing: bo
             right: rect.left + 16 + timer_w,
             bottom: rect.top + (fh - timer_h) / 2 + timer_h,
         };
-        fill_rect(hdc, &timer_rect, ACCENT_SUBTLE);
-        border_rect(hdc, &timer_rect, BORDER_FAINT);
+        rounded_fill_rect(hdc, &timer_rect, ACCENT_SUBTLE, 11);
+        rounded_border_rect(hdc, &timer_rect, BORDER_FAINT, 11);
         let timer_text_rect = RECT {
             left: timer_rect.left + 8,
             top: timer_rect.top,
@@ -105,8 +89,8 @@ pub unsafe fn draw_footer(hdc: HDC, rect: &RECT, project: &Project, _playing: bo
             right: rect.left + (rect.right - rect.left + badge_w) / 2,
             bottom: rect.top + (fh - badge_h) / 2 + badge_h,
         };
-        fill_rect(hdc, &badge_rect, 0x0A1A1E); // very subtle cyan-tinted dark bg
-        border_rect(hdc, &badge_rect, CYAN);
+        rounded_fill_rect(hdc, &badge_rect, 0x0A1A1E, 10); // very subtle cyan-tinted dark bg
+        rounded_border_rect(hdc, &badge_rect, CYAN, 10);
         // Emerald dot.
         let dot = RECT {
             left: badge_rect.left + 8,

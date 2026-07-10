@@ -6,7 +6,7 @@ pub mod shortcuts;
 
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GWLP_USERDATA, GetClientRect, GetWindowLongPtrW, MoveWindow, ShowWindow, SW_HIDE, SW_SHOW,
+    GWLP_USERDATA, GetClientRect, GetWindowLongPtrW, MoveWindow, SW_HIDE, SW_SHOW, ShowWindow,
 };
 
 use crate::render::Renderer;
@@ -15,9 +15,9 @@ use crate::state::{History, Project};
 use crate::theme::TIMELINE_MIN_SECONDS;
 use crate::ui::font::FontCache;
 use crate::ui::header::HeaderButtons;
-use crate::ui::viewport_toolbar::ToolbarButtons;
 use crate::ui::home::HomeState;
 use crate::ui::projects::ProjectsState;
+use crate::ui::viewport_toolbar::ToolbarButtons;
 
 /// App mode: home screen, project hub, or editor.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -158,6 +158,7 @@ pub fn child_hwnd(parent: HWND) -> Option<HWND> {
 }
 
 /// Fetch the per-window `Renderer` pointer from the child's GWLP_USERDATA.
+#[allow(dead_code)] // helper for child renderer access; not yet wired
 pub fn renderer_for_child(parent: HWND) -> Option<&'static mut Renderer> {
     child_hwnd(parent).and_then(|child| crate::render::viewport::renderer_for(child))
 }
@@ -229,7 +230,14 @@ pub fn sync_viewport_child(hwnd: HWND) {
                         );
                         let vw = (layout.viewport.right - layout.viewport.left).max(0);
                         let vh = (layout.viewport.bottom - layout.viewport.top).max(0);
-                        let _ = MoveWindow(child, layout.viewport.left, layout.viewport.top, vw, vh, true);
+                        let _ = MoveWindow(
+                            child,
+                            layout.viewport.left,
+                            layout.viewport.top,
+                            vw,
+                            vh,
+                            true,
+                        );
                     }
                     let _ = ShowWindow(child, SW_SHOW);
                 } else {

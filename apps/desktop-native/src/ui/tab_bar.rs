@@ -12,7 +12,7 @@ use crate::theme::{
     ACCENT_BG, ACCENT_SUBTLE, BORDER, BORDER_FAINT, PANEL_BG, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT,
     TEXT_MUTED,
 };
-use crate::ui::gfx::{border_rect, draw_text_centered, fill_rect};
+use crate::ui::gfx::{draw_text_centered, fill_rect, rounded_border_rect, rounded_fill_rect};
 
 /// Tab button height (matches web ~31px).
 const TAB_BTN_H: i32 = 32;
@@ -24,8 +24,8 @@ const STORAGE_CARD_H: i32 = 64;
 pub unsafe fn draw_tab_bar(hdc: HDC, rect: &RECT, active: AssetsTab, tab_rects: &mut Vec<RECT>) {
     unsafe {
         // Glass panel background.
-        fill_rect(hdc, rect, PANEL_BG);
-        border_rect(hdc, rect, BORDER);
+        rounded_fill_rect(hdc, rect, PANEL_BG, 12);
+        rounded_border_rect(hdc, rect, BORDER, 12);
 
         tab_rects.clear();
         let pad = 6;
@@ -46,9 +46,9 @@ pub unsafe fn draw_tab_bar(hdc: HDC, rect: &RECT, active: AssetsTab, tab_rects: 
 
             let is_active = tab == active;
             let bg = if is_active { ACCENT_BG } else { PANEL_BG };
-            fill_rect(hdc, &btn_rect, bg);
+            rounded_fill_rect(hdc, &btn_rect, bg, 8);
             if is_active {
-                border_rect(hdc, &btn_rect, BORDER_FAINT);
+                rounded_border_rect(hdc, &btn_rect, BORDER_FAINT, 8);
             }
 
             // Glyph (icon) area.
@@ -81,8 +81,8 @@ pub unsafe fn draw_tab_bar(hdc: HDC, rect: &RECT, active: AssetsTab, tab_rects: 
             right: rect.right - pad,
             bottom: rect.bottom - 6,
         };
-        fill_rect(hdc, &card_rect, PANEL_BG);
-        border_rect(hdc, &card_rect, BORDER_FAINT);
+        rounded_fill_rect(hdc, &card_rect, PANEL_BG, 10);
+        rounded_border_rect(hdc, &card_rect, BORDER_FAINT, 10);
 
         // "Used" label + storage info.
         let used_label = "0 B";

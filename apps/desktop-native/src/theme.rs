@@ -42,6 +42,26 @@ pub const CYAN: u32 = 0x67E8F9;
 /// Emerald indicator dot.
 pub const EMERALD: u32 = 0x6EE7B7;
 
+// Landing page specific (from `apps/web/src/app/globals.css` dark palette).
+/// Pure black `#0a0a0c` used for "Open editor" button text.
+pub const LANDING_BLACK: u32 = 0x0a0a0c;
+/// Near-black landing page background.
+pub const LANDING_BG: u32 = 0x0a0a0c;
+/// Glass pill bg `bg-white/[0.04]`.
+pub const LANDING_PILL_BG: u32 = 0x111113;
+/// Glass pill border `white/10`.
+pub const LANDING_PILL_BORDER: u32 = 0x252527;
+/// Hero gradient accent silver `#9aa7ba`.
+pub const LANDING_SILVER: u32 = 0x9aa7ba;
+/// Muted hero body text `white/65`.
+pub const LANDING_TEXT_MUTED: u32 = 0xa6a6ab;
+/// Amber star `#fbbf24`.
+pub const AMBER: u32 = 0xfbbf24;
+/// Traffic-light window dots.
+pub const DOT_RED: u32 = 0xff5f57;
+pub const DOT_YELLOW: u32 = 0xfebc2e;
+pub const DOT_GREEN: u32 = 0x28c840;
+
 // Timeline / playback.
 /// Playhead indicator colour (white/70).
 pub const PLAYHEAD_COLOR: u32 = 0xB2B2B7;

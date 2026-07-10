@@ -8,14 +8,14 @@ pub mod font;
 pub mod footer;
 pub mod gfx;
 pub mod header;
+#[path = "welcome.rs"]
+pub mod home;
 pub mod inspector;
 pub mod layout;
+pub mod projects;
 pub mod tab_bar;
 pub mod timeline;
 pub mod viewport_toolbar;
-#[path = "welcome.rs"]
-pub mod home;
-pub mod projects;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;

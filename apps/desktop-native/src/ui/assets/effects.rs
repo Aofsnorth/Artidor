@@ -8,11 +8,14 @@ use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::theme::{ACCENT_SUBTLE, BORDER_FAINT, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT};
-use crate::ui::gfx::{border_rect, draw_text_left, fill_rect};
+use crate::ui::gfx::{draw_text_left, fill_rect, rounded_border_rect, rounded_fill_rect};
 
 /// An effect definition — shader ID, display name, and category.
 #[derive(Debug, Clone)]
 pub struct EffectDef {
+    // Retained for the effect-to-shader mapping that will be used by the
+    // compositor pipeline; currently only read in tests.
+    #[allow(dead_code)]
     pub shader: &'static str,
     pub name: &'static str,
     pub category: EffectCategory,
@@ -331,8 +334,8 @@ pub unsafe fn draw_effects_library(hdc: HDC, panel: &RECT) {
                     right: panel.right - pad,
                     bottom: y + card_h,
                 };
-                fill_rect(hdc, &card_rect, ACCENT_SUBTLE);
-                border_rect(hdc, &card_rect, BORDER_FAINT);
+                rounded_fill_rect(hdc, &card_rect, ACCENT_SUBTLE, 6);
+                rounded_border_rect(hdc, &card_rect, BORDER_FAINT, 6);
 
                 // Category color tag (left strip).
                 let tag_rect = RECT {

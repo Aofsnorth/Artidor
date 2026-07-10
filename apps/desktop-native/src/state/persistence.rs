@@ -74,6 +74,7 @@ pub fn autosave_project(project: &Project) {
 /// Load the auto-saved project, if any. Returns None if the file
 /// doesn't exist or can't be parsed (no silent bad state — just starts
 /// fresh).
+#[allow(dead_code)] // reserved for startup auto-recovery flow
 pub fn load_autosave() -> Option<Project> {
     let path = autosave_file_path();
     match std::fs::read_to_string(&path) {
@@ -207,6 +208,7 @@ pub fn load_project(path: impl AsRef<Path>) -> Result<Project, PersistError> {
 
 /// Build the default save path for a project: `<id>.artpr.json` in `dir`.
 /// Used by Ctrl+S when no native dialog is wired yet (smallest step).
+#[allow(dead_code)] // used by tests; will be wired to Ctrl+S fallback
 pub fn default_save_path(dir: impl AsRef<Path>, project: &Project) -> PathBuf {
     let mut p = dir.as_ref().to_path_buf();
     p.push(format!("{}.{}", project.metadata.id, PROJECT_EXT));
