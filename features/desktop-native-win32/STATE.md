@@ -2,6 +2,37 @@
 
 Living progress log for the Win32 native rewrite. Newest on top.
 
+## 2026-07-10 — Fix hover flicker with double buffering (DONE)
+
+**What**: removed the remaining flicker that appeared when the mouse hovered
+over buttons in the Home/Projects screens.
+
+- **Root cause**: although `WM_MOUSEMOVE` now only invalidated the window when
+  hover changed, the `WM_PAINT` handler drew the entire chrome frame directly
+  to the screen HDC. GDI draws each primitive sequentially, so the button
+  highlight appeared and disappeared between primitives.
+- **Fix** — double-buffer `main_proc` `WM_PAINT`: render all chrome to a
+  memory DC sized to the full client area, then `BitBlt` the result to the
+  screen in one go. The `HDC` fallback to the screen DC is kept if the memory
+  allocation fails.
+
+**Files**:
+
+- `apps/desktop-native/src/main.rs` — `WM_PAINT` now creates a memory DC/bitmap
+  via `CreateCompatibleDC`/`CreateCompatibleBitmap`, draws through it, and
+  copies with `BitBlt(..., SRCCOPY)`.
+
+**Verify**:
+
+- `cargo check`: clean.
+- `cargo test`: **104 passed, 0 failed**.
+- `cargo fmt`: applied.
+
+**Sensitive paths**: `rust/**` NOT edited. Root `Cargo.toml` untouched.
+No new dependency.
+
+**What's New**: NOT updated — the native shell is not yet shipped to end users.
+
 ## 2026-07-10 — Fix startup flicker (DONE)
 
 **What**: removed the white flash / flicker when the main window first

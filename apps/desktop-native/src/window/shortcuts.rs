@@ -909,6 +909,7 @@ fn handle_export(hwnd: HWND) -> bool {
 pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::LPARAM) -> bool {
     unsafe {
         let x = (lparam.0 & 0xFFFF) as i16 as i32;
+        let y = ((lparam.0 >> 16) & 0xFFFF) as i16 as i32;
         if let Some(state) = window_state_mut(hwnd) {
             if let Some(drag) = state.drag {
                 let mut client = RECT::default();
@@ -945,8 +946,12 @@ pub unsafe fn handle_mousemove(hwnd: HWND, lparam: windows::Win32::Foundation::L
                     return true;
                 }
             }
-            if state.mode != crate::window::AppMode::Editor {
-                return true;
+            // Only invalidate for hover changes in the non-Editor screens; the
+            // Editor screen repaints on its own interaction logic.
+            match state.mode {
+                crate::window::AppMode::Home => return state.home.update_hover(x, y),
+                crate::window::AppMode::Projects => return state.projects.update_hover(x, y),
+                crate::window::AppMode::Editor => {}
             }
         }
         false

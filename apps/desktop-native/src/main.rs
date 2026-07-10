@@ -19,8 +19,9 @@ mod window;
 
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BLACK_BRUSH, BeginPaint, EndPaint, GetStockObject, HBRUSH, InvalidateRect, PAINTSTRUCT,
-    UpdateWindow,
+    BLACK_BRUSH, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
+    DeleteObject, EndPaint, GetStockObject, HBITMAP, HBRUSH, HDC, HGDIOBJ, InvalidateRect,
+    PAINTSTRUCT, SRCCOPY, SelectObject, UpdateWindow,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -65,21 +66,42 @@ unsafe extern "system" fn main_proc(
             WM_ERASEBKGND => LRESULT(1),
             WM_PAINT => {
                 let mut ps: PAINTSTRUCT = core::mem::zeroed();
-                let hdc = BeginPaint(hwnd, &mut ps);
+                let screen_hdc = BeginPaint(hwnd, &mut ps);
                 let mut client = RECT::default();
                 if GetClientRect(hwnd, &mut client).is_ok() {
-                    let layout =
-                        Layout::compute(client.right - client.left, client.bottom - client.top);
+                    let w = client.right - client.left;
+                    let h = client.bottom - client.top;
+
+                    // Double-buffer the whole chrome frame to a memory DC, then
+                    // blit the result to the screen in one go. This removes the
+                    // GDI flicker that happens when hover repaints the window.
+                    let mut mem_hdc = HDC::default();
+                    let mut mem_bmp: HBITMAP = HBITMAP::default();
+                    let mut old_bmp: HGDIOBJ = HGDIOBJ::default();
+                    let mut using_mem = false;
+                    if w > 0 && h > 0 {
+                        mem_hdc = CreateCompatibleDC(Some(screen_hdc));
+                        if !mem_hdc.is_invalid() {
+                            mem_bmp = CreateCompatibleBitmap(screen_hdc, w, h);
+                            if !mem_bmp.is_invalid() {
+                                old_bmp = SelectObject(mem_hdc, mem_bmp.into());
+                                using_mem = true;
+                            } else {
+                                let _ = DeleteDC(mem_hdc);
+                                mem_hdc = HDC::default();
+                            }
+                        }
+                    }
+                    let draw_hdc = if using_mem { mem_hdc } else { screen_hdc };
+
+                    let layout = Layout::compute(w, h);
                     if let Some(state) = window_state_mut(hwnd) {
                         // Select the body font for all chrome text.
-                        let prev_font = windows::Win32::Graphics::Gdi::SelectObject(
-                            hdc,
-                            state.fonts.body.into(),
-                        );
+                        let prev_font = SelectObject(draw_hdc, state.fonts.body.into());
                         match state.mode {
                             crate::window::AppMode::Home => {
                                 crate::ui::home::draw_home(
-                                    hdc,
+                                    draw_hdc,
                                     hwnd,
                                     &client,
                                     &mut state.home,
@@ -88,7 +110,7 @@ unsafe extern "system" fn main_proc(
                             }
                             crate::window::AppMode::Projects => {
                                 crate::ui::projects::draw_projects(
-                                    hdc,
+                                    draw_hdc,
                                     hwnd,
                                     &client,
                                     &mut state.projects,
@@ -97,7 +119,7 @@ unsafe extern "system" fn main_proc(
                             }
                             crate::window::AppMode::Editor => {
                                 paint_chrome(
-                                    hdc,
+                                    draw_hdc,
                                     &layout,
                                     &client,
                                     &state.project,
@@ -116,7 +138,7 @@ unsafe extern "system" fn main_proc(
                                 );
                             }
                         }
-                        let _ = windows::Win32::Graphics::Gdi::SelectObject(hdc, prev_font);
+                        let _ = SelectObject(draw_hdc, prev_font);
                     } else {
                         let fallback = Project::new_untitled("loading", 0);
                         let mut dummy_btns = crate::ui::header::HeaderButtons::default();
@@ -124,7 +146,7 @@ unsafe extern "system" fn main_proc(
                         let mut dummy_toolbar =
                             crate::ui::viewport_toolbar::ToolbarButtons::default();
                         paint_chrome(
-                            hdc,
+                            draw_hdc,
                             &layout,
                             &client,
                             &fallback,
@@ -141,6 +163,13 @@ unsafe extern "system" fn main_proc(
                             false,
                             &mut dummy_toolbar,
                         );
+                    }
+
+                    if using_mem {
+                        let _ = BitBlt(screen_hdc, 0, 0, w, h, Some(mem_hdc), 0, 0, SRCCOPY);
+                        let _ = SelectObject(mem_hdc, old_bmp);
+                        let _ = DeleteObject(mem_bmp.into());
+                        let _ = DeleteDC(mem_hdc);
                     }
                 }
                 let _ = EndPaint(hwnd, &ps);
