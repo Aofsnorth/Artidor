@@ -10,6 +10,8 @@ const Tooltip = TooltipPrimitive.Root;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
+const TooltipPortal = TooltipPrimitive.Portal;
+
 const tooltipVariants = cva(
 	"z-50 overflow-visible rounded-sm text-sm shadow-md",
 	{
@@ -73,4 +75,10 @@ const TooltipContent = React.forwardRef<
 ));
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };
+export {
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
+	TooltipProvider,
+	TooltipPortal,
+};
