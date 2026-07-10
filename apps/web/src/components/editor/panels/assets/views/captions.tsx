@@ -50,6 +50,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Tooltip,
 	TooltipContent,
+	TooltipPortal,
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
@@ -403,7 +404,11 @@ export function Captions() {
 											<HugeiconsIcon icon={AlertCircleIcon} size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent>{diagnostic.message}</TooltipContent>
+									<TooltipPortal>
+										<TooltipContent className="z-100">
+											{diagnostic.message}
+										</TooltipContent>
+									</TooltipPortal>
 								</Tooltip>
 							))}
 						<Button
