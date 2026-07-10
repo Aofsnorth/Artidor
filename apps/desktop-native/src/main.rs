@@ -19,7 +19,8 @@ mod window;
 
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BeginPaint, COLOR_WINDOW, EndPaint, HBRUSH, InvalidateRect, PAINTSTRUCT, UpdateWindow,
+    BLACK_BRUSH, BeginPaint, EndPaint, GetStockObject, HBRUSH, InvalidateRect, PAINTSTRUCT,
+    UpdateWindow,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -221,7 +222,7 @@ fn main() -> Result<(), Error> {
             lpfnWndProc: Some(main_proc),
             hInstance: hinstance,
             hCursor: LoadCursorW(None, windows::Win32::UI::WindowsAndMessaging::IDC_ARROW)?,
-            hbrBackground: HBRUSH(((COLOR_WINDOW.0 + 1) as usize) as *mut core::ffi::c_void),
+            hbrBackground: HBRUSH(GetStockObject(BLACK_BRUSH).0 as *mut core::ffi::c_void),
             lpszClassName: CLASS_NAME,
             ..core::mem::zeroed()
         };
@@ -234,7 +235,7 @@ fn main() -> Result<(), Error> {
             lpfnWndProc: Some(viewport_proc),
             hInstance: hinstance,
             hCursor: LoadCursorW(None, windows::Win32::UI::WindowsAndMessaging::IDC_ARROW)?,
-            hbrBackground: HBRUSH(((COLOR_WINDOW.0 + 1) as usize) as *mut core::ffi::c_void),
+            hbrBackground: HBRUSH(GetStockObject(BLACK_BRUSH).0 as *mut core::ffi::c_void),
             lpszClassName: CHILD_CLASS_NAME,
             ..core::mem::zeroed()
         };
@@ -289,11 +290,10 @@ fn main() -> Result<(), Error> {
             Box::into_raw(state) as isize,
         );
 
-        let _ = ShowWindow(hwnd, SW_SHOW);
+        // Position/hide the child viewport before showing the main window so the
+        // first paint already has the correct layout and, in Editor mode, a
+        // bound renderer.
         sync_viewport_child(hwnd);
-        if UpdateWindow(hwnd).0 == 0 {
-            return Err(last_error());
-        }
 
         match crate::render::Renderer::new(child) {
             Ok(renderer) => {
@@ -303,7 +303,6 @@ fn main() -> Result<(), Error> {
                     windows::Win32::UI::WindowsAndMessaging::GWLP_USERDATA,
                     Box::into_raw(boxed) as isize,
                 );
-                let _ = InvalidateRect(Some(child), None, false);
             }
             Err(e) => {
                 let msg = format!("Artidor native compositor init failed:\n\n{e}");
@@ -315,6 +314,11 @@ fn main() -> Result<(), Error> {
                     MB_OK | MB_ICONERROR,
                 );
             }
+        }
+
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        if UpdateWindow(hwnd).0 == 0 {
+            return Err(last_error());
         }
 
         let mut msg: MSG = core::mem::zeroed();
