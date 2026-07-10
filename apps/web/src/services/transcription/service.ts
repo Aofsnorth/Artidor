@@ -9,6 +9,7 @@ import {
 	TRANSCRIPTION_MODELS,
 } from "@/lib/transcription/models";
 import type { WorkerMessage, WorkerResponse } from "./worker";
+import type { TranscriptionBackend } from "./backend";
 
 type ProgressCallback = (progress: TranscriptionProgress) => void;
 
@@ -17,6 +18,7 @@ class TranscriptionService {
 	private currentModelId: TranscriptionModelId | null = null;
 	private isInitialized = false;
 	private isInitializing = false;
+	private activeBackend: TranscriptionBackend | null = null;
 
 	async transcribe({
 		audioData,
@@ -46,6 +48,8 @@ class TranscriptionService {
 							status: "transcribing",
 							progress: response.progress,
 							message: "Transcribing audio...",
+							backend: this.activeBackend ?? undefined,
+							isIndeterminate: true,
 						});
 						break;
 
@@ -136,7 +140,12 @@ class TranscriptionService {
 							status: "loading-model",
 							progress: response.progress,
 							message: `Loading ${model.name} model...`,
+							backend: response.backend,
 						});
+						break;
+
+					case "backend-selected":
+						this.activeBackend = response.backend;
 						break;
 
 					case "init-complete":
@@ -186,6 +195,7 @@ class TranscriptionService {
 		this.isInitialized = false;
 		this.isInitializing = false;
 		this.currentModelId = null;
+		this.activeBackend = null;
 	}
 }
 
