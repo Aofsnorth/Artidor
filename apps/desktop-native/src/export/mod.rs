@@ -24,7 +24,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use compositor::{CanvasClearDescriptor, Compositor, FrameDescriptor, RenderFrameOptions};
+use compositor::{CanvasClearDescriptor, Compositor, FrameDescriptor};
 use ffmpeg_sidecar::command::FfmpegCommand;
 use gpu::GpuContext;
 use thiserror::Error;
@@ -95,8 +95,6 @@ pub enum ExportError {
     NoFrames,
     #[error("Output path is empty")]
     EmptyOutputPath,
-    #[error("Validation failed: {0}")]
-    Validation(String),
     #[error("FFmpeg failed to start: {0}. Is ffmpeg installed / bundled?")]
     Spawn(#[from] std::io::Error),
     #[error("Compositor render failed at frame {frame}: {source}")]
@@ -128,7 +126,7 @@ pub enum ExportError {
 pub fn export_video(
     context: &GpuContext,
     compositor: &mut Compositor,
-    project: &Project,
+    _project: &Project,
     opts: &ExportOptions,
 ) -> Result<PathBuf, ExportError> {
     opts.validate()?;
@@ -203,6 +201,7 @@ pub fn export_video(
 }
 
 /// Default export output path: `<project_id>-export.mp4` in `dir`.
+#[allow(dead_code)] // used by tests; will be wired to export dialog default
 pub fn default_export_path(dir: impl AsRef<Path>, project: &Project) -> PathBuf {
     let mut p = dir.as_ref().to_path_buf();
     p.push(format!("{}-export.mp4", project.metadata.id));

@@ -10,10 +10,7 @@ pub mod project;
 // Re-export all public types so `crate::state::Project` etc. work
 // without callers needing to know the internal file layout.
 pub use history::History;
-pub use project::{
-    BlendMode, CanvasSize, Element, MediaAsset, MediaKind, Playhead, Project, ProjectMetadata,
-    ProjectSettings, Scene, Track, TrackType, Transform,
-};
+pub use project::{BlendMode, Element, MediaAsset, MediaKind, Project, Track, TrackType};
 
 /// Which assets panel tab is active. Mirrors the web app's `AssetsTab`.
 /// 17 tabs matching `VISIBLE_TAB_KEYS` in the web app.

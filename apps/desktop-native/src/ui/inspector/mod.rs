@@ -7,8 +7,10 @@ use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::Project;
-use crate::theme::{PROP_PAD, PROP_ROW_H, TEXT_DIM, TEXT_FAINT};
-use crate::ui::gfx::draw_text_left;
+use crate::theme::{
+    ACCENT_BG, ACCENT_SUBTLE, BORDER_FAINT, PROP_PAD, PROP_ROW_H, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT,
+};
+use crate::ui::gfx::{draw_text_left, rounded_border_rect, rounded_fill_rect};
 use crate::window::timeline_duration;
 
 /// Draw the properties panel. When a clip is selected, shows clip
@@ -35,7 +37,9 @@ pub unsafe fn draw_properties_panel(
         if let Some((ti, ei)) = selected_element {
             if let Some(track) = project.scene.tracks.get(ti) {
                 if let Some(element) = track.elements.get(ei) {
-                    draw_text_left(hdc, "Clip Properties", &header, TEXT_DIM);
+                    rounded_fill_rect(hdc, &header, ACCENT_BG, 6);
+                    rounded_border_rect(hdc, &header, BORDER_FAINT, 6);
+                    draw_text_left(hdc, "Clip Properties", &header, TEXT_BRIGHT);
 
                     // Basic info section.
                     let basic_fields: [(&str, String); 5] = [
@@ -49,20 +53,7 @@ pub unsafe fn draw_properties_panel(
                         if y + PROP_ROW_H > panel.bottom {
                             break;
                         }
-                        let label_rect = RECT {
-                            left,
-                            top: y,
-                            right: left + 70,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
-                        let value_rect = RECT {
-                            left: left + 78,
-                            top: y,
-                            right,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+                        draw_property_row(hdc, left, right, y, label, value);
                         y += PROP_ROW_H;
                     }
 
@@ -74,7 +65,9 @@ pub unsafe fn draw_properties_panel(
                             right,
                             bottom: y + PROP_ROW_H + 4,
                         };
-                        draw_text_left(hdc, "Transform", &sect_rect, TEXT_DIM);
+                        rounded_fill_rect(hdc, &sect_rect, ACCENT_BG, 4);
+                        rounded_border_rect(hdc, &sect_rect, BORDER_FAINT, 4);
+                        draw_text_left(hdc, "Transform", &sect_rect, TEXT_BRIGHT);
                         y += PROP_ROW_H + 8;
                     }
 
@@ -111,20 +104,7 @@ pub unsafe fn draw_properties_panel(
                         if y + PROP_ROW_H > panel.bottom {
                             break;
                         }
-                        let label_rect = RECT {
-                            left,
-                            top: y,
-                            right: left + 70,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
-                        let value_rect = RECT {
-                            left: left + 78,
-                            top: y,
-                            right,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+                        draw_property_row(hdc, left, right, y, label, value);
                         y += PROP_ROW_H;
                     }
 
@@ -136,7 +116,9 @@ pub unsafe fn draw_properties_panel(
                             right,
                             bottom: y + PROP_ROW_H + 4,
                         };
-                        draw_text_left(hdc, "Compositing", &sect_rect, TEXT_DIM);
+                        rounded_fill_rect(hdc, &sect_rect, ACCENT_BG, 4);
+                        rounded_border_rect(hdc, &sect_rect, BORDER_FAINT, 4);
+                        draw_text_left(hdc, "Compositing", &sect_rect, TEXT_BRIGHT);
                         y += PROP_ROW_H + 8;
                     }
 
@@ -148,20 +130,7 @@ pub unsafe fn draw_properties_panel(
                         if y + PROP_ROW_H > panel.bottom {
                             break;
                         }
-                        let label_rect = RECT {
-                            left,
-                            top: y,
-                            right: left + 70,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
-                        let value_rect = RECT {
-                            left: left + 78,
-                            top: y,
-                            right,
-                            bottom: y + PROP_ROW_H,
-                        };
-                        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+                        draw_property_row(hdc, left, right, y, label, value);
                         y += PROP_ROW_H;
                     }
 
@@ -180,7 +149,9 @@ pub unsafe fn draw_properties_panel(
         }
 
         // Project properties (no clip selected).
-        draw_text_left(hdc, "Properties", &header, TEXT_DIM);
+        rounded_fill_rect(hdc, &header, ACCENT_BG, 6);
+        rounded_border_rect(hdc, &header, BORDER_FAINT, 6);
+        draw_text_left(hdc, "Properties", &header, TEXT_BRIGHT);
 
         let duration = timeline_duration(project);
         let fields: [(&str, String); 8] = [
@@ -207,22 +178,36 @@ pub unsafe fn draw_properties_panel(
             if y + PROP_ROW_H > panel.bottom {
                 break;
             }
-            let label_rect = RECT {
-                left,
-                top: y,
-                right: left + 70,
-                bottom: y + PROP_ROW_H,
-            };
-            draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
-
-            let value_rect = RECT {
-                left: left + 78,
-                top: y,
-                right,
-                bottom: y + PROP_ROW_H,
-            };
-            draw_text_left(hdc, value, &value_rect, TEXT_DIM);
+            draw_property_row(hdc, left, right, y, label, value);
             y += PROP_ROW_H;
         }
+    }
+}
+
+/// Draw a single property row: a subtle rounded background with the label
+/// on the left and the value on the right.
+unsafe fn draw_property_row(hdc: HDC, left: i32, right: i32, y: i32, label: &str, value: &str) {
+    unsafe {
+        let row = RECT {
+            left,
+            top: y,
+            right,
+            bottom: y + PROP_ROW_H,
+        };
+        rounded_fill_rect(hdc, &row, ACCENT_SUBTLE, 4);
+        let label_rect = RECT {
+            left: left + 4,
+            top: y,
+            right: left + 70,
+            bottom: y + PROP_ROW_H,
+        };
+        draw_text_left(hdc, label, &label_rect, TEXT_FAINT);
+        let value_rect = RECT {
+            left: left + 78,
+            top: y,
+            right: right - 4,
+            bottom: y + PROP_ROW_H,
+        };
+        draw_text_left(hdc, value, &value_rect, TEXT_DIM);
     }
 }

@@ -66,11 +66,13 @@ impl History {
     }
 
     /// Whether undo is available.
+    #[allow(dead_code)] // used by tests; will drive menu/toolbar disable state
     pub fn can_undo(&self) -> bool {
         !self.undo_stack.is_empty()
     }
 
     /// Whether redo is available.
+    #[allow(dead_code)] // used by tests; will drive menu/toolbar disable state
     pub fn can_redo(&self) -> bool {
         !self.redo_stack.is_empty()
     }

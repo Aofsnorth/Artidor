@@ -14,9 +14,12 @@ use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::Project;
 use crate::theme::{
-    ACCENT_SUBTLE, BG, BLUE, BORDER_FAINT, BORDER_TOP, TEXT_DIM, TEXT_FAINT, TEXT_MUTED,
+    ACCENT_SUBTLE, BG, BG_DARK, BLUE, BORDER_FAINT, BORDER_TOP, TEXT_DIM, TEXT_FAINT, TEXT_MUTED,
 };
-use crate::ui::gfx::{border_rect, draw_text_centered, draw_text_left, fill_rect};
+use crate::ui::gfx::{
+    draw_hline, draw_text_centered, draw_text_left, gradient_fill_v, rounded_border_rect,
+    rounded_fill_rect,
+};
 
 /// Button rects for hit-testing (stored in `WindowState` via `HeaderButtons`).
 /// Window-control fields are kept as zero-sized rects so existing hit-test
@@ -45,19 +48,18 @@ pub unsafe fn draw_header(
     unsafe {
         let w = rect.right - rect.left;
 
-        // Solid editor background for the header (web uses a gradient from
-        // the same colour to transparent; for GDI we use the solid base).
-        fill_rect(hdc, rect, BG);
+        // Subtle gradient header background.
+        gradient_fill_v(hdc, rect, BG, BG_DARK);
 
         // Top hairline: `bg-gradient-to-r from-transparent via-white/10 to-transparent`.
         // Rendered as a centred 1px highlight strip.
-        let hairline = RECT {
-            left: rect.left + w / 6,
-            top: rect.top,
-            right: rect.right - w / 6,
-            bottom: rect.top + 1,
-        };
-        fill_rect(hdc, &hairline, BORDER_TOP);
+        draw_hline(
+            hdc,
+            rect.left + w / 6,
+            rect.right - w / 6,
+            rect.top,
+            BORDER_TOP,
+        );
 
         // Zero out the legacy window-control rects so old hit-test code never
         // triggers them; we keep the fields to avoid changing the struct layout.
@@ -74,7 +76,7 @@ pub unsafe fn draw_header(
             bottom: rect.top + (rect.bottom - rect.top - logo_size) / 2 + logo_size,
         };
         // Small rounded-square brand mark (blue, white "A").
-        fill_rect(hdc, &logo_rect, BLUE);
+        rounded_fill_rect(hdc, &logo_rect, BLUE, 6);
         draw_text_centered(hdc, "A", &logo_rect, 0xFFFFFF);
 
         // Identity pod: "Projects / {name}" inside a rounded capsule.
@@ -87,8 +89,8 @@ pub unsafe fn draw_header(
             right: logo_rect.right + 10 + pod_w,
             bottom: rect.top + (rect.bottom - rect.top - pod_h) / 2 + pod_h,
         };
-        fill_rect(hdc, &pod_rect, ACCENT_SUBTLE);
-        border_rect(hdc, &pod_rect, BORDER_FAINT);
+        rounded_fill_rect(hdc, &pod_rect, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &pod_rect, BORDER_FAINT, 14);
 
         let breadcrumb = format!("PROJECTS  /  {name}");
         let label_rect = RECT {
@@ -109,8 +111,8 @@ pub unsafe fn draw_header(
             right: rect.left + (w + zoom_w) / 2,
             bottom: rect.top + (rect.bottom - rect.top - zoom_h) / 2 + zoom_h,
         };
-        fill_rect(hdc, &zoom_rect, ACCENT_SUBTLE);
-        border_rect(hdc, &zoom_rect, BORDER_FAINT);
+        rounded_fill_rect(hdc, &zoom_rect, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &zoom_rect, BORDER_FAINT, 14);
         draw_text_centered(hdc, &zoom_label, &zoom_rect, TEXT_DIM);
 
         // --- Right: action hub ---
@@ -126,7 +128,7 @@ pub unsafe fn draw_header(
             right: rx,
             bottom: rect.top + (rect.bottom - rect.top - btn_h) / 2 + btn_h,
         };
-        fill_rect(hdc, &btns.export_btn, BLUE);
+        rounded_fill_rect(hdc, &btns.export_btn, BLUE, 14);
         draw_text_centered(hdc, "Export", &btns.export_btn, 0xFFFFFF);
         rx -= export_w + gap;
 
@@ -138,8 +140,8 @@ pub unsafe fn draw_header(
             right: rx,
             bottom: rect.top + (rect.bottom - rect.top - btn_h) / 2 + btn_h,
         };
-        fill_rect(hdc, &btns.share_btn, ACCENT_SUBTLE);
-        border_rect(hdc, &btns.share_btn, BORDER_FAINT);
+        rounded_fill_rect(hdc, &btns.share_btn, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &btns.share_btn, BORDER_FAINT, 14);
         draw_text_centered(hdc, "Share", &btns.share_btn, TEXT_DIM);
         rx -= share_w + gap;
 
@@ -151,8 +153,8 @@ pub unsafe fn draw_header(
             right: rx,
             bottom: rect.top + (rect.bottom - rect.top - btn_h) / 2 + btn_h,
         };
-        fill_rect(hdc, &btns.settings_btn, ACCENT_SUBTLE);
-        border_rect(hdc, &btns.settings_btn, BORDER_FAINT);
+        rounded_fill_rect(hdc, &btns.settings_btn, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &btns.settings_btn, BORDER_FAINT, 14);
         draw_text_centered(hdc, "Settings", &btns.settings_btn, TEXT_DIM);
         rx -= settings_w + gap;
 
@@ -164,8 +166,8 @@ pub unsafe fn draw_header(
             right: rx,
             bottom: rect.top + (rect.bottom - rect.top - btn_h) / 2 + btn_h,
         };
-        fill_rect(hdc, &btns.layout_btn, ACCENT_SUBTLE);
-        border_rect(hdc, &btns.layout_btn, BORDER_FAINT);
+        rounded_fill_rect(hdc, &btns.layout_btn, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &btns.layout_btn, BORDER_FAINT, 14);
         draw_text_centered(hdc, "Layout", &btns.layout_btn, TEXT_FAINT);
         rx -= layout_w + gap;
 
@@ -177,8 +179,8 @@ pub unsafe fn draw_header(
             right: rx,
             bottom: rect.top + (rect.bottom - rect.top - btn_h) / 2 + btn_h,
         };
-        fill_rect(hdc, &btns.cloud_btn, ACCENT_SUBTLE);
-        border_rect(hdc, &btns.cloud_btn, BORDER_FAINT);
+        rounded_fill_rect(hdc, &btns.cloud_btn, ACCENT_SUBTLE, 14);
+        rounded_border_rect(hdc, &btns.cloud_btn, BORDER_FAINT, 14);
         draw_text_centered(hdc, "Local", &btns.cloud_btn, TEXT_FAINT);
     }
 }

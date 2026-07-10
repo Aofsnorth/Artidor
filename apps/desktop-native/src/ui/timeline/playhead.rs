@@ -6,7 +6,7 @@ use windows::Win32::Foundation::{COLORREF, RECT};
 use windows::Win32::Graphics::Gdi::{CreatePen, DeleteObject, PS_SOLID, Rectangle, SelectObject};
 
 use crate::state::Project;
-use crate::theme::{PLAYHEAD_COLOR, PANEL_BG, TRACK_PAD, rgb};
+use crate::theme::{PANEL_BG, PLAYHEAD_COLOR, TRACK_PAD, rgb};
 use crate::ui::gfx::fill_rect;
 
 /// Draw the playhead vertical line + the readout strip at the bottom.

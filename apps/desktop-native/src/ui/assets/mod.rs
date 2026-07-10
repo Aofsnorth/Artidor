@@ -9,7 +9,7 @@ use windows::Win32::Graphics::Gdi::HDC;
 
 use crate::state::{AssetsTab, MediaKind, Project};
 use crate::theme::{ACCENT_SUBTLE, ASSET_PAD, ASSET_ROW_H, TEXT_BRIGHT, TEXT_DIM, TEXT_FAINT};
-use crate::ui::gfx::{draw_text_centered, draw_text_left, fill_rect};
+use crate::ui::gfx::{draw_text_centered, draw_text_left, rounded_fill_rect};
 
 /// Draw the tools panel content based on the active tab.
 /// Assets tab → media list. Effects tab → effects library.
@@ -74,7 +74,7 @@ unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
                 right: panel.left + panel_w - ASSET_PAD,
                 bottom: y + ASSET_ROW_H - 2,
             };
-            fill_rect(hdc, &row, ACCENT_SUBTLE);
+            rounded_fill_rect(hdc, &row, ACCENT_SUBTLE, 6);
 
             let tag_color = match asset.kind {
                 MediaKind::Image => 0xFAB005,
@@ -88,7 +88,7 @@ unsafe fn draw_media_list(hdc: HDC, panel: &RECT, project: &Project) {
                 right: row.left + 52,
                 bottom: row.bottom - 4,
             };
-            fill_rect(hdc, &tag, tag_color);
+            rounded_fill_rect(hdc, &tag, tag_color, 4);
             draw_text_centered(hdc, asset.kind.label(), &tag, 0x111114);
 
             let name_rect = RECT {
