@@ -1,4 +1,5 @@
 import type { LanguageCode } from "./languages";
+import type { TranscriptionBackend } from "@/services/transcription/backend";
 
 export type TranscriptionLanguage = LanguageCode | "auto";
 
@@ -38,6 +39,8 @@ export interface TranscriptionProgress {
 	status: TranscriptionStatus;
 	progress: number;
 	message?: string;
+	backend?: TranscriptionBackend;
+	isIndeterminate?: boolean;
 }
 
 export type TranscriptionModelId =
