@@ -51,7 +51,9 @@ const PLAYBACK_SCALE: Record<Exclude<PreviewQuality, "auto">, number> = {
  */
 export function detectDeviceTier({
 	gpuDegraded = false,
-}: { gpuDegraded?: boolean } = {}): Exclude<PreviewQuality, "auto"> {
+}: {
+	gpuDegraded?: boolean;
+} = {}): Exclude<PreviewQuality, "auto"> {
 	if (gpuDegraded) return "ultra";
 	if (typeof navigator === "undefined") return "high";
 
@@ -106,6 +108,35 @@ export function resolveDecodeMaxDim({
 	if (scale >= 1) return undefined;
 	const longest = Math.max(renderWidth, renderHeight) * scale;
 	return Math.max(2, Math.ceil(longest / 2) * 2);
+}
+
+export function resolvePreviewRenderScales({
+	quality,
+	isPlaying,
+	gpuDegraded,
+	avgRenderMs,
+	frameBudgetMs,
+}: {
+	quality: PreviewQuality;
+	isPlaying: boolean;
+	gpuDegraded?: boolean;
+	avgRenderMs?: number;
+	frameBudgetMs?: number;
+}): { renderScale: number; decodeScale: number } {
+	return {
+		renderScale: resolveAdaptiveScale({
+			quality,
+			isPlaying,
+			gpuDegraded,
+			avgRenderMs,
+			frameBudgetMs,
+		}),
+		decodeScale: resolvePreviewScale({
+			quality,
+			isPlaying: false,
+			gpuDegraded,
+		}),
+	};
 }
 
 // --- Adaptive quality (auto mode only) -------------------------------------
@@ -180,10 +211,7 @@ export function resolveAdaptiveScale({
 	// Only recover up to the device-detected base — never exceed what the
 	// hardware hints suggest (avoids oversaturating a weak machine after
 	// a brief idle period).
-	else if (
-		avgRenderMs < frameBudgetMs * RECOVER_FACTOR &&
-		tierIdx < baseIdx
-	) {
+	else if (avgRenderMs < frameBudgetMs * RECOVER_FACTOR && tierIdx < baseIdx) {
 		tierIdx = tierIdx + 1;
 	}
 

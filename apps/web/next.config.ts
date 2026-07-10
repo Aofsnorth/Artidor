@@ -49,7 +49,12 @@ const cspDirectives: Record<string, string[]> = {
 		"https://drive.usercontent.google.com",
 	],
 	"font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-	"media-src": ["'self'", "blob:", "data:", "https://drive.usercontent.google.com"],
+	"media-src": [
+		"'self'",
+		"blob:",
+		"data:",
+		"https://drive.usercontent.google.com",
+	],
 	"connect-src": [
 		"'self'",
 		"blob:",
@@ -81,7 +86,11 @@ const cspDirectives: Record<string, string[]> = {
 		"https://api.puter.com",
 		"https://*.puter.com",
 	],
-	"frame-src": ["'self'", "https://drive.google.com", "https://accounts.google.com"],
+	"frame-src": [
+		"'self'",
+		"https://drive.google.com",
+		"https://accounts.google.com",
+	],
 	"worker-src": ["'self'", "blob:"],
 	"frame-ancestors": ["'none'"],
 	"object-src": ["'none'"],
@@ -106,6 +115,7 @@ const nextConfig: NextConfig = {
 	// end-user benefit; keep them off in production builds.
 	productionBrowserSourceMaps: false,
 	output: "standalone",
+	allowedDevOrigins: ["127.0.0.1"],
 	async headers() {
 		return [
 			{
@@ -124,7 +134,10 @@ const nextConfig: NextConfig = {
 							"camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
 					},
 					{ key: "Content-Security-Policy", value: contentSecurityPolicy },
-					{ key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+					{
+						key: "Cross-Origin-Opener-Policy",
+						value: "same-origin-allow-popups",
+					},
 					{ key: "X-DNS-Prefetch-Control", value: "off" },
 				],
 			},

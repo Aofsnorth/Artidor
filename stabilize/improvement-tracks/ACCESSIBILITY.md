@@ -211,7 +211,7 @@ grep -rn 'tabIndex="[1-9]' apps/web/src/
 ## Tools untuk Verifikasi
 
 | Tool | Cara Pakai |
-|---|---|
+| --- | --- |
 | **axe DevTools** (browser ext) | Buka editor di Chrome, jalankan scan |
 | **Lighthouse** (Chrome DevTools) | Lighthouse → Accessibility → Generate Report |
 | **WAVE** (browser ext) | Visual overlay di page |

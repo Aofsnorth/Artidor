@@ -13,6 +13,7 @@ roadmap rule; review PR akan ditolak; potensi duplikasi maintenance tiga
 desktop shell (GPUI legacy, Tauri, WPF).
 
 **Mitigasi**:
+
 - Phase D (WPF) **diberhentikan sampai approval eksplisit** user/maintainer.
 - Phase A–C (rust scene3d + Tauri 3D) aman, align P1 performance, jalan
   dulu — nilai 3D sudah didapat via Tauri tanpa WPF.
@@ -35,6 +36,7 @@ stale frame, deadlock.
 reproduksi.
 
 **Mitigasi**:
+
 - MVP WPF pakai **WriteableBitmap copy** (Opsi B) dulu — zero interop
   complexity, validasi end-to-end 3D pipeline. Performa cukup untuk
   1080p 30-60fps.
@@ -54,6 +56,7 @@ adalah dependency berat baru.
 **Dampak**: ukuran binary naik, supply-chain risk, maintenance burden.
 
 **Mitigasi**:
+
 - `glam`: standar de-facto ekosistem wgpu, maintained, MIT/Apache,
   zero-unsafe. Catat di `docs/harness/DEPENDENCY_DECISIONS.md` dengan
   alasan (math 3D manual = bug-prone, glam sudah dipakai komunitas wgpu).
@@ -74,6 +77,7 @@ baru bisa konflik resource).
 export (P0 roadmap violation).
 
 **Mitigasi**:
+
 - 3D = **render path baru** (`render_scene3d`), tidak ubah `render_frame`.
 - Shader 3D = file `.wgsl` baru, tidak sentuh `layer.wgsl`/`blend.wgsl`.
 - Depth texture hanya dibuat di 3D path.
@@ -91,6 +95,7 @@ scene kompleks (geometri dense + lighting). ROADMAP P1 = performance.
 **Dampak**: web-only user (non-Tauri) tidak dapat 3D atau lag.
 
 **Mitigasi**:
+
 - MVP: 3D **hanya native** (Tauri/WPF). `is3DSupported()` return false di
   pure-web WASM. UI sembunyikan panel 3D jika tidak didukung.
 - Future: 3D WASM dengan geometri limit + lighting simplified (Tier 1
@@ -105,6 +110,7 @@ break project lama jika tidak backward-compatible.
 **Dampak**: data loss persepsi — user tidak bisa buka proyek lama (P0).
 
 **Mitigasi**:
+
 - `Scene3DDescriptor` **opsional** di project schema (serde `default`).
 - Project lama (2D-only) load → tidak ada kamera → fallback 2D path.
 - Versi schema naik minor + migration test (load fixture project lama).
@@ -123,6 +129,7 @@ Phase 4–7 yang masih pending).
 **Dampak**: fokus roadmap terganggu; Tauri native export (P1) tertunda.
 
 **Mitigasi**:
+
 - Tier 1 (Classic 3D) = target pertama, deliver nilai cepat.
 - Tier 2–4 di plan sebagai fase terpisah, **tidak mulai** sebelum Tier 1
   shipped + Tauri Phase 4–5 (native export) selesai (P1 priority).
@@ -137,6 +144,7 @@ surface (malformed file, OOM, path traversal di native FS).
 **Dampak**: crash, DoS, potensi RCE via parser bug.
 
 **Mitigasi**:
+
 - Batas ukuran file (sudah ada 200MB) + dimensi (8192px) — reuse safety
   hardening GPUI lama, port ke 3D path.
 - Parser `gltf` pure-Rust (no unsafe C dep) — cek audit.
@@ -152,6 +160,7 @@ walaupun logic di rust/. ROADMAP sudah rencana hapus GPUI (Phase 6 Tauri).
 **Dampak**: maintenance cost tinggi, bug parity.
 
 **Mitigasi**:
+
 - WPF hanya setelah GPUI benar-benar dihapus (Tauri Phase 6 selesai) —
   jangan tiga shell hidup bersamaan.
 - UI WPF port dari web panel, logic 100% rust/ via JSON scene —
@@ -167,6 +176,7 @@ walaupun logic di rust/. ROADMAP sudah rencana hapus GPUI (Phase 6 Tauri).
 dokumentasi 3D. Skip = melanggar Documentation Rules.
 
 **Mitigasi**:
+
 - Entry `feed.ts` per tier (Tier 1 ship → entry 1).
 - Dokumentasi 3D: cara aktifkan layer 3D, kamera, lampu, export VR.
 - Update AGENTS.md arsitektur setelah Phase D approval.

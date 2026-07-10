@@ -7,7 +7,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useReducer, useRef, useState } from "react";
+import { useMemo, useReducer, useRef, useState } from "react";
 import { extractTimelineAudio, extractClipAudio } from "@/lib/media/mediabunny";
 import { useEditor } from "@/hooks/use-editor";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
 	CAPTION_TRACK_NAME,
 	insertCaptionChunksAsTextTrack,
 } from "@/lib/subtitles/insert";
+import { getCaptionCues } from "@/lib/subtitles/caption-cues";
 import {
 	downloadSubtitleFile,
 	exportCuesToAss,
@@ -55,6 +56,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { DiagnosticSeverity } from "@/lib/diagnostics/types";
+import type { TextTrack } from "@/lib/timeline";
 
 const DIAGNOSTIC_BUTTON_VARIANT: Record<
 	DiagnosticSeverity,
@@ -149,6 +151,11 @@ export function Captions() {
 				tracks: editor.scenes.getActiveScene().tracks,
 				mediaAssets: editor.media.getAssets(),
 				totalDuration: editor.timeline.getTotalDuration(),
+				onProgress: (progress) =>
+					dispatch({
+						type: "update_step",
+						step: `Extracting audio ${Math.round(progress)}%`,
+					}),
 			});
 
 			dispatch({ type: "update_step", step: "Preparing audio..." });
@@ -156,6 +163,11 @@ export function Captions() {
 				audioBlob,
 				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
 			});
+
+			if (samples.length === 0) {
+				dispatch({ type: "fail", error: "No audio found in timeline" });
+				return;
+			}
 
 			const result = await transcriptionService.transcribe({
 				audioData: samples,
@@ -216,6 +228,11 @@ export function Captions() {
 				audioBlob,
 				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
 			});
+
+			if (samples.length === 0) {
+				dispatch({ type: "fail", error: "No audio found in selected clip" });
+				return;
+			}
 
 			const result = await transcriptionService.transcribe({
 				audioData: samples,
@@ -331,25 +348,27 @@ export function Captions() {
 		dispatch({ type: "fail", error: "Transcription cancelled" });
 	};
 
-	// Live cue list from the caption track (tracked by name). Each cue maps to
-	// a TextElement; editing text/timing updates that element via undoable
-	// commands, and export serialises these cues to .srt/.ass.
-	const captionCues = useEditor((e) => {
-		const overlay = e.scenes.getActiveSceneOrNull()?.tracks.overlay ?? [];
-		const track = overlay.find(
-			(t) => t.type === "text" && t.name === CAPTION_TRACK_NAME,
-		);
-		if (!track) return [];
-		return track.elements
-			.map((el) => ({
-				trackId: track.id,
-				elementId: el.id,
-				text: "content" in el ? (el.content ?? "") : "",
-				startTime: el.startTime / TICKS_PER_SECOND,
-				duration: el.duration / TICKS_PER_SECOND,
-			}))
-			.sort((a, b) => a.startTime - b.startTime);
-	});
+	// Subscribe to the stable track reference. Deriving cue objects inside the
+	// selector would produce a fresh snapshot on every store read.
+	const captionTrack = useEditor(
+		(e) =>
+			e.scenes
+				.getActiveSceneOrNull()
+				?.tracks.overlay.find(
+					(track): track is TextTrack =>
+						track.type === "text" && track.name === CAPTION_TRACK_NAME,
+				) ?? null,
+	);
+	const captionCues = useMemo(
+		() =>
+			captionTrack
+				? getCaptionCues({
+						track: captionTrack,
+						ticksPerSecond: TICKS_PER_SECOND,
+					})
+				: [],
+		[captionTrack],
+	);
 
 	const updateCueText = ({
 		trackId,
@@ -499,7 +518,7 @@ export function Captions() {
 						disabled={isProcessing || !selectedElement}
 						title="Select a single video or audio clip first"
 					>
-						{isProcessing ? processing.step : "Transcribe selected clip"}
+						Transcribe selected clip
 					</Button>
 					{isProcessing && (
 						<Button

@@ -103,6 +103,12 @@ export async function clickAssetTab(
 	await page.waitForTimeout(500);
 }
 
+type ArtidorApiRun = (
+	name: string,
+	args?: Record<string, unknown>,
+	source?: "user" | "ai",
+) => Promise<{ ok: boolean; message?: string; data?: unknown }>;
+
 /** Run a command through the editor's public API. */
 export async function runCommand(
 	page: Page,
@@ -111,7 +117,7 @@ export async function runCommand(
 ): Promise<{ ok: boolean; message?: string; data?: unknown }> {
 	return await page.evaluate(
 		async ([n, a]) => {
-			const api = (window as unknown as { __ARTIDOR_API__?: { run: typeof __ARTIDOR_API__["run"] } })
+			const api = (window as unknown as { __ARTIDOR_API__?: { run: ArtidorApiRun } })
 				.__ARTIDOR_API__;
 			if (!api) throw new Error("__ARTIDOR_API__ missing");
 			return await api.run(n, a);
@@ -168,7 +174,10 @@ export async function insertTextElement(
 	expect(result.ok, `insert_text_element: ${result.message}`).toBe(true);
 	const data = result.data as { id?: string } | undefined;
 	expect(data?.id, "insert_text_element returned no id").toBeTruthy();
-	return data!.id!;
+	if (!data?.id) {
+		throw new Error("insert_text_element returned no id");
+	}
+	return data.id;
 }
 
 /** Select an element on the timeline by id. */
@@ -197,8 +206,11 @@ export async function insertAndSelectText(
 	const state = await getEditorState(page);
 	const element = state.elements.find((e) => e.id === elementId);
 	expect(element, `element ${elementId} not in state`).toBeTruthy();
-	await selectElement(page, element!.trackId, elementId);
-	return { elementId, trackId: element!.trackId };
+	if (!element) {
+		throw new Error(`element ${elementId} not in state`);
+	}
+	await selectElement(page, element.trackId, elementId);
+	return { elementId, trackId: element.trackId };
 }
 
 /** Click an inspector / properties tab by label (e.g. "Transform"). */

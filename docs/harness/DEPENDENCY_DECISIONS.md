@@ -606,4 +606,3 @@ Rollback plan:
 4. Remove What's New entry
 
 Approved by: User (explicit "go" approval for A+B+C background removal)
-

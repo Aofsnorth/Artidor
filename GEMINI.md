@@ -12,6 +12,7 @@ Before making any change, read:
 6. `HARNESS.md`
 
 Rules:
+
 - Make the smallest safe change.
 - Do not rewrite large systems without approval.
 - Do not edit secrets or `.env*`.

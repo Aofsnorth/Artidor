@@ -1,12 +1,14 @@
 # Maintenance — Grid Template Card Placement
 
 ## 2026-06-20
+
 - Created feature workflow folder.
 - Created required workflow files.
 - Filled feature scope, plan, QA, risks, TODO, and state.
 - No implementation yet.
 
 ## 2026-06-22
+
 - Added shared `views/asset-grid.tsx` wrapper.
 - Converted 8 asset views to `<AssetGrid>`; unified auto-fill/gap/min, removed
   duplicated inline grid strings.

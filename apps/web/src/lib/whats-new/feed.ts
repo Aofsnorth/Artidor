@@ -18,17 +18,6 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
-		id: "2026-07-13-abstract-3d-bg",
-		date: "2026-07-13",
-		tag: "improvement",
-		title: "Projects page now has an abstract 3D motion-graphics backdrop",
-		items: [
-			"The /projects page background has been reworked. A field of glowing wireframe 3D primitives — cubes, tori, octahedra, icosahedra, cylinders — drifts across the canvas in a slow parallax composition, paired with a constellation-style particle layer that connects nearby points with thin lines.",
-			"Still elegant, not loud: sparse density (~7 primitives, ~110 particles), cool violet→cyan accents, deep slate base, with the original vignette and bottom fade preserved so the page chrome stays the focal point.",
-			"Still respectful of motion preferences: respects prefers-reduced-motion by rendering a single static frame of the composition instead of the animated version.",
-		],
-	},
-	{
 		id: "2026-07-13-harness-link-guard",
 		date: "2026-07-13",
 		tag: "improvement",

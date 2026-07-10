@@ -25,6 +25,7 @@ hidup di `rust/` (single source of truth), diekspos ke:
 2. **desktop-native (WPF .NET)** — via cdylib Rust + D3DImage shared surface.
 
 Tier fitur (detail di `RESEARCH.md` §3):
+
 - **Tier 1 — Classic 3D** (P1): transform XYZ, kamera one/two-node, lampu
   (Parallel/Spot/Point/Ambient) + shadow, parallax.
 - **Tier 2 — Advanced 3D** (P2): GLB/GLTF + skeletal anim, material PBR,
@@ -70,6 +71,7 @@ entry `apps/web/src/lib/whats-new/feed.ts` per tier.
 ## Acceptance Criteria
 
 ### Tier 1 — Classic 3D
+
 - [ ] `rust/crates/scene3d` dengan `Transform3D`, `Camera` (one/two-node),
       `Light` (4 tipe) terdefinisi & teruji (unit test math).
 - [ ] `compositor::render_scene3d` menghasilkan frame benar untuk scene
@@ -82,6 +84,7 @@ entry `apps/web/src/lib/whats-new/feed.ts` per tier.
 - [ ] `cargo test` + `cargo check` + `bunx tsc --noEmit` + `bun run lint:web` lulus.
 
 ### Tier 2 — Advanced 3D
+
 - [ ] Import GLB/GLTF (mesh + 1 skeletal anim) render benar.
 - [ ] Material PBR (base color/roughness/metalness/emissive/normal) shader
       pass snapshot test.
@@ -90,6 +93,7 @@ entry `apps/web/src/lib/whats-new/feed.ts` per tier.
 - [ ] DoF in-engine + depth map extraction output benar.
 
 ### Tier 3 — Immersive/VR
+
 - [ ] Output equirectangular 2:1 dari scene 3D benar (no seam).
 - [ ] VR Plane to Sphere menempel layer 2D ke sphere.
 - [ ] Stereoscopic over/under + SbS output benar.
@@ -106,7 +110,7 @@ entry `apps/web/src/lib/whats-new/feed.ts` per tier.
 
 ## Architecture (singkat)
 
-```
+```text
 rust/ (single source of truth)
 ├── crates/scene3d   (NEW) Transform3D, Camera, Light, Mesh, Material, Environment
 ├── crates/compositor (EXTEND) render_scene3d path + 3D shaders

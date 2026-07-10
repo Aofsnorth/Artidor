@@ -12,7 +12,7 @@
 <img src="apps/web/public/logos/artidor/logo-particles.png" alt="Artidor" width="180" />
 </a>
 
-### The video editor that respects your machine.
+## The video editor that respects your machine
 
 **Local-first · MIT-licensed · No uploads · No paywalls · AI-native**
 
@@ -63,6 +63,7 @@ No manifesto. No "rethinking the creative process." Just a tool that works.
 ## Features
 
 ### Editing
+
 - **Non-destructive timeline** — tracks, scenes, elements with frame-accurate keyframes
 - **Multi-track composition** — main, overlay, audio tracks; independent blend modes
 - **Inspector** — transform, opacity, blend mode, effects, masks, audio per element
@@ -78,6 +79,7 @@ No manifesto. No "rethinking the creative process." Just a tool that works.
 - **Bookmarks** — first, last, prev, next via transport keys
 
 ### Performance
+
 - **GPU compositor** — wgpu-based, runs WebGL / Metal / Vulkan / DX12
 - **Rust core** — `TICKS_PER_SECOND = 120_000` for lossless time math at 24/25/29.97/30/50/59.94/60/120 fps
 - **Lazy chunk loading** — heavy tabs (AI Edit) load on first click
@@ -85,6 +87,7 @@ No manifesto. No "rethinking the creative process." Just a tool that works.
 - **Service worker cache** — returning visitors load the app shell in < 200ms
 
 ### Platform
+
 - **Web** — Next.js 16 + React 19, ships as a PWA
 - **Desktop** — GPUI (in progress), same Rust core
 - **Mobile** — responsive web app, the same UI on small screens
@@ -99,13 +102,17 @@ No manifesto. No "rethinking the creative process." Just a tool that works.
 Three things set it apart from "AI edits your video" toys:
 
 ### 1. It's not a wrapper
+
 The Co-Pilot doesn't transcribe your prompt and run a script. It has 40+ typed tools — `set_project_fps`, `insert_text_element`, `upsert_keyframe`, `apply_preset`, `export_project` — each one wraps a real `EditorCore` method. The LLM can't hallucinate outside the editor's surface.
 
 ### 2. It learns from you
+
 Every command you fire (via mouse, keyboard, *or* the AI) is logged to a 500-event telemetry store. The Co-Pilot's system prompt includes your **last 20 edits** — cut pattern, easing, pacing — so its suggestions match your style instead of generic.
 
 ### 3. It can clone a reference video
+
 Drop a finished video into the AI panel. The **style extractor** runs entirely client-side:
+
 - 16-frame sampling → 4×4×4 RGB histogram (dominant palette)
 - Luma-delta cut detection (cuts-per-minute, average shot length)
 - Motion energy curve (32-bucket intensity over time)
@@ -176,7 +183,7 @@ bun dev:web       # in the first
 
 ## Project layout
 
-```
+```text
 Artidor/
 ├─ apps/
 │  ├─ web/                       Next.js 16 + React 19 frontend
@@ -220,7 +227,7 @@ Artidor/
 The app works **fully offline** with no environment variables. The defaults in `apps/web/.env.example` cover local dev. Cloud / AI features need these:
 
 | Variable | Required for | Default |
-|---|---|---|
+| --- | --- | --- |
 | `OPENAI_API_KEY` | AI Co-Pilot (GPT) | — |
 | `ANTHROPIC_API_KEY` | AI Co-Pilot (Claude) | — |
 | `OLLAMA_BASE_URL` | AI Co-Pilot (local) | `http://localhost:11434` |
@@ -247,7 +254,7 @@ The app works **fully offline** with no environment variables. The defaults in `
 ## Scripts
 
 | Script | What it does |
-|---|---|
+| --- | --- |
 | `bun dev:web` | Next.js dev server on :3000 |
 | `bun dev:wasm` | `cargo watch` rebuilds the Rust → WASM package on every change |
 | `bun run build:web` | Production build of the web app |
@@ -270,6 +277,7 @@ Two rules:
 2. **Logic goes in `rust/`, UI goes in `apps/`.** If you find yourself putting a domain rule in a React component, move it.
 
 Before opening a PR:
+
 - `bun run lint:web` (and `lint:web:fix` for what biome can repair)
 - `bun run test` (Bun test runner)
 - `cd apps/web && bunx tsc --noEmit` (no type errors)
@@ -280,8 +288,8 @@ For larger changes, open an issue first so we can agree on direction. See [`.git
 
 ## Community
 
-- **Discord** — 
-- **X / Twitter** — 
+- **Discord** —
+- **X / Twitter** —
 - **GitHub Discussions** — <https://github.com/Aofsnorth/Artidor/discussions>
 - **Sponsors** — <https://artidor.vercel.app/sponsors> (if you want to throw a few bucks at the project)
 

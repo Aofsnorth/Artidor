@@ -26,6 +26,7 @@ No new dependency may be added without owner approval.
 **Multi-track AUDIO (dubbing) — FEASIBLE, no new dependency needed.**
 
 mediabunny `Input` exposes:
+
 - `getAudioTracks(query?): Promise<InputAudioTrack[]>` — returns ALL
   audio tracks in file order.
 - `getPrimaryAudioTrack(query?): Promise<InputAudioTrack | null>` —
@@ -41,6 +42,7 @@ mediabunny `Input` exposes:
 
 Call sites to update (replace `getPrimaryAudioTrack()` with
 `getAudioTracks()[selectedIndex]`):
+
 - `apps/web/src/lib/media/mediabunny.ts` (lines 34, 213, 296)
 - `apps/web/src/lib/media/audio.ts` (line 302)
 - `apps/web/src/core/managers/audio-manager.ts` (lines 933, 1017)
@@ -48,6 +50,7 @@ Call sites to update (replace `getPrimaryAudioTrack()` with
 **Embedded MKV SUBTITLE tracks — NOT FEASIBLE with mediabunny alone.**
 
 mediabunny's Matroska demuxer (`matroska-demuxer.js`):
+
 - Parses the EBML `TrackType` element. MKV track type 1 = video,
   2 = audio, 17 = subtitle.
 - Only creates `InputTrack` backings for video (type 1) and audio

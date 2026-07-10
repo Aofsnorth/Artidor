@@ -3,7 +3,7 @@
 ## Automated
 
 | Test | Result |
-|------|--------|
+| ------ | -------- |
 | `render-perf-tracker.test.ts` | ✅ all assertions passed |
 | `preview-quality.test.ts` (incl. adaptive) | ✅ all assertions passed |
 | `bunx tsc --noEmit` | ✅ exit 0 |

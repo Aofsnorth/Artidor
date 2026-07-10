@@ -17,11 +17,7 @@ import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import {
-	getSceneImageUrlForId,
-	getSceneImageUrlForIdWithOffset,
-	getTransitionPalettes,
-} from "./components/procedural-preview";
+import { getTransitionPalettes } from "./components/procedural-preview";
 import type { TransitionDefinition } from "@/lib/transitions";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
@@ -213,10 +209,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	);
 }
 
-function getTransitionPhotoUrl(
-	_type: string,
-	_plate: "A" | "B",
-): null {
+function getTransitionPhotoUrl(_type: string, _plate: "A" | "B"): null {
 	// Backwards-compat: older call sites still reach for this. The
 	// transition preview now uses pure CSS via `getTransitionPalettes`
 	// — no more `source.unsplash.com` fetches.
@@ -225,24 +218,6 @@ function getTransitionPhotoUrl(
 
 function extractKeyframeName(css: string): string | null {
 	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
-}
-
-/**
- * Procedural SVG scene image used as the A/B backgrounds for transition
- * previews. Each transition type gets a different scene, and the offset
- * makes the A and B sides differ so the crossfade looks like a real cut.
- */
-function SceneImageThumbnail({ id, offset }: { id: string; offset: number }) {
-	const url =
-		offset === 0
-			? getSceneImageUrlForId(id)
-			: getSceneImageUrlForIdWithOffset(id, offset);
-	return (
-		<div
-			className="absolute inset-0 bg-cover bg-center"
-			style={{ backgroundImage: `url("${url}")` }}
-		/>
-	);
 }
 
 function TransitionPreview({
@@ -267,7 +242,7 @@ function TransitionPreview({
 	const photoB = getTransitionPhotoUrl(definition.type, "B");
 	void photoA;
 	void photoB;
-	const { b: paletteB } = getTransitionPalettes(definition.type);
+	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
 	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
 		`${definition.type} ${definition.name}`,
 	);
@@ -277,16 +252,19 @@ function TransitionPreview({
 			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-zinc-950"
 			style={{ width: "80%", height: "80%" }}
 		>
-			<SceneImageThumbnail id={definition.type} offset={0} />
 			<div
 				aria-hidden
-				className="absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+				className="absolute inset-0"
+				style={{ background: paletteA.background }}
+			/>
+			<div
+				aria-hidden
+				className="absolute inset-0 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
 				style={{
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
+					background: paletteB.background,
 				}}
-			>
-				<SceneImageThumbnail id={definition.type} offset={1} />
-			</div>
+			/>
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 z-20 opacity-0 mix-blend-screen transition-opacity duration-200 group-hover:opacity-100"

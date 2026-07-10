@@ -40,5 +40,5 @@ effects, transitions, keyframes, etc.).
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |

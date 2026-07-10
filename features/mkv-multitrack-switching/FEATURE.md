@@ -17,6 +17,7 @@ Reported user story:
 > dubbingnya."
 
 Owner clarification (2026-06-29):
+
 - MKV playback already works in the web preview.
 - "Mengubah subtitle/dubbing" means **switching the active track** and
   **toggling tracks on/off** — NOT editing the text content or
@@ -27,6 +28,7 @@ Owner clarification (2026-06-29):
 
 For MKV (and other multi-track containers that already play in the web
 preview), the user can:
+
 1. See the list of embedded audio (dubbing) tracks and subtitle tracks.
 2. Choose which audio track plays in preview and is used in export.
 3. Choose which subtitle track renders in preview and export, or turn

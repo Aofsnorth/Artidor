@@ -15,6 +15,7 @@ AI agents must read this file before implementing new features.
 ## Recently Shipped (2026-06-24 → 2026-07-09)
 
 ### Desktop
+
 - Tauri 2.0 scaffold with native WGPU compositor commands (init_compositor, render_frame, is_compositor_ready)
 - Web frontend Tauri detection + IPC bridge (detect.ts, compositor-bridge.ts)
 - GPUI desktop app scaffold (will be phased out — kept for reference)
@@ -22,6 +23,7 @@ AI agents must read this file before implementing new features.
 - Safety hardening: panic → graceful, file size limits (200MB), dimension limits (8192px)
 
 ### Performance
+
 - Beat detection moved to Web Worker (5-10x faster, no UI freeze, live progress)
 - Waveform peak computation with event-loop yielding
 - Mediabunny buffers() loops now yield between chunks
@@ -30,6 +32,7 @@ AI agents must read this file before implementing new features.
 - Export performance tuning, preview fast-seek, AV1 codec research
 
 ### AI Copilot
+
 - 18+ new low-level tools (playback, info, bookmark CRUD, snapshot)
 - AI can read timeline markers and element bookmarks
 - Tool chaining with element IDs
@@ -41,6 +44,7 @@ AI agents must read this file before implementing new features.
 - MCP server cards, MCP CSP fix, full tool coverage MCP client
 
 ### Editor
+
 - Per-property copy/paste
 - Camera switcher transitions, fog/DOF toggles
 - Playhead drag scrub, scrub drag mode dropdown
@@ -49,6 +53,7 @@ AI agents must read this file before implementing new features.
 - Stock library songs, templates, feedback
 
 ### Security
+
 - CI supply chain hardening
 - SSRF fix + provider timeout
 - CodeQL security fixes
@@ -56,6 +61,7 @@ AI agents must read this file before implementing new features.
 - Secret scan, Semgrep SAST, dependency audit
 
 ### Infrastructure
+
 - Realtime collaboration scaffold
 - Docs page
 - Google verification
@@ -139,6 +145,7 @@ AI agents must read this file before implementing new features.
 **Status**: Phase 1-3 complete (scaffold + commands + web bridge). Phase 4-5 pending.
 
 **Phases**:
+
 - [x] Phase 1: Tauri scaffold (Cargo.toml, tauri.conf.json, icons, capabilities)
 - [x] Phase 2: Tauri commands (init_compositor, render_frame, is_compositor_ready)
 - [x] Phase 3: Web frontend Tauri detection + compositor bridge
@@ -152,12 +159,14 @@ AI agents must read this file before implementing new features.
 ### 2. Performance Offloading (ongoing)
 
 **Completed**:
+
 - [x] Beat detection → Web Worker
 - [x] Waveform peak computation → yielding
 - [x] Mediabunny buffers() → yielding
 - [x] AI chat panel → granular selectors
 
 **Pending**:
+
 - [ ] Audio decode (decodeAudioData) → Web Worker or chunked decode
 - [ ] OfflineAudioContext.startRendering() → yield or worker
 - [ ] Export pipeline → native FFmpeg (via Tauri when desktop)
@@ -166,6 +175,7 @@ AI agents must read this file before implementing new features.
 ### 3. AI Copilot Safety (ongoing)
 
 **Completed**:
+
 - [x] Typed tool executor with schema validation
 - [x] Permission bypass mode (user-approved)
 - [x] Takeover control with revoke
@@ -173,6 +183,7 @@ AI agents must read this file before implementing new features.
 - [x] Per-project chat history
 
 **Pending**:
+
 - [ ] Tool execution sandboxing
 - [ ] Rate limiting per tool
 - [ ] Audit log for all tool calls

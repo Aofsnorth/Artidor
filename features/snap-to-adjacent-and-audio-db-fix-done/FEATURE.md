@@ -102,7 +102,7 @@ fix).
 
 ## Files Changed (cumulative on this branch)
 
-```
+```text
 apps/web/src/components/editor/panels/timeline/index.tsx           (track slider: % → dB)
 apps/web/src/components/editor/panels/timeline/timeline-element.tsx (visual gain: additive dB)
 apps/web/src/core/managers/audio-manager.ts                         (playback gain: additive dB)

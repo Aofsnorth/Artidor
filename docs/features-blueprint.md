@@ -37,6 +37,7 @@ graph TD
 The timeline is the backbone of any video editor. CapCut relies on a magnetic timeline structure that auto-snaps clips, handles track layers, and scales playback dynamic rates.
 
 ### CapCut Capabilities
+
 *   **Magnetic & Multi-track Timeline**: Tracks automatically snap together to prevent black frames, while support for overlays (video/image layers above the main track) allows multi-cam or picture-in-picture edits.
 *   **Speed Ramping & Slow-mo**: Standard speed adjustment (0.1x to 100x) paired with speed ramping curves (Presets: *Hero Time, Montage, Bullet, Jump Cut*) and custom speed graphs using Bezier curves.
 *   **Split, Trim, Crop, and Slip**: Precision timeline manipulations down to individual frame boundaries.
@@ -56,6 +57,7 @@ The timeline is the backbone of any video editor. CapCut relies on a magnetic ti
 Keyframes allow users to animate parameters smoothly over time. CapCut supports keyframing almost every property (Position, Scale, Rotation, Opacity, Effects, Color).
 
 ### CapCut Capabilities
+
 *   **Universal Property Mapping**: Keyframe placement on transform coordinates (X, Y, Z rotation, Scale), opacity sliders, and custom shader parameters.
 *   **Graph Easing Curves**: Curve editing screen where users can set presets (*Ease In 1/2/3, Ease Out, Bounce*) or adjust custom cubic-bezier graphs to control acceleration between keyframes.
 
@@ -89,12 +91,14 @@ sequenceDiagram
 Modern short-form editors rely heavily on advanced audio tools for music sync, noise cleaning, and transcription.
 
 ### CapCut Capabilities
+
 *   **Audio Waveform Rendering**: Fast multi-resolution waveform caching for timeline tracks.
 *   **Beat Detection**: Automatic detection of music beats (transients) to place markers on the timeline.
 *   **Voice Isolation & Noise Reduction**: Deep learning models that separate human speech from wind, background noise, or background music.
 *   **Extracted Audio & Sound Effects**: Directly extracting audio files from loaded MP4 files.
 
 ### OpenCut Implementation Strategy
+
 *   **Waveform Calculation**:
     *   Calculate RMS/Peak amplitude envelopes on the decoder level in `rust/crates/audio`.
     *   Return down-sampled arrays of waveform peaks to the UI for high-performance canvas rendering.
@@ -110,11 +114,13 @@ Modern short-form editors rely heavily on advanced audio tools for music sync, n
 A core driver of CapCut's popularity is its rich caption generator, which eliminates the need to manually write subtitles.
 
 ### CapCut Capabilities
+
 *   **Auto Captions**: Transcription of speech using highly optimized speech-to-text models.
 *   **Text-to-Speech (TTS)**: Conversion of written text into multiple AI-generated voice characters (e.g., *Scream, Trickster, Kawaii*).
 *   **Dynamic Text Templates**: 3D Text rendering, glowing text outlines, custom bubbles, and animation presets (e.g., *Fade In, Typewriter, Spring*).
 
 ### OpenCut Implementation Strategy
+
 *   **Auto Captions (STT)**:
     *   Integrate **Whisper.cpp** (via WASM or static C/C++ bindings in Rust) to perform local, high-speed on-device speech-to-text.
 *   **Text Rendering**:
@@ -128,11 +134,13 @@ A core driver of CapCut's popularity is its rich caption generator, which elimin
 CapCut contains thousands of transitions, filters, and overlays. All render-heavy effects run directly on the GPU.
 
 ### CapCut Capabilities
+
 *   **Multi-pass Video Effects**: Complex styles such as *Bloom, Lens Blur, Glitch, Prism, Hallucination, Comic*.
 *   **Body & Face Effects**: Real-time tracking of human limbs or faces to apply overlay masks (e.g., *Glow outline, angel wings, face distortion*).
 *   **Transitions**: Smooth frame blending, directional pans, page curls, and zoom cuts.
 
 ### OpenCut Implementation Strategy
+
 *   **Shader Architecture**:
     *   Implement as multi-pass WGSL shaders within `rust/crates/gpu`.
     *   For multi-pass shaders, orchestration is managed in TypeScript using helper functions such as `resolveEffectPasses` (which reads parameter configs and runs the corresponding GPU passes dynamically).
@@ -147,6 +155,7 @@ CapCut contains thousands of transitions, filters, and overlays. All render-heav
 Professional creators use color grading parameters to correct footage lighting and color space.
 
 ### CapCut Capabilities
+
 *   **Manual Adjustment Panel**: Highlights, shadows, contrast, brightness, temperature, hue, saturation.
 *   **HSL & Color Wheels**: Individual control over hue, saturation, and luminance of specific color channels.
 *   **LUTs (Look-Up Tables)**: Supporting `.cube` format file imports.
@@ -154,7 +163,7 @@ Professional creators use color grading parameters to correct footage lighting a
 
 ### OpenCut Implementation Strategy
 
-```
+```text
 Input Frame
     │
     ▼
@@ -182,11 +191,13 @@ Output Frame
 These tools separate CapCut from legacy editors, automating tasks that used to require manual rotoscoping.
 
 ### CapCut Capabilities
+
 *   **Smart Cutout / Chroma Key**: Removing a background (with or without green screen) dynamically.
 *   **Auto Reframe**: Tracking the primary subject (e.g., a dancer) and auto-cropping/translating the frame to convert horizontal videos (16:9) to vertical format (9:16).
 *   **Motion Tracking**: Tracking an object (e.g., a face, a moving car) and attaching text or stickers to its position coordinates.
 
 ### OpenCut Implementation Strategy
+
 *   **Smart Cutout**:
     *   Implement a background matting network like **U-2-Net** or **MODNet** inside the Rust core, running model inference on frames via **ONNX Runtime (ort)** or WebGPU shaders.
 *   **Chroma Key**:
@@ -195,7 +206,9 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
     *   Implement standard **KCF (Kernelized Correlation Filter)** or **MOSSE** tracking algorithms in Rust, feeding bounding box updates back to timeline overlay coordinates.
 
 # CAPCUT — ULTIMATE COMPLETE FEATURE BLUEPRINT
+
 # 1:1 EXHAUSTIVE FEATURE CATALOG
+>
 > Version: 2.0 — Ultra-Detailed Edition
 > Last Updated: June 2025
 > Platform Coverage: iOS · Android · Windows · macOS · Web
@@ -269,6 +282,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 1. OVERVIEW & IDENTITY
 
 ### 1.1 General Information
+
 - **App Name**: CapCut — Video Editor
 - **Former Name**: Viamaker (2019–2020)
 - **Developer**: ByteDance Ltd.
@@ -282,6 +296,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Website**: capcut.com
 
 ### 1.2 Core Philosophy
+
 - Free-first model with professional-grade capabilities
 - AI-powered tools to simplify complex editing
 - Deep integration with TikTok ecosystem
@@ -289,6 +304,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - Template-driven workflow for quick content creation
 
 ### 1.3 Target Users
+
 - Social media content creators (TikTok, Instagram, YouTube)
 - Small business owners & marketers
 - Casual/enthusiast video editors
@@ -301,6 +317,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 2. PLATFORM & ECOSYSTEM
 
 ### 2.1 Mobile App — iOS
+
 - **Minimum OS**: iOS 12.0+
 - **Devices**: iPhone 6s+, iPad Air 2+, iPod Touch 7th gen
 - **App Store Category**: Photo & Video
@@ -310,6 +327,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **iMessage App**: Not available
 
 ### 2.2 Mobile App — Android
+
 - **Minimum OS**: Android 5.0+ (Lollipop)
 - **Architecture**: ARM64 recommended (ARMv7 supported)
 - **Google Play**: Available
@@ -318,6 +336,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Tablet Optimized**: Partial (responsive layout)
 
 ### 2.3 Desktop App — Windows
+
 - **Minimum OS**: Windows 10 (64-bit)
 - **Installation**: Standalone installer (.exe)
 - **Microsoft Store**: Available
@@ -326,6 +345,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Portable Version**: Not available
 
 ### 2.4 Desktop App — macOS
+
 - **Minimum OS**: macOS 10.14+ (Mojave)
 - **Apple Silicon**: Native M1/M2/M3/M4 support
 - **Mac App Store**: Available + standalone installer
@@ -333,6 +353,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Auto-Update**: Built-in update mechanism
 
 ### 2.5 Web Editor
+
 - **URL**: capcut.com/editor (browser-based)
 - **Browsers**: Chrome 80+, Firefox 75+, Safari 14+, Edge 80+
 - **Requirement**: JavaScript enabled, stable internet
@@ -341,11 +362,13 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **PWA Support**: Can be installed as progressive web app
 
 ### 2.6 Browser Extension
+
 - **Chrome Extension**: Available
 - **Features**: Screen recording, web video capture, quick trim
 - **Integration**: Direct import to CapCut editor
 
 ### 2.7 Cross-Platform Ecosystem
+
 - **Unified Account**: ByteDance account, Google, Facebook, Apple, TikTok login
 - **Project Sync**: Cloud-synced projects across all devices
 - **Start Mobile → Continue Desktop**: Seamless handoff
@@ -357,6 +380,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 3. USER INTERFACE & WORKSPACE
 
 ### 3.1 Home Screen (Mobile)
+
 - **New Project Button**: Prominent "+" create button
 - **Project Grid/List**: View all saved projects
 - **Recent Projects**: Quick-access row of recent projects
@@ -370,6 +394,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Category Chips**: Filter by category (Business, Vlog, etc.)
 
 ### 3.2 Editor Layout — Mobile
+
 - **Top Section**: Preview window (real-time playback)
 - **Bottom Section**: Timeline editor
 - **Floating Toolbar**: Context-sensitive tool bar
@@ -389,6 +414,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
   - Two-finger rotate for elements
 
 ### 3.3 Editor Layout — Desktop
+
 - **Menu Bar**: File, Edit, View, Tools, Help
 - **Top Toolbar**: Quick action buttons
 - **Preview Monitor**: Resizable, center-left default
@@ -409,6 +435,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Light Theme**: Optional light UI
 
 ### 3.4 Project Settings (Configurable)
+
 - **Resolution Presets**: 360p, 480p, 720p, 1080p, 1440p (2K), 2160p (4K)
 - **Custom Resolution**: User-defined width × height
 - **Frame Rate**: 24fps, 25fps, 30fps, 50fps, 60fps
@@ -424,6 +451,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 4. PROJECT MANAGEMENT
 
 ### 4.1 Project Operations
+
 - **Create New Project**: Blank or from template
 - **Duplicate Project**: Full project copy
 - **Rename Project**: Custom project names
@@ -433,6 +461,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Project Info**: View resolution, duration, size, creation date
 
 ### 4.2 Save & Recovery
+
 - **Auto-Save**: Periodic automatic saving (background)
 - **Manual Save**: Explicit save action
 - **Project Recovery**: Recover from crash/force-close
@@ -441,6 +470,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Redo**: Forward through undo history
 
 ### 4.3 Project Import/Export
+
 - **Export Project File**: Save project as .ccproject (CapCut native)
 - **Import Project File**: Open .ccproject files
 - **Project Archiving**: Archive old projects to free space
@@ -451,6 +481,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 5. BUILT-IN CAMERA & RECORDING
 
 ### 5.1 Camera Modes
+
 - **Video Recording**: Standard video capture
 - **Photo Capture**: Take photos within app
 - **Hands-Free Mode**: Timer-based recording without holding
@@ -466,6 +497,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Resolution Selection**: Choose recording resolution (720p, 1080p, 4K)
 
 ### 5.2 AR Camera Effects (Real-Time)
+
 - **Face Filters**: AR face effects (beauty, funny, artistic)
 - **Face Tracking**: Real-time face detection and tracking
 - **Background Effects**: Real-time background blur/change during recording
@@ -476,6 +508,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Beauty Mode**: Skin smoothing, face reshaping, eye enlargement
 
 ### 5.3 Beauty/Retouch Camera Tools
+
 - **Skin Smoothing**: Adjustable smoothing level
 - **Face Slimming**: Narrow face shape
 - **Eye Enlargement**: Bigger eyes effect
@@ -489,6 +522,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Auto-Beauty**: One-tap beauty enhancement
 
 ### 5.4 Teleprompter Mode (In-App Recording)
+
 - **Script Display**: Show scrolling text during recording
 - **Scroll Speed**: Adjustable text scroll speed
 - **Font Size**: Adjustable text size for readability
@@ -498,6 +532,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **AI Script Generation**: Generate script directly in teleprompter
 
 ### 5.5 Voiceover Recording
+
 - **Direct Voiceover**: Record narration over timeline
 - **Monitoring**: Listen to existing audio while recording
 - **Countdown**: Pre-recording countdown
@@ -506,6 +541,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Re-Record**: Easily re-do voiceover takes
 
 ### 5.6 Screen Recording (Desktop/Extension)
+
 - **Full Screen Capture**: Record entire screen
 - **Window Capture**: Record specific application window
 - **Region Capture**: Record selected screen area
@@ -520,6 +556,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 6. TIMELINE & EDITING CORE
 
 ### 6.1 Timeline Architecture
+
 - **Video Tracks**: Up to 6+ video layers (desktop), 3–4 (mobile)
 - **Audio Tracks**: 4+ dedicated audio tracks
 - **Text Track**: Dedicated text/title layer
@@ -535,6 +572,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Track Reordering**: Drag to reorder tracks
 
 ### 6.2 Clip Operations
+
 - **Split/Cut (Blade)**: Cut clip at playhead position
 - **Multi-Split**: Split all tracks at playhead simultaneously
 - **Trim (Start)**: Trim clip from beginning
@@ -566,6 +604,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Sub-Clip**: Create sub-segment from longer clip
 
 ### 6.3 Clip Properties
+
 - **Duration**: Display and adjust clip duration
 - **Start/End Timecode**: Precise in/out points
 - **Position**: X/Y coordinates
@@ -580,6 +619,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Composite Order**: Layer stacking order
 
 ### 6.4 Timeline Navigation
+
 - **Playhead Scrubbing**: Drag playhead for frame-by-frame
 - **Zoom In/Out**: Magnify timeline (pinch/scroll/keyboard)
 - **Zoom to Fit**: Fit entire project in view
@@ -601,6 +641,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **In/Out Points**: Set in and out points for region operations
 
 ### 6.5 Markers
+
 - **Add Marker**: Place marker at playhead
 - **Marker Colors**: Color-coded markers
 - **Marker Labels**: Named/annotated markers
@@ -611,6 +652,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Chapter Markers**: Define chapters for export
 
 ### 6.6 Smart Editing Operations
+
 - **Smart Split**: AI-powered automatic splitting
 - **Smart Trim**: AI suggests trim points (remove silence)
 - **Scene Detection**: Auto-detect scene changes and split
@@ -623,6 +665,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 7. VIDEO EDITING — BASIC OPERATIONS
 
 ### 7.1 Transform
+
 - **Position X/Y**: Move element horizontally/vertically
 - **Scale**: Resize (uniform and non-uniform)
 - **Rotation**: Rotate 0°–360° (free rotation)
@@ -634,6 +677,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Reset Transform**: Return to default values
 
 ### 7.2 Crop
+
 - **Free Crop**: Drag to crop any area
 - **Preset Ratios**: 16:9, 9:16, 1:1, 4:5, 3:4, 4:3, 21:9
 - **Custom Ratio**: User-defined crop ratio
@@ -643,6 +687,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Animated Crop**: Keyframe crop position/size over time
 
 ### 7.3 Video Adjustments (Detailed)
+
 - **Brightness**: -100 to +100
 - **Contrast**: -100 to +100
 - **Saturation**: -100 to +100
@@ -664,20 +709,24 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Glow**: 0 to 100
 
 ### 7.4 Clip Speed
+
 - **Normal Speed**: 0.1x to 100x (covered in detail in Section 9)
 
 ### 7.5 Reverse
+
 - **Reverse Video**: Play video backwards
 - **Reverse Audio**: Reverse audio independently
 - **Combined Reverse**: Reverse audio + video together
 
 ### 7.6 Duplicate & Freeze
+
 - **Duplicate Frame**: Repeat current frame
 - **Freeze Frame**: Insert still image from video
 - **Freeze Duration**: Set freeze frame length
 - **Freeze with Transition**: Smooth transition into/out of freeze
 
 ### 7.7 Stabilization
+
 - **Video Stabilization**: Reduce camera shake
 - **Stabilization Levels**:
   - Minimal (slight stabilization)
@@ -687,10 +736,12 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Preview**: Real-time stabilization preview
 
 ### 7.8 Denoise
+
 - **Video Noise Reduction**: Reduce visual noise/grain
 - **Level Control**: Adjustable noise reduction strength
 
 ### 7.9 Enhance
+
 - **AI Video Enhance**: Upscale and improve video quality
 - **Super Resolution**: AI upscaling (e.g., 720p → 1080p → 4K)
 - **Face Enhancement**: AI face detail recovery
@@ -702,12 +753,14 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 8. VIDEO EDITING — ADJUSTMENTS & CORRECTIONS
 
 ### 8.1 White Balance
+
 - **Temperature Slider**: Cool ↔ Warm (Kelvin equivalent)
 - **Tint Slider**: Green ↔ Magenta
 - **Auto White Balance**: AI-powered auto correction
 - **Preset White Balance**: Daylight, Cloudy, Tungsten, Fluorescent, Shade
 
 ### 8.2 Tone Curve (RGB Curves)
+
 - **Master Curve**: Overall luminance curve
 - **Red Channel**: Individual red curve
 - **Green Channel**: Individual green curve
@@ -716,30 +769,35 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Reset Curve**: Return to linear
 
 ### 8.3 HSL (Hue/Saturation/Luminance)
+
 - **Per-Color Control**: Red, Orange, Yellow, Green, Aqua, Blue, Purple, Magenta
 - **Hue Shift**: Shift specific colors
 - **Saturation**: Adjust saturation per color
 - **Luminance**: Adjust brightness per color
 
 ### 8.4 Color Wheels (Desktop)
+
 - **Lift**: Adjust shadows color
 - **Gamma**: Adjust midtones color
 - **Gain**: Adjust highlights color
 - **Offset**: Overall color shift
 
 ### 8.5 Split Toning
+
 - **Highlight Color**: Apply color to highlights
 - **Shadow Color**: Apply color to shadows
 - **Balance**: Weight between highlights and shadows
 - **Saturation**: Intensity of split toning
 
 ### 8.6 LUT Support
+
 - **Built-in LUTs**: Cinematic LUTs included
 - **Import .cube LUTs**: Import custom LUT files (Pro)
 - **LUT Intensity**: Adjustable LUT strength (0–100%)
 - **LUT + Manual Adjustments**: Stack LUT with manual grading
 
 ### 8.7 Auto Correction
+
 - **Auto Color**: AI auto color correction
 - **Auto Contrast**: Automatic contrast adjustment
 - **Auto White Balance**: One-tap white balance fix
@@ -750,6 +808,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 9. SPEED CONTROLS & TIME MANIPULATION
 
 ### 9.1 Basic Speed
+
 - **Speed Range**: 0.1x to 100x
 - **Common Presets**: 0.1x, 0.2x, 0.3x, 0.4x, 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x, 3x, 4x, 5x, 8x, 10x, 20x, 50x, 100x
 - **Custom Speed**: Manual entry for exact speed
@@ -758,6 +817,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Mute on Speed Change**: Option to mute audio during speed changes
 
 ### 9.2 Speed Ramping / Curve
+
 - **Speed Curve Editor**: Graphical editor for variable speed
 - **Speed Keyframes**: Place speed change points
 - **Preset Speed Curves**:
@@ -774,6 +834,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Preview**: Real-time preview of speed changes
 
 ### 9.3 Slow Motion
+
 - **Standard Slow-Mo**: Reduce speed (0.5x, 0.25x, etc.)
 - **Optical Flow (AI Frame Interpolation)**: AI generates intermediate frames for ultra-smooth slow motion
 - **Frame Blending**: Blend adjacent frames for smoother slow-mo
@@ -781,6 +842,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Freeze + Slo-Mo**: Combine freeze frames with slow motion segments
 
 ### 9.4 Time Remapping
+
 - **Free-Form Time Mapping**: Non-linear time manipulation
 - **Time Reverse Segments**: Reverse portions within a clip
 - **Hold Frames**: Pause at specific frames
@@ -788,6 +850,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Ramp Out of Slow-Mo**: Smoothly return to normal speed
 
 ### 9.5 Hyperlapse / Timelapse
+
 - **Timelapse Creation**: Speed up long footage (10x–100x)
 - **Hyperlapse**: Stabilized timelapse (with stabilization)
 - **Frame Sampling**: Choose frame sampling method for extreme speeds
@@ -797,6 +860,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 10. KEYFRAME ANIMATION SYSTEM
 
 ### 10.1 Keyframe-Supported Properties
+
 - **Transform Properties**:
   - Position (X, Y)
   - Scale (width, height, uniform)
@@ -835,6 +899,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Speed**: Speed value at keyframe points (speed ramping)
 
 ### 10.2 Keyframe Controls
+
 - **Add Keyframe**: Place keyframe at playhead for selected property
 - **Auto-Keyframe**: Automatically create keyframes when property changes
 - **Delete Keyframe**: Remove selected keyframe
@@ -846,6 +911,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Select Multiple Keyframes**: Shift-click for batch selection
 
 ### 10.3 Interpolation Types
+
 - **Linear**: Constant-rate change between keyframes
 - **Ease In**: Gradually accelerate from keyframe
 - **Ease Out**: Gradually decelerate into keyframe
@@ -856,6 +922,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Continuous Bezier**: Smooth through keyframe with linked handles
 
 ### 10.4 Curve Editor (Desktop)
+
 - **Value Graph**: View and edit value over time
 - **Speed Graph**: View and edit rate of change
 - **Bezier Handles**: Drag handles for fine curve control
@@ -863,6 +930,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Per-Channel Curves**: Edit X and Y independently
 
 ### 10.5 Pre-Built Animations
+
 - **Pan & Zoom (Ken Burns)**:
   - Zoom In (center)
   - Zoom Out (center)
@@ -912,6 +980,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 11. CHROMA KEY & BACKGROUND REMOVAL
 
 ### 11.1 Chroma Key (Green/Blue Screen)
+
 - **Color Picker**: Select exact chroma key color
 - **Auto-Detect**: AI auto-detect green/blue screen
 - **Tolerance**: Adjust color matching sensitivity (0–100%)
@@ -928,6 +997,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Preview**: Real-time before/after split view
 
 ### 11.2 AI Background Removal (Portrait/Subject)
+
 - **Automatic Detection**: AI identifies and isolates subjects
 - **No Green Screen Required**: Works with any background
 - **Portrait Mode**: Optimized for people (faces, hair, etc.)
@@ -953,6 +1023,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 12. MASKING SYSTEM
 
 ### 12.1 Mask Types
+
 - **Linear (Gradient)**: Straight-line gradient mask
 - **Rectangle**: Rectangular mask with rounded corners option
 - **Circle/Ellipse**: Circular/oval mask
@@ -967,6 +1038,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Color Range Mask**: Mask based on color selection
 
 ### 12.2 Mask Controls
+
 - **Invert Mask**: Swap masked/unmasked areas
 - **Feather**: Soften mask edges (0–200+)
 - **Expansion/Contraction**: Grow or shrink mask boundary
@@ -986,8 +1058,9 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 13. BLEND MODES
 
 ### 13.1 Full Blend Mode List
+
 | # | Blend Mode | Category |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Normal | Default |
 | 2 | Dissolve | Default |
 | 3 | Darken | Darken |
@@ -1017,6 +1090,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 | 27 | Luminosity | HSL |
 
 ### 13.2 Blend Mode Controls
+
 - **Opacity with Blend**: Adjust blend intensity
 - **Fill with Blend**: Adjust fill opacity (affects certain modes differently)
 - **Knockout**: Allow layers below to show through
@@ -1026,6 +1100,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 14. PICTURE-IN-PICTURE & OVERLAY
 
 ### 14.1 Video Overlay (PiP)
+
 - **Layer Multiple Videos**: Stack videos on top of each other
 - **Free-Form Placement**: Drag to position anywhere on canvas
 - **Resize**: Corner handles to resize
@@ -1037,18 +1112,21 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Flip**: Horizontal/vertical flip
 
 ### 14.2 PiP Shapes
+
 - **Rectangle**: Default rectangular overlay
 - **Rounded Rectangle**: With adjustable corner radius
 - **Circle**: Circular crop overlay
 - **Custom Shape**: Use mask for custom PiP shapes
 
 ### 14.3 PiP Styling
+
 - **Border/Outline**: Add border with color and width
 - **Drop Shadow**: Shadow with offset, blur, color
 - **Background**: Background behind PiP (solid/gradient)
 - **Corners**: Rounded corner adjustment
 
 ### 14.4 PiP Animation
+
 - **Entry Animations**: Fade, slide, pop, bounce, rotate, zoom
 - **Exit Animations**: Reverse of entry animations
 - **Loop Animations**: Continuous subtle motion
@@ -1056,6 +1134,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Preset Motions**: Floating, shaking, orbiting, etc.
 
 ### 14.5 Image Overlay
+
 - **Layer Images**: Place images on top of video
 - **Sticker/Logo Overlay**: Permanent branding overlay
 - **Watermark**: Add custom watermark
@@ -1067,6 +1146,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 15. FILTERS LIBRARY
 
 ### 15.1 Filter Categories (Detailed)
+
 - **Portrait**: Skin-enhancing filters optimized for faces
 - **Vintage**: Retro film looks (70s, 80s, 90s aesthetics)
 - **Film**: Cinema film emulation (Kodak, Fuji-inspired)
@@ -1102,6 +1182,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Social Media**: Platform-optimized looks
 
 ### 15.2 Filter Controls
+
 - **Intensity/Strength**: 0%–100% filter strength
 - **Compare**: Before/after split view
 - **Favorite Filters**: Star/pin filters for quick access
@@ -1115,7 +1196,9 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 16. VIDEO EFFECTS LIBRARY
 
 ### 16.1 Effect Categories (Detailed)
+
 #### Style Effects
+
 - **Cartoon**: Turn video into cartoon style
 - **Sketch**: Pencil sketch effect
 - **Oil Painting**: Oil painting simulation
@@ -1132,6 +1215,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Neon Outline**: Glowing neon edge effect
 
 #### Glitch Effects
+
 - **RGB Split/Chromatic Aberration**: Separate color channels
 - **VHS**: VHS tape simulation (tracking lines, static)
 - **Datamosh**: Data corruption effect
@@ -1145,6 +1229,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Corruption**: Data corruption visual
 
 #### Light Effects
+
 - **Lens Flare**: Simulated camera lens flare
 - **Bokeh**: Background blur with light orbs
 - **Light Leak**: Film light leak overlay
@@ -1159,6 +1244,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Flare Collection**: Various lens flare styles
 
 #### Blur Effects
+
 - **Gaussian Blur**: Standard blur
 - **Motion Blur**: Directional blur simulating movement
 - **Radial Blur**: Zoom or spin blur from center
@@ -1171,6 +1257,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Surface Blur**: Skin-smoothing selective blur
 
 #### Distortion Effects
+
 - **Fisheye**: Wide-angle fisheye lens
 - **Swirl**: Rotational swirl distortion
 - **Wave**: Sine wave displacement
@@ -1185,6 +1272,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Jello**: Wobbly jello effect
 
 #### Particle Effects
+
 - **Snow**: Falling snow particles
 - **Rain**: Rain drops
 - **Fire/Flames**: Fire particles
@@ -1202,6 +1290,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Clouds/Fog**: Atmospheric fog
 
 #### Retro/Vintage Effects
+
 - **Old Film**: Silent era film look
 - **Film Grain**: Analog film grain overlay
 - **Film Scratch**: Film scratch lines
@@ -1216,6 +1305,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Daguerreotype**: Historical photograph style
 
 #### Color Effects
+
 - **Color Pop**: Isolate one color, rest B&W
 - **Selective Color**: Choose which colors to keep/change
 - **Color Gradient**: Apply gradient color overlay
@@ -1228,6 +1318,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **False Color**: False color mapping
 
 #### Artistic Effects
+
 - **Impressionist**: Impressionist painting
 - **Pointillism**: Dot-based art style
 - **Stained Glass**: Stained glass pattern
@@ -1238,6 +1329,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **ASCII Art**: Text-based art effect
 
 #### Motion Effects
+
 - **Speed Lines**: Motion speed lines overlay
 - **Motion Trail**: Ghosting/trail effect
 - **Spin**: Continuous rotation
@@ -1249,6 +1341,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Breath**: Gentle scale breathing
 
 #### Cinematic Effects
+
 - **Anamorphic Widescreen**: Black bars (21:9, 2.35:1, 2.39:1)
 - **Film Look**: Film camera emulation
 - **Letterbox**: Add letterbox bars
@@ -1258,6 +1351,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Director's Cut**: Cinematic compilation effects
 
 ### 16.2 Effect Controls
+
 - **Effect Stacking**: Apply multiple effects simultaneously
 - **Effect Order**: Reorder effect application
 - **Effect Intensity**: 0–100% strength per effect
@@ -1272,7 +1366,9 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 17. TRANSITIONS LIBRARY
 
 ### 17.1 Transition Categories (Detailed)
+
 #### Basic Transitions
+
 - **Cross Dissolve / Cross Fade**: Gradual blend between clips
 - **Fade to Black**: Fade out → Fade in (through black)
 - **Fade to White**: Fade out → Fade in (through white)
@@ -1282,6 +1378,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Additive Dissolve**: Brightness-based dissolve
 
 #### Wipe Transitions
+
 - **Wipe Left**: New clip wipes from right to left
 - **Wipe Right**: New clip wipes from left to right
 - **Wipe Up**: Bottom to top wipe
@@ -1299,6 +1396,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Gradient Wipe**: Soft gradient-based wipe
 
 #### Slide Transitions
+
 - **Slide Left**: Push clip from right
 - **Slide Right**: Push clip from left
 - **Slide Up**: Push clip from bottom
@@ -1309,6 +1407,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Uncover**: Old clip reveals new
 
 #### 3D Transitions
+
 - **Cube Rotate**: 3D cube rotation
 - **Page Turn / Page Flip**: Book page turn effect
 - **Zoom Through**: 3D zoom into scene
@@ -1322,6 +1421,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Origami**: Multi-fold transition
 
 #### Shape Transitions
+
 - **Circle Open/Close**: Circle reveal/conceal
 - **Diamond**: Diamond shape transition
 - **Heart**: Heart shape transition
@@ -1335,6 +1435,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Spiral**: Spiral transition
 
 #### Light & Flash Transitions
+
 - **Flash White**: Bright white flash
 - **Flash Black**: Quick black flash
 - **Lens Flare**: Lens flare sweep
@@ -1347,6 +1448,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Rays**: Light ray transition
 
 #### Ink & Artistic Transitions
+
 - **Ink Drop**: Ink dropping in water
 - **Ink Splash**: Ink splashing
 - **Watercolor**: Watercolor wash transition
@@ -1359,6 +1461,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Melt**: Melting transition
 
 #### Geometric Transitions
+
 - **Triangle Mosaic**: Triangle tile breakup
 - **Hexagon Mosaic**: Hexagonal tile breakup
 - **Square Mosaic**: Square tile breakup
@@ -1372,6 +1475,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Grid**: Grid pattern transition
 
 #### VHS/Retro Transitions
+
 - **VHS Glitch**: VHS-style glitch
 - **Tracking Lines**: VHS tracking error
 - **Static**: TV static transition
@@ -1382,6 +1486,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Retro Wipe**: Retro-styled wipe
 
 #### Blur Transitions
+
 - **Gaussian Blur**: Blur in/out
 - **Directional Blur**: Motion blur transition
 - **Radial Blur**: Zoom blur in/out
@@ -1389,6 +1494,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Tilt-Shift Blur**: Miniature blur transition
 
 #### Distortion Transitions
+
 - **Wave**: Wave distortion transition
 - **Ripple**: Ripple distortion
 - **Whip**: Fast whip pan (motion blur)
@@ -1398,6 +1504,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Swirl**: Swirl/spiral distortion
 
 #### Color Transitions
+
 - **Color Wash**: Color overlay wash
 - **Chromatic Aberration**: RGB split transition
 - **Negative**: Film negative transition
@@ -1406,6 +1513,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Black & White to Color**: Desaturation transition
 
 #### Overlay Transitions
+
 - **Overlay Slide**: Overlay element slides across
 - **Overlay Wipe**: Overlay element wipes
 - **Clapperboard**: Movie clapperboard transition
@@ -1413,12 +1521,14 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Social Media**: App icon / UI transition
 
 #### AI-Powered Transitions
+
 - **AI Morph**: AI-powered face/object morphing
 - **Smart Cut**: AI determines best transition point
 - **Object Transition**: AI tracks objects through transition
 - **Scene Match**: AI matches composition for seamless cut
 
 ### 17.2 Transition Controls
+
 - **Duration**: 0.1s to 5.0s (customizable per transition)
 - **Direction**: Reverse transition direction (where applicable)
 - **Alignment**:
@@ -1443,12 +1553,14 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 18. STICKERS & ELEMENTS
 
 ### 18.1 Sticker Library
+
 - **Total Stickers**: 10,000+ (static + animated combined)
 - **Static Stickers**: Fixed image stickers
 - **Animated Stickers**: Looping animation stickers
 - **Lottie Stickers**: Vector-based animated stickers
 
 ### 18.2 Sticker Categories
+
 - **Emoji**: Standard emoji set + custom emojis
 - **Reactions**: Social media reaction faces
 - **Arrows**: Directional arrows
@@ -1480,6 +1592,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Logo Templates**: Editable logo designs
 
 ### 18.3 Sticker Controls
+
 - **Resize**: Free-form corner-pinning
 - **Rotate**: 360° rotation
 - **Opacity**: 0–100% transparency
@@ -1497,6 +1610,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Recent**: Recently used stickers
 
 ### 18.4 Custom Elements
+
 - **Import Image as Sticker**: Use any image (PNG with transparency)
 - **Import GIF as Sticker**: Use animated GIFs
 - **Create Custom Sticker**: Draw or design within app
@@ -1507,6 +1621,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 19. TEXT & TITLES SYSTEM
 
 ### 19.1 Text Input
+
 - **Add Text**: Manual text entry
 - **Multi-Line Text**: Paragraph support
 - **Rich Text**: Mixed formatting within text box
@@ -1517,6 +1632,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Emoji in Text**: Full emoji support within text
 
 ### 19.2 Fonts
+
 - **Built-in Fonts**: 300+ fonts available
 - **Font Categories**:
   - Serif (e.g., Times, Garamond-style)
@@ -1545,6 +1661,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Small Caps**: Small capital letters
 
 ### 19.3 Text Styling
+
 - **Font Size**: 6pt to 500pt+ (scalable)
 - **Text Color**: Full color picker + hex input + presets
 - **Gradient Fill**: Multi-stop gradient text color
@@ -1573,6 +1690,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Text Transform**: Scale X, Scale Y independently
 
 ### 19.4 Text Animation (Auto Text)
+
 - **Total Pre-Made Animations**: 500+ styles
 - **Entry Animations** (play once when appearing):
   - Typewriter (character by character)
@@ -1633,6 +1751,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
   - Vibrate
 
 ### 19.5 Text Templates
+
 - **Pre-Designed Text Styles**: 200+ complete text designs
 - **Categories**:
   - Trending
@@ -1656,6 +1775,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Customizable**: Modify colors, fonts, timing of templates
 
 ### 19.6 Subtitle/Caption System
+
 - **Auto Caption Generation**: AI speech-to-text (see Section 25)
 - **Manual Caption Entry**: Type subtitles manually
 - **Import .srt**: Import standard subtitle files
@@ -1686,6 +1806,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 20. AUDIO — IMPORT & SOURCES
 
 ### 20.1 Audio Import Methods
+
 - **Device Music Library**: Import from phone/computer music
 - **Files App**: Import from file manager
 - **Extract from Video**: Pull audio from video clip
@@ -1698,8 +1819,9 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Clipboard**: Paste audio from clipboard
 
 ### 20.2 Supported Audio Formats
+
 | Format | Import | Notes |
-|---|---|---|
+| --- | --- | --- |
 | MP3 | ✅ | Most common |
 | WAV | ✅ | Uncompressed |
 | AAC | ✅ | Standard |
@@ -1712,6 +1834,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 | OPUS | ✅ | Modern codec |
 
 ### 20.3 Music Library
+
 - **Total Tracks**: Thousands of licensed tracks
 - **Genres**:
   - Pop
@@ -1761,6 +1884,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Commercial Use**: Some tracks licensed for commercial use
 
 ### 20.4 Sound Effects Library
+
 - **Categories**:
   - UI / Interface (clicks, pops, whooshes)
   - Transitions (swooshes, swishes)
@@ -1793,6 +1917,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 21. AUDIO — EDITING TOOLS
 
 ### 21.1 Basic Audio Operations
+
 - **Trim Audio**: Drag edges to trim
 - **Split Audio**: Cut at playhead
 - **Delete Audio**: Remove audio clip
@@ -1816,11 +1941,13 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Link/Unlink Audio-Video**: Sync or desync audio and video
 
 ### 21.2 Audio Pan (Stereo)
+
 - **Left/Right Pan**: -100 (full left) to +100 (full right)
 - **Center**: Default center position
 - **Pan Keyframes**: Animate panning over time
 
 ### 21.3 Audio Equalizer (EQ)
+
 - **Preset EQs**:
   - Default/Flat
   - Acoustic
@@ -1850,6 +1977,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Q Factor**: Bandwidth control per frequency
 
 ### 21.4 Audio Effects (Processing)
+
 - **Compressor**: Dynamic range compression
   - Threshold, Ratio, Attack, Release, Gain
 - **Limiter**: Prevent audio from exceeding threshold
@@ -1871,6 +1999,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Audio Enhancement**: AI overall audio quality improvement
 
 ### 21.5 Audio Ducking
+
 - **Auto Ducking**: Automatically lower background music when voiceover is detected
 - **Ducking Level**: How much to lower (e.g., -12dB, -18dB, -24dB)
 - **Attack Time**: How quickly to duck
@@ -1878,6 +2007,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Threshold**: Sensitivity of voice detection
 
 ### 21.6 Audio Separation (AI)
+
 - **Vocal Isolation**: Separate vocals from music
 - **Vocal Remover**: Remove vocals (create karaoke)
 - **Instrumental Extraction**: Extract instrumentals only
@@ -1887,6 +2017,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Quality Modes**: Standard vs. High Quality processing
 
 ### 21.7 Audio Meters
+
 - **Real-Time Levels**: Visual audio level display during playback
 - **Peak Meter**: Peak level indicator
 - **VU Meter**: Average level indicator
@@ -1899,6 +2030,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 22. AUDIO — EFFECTS & PROCESSING
 
 ### 22.1 Reverb Effects
+
 - **Room**: Small room reverb
 - **Hall**: Concert hall reverb
 - **Plate**: Plate reverb
@@ -1909,6 +2041,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Custom Reverb**: Adjustable decay, size, damping
 
 ### 22.2 Delay Effects
+
 - **Echo**: Single/multiple echo
 - **Delay**: Adjustable time delay
 - **Ping Pong**: Stereo ping-pong delay
@@ -1916,6 +2049,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Multi-Tap**: Multiple delay taps
 
 ### 22.3 Modulation Effects
+
 - **Chorus**: Thickening effect
 - **Flanger**: Sweeping comb filter
 - **Phaser**: Phase shifting
@@ -1924,6 +2058,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Rotary**: Leslie speaker simulation
 
 ### 22.4 Distortion Effects
+
 - **Overdrive**: Mild distortion
 - **Distortion**: Heavy distortion
 - **Fuzz**: Extreme distortion
@@ -1942,6 +2077,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 23. AUDIO — VOICE EFFECTS & CHANGERS
 
 ### 23.1 Voice Changer Effects
+
 - **Chipmunk**: Very high pitch
 - **High Pitch**: Moderately high
 - **Deep Voice**: Very low pitch
@@ -1977,6 +2113,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Intercom**: Building intercom quality
 
 ### 23.2 Voice Changer Controls
+
 - **Pitch Shift**: Manual pitch adjustment (-12 to +12 semitones)
 - **Formant Shift**: Change vocal formant (character)
 - **Mix**: Blend original with effect (dry/wet)
@@ -1987,6 +2124,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 24. AUDIO — BEAT SYNC & MUSIC FEATURES
 
 ### 24.1 Beat Detection
+
 - **AI Beat Detection**: Automatically detect beats in music
 - **Beat Markers**: Visual markers placed on timeline at beat points
 - **Downbeat Detection**: Identify strong beats (bar markers)
@@ -1994,6 +2132,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Beat Confidence**: Display detection confidence level
 
 ### 24.2 Auto Beat Sync
+
 - **One-Tap Sync**: Automatically align video cuts to beats
 - **Smart Sync**: AI determines which beats to cut on
 - **Sync Preview**: Preview before applying
@@ -2002,6 +2141,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Effect Sync**: Sync visual effects to beats
 
 ### 24.3 Manual Beat Markers
+
 - **Tap to Mark**: Tap along to place beat markers manually
 - **Add Marker**: Place individual markers
 - **Delete Marker**: Remove markers
@@ -2010,6 +2150,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Clear All Markers**: Remove all manual markers
 
 ### 24.4 Music Editing
+
 - **Music Trim**: Trim music start/end
 - **Music Split**: Split music at any point
 - **Music Fade**: Fade in/out
@@ -2023,6 +2164,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 25. SPEECH-TO-TEXT & AUTO CAPTIONS
 
 ### 25.1 Core Functionality
+
 - **Automatic Transcription**: AI converts spoken words to text
 - **Video-to-Text**: Generate captions from video audio
 - **Audio-to-Text**: Generate text from audio files
@@ -2030,6 +2172,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Real-Time Recognition**: Live captioning during playback
 
 ### 25.2 Language Support
+
 - **Languages**:
   - English (US, UK, AU)
   - Chinese (Simplified, Traditional)
@@ -2053,6 +2196,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
   - And more (10–20+ languages)
 
 ### 25.3 Caption Features
+
 - **Auto Punctuation**: AI adds periods, commas, question marks
 - **Speaker Diarization**: Identify and label different speakers
 - **Speaker Labels**: "Speaker 1", "Speaker 2", etc.
@@ -2066,6 +2210,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Bulk Timing Shift**: Shift all captions forward/backward
 
 ### 25.4 Caption Styles
+
 - **Pre-Made Styles**: 20+ subtitle style templates
 - **Font Customization**: Font, size, color, weight
 - **Background**: Background box/bar behind text
@@ -2077,6 +2222,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Bilingual Subtitles**: Show two languages simultaneously
 
 ### 25.5 Caption Export
+
 - **Export as SRT**: Standard subtitle format
 - **Export as TXT**: Plain text transcript
 - **Hardcode Subtitles**: Burn subtitles into video
@@ -2087,6 +2233,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 26. TEXT-TO-SPEECH (TTS)
 
 ### 26.1 Voice Options
+
 - **Total AI Voices**: 100+ voices
 - **Voice Categories**:
   - Male voices
@@ -2103,11 +2250,13 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Voice Previews**: Listen to voice samples before applying
 
 ### 26.2 TTS Languages
+
 - **Multi-Language**: 20+ languages and accents
 - **Regional Accents**: US English, British English, Australian English, etc.
 - **Dialects**: Various regional dialects
 
 ### 26.3 TTS Controls
+
 - **Speed**: 0.5x to 2.0x speech rate
 - **Pitch**: Higher/lower pitch adjustment
 - **Volume**: Output volume control
@@ -2127,6 +2276,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **SSML Support**: Speech Synthesis Markup Language for advanced control
 
 ### 26.4 TTS Integration
+
 - **Text-to-Speech from Text Layer**: Bind TTS to text element
 - **Sync TTS with Captions**: Auto-generate captions from TTS text
 - **TTS in Teleprompter**: TTS reads script
@@ -2134,6 +2284,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 - **Re-generate**: Regenerate TTS with different voice/settings
 
 ### 26.5 Voice Cloning
+
 - **Clone Your Voice**: Create AI model of your voice (with consent)
 - **Training**: Record sample audio for voice model
 - **Use Cloned Voice**: Use cloned voice for TTS
@@ -2145,11 +2296,13 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 ## 27. AI FEATURES — COMPLETE CATALOG
 
 ### 27.1 AI Tools Overview
+
 CapCut integrates AI across virtually every editing category. Here is a consolidated list of every AI-powered tool:
 
 #### AI Video Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Background Removal | Remove video background without green screen |
 | AI Video Enhancer | Upscale and improve video quality |
 | AI Super Resolution | AI upscaling (SD → HD → 4K) |
@@ -2171,8 +2324,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | AI Speed Ramp | Intelligent speed ramping suggestions |
 
 #### AI Audio Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Speech-to-Text | Auto-generate captions/subtitles |
 | AI Text-to-Speech | Convert text to natural speech |
 | AI Voice Cloning | Create digital copy of voice |
@@ -2187,8 +2341,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | AI Transcription | Convert any audio to text |
 
 #### AI Image/Photo Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Background Removal (Image) | Remove image background |
 | AI Image Generator | Text-to-image generation |
 | AI Image Enhancer | Upscale and improve images |
@@ -2204,8 +2359,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | AI Image Upscaler | Increase image resolution |
 
 #### AI Content Generation
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Script Writer | Generate video scripts |
 | AI Video Generator (Text-to-Video) | Create video from text |
 | AI Video Generator (Image-to-Video) | Animate images into video |
@@ -2217,8 +2373,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | AI Hashtag Generator | Suggest hashtags for social media |
 
 #### AI Avatar & Character
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Digital Avatar | Realistic AI presenters |
 | AI Custom Avatar | Create personalized avatar |
 | AI Talking Head | Generate talking-head video from text |
@@ -2227,16 +2384,18 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | AI Character Animation | Animate AI characters |
 
 #### AI Translation & Localization
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Caption Translation | Translate subtitles to other languages |
 | AI Video Dubbing | AI dub video in different languages |
 | AI Lip Sync | Adjust lip movement for dubbed audio |
 | AI Multi-Language Export | Export with multiple subtitle tracks |
 
 #### AI Commerce & Marketing
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | AI Product Video | Generate product showcase videos |
 | AI Ad Creator | Create advertising videos |
 | AI Product Photo Enhancement | Improve product images |
@@ -2251,6 +2410,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 28. AI — IMAGE & PHOTO TOOLS (Detailed)
 
 ### 28.1 AI Image Generator
+
 - **Text Prompt Input**: Describe image in natural language
 - **Style Selection**: Photorealistic, anime, oil painting, watercolor, sketch, 3D, etc.
 - **Aspect Ratio**: Square, landscape, portrait
@@ -2262,6 +2422,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Use as Background**: Use as video background
 
 ### 28.2 AI Image Enhancer
+
 - **Super Resolution**: 2x, 4x upscaling
 - **Detail Recovery**: Restore lost details
 - **Denoise**: Remove image noise
@@ -2271,18 +2432,21 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Batch Processing**: Enhance multiple images at once
 
 ### 28.3 AI Image Expansion (Outpainting)
+
 - **Extend Edges**: Generatively extend image boundaries
 - **Custom Canvas**: Set new canvas size
 - **Content-Aware Fill**: AI generates matching content
 - **Directional Expansion**: Extend in specific directions
 
 ### 28.4 AI Style Transfer
+
 - **Presets**: Van Gogh, Monet, Picasso, Anime, etc.
 - **Custom Style Image**: Use any image as style reference
 - **Intensity Control**: Adjust style application strength
 - **Real-Time Preview**: Preview before applying
 
 ### 28.5 AI Photo Animation
+
 - **Face Animation**: Make faces in photos smile, blink, turn head
 - **Parallax Effect**: Add 2.5D parallax motion to photos
 - **Panning**: Add camera movement to still photos
@@ -2291,6 +2455,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Motion Types**: Combine different animation types
 
 ### 28.6 AI Background Tools (Image)
+
 - **Auto Background Removal**: Instant background removal
 - **Background Blur**: Portrait mode / depth-of-field
 - **Background Replacement**: Replace with any image/color
@@ -2300,6 +2465,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Transparent Background**: PNG with alpha
 
 ### 28.7 AI Object Eraser (Image)
+
 - **Brush Tool**: Paint over objects to remove
 - **Lasso Tool**: Freehand selection
 - **Auto-Detection**: AI identifies removable objects
@@ -2311,6 +2477,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 29. AI — VIDEO GENERATION & EDITING (Detailed)
 
 ### 29.1 Text-to-Video
+
 - **Prompt Input**: Describe video in natural language
 - **Duration**: Generate 3s–30s+ clips
 - **Style**: Cinematic, realistic, animated, abstract, etc.
@@ -2323,6 +2490,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Clips**: Generate multiple connected clips
 
 ### 29.2 Image-to-Video
+
 - **Input Image**: Upload image as first frame
 - **Motion Prompt**: Describe desired motion
 - **Duration**: 3s–10s+ generation
@@ -2331,6 +2499,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Motion Options**: Generate different motion variations
 
 ### 29.3 Script-to-Video
+
 - **Script Input**: Paste or write full script
 - **Auto-Scene Breakdown**: AI breaks script into scenes
 - **Auto-B-Roll**: AI selects/generates B-roll footage
@@ -2341,11 +2510,13 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Full Automation**: One-click script to complete video
 
 ### 29.4 AI Video Extension
+
 - **Extend Clip**: Add AI-generated content to extend a clip
 - **Seamless Blending**: Smooth transition from real to AI content
 - **Content Matching**: Match style, color, motion of original
 
 ### 29.5 Long Video to Shorts
+
 - **Input Long Video**: Upload full-length video (podcast, lecture, etc.)
 - **AI Highlight Detection**: Identify most engaging moments
 - **Auto-Crop to Vertical**: Reframe for 9:16
@@ -2354,6 +2525,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Customizable Clip Length**: Set desired short-form duration (15s, 30s, 60s, 90s)
 
 ### 29.6 Smart B-Roll
+
 - **Context Analysis**: AI analyzes main footage content
 - **B-Roll Suggestions**: Suggest relevant supplementary footage
 - **Auto-Insert**: Automatically insert B-roll at appropriate moments
@@ -2366,6 +2538,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 30. AI — SCRIPT & CONTENT GENERATION (Detailed)
 
 ### 30.1 AI Script Writer
+
 - **Topic Input**: Enter video topic/theme
 - **Tone Selection**: Professional, casual, humorous, dramatic, educational, motivational
 - **Platform**: TikTok, Instagram Reels, YouTube Shorts, YouTube Long, LinkedIn, Twitter
@@ -2379,6 +2552,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Variations**: Generate several versions to choose from
 
 ### 30.2 AI Title & Description Generator
+
 - **Video Analysis**: Analyze video content
 - **Title Suggestions**: Multiple title options
 - **Description Writing**: Full description generation
@@ -2387,6 +2561,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Platform-Specific**: Optimized for TikTok, YouTube, Instagram
 
 ### 30.3 URL to Video (Product)
+
 - **Product URL Input**: Paste product page URL
 - **Auto-Extract**: Extract product images, description, price, features
 - **Auto-Generate**: Create product showcase video
@@ -2399,6 +2574,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 31. AI — AVATAR & CHARACTER (Detailed)
 
 ### 31.1 Digital Avatars
+
 - **Realistic AI Presenters**: Human-like AI characters
 - **Male/Female Options**: Various avatar appearances
 - **Ethnicity Diversity**: Multiple ethnicity options
@@ -2411,12 +2587,14 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Posture**: Standing, sitting options
 
 ### 31.2 Custom Avatar Creation
+
 - **Photo-Based**: Create avatar from photo upload
 - **Customization**: Adjust appearance details
 - **Brand Avatar**: Consistent brand spokesperson
 - **Save Avatar**: Reuse avatar across multiple videos
 
 ### 31.3 Avatar Script & Performance
+
 - **Script Input**: Type script for avatar to speak
 - **Voice Selection**: Choose voice for avatar
 - **Language**: Multi-language avatar speech
@@ -2425,6 +2603,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Gestures**: Select gesture style
 
 ### 31.4 Virtual Models (Commerce)
+
 - **AI Fashion Models**: Virtual models for clothing
 - **Product Display**: Models holding/displaying products
 - **Pose Selection**: Various pose options
@@ -2436,12 +2615,14 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 32. AI — TRANSLATION & LOCALIZATION (Detailed)
 
 ### 32.1 Auto Translation
+
 - **Caption Translation**: Translate subtitles to 20+ languages
 - **Batch Translation**: Translate to multiple languages at once
 - **Edit Translated Text**: Manual correction of translations
 - **Side-by-Side View**: Compare original and translated text
 
 ### 32.2 AI Dubbing
+
 - **Voice Translation**: Replace original audio with translated voice
 - **Language Pairs**: Support for 10+ language pairs
 - **Voice Matching**: Try to match original speaker's voice characteristics
@@ -2450,12 +2631,14 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Speakers**: Handle multiple speakers in dubbing
 
 ### 32.3 Lip Sync Adjustment
+
 - **AI Lip Sync**: Adjust lip movements to match dubbed audio
 - **Face Detection**: Detect and modify mouth area
 - **Natural Movement**: Realistic lip motion
 - **Subtle Adjustment**: Doesn't look uncanny
 
 ### 32.4 Multi-Language Export
+
 - **Multiple Subtitle Tracks**: Embed several language subtitle tracks
 - **Subtitle Selection**: Viewers choose their language
 - **Export Separate Files**: Export subtitle files for each language
@@ -2465,6 +2648,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 33. AI — COMMERCE & BUSINESS (Detailed)
 
 ### 33.1 Product Video Tools
+
 - **Product URL to Video**: Convert product page to video ad
 - **Product Image to Video**: Animate product photos
 - **Product Description Extraction**: Auto-extract product details
@@ -2475,6 +2659,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **A/B Variants**: Generate multiple versions for testing
 
 ### 33.2 AI Ad Creator
+
 - **Campaign Input**: Set campaign goals and target audience
 - **Multiple Ad Formats**: Stories, Feed posts, In-feed video
 - **Ad Copy Generation**: AI writes ad copy
@@ -2483,6 +2668,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Platform Optimization**: Optimize for TikTok Ads, Meta Ads, Google Ads
 
 ### 33.3 AI Product Photography
+
 - **Background Generation**: Generate studio/lifestyle backgrounds
 - **Lighting Adjustment**: AI-adjusted product lighting
 - **Shadow Generation**: Add realistic shadows
@@ -2490,6 +2676,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Multiple Angles**: Generate additional viewing angles
 
 ### 33.4 Batch Video Production
+
 - **CSV Import**: Import product data from spreadsheet
 - **Variable Fields**: Map data to template fields
 - **Mass Generation**: Create 10, 100, 1000+ videos from template
@@ -2502,6 +2689,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 34. MOTION TRACKING
 
 ### 34.1 Tracking Capabilities
+
 - **Object Tracking**: Track any object across frames
 - **Face Tracking**: Dedicated face detection and tracking
 - **Person/Body Tracking**: Track human body movement
@@ -2511,6 +2699,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Manual Track**: Define tracking region manually
 
 ### 34.2 Tracking Applications
+
 - **Attach Text**: Lock text to tracked object
 - **Attach Sticker**: Follow object with sticker/element
 - **Attach Effect**: Effect follows tracked object
@@ -2521,6 +2710,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Replacement Tracking**: Replace tracked area with other content
 
 ### 34.3 Tracking Controls
+
 - **Tracking Speed**: Fast/Normal/Accurate modes
 - **Track Forward**: Track forward from playhead
 - **Track Backward**: Track backward from playhead
@@ -2535,6 +2725,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 35. AUTO REFRAME
 
 ### 35.1 Core Functionality
+
 - **AI Subject Detection**: Identify main subject in video
 - **Dynamic Reframing**: Pan/crop to follow subject
 - **Multi-Subject**: Handle multiple subjects
@@ -2542,6 +2733,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Subject Priority**: Choose which subject to follow
 
 ### 35.2 Output Formats
+
 - **16:9 → 9:16**: Horizontal to vertical
 - **9:16 → 16:9**: Vertical to horizontal
 - **16:9 → 1:1**: Horizontal to square
@@ -2549,6 +2741,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Any ratio → Any ratio**: Custom source and target
 
 ### 35.3 Controls
+
 - **Padding**: Set minimum padding around subject
 - **Tracking Speed**: How fast camera follows subject
 - **Easing**: Smooth acceleration/deceleration
@@ -2562,12 +2755,14 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 36. VIDEO STABILIZATION
 
 ### 36.1 Stabilization Levels
+
 - **Minimal**: Slight stabilization, minimal crop
 - **Recommended**: Balanced stabilization and crop
 - **Maximum**: Most stabilization, significant crop
 - **Custom**: User-defined stabilization strength
 
 ### 36.2 Stabilization Features
+
 - **Real-Time Preview**: See stabilization before applying
 - **Crop Indicator**: Show how much is cropped
 - **Border Lock**: Option to lock to content within frame
@@ -2579,9 +2774,11 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 37. COLOR GRADING — COMPLETE SYSTEM
 
 ### 37.1 Basic Adjustments (Repeated for completeness)
+
 - Brightness, Contrast, Saturation, Exposure, Highlights, Shadows, Whites, Blacks, Temperature, Tint, Hue, Vibrance, Sharpen, Clarity, Vignette, Fade, Grain, Dehaze, Glow
 
 ### 37.2 Advanced Color Tools
+
 - **RGB Curves**: Master + per-channel curves
 - **Color Wheels**: Lift/Gamma/Gain (desktop)
 - **HSL**: Per-color Hue/Saturation/Luminance
@@ -2596,6 +2793,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
   - Histogram
 
 ### 37.3 Auto Color Tools
+
 - **Auto Color**: One-tap color correction
 - **Auto White Balance**: Automatic white balance
 - **Auto Exposure**: Automatic exposure normalization
@@ -2608,6 +2806,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 38. TEMPLATES SYSTEM
 
 ### 38.1 Template Library (Expanded)
+
 - **Total Templates**: 10,000+
 - **New Templates Added**: Weekly updates
 - **Creator-Made Templates**: User-submitted templates
@@ -2615,6 +2814,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Brand Templates**: Business-oriented templates
 
 ### 38.2 Template Categories (Full List)
+
 - For You / Trending
 - Business & Marketing
 - Product Showcase
@@ -2671,6 +2871,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Tips & Hacks
 
 ### 38.3 Template Features
+
 - **Template Preview**: Watch full template before using
 - **Template Info**: Duration, aspect ratio, media required
 - **Media Requirements**: Shows how many photos/videos needed
@@ -2692,8 +2893,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 39. QUICK TOOLS
 
 ### 39.1 Video Quick Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | Trim | Quick trim video start/end |
 | Split | Split video into parts |
 | Merge | Combine multiple videos |
@@ -2712,8 +2914,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | Chroma Key | Green screen removal |
 
 ### 39.2 Audio Quick Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | Extract Audio | Pull audio from video |
 | Mute Video | Silence video audio |
 | Add Music | Add background music |
@@ -2722,8 +2925,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | Noise Removal | AI noise reduction |
 
 ### 39.3 Image/Photo Quick Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | Photo Slideshow | Create video from photos |
 | Photo to Video | Animate single photo |
 | Background Remove (Image) | Remove image background |
@@ -2732,8 +2936,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | Live Photo to Video | Convert iOS Live Photo |
 
 ### 39.4 Other Quick Tools
+
 | Tool | Description |
-|---|---|
+| --- | --- |
 | Screen Recording | Record screen |
 | Video Recorder | Record webcam/camera |
 | Video to GIF | Convert video to animated GIF |
@@ -2746,6 +2951,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 40. TELEPROMPTER
 
 ### 40.1 Teleprompter Features
+
 - **Script Input**: Type or paste script
 - **Scrolling Text**: Auto-scrolling display during recording
 - **Scroll Speed**: Adjustable speed (slow, medium, fast, custom)
@@ -2767,6 +2973,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 41. STOCK LIBRARY & ASSETS
 
 ### 41.1 Stock Video
+
 - **Total Clips**: 10,000+ royalty-free clips
 - **Categories**: Nature, Business, Technology, Lifestyle, Abstract, Food, Travel, People, Architecture, Sports, Animals, Weather, etc.
 - **Resolution**: HD (1080p) and 4K (2160p)
@@ -2778,6 +2985,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Commercial Use**: Licensed for commercial use (Pro)
 
 ### 41.2 Stock Audio
+
 - **Music Tracks**: 10,000+ royalty-free tracks
 - **Sound Effects**: 10,000+ sound effects
 - **Organized by**: Genre, Mood, Duration, BPM, Vocal/Instrumental
@@ -2788,6 +2996,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Commercial License**: Some tracks available for commercial use
 
 ### 41.3 Stock Images
+
 - **Total Images**: 10,000+ royalty-free photos
 - **Categories**: Business, Nature, Food, People, Technology, Architecture, Travel, Animals, Objects, Textures
 - **Resolution**: High-resolution images
@@ -2796,6 +3005,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **License**: Royalty-free for CapCut projects
 
 ### 41.4 Design Assets
+
 - **Graphic Elements**: Icons, shapes, illustrations
 - **Frames**: Decorative borders and frames
 - **Backgrounds**: Patterns, textures, gradients
@@ -2814,6 +3024,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 42. MEDIA IMPORT & FORMAT SUPPORT
 
 ### 42.1 Import Sources
+
 - **Local Storage**: Device internal storage
 - **SD Card**: External storage (Android)
 - **Camera Roll / Gallery**: Photo/video library
@@ -2834,8 +3045,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **TikTok Import**: Import from TikTok
 
 ### 42.2 Supported Video Formats (Import)
+
 | Format | Codec | Import |
-|---|---|---|
+| --- | --- | --- |
 | MP4 | H.264/AVC | ✅ |
 | MP4 | H.265/HEVC | ✅ |
 | MP4 | VP9 | ✅ |
@@ -2856,8 +3068,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | RMVB | RealMedia | Limited |
 
 ### 42.3 Supported Image Formats (Import)
+
 | Format | Import |
-|---|---|
+| --- | --- |
 | JPEG / JPG | ✅ |
 | PNG | ✅ |
 | BMP | ✅ |
@@ -2873,8 +3086,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | ICO | ✅ |
 
 ### 42.4 Supported Audio Formats (Import)
+
 | Format | Import |
-|---|---|
+| --- | --- |
 | MP3 | ✅ |
 | WAV | ✅ |
 | AAC | ✅ |
@@ -2890,8 +3104,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | MID/MIDI | Limited |
 
 ### 42.5 Supported Subtitle Formats
+
 | Format | Import | Export |
-|---|---|---|
+| --- | --- | --- |
 | SRT | ✅ | ✅ |
 | ASS | ✅ | ✅ |
 | SSA | ✅ | ✅ |
@@ -2902,6 +3117,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 43. MEDIA MANAGEMENT & ORGANIZATION
 
 ### 43.1 Media Library
+
 - **All Media View**: See all imported media
 - **Video Tab**: Filter to videos only
 - **Photo Tab**: Filter to photos only
@@ -2917,6 +3133,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Info Panel**: View media details (resolution, duration, format, size, date)
 
 ### 43.2 Media Operations
+
 - **Preview**: Tap to preview media before adding
 - **Add to Timeline**: Add media to timeline
 - **Replace**: Replace media in existing clip
@@ -2927,6 +3144,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Properties**: View detailed metadata
 
 ### 43.3 Proxy Workflow
+
 - **Auto-Proxy**: Automatically create lower-res proxies
 - **Manual Proxy**: Create proxies on demand
 - **Proxy Toggle**: Switch between proxy and original
@@ -2938,8 +3156,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 44. EXPORT & OUTPUT
 
 ### 44.1 Video Export Settings
+
 | Setting | Options |
-|---|---|
+| --- | --- |
 | Resolution | 360p, 480p, 720p, 1080p, 1440p (2K), 2160p (4K) |
 | Frame Rate | 24fps, 25fps, 30fps, 50fps, 60fps |
 | Format | MP4 (primary), MOV, AVI |
@@ -2954,6 +3173,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | File Size Estimate | Displayed before export |
 
 ### 44.2 Export Features
+
 - **Background Export**: Continue using app during export
 - **Export Queue**: Queue multiple exports
 - **Export Progress**: Percentage + ETA
@@ -2964,8 +3184,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Watermark Toggle**: Show/hide watermark (Free vs. Pro)
 
 ### 44.3 Export Formats
+
 | Type | Format |
-|---|---|
+| --- | --- |
 | Video | MP4 (H.264) |
 | Video | MP4 (H.265/HEVC) |
 | Video | MOV |
@@ -2976,8 +3197,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | Project | .ccproject (CapCut native) |
 
 ### 44.4 Platform-Optimized Export Presets
+
 | Platform | Resolution | Ratio | Frame Rate |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | TikTok | 1080×1920 | 9:16 | 30fps |
 | Instagram Reels | 1080×1920 | 9:16 | 30fps |
 | Instagram Feed | 1080×1080 | 1:1 | 30fps |
@@ -2995,8 +3217,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 45. SHARING & PUBLISHING
 
 ### 45.1 Direct Platform Sharing
+
 | Platform | Capability |
-|---|---|
+| --- | --- |
 | TikTok | Direct upload + caption + hashtags |
 | Instagram | Feed, Reels, Stories |
 | YouTube | Standard upload + Shorts |
@@ -3012,6 +3235,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | Discord | Share to Discord |
 
 ### 45.2 Local Sharing
+
 - **Save to Camera Roll / Gallery**: Save locally
 - **Save to Files**: Save to file manager
 - **AirDrop**: Share to nearby Apple devices
@@ -3020,6 +3244,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **USB/Cable**: Transfer via cable
 
 ### 45.3 Link Sharing
+
 - **Project Link**: Shareable URL to view project
 - **Template Link**: Share template via URL
 - **QR Code**: Generate QR code for easy sharing
@@ -3032,6 +3257,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 46. CLOUD & SYNC
 
 ### 46.1 Cloud Storage
+
 - **Free Tier**: 1GB–5GB (varies)
 - **Pro Tier**: 100GB+
 - **Team Tier**: 1TB+
@@ -3039,6 +3265,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Storage Management**: Delete old projects to free space
 
 ### 46.2 Cloud Sync
+
 - **Project Sync**: Sync projects across devices
 - **Asset Sync**: Sync custom assets (fonts, effects)
 - **Settings Sync**: Sync preferences
@@ -3047,6 +3274,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Conflict Resolution**: Handle conflicting edits
 
 ### 46.3 Backup & Restore
+
 - **Auto-Backup**: Periodic project backup to cloud
 - **Manual Backup**: Trigger backup manually
 - **Restore**: Restore from backup
@@ -3058,6 +3286,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 47. COLLABORATION & TEAM FEATURES
 
 ### 47.1 Team Management
+
 - **Create Team**: Set up team workspace
 - **Invite Members**: Email or link invitation
 - **Roles & Permissions**:
@@ -3069,6 +3298,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Team Settings**: Configure team preferences
 
 ### 47.2 Collaborative Editing
+
 - **Shared Projects**: Multiple members access same project
 - **Real-Time Sync**: Changes sync in real-time
 - **Edit Indicators**: See who is editing what
@@ -3079,6 +3309,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Activity Feed**: Timeline of all team activity
 
 ### 47.3 Review & Approval
+
 - **Review Mode**: View-only mode for reviewers
 - **Approval Workflow**: Submit → Review → Approve/Reject
 - **Feedback Tools**: Annotations and comments
@@ -3090,6 +3321,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 48. BRAND KIT
 
 ### 48.1 Brand Assets
+
 - **Brand Colors**: Save brand color palette (multiple colors)
 - **Brand Fonts**: Upload and store brand fonts
 - **Brand Logo**: Upload logo with transparent background
@@ -3099,6 +3331,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Watermark**: Set default watermark/bug
 
 ### 48.2 Brand Application
+
 - **One-Click Apply**: Apply brand kit to any project
 - **Brand Consistency**: Ensure consistent branding across videos
 - **Team Access**: Share brand kit with all team members
@@ -3110,6 +3343,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 49. SOCIAL MEDIA INTEGRATION
 
 ### 49.1 TikTok (Deep Integration)
+
 - **Account Linking**: Connect TikTok account
 - **Direct Post**: Publish to TikTok from CapCut
 - **Sound Import**: Import trending TikTok sounds
@@ -3122,11 +3356,13 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Saved Sounds**: Access TikTok saved sounds library
 
 ### 49.2 Instagram
+
 - **Direct Share**: Share to Instagram Feed, Reels, Stories, IGTV
 - **Format Optimization**: Auto-optimized settings for Instagram
 - **Cover Image**: Custom thumbnail for Instagram
 
 ### 49.3 YouTube
+
 - **Direct Upload**: Upload to YouTube
 - **Thumbnail Creator**: Generate custom thumbnails
 - **End Screen Templates**: YouTube-style end screens
@@ -3134,6 +3370,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Description/Tags**: AI-generated descriptions and tags
 
 ### 49.4 Other Platforms
+
 - **Facebook**: Feed, Stories, Reels
 - **Twitter/X**: Tweet with video
 - **LinkedIn**: Professional video sharing
@@ -3143,6 +3380,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Telegram**: Channel and message sharing
 
 ### 49.5 Cross-Platform Publishing
+
 - **Multi-Select Publish**: Choose multiple platforms at once
 - **Platform Adaptation**: Auto-adjust for each platform's specs
 - **Scheduling**: Schedule posts for later (platform-dependent)
@@ -3153,6 +3391,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 50. BATCH CREATION & AUTOMATION
 
 ### 50.1 Batch Video Creation
+
 - **Template-Based Batch**: Use one template for many videos
 - **CSV/Spreadsheet Import**: Import data from Excel/Sheets
 - **Variable Fields**: Map data columns to template fields
@@ -3169,6 +3408,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Naming Convention**: Auto-name based on data fields
 
 ### 50.2 Automation Features
+
 - **Auto-Save**: Periodic automatic saving
 - **Auto-Backup**: Cloud backup
 - **Smart Defaults**: AI-suggested settings
@@ -3182,6 +3422,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 51. CAPCUT PRO / SUBSCRIPTION
 
 ### 51.1 CapCut Free
+
 - Core editing features
 - Basic templates
 - Basic effects, filters, transitions
@@ -3194,6 +3435,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Personal use license
 
 ### 51.2 CapCut Pro
+
 - **Price**: ~$7.99–$9.99/month or ~$74.99/year
 - **Free Trial**: 7-day free trial
 - **Everything in Free, plus**:
@@ -3220,6 +3462,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
   - Batch export
 
 ### 51.3 CapCut for Teams
+
 - **Price**: Per-seat pricing (varies)
 - **Everything in Pro, plus**:
   - Team collaboration tools
@@ -3239,6 +3482,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 52. PLATFORM-SPECIFIC FEATURES
 
 ### 52.1 iOS-Specific
+
 - iPad optimized layout
 - Apple Pencil precision editing
 - iOS Widgets (home screen)
@@ -3255,6 +3499,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Notification Center widgets
 
 ### 52.2 Android-Specific
+
 - Material Design elements
 - Home screen widgets
 - Direct file system access
@@ -3268,6 +3513,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Samsung DeX support (some)
 
 ### 52.3 Windows-Specific
+
 - GPU acceleration (NVIDIA NVENC, AMD VCE, Intel Quick Sync)
 - Multi-monitor support
 - Keyboard shortcut customization
@@ -3280,6 +3526,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Hardware decoding (DXVA)
 
 ### 52.4 macOS-Specific
+
 - Apple Silicon native (M1/M2/M3/M4)
 - Metal GPU acceleration
 - macOS design language
@@ -3293,6 +3540,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Force Touch preview
 
 ### 52.5 Web-Specific
+
 - No installation required
 - Cloud-based rendering
 - Template-first workflow
@@ -3307,6 +3555,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 53. ACCESSIBILITY
 
 ### 53.1 Visual
+
 - High contrast mode
 - Text size adjustment
 - Color blind friendly palettes
@@ -3315,12 +3564,14 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Focus indicators
 
 ### 53.2 Auditory
+
 - Auto captions for hearing impaired
 - Visual audio meters
 - Haptic feedback for audio cues
 - Visual notifications
 
 ### 53.3 Motor
+
 - Large touch targets
 - Button alternatives for gestures
 - Full keyboard control (desktop)
@@ -3329,6 +3580,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Switch Control support (iOS)
 
 ### 53.4 Cognitive
+
 - Simple editing mode
 - Template-driven workflow
 - Guided tutorials
@@ -3337,6 +3589,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - Consistent UI patterns
 
 ### 53.5 Language & Localization
+
 - 20+ UI languages
 - RTL support (Arabic, Hebrew)
 - Localized content (templates, stock media)
@@ -3348,6 +3601,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 54. SETTINGS & PREFERENCES
 
 ### 54.1 General Settings
+
 - **Language**: UI language selection
 - **Theme**: Dark / Light mode
 - **Default Aspect Ratio**: Set default for new projects
@@ -3358,6 +3612,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Download Quality**: Set quality for downloaded assets
 
 ### 54.2 Editing Settings
+
 - **Snap to Grid**: Toggle magnetic snapping
 - **Default Transition Duration**: Set default (0.1s–5.0s)
 - **Default Photo Duration**: Set for slideshows (2s–10s)
@@ -3367,6 +3622,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Default Fade Duration**: Set default audio fade
 
 ### 54.3 Export Settings
+
 - **Default Export Quality**: Standard / High / Best
 - **Default Format**: MP4 (primary)
 - **Default Resolution**: Set preferred resolution
@@ -3375,6 +3631,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Export Location**: Set default save location
 
 ### 54.4 Storage & Cache
+
 - **Cache Management**: Clear cache
 - **Storage Usage**: View storage breakdown
 - **Offline Assets**: Download for offline use
@@ -3382,6 +3639,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Project Cleanup**: Remove unused project files
 
 ### 54.5 Account Settings
+
 - **Profile**: Edit profile information
 - **Subscription**: Manage CapCut Pro subscription
 - **Connected Accounts**: TikTok, Google, Facebook, Apple
@@ -3398,6 +3656,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 55. PERFORMANCE & TECHNICAL
 
 ### 55.1 Performance Features
+
 - **GPU Acceleration**: Hardware-accelerated encoding/decoding
 - **Hardware Decoding**: H.264, H.265 hardware decode
 - **Hardware Encoding**: H.264, H.265 hardware encode
@@ -3410,6 +3669,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 - **Preview Quality**: Adjustable preview quality for performance
 
 ### 55.2 Technical Specifications
+
 - **Maximum Project Duration**: No hard limit (memory-dependent)
 - **Maximum Tracks**: 6+ video, 4+ audio (desktop); 3-4 video (mobile)
 - **Maximum Clips per Project**: Hundreds (memory-dependent)
@@ -3427,6 +3687,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 56. MONETIZATION MODEL
 
 ### 56.1 Revenue Streams
+
 1. **CapCut Pro Subscriptions**: Monthly/annual recurring revenue
 2. **In-App Purchases**: Individual effect/pack purchases
 3. **Advertising**: In-app ads for free users
@@ -3434,14 +3695,16 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 5. **API/Enterprise**: Enterprise licensing
 
 ### 56.2 Pricing Tiers
+
 | Tier | Price | Key Features |
-|---|---|---|
+| --- | --- | --- |
 | Free | $0 | Core editing, basic templates, 1080p, watermark |
 | Pro Monthly | ~$7.99-$9.99/mo | All features, 4K, no watermark, 100GB cloud |
 | Pro Annual | ~$74.99/yr | Same as monthly (save ~35%) |
 | Teams | Per-seat | All Pro + collaboration, brand kit, API |
 
 ### 56.3 Free Trial
+
 - **Duration**: 7 days
 - **Access**: Full Pro features
 - **Auto-Renewal**: Converts to paid after trial
@@ -3454,7 +3717,7 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ### Feature × Platform Availability
 
 | Feature | iOS | Android | Windows | macOS | Web |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Basic Editing | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Multi-Track (3+) | ✅ | ✅ | ✅ (6+) | ✅ (6+) | ✅ (2-3) |
 | Keyframes | ✅ | ✅ | ✅ | ✅ | Limited |
@@ -3510,8 +3773,9 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 ## 58. KEYBOARD SHORTCUTS (Desktop)
 
 ### 58.1 Windows Shortcuts
+
 | Category | Action | Shortcut |
-|---|---|---|
+| --- | --- | --- |
 | **Playback** | Play/Pause | Space |
 | | Stop | . (period) |
 | | Next Frame | Right Arrow |
@@ -3568,9 +3832,11 @@ CapCut integrates AI across virtually every editing category. Here is a consolid
 | | Clear In & Out | Alt+X |
 
 ### 58.2 macOS Shortcuts
+
 Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Quick Look | Space (on selected file) |
 | Finder Integration | ⌘+Space (Spotlight) |
 | Close Window | ⌘+W |
@@ -3583,8 +3849,9 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 ## 59. SYSTEM REQUIREMENTS
 
 ### 59.1 iOS
+
 | Requirement | Minimum | Recommended |
-|---|---|---|
+| --- | --- | --- |
 | iOS Version | 12.0+ | 16.0+ |
 | Device | iPhone 6s | iPhone 12+ |
 | iPad | iPad Air 2 | iPad Pro (2020+) |
@@ -3594,8 +3861,9 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 | Internet | Required for cloud, AI, templates | Stable broadband |
 
 ### 59.2 Android
+
 | Requirement | Minimum | Recommended |
-|---|---|---|
+| --- | --- | --- |
 | Android Version | 5.0 (Lollipop) | 10.0+ |
 | Architecture | ARMv7 (32-bit) | ARM64 (64-bit) |
 | RAM | 2GB | 4GB+ |
@@ -3605,8 +3873,9 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 | Internet | Required for cloud, AI, templates | Stable broadband |
 
 ### 59.3 Windows
+
 | Requirement | Minimum | Recommended |
-|---|---|---|
+| --- | --- | --- |
 | OS | Windows 10 (64-bit) | Windows 10/11 (latest) |
 | Processor | Intel Core i3 / AMD Ryzen 3 | Intel Core i5/i7 / AMD Ryzen 5/7 |
 | RAM | 4GB | 8GB+ (16GB for 4K) |
@@ -3617,8 +3886,9 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 | Internet | Required for install, cloud, AI | Stable broadband |
 
 ### 59.4 macOS
+
 | Requirement | Minimum | Recommended |
-|---|---|---|
+| --- | --- | --- |
 | OS | macOS 10.14 (Mojave) | macOS 12+ (Monterey+) |
 | Processor | Intel Core i5 | Apple M1+ (or Intel i7+) |
 | RAM | 4GB | 8GB+ (16GB for 4K) |
@@ -3628,8 +3898,9 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 | Internet | Required for install, cloud, AI | Stable broadband |
 
 ### 59.5 Web Browser
+
 | Requirement | Minimum | Recommended |
-|---|---|---|
+| --- | --- | --- |
 | Chrome | 80+ | Latest |
 | Firefox | 75+ | Latest |
 | Safari | 14+ | Latest |
@@ -3644,7 +3915,7 @@ Replace Ctrl with Cmd (⌘) for all shortcuts above. Additional macOS-specific:
 ## APPENDIX: QUICK STATISTICS
 
 | Metric | Value |
-|---|---|
+| --- | --- |
 | Total Downloads | 1 Billion+ |
 | Countries Available | 150+ |
 | UI Languages | 20+ |
@@ -4394,4 +4665,4 @@ Beberapa hal **tidak tersedia** atau tidak cukup terdokumentasi secara publik da
 
 Secara keseluruhan, jika tujuan Anda adalah membangun “CapCut-like app” dari nol, prioritas paling bernilai adalah: **canvas + timeline engine + preview renderer + export pipeline + captions + templates + sync** terlebih dahulu; lalu menambah **motion tracking, stabilization, auto reframe, collaboration, monetization, dan advanced analytics** sebagai fase lanjutan. Prioritas ini sejalan dengan bukti fitur paling inti yang CapCut tonjolkan di app store dan situs resminya, sekaligus menekan risiko teknik terbesar lebih awal. citeturn12view0turn12view1turn21view1turn21view4turn30view0turn29view2
 
-Implements All Above But ALL FEATURE MUST FREE 
+Implements All Above But ALL FEATURE MUST FREE

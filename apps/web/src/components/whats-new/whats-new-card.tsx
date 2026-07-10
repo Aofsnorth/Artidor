@@ -95,11 +95,11 @@ export function WhatsNewCard() {
 
 function Card({ onClose }: { onClose: () => void }) {
 	return (
-		<div className="pointer-events-auto w-[21rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#15151a]/95 shadow-[0_24px_70px_-12px_rgba(0,0,0,0.75)] backdrop-blur-2xl">
+		<div className="pointer-events-auto w-84 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#15151a]/95 shadow-[0_24px_70px_-12px_rgba(0,0,0,0.75)] backdrop-blur-2xl">
 			{/* Header */}
 			<div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3.5">
 				<div className="flex items-center gap-2.5">
-					<div className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02]">
+					<div className="grid size-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-linear-to-b from-white/8 to-white/2">
 						<HugeiconsIcon
 							icon={SparklesIcon}
 							className="size-4 text-amber-300"
@@ -117,7 +117,7 @@ function Card({ onClose }: { onClose: () => void }) {
 				<button
 					type="button"
 					onClick={onClose}
-					className="grid size-7 shrink-0 place-items-center rounded-lg text-white/40 transition hover:bg-white/[0.06] hover:text-white/80"
+					className="grid size-7 shrink-0 place-items-center rounded-lg text-white/40 transition hover:bg-white/6 hover:text-white/80"
 					aria-label="Dismiss"
 				>
 					<HugeiconsIcon icon={Cancel01Icon} className="size-4" />
@@ -153,7 +153,7 @@ function Card({ onClose }: { onClose: () => void }) {
 												tag.dot,
 											)}
 										/>
-										<span className="min-w-0 break-words text-[12px] leading-relaxed text-white/60">
+										<span className="min-w-0 wrap-break-word text-[12px] leading-relaxed text-white/60">
 											{item}
 										</span>
 									</li>

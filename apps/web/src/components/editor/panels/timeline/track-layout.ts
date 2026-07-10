@@ -81,3 +81,25 @@ export function getTotalTracksHeight({
 	const gapsHeight = Math.max(0, tracks.length - 1) * TIMELINE_TRACK_GAP_PX;
 	return tracksHeight + gapsHeight;
 }
+
+export function computeTrackVerticalSpans({
+	tracks,
+	extraHeights,
+	overrideHeights,
+}: {
+	tracks: Array<{ type: TrackType; id: string }>;
+	extraHeights?: readonly number[];
+	overrideHeights?: Record<string, number>;
+}): Array<{ top: number; height: number }> {
+	let top = 0;
+	return tracks.map((track, index) => {
+		const height =
+			getTrackHeight({
+				type: track.type,
+				overrideHeight: overrideHeights?.[track.id],
+			}) + (extraHeights?.[index] ?? 0);
+		const span = { top, height };
+		top += height + TIMELINE_TRACK_GAP_PX;
+		return span;
+	});
+}

@@ -19,7 +19,7 @@ SharpDX, HelixToolkit, wgpu-native, dan Stack Overflow.
 Sejak AE 24.2 (2024) ada tiga engine yang bisa dipilih di Composition Settings → 3D Renderer:
 
 | Engine | Fokus | Kemampuan | Keterbatasan |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Classic 3D** | Layer 2D di ruang 3D | posisi/rotasi/scale Z, kamera, lampu dasar, parallax multiplane | tidak ada geometri 3D asli, tidak ada material |
 | **Cinema 4D** (Cineware) | Ekstrusi & bevel | ekstrusi text/shape, bevel, material C4D, refleksi, GI | render lambat, layer C4D = 2D layer di AE |
 | **Advanced 3D** (Aurora, default 2024+) | Geometri 3D asli | import model GLB/GLTF, material PBR, environment light, shadow catcher, DoF in-engine, parametric meshes | fitur beta terus bertambah |
@@ -62,7 +62,7 @@ Sumber: [8][9][10][11][12].
 Empat tipe klasik + Environment light (Advanced 3D):
 
 | Tipe | Perilaku | Cast shadow (Adv3D) |
-|---|---|---|
+| --- | --- | --- |
 | **Parallel** | directional (sinar paralel, seperti matahari) | ya |
 | **Spot** | cone angle + penumbra + falloff | ya |
 | **Point** | omnidirectional | ya (Adv3D) |
@@ -175,6 +175,7 @@ Catatan: Warp Stabilizer **tidak** bekerja pada 360 footage. Sumber [19].
 ### 2.4 Yang relevan untuk Artidor
 
 Dari Premiere, yang worth diadopsi:
+
 1. **Equirectangular projection aware rendering** (untuk output 360).
 2. **VR Plane to Sphere** — tempel layer 2D ke sphere (parallax 360).
 3. **Stereoscopic layout** (over/under, SbS) untuk output VR.
@@ -191,6 +192,7 @@ Dikombinasikan dengan arsitektur Artidor (compositor WGPU quad-based, rust/
 sebagai single source of truth, desktop-web Tauri + desktop-native WPF):
 
 ### 3.1 Tier 1 — Classic 3D (foundation, P1)
+
 - Layer 2D planar di ruang 3D: transform Position XYZ, Rotation XYZ,
   Scale XYZ, Anchor 3D.
 - **Kamera** one-node & two-node (point of interest), focal length, zoom,
@@ -201,6 +203,7 @@ sebagai single source of truth, desktop-web Tauri + desktop-native WPF):
   kamera) → backward compatible.
 
 ### 3.2 Tier 2 — Advanced 3D (P2)
+
 - Import **GLB/GLTF** (mesh + skeletal animation + retiming).
 - **Material PBR**: base color, roughness, metalness, emissive, normal.
 - **Environment light** (equirectangular HDR/EXR + composite/video layer).
@@ -209,12 +212,14 @@ sebagai single source of truth, desktop-web Tauri + desktop-native WPF):
 - **Parametric meshes** (cube/sphere/plane/torus/cone/cylinder).
 
 ### 3.3 Tier 3 — Immersive / VR (P2)
+
 - Equirectangular projection-aware output.
 - VR Plane to Sphere (tempel 2D ke sphere).
 - Stereoscopic layout (over/under, SbS).
 - Reframe 360 → perspektif (manual + AI opsional).
 
 ### 3.4 Tier 4 — Tracking (P2/P3)
+
 - 3D Camera Tracker (analisis footage → camera motion + track points).
 - Match composite elemen 3D ke footage 2D.
 
@@ -273,7 +278,7 @@ Butuh host GPU surface (WGPU DX12) ke WPF.
 ## 5. Pemetaan fitur AE/Premiere → modul Rust Artidor
 
 | Fitur AE/Premiere | Modul Rust baru/ekstensi |
-|---|---|
+| --- | --- |
 | Transform 3D layer | `rust/crates/scene3d` (Transform3D, Camera, Light) |
 | Kamera one/two-node | `scene3d::camera` |
 | Lampu + shadow | `scene3d::light` + shader `light.wgsl` |
@@ -296,6 +301,7 @@ Butuh host GPU surface (WGPU DX12) ke WPF.
 ## 6. Sumber (referensi)
 
 ### After Effects
+
 1. Adobe Community — Animated Environmental Lights in AE Beta 25.2 — https://community.adobe.com/questions-534/animated-environmental-lights-available-now-in-after-effects-beta-314441
 2. Adobe Blog — 3D & Motion Design Upgrades in AE (IBC 2024) — https://blog.adobe.com/en/publish/2024/09/10/adobe-introduces-3d-motion-design-upgrades-adobe-after-effects
 3. Adobe Community — Parametric Meshes & Substance 3D Materials (Beta 26.0) — https://community.adobe.com/announcements-532/new-in-beta-meshes-and-3d-materials-oh-my-314505
@@ -317,23 +323,26 @@ Butuh host GPU surface (WGPU DX12) ke WPF.
 19. Adobe Help — Enable lights to cast shadows — https://helpx.adobe.com/after-effects/using/enable-lights-to-cast-shadows.html
 
 ### Premiere Pro
-20. Adobe Help — Learn about VR editing in Premiere Pro — https://helpx.adobe.com/au/premiere-pro/kb/work-with-vr.html
-21. Adobe Help — Immersive video effects and transitions — https://helpx.adobe.com/premiere/desktop/edit-projects/edit-vr-content/immerse-video-effects-and-transitions.html
-22. Adobe Help — Perform three-axis video rotation — https://helpx.adobe.com/premiere/desktop/edit-projects/edit-vr-content/three-axis-video-rotation.html
-23. PSU Media Commons — VR Plane to Sphere Effect — https://mediacommons.psu.edu/2019/07/03/using-the-vr-plane-to-sphere-effect-in-adobe-premiere-for-360-video/
-24. Insta360 — Reframe Adobe Premiere Pro Plugin — https://www.insta360.com/blog/news/insta360-reframe-adobe-premiere-pro-plugin.html
-25. Insta360 Support — How to Use Insta360 Reframe — https://www.insta360.com/support/supportcourse?post_id=20765
+
+1. Adobe Help — Learn about VR editing in Premiere Pro — https://helpx.adobe.com/au/premiere-pro/kb/work-with-vr.html
+2. Adobe Help — Immersive video effects and transitions — https://helpx.adobe.com/premiere/desktop/edit-projects/edit-vr-content/immerse-video-effects-and-transitions.html
+3. Adobe Help — Perform three-axis video rotation — https://helpx.adobe.com/premiere/desktop/edit-projects/edit-vr-content/three-axis-video-rotation.html
+4. PSU Media Commons — VR Plane to Sphere Effect — https://mediacommons.psu.edu/2019/07/03/using-the-vr-plane-to-sphere-effect-in-adobe-premiere-for-360-video/
+5. Insta360 — Reframe Adobe Premiere Pro Plugin — https://www.insta360.com/blog/news/insta360-reframe-adobe-premiere-pro-plugin.html
+6. Insta360 Support — How to Use Insta360 Reframe — https://www.insta360.com/support/supportcourse?post_id=20765
 
 ### WPF / .NET interop
-26. microsoft/WPFDXInterop — D3D11Image + SharpDX — https://github.com/microsoft/WPFDXInterop/issues/10
-27. Stack Overflow — Rendering on a WPF Control with DirectX 11 — https://stackoverflow.com/questions/11794516/rendering-on-a-wpf-control-with-directx-11
-28. sharpdx/SharpDX#599 — SurfaceQueue / D3DImage sync — https://github.com/sharpdx/SharpDX/issues/599
-29. iejeecee/SharpDX-Wpf-Direct3D-11-Example — https://github.com/iejeecee/SharpDX-Wpf-Direct3D-11-Example
-30. Helix Toolkit — https://helix-toolkit.github.io/
-31. Helix Toolkit GitHub — https://github.com/helix-toolkit/helix-toolkit
+
+1. microsoft/WPFDXInterop — D3D11Image + SharpDX — https://github.com/microsoft/WPFDXInterop/issues/10
+2. Stack Overflow — Rendering on a WPF Control with DirectX 11 — https://stackoverflow.com/questions/11794516/rendering-on-a-wpf-control-with-directx-11
+3. sharpdx/SharpDX#599 — SurfaceQueue / D3DImage sync — https://github.com/sharpdx/SharpDX/issues/599
+4. iejeecee/SharpDX-Wpf-Direct3D-11-Example — https://github.com/iejeecee/SharpDX-Wpf-Direct3D-11-Example
+5. Helix Toolkit — https://helix-toolkit.github.io/
+6. Helix Toolkit GitHub — https://github.com/helix-toolkit/helix-toolkit
 
 ### Rust / WGPU FFI
-32. The Embedded Rust Book — Rust with C (cdylib) — https://docs.rust-embedded.org/book/interoperability/rust-with-c.html
-33. gfx-rs/wgpu-native — https://github.com/gfx-rs/wgpu-native
-34. Rustonomicon — FFI — https://doc.rust-lang.org/nomicon/ffi.html
-35. lib.rs — wgpu crate — https://lib.rs/crates/wgpu
+
+1. The Embedded Rust Book — Rust with C (cdylib) — https://docs.rust-embedded.org/book/interoperability/rust-with-c.html
+2. gfx-rs/wgpu-native — https://github.com/gfx-rs/wgpu-native
+3. Rustonomicon — FFI — https://doc.rust-lang.org/nomicon/ffi.html
+4. lib.rs — wgpu crate — https://lib.rs/crates/wgpu

@@ -73,6 +73,7 @@ because each platform may use an entirely different framework and language.
 ### `rust/`
 
 The single source of truth for platform-agnostic non-UI logic:
+
 - timeline math
 - timebase conversion
 - compositor logic
@@ -87,6 +88,7 @@ logic into `rust/` is expected to be agent-driven.
 ### `apps/web/`
 
 Next.js/React frontend:
+
 - UI rendering
 - interaction
 - editor panels
@@ -114,6 +116,7 @@ out. It still compiles but is not the active desktop path.
 Sensitive MCP/tooling boundary.
 
 MCP tools must be:
+
 - typed
 - least privilege
 - logged
@@ -426,6 +429,7 @@ same care as any production code — add tests, run `cargo check` and
 ## Completion Criteria
 
 A task is not complete until:
+
 - The change is minimal.
 - The behavior is verified by the relevant sensors.
 - Typecheck/lint/test/build are run or skipped with a stated reason.

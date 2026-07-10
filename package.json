@@ -31,7 +31,6 @@
     "@tauri-apps/api": "^2",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
-    "@xenova/transformers": "^2.17.2",
     "better-auth": "^1.6.20",
     "brace-expansion": "^5.0.6",
     "defu": "^6.1.7",

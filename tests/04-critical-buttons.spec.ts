@@ -12,7 +12,6 @@ import { test, expect } from "@playwright/test";
 import {
 	bootEditor,
 	clickAssetTab,
-	clickInspectorTab,
 	insertAndSelectText,
 	insertMockVideo,
 	installErrorRecorder,
@@ -116,7 +115,7 @@ test.describe("Editor — critical buttons are reachable", () => {
 		);
 		// The new element should have a different id from the original.
 		expect(
-			stateAfter.elements.some((e) => e.id !== id),
+			stateAfter.elements.some((e) => e.id !== id.elementId),
 			"new element has a different id",
 		).toBe(true);
 	});
@@ -132,8 +131,11 @@ test.describe("Editor — critical buttons are reachable", () => {
 		const state = await getEditorState(page);
 		const el = state.elements.find((e) => e.id === id);
 		expect(el, "mock video element should be on the main track").toBeTruthy();
+		if (!el) {
+			throw new Error("mock video element should be on the main track");
+		}
 		await runCommand(page, "select_elements", {
-			elements: [{ trackId: el!.trackId, elementId: id }],
+			elements: [{ trackId: el.trackId, elementId: id }],
 		});
 		await page.waitForTimeout(500);
 		// The Speed tab should be present in the inspector.

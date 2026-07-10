@@ -333,6 +333,7 @@ function ElementEnvelope({
 
 const KEYFRAME_INDICATOR_MIN_WIDTH_PX = 40;
 const ELEMENT_RING_WIDTH_PX = 1.5;
+const SELECTED_ELEMENT_RING_WIDTH_PX = 3;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 
 interface KeyframeIndicator {
@@ -710,8 +711,8 @@ function TimelineElement({
 										: undefined,
 							pointerEvents:
 								isBeingDragged && dragState.dragElementIds.length > 0 ? "none" : undefined,
-							opacity:
-								isBeingDragged && dragState.dragElementIds.length > 0 ? 0 : undefined,
+						opacity:
+							isBeingDragged && dragState.dragElementIds.length > 0 ? 0 : undefined,
 							// Skip rendering for off-screen clips and isolate each clip's
 							// layout/paint from the rest of the timeline. This is the single
 							// biggest scroll-performance win in Firefox, which struggles with
@@ -1168,6 +1169,7 @@ function ElementInner({
 			style={{
 				left: `${ELEMENT_RING_WIDTH_PX}px`,
 				right: `${ELEMENT_RING_WIDTH_PX}px`,
+				zIndex: isSelected ? 2 : undefined,
 				// CSS containment: isolate layout and paint to this card so that
 				// sibling cards don't trigger layout/paint on each other during
 				// drag and scroll. Improves Firefox performance significantly.
@@ -1179,7 +1181,7 @@ function ElementInner({
 				style={{
 					...(isSelected
 						? {
-								boxShadow: `0 0 0 ${ELEMENT_RING_WIDTH_PX}px var(--primary)`,
+								boxShadow: `0 0 0 ${SELECTED_ELEMENT_RING_WIDTH_PX}px var(--primary)`,
 							}
 						: undefined),
 					borderRadius,
@@ -1877,8 +1879,9 @@ function AudioElementContent({
 			Math.max(0, trackIndex) % TIMELINE_TRACK_THEME.audio.variants.length
 		];
 
-	const trackSliderPercent =
-		useTimelineStore((s) => s.trackSliders[track.id] ?? 100);
+	const trackSliderPercent = useTimelineStore(
+		(s) => s.trackSliders[track.id] ?? 100,
+	);
 	const elementDb = (element as AudioElement | VideoElement).volume ?? 0;
 	// Track slider is a linear percentage (0–100, default 100). The
 	// element's volume is in dB; convert to linear, then multiply by the
@@ -1889,10 +1892,7 @@ function AudioElementContent({
 	// Use perceptual (sqrt) scaling for waveform display so the visual
 	// height better matches perceived loudness.
 	const waveformScale = Math.sqrt(effectiveVolume);
-	const trackVolumePercent = Math.max(
-		0,
-		Math.min(100, trackSliderPercent),
-	);
+	const trackVolumePercent = Math.max(0, Math.min(100, trackSliderPercent));
 
 	if (hasAudioSource) {
 		return (
@@ -2211,9 +2211,7 @@ function TiledMediaContent({
 		(s) => s.trackSliders[track.id] ?? 100,
 	);
 	const elementDb =
-		element.type === "video"
-			? ((element as VideoElement).volume ?? 0)
-			: 0;
+		element.type === "video" ? ((element as VideoElement).volume ?? 0) : 0;
 	const effectiveVolume = dBToLinear(elementDb) * (trackSliderPercent / 100);
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
 	const imageUrl =
@@ -2375,7 +2373,10 @@ function MediaElementHeader({
 
 function ElementContent({ element, track, zoomLevel }: ElementContentProps) {
 	// Null layers are text elements with nullLayer flag — render as null
-	if (element.type === "text" && (element as { nullLayer?: boolean }).nullLayer) {
+	if (
+		element.type === "text" &&
+		(element as { nullLayer?: boolean }).nullLayer
+	) {
 		return <NullLayerContent element={element} />;
 	}
 	switch (element.type) {

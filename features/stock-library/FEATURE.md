@@ -18,7 +18,7 @@ footage with preview thumbnails, duration, and one-click download.
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | 6 warnings (pre-existing), 0 errors |
 | `bun run test` | all pass |

@@ -8,11 +8,11 @@
 
 ## 01. Circle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Circle bulat sempurna dengan jarak tepi yang sama dari titik tengah. Bisa dibuat sebagai shape filled, stroke-only, atau mask bulat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Center point.
 - Radius.
@@ -20,7 +20,7 @@ Circle bulat sempurna dengan jarak tepi yang sama dari titik tengah. Bisa dibuat
 - Anchor di tengah.
 - Optional feather untuk mask.
 
-### Kegunaan:
+### Kegunaan
 
 - Dot animation.
 - Avatar mask.
@@ -28,7 +28,7 @@ Circle bulat sempurna dengan jarak tepi yang sama dari titik tengah. Bisa dibuat
 - Face blur mask.
 - Circular highlight.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Fill color.
@@ -40,11 +40,11 @@ Circle bulat sempurna dengan jarak tepi yang sama dari titik tengah. Bisa dibuat
 
 ## 02. Ellipse / Oval
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Ellipse adalah circle yang diregangkan pada sumbu X atau Y. Bentuknya bisa oval horizontal atau oval vertikal.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Radius X.
 - Radius Y.
@@ -52,7 +52,7 @@ Ellipse adalah circle yang diregangkan pada sumbu X atau Y. Bentuknya bisa oval 
 - Fill atau stroke.
 - Optional rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Spotlight lembut.
 - Oval mask.
@@ -60,7 +60,7 @@ Ellipse adalah circle yang diregangkan pada sumbu X atau Y. Bentuknya bisa oval 
 - Blob sederhana.
 - Background decoration.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius X.
 - Radius Y.
@@ -72,18 +72,18 @@ Ellipse adalah circle yang diregangkan pada sumbu X atau Y. Bentuknya bisa oval 
 
 ## 03. Square
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Square adalah bentuk kotak dengan empat sisi sama panjang dan empat sudut 90 derajat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width dan height sama.
 - 4 corner point.
 - Fill atau stroke.
 - Anchor center.
 
-### Kegunaan:
+### Kegunaan
 
 - Icon tile.
 - Pixel block.
@@ -91,7 +91,7 @@ Square adalah bentuk kotak dengan empat sisi sama panjang dan empat sudut 90 der
 - Square mask.
 - Minimal UI card.
 
-### Properti wajib:
+### Properti wajib
 
 - Size.
 - Fill color.
@@ -103,11 +103,11 @@ Square adalah bentuk kotak dengan empat sisi sama panjang dan empat sudut 90 der
 
 ## 04. Rectangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Rectangle adalah bentuk empat sisi dengan sudut siku-siku, biasanya dipakai sebagai panel, background, atau mask.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width.
 - Height.
@@ -115,7 +115,7 @@ Rectangle adalah bentuk empat sisi dengan sudut siku-siku, biasanya dipakai seba
 - Fill atau stroke.
 - Anchor center.
 
-### Kegunaan:
+### Kegunaan
 
 - Lower-third.
 - Title bar.
@@ -123,7 +123,7 @@ Rectangle adalah bentuk empat sisi dengan sudut siku-siku, biasanya dipakai seba
 - Wipe transition.
 - Video crop mask.
 
-### Properti wajib:
+### Properti wajib
 
 - Width.
 - Height.
@@ -135,11 +135,11 @@ Rectangle adalah bentuk empat sisi dengan sudut siku-siku, biasanya dipakai seba
 
 ## 05. Rounded Rectangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Rounded rectangle adalah rectangle dengan sudut membulat. Cocok untuk tampilan UI modern dan card halus.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width.
 - Height.
@@ -147,7 +147,7 @@ Rounded rectangle adalah rectangle dengan sudut membulat. Cocok untuk tampilan U
 - Fill atau stroke.
 - Optional per-corner radius.
 
-### Kegunaan:
+### Kegunaan
 
 - Button.
 - Caption box.
@@ -155,7 +155,7 @@ Rounded rectangle adalah rectangle dengan sudut membulat. Cocok untuk tampilan U
 - Notification panel.
 - Modern UI container.
 
-### Properti wajib:
+### Properti wajib
 
 - Corner radius.
 - Width.
@@ -167,11 +167,11 @@ Rounded rectangle adalah rectangle dengan sudut membulat. Cocok untuk tampilan U
 
 ## 06. Pill / Capsule
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Pill adalah rounded rectangle dengan radius sangat besar sampai ujung kiri dan kanan menjadi setengah lingkaran.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width.
 - Height.
@@ -179,7 +179,7 @@ Pill adalah rounded rectangle dengan radius sangat besar sampai ujung kiri dan k
 - Fill atau stroke.
 - Optional icon/text slot.
 
-### Kegunaan:
+### Kegunaan
 
 - Tag.
 - Chip.
@@ -187,7 +187,7 @@ Pill adalah rounded rectangle dengan radius sangat besar sampai ujung kiri dan k
 - Toggle button.
 - CTA button.
 
-### Properti wajib:
+### Properti wajib
 
 - Height.
 - Width.
@@ -199,11 +199,11 @@ Pill adalah rounded rectangle dengan radius sangat besar sampai ujung kiri dan k
 
 ## 07. Superellipse / Squircle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Superellipse atau squircle adalah campuran antara square dan circle, dengan sudut yang sangat halus dan tidak terlalu kotak.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width.
 - Height.
@@ -211,7 +211,7 @@ Superellipse atau squircle adalah campuran antara square dan circle, dengan sudu
 - Corner smoothness.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - App icon base.
 - Soft UI card.
@@ -219,7 +219,7 @@ Superellipse atau squircle adalah campuran antara square dan circle, dengan sudu
 - Profile frame.
 - Modern thumbnail.
 
-### Properti wajib:
+### Properti wajib
 
 - Curve amount.
 - Width.
@@ -231,18 +231,18 @@ Superellipse atau squircle adalah campuran antara square dan circle, dengan sudu
 
 ## 08. Diamond
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Diamond adalah square yang diputar 45 derajat sehingga terlihat seperti belah ketupat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 4 point simetris.
 - Width/height.
 - Rotation 45 derajat.
 - Fill atau stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Badge.
 - Sparkle base.
@@ -250,7 +250,7 @@ Diamond adalah square yang diputar 45 derajat sehingga terlihat seperti belah ke
 - Geometric pattern.
 - Marker.
 
-### Properti wajib:
+### Properti wajib
 
 - Size.
 - Rotation.
@@ -262,11 +262,11 @@ Diamond adalah square yang diputar 45 derajat sehingga terlihat seperti belah ke
 
 ## 09. Parallelogram
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Parallelogram adalah bentuk empat sisi dengan sisi berhadapan sejajar dan bagian samping miring.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Width.
 - Height.
@@ -274,7 +274,7 @@ Parallelogram adalah bentuk empat sisi dengan sisi berhadapan sejajar dan bagian
 - 4 corner point.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Esports banner.
 - Speed graphic.
@@ -282,7 +282,7 @@ Parallelogram adalah bentuk empat sisi dengan sisi berhadapan sejajar dan bagian
 - Motion block.
 - Tech panel.
 
-### Properti wajib:
+### Properti wajib
 
 - Skew angle.
 - Width.
@@ -294,11 +294,11 @@ Parallelogram adalah bentuk empat sisi dengan sisi berhadapan sejajar dan bagian
 
 ## 10. Trapezoid
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Trapezoid adalah bentuk empat sisi dengan satu pasang sisi sejajar, biasanya sisi atas dan bawah berbeda panjang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Top width.
 - Bottom width.
@@ -306,7 +306,7 @@ Trapezoid adalah bentuk empat sisi dengan satu pasang sisi sejajar, biasanya sis
 - 4 corner point.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Perspective panel.
 - Stylized label.
@@ -314,7 +314,7 @@ Trapezoid adalah bentuk empat sisi dengan satu pasang sisi sejajar, biasanya sis
 - Stage platform.
 - Info banner.
 
-### Properti wajib:
+### Properti wajib
 
 - Top width.
 - Bottom width.
@@ -326,18 +326,18 @@ Trapezoid adalah bentuk empat sisi dengan satu pasang sisi sejajar, biasanya sis
 
 ## 11. Triangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Triangle adalah polygon tiga sisi. Bentuk ini paling dasar untuk pointer, warning, dan play icon.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 3 vertices.
 - Radius atau base-height.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Warning icon.
 - Play button.
@@ -345,7 +345,7 @@ Triangle adalah polygon tiga sisi. Bentuk ini paling dasar untuk pointer, warnin
 - Geometric decoration.
 - Transition shard.
 
-### Properti wajib:
+### Properti wajib
 
 - Point positions.
 - Fill.
@@ -357,11 +357,11 @@ Triangle adalah polygon tiga sisi. Bentuk ini paling dasar untuk pointer, warnin
 
 ## 12. Right Triangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Right triangle adalah triangle dengan satu sudut 90 derajat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Base.
 - Height.
@@ -369,7 +369,7 @@ Right triangle adalah triangle dengan satu sudut 90 derajat.
 - Fill/stroke.
 - Anchor optional.
 
-### Kegunaan:
+### Kegunaan
 
 - Corner overlay.
 - Diagonal wipe.
@@ -377,7 +377,7 @@ Right triangle adalah triangle dengan satu sudut 90 derajat.
 - UI decoration.
 - Cutout mask.
 
-### Properti wajib:
+### Properti wajib
 
 - Base.
 - Height.
@@ -389,18 +389,18 @@ Right triangle adalah triangle dengan satu sudut 90 derajat.
 
 ## 13. Isosceles Triangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Isosceles triangle adalah triangle dengan dua sisi sama panjang dan satu sisi sebagai base.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Base width.
 - Height.
 - Top point.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Pointer.
 - Marker.
@@ -408,7 +408,7 @@ Isosceles triangle adalah triangle dengan dua sisi sama panjang dan satu sisi se
 - Play cue.
 - Badge detail.
 
-### Properti wajib:
+### Properti wajib
 
 - Base width.
 - Height.
@@ -420,18 +420,18 @@ Isosceles triangle adalah triangle dengan dua sisi sama panjang dan satu sisi se
 
 ## 14. Equilateral Triangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Equilateral triangle adalah triangle dengan tiga sisi sama panjang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 3 vertices sama jarak.
 - Radius.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Geometric pattern.
 - Warning badge.
@@ -439,7 +439,7 @@ Equilateral triangle adalah triangle dengan tiga sisi sama panjang.
 - Logo base.
 - Decorative icon.
 
-### Properti wajib:
+### Properti wajib
 
 - Side length.
 - Rotation.
@@ -451,11 +451,11 @@ Equilateral triangle adalah triangle dengan tiga sisi sama panjang.
 
 ## 15. Pentagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Pentagon adalah polygon lima sisi.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 5 vertices.
 - Center point.
@@ -463,7 +463,7 @@ Pentagon adalah polygon lima sisi.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Badge.
 - Shield simple.
@@ -471,7 +471,7 @@ Pentagon adalah polygon lima sisi.
 - Emblem.
 - Icon base.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Rotation.
@@ -483,11 +483,11 @@ Pentagon adalah polygon lima sisi.
 
 ## 16. Hexagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Hexagon adalah polygon enam sisi, sering dipakai untuk nuansa tech atau honeycomb.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 6 vertices.
 - Center point.
@@ -495,7 +495,7 @@ Hexagon adalah polygon enam sisi, sering dipakai untuk nuansa tech atau honeycom
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Tech UI.
 - Honeycomb grid.
@@ -503,7 +503,7 @@ Hexagon adalah polygon enam sisi, sering dipakai untuk nuansa tech atau honeycom
 - Data card.
 - Pattern background.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Flat/pointy orientation.
@@ -515,11 +515,11 @@ Hexagon adalah polygon enam sisi, sering dipakai untuk nuansa tech atau honeycom
 
 ## 17. Heptagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Heptagon adalah polygon tujuh sisi.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 7 vertices.
 - Center point.
@@ -527,7 +527,7 @@ Heptagon adalah polygon tujuh sisi.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Abstract background.
 - Decorative badge.
@@ -535,7 +535,7 @@ Heptagon adalah polygon tujuh sisi.
 - Unique marker.
 - Pattern tile.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Rotation.
@@ -547,11 +547,11 @@ Heptagon adalah polygon tujuh sisi.
 
 ## 18. Octagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Octagon adalah polygon delapan sisi, dikenal juga sebagai bentuk rambu stop.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 8 vertices.
 - Center point.
@@ -559,7 +559,7 @@ Octagon adalah polygon delapan sisi, dikenal juga sebagai bentuk rambu stop.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Stop sign style.
 - Badge.
@@ -567,7 +567,7 @@ Octagon adalah polygon delapan sisi, dikenal juga sebagai bentuk rambu stop.
 - Alert label.
 - Tech icon.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Rotation.
@@ -579,11 +579,11 @@ Octagon adalah polygon delapan sisi, dikenal juga sebagai bentuk rambu stop.
 
 ## 19. Nonagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Nonagon adalah polygon sembilan sisi.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 9 vertices.
 - Center point.
@@ -591,7 +591,7 @@ Nonagon adalah polygon sembilan sisi.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Decorative shape.
 - Geometric background.
@@ -599,7 +599,7 @@ Nonagon adalah polygon sembilan sisi.
 - Motion tile.
 - Pattern element.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Rotation.
@@ -611,11 +611,11 @@ Nonagon adalah polygon sembilan sisi.
 
 ## 20. Decagon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Decagon adalah polygon sepuluh sisi.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 10 vertices.
 - Center point.
@@ -623,7 +623,7 @@ Decagon adalah polygon sepuluh sisi.
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Coin base.
 - Medallion.
@@ -631,7 +631,7 @@ Decagon adalah polygon sepuluh sisi.
 - Seal graphic.
 - Pattern tile.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Rotation.
@@ -643,11 +643,11 @@ Decagon adalah polygon sepuluh sisi.
 
 ## 21. Generic Polygon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Generic polygon adalah polygon dengan jumlah sisi yang bisa diubah bebas.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Sides count.
 - Radius.
@@ -655,7 +655,7 @@ Generic polygon adalah polygon dengan jumlah sisi yang bisa diubah bebas.
 - Corner roundness.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Morphing shape.
 - Procedural pattern.
@@ -663,7 +663,7 @@ Generic polygon adalah polygon dengan jumlah sisi yang bisa diubah bebas.
 - Icon base.
 - Geometry animation.
 
-### Properti wajib:
+### Properti wajib
 
 - Sides count.
 - Radius.
@@ -675,11 +675,11 @@ Generic polygon adalah polygon dengan jumlah sisi yang bisa diubah bebas.
 
 ## 22. Rounded Polygon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Rounded polygon adalah polygon yang setiap sudutnya dibuat membulat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Sides count.
 - Radius.
@@ -687,7 +687,7 @@ Rounded polygon adalah polygon yang setiap sudutnya dibuat membulat.
 - Fill/stroke.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Soft badge.
 - Friendly UI icon.
@@ -695,7 +695,7 @@ Rounded polygon adalah polygon yang setiap sudutnya dibuat membulat.
 - Modern pattern.
 - Logo base.
 
-### Properti wajib:
+### Properti wajib
 
 - Sides count.
 - Corner radius.
@@ -707,11 +707,11 @@ Rounded polygon adalah polygon yang setiap sudutnya dibuat membulat.
 
 ## 23. Star 4-Point
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Star 4-point adalah bintang sederhana dengan empat ujung, sering dipakai sebagai sparkle.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Outer radius.
 - Inner radius.
@@ -719,7 +719,7 @@ Star 4-point adalah bintang sederhana dengan empat ujung, sering dipakai sebagai
 - Rotation.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Sparkle.
 - Shine effect.
@@ -727,7 +727,7 @@ Star 4-point adalah bintang sederhana dengan empat ujung, sering dipakai sebagai
 - Magic particle.
 - Highlight accent.
 
-### Properti wajib:
+### Properti wajib
 
 - Outer radius.
 - Inner radius.
@@ -739,11 +739,11 @@ Star 4-point adalah bintang sederhana dengan empat ujung, sering dipakai sebagai
 
 ## 24. Star 5-Point
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Star 5-point adalah bentuk bintang klasik dengan lima ujung.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 5 outer points.
 - 5 inner points.
@@ -751,7 +751,7 @@ Star 5-point adalah bentuk bintang klasik dengan lima ujung.
 - Inner radius.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Rating star.
 - Achievement.
@@ -759,7 +759,7 @@ Star 5-point adalah bentuk bintang klasik dengan lima ujung.
 - Pop effect.
 - Badge.
 
-### Properti wajib:
+### Properti wajib
 
 - Point count.
 - Outer radius.
@@ -771,11 +771,11 @@ Star 5-point adalah bentuk bintang klasik dengan lima ujung.
 
 ## 25. Star 6-Point
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Star 6-point adalah bintang enam ujung dengan struktur radial simetris.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 6 outer points.
 - 6 inner points.
@@ -783,7 +783,7 @@ Star 6-point adalah bintang enam ujung dengan struktur radial simetris.
 - Inner radius.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Decorative badge.
 - Sparkle.
@@ -791,7 +791,7 @@ Star 6-point adalah bintang enam ujung dengan struktur radial simetris.
 - Magic effect.
 - Logo ornament.
 
-### Properti wajib:
+### Properti wajib
 
 - Outer radius.
 - Inner radius.
@@ -803,11 +803,11 @@ Star 6-point adalah bintang enam ujung dengan struktur radial simetris.
 
 ## 26. Star 8-Point
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Star 8-point adalah bintang delapan ujung, biasanya terlihat seperti burst kecil.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 8 outer points.
 - 8 inner points.
@@ -815,7 +815,7 @@ Star 8-point adalah bintang delapan ujung, biasanya terlihat seperti burst kecil
 - Inner radius.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Burst highlight.
 - Magical sparkle.
@@ -823,7 +823,7 @@ Star 8-point adalah bintang delapan ujung, biasanya terlihat seperti burst kecil
 - Promo sticker.
 - Light flare.
 
-### Properti wajib:
+### Properti wajib
 
 - Point count.
 - Outer radius.
@@ -835,11 +835,11 @@ Star 8-point adalah bintang delapan ujung, biasanya terlihat seperti burst kecil
 
 ## 27. Multi-Point Star
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Multi-point star adalah bintang dengan jumlah ujung fleksibel.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Point count.
 - Outer radius.
@@ -847,7 +847,7 @@ Multi-point star adalah bintang dengan jumlah ujung fleksibel.
 - Roundness.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Particle star.
 - Procedural sparkle.
@@ -855,7 +855,7 @@ Multi-point star adalah bintang dengan jumlah ujung fleksibel.
 - Pop animation.
 - Energy effect.
 
-### Properti wajib:
+### Properti wajib
 
 - Point count.
 - Outer radius.
@@ -867,11 +867,11 @@ Multi-point star adalah bintang dengan jumlah ujung fleksibel.
 
 ## 28. Burst / Sunburst
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Burst adalah bentuk bintang dengan banyak spike tajam seperti ledakan atau matahari.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Spike count.
 - Outer radius.
@@ -879,7 +879,7 @@ Burst adalah bentuk bintang dengan banyak spike tajam seperti ledakan atau matah
 - Spike sharpness.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Impact effect.
 - Comic pop.
@@ -887,7 +887,7 @@ Burst adalah bentuk bintang dengan banyak spike tajam seperti ledakan atau matah
 - Promo badge.
 - Attention marker.
 
-### Properti wajib:
+### Properti wajib
 
 - Spike count.
 - Inner radius.
@@ -899,11 +899,11 @@ Burst adalah bentuk bintang dengan banyak spike tajam seperti ledakan atau matah
 
 ## 29. Rounded Burst
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Rounded burst adalah burst dengan ujung dan lekukan yang lebih membulat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Spike count.
 - Outer radius.
@@ -911,7 +911,7 @@ Rounded burst adalah burst dengan ujung dan lekukan yang lebih membulat.
 - Roundness.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Playful sticker.
 - Soft promo badge.
@@ -919,7 +919,7 @@ Rounded burst adalah burst dengan ujung dan lekukan yang lebih membulat.
 - Cartoon burst.
 - Label highlight.
 
-### Properti wajib:
+### Properti wajib
 
 - Spike count.
 - Roundness.
@@ -931,11 +931,11 @@ Rounded burst adalah burst dengan ujung dan lekukan yang lebih membulat.
 
 ## 30. Gear
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Gear adalah bentuk roda gigi dengan teeth berulang di sekitar lingkaran.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Teeth count.
 - Inner radius.
@@ -943,7 +943,7 @@ Gear adalah bentuk roda gigi dengan teeth berulang di sekitar lingkaran.
 - Hole radius.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Settings icon.
 - Mechanical animation.
@@ -951,7 +951,7 @@ Gear adalah bentuk roda gigi dengan teeth berulang di sekitar lingkaran.
 - Tech decoration.
 - Machine graphic.
 
-### Properti wajib:
+### Properti wajib
 
 - Teeth count.
 - Outer radius.
@@ -963,18 +963,18 @@ Gear adalah bentuk roda gigi dengan teeth berulang di sekitar lingkaran.
 
 ## 31. Ring / Donut
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Circle berlubang di tengah. Bisa dibuat dari circle stroke tebal atau boolean subtract antara circle besar dan kecil.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Outer radius.
 - Inner radius.
 - Fill atau stroke.
 - Optional gap/progress.
 
-### Kegunaan:
+### Kegunaan
 
 - Loading indicator.
 - Music visualizer ring.
@@ -982,7 +982,7 @@ Circle berlubang di tengah. Bisa dibuat dari circle stroke tebal atau boolean su
 - Glowing halo.
 - Focus target.
 
-### Properti wajib:
+### Properti wajib
 
 - Inner radius.
 - Outer radius.
@@ -994,11 +994,11 @@ Circle berlubang di tengah. Bisa dibuat dari circle stroke tebal atau boolean su
 
 ## 32. Arc
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Arc adalah bagian dari lingkaran berupa garis lengkung terbuka.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Radius.
 - Start angle.
@@ -1006,7 +1006,7 @@ Arc adalah bagian dari lingkaran berupa garis lengkung terbuka.
 - Stroke width.
 - Cap style.
 
-### Kegunaan:
+### Kegunaan
 
 - Progress indicator.
 - Circular motion path.
@@ -1014,7 +1014,7 @@ Arc adalah bagian dari lingkaran berupa garis lengkung terbuka.
 - HUD gauge.
 - Loader segment.
 
-### Properti wajib:
+### Properti wajib
 
 - Start angle.
 - End angle.
@@ -1026,11 +1026,11 @@ Arc adalah bagian dari lingkaran berupa garis lengkung terbuka.
 
 ## 33. Pie Slice
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Pie slice adalah potongan lingkaran yang tertutup ke titik tengah seperti potongan kue.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Center point.
 - Radius.
@@ -1038,7 +1038,7 @@ Pie slice adalah potongan lingkaran yang tertutup ke titik tengah seperti potong
 - End angle.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Pie chart.
 - Radial reveal.
@@ -1046,7 +1046,7 @@ Pie slice adalah potongan lingkaran yang tertutup ke titik tengah seperti potong
 - Circular transition.
 - Progress visual.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Start angle.
@@ -1058,11 +1058,11 @@ Pie slice adalah potongan lingkaran yang tertutup ke titik tengah seperti potong
 
 ## 34. Semi Circle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Semi circle adalah setengah lingkaran yang bisa tertutup atau hanya stroke arc 180 derajat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Radius.
 - Diameter edge.
@@ -1070,7 +1070,7 @@ Semi circle adalah setengah lingkaran yang bisa tertutup atau hanya stroke arc 1
 - Fill atau stroke.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Wave shape.
 - Tab UI.
@@ -1078,7 +1078,7 @@ Semi circle adalah setengah lingkaran yang bisa tertutup atau hanya stroke arc 1
 - Decorative background.
 - Gauge base.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Arc angle.
@@ -1090,11 +1090,11 @@ Semi circle adalah setengah lingkaran yang bisa tertutup atau hanya stroke arc 1
 
 ## 35. Quarter Circle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Quarter circle adalah seperempat lingkaran dengan sudut 90 derajat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Radius.
 - 90-degree arc.
@@ -1102,7 +1102,7 @@ Quarter circle adalah seperempat lingkaran dengan sudut 90 derajat.
 - Fill atau stroke.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Corner mask.
 - Circular wipe.
@@ -1110,7 +1110,7 @@ Quarter circle adalah seperempat lingkaran dengan sudut 90 derajat.
 - Rounded corner overlay.
 - Gauge piece.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Start angle.
@@ -1122,11 +1122,11 @@ Quarter circle adalah seperempat lingkaran dengan sudut 90 derajat.
 
 ## 36. Crescent
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Crescent adalah bentuk bulan sabit dari dua circle yang overlap atau subtract.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Outer circle.
 - Inner circle offset.
@@ -1134,7 +1134,7 @@ Crescent adalah bentuk bulan sabit dari dua circle yang overlap atau subtract.
 - Fill/stroke.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Moon icon.
 - Aesthetic overlay.
@@ -1142,7 +1142,7 @@ Crescent adalah bentuk bulan sabit dari dua circle yang overlap atau subtract.
 - Night theme decoration.
 - Mask shape.
 
-### Properti wajib:
+### Properti wajib
 
 - Outer radius.
 - Inner radius.
@@ -1154,11 +1154,11 @@ Crescent adalah bentuk bulan sabit dari dua circle yang overlap atau subtract.
 
 ## 37. Heart
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Heart adalah bentuk love dengan dua lobus bulat di atas dan ujung runcing di bawah.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Bezier path simetris.
 - Top lobes.
@@ -1166,7 +1166,7 @@ Heart adalah bentuk love dengan dua lobus bulat di atas dan ujung runcing di baw
 - Fill/stroke.
 - Optional roundness.
 
-### Kegunaan:
+### Kegunaan
 
 - Like animation.
 - Reaction sticker.
@@ -1174,7 +1174,7 @@ Heart adalah bentuk love dengan dua lobus bulat di atas dan ujung runcing di baw
 - Particle heart.
 - Icon badge.
 
-### Properti wajib:
+### Properti wajib
 
 - Path points.
 - Fill.
@@ -1186,11 +1186,11 @@ Heart adalah bentuk love dengan dua lobus bulat di atas dan ujung runcing di baw
 
 ## 38. Teardrop
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Teardrop adalah bentuk tetesan dengan satu ujung runcing dan sisi lain membulat.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Bezier path.
 - Tip point.
@@ -1198,7 +1198,7 @@ Teardrop adalah bentuk tetesan dengan satu ujung runcing dan sisi lain membulat.
 - Fill/stroke.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Map pin base.
 - Droplet.
@@ -1206,7 +1206,7 @@ Teardrop adalah bentuk tetesan dengan satu ujung runcing dan sisi lain membulat.
 - Tear effect.
 - Marker icon.
 
-### Properti wajib:
+### Properti wajib
 
 - Tip position.
 - Body radius.
@@ -1218,11 +1218,11 @@ Teardrop adalah bentuk tetesan dengan satu ujung runcing dan sisi lain membulat.
 
 ## 39. Drop / Water Drop
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Water drop adalah variasi teardrop yang lebih cair dan natural.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Curved bezier path.
 - Pointed top.
@@ -1230,7 +1230,7 @@ Water drop adalah variasi teardrop yang lebih cair dan natural.
 - Fill/stroke.
 - Optional highlight.
 
-### Kegunaan:
+### Kegunaan
 
 - Water effect.
 - Liquid overlay.
@@ -1238,7 +1238,7 @@ Water drop adalah variasi teardrop yang lebih cair dan natural.
 - Rain graphic.
 - Organic mask.
 
-### Properti wajib:
+### Properti wajib
 
 - Path curve.
 - Tip sharpness.
@@ -1250,11 +1250,11 @@ Water drop adalah variasi teardrop yang lebih cair dan natural.
 
 ## 40. Leaf
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Leaf adalah bentuk daun dengan dua kurva yang bertemu di ujung.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Closed bezier path.
 - Tip front.
@@ -1262,7 +1262,7 @@ Leaf adalah bentuk daun dengan dua kurva yang bertemu di ujung.
 - Optional center vein.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Nature overlay.
 - Floral design.
@@ -1270,7 +1270,7 @@ Leaf adalah bentuk daun dengan dua kurva yang bertemu di ujung.
 - Decorative pattern.
 - Eco icon.
 
-### Properti wajib:
+### Properti wajib
 
 - Path curve.
 - Tip position.
@@ -1282,11 +1282,11 @@ Leaf adalah bentuk daun dengan dua kurva yang bertemu di ujung.
 
 ## 41. Petal
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Petal adalah bentuk kelopak bunga, mirip leaf tetapi lebih simetris dan lembut.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Almond-like path.
 - Top tip.
@@ -1294,7 +1294,7 @@ Petal adalah bentuk kelopak bunga, mirip leaf tetapi lebih simetris dan lembut.
 - Smooth curves.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Flower pattern.
 - Decorative animation.
@@ -1302,7 +1302,7 @@ Petal adalah bentuk kelopak bunga, mirip leaf tetapi lebih simetris dan lembut.
 - Aesthetic overlay.
 - Particle petal.
 
-### Properti wajib:
+### Properti wajib
 
 - Curve handles.
 - Fill.
@@ -1314,11 +1314,11 @@ Petal adalah bentuk kelopak bunga, mirip leaf tetapi lebih simetris dan lembut.
 
 ## 42. Cloud
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Cloud adalah bentuk awan dari gabungan beberapa lengkungan/circle.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Multiple lobes.
 - Curved top.
@@ -1326,7 +1326,7 @@ Cloud adalah bentuk awan dari gabungan beberapa lengkungan/circle.
 - Fill/stroke.
 - Optional softness.
 
-### Kegunaan:
+### Kegunaan
 
 - Dreamy overlay.
 - Speech background.
@@ -1334,7 +1334,7 @@ Cloud adalah bentuk awan dari gabungan beberapa lengkungan/circle.
 - Cute decoration.
 - Mask area.
 
-### Properti wajib:
+### Properti wajib
 
 - Lobe count.
 - Lobe radius.
@@ -1346,11 +1346,11 @@ Cloud adalah bentuk awan dari gabungan beberapa lengkungan/circle.
 
 ## 43. Blob
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Blob adalah bentuk organik tak beraturan dengan tepi melengkung halus.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Random bezier points.
 - Closed path.
@@ -1358,7 +1358,7 @@ Blob adalah bentuk organik tak beraturan dengan tepi melengkung halus.
 - Fill/stroke.
 - Optional seed.
 
-### Kegunaan:
+### Kegunaan
 
 - Modern background.
 - Liquid morph.
@@ -1366,7 +1366,7 @@ Blob adalah bentuk organik tak beraturan dengan tepi melengkung halus.
 - Aesthetic card.
 - Abstract decoration.
 
-### Properti wajib:
+### Properti wajib
 
 - Point count.
 - Random seed.
@@ -1378,11 +1378,11 @@ Blob adalah bentuk organik tak beraturan dengan tepi melengkung halus.
 
 ## 44. Wavy Blob
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Wavy blob adalah blob dengan tepi bergelombang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Closed path.
 - Wave amplitude.
@@ -1390,7 +1390,7 @@ Wavy blob adalah blob dengan tepi bergelombang.
 - Smooth curves.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Playful background.
 - Liquid edge.
@@ -1398,7 +1398,7 @@ Wavy blob adalah blob dengan tepi bergelombang.
 - Organic transition.
 - Decorative mask.
 
-### Properti wajib:
+### Properti wajib
 
 - Amplitude.
 - Frequency.
@@ -1410,11 +1410,11 @@ Wavy blob adalah blob dengan tepi bergelombang.
 
 ## 45. Wave
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Wave adalah bentuk garis atau area bergelombang seperti sinus.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Amplitude.
 - Frequency.
@@ -1422,7 +1422,7 @@ Wave adalah bentuk garis atau area bergelombang seperti sinus.
 - Length.
 - Stroke atau closed fill.
 
-### Kegunaan:
+### Kegunaan
 
 - Audio visualizer.
 - Water animation.
@@ -1430,7 +1430,7 @@ Wave adalah bentuk garis atau area bergelombang seperti sinus.
 - Background decoration.
 - Motion divider.
 
-### Properti wajib:
+### Properti wajib
 
 - Amplitude.
 - Frequency.
@@ -1442,11 +1442,11 @@ Wave adalah bentuk garis atau area bergelombang seperti sinus.
 
 ## 46. Zigzag
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Zigzag adalah garis patah-patah berulang dengan sudut tajam.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Segment count.
 - Amplitude.
@@ -1454,7 +1454,7 @@ Zigzag adalah garis patah-patah berulang dengan sudut tajam.
 - Stroke width.
 - Cap/join style.
 
-### Kegunaan:
+### Kegunaan
 
 - Energy effect.
 - Comic shock.
@@ -1462,7 +1462,7 @@ Zigzag adalah garis patah-patah berulang dengan sudut tajam.
 - Warning decoration.
 - Motion accent.
 
-### Properti wajib:
+### Properti wajib
 
 - Segment count.
 - Amplitude.
@@ -1474,11 +1474,11 @@ Zigzag adalah garis patah-patah berulang dengan sudut tajam.
 
 ## 47. Spiral
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Spiral adalah kurva yang berputar dari tengah ke luar atau sebaliknya.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Turn count.
 - Radius growth.
@@ -1486,7 +1486,7 @@ Spiral adalah kurva yang berputar dari tengah ke luar atau sebaliknya.
 - Stroke width.
 - Direction.
 
-### Kegunaan:
+### Kegunaan
 
 - Hypnotic transition.
 - Swirl motion.
@@ -1494,7 +1494,7 @@ Spiral adalah kurva yang berputar dari tengah ke luar atau sebaliknya.
 - Magic effect.
 - Tunnel graphic.
 
-### Properti wajib:
+### Properti wajib
 
 - Turns.
 - Radius.
@@ -1506,11 +1506,11 @@ Spiral adalah kurva yang berputar dari tengah ke luar atau sebaliknya.
 
 ## 48. Swirl
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Swirl adalah spiral bebas yang lebih organik dan dekoratif.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Bezier open path.
 - Curved tail.
@@ -1518,7 +1518,7 @@ Swirl adalah spiral bebas yang lebih organik dan dekoratif.
 - Cap style.
 - Optional taper.
 
-### Kegunaan:
+### Kegunaan
 
 - Magical effect.
 - Flourish.
@@ -1526,7 +1526,7 @@ Swirl adalah spiral bebas yang lebih organik dan dekoratif.
 - Decorative stroke.
 - Wind effect.
 
-### Properti wajib:
+### Properti wajib
 
 - Path points.
 - Stroke width.
@@ -1538,11 +1538,11 @@ Swirl adalah spiral bebas yang lebih organik dan dekoratif.
 
 ## 49. Straight Line
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Straight line adalah garis lurus dari satu titik ke titik lain.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Start point.
 - End point.
@@ -1550,7 +1550,7 @@ Straight line adalah garis lurus dari satu titik ke titik lain.
 - Cap style.
 - Optional arrow head.
 
-### Kegunaan:
+### Kegunaan
 
 - Underline.
 - Divider.
@@ -1558,7 +1558,7 @@ Straight line adalah garis lurus dari satu titik ke titik lain.
 - Speed line.
 - Guide line.
 
-### Properti wajib:
+### Properti wajib
 
 - Start point.
 - End point.
@@ -1570,11 +1570,11 @@ Straight line adalah garis lurus dari satu titik ke titik lain.
 
 ## 50. Dashed Line
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Dashed line adalah garis dengan pola dash dan gap berulang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Path.
 - Dash length.
@@ -1582,7 +1582,7 @@ Dashed line adalah garis dengan pola dash dan gap berulang.
 - Phase/offset.
 - Stroke width.
 
-### Kegunaan:
+### Kegunaan
 
 - Route path.
 - Guide line.
@@ -1590,7 +1590,7 @@ Dashed line adalah garis dengan pola dash dan gap berulang.
 - Motion trail.
 - Map animation.
 
-### Properti wajib:
+### Properti wajib
 
 - Dash length.
 - Gap length.
@@ -1602,11 +1602,11 @@ Dashed line adalah garis dengan pola dash dan gap berulang.
 
 ## 51. Dotted Line
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Dotted line adalah garis yang tersusun dari titik-titik.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Path.
 - Dot size.
@@ -1614,7 +1614,7 @@ Dotted line adalah garis yang tersusun dari titik-titik.
 - Dot count.
 - Stroke/fill color.
 
-### Kegunaan:
+### Kegunaan
 
 - Travel route.
 - UI guide.
@@ -1622,7 +1622,7 @@ Dotted line adalah garis yang tersusun dari titik-titik.
 - Motion trail.
 - Loading path.
 
-### Properti wajib:
+### Properti wajib
 
 - Dot size.
 - Spacing.
@@ -1634,11 +1634,11 @@ Dotted line adalah garis yang tersusun dari titik-titik.
 
 ## 52. Curved Path
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Curved path adalah garis lengkung berbasis Bezier.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Anchor points.
 - Bezier handles.
@@ -1646,7 +1646,7 @@ Curved path adalah garis lengkung berbasis Bezier.
 - Cap style.
 - Open path.
 
-### Kegunaan:
+### Kegunaan
 
 - Motion path.
 - Trail.
@@ -1654,7 +1654,7 @@ Curved path adalah garis lengkung berbasis Bezier.
 - Animated route.
 - Logo outline.
 
-### Properti wajib:
+### Properti wajib
 
 - Path points.
 - Handles.
@@ -1666,11 +1666,11 @@ Curved path adalah garis lengkung berbasis Bezier.
 
 ## 53. S-Curve
 
-### Definisi bentuk:
+### Definisi bentuk
 
 S-curve adalah path melengkung seperti huruf S.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Bezier path.
 - Two opposing curves.
@@ -1678,7 +1678,7 @@ S-curve adalah path melengkung seperti huruf S.
 - End point.
 - Stroke style.
 
-### Kegunaan:
+### Kegunaan
 
 - Elegant transition.
 - Motion route.
@@ -1686,7 +1686,7 @@ S-curve adalah path melengkung seperti huruf S.
 - Decorative line.
 - Reveal stroke.
 
-### Properti wajib:
+### Properti wajib
 
 - Curve handles.
 - Stroke width.
@@ -1698,11 +1698,11 @@ S-curve adalah path melengkung seperti huruf S.
 
 ## 54. Arrow Right
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Arrow right adalah panah yang mengarah ke kanan.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Shaft.
 - Arrow head.
@@ -1710,7 +1710,7 @@ Arrow right adalah panah yang mengarah ke kanan.
 - Length.
 - Thickness.
 
-### Kegunaan:
+### Kegunaan
 
 - Tutorial pointer.
 - Swipe cue.
@@ -1718,7 +1718,7 @@ Arrow right adalah panah yang mengarah ke kanan.
 - Direction marker.
 - Next button.
 
-### Properti wajib:
+### Properti wajib
 
 - Length.
 - Head size.
@@ -1730,11 +1730,11 @@ Arrow right adalah panah yang mengarah ke kanan.
 
 ## 55. Arrow Left
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Arrow left adalah panah yang mengarah ke kiri.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Shaft.
 - Arrow head.
@@ -1742,7 +1742,7 @@ Arrow left adalah panah yang mengarah ke kiri.
 - Length.
 - Thickness.
 
-### Kegunaan:
+### Kegunaan
 
 - Back cue.
 - Previous button.
@@ -1750,7 +1750,7 @@ Arrow left adalah panah yang mengarah ke kiri.
 - Pointer.
 - Navigation hint.
 
-### Properti wajib:
+### Properti wajib
 
 - Length.
 - Head size.
@@ -1762,11 +1762,11 @@ Arrow left adalah panah yang mengarah ke kiri.
 
 ## 56. Arrow Up
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Arrow up adalah panah yang mengarah ke atas.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Vertical shaft.
 - Arrow head.
@@ -1774,7 +1774,7 @@ Arrow up adalah panah yang mengarah ke atas.
 - Length.
 - Thickness.
 
-### Kegunaan:
+### Kegunaan
 
 - Upload cue.
 - Growth indicator.
@@ -1782,7 +1782,7 @@ Arrow up adalah panah yang mengarah ke atas.
 - Move-up tutorial.
 - Pointer.
 
-### Properti wajib:
+### Properti wajib
 
 - Length.
 - Head size.
@@ -1794,11 +1794,11 @@ Arrow up adalah panah yang mengarah ke atas.
 
 ## 57. Arrow Down
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Arrow down adalah panah yang mengarah ke bawah.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Vertical shaft.
 - Arrow head.
@@ -1806,7 +1806,7 @@ Arrow down adalah panah yang mengarah ke bawah.
 - Length.
 - Thickness.
 
-### Kegunaan:
+### Kegunaan
 
 - Download cue.
 - Scroll indicator.
@@ -1814,7 +1814,7 @@ Arrow down adalah panah yang mengarah ke bawah.
 - Move-down tutorial.
 - Pointer.
 
-### Properti wajib:
+### Properti wajib
 
 - Length.
 - Head size.
@@ -1826,11 +1826,11 @@ Arrow down adalah panah yang mengarah ke bawah.
 
 ## 58. Double Arrow
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Double arrow adalah panah dengan dua kepala di ujung berlawanan.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Line shaft.
 - Two arrow heads.
@@ -1838,7 +1838,7 @@ Double arrow adalah panah dengan dua kepala di ujung berlawanan.
 - Length.
 - Thickness.
 
-### Kegunaan:
+### Kegunaan
 
 - Resize handle.
 - Compare marker.
@@ -1846,7 +1846,7 @@ Double arrow adalah panah dengan dua kepala di ujung berlawanan.
 - Stretch indicator.
 - Bidirectional motion.
 
-### Properti wajib:
+### Properti wajib
 
 - Length.
 - Head size.
@@ -1858,11 +1858,11 @@ Double arrow adalah panah dengan dua kepala di ujung berlawanan.
 
 ## 59. Curved Arrow
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Curved arrow adalah panah yang mengikuti garis lengkung atau arc.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Curved path.
 - Arrow head.
@@ -1870,7 +1870,7 @@ Curved arrow adalah panah yang mengikuti garis lengkung atau arc.
 - Stroke width.
 - Cap style.
 
-### Kegunaan:
+### Kegunaan
 
 - Rotate hint.
 - Circular motion indicator.
@@ -1878,7 +1878,7 @@ Curved arrow adalah panah yang mengikuti garis lengkung atau arc.
 - Motion guide.
 - Orbit cue.
 
-### Properti wajib:
+### Properti wajib
 
 - Path curve.
 - Head size.
@@ -1890,11 +1890,11 @@ Curved arrow adalah panah yang mengikuti garis lengkung atau arc.
 
 ## 60. Chevron
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Chevron adalah bentuk V atau panah tanpa shaft.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Two angled strokes.
 - Angle.
@@ -1902,7 +1902,7 @@ Chevron adalah bentuk V atau panah tanpa shaft.
 - Fill optional.
 - Direction.
 
-### Kegunaan:
+### Kegunaan
 
 - Swipe indicator.
 - Carousel cue.
@@ -1910,7 +1910,7 @@ Chevron adalah bentuk V atau panah tanpa shaft.
 - Next marker.
 - Motion accent.
 
-### Properti wajib:
+### Properti wajib
 
 - Angle.
 - Stroke width.
@@ -1922,11 +1922,11 @@ Chevron adalah bentuk V atau panah tanpa shaft.
 
 ## 61. Double Chevron
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Double chevron adalah dua chevron berurutan.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Two chevrons.
 - Spacing.
@@ -1934,7 +1934,7 @@ Double chevron adalah dua chevron berurutan.
 - Stroke width.
 - Direction.
 
-### Kegunaan:
+### Kegunaan
 
 - Fast-forward cue.
 - Swipe prompt.
@@ -1942,7 +1942,7 @@ Double chevron adalah dua chevron berurutan.
 - Navigation hint.
 - Motion repeat.
 
-### Properti wajib:
+### Properti wajib
 
 - Chevron count.
 - Spacing.
@@ -1954,11 +1954,11 @@ Double chevron adalah dua chevron berurutan.
 
 ## 62. Speech Bubble
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Speech bubble adalah kotak/oval dialog dengan ekor kecil yang menunjuk ke pembicara.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Bubble body.
 - Tail pointer.
@@ -1966,7 +1966,7 @@ Speech bubble adalah kotak/oval dialog dengan ekor kecil yang menunjuk ke pembic
 - Fill/stroke.
 - Optional text padding.
 
-### Kegunaan:
+### Kegunaan
 
 - Dialogue.
 - Comment overlay.
@@ -1974,7 +1974,7 @@ Speech bubble adalah kotak/oval dialog dengan ekor kecil yang menunjuk ke pembic
 - Comic text.
 - Tutorial note.
 
-### Properti wajib:
+### Properti wajib
 
 - Body size.
 - Tail position.
@@ -1986,11 +1986,11 @@ Speech bubble adalah kotak/oval dialog dengan ekor kecil yang menunjuk ke pembic
 
 ## 63. Thought Bubble
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Thought bubble adalah bubble awan dengan titik-titik kecil menuju karakter.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Cloud body.
 - Small dot bubbles.
@@ -1998,7 +1998,7 @@ Thought bubble adalah bubble awan dengan titik-titik kecil menuju karakter.
 - Lobe count.
 - Optional text area.
 
-### Kegunaan:
+### Kegunaan
 
 - Thought caption.
 - Comic edit.
@@ -2006,7 +2006,7 @@ Thought bubble adalah bubble awan dengan titik-titik kecil menuju karakter.
 - Cute overlay.
 - Narration graphic.
 
-### Properti wajib:
+### Properti wajib
 
 - Lobe count.
 - Dot count.
@@ -2018,11 +2018,11 @@ Thought bubble adalah bubble awan dengan titik-titik kecil menuju karakter.
 
 ## 64. Callout Label
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Callout label adalah label dengan pointer atau garis yang menunjuk objek tertentu.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Label box.
 - Pointer tail/line.
@@ -2030,7 +2030,7 @@ Callout label adalah label dengan pointer atau garis yang menunjuk objek tertent
 - Fill/stroke.
 - Optional text slot.
 
-### Kegunaan:
+### Kegunaan
 
 - Annotation.
 - Tutorial label.
@@ -2038,7 +2038,7 @@ Callout label adalah label dengan pointer atau garis yang menunjuk objek tertent
 - Feature highlight.
 - Explainer video.
 
-### Properti wajib:
+### Properti wajib
 
 - Label size.
 - Pointer position.
@@ -2050,11 +2050,11 @@ Callout label adalah label dengan pointer atau garis yang menunjuk objek tertent
 
 ## 65. Bracket
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Bracket adalah bentuk kurung siku atau curly untuk menandai area.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Stroke path.
 - Corner/curve.
@@ -2062,7 +2062,7 @@ Bracket adalah bentuk kurung siku atau curly untuk menandai area.
 - Width.
 - Stroke style.
 
-### Kegunaan:
+### Kegunaan
 
 - Highlight section.
 - Tutorial overlay.
@@ -2070,7 +2070,7 @@ Bracket adalah bentuk kurung siku atau curly untuk menandai area.
 - Selection marker.
 - Group indicator.
 
-### Properti wajib:
+### Properti wajib
 
 - Height.
 - Width.
@@ -2082,18 +2082,18 @@ Bracket adalah bentuk kurung siku atau curly untuk menandai area.
 
 ## 66. Frame Rectangle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Frame rectangle adalah rectangle hollow yang hanya menampilkan border.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Outer rectangle.
 - Inner cutout atau stroke-only.
 - Border thickness.
 - Corner radius optional.
 
-### Kegunaan:
+### Kegunaan
 
 - Focus frame.
 - Camera HUD.
@@ -2101,7 +2101,7 @@ Frame rectangle adalah rectangle hollow yang hanya menampilkan border.
 - Selection box.
 - Photo frame.
 
-### Properti wajib:
+### Properti wajib
 
 - Outer size.
 - Border thickness.
@@ -2113,18 +2113,18 @@ Frame rectangle adalah rectangle hollow yang hanya menampilkan border.
 
 ## 67. Frame Circle
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Frame circle adalah frame bulat berupa ring atau circle stroke.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Outer radius.
 - Inner radius atau stroke width.
 - Fill/stroke.
 - Optional gap.
 
-### Kegunaan:
+### Kegunaan
 
 - Profile frame.
 - Target HUD.
@@ -2132,7 +2132,7 @@ Frame circle adalah frame bulat berupa ring atau circle stroke.
 - Circular border.
 - Avatar outline.
 
-### Properti wajib:
+### Properti wajib
 
 - Radius.
 - Stroke width.
@@ -2144,11 +2144,11 @@ Frame circle adalah frame bulat berupa ring atau circle stroke.
 
 ## 68. Corner Frame
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Corner frame adalah frame yang hanya muncul di empat sudut.
 
-### Bentuk asset:
+### Bentuk asset
 
 - 4 L-shaped corners.
 - Corner length.
@@ -2156,7 +2156,7 @@ Corner frame adalah frame yang hanya muncul di empat sudut.
 - Gap center.
 - Optional animation.
 
-### Kegunaan:
+### Kegunaan
 
 - Camera focus.
 - Scan UI.
@@ -2164,7 +2164,7 @@ Corner frame adalah frame yang hanya muncul di empat sudut.
 - Selection marker.
 - Target lock.
 
-### Properti wajib:
+### Properti wajib
 
 - Corner length.
 - Stroke width.
@@ -2176,11 +2176,11 @@ Corner frame adalah frame yang hanya muncul di empat sudut.
 
 ## 69. Cross / Plus
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Cross atau plus adalah dua bar yang saling tegak lurus.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Horizontal bar.
 - Vertical bar.
@@ -2188,7 +2188,7 @@ Cross atau plus adalah dua bar yang saling tegak lurus.
 - Center overlap.
 - Fill/stroke.
 
-### Kegunaan:
+### Kegunaan
 
 - Add icon.
 - Medical plus.
@@ -2196,7 +2196,7 @@ Cross atau plus adalah dua bar yang saling tegak lurus.
 - Crosshair element.
 - UI button.
 
-### Properti wajib:
+### Properti wajib
 
 - Bar length.
 - Bar thickness.
@@ -2208,11 +2208,11 @@ Cross atau plus adalah dua bar yang saling tegak lurus.
 
 ## 70. X / Close
 
-### Definisi bentuk:
+### Definisi bentuk
 
 X adalah dua garis diagonal yang bersilang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Diagonal stroke 1.
 - Diagonal stroke 2.
@@ -2220,7 +2220,7 @@ X adalah dua garis diagonal yang bersilang.
 - Cap style.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Close icon.
 - Error marker.
@@ -2228,7 +2228,7 @@ X adalah dua garis diagonal yang bersilang.
 - Cancel button.
 - Cross transition.
 
-### Properti wajib:
+### Properti wajib
 
 - Stroke width.
 - Angle.
@@ -2240,11 +2240,11 @@ X adalah dua garis diagonal yang bersilang.
 
 ## 71. Checkmark
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Checkmark adalah garis patah dua segmen yang membentuk tanda centang.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Two-segment polyline.
 - Stroke width.
@@ -2252,7 +2252,7 @@ Checkmark adalah garis patah dua segmen yang membentuk tanda centang.
 - Join style.
 - Progress animation.
 
-### Kegunaan:
+### Kegunaan
 
 - Success indicator.
 - Checklist animation.
@@ -2260,7 +2260,7 @@ Checkmark adalah garis patah dua segmen yang membentuk tanda centang.
 - Task complete.
 - UI feedback.
 
-### Properti wajib:
+### Properti wajib
 
 - Point positions.
 - Stroke width.
@@ -2272,11 +2272,11 @@ Checkmark adalah garis patah dua segmen yang membentuk tanda centang.
 
 ## 72. Lightning Bolt
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Lightning bolt adalah bentuk petir tajam dengan zigzag angular.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Angular polygon.
 - Sharp corners.
@@ -2284,7 +2284,7 @@ Lightning bolt adalah bentuk petir tajam dengan zigzag angular.
 - Optional glow.
 - Rotation.
 
-### Kegunaan:
+### Kegunaan
 
 - Energy effect.
 - Speed effect.
@@ -2292,7 +2292,7 @@ Lightning bolt adalah bentuk petir tajam dengan zigzag angular.
 - Impact edit.
 - Electric transition.
 
-### Properti wajib:
+### Properti wajib
 
 - Point positions.
 - Sharpness.
@@ -2304,11 +2304,11 @@ Lightning bolt adalah bentuk petir tajam dengan zigzag angular.
 
 ## 73. Shield
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Shield adalah bentuk perisai dengan bagian atas lebar dan bawah mengerucut.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Top edge.
 - Side curves/edges.
@@ -2316,7 +2316,7 @@ Shield adalah bentuk perisai dengan bagian atas lebar dan bawah mengerucut.
 - Fill/stroke.
 - Optional inner border.
 
-### Kegunaan:
+### Kegunaan
 
 - Security icon.
 - Achievement badge.
@@ -2324,7 +2324,7 @@ Shield adalah bentuk perisai dengan bagian atas lebar dan bawah mengerucut.
 - Protection marker.
 - Game UI.
 
-### Properti wajib:
+### Properti wajib
 
 - Path points.
 - Fill.
@@ -2336,11 +2336,11 @@ Shield adalah bentuk perisai dengan bagian atas lebar dan bawah mengerucut.
 
 ## 74. Ribbon
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Ribbon adalah strip banner dengan ujung lipatan atau V-cut.
 
-### Bentuk asset:
+### Bentuk asset
 
 - Center rectangle.
 - Left/right tails.
@@ -2348,7 +2348,7 @@ Ribbon adalah strip banner dengan ujung lipatan atau V-cut.
 - Fill/stroke.
 - Optional shadow.
 
-### Kegunaan:
+### Kegunaan
 
 - Promo label.
 - Title ribbon.
@@ -2356,7 +2356,7 @@ Ribbon adalah strip banner dengan ujung lipatan atau V-cut.
 - Sale banner.
 - Decorative header.
 
-### Properti wajib:
+### Properti wajib
 
 - Width.
 - Height.
@@ -2368,11 +2368,11 @@ Ribbon adalah strip banner dengan ujung lipatan atau V-cut.
 
 ## 75. Custom SVG / Imported Vector Shape
 
-### Definisi bentuk:
+### Definisi bentuk
 
 Custom SVG adalah shape dari file/vector eksternal yang dikonversi menjadi path internal.
 
-### Bentuk asset:
+### Bentuk asset
 
 - One or many vector paths.
 - Groups.
@@ -2380,7 +2380,7 @@ Custom SVG adalah shape dari file/vector eksternal yang dikonversi menjadi path 
 - ViewBox.
 - Transform data.
 
-### Kegunaan:
+### Kegunaan
 
 - Logo.
 - Icon pack.
@@ -2388,7 +2388,7 @@ Custom SVG adalah shape dari file/vector eksternal yang dikonversi menjadi path 
 - Decorative asset.
 - Brand element.
 
-### Properti wajib:
+### Properti wajib
 
 - SVG parser.
 - Path import.
@@ -2400,10 +2400,12 @@ Custom SVG adalah shape dari file/vector eksternal yang dikonversi menjadi path 
 
 ## Properti Global Semua Shape
 
-### Definisi bentuk:
+### Definisi bentuk
+
 Semua shape sebaiknya diperlakukan sebagai vector/parametric asset, bukan gambar statis. Dengan begitu shape bisa diskalakan, dianimasikan, dijadikan mask, dan dikonversi ke path.
 
-### Bentuk asset:
+### Bentuk asset
+
 - Geometry data.
 - Style data.
 - Transform data.
@@ -2411,14 +2413,16 @@ Semua shape sebaiknya diperlakukan sebagai vector/parametric asset, bukan gambar
 - Mask/composite data.
 - Effect stack data.
 
-### Kegunaan:
+### Kegunaan
+
 - Shape layer.
 - Motion graphic element.
 - Mask/reveal.
 - Reusable element.
 - Template/preset.
 
-### Properti wajib:
+### Properti wajib
+
 - Fill.
 - Stroke.
 - Opacity.

@@ -29,9 +29,8 @@ import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { usePreviewStore } from "@/stores/preview-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
-	resolveAdaptiveScale,
 	resolveDecodeMaxDim,
-	resolvePreviewScale,
+	resolvePreviewRenderScales,
 } from "@/lib/perf/preview-quality";
 import { RenderPerfTracker } from "@/lib/perf/render-perf-tracker";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
@@ -204,10 +203,7 @@ function PreviewCanvas({
 	// paused and idle eliminates ~60 unnecessary callback invocations per
 	// second, each of which would do property reads, scale calculations,
 	// and a setSize call before reaching the "nothing changed" early-exit.
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	const needsRenderRef = useRef(true); // start true to render the first frame
 	const rafEnabled = isPlaying || needsRenderRef.current;
 
@@ -291,32 +287,27 @@ function PreviewCanvas({
 		// because avgRenderMs changes every frame.
 		// (scaleInputs is already computed above for the delta-frame skip.)
 		let scale: number;
+		let idleScale: number;
 		if (
 			previewQuality !== "auto" &&
-			scaleInputs === lastScaleInputsRef.current
+			scaleInputs === lastScaleInputsRef.current &&
+			idleScaleRef.current > 0
 		) {
 			scale = lastScaleRef.current;
+			idleScale = idleScaleRef.current;
 		} else {
-			scale = resolveAdaptiveScale({
+			const scales = resolvePreviewRenderScales({
 				quality: previewQuality,
 				isPlaying,
 				gpuDegraded,
 				avgRenderMs: avgRenderMs || undefined,
 				frameBudgetMs,
 			});
+			scale = scales.renderScale;
+			idleScale = scales.decodeScale;
+			idleScaleRef.current = idleScale;
 			lastScaleInputsRef.current = scaleInputs;
 		}
-		// idleScale only depends on (quality, gpuDegraded) — cache it too.
-		if (previewQuality !== "auto" && idleScaleRef.current > 0) {
-			// idleScale is deterministic and doesn't change for manual tiers.
-		} else {
-			idleScaleRef.current = resolvePreviewScale({
-				quality: previewQuality,
-				isPlaying: false,
-				gpuDegraded,
-			});
-		}
-		const idleScale = idleScaleRef.current;
 		renderer.setSize({
 			width: Math.max(2, Math.round(nativeWidth * scale)),
 			height: Math.max(2, Math.round(nativeHeight * scale)),
@@ -360,7 +351,13 @@ function PreviewCanvas({
 				// ~0.5ms (a single drawImage) vs 5-80ms for a full re-render.
 				const ctx = canvasRef.current.getContext("2d");
 				if (ctx) {
-					ctx.drawImage(cached.bitmap, 0, 0, canvasRef.current.width, canvasRef.current.height);
+					ctx.drawImage(
+						cached.bitmap,
+						0,
+						0,
+						canvasRef.current.width,
+						canvasRef.current.height,
+					);
 					lastSceneRef.current = renderTree;
 					lastFrameRef.current = frame;
 					lastScaleRef.current = scale;
@@ -386,8 +383,7 @@ function PreviewCanvas({
 			// pause/play cycles that stutter audio (each pause stops audio
 			// playback, each play re-inits the audio context + re-decodes).
 			const isSceneChange =
-				renderTree !== lastSceneRef.current ||
-				scale !== lastScaleRef.current;
+				renderTree !== lastSceneRef.current || scale !== lastScaleRef.current;
 			const isCurrentlyPlaying = editor.playback.getIsPlaying();
 			if (isCurrentlyPlaying && isSceneChange) {
 				wasPlayingBeforeRenderRef.current = true;

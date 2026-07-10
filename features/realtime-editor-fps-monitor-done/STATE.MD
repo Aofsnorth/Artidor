@@ -5,10 +5,12 @@ Status: implemented / awaiting user hand-test
 Last updated: 2026-06-22
 
 ## Summary
+
 Added a low-overhead realtime FPS badge (bottom-left of the preview area) plus a
 persistent Settings toggle.
 
 ## Changes
+
 - `stores/settings-store.ts` — new `showFpsMonitor` flag (default **on**) +
   setter; persisted to existing `app-settings` localStorage key.
 - `dialogs/settings-dialog.tsx` — "Show FPS monitor" Switch row in General.
@@ -20,5 +22,6 @@ persistent Settings toggle.
   (bottom-left), does not overlap timeline controls.
 
 ## Verification
+
 - `bunx tsc --noEmit`: no new errors in touched files.
 - Manual (toggle persists, live updates, off stops loop, no overlap): pending.

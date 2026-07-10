@@ -12,18 +12,19 @@ mock.module("artidor-wasm", () => ({
 	snappedSeekTime: ({ time }: { time: number }) => time,
 }));
 
-let timelineHasAudio: typeof import("@/lib/media/audio").timelineHasAudio;
+let timelineHasAudio: typeof import("../audio").timelineHasAudio;
+let collectAudioClips: typeof import("../audio").collectAudioClips;
 import type {
 	SceneTracks,
 	VideoTrack,
 	AudioTrack,
 	VideoElement,
 	UploadAudioElement,
-} from "@/lib/timeline/types";
-import type { MediaAsset } from "@/lib/media/types";
+} from "../../timeline/types";
+import type { MediaAsset } from "../types";
 
 beforeAll(async () => {
-	({ timelineHasAudio } = await import("@/lib/media/audio"));
+	({ timelineHasAudio, collectAudioClips } = await import("../audio"));
 });
 
 /**
@@ -118,13 +119,21 @@ function emptyMainTrack(): VideoTrack {
 	};
 }
 
-function tracksWithMain(main: VideoTrack, audio: AudioTrack[] = []): SceneTracks {
+function tracksWithMain(
+	main: VideoTrack,
+	audio: AudioTrack[] = [],
+): SceneTracks {
 	return { overlay: [], main, audio };
 }
 
 describe("timelineHasAudio", () => {
 	test("empty timeline has no audio", () => {
-		expect(timelineHasAudio({ tracks: tracksWithMain(emptyMainTrack()), mediaAssets: [] })).toBe(false);
+		expect(
+			timelineHasAudio({
+				tracks: tracksWithMain(emptyMainTrack()),
+				mediaAssets: [],
+			}),
+		).toBe(false);
 	});
 
 	test("video element whose media has no audio track is silent", () => {
@@ -133,25 +142,44 @@ describe("timelineHasAudio", () => {
 			...emptyMainTrack(),
 			elements: [makeVideoElement({ id: "e1", mediaId: "v1" })],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] })).toBe(false);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] }),
+		).toBe(false);
 	});
 
 	test("video element with audio and source audio enabled is audible", () => {
 		const asset = makeVideoAsset({ id: "v1", hasAudio: true });
 		const main: VideoTrack = {
 			...emptyMainTrack(),
-			elements: [makeVideoElement({ id: "e1", mediaId: "v1", isSourceAudioEnabled: true })],
+			elements: [
+				makeVideoElement({
+					id: "e1",
+					mediaId: "v1",
+					isSourceAudioEnabled: true,
+				}),
+			],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] })).toBe(true);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] }),
+		).toBe(true);
 	});
 
 	test("muted video element is silent", () => {
 		const asset = makeVideoAsset({ id: "v1", hasAudio: true });
 		const main: VideoTrack = {
 			...emptyMainTrack(),
-			elements: [makeVideoElement({ id: "e1", mediaId: "v1", muted: true, isSourceAudioEnabled: true })],
+			elements: [
+				makeVideoElement({
+					id: "e1",
+					mediaId: "v1",
+					muted: true,
+					isSourceAudioEnabled: true,
+				}),
+			],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] })).toBe(false);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] }),
+		).toBe(false);
 	});
 
 	test("muted track makes its audible element silent", () => {
@@ -159,9 +187,17 @@ describe("timelineHasAudio", () => {
 		const main: VideoTrack = {
 			...emptyMainTrack(),
 			muted: true,
-			elements: [makeVideoElement({ id: "e1", mediaId: "v1", isSourceAudioEnabled: true })],
+			elements: [
+				makeVideoElement({
+					id: "e1",
+					mediaId: "v1",
+					isSourceAudioEnabled: true,
+				}),
+			],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] })).toBe(false);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] }),
+		).toBe(false);
 	});
 
 	test("audio track with an unmuted upload element is audible", () => {
@@ -173,7 +209,12 @@ describe("timelineHasAudio", () => {
 			muted: false,
 			elements: [makeUploadAudioElement({ id: "e1", mediaId: "a1" })],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(emptyMainTrack(), [audioTrack]), mediaAssets: [asset] })).toBe(true);
+		expect(
+			timelineHasAudio({
+				tracks: tracksWithMain(emptyMainTrack(), [audioTrack]),
+				mediaAssets: [asset],
+			}),
+		).toBe(true);
 	});
 
 	test("audio track muted makes its element silent", () => {
@@ -185,16 +226,45 @@ describe("timelineHasAudio", () => {
 			muted: true,
 			elements: [makeUploadAudioElement({ id: "e1", mediaId: "a1" })],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(emptyMainTrack(), [audioTrack]), mediaAssets: [asset] })).toBe(false);
+		expect(
+			timelineHasAudio({
+				tracks: tracksWithMain(emptyMainTrack(), [audioTrack]),
+				mediaAssets: [asset],
+			}),
+		).toBe(false);
+	});
+
+	test("upload audio with missing media asset is silent", () => {
+		const audioTrack: AudioTrack = {
+			id: "audio-1",
+			name: "Audio 1",
+			type: "audio",
+			muted: false,
+			elements: [makeUploadAudioElement({ id: "e1", mediaId: "missing" })],
+		};
+		expect(
+			timelineHasAudio({
+				tracks: tracksWithMain(emptyMainTrack(), [audioTrack]),
+				mediaAssets: [],
+			}),
+		).toBe(false);
 	});
 
 	test("video element with source audio separated (disabled) is silent", () => {
 		const asset = makeVideoAsset({ id: "v1", hasAudio: true });
 		const main: VideoTrack = {
 			...emptyMainTrack(),
-			elements: [makeVideoElement({ id: "e1", mediaId: "v1", isSourceAudioEnabled: false })],
+			elements: [
+				makeVideoElement({
+					id: "e1",
+					mediaId: "v1",
+					isSourceAudioEnabled: false,
+				}),
+			],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] })).toBe(false);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [asset] }),
+		).toBe(false);
 	});
 
 	test("missing media asset for a video element is silent", () => {
@@ -202,6 +272,31 @@ describe("timelineHasAudio", () => {
 			...emptyMainTrack(),
 			elements: [makeVideoElement({ id: "e1", mediaId: "missing" })],
 		};
-		expect(timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [] })).toBe(false);
+		expect(
+			timelineHasAudio({ tracks: tracksWithMain(main), mediaAssets: [] }),
+		).toBe(false);
+	});
+});
+
+describe("collectAudioClips", () => {
+	test("adds each audible video clip once", async () => {
+		const asset = makeVideoAsset({ id: "v1", hasAudio: true });
+		const main: VideoTrack = {
+			...emptyMainTrack(),
+			elements: [
+				makeVideoElement({
+					id: "e1",
+					mediaId: "v1",
+					isSourceAudioEnabled: true,
+				}),
+			],
+		};
+
+		const clips = await collectAudioClips({
+			tracks: tracksWithMain(main),
+			mediaAssets: [asset],
+		});
+
+		expect(clips.map((clip) => clip.id)).toEqual(["e1"]);
 	});
 });

@@ -49,7 +49,20 @@ class UnifiedCompositor {
 	 * Render a frame. Always uses WASM for preview (synchronous, fast).
 	 */
 	render(frame: FrameDescriptor) {
-		wasmCompositor.render(frame);
+		try {
+			wasmCompositor.render(frame);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			if (
+				msg.includes("createBuffer") ||
+				msg.includes("device is lost") ||
+				msg.includes("GPUDevice") ||
+				msg.includes("panicked")
+			) {
+				return;
+			}
+			throw error;
+		}
 	}
 
 	/**

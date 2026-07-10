@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { MemoizedTimelineElement as TimelineElement } from "./timeline-element";
 import type { TimelineTrack } from "@/lib/timeline";
@@ -11,6 +11,11 @@ import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import type { ElementDragState } from "@/lib/timeline";
 import { useEditor } from "@/hooks/use-editor";
+import { useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { timelineTimeToSnappedPixels } from "@/lib/timeline/pixel-utils";
+import { Plus } from "lucide-react";
+
+const TRANSITION_ADJACENCY_TOLERANCE_TICKS = 2;
 
 interface TimelineTrackContentProps {
 	track: TimelineTrack;
@@ -53,13 +58,47 @@ export function TimelineTrackContent({
 	shouldIgnoreClick,
 	targetElementId = null,
 }: TimelineTrackContentProps) {
-	const { isElementSelected } = useElementSelection();
+	const { isElementSelected, setElementSelection } = useElementSelection();
+	const setActiveTab = useAssetsPanelStore((state) => state.setActiveTab);
 	// Only subscribe to `timeline` and `scenes` — not `playback`. The
 	// `playback` subsystem fires every animation frame during playback.
 	const duration = useEditor(
 		(e) => e.timeline.getTotalDuration(),
 		["timeline", "scenes"],
 	);
+	const transitionPairs = useMemo(() => {
+		if (
+			track.type === "audio" ||
+			track.type === "effect" ||
+			track.type === "camera"
+		) {
+			return [];
+		}
+
+		const sortedElements = [...track.elements].sort(
+			(a, b) => a.startTime - b.startTime,
+		);
+		const pairs: Array<{
+			from: TimelineElementType;
+			to: TimelineElementType;
+			at: number;
+		}> = [];
+
+		for (let index = 0; index < sortedElements.length - 1; index += 1) {
+			const from = sortedElements[index];
+			const to = sortedElements[index + 1];
+			if (!from || !to) continue;
+
+			const fromEnd = from.startTime + from.duration;
+			if (
+				Math.abs(fromEnd - to.startTime) <= TRANSITION_ADJACENCY_TOLERANCE_TICKS
+			) {
+				pairs.push({ from, to, at: to.startTime });
+			}
+		}
+
+		return pairs;
+	}, [track.elements, track.type]);
 
 	// Stabilize callbacks per-track so React.memo on TimelineElement
 	// can skip re-renders when only unrelated elements change.
@@ -112,7 +151,11 @@ export function TimelineTrackContent({
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: empty track area is a pointer-only seek surface */}
 			<div
 				className="relative h-full min-w-full"
-				style={{ zIndex: hasDraggedElement ? TIMELINE_LAYERS.dragLine + 2 : TIMELINE_LAYERS.trackContent }}
+				style={{
+					zIndex: hasDraggedElement
+						? TIMELINE_LAYERS.dragLine + 2
+						: TIMELINE_LAYERS.trackContent,
+				}}
 				onMouseUp={(event) => {
 					if (event.target !== event.currentTarget) return;
 					if (shouldIgnoreClick?.()) return;
@@ -163,6 +206,39 @@ export function TimelineTrackContent({
 						);
 					})
 				)}
+				{transitionPairs.map((pair) => {
+					const left = timelineTimeToSnappedPixels({
+						time: pair.at,
+						zoomLevel,
+					});
+
+					return (
+						<button
+							key={`${pair.from.id}-${pair.to.id}`}
+							type="button"
+							className="absolute top-1/2 z-10 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/90 text-black shadow-[0_0_0_2px_rgba(0,0,0,0.8),0_0_12px_rgba(34,211,238,0.55)] transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-cyan-200"
+							style={{ left: `${left}px` }}
+							aria-label={`Add transition between ${pair.from.name} and ${pair.to.name}`}
+							title="Add transition"
+							onMouseDown={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+							}}
+							onClick={(event) => {
+								event.stopPropagation();
+								setElementSelection({
+									elements: [
+										{ trackId: track.id, elementId: pair.from.id },
+										{ trackId: track.id, elementId: pair.to.id },
+									],
+								});
+								setActiveTab("transitions");
+							}}
+						>
+							<Plus className="size-3.5" aria-hidden="true" />
+						</button>
+					);
+				})}
 			</div>
 		</div>
 	);

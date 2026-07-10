@@ -1,6 +1,7 @@
 # TODO
 
 ## Completed
+
 - [x] Create feature workflow folder.
 - [x] Create required workflow files.
 - [x] Review FEATURE.MD.
@@ -14,10 +15,13 @@
 - [x] Run `bun run build:web`.
 
 ## Pending
+
 - [ ] User hand-test keyframe delete and alignment.
 
 ## Blocked
+
 - None.
 
 ## Do not start yet
+
 - Optional improvements.

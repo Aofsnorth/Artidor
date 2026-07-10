@@ -11,7 +11,7 @@
 ## Daftar Track
 
 | File | Baris | Fokus | Quick Win Pertama |
-|---|---:|---|---|
+| --- | ---: | --- | --- |
 | [`PERFORMANCE.md`](./PERFORMANCE.md) | ~298 | 10 perf opportunities (save manager, playback drift, IDB leak, dll) | #1 Save manager re-entrancy guard |
 | [`FFMPEG-OPTIONS.md`](./FFMPEG-OPTIONS.md) | ~232 | 4 opsi integrasi FFmpeg (WASM, desktop, server, hybrid) | Evaluasi Opsi 1 (FFmpeg.wasm lazy) |
 | [`SECURITY-AUDIT.md`](./SECURITY-AUDIT.md) | ~301 | 10-section security checklist (secrets, XSS, auth, storage, dll) | #1 Secrets & credentials scan |

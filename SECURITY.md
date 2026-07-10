@@ -3,6 +3,7 @@
 ## Secret Handling
 
 Never commit:
+
 - API keys
 - auth tokens
 - cookies
@@ -13,6 +14,7 @@ Never commit:
 - database dumps
 
 If a secret is accidentally committed:
+
 1. Revoke/rotate it immediately.
 2. Remove it from current branch.
 3. Decide whether history rewrite is necessary.
@@ -21,6 +23,7 @@ If a secret is accidentally committed:
 ## AI Agent Security Rules
 
 AI agents must:
+
 - Use least privilege.
 - Never request secrets.
 - Never print secrets.
@@ -31,6 +34,7 @@ AI agents must:
 ## MCP Security
 
 MCP servers must:
+
 - Use allowlisted tools.
 - Deny arbitrary shell by default.
 - Validate input.
@@ -311,8 +315,3 @@ secrets scan, and dependencies. Findings and fixes:
   auth change (PERMISSIONS.md Level 2) and requires explicit approval.
   Follow-up: add `BETTER_AUTH_SECRET: z.string().min(32)` to the env
   schema after approval.
-
-
-
-
-

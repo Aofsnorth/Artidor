@@ -25,7 +25,7 @@ Switch the track slider from a linear percentage (0–100%, default 100)
 to a dB value (`VOLUME_DB_MIN..VOLUME_DB_MAX`, default 0). Combine with
 the inspector's dB element volume:
 
-```
+```text
 combinedDb = clampDb(trackSliderDb + elementVolumeDb)
 finalGain  = dBToLinear(combinedDb)
 ```

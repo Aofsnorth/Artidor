@@ -28,7 +28,7 @@ Phases 4–7 pending) continues independently; both native paths coexist.
 
 ## Architecture (target)
 
-```
+```text
 Win32 native window (Rust + windows-rs)
 ├── Win32 windowing + message loop (CreateWindowExW, WndProc)
 ├── Rendering surface

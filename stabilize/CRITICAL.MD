@@ -2,6 +2,7 @@
 
 > Hanya tulis ke file ini setelah AI dengan hati-hati memeriksa file yang terpengaruh dan mengonfirmasi bahwa isu tersebut kemungkinan kritis.
 > Sebelum memperbaiki isu kritis, AI harus:
+>
 > 1. Menyatakan apa isu kritisnya.
 > 2. Mendaftar file yang terpengaruh.
 > 3. Menjelaskan mengapa itu kritis.

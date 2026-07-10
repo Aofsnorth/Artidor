@@ -9,7 +9,7 @@ Concise technical reference for building an "Adjust" / "Color" inspector in a we
 Foundational tonal color balance. Three overlapping luminance ranges + one global.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Lift** (Master) | Black/shadow luminance offset | −1.00 → +1.00 (log), or −100 → +100 (legacy) | 0.00 | Single slider, dark zone, bottom row |
 | **Lift Red/Green/Blue** | Shadow color cast | same as Lift | 0.00 | Triple slider, unlocked via "gang" toggle |
 | **Gamma** (Master) | Midtone luminance offset | −1.00 → +1.00 / −100 → +100 | 0.00 | Mid zone, middle row |
@@ -29,7 +29,7 @@ Influence zones overlap ~2 stops at the boundaries: Lift dominates below mid-gra
 The horizontal "Bar" presentation of the same YRGB Lift/Gamma/Gain/Offset data. No new parameters — just an alternative UI for precise per-channel slider control. Each bar is a vertical fader.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Lift Y** | Lift luma only | −1.00 → +1.00 | 0.00 | Vertical slider |
 | **Lift R / G / B** | Lift per-channel | −1.00 → +1.00 | 0.00 | Three sliders, ganged by default |
 | **Gamma Y / R / G / B** | Gamma per-channel | −1.00 → +1.00 | 0.00 | Mid row |
@@ -44,7 +44,7 @@ The horizontal "Bar" presentation of the same YRGB Lift/Gamma/Gain/Offset data. 
 Live in the Primaries palette across Wheels / Bars / Log modes. These are the "global" knobs that act on the image as a whole.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Temp** | Warm ↔ cool color temperature | −100 → +100 (or absolute K) | 0 | Slider labeled "Temp" |
 | **Tint** | Green ↔ magenta balance | −100 → +100 | 0 | Slider |
 | **Contrast** | Expand/contract tonal range around Pivot | −1.00 → +1.00 | 0.00 | Single slider |
@@ -68,7 +68,7 @@ Live in the Primaries palette across Wheels / Bars / Log modes. These are the "g
 Spline-based per-channel curves. Default state: diagonal line from (0,0) to (1,1). Spline control points are draggable; right-click adds points.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Y Curve** | Luminance (master) | input 0–1, output 0–1 | linear | Top curve, white line |
 | **R Curve** | Red channel | 0–1 | linear | Red overlay |
 | **G Curve** | Green channel | 0–1 | linear | Green overlay |
@@ -80,7 +80,7 @@ Spline-based per-channel curves. Default state: diagonal line from (0,0) to (1,1
 **Hue/Sat/Lum curves (Hue → Sat, Hue → Lum, Sat → Sat, Sat → Lum, Lum → Sat, Lum → Hue, plus Hue → Hue):** each curve uses an X axis of one component and Y axis of another. Backed by histogram overlay so empty regions are visible. Same drag/add-point UX.
 
 | HSL curve | X axis | Y axis |
-|---|---|---|
+| --- | --- | --- |
 | **Hue vs Sat** | Hue (0–360°) | Sat (0–1) |
 | **Hue vs Lum** | Hue | Lum (0–1) |
 | **Hue vs Hue** | Hue (input) | Hue (output) |
@@ -96,7 +96,7 @@ Spline-based per-channel curves. Default state: diagonal line from (0,0) to (1,1
 Selection tools that build a matte from pixel values. Three modes: **HSL**, **3D**, **LUM (Luma only)**, plus a legacy **RGB** mode.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Eyedropper** | Sample colors in viewer | — | — | Three modes: +Color, −Color, +Softness, −Softness |
 | **Hue Center** | Picked hue | 0 → 360° | 0 | Range slider top track |
 | **Hue Range** | Inner acceptance width | 0 → 1 | 0.1 | Range bar |
@@ -112,7 +112,7 @@ Selection tools that build a matte from pixel values. Three modes: **HSL**, **3D
 **Matte Finesse** (post-key refinement):
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Clean Black** | Threshold background → pure black | 0 → 1 | 0 | Slider |
 | **Clean White** | Threshold subject → pure white | 0 → 1 | 0 | Slider |
 | **Blur Radius** | Edge softening | 0 → ~10 px | 0 | Slider |
@@ -130,7 +130,7 @@ Selection tools that build a matte from pixel values. Three modes: **HSL**, **3D
 Shapes drawn on the viewer that gate a node's correction. Five shape types + per-shape transform/softness.
 
 | Shape | Type | Key params |
-|---|---|---|
+| --- | --- | --- |
 | **Linear** | 4-point rectangle | Position, Size, Rotation, Aspect, Softness (1–4 sides independent) |
 | **Circular** | Oval/circle | Center, Radius X/Y, Rotation, Softness |
 | **Polygon** | 4+ point shape | Point list, Position, Rotation, Softness (per-point) |
@@ -140,7 +140,7 @@ Shapes drawn on the viewer that gate a node's correction. Five shape types + per
 Per-window parameters (all shapes):
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Position X / Y** | −0.5 → +0.5 (normalized) | 0, 0 | Two number fields or drag |
 | **Size W / H** | 0 → 1 | 0.5 / 0.5 | Two fields |
 | **Rotation** | −360 → +360° | 0° | Field or handle |
@@ -159,7 +159,7 @@ Multiple windows on one node combine by Mask mode (default Add).
 **A. Cloud Tracker** (default, in Color page, attached to a Power Window):
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Track Forward** | — | — | Button |
 | **Track Reverse** | — | — | Button |
 | **Track One Frame Fwd/Rev** | — | — | Buttons |
@@ -174,7 +174,7 @@ Multiple windows on one node combine by Mask mode (default Add).
 **B. Point Tracker** (manual crosshairs, inside Tracker palette):
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Pattern X / Y / W / H** | px in viewer | — | Drag rect in viewer |
 | **Search X / Y / W / H** | px in viewer | — | Drag dashed rect |
 | **Crosshairs** | list | — | Click to add, drag to position |
@@ -183,7 +183,7 @@ Multiple windows on one node combine by Mask mode (default Add).
 **C. Planar Tracker** (Fusion page node): tracks a flat surface.
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Tracker Type** | Point / Hybrid Point-Area | Point | Dropdown |
 | **Motion Type** | Translation / Scale / Rotation / Skew / Perspective | Perspective | 5 toggle |
 | **Track to Start / End** | — | — | Buttons |
@@ -198,7 +198,7 @@ Multiple windows on one node combine by Mask mode (default Add).
 ResolveFX Vignette has two modes. As a Color page operation, vignette is built manually with a circular Power Window + inverted grade.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Size (Basic)** | How far vignette reaches in | 0 → 1 | 0.5 | Slider |
 | **Anamorphism** | Stretches vignette horizontally | −1 → +1 | 0 | Slider |
 | **Softness (Basic)** | Edge falloff | 0 → 1 | 0.5 | Slider |
@@ -212,7 +212,7 @@ ResolveFX Vignette has two modes. As a Color page operation, vignette is built m
 **Color page built-in (legacy):** "Add Vignetting" simulated-lens parameters in some ResolveFX:
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Focal Factor | 0 → 1 | 0.5 |
 | Geometry Factor | 0 → 1 | 0.5 |
 | Tilt Amount | −1 → +1 | 0 |
@@ -229,7 +229,7 @@ Located in **OpenFX → Resolve FX**. Many are Studio-only. Ranges given where R
 Three modes: **Blur**, **Sharpen**, **Mist**.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Radius** | Blur/Sharpen strength | 0 → ~5 (log) | 0.5 | Slider |
 | **H/V Ratio** | Directionality (1 = H, 0 = V) | 0 → 1 | 0.5 | Slider |
 | **Scaling** | Multiplier on Radius | 0 → ~10 | 1 | Slider |
@@ -240,7 +240,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.2 ResolveFX Blur (OpenFX)
 
 | Effect | Key params | Notes |
-|---|---|---|
+| --- | --- | --- |
 | **Box Blur** | Radius (0–100), Iterations (1–10) | Fast |
 | **Directional Blur** | Type (Linear/Centered/Radial/Zoom), Length (0–~5), Angle (0–360°), Center X/Y | Studio only |
 | **Gaussian Blur** | Radius (0–500), H/V Ratio | Universal |
@@ -254,7 +254,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.3 ResolveFX Sharpen / Stylize
 
 | Effect | Key params | Default |
-|---|---|---|
+| --- | --- | --- |
 | **Sharpen** | Sharpen X/Y (0–5), Lock X/Y bool, Clipping Mode (Frame/Domain/None) | Sharpen 0.5, Locked |
 | **Sharpen Edges** | Sensitivity, Detail | — |
 | **Soften & Sharpen** | Mode (Soften/Sharpen/Soft-Sharpen), Radius, Threshold | — |
@@ -266,7 +266,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.4 Mist (Blur palette mode)
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Radius | 0 → 5 (lower = sharpens first) | 0.5 |
 | H/V Ratio | 0 → 1 | 0.5 |
 | Scaling | 0 → 10 | 1 |
@@ -275,7 +275,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.5 Defog (ResolveFX Dehaze)
 
 | Control | Purpose | Range | Default |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Dehaze Strength | Contrast + saturation correction toward haze complement | 0 → 1 (Studio typical) | 0.2 (sensible; engine default 0.8 is heavy) |
 | Haze Color | Color to subtract | RGB picker | white (neutral) |
 | Display Depth | Show generated depth map | bool | false |
@@ -284,7 +284,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.6 Glow (ResolveFX Light)
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Glow Size | 0 → ~10 | 1 | Slider |
 | Glow | 0 → 1 | 0.5 | Intensity |
 | Method | Multi-box / Gaussian / Fast Gaussian / Blend / Hilight | Fast Gaussian | Dropdown |
@@ -296,7 +296,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.7 Halation (ResolveFX Light)
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Isolation Threshold | 0 → 1 | 0.5 |
 | View Isolated Regions | bool | false |
 | Dye Layer Reflection Strength | 0 → 1 | 0.5 |
@@ -307,7 +307,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.8 Film Grain (ResolveFX Texture)
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Grain Strength | 0 → 1 | 0.3 |
 | R / G / B | 0 → 1 (per channel) | 0.3 |
 | Softness | 0 → 1 | 0.5 |
@@ -318,7 +318,7 @@ Three modes: **Blur**, **Sharpen**, **Mist**.
 ### 9.9 Flicker Removal (ResolveFX Revival → Deflicker)
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Mo.Est. Type | Faster / Better / None | Better |
 | Frames Either Side | 1 → 11 | 3 |
 | Motion Range | Small / Medium / Large | Medium |
@@ -342,7 +342,7 @@ Path Blur is a Fusion page effect (Blur node set to **Path** mode, with a path i
 ### 9.11 Motion Blur (ResolveFX Temporal)
 
 | Control | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Motion Est. Type | Better / Faster | Better |
 | Motion Range | Small / Medium / Large | Medium |
 | Motion Blur | 0 → 100 | 25 |
@@ -364,7 +364,7 @@ Path Blur is a Fusion page effect (Blur node set to **Path** mode, with a path i
 ## 10. Color Match / Shot Match
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Color Match** (toolbar) | Match clip to a chart in frame | — | — | Button → pick chart (X-Rite ColorChecker, DSC Labs, Datacolor SpyderCheckr, etc.), align overlay, click Match |
 | **Shot Match to This Clip** | Right-click → match current clip to a reference | — | — | Context menu on a reference thumbnail |
 | **Auto Color (A button)** | Per-clip automatic balance | — | — | "A" button in Color page |
@@ -379,7 +379,7 @@ Legacy mode neutralizes RGB at extremes and maxes contrast between 0–100% with
 AI-driven object/person isolation. **Magic Mask v1** uses paint strokes; **Magic Mask 2** (Resolve 20+) uses click-to-select.
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Add Stroke / Add (v2)** | Mark subject | — | — | Click/drag on viewer |
 | **Subtract Stroke** | Remove from mask | — | — | Click/drag |
 | **Person / Object Mode** (v1) | Type of subject | enum | Person | Dropdown |
@@ -403,7 +403,7 @@ AI-driven object/person isolation. **Magic Mask v1** uses paint strokes; **Magic
 ## 12. LUTs
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Format | `.cube` (Resolve-native 1D and 3D; not Adobe SpeedGrade.cube) |
 | 3D sizes exported | 17³, 33³, 65³, Panasonic VLUT |
 | Internal processing | 32-bit float |
@@ -423,7 +423,7 @@ AI-driven object/person isolation. **Magic Mask v1** uses paint strokes; **Magic
 Found in **Workspace → Video Scopes** or the Scope panel in Color page. 0–1023 IRE scale (or 0–100% percentage mode).
 
 | Scope | Channels | Purpose | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Waveform** | Luma (Y) | Brightness distribution vs horizontal position | Luminance bars, bottom=black top=white |
 | **Parade** | R / G / B (or YRGB, YCbCr) | Per-channel balance | Three side-by-side waveforms |
 | **Vectorscope** | U/V (chroma) | Hue + saturation, 75% color bar targets, optional skin-tone line (I) | Circular graph, center=neutral |
@@ -431,7 +431,7 @@ Found in **Workspace → Video Scopes** or the Scope panel in Color page. 0–10
 | **CIE Chromaticity** | x/y (or u/v) | Gamut triangle + black-body locus | xy or uv chart, with Rec.709/2020/P3 triangle overlay |
 
 | Setting | Options | Default |
-|---|---|---|
+| --- | --- | --- |
 | **Waveform Scale Style** | 0–1023 (IRE) / 0–100% / 0–1 | 0–1023 IRE |
 | **Low Pass Filter** | on/off | off (reduces trace noise) |
 | **Extents** | on/off | off (shows min/max trace) |
@@ -449,12 +449,12 @@ Found in **Workspace → Video Scopes** or the Scope panel in Color page. 0–10
 Activate in Project Settings → Color Management → set Output Color Space to ST.2084 (PQ). Then enable **HDR Scopes** in scope settings → units become **nits (cd/m²)**.
 
 | Scope mode | Range displayed |
-|---|---|
+| --- | --- |
 | Waveform (HDR nit) | 0 → 10,000 nits (or per-display max) |
 | False Color (ResolveFX) | Maps luma to a color-coded lUT — common Resolve bands: 0 (black), 0–0.02 nits (below black), 0.02–0.1, 0.1–1, 1–10, 10–100, 100–200, 200–1000, 1000–4000, 4000+ (clipped) |
 
 | False Color setting | Range | Default |
-|---|---|---|
+| --- | --- | --- |
 | Lower Clip Threshold | 0 → 10,000 nits | 0 |
 | Upper Clip Threshold | 0 → 10,000 nits | 10,000 |
 | Reference (mid-gray) | nits | 15 (ACES) |
@@ -471,7 +471,7 @@ HDR grading palette (Zone-based) ships its own scope display in nits.
 Resolve Color Management (RCM) is the framework; the **CST** OpenFX is the in-graph equivalent.
 
 | Control | Purpose | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Color Science** | DaVinci YRGB / DaVinci YRGB Color Managed / ACEScc / ACEScct / ACEScg | DaVinci YRGB | Project Settings dropdown |
 | **Timeline Color Space** | Working space | Rec.709-A | Dropdown |
 | **Timeline Color Gamma** | Working gamma | Gamma 2.4 | Dropdown |
@@ -502,7 +502,7 @@ Resolve Color Management (RCM) is the framework; the **CST** OpenFX is the in-gr
 ## 16. ACES / IDT / ODT
 
 | Item | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | **ACES IDT** (Input Device Transform) | input dropdown | Maps camera log → ACES AP0/Linear. Examples: ARRI LogC3 → AWG3, Sony SLog3 → SGamut3.CINE, RED Log3G10 → REDWideRGB, BMD Film Gen 5, Canon Log 2/3, Fuji F-Log2, Panasonic V-Log, GoPro ProTune |
 | **ACES ODT** (Output Device Transform) | output dropdown | Maps ACES → display. Examples: Rec.709 (100 nits), Rec.2020 (100 nits), P3-D65 (108 nits), P3-D65 ST.2084 (1000 / 2000 / 4000 nits), Rec.2020 ST.2084 (1000 / 2000 / 4000 nits), HLG, DCDM (X'Y'Z' gamma 2.6), ACEScc/ACEScct/ACEScg (passthrough) |
 | **ACES Mid Gray Luminance** | nits | 15.00 (default; do not change mid-grade) |
@@ -520,7 +520,7 @@ Found in the **Camera Raw palette** (Color page) and in Project Settings → Cam
 Common parameters (per manufacturer — RED, ARRI, Sony, BMD BRAW, Canon, Panasonic, etc.):
 
 | Control | Purpose | Range | Default | UX hint |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **ISO** | Sensor gain; red+blue offsets relative to green | 50 → 6400 (RED) | 320 (RED) / 800 (BMD) | Slider |
 | **Exposure** | Stops above/below unity | −7 → +7 stops | 0 | Slider |
 | **Color Temp** | Kelvin | 2000 → 50,000 (varies) | 6500 (As Shot) | Slider |
@@ -547,7 +547,7 @@ Common parameters (per manufacturer — RED, ARRI, Sony, BMD BRAW, Canon, Panaso
 Primarily Edit-page features; Color page inherits the relationship.
 
 | Control | Purpose | Notes |
-|---|---|---|
+| --- | --- | --- |
 | **Auto Sync Audio** (Media Pool) | Sync external audio to video by waveform or timecode | Right-click → Auto Sync Audio → Based on Waveform / Based on Timecode |
 | **Auto Align Clips** (Timeline) | Sync clips already on the timeline | Right-click → Auto Align Clips → Based on Waveform |
 | **Create New Multicam Clip** | Multi-angle sync | Right-click → Create New Multicam Clip Using Selected Clips |
@@ -566,7 +566,7 @@ A node has **RGB in/out (green triangle/square)** and **key in/out (blue triangl
 ### Node types
 
 | Type | Inputs | Outputs | Behavior |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Serial** (`Alt+S` / `Opt+S`) | 1 RGB, 1 Key | 1 RGB, 1 Key | Linear chain: A→B→C |
 | **Parallel** (`Alt+P` / `Opt+P`) | 1 RGB, 1 Key into mixer; N parallel branches | 1 RGB, 1 Key | Each branch gets same input; output is additive equal-weight mix |
 | **Layer** (`Alt+L` / `Opt+L`) | 1 RGB, 1 Key into mixer; N layers | 1 RGB, 1 Key | Composited; lowest input has priority; **Composite Mode** (Normal, Add, Subtract, Multiply, Screen, Overlay, etc.) |
@@ -584,7 +584,7 @@ A node has **RGB in/out (green triangle/square)** and **key in/out (blue triangl
 ### Per-node display parameters
 
 | Control | Range | Default | UX hint |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **Bypass / Disable** | bool | false | Small "B" toggle on node |
 | **Solo** | bool | false | "S" — isolate this node's effect |
 | **Node Label** | string | — | Rename in graph |
@@ -602,7 +602,7 @@ Normal, Add, Subtract, Multiply, Screen, Overlay, Soft Light, Hard Light, Darken
 ## 20. Still / Album Galleries
 
 | Control | Purpose | Notes |
-|---|---|---|
+| --- | --- | --- |
 | **Grab Still** | Save current frame + grade | Shortcut: Opt+Cmd+G (or right-click viewer) |
 | **Gallery** | Library of stills (up to 30 in default) | Top-left of Color page |
 | **Still Albums** | Folders for organizing stills | Click "+" to create; drag stills into them |

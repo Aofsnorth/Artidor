@@ -1,6 +1,7 @@
 # CI/CD Improvements
 
 > Improvement pipeline CI/CD Artidor yang **bisa dilakukan di kode** (file YAML
+>
 > + scripts + GitHub Actions). Semua grounded ke `.github/workflows/` yang ada.
 
 ---
@@ -413,6 +414,7 @@ pre-commit:
 ```
 
 Install:
+
 ```bash
 bun add -D lefthook
 bunx lefthook install
@@ -426,7 +428,7 @@ bunx lefthook install
 ## Rangkuman Prioritas
 
 | # | Item | Effort | Dampak | Prioritas |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | WASM pkg staleness check | 1–2 jam | High | 🔴 P0 |
 | 2 | Cache optimization | 1–2 jam | High | 🔴 P0 |
 | 3 | Playwright artifact upload | 1 jam | High | 🔴 P0 |

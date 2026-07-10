@@ -12,10 +12,11 @@
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT = resolve(
-	import.meta.dir,
+	dirname(fileURLToPath(import.meta.url)),
 	"..",
 	"apps",
 	"web",

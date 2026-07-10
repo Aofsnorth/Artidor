@@ -1,6 +1,7 @@
 # Harness Documentation
 
 Start here:
+
 - `agent-workflow.md`
 - `testing-strategy.md`
 - `security-model.md`

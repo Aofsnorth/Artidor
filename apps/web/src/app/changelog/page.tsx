@@ -46,7 +46,7 @@ export default function ChangelogPage() {
 				<div className="relative">
 					<div
 						aria-hidden
-						className="absolute top-2 bottom-0 left-[5px] w-px bg-border hidden sm:block"
+						className="absolute top-2 bottom-0 left-1.25 w-px bg-border hidden sm:block"
 					/>
 
 					<div className="flex flex-col">

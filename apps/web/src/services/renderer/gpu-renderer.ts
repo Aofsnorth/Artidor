@@ -49,12 +49,21 @@ export const gpuRenderer = {
 			height,
 			label: "effect source",
 		});
-		return applyEffectPasses({
-			source: sourceCanvas,
-			width,
-			height,
-			passes: serializeEffectPasses(passes),
-		});
+		try {
+			return applyEffectPasses({
+				source: sourceCanvas,
+				width,
+				height,
+				passes: serializeEffectPasses(passes),
+			});
+		} catch (error) {
+			gpuAvailable = false;
+			console.warn(
+				"GPU effect renderer failed; falling back to source preview.",
+				error,
+			);
+			return source;
+		}
 	},
 
 	applyMaskFeather({

@@ -92,7 +92,7 @@ preview + adaptive auto quality for smoother large-video editing).
 
 ## Files Changed
 
-```
+```text
 apps/web/src/lib/perf/render-perf-tracker.ts          (new — ring buffer + hysteresis)
 apps/web/src/lib/perf/render-perf-tracker.test.ts     (new — unit tests)
 apps/web/src/lib/perf/preview-quality.ts              (adaptive scale for "auto")

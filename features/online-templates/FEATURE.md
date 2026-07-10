@@ -19,7 +19,7 @@ editor auto-opens the templates dialog and cleans the URL.
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | 0 errors |
 | `bun run test` | all pass |

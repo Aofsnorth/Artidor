@@ -233,10 +233,10 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"move_bookmark",
 		"move_bookmark",
 		"Move a bookmark from one time to another.",
-		objectSchema(
-			{ fromTime: numberSchema(0), toTime: numberSchema(0) },
-			["fromTime", "toTime"],
-		),
+		objectSchema({ fromTime: numberSchema(0), toTime: numberSchema(0) }, [
+			"fromTime",
+			"toTime",
+		]),
 	),
 
 	/* --------------------------------- Track --------------------------------- */
@@ -1125,7 +1125,8 @@ export const ALL_TOOLS: RegisteredTool[] = [
 			{
 				url: {
 					type: "string",
-					description: "Full public URL to fetch (e.g. https://example.com/article)",
+					description:
+						"Full public URL to fetch (e.g. https://example.com/article)",
 				},
 			},
 			["url"],
@@ -1140,7 +1141,10 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		"Create a step-by-step plan before executing a complex task. Each step has a short title and description. Call this FIRST when the user's request involves multiple steps (e.g. 'make a 60s reel' or 'add captions and color grade'). The plan is shown to the user as a visual checklist. After creating the plan, proceed to execute each step using the appropriate tools.",
 		objectSchema(
 			{
-				title: { type: "string", description: "Short title for the overall plan" },
+				title: {
+					type: "string",
+					description: "Short title for the overall plan",
+				},
 				steps: {
 					type: "array",
 					description: "Ordered list of steps",
@@ -1412,6 +1416,27 @@ export const ALL_TOOLS: RegisteredTool[] = [
 			["trackId", "elementId"],
 		),
 	),
+	tool(
+		"skill",
+		"smart_close_gaps",
+		"smart_close_gaps",
+		"Close empty gaps between timeline clips on the active scene.",
+		objectSchema({}),
+	),
+	tool(
+		"skill",
+		"smart_beat_markers",
+		"smart_beat_markers",
+		"Detect beat markers for pacing and music-synced edits.",
+		objectSchema({}),
+	),
+	tool(
+		"skill",
+		"smart_capcut_style",
+		"smart_capcut_style",
+		"Queue a CapCut-style edit macro: close gaps, detect beat markers, and polish pacing.",
+		objectSchema({}),
+	),
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -1441,10 +1466,7 @@ export function getToolsByCategory(category: ToolCategory): ToolDefinition[] {
  * This is the gating mechanism: the AI can only call generation tools
  * for media types the user has explicitly configured a model for.
  */
-const VIDEO_GEN_TOOLS = new Set<string>([
-	"generate_video",
-	"generate_clip",
-]);
+const VIDEO_GEN_TOOLS = new Set<string>(["generate_video", "generate_clip"]);
 
 const IMAGE_GEN_TOOLS = new Set<string>([
 	"generate_image",
@@ -1456,10 +1478,7 @@ const AUDIO_GEN_TOOLS = new Set<string>([
 	"generate_voiceover",
 ]);
 
-const MEDIA_GEN_TOOLS = new Set<string>([
-	"generate_media",
-	"generate_music",
-]);
+const MEDIA_GEN_TOOLS = new Set<string>(["generate_media", "generate_music"]);
 
 /**
  * Filter the built-in tool definitions based on which media

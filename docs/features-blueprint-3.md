@@ -1220,24 +1220,28 @@ loopOut("cycle", 0);  // Loops keyframes infinitely
 ```
 
 **Wiggle:**
+
 ```javascript
 wiggle(freq, amp);  // wiggles position
 // wiggle(2, 50) = 2 wiggles/sec, 50px amplitude
 ```
 
 **Time:**
+
 ```javascript
 time * 100;  // Value increases with time
 value + time * 50;  // Current value + time-based offset
 ```
 
 **Random:**
+
 ```javascript
 random(min, max);  // Random number
 seedRandom(5, true);  // Fixed random seed
 ```
 
 **Layer References:**
+
 ```javascript
 thisComp.layer("Null 1").transform.position;
 thisLayer.index;
@@ -1245,6 +1249,7 @@ comp("Other Composition").layer("Shape 1").opacity;
 ```
 
 **Property References:**
+
 ```javascript
 value;  // Current property value
 effect("Slider Control")("Slider");
@@ -1252,6 +1257,7 @@ transform.position[0];  // X component
 ```
 
 **Math:**
+
 ```javascript
 Math.sin(time * 2) * 100;
 Math.cos(time * 2) * 100;
@@ -1261,12 +1267,14 @@ clamp(value, min, max);
 ```
 
 **Index:**
+
 ```javascript
 index;  // Layer index number
 // Used for stacking offsets: (index - 1) * 50
 ```
 
 **If/Else:**
+
 ```javascript
 if (time < 2) {
   0
@@ -1276,6 +1284,7 @@ if (time < 2) {
 ```
 
 **Expression Controls:**
+
 - Slider Control: effect("Slider")("Slider")
 - Point Control: effect("Point")("Point")
 - Checkbox Control: effect("Checkbox")("Checkbox")
@@ -1284,7 +1293,8 @@ if (time < 2) {
 - Dropdown Menu Control: effect("Dropdown")("Menu")
 - 3D Point Control
 
-### Expression Engine:
+### Expression Engine
+
 - Legacy: original expression engine
 - JavaScript: modern engine (recommended)
 - Switch: File > Project Settings > Expressions > Engine
@@ -1293,42 +1303,49 @@ if (time < 2) {
 
 ## AE-22: Keyframe Animation — Advanced
 
-### Keyframe Types:
+### Keyframe Types
+
 - Linear: straight interpolation
 - Bezier: curved interpolation with handles
 - Auto Bezier: automatic smooth curve
 - Hold: value jumps at keyframe
 - Rove Across Time: keyframes auto-distribute timing
 
-### Keyframe Velocity:
+### Keyframe Velocity
+
 - Ctrl+Shift+K or right-click > Keyframe Velocity
 - Incoming/Outgoing Speed
 - Influence (temporal bezier handle size)
 - Continuous/Independent toggle
 
-### Spatial Interpolation:
+### Spatial Interpolation
+
 - Linear: straight path
 - Bezier: curved path with handles
 - Auto Bezier: automatic curve
 - Continuous Bezier: tangent handles are continuous
 
-### Speed Graph:
+### Speed Graph
+
 - Shows speed (pixels/second) over time
 - Zero = hold
 - Peak = maximum speed
 - Smooth curve = gradual acceleration/deceleration
 
-### Value Graph:
+### Value Graph
+
 - Shows actual values over time
 - Cross-dimensional interpolation for Position
 
-### Separate Dimensions:
+### Separate Dimensions
+
 - Right-click Position > Separate Dimensions
 - X, Y (, Z) become individual properties
 - Each can have independent keyframes and curves
 - Enables different easing on X vs Y axis
 
-### Keyframe Shortcuts:
+### Keyframe Shortcuts
+
 - **J**: Previous keyframe
 - **K**: Next keyframe
 - **U**: Show all animated properties (properties with keyframes)
@@ -1339,7 +1356,8 @@ if (time < 2) {
 - **Ctrl+Alt+K**: Keyframe Velocity
 - **Ctrl+click**: Add keyframe in Graph Editor
 
-### Multi-Property Animation:
+### Multi-Property Animation
+
 - Animate multiple properties simultaneously
 - Layer markers for timing reference
 - Pre-compose for grouped animation
@@ -1348,24 +1366,28 @@ if (time < 2) {
 
 ## AE-23: Text Animation
 
-### Creating Text:
+### Creating Text
+
 - Horizontal Type Tool (T or Ctrl+T)
 - Vertical Type Tool (T cycle)
 - Point text (click) or Paragraph/area text (drag box)
 
-### Text Properties:
+### Text Properties
+
 - Source Text: editable text content + character-level formatting
 - Path Options: path, margins, alignment
 - Text Animators
 
-### Text Animator System:
+### Text Animator System
+
 1. Add Animator: Animate > [Property] (Position, Scale, Rotation, Opacity, etc.)
 2. Animator appears with Range Selector
 3. Adjust Start/End/Offset to control which characters are affected
 4. Multiple animators per text layer
 5. Multiple range selectors per animator
 
-### Animator Properties:
+### Animator Properties
+
 - Position offset
 - Scale
 - Rotation (or X/Y/Z Rotation)
@@ -1383,7 +1405,8 @@ if (time < 2) {
 - Line Offset
 - Word Offset
 
-### Range Selector:
+### Range Selector
+
 - Start: 0–100%
 - End: 0–100%
 - Offset: -100% to 200%
@@ -1397,12 +1420,14 @@ if (time < 2) {
   - Randomize Order: On/Off
   - Random Seed: 0–10000
 
-### Text Animator Shortcuts:
+### Text Animator Shortcuts
+
 - Animate menu in Timeline
 - Add multiple animators for complex effects
 - Pre-compose text for additional effects
 
-### Text Animation Presets:
+### Text Animation Presets
+
 - Browse via Effects & Presets > Animation Presets > Text
 - Categories: 3D Text, Animate In, Animate Out, Curves and Spins, Organic, etc.
 
@@ -1410,12 +1435,14 @@ if (time < 2) {
 
 ## AE-24: Shape Layers
 
-### Creating Shapes:
+### Creating Shapes
+
 - Shape tools (Q cycle): Rectangle, Rounded Rectangle, Ellipse, Polygon, Star
 - Pen tool (G): Custom shape paths
 - Double-click shape tool: creates shape filling comp
 
-### Shape Layer Structure:
+### Shape Layer Structure
+
 - Layer
   - Contents (Shape Group 1)
     - Path (Rectangle/Ellipse/etc.)
@@ -1426,13 +1453,15 @@ if (time < 2) {
     - ...
   - Transform (layer-level)
 
-### Shape Properties:
+### Shape Properties
+
 - **Path**: Rectangle (size, roundness), Ellipse (size), Polygon (points, roundness, radius), Star (points, inner/outer radius, inner/outer roundness), Custom Path
 - **Fill**: Color, opacity, fill rule (Non-Zero, Even Odd)
 - **Stroke**: Color, opacity, stroke width, line cap, line join, miter limit, dashes, offset
 - **Transform per Group**: Position, Anchor Point, Scale, Rotation, Opacity
 
-### Shape Modifiers:
+### Shape Modifiers
+
 - **Merge Paths**: Combine/intersect/subtract shapes within group
 - **Offset Path**: Expand/contract path
 - **Pucker & Bloat**: Inward/outward distortion
@@ -1443,7 +1472,8 @@ if (time < 2) {
 - **Wiggle Paths**: Randomize path vertices
 - **Zig Zag**: Convert straight lines to zig-zag
 
-### Shape Layer Animation:
+### Shape Layer Animation
+
 - Animate any property with keyframes
 - Trim Paths: start 0→100% for line drawing animation
 - Wiggle Transform: procedural motion
@@ -1453,18 +1483,21 @@ if (time < 2) {
 
 ## AE-25: Pre-composition
 
-### Methods:
+### Methods
+
 - Select layers > Ctrl+Shift+C
 - Move All Attributes: all keyframes/effects/transforms move into new comp
 - Leave All Attributes: transforms stay on new comp layer
 
-### Use Cases:
+### Use Cases
+
 - Group related layers for organizational clarity
 - Apply effects to multiple layers as a unit
 - Nest compositions for complex projects
 - Enable collapse transformations for 3D pass-through
 
-### Collapse Transformations:
+### Collapse Transformations
+
 - Toggle on pre-comp layer (sun/collapse icon)
 - Renders pre-comp layers as if directly in parent comp
 - Maintains continuous rasterization (sharp vectors)
@@ -1475,11 +1508,13 @@ if (time < 2) {
 
 ## AE-26: Rendering & Output
 
-### Render Queue:
+### Render Queue
+
 - Add to Render Queue: Ctrl+Shift+/
 - Render Queue panel shows: Render Settings, Output Module, Output To
 
-### Render Settings:
+### Render Settings
+
 - Best Settings / Current Settings / Draft Settings / Custom
 - Quality: Best, Draft, Wireframe
 - Resolution: Full, Half, Third, Quarter, Custom
@@ -1493,7 +1528,8 @@ if (time < 2) {
 - Time Span: Length of Comp, Work Area, Custom
 - Use Storage Overflow: On/Off
 
-### Output Module:
+### Output Module
+
 - Format: AVI, MOV, PNG Sequence, JPEG Sequence, TIFF Sequence, WAV, etc.
 - Post-Render Action: Import, Import & Play, Set Proxy, None
 - Channels: RGB, Alpha, RGB + Alpha
@@ -1503,22 +1539,26 @@ if (time < 2) {
 - Crop: custom crop region
 - Color Profile: assign output profile
 
-### Adobe Media Encoder (Ctrl+Alt+M):
+### Adobe Media Encoder (Ctrl+Alt+M)
+
 - Sends composition to AME for encoding
 - AME continues rendering while AE is free
 - Supports H.264, H.265, ProRes, DNxHR, GIF, etc.
 - Queue multiple compositions
 - Watch folders for automated encoding
 
-### Output Module Templates:
+### Output Module Templates
+
 - Save common output configurations
 - Example: "YouTube 1080p", "ProRes 422 HQ", "PNG Sequence + Alpha"
 
-### Render Settings Templates:
+### Render Settings Templates
+
 - Save common render configurations
 - Example: "Final Best", "Draft Preview", "Multi-Machine"
 
-### Multi-Machine Rendering:
+### Multi-Machine Rendering
+
 - Shared project file on network
 - Each machine renders different frames
 - Collect Files first for portability
@@ -1527,7 +1567,8 @@ if (time < 2) {
 
 ## AE-27: Tracking & Stabilization
 
-### Point Tracking:
+### Point Tracking
+
 - Track panel: Track Motion / Stabilize Motion
 - Feature region + Search region + Attach point
 - Channel: RGB, Saturation, Luminance
@@ -1535,19 +1576,22 @@ if (time < 2) {
 - Sub-pixel Matching: higher accuracy
 - Adapt Feature: update feature on every frame
 
-### Track Types:
+### Track Types
+
 - **Transform**: Position, Rotation, Scale
 - **Parallel Corner Pin**: Position, Rotation, Scale (no perspective)
 - **Perspective Corner Pin**: Full perspective transform
 
-### Stabilization:
+### Stabilization
+
 - Stabilize Motion in Tracker panel
 - Tracks motion and applies inverse to stabilize
 - Auto-delete tracking points with bad data
 - Smoothness: 0–1000
 - Method: Position, Position/Scale, Position/Rotation/Scale, Subspace Warp
 
-### Mocha AE (Bundled):
+### Mocha AE (Bundled)
+
 - Planar tracking (tracks surfaces, not just points)
 - Launch: Animation > Track in Mocha AE
 - Separate interface
@@ -1556,7 +1600,8 @@ if (time < 2) {
 - Corner Pin or Transform data export
 - Essential for screen replacements, sign tracking, object removal
 
-### Camera Tracker:
+### Camera Tracker
+
 - Effect > Perspective > 3D Camera Tracker
 - Analyzes footage to extract camera motion
 - Creates 3D null points in scene
@@ -1564,7 +1609,8 @@ if (time < 2) {
 - Shot Type: Variable Zoom, Fixed Angle, Specify Angle
 - Advanced: keyframe features, solve method
 
-### Warp Stabilizer:
+### Warp Stabilizer
+
 - Effect > Distort > Warp Stabilizer
 - Stabilization Method: Position, Position/Scale, Perspective, Subspace Warp
 - Framing: Stabilize/Crop/Auto-scale, Stabilize/Synthesize Edges
@@ -1576,31 +1622,36 @@ if (time < 2) {
 
 ## AE-28: Rotoscoping
 
-### Roto Brush Tool:
+### Roto Brush Tool
+
 - Draw strokes on subject in first frame
 - AI propagates selection through frames
 - Refine with additional strokes
 - Freeze: lock propagation
 - View modes: Overlay, Onion Skin, Black/White Alpha, etc.
 
-### Refine Edge:
+### Refine Edge
+
 - Enable for hair/fur/semi-transparent edges
 - Draw strokes on edges
 - Better handling of complex boundaries
 - Separate from Roto Brush
 
-### Roto Brush 3.0:
+### Roto Brush 3.0
+
 - Improved AI-based propagation
 - Better edge detection
 - Consistent masks across frames
 
-### Roto Brush & Refine Edge Panel:
+### Roto Brush & Refine Edge Panel
+
 - Freeze button (locks processing)
 - View modes
 - Quality settings
 - Edge detection parameters
 
-### Traditional Rotoscoping:
+### Traditional Rotoscoping
+
 - Manual mask keyframing
 - Mocha AE for planar-based roto
 - Mask interpolation for smooth transitions
@@ -1609,27 +1660,32 @@ if (time < 2) {
 
 ## AE-29: Paint & Clone
 
-### Paint Panel:
+### Paint Panel
+
 - Duration: Single Frame, Custom, Write On
 - Channels: RGBA, RGB, Alpha
 
-### Brush Tool (Ctrl+B):
+### Brush Tool (Ctrl+B)
+
 - Diameter, Hardness, Roundness, Angle
 - Opacity, Flow, Color
 - Blending modes for paint strokes
 - Write On: animate paint stroke appearing over time
 
-### Clone Stamp:
+### Clone Stamp
+
 - Alt+click to set source point
 - Aligned/Unaligned
 - Source time: Current Frame, First Frame, Custom
 - Source layer
 
-### Eraser:
+### Eraser
+
 - Erases paint strokes
 - Same diameter/hardness controls
 
-### Paint Keyframes:
+### Paint Keyframes
+
 - Paint strokes exist at specific frames
 - Duration controls how long they persist
 - Write On mode animates stroke reveal
@@ -1638,7 +1694,8 @@ if (time < 2) {
 
 ## AE-30: Keying
 
-### Keylight (1.4) — Primary Keyer:
+### Keylight (1.4) — Primary Keyer
+
 1. Apply Keylight to footage
 2. Use eyedropper to select screen color (green/blue)
 3. View > Screen Matte to check matte quality
@@ -1650,36 +1707,44 @@ if (time < 2) {
 9. Edge Color Correction: remove spill from edges
 10. Core Matte: separate pass for solid areas
 
-### Color Key:
+### Color Key
+
 - Simple keyer for uniform backgrounds
 - Key Color, Color Tolerance, Edge Thin, Edge Feather
 
-### Color Range:
+### Color Range
+
 - Select color range in Lab, YUV, or RGB
 - Fuzziness control for tolerance
 
-### Difference Matte:
+### Difference Matte
+
 - Compares subject to clean background plate
 - Difference creates matte
 
-### Color Difference Key:
+### Color Difference Key
+
 - Traditional film keying method
 - Separate matte controls for A and B channels
 
-### Inner/Outer Key:
+### Inner/Outer Key
+
 - Define inner and outer boundaries
 - Best for complex edges (hair)
 
-### Key Cleaner:
+### Key Cleaner
+
 - Post-processing for cleaned mattes
 - Remove matting artifacts, edge refinement
 
-### Spill Suppressor:
+### Spill Suppressor
+
 - Removes color spill (green/blue tinting)
 - Applied after keyer
 - Method: Standard, Ultra
 
-### Compositing Workflow:
+### Compositing Workflow
+
 1. Shoot with green/blue screen, evenly lit
 2. Apply keyer (Keylight preferred)
 3. Refine matte (Clip Black/White, Shrink/Grow, Softness)
@@ -1693,13 +1758,15 @@ if (time < 2) {
 
 ## AE-31: Color Correction Workflow
 
-### Order of Operations:
+### Order of Operations
+
 1. **Primary Correction**: Exposure, white balance, contrast
 2. **Secondary Correction**: Isolate and adjust specific colors
 3. **Creative Grade**: Look/style (LUTs, color shifts)
 4. **Output**: Match to delivery format
 
-### Tools:
+### Tools
+
 - Lumetri Color (comprehensive)
 - Curves (precise control)
 - Levels (quick adjustments)
@@ -1713,7 +1780,8 @@ if (time < 2) {
 - Selective Color
 - Channel Mixer
 
-### Scopes:
+### Scopes
+
 - Histogram: tonal distribution
 - RGB parade: channel levels
 - Vectorscope: color hue and saturation
@@ -1723,13 +1791,15 @@ if (time < 2) {
 
 ## AE-32: Puppet Tool
 
-### Puppet Types:
+### Puppet Types
+
 - **Puppet Pin**: Position deformation (default)
 - **Advanced Pin**: Position + Scale per pin
 - **Overlap Pin**: Controls overlap ordering + depth
 - **Starch Pin**: Stiffens area around pin
 
-### Workflow:
+### Workflow
+
 1. Select Puppet tool (Ctrl+P)
 2. Click on layer to add pins
 3. Triangulation mesh is created
@@ -1738,17 +1808,20 @@ if (time < 2) {
 6. Triangle Size: mesh density
 7. Record speed during playback (real-time puppeting)
 
-### Puppet Options:
+### Puppet Options
+
 - Expansion: -100 to 100
 - Triangles: 50–3000 (mesh density)
 - Show: Mesh (display triangulation)
 
-### Puppet Overlap:
+### Puppet Overlap
+
 - Defines which part of mesh is in front
 - In Front/Behind determines layering
 - Extent: area affected by overlap pin
 
-### Puppet Starch:
+### Puppet Starch
+
 - Makes areas rigid
 - Extent controls area of stiffness
 
@@ -1756,7 +1829,8 @@ if (time < 2) {
 
 ## AE-33: Content-Aware Fill for Video
 
-### Workflow:
+### Workflow
+
 1. Create mask around object to remove
 2. Track mask if object moves
 3. Effect > Generate > Content-Aware Fill
@@ -1764,12 +1838,14 @@ if (time < 2) {
 5. Choose Fill Target: Current Layer, Other Layer, Alpha
 6. Generate Fill Layer
 
-### Fill Methods:
+### Fill Methods
+
 - **Object**: Best for moving objects (analyzes background)
 - **Surface**: Best for flat/textured backgrounds
 - **Edge Blend**: Best for simple backgrounds
 
-### Properties:
+### Properties
+
 - Fill Target: layer/channel
 - Alpha Expansion: 0–100
 - Fill Method
@@ -1779,18 +1855,21 @@ if (time < 2) {
 
 ## AE-34: Cineware (Cinema 4D Integration)
 
-### Setup:
+### Setup
+
 - Import .c4d file directly
 - Or create via File > New > MAXON CINEMA 4D File
 - Cineware effect applied automatically
 
-### Cineware Properties:
+### Cineware Properties
+
 - Renderer: Standard, Final, Current
 - Camera: Comp Camera, C4D Camera
 - Multi-Pass: Ambient, Diffuse, Shadow, Specular, etc.
 - Render Settings: anti-aliasing, quality
 
-### Features:
+### Features
+
 - Live link to C4D file
 - Camera synchronization
 - Multi-pass compositing
@@ -1800,7 +1879,8 @@ if (time < 2) {
 
 ## AE-35: Motion Graphics Templates (MOGRTs)
 
-### Creating in After Effects:
+### Creating in After Effects
+
 1. Create composition with essential properties
 2. Essential Graphics panel (Window > Essential Graphics)
 3. Drag properties to panel: sliders, colors, text, checkboxes
@@ -1808,12 +1888,14 @@ if (time < 2) {
 5. Export: File > Export > Motion Graphics Template
 6. Options: editable text, transform, style
 
-### Using in Premiere Pro:
+### Using in Premiere Pro
+
 - Import .mogrt file into Premiere Pro
 - Edit properties in Essential Graphics panel
 - Dynamic Link updates automatically
 
-### Essential Graphics Panel:
+### Essential Graphics Panel
+
 - Master Properties for template controls
 - Grouping, reordering
 - Poster image
@@ -1823,17 +1905,20 @@ if (time < 2) {
 
 ## AE-36: Dynamic Link
 
-### With Premiere Pro:
+### With Premiere Pro
+
 - Import AE comp into Premiere timeline (live)
 - Edit in After Effects, updates appear in Premiere
 - Replace with After Effects Composition
 - Send clips from Premiere to AE for effects
 
-### With Audition:
+### With Audition
+
 - Send audio clip to Audition for editing
 - Return to AE after processing
 
-### With Media Encoder:
+### With Media Encoder
+
 - Send comp to AME for encoding
 - Multiple formats simultaneously
 - AME renders while AE is free
@@ -1842,34 +1927,40 @@ if (time < 2) {
 
 ## AE-37: Scripting & Automation
 
-### ExtendScript (JSX):
+### ExtendScript (JSX)
+
 - JavaScript-based scripting language for Adobe apps
 - Automate repetitive tasks
 - Batch process compositions
 - Create tools and panels
 
-### CEP (Common Extensibility Platform):
+### CEP (Common Extensibility Platform)
+
 - HTML/CSS/JS panels
 - Build custom UI panels for AE
 - Distribute via Adobe Add-ons
 
-### UXP (Unified Extensibility Platform):
+### UXP (Unified Extensibility Platform)
+
 - Newer plugin framework
 - Better security, performance
 - Cross-app compatibility
 
-### Useful Script Functions:
+### Useful Script Functions
+
 - app.project: access project
 - app.project.activeItem: current comp
 - app.project.activeItem.selectedLayers: selected layers
 - layer.property("Position"): access properties
 - keyframes, expressions, effects manipulation
 
-### ScriptUI:
+### ScriptUI
+
 - Create dialog boxes, panels, buttons
 - Script Editor: Edit > Preferences > Scripting
 
-### Expression vs Scripting:
+### Expression vs Scripting
+
 - Expressions: per-property, evaluated per-frame, real-time
 - Scripts: one-time execution, batch operations, UI tools
 
@@ -1877,9 +1968,10 @@ if (time < 2) {
 
 ## AE-38: Keyboard Shortcuts — Complete Reference
 
-### File Operations:
+### File Operations
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | New Project | Ctrl+Alt+N |
 | Open Project | Ctrl+O |
 | Browse in Bridge | Ctrl+Alt+Shift+O |
@@ -1893,9 +1985,10 @@ if (time < 2) {
 | Close | Ctrl+W |
 | Close Project | Ctrl+Shift+W |
 
-### Edit Operations:
+### Edit Operations
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |
 | Cut | Ctrl+X |
@@ -1908,9 +2001,10 @@ if (time < 2) {
 | Keyboard Shortcuts | Ctrl+Alt+Shift+K |
 | Preferences | Ctrl+Alt+; |
 
-### Composition:
+### Composition
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | New Comp | Ctrl+N |
 | Comp Settings | Ctrl+K |
 | Trim to Work Area | — |
@@ -1918,9 +2012,10 @@ if (time < 2) {
 | Save Frame as PSD | Ctrl+Alt+Shift+S |
 | Pre-compose | Ctrl+Shift+C |
 
-### Layer Operations:
+### Layer Operations
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | New Solid | Ctrl+Y |
 | New Null | Ctrl+Alt+Shift+Y |
 | New Adj Layer | Ctrl+Alt+Y |
@@ -1938,9 +2033,10 @@ if (time < 2) {
 | Send to Back | Ctrl+Shift+[ |
 | Toggle 3D | F4 (custom) |
 
-### Timeline Navigation:
+### Timeline Navigation
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Go to In | Home |
 | Go to End | End |
 | Previous Frame | PgUp |
@@ -1953,9 +2049,10 @@ if (time < 2) {
 | Show Animated Props | U |
 | Show Modified Props | UU |
 
-### Viewport:
+### Viewport
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Zoom In | Ctrl+= |
 | Zoom Out | Ctrl+- |
 | Fit to Comp | Ctrl+Shift+0 |
@@ -1967,27 +2064,30 @@ if (time < 2) {
 | Toggle Grid | Ctrl+’ |
 | Toggle Transparency | Alt+Shift+T (custom) |
 
-### Preview:
+### Preview
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | RAM Preview | Space |
 | From Current | Numpad . |
 | Audio Preview | Numpad . |
 | Stop Preview | Esc |
 | Purge All | Ctrl+F12 (custom) |
 
-### Keyframes:
+### Keyframes
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Easy Ease | F9 |
 | Easy Ease In | Shift+F9 |
 | Easy Ease Out | Ctrl+F9 |
 | Keyframe Velocity | Ctrl+Shift+K |
 | Keyframe Interp | Ctrl+Alt+K |
 
-### Tools:
+### Tools
+
 | Tool | Shortcut |
-|---|---|
+| --- | --- |
 | Selection | V |
 | Hand | H |
 | Zoom | Z |
@@ -2004,7 +2104,8 @@ if (time < 2) {
 
 ## AE-39: Preferences — All Settings
 
-### General:
+### General
+
 - Levels of Undo: 1–99
 - Show Tool Tips: On/Off
 - Create Layers at Composition Start Time
@@ -2017,7 +2118,8 @@ if (time < 2) {
 - Enable JavaScript Debugger
 - Use System Color Picker
 
-### Previews:
+### Previews
+
 - Adaptive Resolution Limit: 1/1 to 1/16
 - GPU Accelerated Preview
 - Fast Previews: Off, Adaptive, Wireframe, etc.
@@ -2026,56 +2128,66 @@ if (time < 2) {
 - Disk Cache Size (MB)
 - Disk Cache Folder Location
 
-### Display:
+### Display
+
 - Show Layer Controls (handles, motion paths)
 - All Keyframes / Selected Keyframes
 - Motion Path: All / No More Than / No More Than
 - Default View: 1-Up / 2-Up / 4-Up
 
-### Import:
+### Import
+
 - Default footage interpretation for stills (frame rate)
 - Sequence footage: frame rate
 - Interpret Alpha: Ask, Ignore, Straight, Premultiplied
 - Default Drag Import: Create Comp / Single Composition
 
-### Output:
+### Output
+
 - Default Output Module
 - Default file name template
 - Default Render Settings template
 - Segment Sequences / Segment Size
 
-### Grids & Guides:
+### Grids & Guides
+
 - Grid: color, style, subdivision
 - Guides: color, style (line/dash/dot)
 - Proportional Grid: divisions
 - Ruler: pixels/inches/cm/mm/picas/points
 - Safe Margins: title safe, action safe percentages
 
-### Labels:
+### Labels
+
 - 16 label colors
 - Default label assignments: Comp, Video, Audio, Still, Folder, Solid, Camera, Light, Null, Shape, Text
 
-### Media & Disk Cache:
+### Media & Disk Cache
+
 - Disk Cache: Enable, Max Size, Location
 - Database: location, size
 - Conformed Media Cache location
 
-### Video Preview:
+### Video Preview
+
 - Output device (AJA, Blackmagic, etc.)
 - Mirroring, offset, deinterlace
 - Resolution, frame rate
 
-### Appearance:
+### Appearance
+
 - UI Brightness: 4 shades
 - Highlight Color
 - Chart Colors (for graph editor)
 
-### Audio Hardware:
+### Audio Hardware
+
 - Default Input/Output
 - Latency: Low/Medium/High
 - Sample Rate
 
-### Auto-Save:
+### Auto-Save
+
 - Enable Auto-Save
 - Save Every: 1–99 minutes
 - Maximum Project Versions: 1–99
@@ -2085,9 +2197,10 @@ if (time < 2) {
 
 ## AE-40: File Formats & Codecs
 
-### Import Formats:
+### Import Formats
+
 | Category | Formats |
-|---|---|
+| --- | --- |
 | Video | AVI, MOV, MP4, MKV (limited), MXF, MTS, M2TS, WMV, FLV, WebM, VOB, OGG |
 | Image Sequence | PNG, JPEG, TIFF, TGA, BMP, EXR, DPX, CIN, SGI, PIC, RLA, RPF |
 | Still Image | PSD, AI, EPS, PDF, PNG, JPEG, TIFF, BMP, TGA, GIF, SVG, WebP, HEIF/HEIC |
@@ -2097,9 +2210,10 @@ if (time < 2) {
 | Data | JSON, CSV (for data-driven animation) |
 | HDR | EXR (multi-channel), HDR, RGBE |
 
-### Export Formats:
+### Export Formats
+
 | Category | Formats |
-|---|---|
+| --- | --- |
 | Video (Render Queue) | AVI, MOV, PNG Seq, JPEG Seq, TIFF Seq, TGA Seq, WAV |
 | Video (Media Encoder) | H.264, H.265, ProRes, DNxHR, WMV, GIF, WebM, AV1 |
 | Image Sequence | PNG, JPEG, TIFF, TGA, BMP, EXR, DPX |
@@ -2107,13 +2221,15 @@ if (time < 2) {
 | Template | MOGRT (Motion Graphics Template) |
 | Web | Lottie (via Bodymovin plugin) |
 
-### Alpha Channel Support:
+### Alpha Channel Support
+
 - Straight alpha: alpha stored independently
 - Premultiplied alpha: color channels pre-multiplied with alpha
 - Interpret footage to match source alpha mode
 - Most common with: PNG, TGA, EXR, TIFF, MOV (with alpha codec)
 
-### Color Space:
+### Color Space
+
 - sRGB (Rec. 709): standard HD color space
 - Rec. 2020: wide color gamut
 - PQ (Perceptual Quantizer): HDR transfer function
@@ -2125,35 +2241,41 @@ if (time < 2) {
 
 ## AE-41: Performance Optimization
 
-### Multi-Frame Rendering (MFR):
+### Multi-Frame Rendering (MFR)
+
 - Renders multiple frames simultaneously
 - Uses all available CPU cores
 - Enable: Preferences > Previews > Enable MFR
 - Optimal: 1 core reserved, rest for rendering
 
-### GPU Acceleration:
+### GPU Acceleration
+
 - Mercury GPU Acceleration (CUDA/OpenCL/Metal)
 - Specific effects use GPU: Gaussian Blur, Lumetri, etc.
 - GPU VRAM important for large compositions
 
-### Disk Cache:
+### Disk Cache
+
 - Stores rendered frames on disk
 - Persistent across sessions
 - SSD required for speed
 - Set cache size: Preferences > Media & Disk Cache
 - Location: dedicated SSD partition
 
-### RAM Management:
+### RAM Management
+
 - Increase RAM reserved for other applications if needed
 - Purge RAM cache regularly for large projects
 - RAM preview buffer = available RAM - system needs
 
-### Proxy Workflow:
+### Proxy Workflow
+
 - Create low-res proxies for heavy footage
 - Toggle proxy in Composition panel
 - Reduces preview load during editing
 
-### Composition Optimization:
+### Composition Optimization
+
 - Reduce pre-comp complexity
 - Use adjustment layers instead of per-layer effects
 - Collapse transformations on pre-comps
@@ -2162,7 +2284,8 @@ if (time < 2) {
 - Use Draft quality for previews
 - Purge cache periodically
 
-### Footage Optimization:
+### Footage Optimization
+
 - Transcode to edit-friendly codecs (ProRes, DNxHR)
 - Pre-render heavy pre-comps
 - Use proxy files for 4K+ footage
@@ -2171,25 +2294,29 @@ if (time < 2) {
 
 ## AE-42: Collaboration & Version Control
 
-### Team Projects:
+### Team Projects
+
 - Cloud-based collaborative editing
 - Version history with conflict resolution
 - Invite team members
 - Requires Creative Cloud for Teams/Enterprise
 
-### Collect Files:
+### Collect Files
+
 - File > Dependencies > Collect Files
 - Gathers all source files into single folder
 - Options: Collect Source Files, For All Comps / Selected Comps
 - Essential for archiving or sharing projects
 
-### Project Organization:
+### Project Organization
+
 - Name compositions descriptively
 - Use folders for: Sources, Comps, Pre-comps, Renders, Assets
 - Label colors for visual organization
 - Comment column for notes
 
-### Version Control:
+### Version Control
+
 - Increment and Save for versioning
 - File naming: project_v01.aep, project_v02.aep
 - No built-in Git-like version control
@@ -2199,7 +2326,8 @@ if (time < 2) {
 
 ## AE-43: Common Workflows
 
-### Logo Reveal:
+### Logo Reveal
+
 1. Import logo (vector preferred)
 2. Create composition
 3. Add Trim Paths for line-draw animation
@@ -2208,14 +2336,16 @@ if (time < 2) {
 6. Add light wrap and glow
 7. Render with alpha for overlay use
 
-### Lower Third:
+### Lower Third
+
 1. Design in Photoshop/Illustrator
 2. Import and animate in AE
 3. Add text animator for text entry
 4. Pre-compose and export as MOGRT
 5. Use in Premiere Pro
 
-### Green Screen Compositing:
+### Green Screen Compositing
+
 1. Apply Keylight
 2. Sample green screen color
 3. Refine matte (clip, shrink/grow, softness)
@@ -2224,14 +2354,16 @@ if (time < 2) {
 6. Add film grain match
 7. Add depth of field blur
 
-### Kinetic Typography:
+### Kinetic Typography
+
 1. Create text layer
 2. Add multiple animators per text
 3. Offset range selectors
 4. Animate position, scale, opacity, rotation per character
 5. Add expressions for automation
 
-### Particle Effects:
+### Particle Effects
+
 1. Apply CC Particle World or Particle Playground
 2. Adjust emitter, physics, particle type
 3. Customize birth/death colors and sizes
@@ -2242,34 +2374,39 @@ if (time < 2) {
 
 ## AE-44: Tips & Best Practices
 
-### Project Organization:
+### Project Organization
+
 - Name everything clearly (layers, compositions, folders)
 - Use label colors consistently
 - One main comp per project or scene
 - Pre-compose for cleanliness
 - Delete unused assets periodically
 
-### Animation:
+### Animation
+
 - Block out key poses first (linear), then refine with easing
 - Use Graph Editor for precise timing
 - Anticipation, action, follow-through
 - Overlap animations for natural feel
 - Secondary motion adds realism
 
-### Rendering:
+### Rendering
+
 - Always render test frames before full render
 - Check alpha channel when needed
 - Use AME for final encoding (AE stays free)
 - Render to intermediate format, encode separately
 
-### Performance:
+### Performance
+
 - Lower preview resolution during work
 - Purge cache when AE feels slow
 - Close unused projects
 - Reduce undo levels if RAM is tight
 - Use proxies for heavy footage
 
-### Common Mistakes:
+### Common Mistakes
+
 - Forgetting to enable motion blur
 - Not checking alpha interpretation
 - Over-using effects (less is more)
@@ -2280,9 +2417,10 @@ if (time < 2) {
 
 ## AE-45: Troubleshooting
 
-### Common Issues:
+### Common Issues
+
 | Problem | Solution |
-|---|---|
+| --- | --- |
 | Slow previews | Lower resolution, purge cache, enable MFR |
 | Missing footage | File > Dependencies > Find Missing Footage |
 | Expression errors | Check expression syntax, layer names, property paths |
@@ -2294,13 +2432,15 @@ if (time < 2) {
 | Memory errors | Purge cache, reduce comp complexity, increase RAM |
 | Out of disk space | Clear disk cache, move cache location |
 
-### Debugging Expressions:
+### Debugging Expressions
+
 - Enable JavaScript debugger in preferences
 - Check layer/property name references
 - Test with simple values first
 - Use `try/catch` for error handling
 
-### Corrupted Project:
+### Corrupted Project
+
 - Try opening .aep backup (Auto-Save folder)
 - Increment and Save to create checkpoints
 - Collect Files as backup
@@ -2310,7 +2450,8 @@ if (time < 2) {
 
 ## AE-46: ExtendScript / Automation — Reference
 
-### Basic Script Structure:
+### Basic Script Structure
+
 ```javascript
 {
     // Get active project
@@ -2334,7 +2475,8 @@ if (time < 2) {
 }
 ```
 
-### Common Operations:
+### Common Operations
+
 ```javascript
 // Create new composition
 var newComp = app.project.items.addComp("New Comp", 1920, 1080, 1, 10, 30);
@@ -2356,7 +2498,8 @@ position.setValueAtTime(1, [100, 100]);
 layer.effect.addProperty("ADBE Gaussian Blur 2");
 ```
 
-### ScriptUI Dialog:
+### ScriptUI Dialog
+
 ```javascript
 var dialog = new Window("dialog", "My Script");
 dialog.add("statictext", undefined, "Select an option:");
@@ -2374,9 +2517,10 @@ dialog.show();
 
 ## AE-47: Essential Keyboard Shortcut Quick Reference (Printable)
 
-### Most Important:
+### Most Important
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | New Composition | Ctrl+N |
 | Import File | Ctrl+I |
 | RAM Preview | Space |
@@ -2416,7 +2560,9 @@ dialog.show();
 ---
 
 # ═══════════════════════════════════════════════════════════════════
+
 # PART B: PREMIERE PRO — COMPLETE REFERENCE
+
 # ═══════════════════════════════════════════════════════════════════
 
 ---
@@ -2425,7 +2571,8 @@ dialog.show();
 
 Adobe Premiere Pro is a professional non-linear video editing application and the industry standard for film, broadcast, streaming, corporate, social media, and personal video production. It is part of the Adobe Creative Cloud suite.
 
-### Core Capabilities:
+### Core Capabilities
+
 - Non-linear, multi-track video and audio editing
 - Support for virtually any video format and codec
 - Advanced color correction and grading (Lumetri Color)
@@ -2447,9 +2594,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-02: System Requirements
 
-### Windows Minimum:
+### Windows Minimum
+
 | Component | Requirement |
-|---|---|
+| --- | --- |
 | Processor | Intel 6th Gen or AMD equivalent (64-bit) |
 | Operating System | Windows 10 (64-bit) v22H2 or later |
 | RAM | 8 GB (16 GB for HD, 32 GB for 4K) |
@@ -2458,9 +2606,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Display | 1920×1080 |
 | Sound | ASIO or Microsoft WDM |
 
-### macOS Minimum:
+### macOS Minimum
+
 | Component | Requirement |
-|---|---|
+| --- | --- |
 | Processor | Apple Silicon (M1+) or Intel 6th Gen+ |
 | Operating System | macOS 12.0 or later |
 | RAM | 8 GB (16 GB for HD, 32 GB for 4K) |
@@ -2468,7 +2617,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Storage | 8 GB available (SSD required) |
 | Display | 1920×1080 |
 
-### Recommended:
+### Recommended
+
 - CPU: 10+ cores (Apple M2 Pro+, AMD Ryzen 9, Intel i9)
 - RAM: 64 GB (128 GB for 8K/HDR workflows)
 - GPU: NVIDIA RTX 3070+ or AMD equivalent
@@ -2479,7 +2629,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-03: Installation & Licensing
 
-### Same as After Effects:
+### Same as After Effects
+
 - Creative Cloud Desktop > Install Premiere Pro
 - Adobe ID, subscription-based
 - 2 concurrent activations
@@ -2491,7 +2642,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-04: Interface Overview
 
-### Panels:
+### Panels
+
 1. **Source Monitor**: View/trim individual clips before adding to timeline
 2. **Program Monitor**: View the current sequence output
 3. **Timeline Panel**: Multi-track editing workspace (sequences)
@@ -2514,7 +2666,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-05: Workspaces
 
-### Preset Workspaces:
+### Preset Workspaces
+
 1. **Assembly**: Media-focused, quick ingest
 2. **Editing**: Default balanced layout for editing
 3. **Color**: Lumetri Scopes, Color Wheels, Lumetri Color
@@ -2527,7 +2680,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 10. **Captions**: Text panel, Captions panel
 11. **Vertical**: Social media vertical video editing
 
-### Workspace Operations:
+### Workspace Operations
+
 - Switch: Window > Workspaces > [Name]
 - Save: Window > Workspaces > Save as New Workspace
 - Reset: Window > Workspaces > Reset to Saved Layout
@@ -2539,7 +2693,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-06: File Menu — Complete
 
-### New:
+### New
+
 - **New Project**: Ctrl+Alt+N
 - **New Sequence**: Ctrl+N
 - **New Sequence from Clip**: drag clip to New Item button
@@ -2554,18 +2709,27 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - **New Transparent Video**: transparent solid
 
 ### Open Project: Ctrl+O
+
 ### Open Recent: list
+
 ### Close Project: Ctrl+Shift+W
+
 ### Close: Ctrl+W
 
 ### Save: Ctrl+S
+
 ### Save As: Ctrl+Shift+S
+
 ### Save a Copy: saves without switching
+
 ### Revert: revert to last save
 
 ### Import: Ctrl+I
+
 ### Import Recent Footage: list
-### Export:
+
+### Export
+
 - Media: Ctrl+M (opens Export Settings)
 - Selection as Premiere Project
 - EDL, AAF, XML (for interchange)
@@ -2573,12 +2737,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Send to Adobe Media Encoder: Ctrl+Shift+M
 
 ### Get Properties for: file info
-### Project Settings:
+
+### Project Settings
+
 - General: Video/Audio settings, capture format
 - Ingest Settings: auto-ingest options
 - Scratch Disks: media cache, previews, auto-save locations
 
-### Project Manager:
+### Project Manager
+
 - Consolidate and Transcode
 - Collect and Copy
 - Project Trim options
@@ -2588,7 +2755,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-07: Edit Menu — Complete
 
-### Basic:
+### Basic
+
 - Undo: Ctrl+Z
 - Redo: Ctrl+Shift+Z
 - Cut: Ctrl+X
@@ -2600,18 +2768,22 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Ripple Delete: Shift+Delete
 - Duplicate: Ctrl+Shift+/
 
-### Selection:
+### Selection
+
 - Select All: Ctrl+A
 - Select All on Track: (specific track select)
 - Deselect All: Ctrl+Shift+A
 
 ### Find: Ctrl+F
+
 ### Label: submenu for label colors
 
 ### Edit Original: opens in original application
+
 ### Edit in Adobe Audition: send clip to Audition
 
-### Preferences:
+### Preferences
+
 - General, Appearance, Audio, Audio Hardware, Audio Output Mapping, Auto Save, Collaboration, Captions, Clipboard, Color, Control Surface, Device Control, Device Manager, Graphics, Interactive Len Graphics, Keyboard Shortcuts, Labels, Marker Colors, Media, Memory, Mercury Transmit, Multi-Camera, Playback, Program Monitor, Review with Frame.io, Sequence, Sync Settings, Technology Preview, Timeline, Timeline (Trim), Titler, Transport
 
 ---
@@ -2619,18 +2791,23 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## PP-08: Clip Menu — Complete
 
 ### Rename: rename clip in project or sequence
+
 ### Make Subclip: create subclip from In/Out
+
 ### Edit Subclip: modify subclip boundaries
+
 ### Edit Disabling: enable/disable clip in sequence
 
-### Audio Options:
+### Audio Options
+
 - Audio Gain: G
 - Source Channel Mappings
 - Breakout to Mono
 - Fill Left/Fill Right
 - Swap Channels
 
-### Video Options:
+### Video Options
+
 - Frame Hold Options
 - Field Options
 - Frame Blend
@@ -2638,6 +2815,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Render and Replace / Restore Unrendered
 
 ### Speed/Duration: Ctrl+R
+
 - Speed percentage
 - Duration
 - Reverse Speed
@@ -2645,30 +2823,40 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Ripple Edit, Shifting Adjacent Clips
 
 ### Nest Sequence: nest sequence in another
+
 ### Unnest: reverse nesting
+
 ### Flatten: flatten multicam or nested sequence
 
-### Merge Clips:
+### Merge Clips
+
 - Based on Timecode
 - Based on Audio (waveform sync)
 - Based on Markers
 
-### Synchronize:
+### Synchronize
+
 - Based on Timecode
 - Based on Audio
 - Based on Markers
 - Based on Clip Start/End
 
-### Multi-Camera:
+### Multi-Camera
+
 - Enable/Disable
 - Camera selection
 - Flatten
 
 ### Auto Transcribe Sequence: AI speech-to-text
+
 ### Generate Captions: create captions from transcript
+
 ### Create Multi-Camera Source Sequence
+
 ### Replace with After Effects Composition (Dynamic Link)
-### Replace with Clip:
+
+### Replace with Clip
+
 - From Source Monitor
 - From Bin
 
@@ -2679,35 +2867,57 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## PP-09: Sequence Menu — Complete
 
 ### Sequence Settings: view/change
+
 ### Delete Tracks: remove tracks
+
 ### Add Tracks: Ctrl+Shift+T
+
 ### Render Effects in Work Area: Enter
+
 ### Render In to Out: Ctrl+Enter
+
 ### Render Audio: render audio previews
+
 ### Delete Render Files
+
 ### Match Frame: F
+
 ### Reverse Match Frame: Shift+F
+
 ### Add Edit: Cmd+K (at playhead)
+
 ### Add Edit to All Tracks: Ctrl+Shift+K
+
 - **Insert**: overwrite, insert, replace
 - **Lift**: remove selection leaving gap
 - **Extract**: remove selection closing gap
+
 ### Apply Default Transition: Ctrl+D
+
 ### Apply Default Video Transition: Ctrl+D
+
 ### Apply Default Audio Transition: Ctrl+Shift+D
+
 ### Apply Video Transition: from Transition to selected edit point
+
 ### Apply Audio Transition: from Transition to selected edit point
+
 ### Go to Sequence In/Out: Shift+I / Shift+O
+
 ### Snap: S
+
 ### Selection Follows Playhead
+
 ### Show Keyframes / Show Clip Keyframes / Show Track Keyframes
+
 ### Normalize Master Track / Maximize Frame / Maximize or Restore Frame Under Cursor: Shift+`
 
 ---
 
 ## PP-10: Sequence Settings
 
-### General:
+### General
+
 - Editing Mode: Custom, DSLR, AVCHD, ProRes, DNxHD, etc.
 - Timebase: 23.976, 24, 25, 29.97, 30, 50, 59.94, 60
 - Frame Size: Width × Height (custom or preset)
@@ -2720,26 +2930,30 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Maximum Render Quality
 - VR Properties: Stereoscopic, Monoscopic, Layout
 
-### Audio:
+### Audio
+
 - Sample Rate: 8000–192000 Hz (48000 standard)
 - Display Format: Audio Samples or Milliseconds
 
-### Video Rendering and Playback:
+### Video Rendering and Playback
+
 - Renderer: Mercury Playback Engine GPU Acceleration (CUDA/OpenCL/Metal) or Software Only
 
 ---
 
 ## PP-11: Timeline Panel — Deep Dive
 
-### Track Structure:
+### Track Structure
+
 - Video tracks: V1, V2, V3... (stacking order, higher = on top)
 - Audio tracks: A1, A2, A3...
 - Master Audio Track: final output
 - Track headers: Lock, Sync Lock, Toggle Track Output, Toggle Track Record, Collapse/Expand
 
-### Track Header Controls:
+### Track Header Controls
+
 | Control | Function |
-|---|---|
+| --- | --- |
 | Toggle Sync Lock | Lock track to sync when inserting/extracting |
 | Toggle Track Lock | Prevent edits on this track |
 | Toggle Track Output | Mute video/audio track |
@@ -2747,7 +2961,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Track Name | Rename track |
 | Target Track | Assign editing target |
 
-### Timeline Controls:
+### Timeline Controls
+
 - Time Ruler with zoom
 - CTI (Playhead) — Blue triangle
 - In/Out points (green/red markers)
@@ -2758,7 +2973,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Track height adjustments (mouse drag)
 - Zoom: +/- at bottom, or scroll wheel
 
-### Clip Display:
+### Clip Display
+
 - Thumbnails (first frame or continuous)
 - Waveform display (audio clips)
 - Clip name overlay
@@ -2769,7 +2985,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Speed/duration indicator (speed changes)
 - In/Out point handles
 
-### Timeline Editing:
+### Timeline Editing
+
 - Insert Edit: overwrite at playhead, push other clips
 - Overwrite Edit: replace at playhead
 - Replace Edit: swap clip at playhead
@@ -2779,7 +2996,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Extract: remove and close gap
 - Ripple Delete: close gap by deleting
 
-### Trimming:
+### Trimming
+
 - Regular Trim: trim edge of clip
 - Ripple Trim: trim and shift adjacent clips
 - Roll Trim: adjust edit point between two clips
@@ -2791,13 +3009,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-12: Source Monitor
 
-### Opening Clips:
+### Opening Clips
+
 - Double-click clip in Project panel
 - Clip opens in Source Monitor
 - Set In (I), Set Out (O)
 - Clear In (Ctrl+Shift+X), Clear Out (Alt+X), Clear In and Out (Alt+X)
 
-### Source Monitor Controls:
+### Source Monitor Controls
+
 - Play/Stop (Space), Shuttle, Jog, Scrub
 - Mark In (I), Mark Out (O)
 - Insert (comma), Overwrite (period)
@@ -2807,12 +3027,14 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Safe Margins, Zoom
 - View: Audio Waveform, Video, Audio + Video
 
-### Source Patching:
+### Source Patching
+
 - Source track indicators (A1, V1, etc.)
 - Match to timeline track targets
 - Toggle source tracks on/off
 
-### Subclip:
+### Subclip
+
 - Set In/Out in Source Monitor
 - Clip > Make Subclip
 - Name and save
@@ -2821,7 +3043,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-13: Program Monitor
 
-### Controls:
+### Controls
+
 - Play/Stop, Shuttle, Jog, Scrub
 - Mark In (I), Mark Out (O) for sequence
 - Safe Margins toggle
@@ -2839,7 +3062,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-14: Effects Panel
 
-### Categories:
+### Categories
+
 - **Obsolete Effects**: Legacy effects
 - **Audio Effects**: Adobe audio effects + third-party
 - **Audio Transitions**: Crossfade, Constant Gain, Constant Power
@@ -2869,12 +3093,14 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
   - Wipe
   - Zoom
 
-### Applying Effects:
+### Applying Effects
+
 - Drag from Effects panel to clip in timeline
 - Drag to Effect Controls panel
 - Select clip, double-click effect in panel
 
-### Effect Controls Panel:
+### Effect Controls Panel
+
 - Per-clip effect parameters
 - Keyframe animation (stopwatch icon)
 - Toggle effect on/off (fx icon)
@@ -2890,6 +3116,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## PP-15: Top 50 Video Effects — Parameters
 
 ### 1. Lumetri Color
+
 - Basic Correction: Input LUT, White Balance, Tone (Exposure, Contrast, Highlights, Shadows, Whites, Blacks), Saturation
 - Creative: Look, Faded Film, Vibrance, Saturation
 - Curves: RGB, Hue vs Sat, Hue vs Hue, Hue vs Luma, Luma vs Sat, Sat vs Sat
@@ -2898,224 +3125,281 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Vignette: Amount, Midpoint, Roundness, Feather
 
 ### 2. Gaussian Blur
+
 - Blurriness: 0–1000
 - Blur Dimensions: Horizontal, Vertical, Both
 - Repeat Edge Pixels
 
 ### 3. Fast Blur (Legacy)
+
 - Blurriness: 0–500
 - Repeat Edge Pixels
 
 ### 4. Directional Blur
+
 - Direction: 0–360°
 - Blur Length: 0–500
 
 ### 5. Camera Blur
+
 - Blur: 0–100
 - Iris Shape: Triangle, Square, Pentagon, Hexagon, Octagon
 
 ### 6. Unsharp Mask
+
 - Amount: 0–500
 - Radius: 0.0–250.0
 - Threshold: 0–255
 
 ### 7. Brightness & Contrast
+
 - Brightness: -100 to +100
 - Contrast: -100 to +100
 
 ### 8. Color Balance
+
 - Shadow/Midtone/Highlight: Red-Green-Blue (-100 to +100)
 - Preserve Luminosity
 
 ### 9. Color Balance (HLS)
+
 - Hue: 0–360°
 - Lightness: -100 to +100
 - Saturation: -100 to +100
 
 ### 10. Curves
+
 - Channel: RGB, R, G, B
 - Curve editor with control points
 
 ### 11. Levels
+
 - Channel: RGB, R, G, B
 - Input/Output: Black, White, Gamma
 
 ### 12. RGB Color Corrector
+
 - Black/White/Gamma for R, G, B individually
 
 ### 13. Three-Way Color Corrector
+
 - Shadow/Midtone/Highlight color wheels
 - Input/Output Levels
 - Saturation, Tonal Range Definition
 
 ### 14. Fast Color Corrector
+
 - Color wheel (balance)
 - Saturation, Hue, Tonal Range
 
 ### 15. Video Limiter
+
 - Max signal clamp
 - Luma Max/Min, Chroma Max
 
 ### 16. ProcAmp
+
 - Brightness, Contrast, Hue, Saturation
 
 ### 17. Tint
+
 - Map Black To, Map White To
 - Amount to Tint: 0–100%
 
 ### 18. Black & White
+
 - Channel-specific color conversion
 - Red, Yellow, Green, Cyan, Blue, Magenta
 
 ### 19. Gamma Correction
+
 - Gamma: 0.1–10.0
 
 ### 20. Hue/Saturation
+
 - Channel Range (Master, R, Y, G, C, B, M)
 - Hue, Saturation, Lightness
 - Colorize
 
 ### 21. Invert
+
 - Channel: RGB, R, G, B, A
 
 ### 22. Black/White Gain and Gamma
+
 - Red/Green/Blue Black/Gamma/Gain
 
 ### 23. Leave Color
+
 - Color to Leave: eyedropper
 - Amount to Decolor: 0–100%
 - Tolerance, Edge Softness, Match Colors
 
 ### 24. Change Color
+
 - Color To Change: eyedropper
 - Hue Transform, Lightness Transform, Saturation Transform
 - Color Tolerance, Similarity
 
 ### 25. Change to Color
+
 - From: eyedropper
 - To: color
 - Change By, Tolerance, Softness
 
 ### 26. Posterize
+
 - Level: 2–255
 
 ### 27. Mosaic
+
 - Horizontal Blocks, Vertical Blocks
 - Sharp Colors
 
 ### 28. Emboss
+
 - Direction: 0–360°
 - Relief: 0–10
 - Contrast: 0–500
 - Blend with Original: 0–100%
 
 ### 29. Find Edges
+
 - Invert: On/Off
 - Blend with Original: 0–100%
 
 ### 30. Strobe Light
+
 - Strobe Color, Blend With Original
 - Strobe Period, Duration, Random Strobe Probability
 
 ### 31. Color Emboss
+
 - Direction, Relief, Contrast
 - Blend with Original
 
 ### 32. Roughen Edges
+
 - Border: 0–100
 - Edge Type: various
 - Edge Color, Fractal Influence, Scale, Stretch, Offset, Complexity
 - Evolution: 0–∞
 
 ### 33. Glow (via Stylize)
+
 - Glow Based On: Color Channels, Alpha Channel
 - Glow Threshold, Glow Radius, Glow Intensity
 
 ### 34. Brush Strokes
+
 - Stroke Angle, Brush Size, Stroke Length, Paint Surface
 - Paint Density, Stroke Randomness, Spatula Depth, Texture Depth
 
 ### 35. Solarize
+
 - Threshold: 0–1
 
 ### 36. Posterize Time
+
 - Frame Rate: 1–30
 
 ### 37. Mirror
+
 - Reflection Center, Reflection Angle
 
 ### 38. Transform (Effect)
+
 - Position, Scale Width/Height, Skew, Skew Axis, Rotation, Anchor Point, Opacity
 - Shutter Angle, Composition Shutter Angle
 
 ### 39. Crop
+
 - Left, Top, Right, Bottom (%)
 - Zoom: On/Off
 
 ### 40. Edge Feather
+
 - Number of Edge Pixels: 1–200
 
 ### 41. Horizontal/Vertical Flip
+
 - No parameters
 
 ### 42. Camera View
+
 - Camera View adjustments (longitude, latitude, roll, focal length, distance)
 
 ### 43. Lens Distortion
+
 - Curvature: -100 to +100
 - Vertical/Horizontal Prism FX
 
 ### 44. Wave Warp
+
 - Wave Type, Height, Width, Speed, Direction, Phase, Pinning
 
 ### 45. Twirl
+
 - Angle: -999 to 999
 - Twirl Radius: 0–200
 - Twirl Center: X, Y
 
 ### 46. Spherize
+
 - Radius, Center, Plane to Sphere
 
 ### 47. Ripple
+
 - Radius, Center, Wave Amplitude, Speed, Width
 
 ### 48. Lighting Effects
+
 - Light Type, Intensity, Color, Properties
 - Multiple lights
 
 ### 49. Lens Flare
+
 - Flare Center, Brightness (10%–300%)
 - Lens Type: 50-300mm Zoom, 35mm Prime, 105mm Prime, Movie Prime
 
 ### 50. Drop Shadow
+
 - Color, Opacity, Direction, Distance, Softness
 
 ---
 
 ## PP-16: Video Transitions — Complete
 
-### 3D Motion:
+### 3D Motion
+
 - Cube Spin, Flip Over, Page Roll, Page Turn, Swing In, Swing Out
 
-### Dissolve:
+### Dissolve
+
 - Additive Dissolve, Audio/Video Dissolve, Cross Dissolve, Dither Dissolve, Dip to Black, Dip to White, Film Dissolve, Morph Cut, Non-Additive Dissolve
 
-### Iris:
+### Iris
+
 - Iris Box, Iris Cross, Iris Diamond, Iris Eye, Iris Points, Iris Round, Iris Shapes, Iris Star
 
-### Page Peel:
+### Page Peel
+
 - Center Peel, Page Peel, Page Back, Page Turn, Peel Back
 
-### Slide:
+### Slide
+
 - Band Slide, Center Split, Multi-Spin, Push, Slash Slide, Slide, Split, Swap, Swirl, Tumble Away
 
-### Wipe:
+### Wipe
+
 - Band Wipe, Barn Doors, Checkerboard Wipe, Clock Wipe, Gradient Wipe, Inset, Paint Splatter, Pinwheel, Radial Wipe, Random Blocks, Random Wipe, Spiral Boxes, Venetian Blinds, Wedge Wipe, Wipe, Zig-Zag Blocks
 
-### Zoom:
+### Zoom
+
 - Cross Zoom, Zoom, Zoom Boxes, Zoom Trails
 
-### Applying Transitions:
+### Applying Transitions
+
 - Default transition: Ctrl+D (video), Ctrl+Shift+D (audio)
 - Drag transition to edit point
 - Adjust duration in Effect Controls or directly on transition
@@ -3125,7 +3409,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-17: Audio Editing
 
-### Audio Track Mixer:
+### Audio Track Mixer
+
 - Per-track faders (volume)
 - Pan/Balance per track
 - Mute (M), Solo (S), Record (R) per track
@@ -3134,7 +3419,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Automation modes: Off, Read, Latch, Touch, Write
 - Master fader for final output
 
-### Audio Effects (Built-in):
+### Audio Effects (Built-in)
+
 - Amplitude and Compression: Amplify, Compressor, Dynamics, Expander/Gate, Multiband Compressor, Single-Band Compressor
 - Delay and Echo: Analog Delay, Delay, Echo
 - Filter and EQ: EQ, FFT Filter, Graphic EQ, Notch, Parametric EQ
@@ -3145,18 +3431,21 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Stereo Imagery: Balance, Channel Volume, Fill Left/Fill Right, Swap Channels
 - Time and Pitch: Pitch Shifter, Stretch
 
-### Essential Sound Panel:
+### Essential Sound Panel
+
 - Dialogue: Loudness, Repair, Clarity
 - Music: Loudness, Ducking
 - SFX: Loudness, Repair, Creative
 - Ambience: Loudness, Reverb
 
-### Audio Clip Mixer:
+### Audio Clip Mixer
+
 - Per-clip volume and pan
 - View in timeline
 - Rubber band editing (drag volume line)
 
-### Audio Gain:
+### Audio Gain
+
 - Clip > Audio Gain: G
 - Set Gain, Adjust Gain, Normalize Max Peak, Normalize All Peaks
 - Gain values in dB
@@ -3165,7 +3454,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-18: Color Correction (Lumetri Color)
 
-### Lumetri Color Panel Tabs:
+### Lumetri Color Panel Tabs
+
 1. **Basic Correction**:
    - Input LUT (dropdown)
    - White Balance: Temperature (-100 to +100), Tint (-100 to +100)
@@ -3207,7 +3497,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
    - Roundness: -100 to +100
    - Feather: 0–100
 
-### Lumetri Scopes:
+### Lumetri Scopes
+
 - Waveform (Luma/RGB)
 - Vectorscope (YUV)
 - Parade (RGB)
@@ -3218,14 +3509,16 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-19: Multi-Camera Editing
 
-### Setup:
+### Setup
+
 1. Select clips in bin (or on timeline)
 2. Clip > Create Multi-Camera Source Sequence
 3. Sync by: Timecode, Audio, Markers, In Points
 4. Audio: camera audio, all audio, or switch audio
 5. Sequence preset: auto or manual
 
-### Multi-Camera Workflow:
+### Multi-Camera Workflow
+
 1. Open multi-cam sequence in timeline
 2. Enable multi-cam (wrench icon > Multi-Camera)
 3. Program Monitor shows Multi-Camera view (grid of all angles)
@@ -3234,7 +3527,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 6. Can adjust cuts after recording (trim, ripple, etc.)
 7. Flatten when done (optional)
 
-### Multi-Camera Operations:
+### Multi-Camera Operations
+
 - Enable/Disable Multi-Camera
 - Flatten to single track
 - Edit cameras (add/remove/reorder)
@@ -3245,7 +3539,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-20: Captions & Subtitles
 
-### Types:
+### Types
+
 - CEA-608 (Closed Captions)
 - CEA-708 (Closed Captions)
 - SRT (SubRip)
@@ -3255,23 +3550,27 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - TTML (Timed Text)
 - Open Captions (burned in)
 
-### Creating Captions:
+### Creating Captions
+
 - File > New > Captions
 - Import SRT, MCC, SCC, etc.
 - Auto-generate from transcript (Speech to Text)
 
-### Editing Captions:
+### Editing Captions
+
 - Captions panel or Essential Graphics panel
 - Text editing directly in timeline
 - Timing adjustment
 - Style: font, size, color, background, alignment, position
 - Number of lines per caption
 
-### Export:
+### Export
+
 - File > Export > Captions
 - Formats: SRT, MCC, SCC, STL, TTML, Open Captions (embedded)
 
-### Text Panel (AI Transcription):
+### Text Panel (AI Transcription)
+
 - Auto Transcribe Sequence (Clip > Auto Transcribe)
 - Edit transcript directly (text-based editing)
 - Generate captions from transcript
@@ -3283,12 +3582,14 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-21: Titles & Graphics
 
-### Essential Graphics Panel:
+### Essential Graphics Panel
+
 - Browse: Adobe Stock templates, installed MOGRTs
 - Edit: modify selected template properties
 - Create: new graphics from scratch
 
-### Creating Titles:
+### Creating Titles
+
 1. Essential Graphics panel > Create New
 2. Type Tool (T): click in Program Monitor to add text
 3. Rectangle/Ellipse tools for shapes
@@ -3297,13 +3598,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 6. Responsive Design - Time: intro/outro protected ranges
 7. Export as Motion Graphics Template (.mogrt)
 
-### Legacy Title (Deprecated):
+### Legacy Title (Deprecated)
+
 - Title > New Title
 - Full typographic controls
 - Templates, styles, rolling/crawling
 - Being replaced by Essential Graphics
 
-### Motion Graphics Templates (from After Effects):
+### Motion Graphics Templates (from After Effects)
+
 - Import .mogrt files
 - Editable properties appear in Essential Graphics panel
 - Media replacement for image/video swap
@@ -3313,7 +3616,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-22: Export Settings (Ctrl+M)
 
-### Format Options:
+### Format Options
+
 - H.264 (most common web/broadcast)
 - H.265 (HEVC, better compression)
 - ProRes (Apple ecosystem, intermediate)
@@ -3325,7 +3629,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - MP3, WAV (audio only)
 - Image Sequence (JPEG, PNG, TIFF, TGA)
 
-### H.264 Settings:
+### H.264 Settings
+
 - Preset: Match Source, YouTube, Vimeo, Facebook, Twitter, Broadcast
 - Width/Height: custom or match source
 - Frame Rate: match source or custom
@@ -3340,7 +3645,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Use Maximum Render Quality
 - Audio: AAC, bitrate, sample rate
 
-### Export Options:
+### Export Options
+
 - Source Range: Entire Sequence, Sequence In/Out, Work Area, Custom
 - Export Video, Export Audio toggles
 - Captions: export or burn in
@@ -3352,7 +3658,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-23: Adobe Media Encoder
 
-### Features:
+### Features
+
 - Batch encoding of multiple files
 - Background encoding (Premiere Pro stays free)
 - Watch folders for automated encoding
@@ -3362,18 +3669,21 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Encoding progress with preview
 - Hardware-accelerated encoding (GPU, Quick Sync)
 
-### Adding to Queue:
+### Adding to Queue
+
 - From Premiere Pro: Ctrl+Shift+M
 - Drag files from desktop
 - File > Add Source
 
-### Presets:
+### Presets
+
 - YouTube, Vimeo, Facebook, Twitter
 - Broadcast (DNxHD, ProRes)
 - Device presets (iPad, Android, etc.)
 - Custom presets
 
-### Encoding:
+### Encoding
+
 - Start Queue button
 - Parallel encoding (multiple files simultaneously)
 - Encoding status, ETA, errors
@@ -3383,7 +3693,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-24: Proxy Workflow
 
-### Creating Proxies:
+### Creating Proxies
+
 1. Select clips in bin
 2. Right-click > Proxy > Create Proxies
 3. Choose format: ProRes Proxy, GoPro CineForm, H.264
@@ -3391,12 +3702,14 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 5. Media Encoder creates proxy files
 6. Proxies linked to original media
 
-### Toggle Proxy:
+### Toggle Proxy
+
 - Button in Program Monitor (Toggle Proxies)
 - Drag to button bar if not visible
 - Blue = proxy mode, Gray = full resolution
 
-### Benefits:
+### Benefits
+
 - Smooth playback of 4K/8K media
 - Faster editing and preview
 - Switch to full resolution for final output
@@ -3406,9 +3719,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-25: Keyboard Shortcuts — Complete
 
-### File:
+### File
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | New Project | Ctrl+Alt+N |
 | New Sequence | Ctrl+N |
 | Open Project | Ctrl+O |
@@ -3419,9 +3733,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Send to AME | Ctrl+Shift+M |
 | Close | Ctrl+W |
 
-### Edit:
+### Edit
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |
 | Cut | Ctrl+X |
@@ -3436,9 +3751,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Find | Ctrl+F |
 | Keyboard Shortcuts | Ctrl+Alt+K |
 
-### Timeline:
+### Timeline
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Play/Stop | Space |
 | Forward 1 Frame | → |
 | Backward 1 Frame | ← |
@@ -3466,9 +3782,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Step Forward | L |
 | Step Backward | K then L etc. (shuttle) |
 
-### Editing:
+### Editing
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Insert | , (comma) |
 | Overwrite | . (period) |
 | Lift | ; (semicolon) |
@@ -3482,9 +3799,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Match Frame | F |
 | Reverse Match Frame | Shift+F |
 
-### Transitions & Effects:
+### Transitions & Effects
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Default Video Transition | Ctrl+D |
 | Default Audio Transition | Ctrl+Shift+D |
 | Render Effects in Work Area | Enter |
@@ -3493,9 +3811,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Nest Sequence | Ctrl+T (or right-click) |
 | Audio Gain | G |
 
-### Tools:
+### Tools
+
 | Tool | Shortcut |
-|---|---|
+| --- | --- |
 | Selection | V |
 | Track Select Forward | A |
 | Track Select Backward | Shift+A |
@@ -3510,9 +3829,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Zoom | Z |
 | Text | T |
 
-### View:
+### View
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Toggle Full Screen | ` (backtick) |
 | Maximize Panel | Shift+` |
 | Toggle Snap | S |
@@ -3523,9 +3843,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Show Safe Margins | ' (with monitor focus) |
 | Show Guides | Ctrl+; |
 
-### Multi-Camera:
+### Multi-Camera
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Camera 1–9 | 1–9 (numpad) |
 | Enable Multi-Camera | wrench icon |
 
@@ -3533,7 +3854,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-26: Dynamic Link with After Effects
 
-### Methods:
+### Methods
+
 1. **Replace with After Effects Composition**:
    - Select clip in timeline
    - Right-click > Replace with After Effects Composition
@@ -3555,7 +3877,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-27: Motion Controls
 
-### Effect Controls Panel (Motion Effect):
+### Effect Controls Panel (Motion Effect)
+
 - **Position**: X, Y (center of frame = 960, 540 for 1080p)
 - **Scale**: 0–10000% (100% = original size)
 - **Scale Width/Height**: unlink to scale independently
@@ -3565,7 +3888,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - **Opacity**: 0–100%
 - **Blend Mode**: Normal, Multiply, Screen, Overlay, etc.
 
-### Keyframing in Premiere Pro:
+### Keyframing in Premiere Pro
+
 - Stopwatch icon to enable keyframes
 - Add keyframe with diamond icon
 - Navigate between keyframes with arrows
@@ -3577,6 +3901,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## PP-28: Speed Changes
 
 ### Speed/Duration: Ctrl+R
+
 - **Speed**: percentage (e.g., 50% = half speed, 200% = double speed)
 - **Duration**: timecode (sets speed by specifying desired duration)
 - **Reverse Speed**: checkbox
@@ -3584,18 +3909,21 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - **Ripple Edit, Shifting Adjacent Clips**: on/off
 - **Time Interpolation**: Frame Sampling, Frame Blending, Optical Flow
 
-### Optical Flow:
+### Optical Flow
+
 - AI-generated intermediate frames for smooth slow motion
 - Best for moderate slow motion (50%–80% of original speed)
 - Artifacts possible with complex motion
 
-### Time Remapping:
+### Time Remapping
+
 - Right-click clip > Show Clip Keyframes > Time Remapping > Speed
 - Rubber band shows speed percentage
 - Add keyframes, drag up/down for speed
 - Creates smooth speed ramps
 
-### Freeze Frame:
+### Freeze Frame
+
 - Export Frame (camera icon in Program Monitor)
 - Frame Hold: right-click > Add Frame Hold
 - Insert Frame Hold Segment
@@ -3604,7 +3932,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-29: Auto Reframe
 
-### Usage:
+### Usage
+
 - Select clip or sequence
 - Right-click > Auto Reframe Sequence (or Effect > Video Effects > Transform > Auto Reframe)
 - Choose aspect ratio: Square (1:1), Vertical (9:16), 4:5, etc.
@@ -3616,7 +3945,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-30: Scene Edit Detection
 
-### Usage:
+### Usage
+
 - Right-click clip in timeline > Scene Edit Detection
 - Automatically detects cut points in a single-file source
 - Creates separate clips at each detected cut
@@ -3627,7 +3957,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-31: Morph Cut Transition
 
-### Usage:
+### Usage
+
 - Apply as transition between two talking head clips
 - AI generates in-between frames for smooth transition
 - Works best with: similar framing, minimal head movement, same background
@@ -3638,7 +3969,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-32: Audio Auto-Ducking
 
-### Essential Sound Panel:
+### Essential Sound Panel
+
 1. Tag clips: Dialogue, Music, SFX, Ambience
 2. Select Music clip
 3. Check "Ducking"
@@ -3651,21 +3983,24 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-33: Collaboration
 
-### Team Projects:
+### Team Projects
+
 - Cloud-based collaborative editing
 - Version history with snapshots
 - Conflict resolution tools
 - Invite team members
 - Requires Creative Cloud for Teams/Enterprise
 
-### Frame.io Integration:
+### Frame.io Integration
+
 - Built-in review panel
 - Share sequences for review
 - Comment overlay on timeline
 - Approval workflow
 - Version comparison
 
-### Production (Productions):
+### Production (Productions)
+
 - Multiple editors working on same production
 - Shared project files
 - Each editor works on their own sequence/project
@@ -3675,7 +4010,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-34: Keyboard Shortcuts — Customization
 
-### Editing Shortcuts:
+### Editing Shortcuts
+
 - Edit > Keyboard Shortcuts (Ctrl+Alt+K)
 - Search for any command
 - Assign new shortcut
@@ -3683,7 +4019,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Save/load shortcut sets
 - Preset schemes: Adobe Premiere Pro, Avid Media Composer, Final Cut Pro 7
 
-### Shortcut Sets:
+### Shortcut Sets
+
 - Save as .kys files
 - Share with team members
 - Import from other users
@@ -3693,72 +4030,92 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-35: Preferences — All Categories
 
-### General:
+### General
+
 - Default timeline settings, bin behavior, clip import options
 
-### Appearance:
+### Appearance
+
 - UI brightness (4 levels)
 - Interactive controls brightness
 
-### Audio:
+### Audio
+
 - Default audio transition duration, audio gain settings
 
-### Audio Hardware:
+### Audio Hardware
+
 - Input/output device, latency
 
-### Audio Output Mapping:
+### Audio Output Mapping
+
 - Channel mapping for audio output
 
-### Auto Save:
+### Auto Save
+
 - Auto-save interval (1–99 minutes)
 - Maximum project versions (1–99)
 
-### Captions:
+### Captions
+
 - Default caption appearance, import settings
 
-### Collaboration:
+### Collaboration
+
 - Team Projects settings
 
-### Color:
+### Color
+
 - Default color space for new projects
 
-### Graphics:
+### Graphics
+
 - Default graphics settings
 
-### Labels:
+### Labels
+
 - 16 label colors, default assignments for clip types
 
-### Media:
+### Media
+
 - Media Cache location, database location
 - Remove media cache files options
 
-### Memory:
+### Memory
+
 - RAM reserved for Premiere Pro vs other applications
 
-### Mercury Transmit:
+### Mercury Transmit
+
 - External video output (AJA, Blackmagic, etc.)
 - Enable/disable video and audio output
 
-### Multi-Camera:
+### Multi-Camera
+
 - Multi-camera settings
 
-### Playback:
+### Playback
+
 - Default player, preroll/postroll
 
-### Sync Settings:
+### Sync Settings
+
 - Adobe cloud sync for preferences, presets, shortcuts
 
-### Timeline:
+### Timeline
+
 - Default track heights, timeline settings
 
-### Timeline (Trim):
+### Timeline (Trim)
+
 - Trim offset settings
 
 ---
 
 ## PP-36: Proxy Workflow — Complete Steps
 
-### Setup:
+### Setup
+
 1. Import 4K/8K footage
 2. Select clips in Project panel
 3. Right-click > Proxy > Create Proxies
@@ -3769,13 +4126,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 8. Media Encoder creates proxy files
 9. Proxy indicator appears on clips
 
-### Toggle:
+### Toggle
+
 - Button editor: add Toggle Proxies button to Program Monitor toolbar
 - Or: right-click Program Monitor > Toggle Proxies
 - Blue outline = Proxy mode
 - No indicator = Full resolution
 
-### When to Use:
+### When to Use
+
 - 4K or higher resolution footage
 - H.264/H.265 source media (hard to edit natively)
 - Multi-stream editing (multi-cam)
@@ -3785,14 +4144,16 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-37: Merge Clips
 
-### Audio Merge (Dual-System Sound):
+### Audio Merge (Dual-System Sound)
+
 - Sync external audio recorder with camera audio
 - Select video clip and audio clip
 - Clip > Merge Clips
 - Method: Timecode, Start/End, Markers, Audio
 - Result: linked video + high-quality audio
 
-### Benefits:
+### Benefits
+
 - Replaces camera audio with better recorder audio
 - Syncs by waveform analysis (most reliable)
 - Preserves all tracks
@@ -3801,19 +4162,22 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-38: Nesting Sequences
 
-### Creating a Nested Sequence:
+### Creating a Nested Sequence
+
 - Select clips in timeline
 - Right-click > Nest
 - Name the nested sequence
 - Clips become single nested clip in timeline
 
-### Benefits:
+### Benefits
+
 - Organize complex edits
 - Apply effects to nested sequence as a whole
 - Reuse edited sequences multiple times
 - Simplify timeline
 
-### Editing Nested:
+### Editing Nested
+
 - Double-click nested clip to open
 - Changes reflect in parent sequence
 - Can have multiple levels of nesting
@@ -3822,14 +4186,16 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-39: Master Clip Effects
 
-### Applying to Master Clip:
+### Applying to Master Clip
+
 - Open clip in Source Monitor
 - Apply effect in Effect Controls
 - Effect applies to ALL instances of that clip in any sequence
 - Changes propagate automatically
 - Useful for: color correction applied once, seen everywhere
 
-### Clip Effects vs Master Clip:
+### Clip Effects vs Master Clip
+
 - **Clip Effect**: applied to specific instance in timeline
 - **Master Effect**: applied to source clip, affects all instances
 
@@ -3837,36 +4203,43 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-40: Essential Sound Panel — Complete
 
-### Tagging:
+### Tagging
+
 - Select clip(s) in timeline
 - Tag as: Dialogue, Music, SFX, Ambience
 
-### Dialogue Options:
+### Dialogue Options
+
 - Loudness: Auto Match
 - Repair: Reduce Noise, Reduce Rumble, Reduce Sibilance, Reduce Mouth Noise, DeHum
 - Clarity: Dynamics, EQ (Parametric, High/Low Pass)
 - Creative: Reverb
 
-### Music Options:
+### Music Options
+
 - Loudness: Auto Match
 - Ducking: Duck Against (Dialogue), Sensitivity, Reduce By, Fade Duration
 
-### SFX Options:
+### SFX Options
+
 - Loudness: Auto Match
 - Creative: Reverb, EQ
 
-### Ambience Options:
+### Ambience Options
+
 - Loudness: Auto Match
 - Creative: Reverb, EQ
 
-### Auto Match:
+### Auto Match
+
 - Analyzes audio and normalizes to broadcast standard (-24 LUFS for dialogue)
 
 ---
 
 ## PP-41: Audio Effects — Complete List
 
-### Amplitude and Compression:
+### Amplitude and Compression
+
 - Amplify
 - Compressor
 - Dynamics
@@ -3874,12 +4247,14 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Multiband Compressor
 - Single-band Compressor
 
-### Delay and Echo:
+### Delay and Echo
+
 - Analog Delay
 - Delay
 - Echo
 
-### Filter and EQ:
+### Filter and EQ
+
 - EQ (Parametric)
 - FFT Filter
 - Graphic EQ (10-band, 20-band)
@@ -3887,13 +4262,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - High Pass
 - Low Pass
 
-### Modulation:
+### Modulation
+
 - Chorus
 - Chorus/Flanger
 - Flanger
 - Phaser
 
-### Noise Reduction/Restoration:
+### Noise Reduction/Restoration
+
 - DeClicker
 - DeCrackler
 - DeEsser
@@ -3901,20 +4278,23 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - DeNoiser
 - DeReverb
 
-### Reverb:
+### Reverb
+
 - Convolution Reverb
 - Full Reverb
 - Reverb
 - Studio Reverb
 
-### Special:
+### Special
+
 - Distortion
 - Pitch Shifter
 - Ring Modulator
 - Guitar Suite
 - Mastering
 
-### Stereo Imagery:
+### Stereo Imagery
+
 - Balance
 - Channel Volume
 - Fill Left with Right
@@ -3927,29 +4307,35 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-42: Timeline Operations — Complete
 
-### Snapping (S):
+### Snapping (S)
+
 - Magnetic alignment of clips, transitions, markers, playhead, In/Out points
 - Toggle: S key or magnet icon
 
-### Track Targeting:
+### Track Targeting
+
 - Source patching (V1, A1, etc.)
 - Determines where insert/overwrite edits go
 - Toggle by clicking track header
 
-### Sync Lock:
+### Sync Lock
+
 - Keeps tracks in sync during insert/extract operations
 - Toggle per track in track header
 
-### Linked Selection:
+### Linked Selection
+
 - When enabled, selecting video selects linked audio (and vice versa)
 - Toggle: chain icon or Ctrl+Shift+L
 
-### Track Height:
+### Track Height
+
 - Drag track header bottom edge
 - Alt+scroll wheel to resize all tracks
 - Preset heights available
 
-### Track Operations:
+### Track Operations
+
 - Add Tracks: Ctrl+Shift+T (dialog)
 - Delete Tracks: right-click track header > Delete Tracks
 - Rename Track: right-click > Rename
@@ -3961,7 +4347,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-43: Markers
 
-### Types:
+### Types
+
 - **Comment**: General note (green)
 - **In**: Edit start point
 - **Out**: Edit end point
@@ -3969,24 +4356,28 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - **Segment**: Podcast/segment marker (orange)
 - **Selection**: Range markers
 
-### Adding Markers:
+### Adding Markers
+
 - M key (add marker at playhead)
 - Timeline panel > Add Marker button
 - Right-click in time ruler > Add Marker
 
-### Editing Markers:
+### Editing Markers
+
 - Double-click marker to open Marker dialog
 - Name, comments, duration
 - Color: customizable
 - Type selection
 
-### Marker Panel:
+### Marker Panel
+
 - Window > Markers
 - View all markers in sequence
 - Edit, delete, navigate
 - Export markers as CSV
 
-### Markers in Source Monitor:
+### Markers in Source Monitor
+
 - Add markers to source clips
 - Sync markers for merge clips
 
@@ -3994,23 +4385,27 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-44: Scripting & Panels
 
-### ExtendScript:
+### ExtendScript
+
 - JavaScript-based scripting
 - Automate editing tasks
 - Batch process sequences
 - Custom workflows
 
-### CEP Panels:
+### CEP Panels
+
 - HTML/CSS/JS based
 - Custom UI panels in Premiere Pro
 - Access to Premiere Pro API
 
-### UXP:
+### UXP
+
 - Newer plugin framework
 - Cross-app compatibility
 - Better security model
 
-### Useful Script Functions:
+### Useful Script Functions
+
 - app.project: access project
 - app.project.activeSequence: current sequence
 - Sequence operations: add tracks, get clips
@@ -4021,7 +4416,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-45: Media Management
 
-### Project Manager:
+### Project Manager
+
 - File > Project Manager
 - **Consolidate and Transcode**: re-encode used media to single codec
 - **Collect and Copy**: copy used media to new location
@@ -4030,14 +4426,16 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - **Include Audio Conform Files**: pre-processed audio
 - **Rename Media Files to Match Clip Names**: organized naming
 
-### Media Cache:
+### Media Cache
+
 - Edit > Preferences > Media
 - Cache location: set to fast SSD
 - Database location
 - Clean cache: delete unused media cache files
 - Conformed audio files stored in cache
 
-### Relinking Offline Media:
+### Relinking Offline Media
+
 - Media appears offline (red) when files moved
 - Right-click > Link Media
 - Navigate to new file location
@@ -4048,26 +4446,30 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-46: VR / 360° Video Editing
 
-### Setting Up:
+### Setting Up
+
 1. Import 360° footage (equirectangular or fisheye)
 2. Right-click > Modify > Interpret Footage
 3. VR Properties: Layout (Monoscopic, Stereoscopic Over/Under, Side-by-Side), Frame Layout
 4. Create VR sequence (Sequence Settings > VR Properties)
 
-### VR View in Program Monitor:
+### VR View in Program Monitor
+
 - Toggle VR video display
 - Drag to look around
 - VR headset support (Mercury Transmit)
 - View: Equirectangular or VR headset view
 
-### VR Effects:
+### VR Effects
+
 - VR Blur, VR Chromatic Aberrations, VR Color Gradients
 - VR Converter, VR Denoise, VR Digital Glitch
 - VR Flicker Reduce, VR Glow, VR Iris Blur
 - VR Plane to Sphere, VR Rotate Sphere, VR Sharpen
 - VR Sphere to Plane
 
-### VR Audio:
+### VR Audio
+
 - Spatial audio support
 - Ambisonic audio (1st, 2nd, 3rd order)
 - Spatial audio effects
@@ -4076,19 +4478,22 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-47: Color Management
 
-### Color Spaces:
+### Color Spaces
+
 - Rec. 709 (standard HD)
 - Rec. 2020 (wide color gamut)
 - PQ / HLG (HDR)
 - ACES
 - Display P3
 
-### Color Management in Project Settings:
+### Color Management in Project Settings
+
 - Working color space assignment
 - Color management enable/disable
 - Input/output color space per clip
 
-### HDR Workflow:
+### HDR Workflow
+
 - Enable HDR in sequence settings
 - HDR-capable display required
 - Lumetri Color supports HDR
@@ -4099,31 +4504,36 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-48: Performance Optimization
 
-### Playback:
+### Playback
+
 - Lower playback resolution (1/2, 1/4, 1/8)
 - Disable effects during playback (global fx mute: Shift+5)
 - GPU acceleration (Mercury Playback Engine)
 - Smart rendering (avoid re-encoding)
 - Proxy workflow for heavy media
 
-### Timeline:
+### Timeline
+
 - Minimize number of video tracks
 - Use adjustment layers instead of per-clip effects
 - Nest complex sequences
 - Render previews (Enter for work area)
 
-### Media Cache:
+### Media Cache
+
 - Set cache to fast NVMe SSD
 - Clear unused cache regularly
 - Conform media before editing
 
-### System:
+### System
+
 - Close unnecessary applications
 - Allocate sufficient RAM to Premiere
 - Update GPU drivers
 - Use multiple drives: OS, Projects, Cache, Exports
 
-### Export:
+### Export
+
 - Use hardware encoding (Intel Quick Sync, NVIDIA NVENC, Apple VideoToolbox)
 - Match sequence settings to output format (avoid transcoding)
 - Queue in Media Encoder (background rendering)
@@ -4132,9 +4542,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-49: Troubleshooting
 
-### Common Issues:
+### Common Issues
+
 | Problem | Solution |
-|---|---|
+| --- | --- |
 | Media offline | Relink: right-click > Link Media |
 | Playback stutter | Lower resolution, enable GPU, clear cache |
 | No audio | Check audio hardware, track output, mute |
@@ -4146,7 +4557,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | Memory errors | Increase RAM allocation, close other apps |
 | Corrupted project | Open auto-save version (in Auto-Save folder) |
 
-### Reset Preferences:
+### Reset Preferences
+
 - Hold Alt+Shift (Windows) or Option+Shift (macOS) while launching Premiere Pro
 - Confirms preference reset dialog
 - Resets all preferences to default
@@ -4155,33 +4567,38 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-50: Best Practices
 
-### Project Organization:
+### Project Organization
+
 - Use bins for: Footage, Music, SFX, Graphics, Sequences, Exports
 - Name clips and sequences descriptively
 - Color-code with labels (by type, status, etc.)
 - Use sub-bins for large projects
 - Create sequence templates with standard tracks and settings
 
-### Editing:
+### Editing
+
 - Rough cut first, then refine
 - Use keyboard shortcuts (dramatically speeds editing)
 - Set In/Out before inserting clips
 - Use ripple delete instead of delete + close gap
 - Mark important points during review
 
-### Audio:
+### Audio
+
 - Normalize audio levels (-24 LUFS for broadcast dialogue)
 - Always check audio in headphones
 - Use Essential Sound panel for quick fixes
 - Leave headroom (peaks should not exceed -6 dB for mixes)
 
-### Color:
+### Color
+
 - Correct exposure and white balance first
 - Work with scopes (don't trust eyes alone)
 - Apply LUTs last (after correction)
 - Match shots within scene
 
-### Export:
+### Export
+
 - Always export test section first
 - Match delivery requirements (bitrate, resolution, codec)
 - Use Media Encoder for batch exports
@@ -4191,9 +4608,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## PP-51: Keyboard Shortcut Quick Reference (Printable)
 
-### Most Important:
+### Most Important
+
 | Action | Shortcut |
-|---|---|
+| --- | --- |
 | Play/Stop | Space |
 | Forward/Back 1 Frame | → / ← |
 | Forward/Back 5 Frames | Shift+→ / Shift+← |
@@ -4230,20 +4648,24 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ---
 
 # ═══════════════════════════════════════════════════════════════════
+
 # PART C: INTEGRATION & ADVANCED WORKFLOWS
+
 # ═══════════════════════════════════════════════════════════════════
 
 ---
 
 ## INT-01: After Effects ↔ Premiere Pro Roundtrip
 
-### Workflow Options:
+### Workflow Options
+
 1. **Dynamic Link** (recommended for live updates)
 2. **Replace with After Effects Composition** (clip-level)
 3. **Import AEP file** (composition-level)
 4. **Intermediate rendering** (best performance)
 
-### Roundtrip Best Practices:
+### Roundtrip Best Practices
+
 - Lock edit before sending to AE (avoid re-doing work)
 - Pre-compose in AE for clean handoff
 - Use Dynamic Link for short sequences (performance cost)
@@ -4254,18 +4676,21 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-02: Photoshop Integration
 
-### Import to Premiere Pro:
+### Import to Premiere Pro
+
 - Maintain layers as individual tracks
 - Layer order preserved
 - Edit > Edit in Photoshop for round-trip
 
-### Import to After Effects:
+### Import to After Effects
+
 - Import as composition (layered)
 - Maintain layer styles, blending modes, masks
 - Edit > Edit Original to open in Photoshop
 - Smart Objects remain editable
 
-### Best Practices:
+### Best Practices
+
 - Use consistent document size
 - Name layers clearly
 - Group related elements
@@ -4276,17 +4701,20 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-03: Illustrator Integration
 
-### Import to After Effects:
+### Import to After Effects
+
 - Import as composition (layered) or footage (flat)
 - Continuously rasterized (always sharp)
 - Convert to Shape Layers for path animation
 - Maintain layer structure
 
-### Import to Premiere Pro:
+### Import to Premiere Pro
+
 - Import as single image or layered composition
 - Rescale freely (vector = infinite resolution)
 
-### Best Practices:
+### Best Practices
+
 - Outline fonts before exporting (or use system fonts)
 - Separate elements on different layers
 - Use simple paths (avoid excessive anchor points)
@@ -4296,16 +4724,19 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-04: Audition Integration
 
-### Send from Premiere Pro:
+### Send from Premiere Pro
+
 - Edit in Adobe Audition: right-click > Edit Clip in Audition
 - Audio opens in Audition with video reference
 - Perform advanced audio processing
 - Save: updates automatically in Premiere Pro
 
-### Send from After Effects:
+### Send from After Effects
+
 - Select audio layer > Edit in Adobe Audition
 
-### Audition Capabilities:
+### Audition Capabilities
+
 - Spectral frequency display
 - Noise reduction (advanced)
 - De-reverb, de-hum, de-clip
@@ -4319,18 +4750,21 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-05: Media Encoder Integration
 
-### From Premiere Pro:
+### From Premiere Pro
+
 - Ctrl+Shift+M: Send sequence to AME
 - Multiple sequences: queue all
 - AME encodes in background
 - Premiere Pro remains free for editing
 
-### From After Effects:
+### From After Effects
+
 - Ctrl+Alt+M: Send comp to AME
 - Multiple comps: queue all
 - AME encodes while AE is free
 
-### AME Features:
+### AME Features
+
 - Batch encoding
 - Multiple outputs per source
 - Preset management
@@ -4344,11 +4778,13 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-06: Frame.io Integration
 
-### Setup:
+### Setup
+
 - Sign in with Adobe ID
 - Link Frame.io account
 
-### Features:
+### Features
+
 - Share sequences for review
 - Comment overlay on video
 - Frame-accurate annotations
@@ -4356,7 +4792,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 - Version comparison
 - Team collaboration
 
-### Workflow:
+### Workflow
+
 1. Upload sequence to Frame.io
 2. Share link with reviewers
 3. Reviewers comment with time-stamped notes
@@ -4367,19 +4804,22 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-07: Team Projects
 
-### Features:
+### Features
+
 - Cloud-based project storage
 - Real-time collaboration
 - Version history (snapshots)
 - Conflict resolution
 - Lock/unlock sequences
 
-### Setup:
+### Setup
+
 - Creative Cloud for Teams/Enterprise
 - Switch to Team Projects in Premiere Pro
 - Invite collaborators
 
-### Limitations:
+### Limitations
+
 - Requires internet connection
 - Some effects may not be supported
 - Limited to Creative Cloud subscribers
@@ -4388,7 +4828,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-08: Common Professional Workflows
 
-### Documentary:
+### Documentary
+
 1. Transcribe all interviews (Speech to Text)
 2. Organize by topic in bins
 3. Rough assembly from selects
@@ -4400,7 +4841,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 9. Final mix in Audition
 10. Export for distribution
 
-### Short Film / Narrative:
+### Short Film / Narrative
+
 1. Ingest and organize dailies
 2. Sync audio (dual-system sound)
 3. Editor's assembly
@@ -4411,7 +4853,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 8. Sound design and mix
 9. Final render and delivery
 
-### Corporate / Commercial:
+### Corporate / Commercial
+
 1. Review brief and footage
 2. Create multiple edits (versions for different platforms)
 3. Add graphics and lower thirds (MOGRTs)
@@ -4421,7 +4864,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 7. Revisions
 8. Export multiple formats (YouTube, social, broadcast)
 
-### Social Media:
+### Social Media
+
 1. Select vertical (9:16) or square (1:1) format
 2. Auto Reframe for aspect ratio conversion
 3. Add captions (auto-generate from speech)
@@ -4429,7 +4873,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 5. Add graphics and text overlays
 6. Export with platform-specific settings
 
-### Music Video:
+### Music Video
+
 1. Sync performance footage with master audio
 2. Multi-cam edit of multiple takes
 3. Cut to beat (marker-based editing)
@@ -4441,23 +4886,27 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-09: LUTs and Color Management
 
-### What is a LUT:
+### What is a LUT
+
 - Lookup Table: mathematically maps input colors to output colors
 - Types: 1D (tone curve), 3D (full color transform)
 - Formats: .cube, .3dl, .look, .mga, .csp
 
-### Using LUTs:
+### Using LUTs
+
 - **Premiere Pro**: Lumetri Color > Input LUT or Creative Look
 - **After Effects**: Apply Color LUT effect, or Lumetri Color
 
-### LUT Workflow:
+### LUT Workflow
+
 1. Shoot in Log or flat profile (maximize dynamic range)
 2. Apply technical LUT to convert Log → Rec.709 (for monitoring)
 3. Color correct/grade in correct color space
 4. Apply creative LUT for desired look (optional)
 5. Ensure output is in correct color space for delivery
 
-### Custom LUTs:
+### Custom LUTs
+
 - Create in DaVinci Resolve, Photoshop, or dedicated LUT tools
 - Export as .cube file
 - Import in Premiere Pro or After Effects
@@ -4467,13 +4916,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-10: HDR Workflow
 
-### HDR Formats:
+### HDR Formats
+
 - HDR10 (PQ, static metadata)
 - HDR10+ (PQ, dynamic metadata)
 - Dolby Vision (PQ, dynamic metadata)
 - HLG (Hybrid Log-Gamma, broadcast)
 
-### Setup:
+### Setup
+
 1. Shoot in HDR-capable format (Log, RAW, HLG)
 2. Set project color space to Rec. 2020 + PQ/HLG
 3. Edit in HDR sequence
@@ -4481,7 +4932,8 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 5. Lumetri Color handles HDR signals
 6. Export with HDR metadata
 
-### Requirements:
+### Requirements
+
 - HDR-capable camera footage
 - HDR-capable display (monitor or TV)
 - HDR-capable export format
@@ -4491,9 +4943,10 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## INT-11: Output Delivery Formats
 
-### Web / Streaming:
+### Web / Streaming
+
 | Platform | Format | Resolution | Bitrate |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | YouTube | H.264/H.265 | 1080p–8K | 10–100+ Mbps |
 | Vimeo | H.264 | 1080p–4K | 10–50 Mbps |
 | Facebook | H.264 | 1080p | 8–12 Mbps |
@@ -4501,25 +4954,28 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 | TikTok | H.264 | 1080×1920 (9:16) | 6–10 Mbps |
 | Twitter | H.264 | 1280×720 | 5–8 Mbps |
 
-### Broadcast:
+### Broadcast
+
 | Format | Codec | Resolution | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | HD Broadcast | ProRes 422 HQ | 1920×1080 | Apple ecosystem |
 | HD Broadcast | DNxHD 185 | 1920×1080 | Avid ecosystem |
 | 4K Broadcast | ProRes 4444 | 3840×2160 | Apple ecosystem |
 | 4K Broadcast | DNxHR HQX | 3840×2160 | Avid ecosystem |
 | IMF (Netflix) | JPEG2000 | Up to 4K | Interoperable Master Format |
 
-### Archive:
+### Archive
+
 | Format | Notes |
-|---|---|
+| --- | --- |
 | ProRes 4444 | Lossless quality, alpha support |
 | DNxHR 444 | Lossless quality, alpha support |
 | EXR Sequence | Multi-channel, lossless |
 | DPX Sequence | Film industry standard |
 | TIFF Sequence | High-quality still frames |
 
-### Social Media Export Presets (AME):
+### Social Media Export Presets (AME)
+
 - YouTube 1080p, 4K
 - Facebook 1080p
 - Twitter HD
@@ -4531,7 +4987,9 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ---
 
 # ═══════════════════════════════════════════════════════════════════
+
 # PART D: QUICK REFERENCE TABLES
+
 # ═══════════════════════════════════════════════════════════════════
 
 ---
@@ -4539,7 +4997,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-01: After Effects vs Premiere Pro Comparison
 
 | Feature | After Effects | Premiere Pro |
-|---|---|---|
+| --- | --- | --- |
 | **Primary Use** | Motion graphics, VFX, compositing | Video editing, assembly, finishing |
 | **Editing Model** | Layer-based, composition-centric | Track-based, timeline-centric |
 | **Timeline** | Per-composition (stacking layers) | Multi-track (parallel clips) |
@@ -4562,7 +5020,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-02: Codec Comparison
 
 | Codec | Quality | File Size | Edit Performance | Use Case |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | H.264 | Good | Small | Poor (editing) | Delivery, streaming |
 | H.265/HEVC | Better | Smaller | Very poor (editing) | Delivery, 4K/HDR |
 | ProRes 422 | Excellent | Large | Excellent (editing) | Editing intermediate |
@@ -4577,7 +5035,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-03: Common Frame Rates
 
 | Rate | Use Case |
-|---|---|
+| --- | --- |
 | 23.976 fps | Film look, cinematic (most common for narrative) |
 | 24 fps | True film rate (cinema projection) |
 | 25 fps | PAL broadcast (Europe, parts of Asia) |
@@ -4594,7 +5052,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-04: Resolution Standards
 
 | Name | Resolution | Pixels | Aspect Ratio |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | SD (NTSC) | 720×480 | 345,600 | 4:3 / 16:9 |
 | SD (PAL) | 720×576 | 414,720 | 4:3 / 16:9 |
 | 720p (HD) | 1280×720 | 921,600 | 16:9 |
@@ -4611,7 +5069,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-05: Audio Sample Rates
 
 | Rate | Use Case |
-|---|---|
+| --- | --- |
 | 8,000 Hz | Telephone |
 | 11,025 Hz | Low-quality voice |
 | 22,050 Hz | Medium quality |
@@ -4626,7 +5084,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-06: Audio Bit Depths
 
 | Bit Depth | Dynamic Range | Use Case |
-|---|---|---|
+| --- | --- | --- |
 | 8-bit | ~48 dB | Low quality, games |
 | 16-bit | ~96 dB | CD quality |
 | 24-bit | ~144 dB | Professional recording |
@@ -4637,7 +5095,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-07: Aspect Ratios
 
 | Ratio | Use |
-|---|---|
+| --- | --- |
 | 1:1 | Instagram posts, social media |
 | 4:3 | Legacy TV, some presentations |
 | 16:9 | Standard HD/UHD video |
@@ -4688,20 +5146,22 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 ## QR-10: File Size Calculator
 
-### Uncompressed Video (per second):
+### Uncompressed Video (per second)
+
 **Formula**: Width × Height × Bit Depth × Frame Rate × Channels / 8
 
 | Format | Bit Depth | Frame Rate | Per Second | Per Minute |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1080p | 8-bit | 24 fps | ~142 MB | ~8.5 GB |
 | 1080p | 10-bit | 24 fps | ~178 MB | ~10.7 GB |
 | 4K UHD | 8-bit | 24 fps | ~570 MB | ~34.2 GB |
 | 4K UHD | 10-bit | 24 fps | ~712 MB | ~42.7 GB |
 | 8K UHD | 10-bit | 24 fps | ~2.85 GB | ~171 GB |
 
-### Compressed (H.264 typical):
+### Compressed (H.264 typical)
+
 | Format | Bitrate | Per Minute |
-|---|---|---|
+| --- | --- | --- |
 | 1080p | 10 Mbps | ~75 MB |
 | 1080p | 50 Mbps | ~375 MB |
 | 4K UHD | 50 Mbps | ~375 MB |
@@ -4713,7 +5173,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-11: Keyboard Shortcut Comparison (AE vs PP)
 
 | Action | After Effects | Premiere Pro |
-|---|---|---|
+| --- | --- | --- |
 | New Comp/Sequence | Ctrl+N | Ctrl+N |
 | Import | Ctrl+I | Ctrl+I |
 | Save | Ctrl+S | Ctrl+S |
@@ -4740,7 +5200,7 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ## QR-12: Troubleshooting Quick Reference
 
 | Issue | After Effects Fix | Premiere Pro Fix |
-|---|---|---|
+| --- | --- | --- |
 | Slow playback | Lower resolution, purge cache, MFR | Lower resolution, proxy, render previews |
 | Missing media | File > Dependencies > Find Missing | Right-click > Link Media |
 | Crashing | Update GPU drivers, reset prefs | Update GPU drivers, reset prefs |
@@ -4756,12 +5216,15 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 ---
 
 # ═══════════════════════════════════════════════════════════════════
+
 # END OF DOCUMENT
+
 # ═══════════════════════════════════════════════════════════════════
 
 ---
 
 **Document Summary:**
+
 - **Part A**: After Effects (Sections AE-01 through AE-48) — Complete interface, menus, tools, effects, expressions, 3D, tracking, roto, keying, rendering, scripting, keyboard shortcuts, troubleshooting
 - **Part B**: Premiere Pro (Sections PP-01 through PP-51) — Complete interface, menus, tools, effects, transitions, audio, color, multi-cam, captions, export, keyboard shortcuts, troubleshooting
 - **Part C**: Integration Workflows (Sections INT-01 through INT-11) — Roundtrip, Photoshop, Illustrator, Audition, Media Encoder, Frame.io, Team Projects, professional workflows, LUTs, HDR, delivery
@@ -4769,4 +5232,5 @@ Adobe Premiere Pro is a professional non-linear video editing application and th
 
 **Total Sections: ~160**
 **Total Lines: ~2,500+ (maximum single response capacity)**
-```
+
+```text

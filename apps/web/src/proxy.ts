@@ -9,11 +9,9 @@
  *  - Landing page, docs, changelog stay statically rendered with the
  *    broader CSP defined in next.config.ts headers().
  *
- * The nonce allows us to drop `'unsafe-inline'` from `script-src` for the
- * editor — the most security-sensitive surface (AI content, user media,
- * plugins). Inline styles stay `'unsafe-inline'` because the editor sets
- * thousands of inline styles (transforms, gradients) that can't be
- * nonced without a full style pipeline rewrite.
+ * Development keeps `'unsafe-inline'` because Next dev/HMR emits inline
+ * bootstrap snippets without the request nonce. Production keeps the nonce
+ * path for framework scripts.
  *
  * Next.js auto-attaches the nonce to framework scripts, page bundles,
  * and inline scripts during SSR when it sees `nonce-{value}` in the CSP
@@ -39,9 +37,8 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 		"default-src": ["'self'"],
 		"script-src": [
 			"'self'",
-			`'nonce-${nonce}'`,
+			...(isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : [`'nonce-${nonce}'`]),
 			"'wasm-unsafe-eval'",
-			...(isDev ? ["'unsafe-eval'"] : []),
 			// Domain allowlist (no 'strict-dynamic' so these are honored):
 			// third-party scripts from these origins run without a nonce.
 			// Next.js framework scripts + inline scripts get the nonce
@@ -68,7 +65,12 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 			"https://drive.usercontent.google.com",
 		],
 		"font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
-		"media-src": ["'self'", "blob:", "data:", "https://drive.usercontent.google.com"],
+		"media-src": [
+			"'self'",
+			"blob:",
+			"data:",
+			"https://drive.usercontent.google.com",
+		],
 		"connect-src": [
 			"'self'",
 			"blob:",
@@ -97,7 +99,11 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 			"https://api.puter.com",
 			"https://*.puter.com",
 		],
-		"frame-src": ["'self'", "https://drive.google.com", "https://accounts.google.com"],
+		"frame-src": [
+			"'self'",
+			"https://drive.google.com",
+			"https://accounts.google.com",
+		],
 		"worker-src": ["'self'", "blob:"],
 		"frame-ancestors": ["'none'"],
 		"object-src": ["'none'"],
@@ -129,7 +135,10 @@ export function proxy(request: NextRequest) {
 	// Also set CSP on the response so the browser enforces it.
 	response.headers.set("Content-Security-Policy", csp);
 	// Preserve the other security headers from next.config.ts headers().
-	response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+	response.headers.set(
+		"Strict-Transport-Security",
+		"max-age=63072000; includeSubDomains; preload",
+	);
 	response.headers.set("X-Frame-Options", "DENY");
 	response.headers.set("X-Content-Type-Options", "nosniff");
 	response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -137,7 +146,10 @@ export function proxy(request: NextRequest) {
 		"Permissions-Policy",
 		"camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
 	);
-	response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+	response.headers.set(
+		"Cross-Origin-Opener-Policy",
+		"same-origin-allow-popups",
+	);
 	response.headers.set("X-DNS-Prefetch-Control", "off");
 
 	return response;

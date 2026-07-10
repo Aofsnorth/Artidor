@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import {
 	WHATS_NEW,
@@ -55,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the cleanup of untracked files", () => {
+	test("the newest entry is the harness docs guard", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-13-abstract-3d-bg",
+			"2026-07-13-harness-link-guard",
 		);
 	});
 });
