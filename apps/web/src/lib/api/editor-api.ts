@@ -85,6 +85,10 @@ declare global {
 			 * preset flows.
 			 */
 			insertMockVideo: (opts?: { durationSeconds?: number }) => string;
+			insertMockVideos: (
+				count: number,
+				opts?: { durationSeconds?: number },
+			) => void;
 			/**
 			 * Test-only: open the "Save to preset" dialog with the
 			 * given elements. The right-click context menu's "Save

@@ -1,6 +1,7 @@
 # Grid Template Card Placement
 
 ## Original user request
+
 Create a feature workflow for `features/grid-template-card-placement`.
 
 Feature name: Grid Template Card Placement.
@@ -10,12 +11,15 @@ Feature goal: Add a cleaner grid template/card placement system for the editor t
 Important: use the reference repo only as design/behavior inspiration. Do not blindly copy code. If code is referenced, check license and attribution requirements first.
 
 ## Interpreted feature goal
+
 Improve the editor template/card browsing layout so template cards align in a responsive, organized, premium grid without changing existing template behavior or unrelated editor systems.
 
 ## User story
+
 As a user browsing templates/cards in the editor, I want cards arranged in a cleaner grid/template layout, so template browsing feels more organized, premium, and easier to scan.
 
 ## Acceptance criteria
+
 - Template/card placement is cleaner and more consistent.
 - Cards align in a responsive grid.
 - Card spacing, width, height, and preview placement feel intentional.
@@ -30,6 +34,7 @@ As a user browsing templates/cards in the editor, I want cards arranged in a cle
 - No new dependencies are added unless justified and approved.
 
 ## Non-goals
+
 - Do not clone FlashCut UI 1:1.
 - Do not copy large code sections.
 - Do not implement a full template editor rewrite.
@@ -37,6 +42,7 @@ As a user browsing templates/cards in the editor, I want cards arranged in a cle
 - Do not touch auth, API keys, database, AI tools, export/render pipeline, Rust/WASM, WebGPU/WGSL, payment, or sponsor code.
 
 ## Edge cases
+
 - Very narrow asset panel widths.
 - Long template labels.
 - Missing preview images/assets.
@@ -47,6 +53,7 @@ As a user browsing templates/cards in the editor, I want cards arranged in a cle
 - Desktop window resized while panel is open.
 
 ## Definition of Done
+
 - `FEATURE.MD` and `PLAN.MD` reviewed/approved.
 - Current template card layout audited.
 - FlashCut behavior audited for inspiration only.
@@ -58,6 +65,7 @@ As a user browsing templates/cards in the editor, I want cards arranged in a cle
 - `STATE.MD` updated after approval/verification.
 
 ## Questions for review
+
 - Should template card aspect ratio stay current or become fixed per card type?
 - Should card size follow the existing asset-card-size setting?
 - Is masonry acceptable if FlashCut uses it, or should this remain strict CSS grid?

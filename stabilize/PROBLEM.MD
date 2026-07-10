@@ -62,6 +62,7 @@
 > Rules: do not edit source code yet, do not implement fixes yet, do not update `STATE.MD` yet. First, inspect the related files. Rewrite this problem into `PROBLEM.MD` using the required structure. Add this action to `MAINTENANCE.MD` as a log entry. Update `TODO.MD` with the audit task. After updating `PROBLEM.MD`, stop and ask me to review your understanding. Do not continue until I say "OK".
 >
 > Focus areas for the audit:
+>
 > 1. How the "What's New" notification is triggered.
 > 2. How changelog/feed data is loaded.
 > 3. Whether the notification can show incorrectly.
@@ -147,7 +148,7 @@ Pengguna menginginkan **audit read-only** dari permukaan "What's New" / changelo
 
 #### 8. Pertanyaan untuk Review
 
-* **Q1. Batas ruang lingkup.** File adjacent yang terdaftar di §6 adalah minimum yang diperlukan untuk menginterpretasikan dua file in-scope. Apakah Anda ingin audit juga membuka konfigurasi `content-collections` dan file `entries/*.md`, atau tetap fokus pada dua file? 
+* **Q1. Batas ruang lingkup.** File adjacent yang terdaftar di §6 adalah minimum yang diperlukan untuk menginterpretasikan dua file in-scope. Apakah Anda ingin audit juga membuka konfigurasi `content-collections` dan file `entries/*.md`, atau tetap fokus pada dua file?
 * **Answer = Iya**
 * **Q2. Skema severity.** Label yang diusulkan adalah `critical | bug | risk | note`. Apakah Anda ingin skema berbeda (mis. `P0/P1/P2`)?
 * **Answer = Iya**
@@ -172,11 +173,13 @@ Pengguna menginginkan **audit read-only** dari permukaan "What's New" / changelo
 > Pada modal "What's New", konten bisa di-scroll/geser ke kanan secara horizontal. Seharusnya modal hanya boleh scroll ke bawah secara vertikal, bukan ke samping.
 >
 > File terkait:
+>
 > * `apps/web/src/app/changelog/page.tsx`
 > * `apps/web/src/lib/whats-new/feed.ts`
 > * komponen/modal "What's New" jika ada file terkait lain
 >
 > Expected behavior:
+>
 > * Modal "What's New" tidak memiliki horizontal scroll.
 > * Konten teks harus wrap sesuai lebar modal.
 > * Konten panjang hanya boleh scroll vertikal.
@@ -408,6 +411,7 @@ _(akan diisi saat problem dimulai — kandidat: apakah akan menghapus komponen s
 > `Style property values shouldn't contain a semicolon.`
 >
 > Next.js menunjuk ke file:
+>
 > * `apps/web/src/components/editor/panels/assets/views/overlays.tsx`
 > * error terjadi saat render `<OverlayItem key={preset.id} preset={preset} />`
 > * sekitar line 546–547
@@ -416,6 +420,7 @@ _(akan diisi saat problem dimulai — kandidat: apakah akan menghapus komponen s
 > Ada inline style/CSS value pada preset overlay yang memasukkan value seperti `background: radial-gradient(...);` ke dalam property React style, padahal React style value seharusnya hanya `radial-gradient(...)` tanpa `background:` dan tanpa semicolon.
 >
 > Expected behavior:
+>
 > * Tab `Overlays` tidak memunculkan console error.
 > * Semua overlay preset tetap tampil normal.
 > * Background/preview overlay tetap terlihat sesuai desain.
@@ -423,6 +428,7 @@ _(akan diisi saat problem dimulai — kandidat: apakah akan menghapus komponen s
 > * Fix harus kecil dan hanya menyentuh file terkait overlay jika memungkinkan.
 >
 > Ikuti rules di folder `stabilize/`. Jangan edit source code dulu. Tulis ulang problem ini ke `stabilize/PROBLEM.MD` lengkap dengan:
+>
 > * interpreted problem
 > * acceptance criteria
 > * actionable tasks
@@ -987,6 +993,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 **Build & typecheck:** ✅ Lulus — `bun run build:web` berhasil (Next.js 16.1.3 Turbopack), `bunx tsc --noEmit` bersih.
 
 **Lint:** 4 warning pre-existing (bukan error):
+
 - `procedural-preview.ts:127` — non-null assertion
 - `overlays.tsx:596` — unused `getOverlayPhotoUrl`
 - `stickers.tsx:460` — unused `photoUrl`
@@ -997,7 +1004,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 **Runtime console (seluruh halaman yang diuji):**
 
 | Halaman/Panel | Error | Warning | Catatan |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Home (`/`) | 0 | 0 | Bersih |
 | Projects (`/projects`) | 2× Databuddy 402 | 0 | External analytics |
 | Editor (default) | 2× Databuddy 402 | 2 (powerPreference, LCP image) | WebGPU + Next.js image |
@@ -1099,7 +1106,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 #### 6. Rekomendasi Urutan Fix
 
 | Prioritas | Problem | Kompleksitas | Area Sensitif |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | 4.1 — Fisheye WGSL shader | Medium | ⚠️ Rust/WASM + WebGPU |
 | 2 | 4.2 — Freesound API 500 error handling | Low | Tidak ada |
 | 3 | 4.3 — Databuddy 402 cleanup | Low | Tidak ada |
@@ -1150,6 +1157,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 > Di video preview, kontrol kanan atas seperti `Fit`, `16:9`, fullscreen/icon, dan menu `...` saat ini muncul ketika mouse hover ke area preview video secara umum.
 >
 > Expected behavior:
+>
 > * Kontrol tersebut hanya muncul ketika user hover ke area/hotspot kontrol kanan atas saja.
 > * Hover di area tengah/kiri/bagian utama preview tidak boleh memunculkan kontrol kanan atas.
 > * Kontrol tetap mudah diakses saat user mengarah ke area kanan atas preview.
@@ -1160,6 +1168,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 > Di panel Inspector, ada deretan card/tab seperti `Info`, `Transform`, `Audio`, `Speed`, dan tab lain jika ada.
 >
 > Masalah:
+>
 > * Deretan tab/card ini bisa overflow dan tidak nyaman diakses.
 > * Aku ingin seluruh row card/tab bisa discroll ke kanan dan kiri.
 > * Scroll harus horizontal saat mouse hover di area row tersebut.
@@ -1169,6 +1178,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 > * Tidak boleh ada distraksi scroll ke bawah saat fokusnya memang di row tab/card tersebut.
 >
 > Expected behavior:
+>
 > * Inspector tab/card row bisa horizontal scroll dengan mouse wheel biasa.
 > * Scroll horizontal hanya aktif saat pointer hover di row tab/card.
 > * Tidak menyebabkan page/panel vertical scroll yang mengganggu.
@@ -1185,6 +1195,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 #### 3. Acceptance Criteria
 
 **Issue A:**
+
 1. Kontrol kanan atas (Fit, 16:9, fullscreen, menu) hanya muncul saat hover ke area kontrol itu sendiri, bukan seluruh preview area.
 2. Hover di area tengah/kiri preview tidak memunculkan kontrol.
 3. Kontrol tetap mudah diakses dan clickable saat terlihat.
@@ -1192,6 +1203,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 5. Keyboard accessibility tetap berfungsi (focus-within masih menunjukkan kontrol).
 
 **Issue B:**
+
 1. Inspector tab row bisa di-scroll horizontal dengan mouse wheel biasa (tanpa Shift).
 2. Scroll horizontal hanya aktif saat pointer hover di tab row.
 3. Vertical scroll panel di bawah tab row tidak terganggu saat pointer tidak di tab row.
@@ -1202,12 +1214,14 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 #### 4. Actionable Tasks
 
 **Issue A:**
+
 1. Baca `apps/web/src/components/editor/panels/preview/index.tsx` line 355-400 untuk memahami struktur kontrol dan group-hover behavior.
 2. Ubah trigger hover dari `group-hover` (parent preview container) menjadi hover pada kontrol container itu sendiri.
 3. Pastikan `group-focus-within` tetap berfungsi untuk keyboard accessibility.
 4. Test: hover di area tengah preview → kontrol tidak muncul. Hover di area kanan atas → kontrol muncul.
 
 **Issue B:**
+
 1. Baca `apps/web/src/components/editor/panels/properties/index.tsx` line 155-200 untuk memahami struktur tab row.
 2. Tambahkan `onWheel` handler pada tab row container yang mengkonversi `deltaY` menjadi `scrollLeft`.
 3. Pastikan `preventDefault()` dipanggil pada wheel event saat pointer di tab row agar tidak propagate ke parent scroll.
@@ -1227,9 +1241,11 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 #### 6. File yang Kemungkinan Terlibat
 
 **Issue A:**
+
 * `apps/web/src/components/editor/panels/preview/index.tsx` — line 362 (`group-hover:opacity-100` pada kontrol container).
 
 **Issue B:**
+
 * `apps/web/src/components/editor/panels/properties/index.tsx` — line 159 (tab row container dengan `overflow-x-auto`).
 
 #### 7. Risiko
@@ -1256,6 +1272,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 > Di mobile view halaman home Artidor, tampilan chat AI / AI Edit mockup terpotong di sisi kanan. Dari screenshot mobile, card/chat panel terlihat terlalu lebar atau tidak mengikuti lebar viewport, sehingga konten melewati batas layar kanan.
 >
 > Expected behavior:
+>
 > * Tampilan AI chat / AI Edit mockup di home harus responsive di mobile.
 > * Tidak boleh ada konten yang kepotong di sisi kanan.
 > * Card utama harus mengikuti lebar viewport mobile.
@@ -1265,6 +1282,7 @@ Pengguna meminta audit komprehensif seluruh aplikasi Artidor untuk mengidentifik
 > * Navbar mobile dan tombol "What's New" tetap rapi.
 >
 > Area yang perlu diaudit:
+>
 > * home/landing page
 > * AI Edit hero/mockup component
 > * chat bubble component
@@ -1349,6 +1367,7 @@ Di halaman home (`/`), section AI Co-Pilot showcase (`apps/web/src/components/la
 > Tab `Transitions`, `Motion`, dan `Templates` terasa agak berat/lag saat dibuka, dipindah, atau digunakan di editor.
 >
 > Masalah yang ingin diaudit:
+>
 > * Apakah tab tersebut melakukan render terlalu banyak item sekaligus.
 > * Apakah preview/card di tab tersebut terlalu berat.
 > * Apakah ada map/filter/sort berat yang jalan setiap render.
@@ -1360,6 +1379,7 @@ Di halaman home (`/`), section AI Co-Pilot showcase (`apps/web/src/components/la
 > * Apakah perlu lazy loading, memoization, virtualization, atau deferred rendering.
 >
 > Expected behavior:
+>
 > * Switching ke tab `Transitions`, `Motion`, dan `Templates` terasa lebih ringan.
 > * Scroll di dalam tab tetap smooth.
 > * Hover/click card tidak menyebabkan lag.
@@ -1374,11 +1394,13 @@ Di halaman home (`/`), section AI Co-Pilot showcase (`apps/web/src/components/la
 Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di assets panel editor terasa berat/lag saat dibuka atau digunakan. Audit source awal read-only menemukan beberapa potensi penyebab:
 
 **Volume data:**
+
 - `transitions.ts` — 1401 baris (banyak preset definitions)
 - `templates.ts` — **4996 baris** (sangat besar, banyak template definitions)
 - `motion.ts` — 1882 baris (banyak motion preset definitions)
 
 **Pattern yang ditemukan:**
+
 - Semua preset di-import dan di-load upfront saat module di-parse (tidak ada lazy loading).
 - Setiap item component (`TransitionItem`, `TemplateItem`, `AnimationItem`) memanggil hooks seperti `useEditor()`, `useTransitions()`, atau `useAnimationPresets()` yang bisa trigger re-render saat editor state berubah.
 - Tidak ada virtualization — semua item di-render sekaligus dalam grid `auto-fill`.
@@ -1387,6 +1409,7 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 - Grid layout dengan `auto-fill` dan `minmax()` bisa menyebabkan layout recalculation saat scroll.
 
 **Yang sudah baik:**
+
 - `useMemo` digunakan untuk list transitions/templates/animations dan filtered results.
 - Category filtering menggunakan `filterByCategory` yang sudah memoized.
 - Tidak ada `setInterval` atau `requestAnimationFrame` di tab views.
@@ -1427,21 +1450,25 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 #### 6. File yang Kemungkinan Terlibat
 
 **Tab views (UI components):**
+
 - `apps/web/src/components/editor/panels/assets/views/transitions.tsx` (287 lines)
 - `apps/web/src/components/editor/panels/assets/views/animations.tsx` (354 lines)
 - `apps/web/src/components/editor/panels/assets/views/templates.tsx` (243 lines)
 
 **Preset data:**
+
 - `apps/web/src/lib/presets/transitions.ts` (1401 lines)
 - `apps/web/src/lib/presets/motion.ts` (1882 lines)
 - `apps/web/src/lib/presets/templates.ts` (4996 lines)
 
 **Shared components:**
+
 - `apps/web/src/components/editor/panels/assets/views/category-bar.tsx`
 - `apps/web/src/components/editor/panels/assets/views/base-panel.tsx`
 - `apps/web/src/components/editor/panels/assets/views/components/procedural-preview.tsx`
 
 **Hooks:**
+
 - `apps/web/src/hooks/use-transitions.ts`
 - `apps/web/src/hooks/use-animation-presets.ts`
 - `apps/web/src/hooks/use-editor.ts`
@@ -1469,7 +1496,7 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 **Tab switch times + DOM node counts (measured 2026-06-20 12:48):**
 
 | Tab | Switch Time | Grid Items | Cards | Scroll Nodes | Rating |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | Overlays | **1481ms** | 373 | 351 | 6,035 | 🔴 Very Slow |
 | Effects | **1291ms** | 322 | 300 | 4,589 | 🔴 Very Slow |
 | Text | **853ms** | 203 | 181 | 3,639 | 🟠 Slow |
@@ -1494,7 +1521,7 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 **Rekomendasi fix (dari yang paling aman dan berdampak):**
 
 | # | Fix | Effort | Impact | Risk |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | 1 | **React.memo pada item components** — wrap `TransitionItem`, `AnimationItem`, `TemplateItem`, `EffectItem`, `OverlayItem` dengan `React.memo()` | Low | High — mencegah re-render saat parent re-renders tanpa prop change | Very Low |
 | 2 | **Move hooks out of item components** — `useEditor()` dipanggil di parent, pass down sebagai prop. Item component jadi pure. | Medium | High — menghilangkan re-render cascade | Low |
 | 3 | **Cache procedural previews** — `getPaletteForId()` dan `hashString()` results di-cache di module-level Map | Low | Medium — mengurangi computation per render | Very Low |
@@ -1503,6 +1530,7 @@ Pengguna melaporkan bahwa tab Transitions, Motion (Animations), dan Templates di
 | 6 | **Lazy load preset data** — dynamic import preset files saat tab pertama kali dibuka | Medium | Medium — mengurangi initial parse time | Medium |
 
 **Prioritas untuk Motion tab (Q4 answer):**
+
 1. React.memo pada `AnimationItem` (fix #1)
 2. Cache `getPaletteForId()` results (fix #3)
 3. Lazy render — jangan render Motion content saat tab tidak aktif (fix #4)

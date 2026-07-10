@@ -72,6 +72,7 @@ export const ANIMATION_PROPERTY_PATHS = [
 ```
 
 **Notes:**
+
 - `getValue` must return the effective value including any defaults — this is what gets recorded when a keyframe is added.
 - `setValue` receives `AnimationValue` (`number | string | boolean`). Cast to the correct type since `coerceAnimationValueForProperty` already validated it upstream.
 - For color properties, use `valueKind: "color"` and cast `value as string`.

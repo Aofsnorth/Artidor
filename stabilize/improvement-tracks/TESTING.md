@@ -13,7 +13,7 @@
 Per scan `find apps/web/src -name "*.test.*" -o -name "*.spec.*"`:
 
 | Area | Lokasi | File |
-|---|---|---|
+| --- | --- | --- |
 | Animation | `apps/web/src/lib/animation/__tests__/` | ada |
 | Graphics | `apps/web/src/lib/graphics/__tests__/` | ada |
 | Masks | `apps/web/src/lib/masks/__tests__/` | ada |
@@ -43,7 +43,7 @@ Per scan `find apps/web/src -name "*.test.*" -o -name "*.spec.*"`:
 ## Coverage Minimum per Area
 
 | Area | Target % | Justifikasi |
-|---|---|---|
+| --- | --- | --- |
 | `lib/time/` (Rust, 120k ticks) | 90 | Math error = silent data loss |
 | `lib/wasm/` (Rust bridge) | 80 | Public API, regression = compile fail |
 | `lib/fps/` | 90 | Frame conversion, similar to time |
@@ -290,7 +290,7 @@ test("user can import media and add to timeline", async ({ page }) => {
 Pilih salah satu:
 
 | Tool | Pro | Kontra |
-|---|---|---|
+| --- | --- | --- |
 | **`bun test --coverage`** (built-in) | Zero setup, integrated | Limited report format |
 | **`c8`** | Istanbul-compatible, V8 native | Extra dep |
 | **`vitest --coverage`** | Powerful UI | Bun sudah ada native |

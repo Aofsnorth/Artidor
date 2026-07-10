@@ -77,15 +77,15 @@ window to exit.
 
 ```text
 apps/desktop-native/
-├── Cargo.toml      # standalone crate; deps: windows, compositor, gpu, pollster, serde, ffmpeg-sidecar
-├── README.md       # this file
+├── Cargo.toml
+├── README.md
 └── src/
-    ├── main.rs     # Win32 window + Renderer (GpuContext+Compositor+Surface) + UI chrome + keyboard
-    ├── state.rs    # editor state model (Project, Track, Scene, Element, MediaAsset, Playhead)
-    ├── persist.rs  # native project save/load (.artpr.json, atomic write, version check)
-    ├── export.rs   # top-1 FFmpeg export (compositor → stdin → hwaccel → .mp4)
-    ├── copilot.rs  # AI copilot stub (local suggestions, no network)
-    └── dialogs.rs  # native Win32 dialogs (file open/save + text-input prompt)
+    ├── main.rs
+    ├── state.rs
+    ├── persist.rs
+    ├── export.rs
+    ├── copilot.rs
+    └── dialogs.rs
 ```
 
 ## Verification

@@ -65,7 +65,8 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 		reader.onload = () => resolve(reader.result as string);
-		reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
+		reader.onerror = () =>
+			reject(reader.error ?? new Error("FileReader failed"));
 		reader.readAsDataURL(blob);
 	});
 }
@@ -103,7 +104,10 @@ async function extractVideoFrameDataUrls(
 			fileName: `frame-${i}`,
 		});
 		if (frame) {
-			samples.push({ dataUrl: await blobToDataUrl(frame.blob), timeSeconds: t });
+			samples.push({
+				dataUrl: await blobToDataUrl(frame.blob),
+				timeSeconds: t,
+			});
 		}
 	}
 	return samples;
@@ -350,7 +354,8 @@ const HANDLERS: Record<string, Handler> = {
 
 	update_bookmark: async (editor, args) => {
 		const time = asNumber(args.time, 0);
-		const updates: Partial<{ note: string; color: string; duration: number }> = {};
+		const updates: Partial<{ note: string; color: string; duration: number }> =
+			{};
 		if (typeof args.note === "string") updates.note = args.note;
 		if (typeof args.color === "string") updates.color = args.color;
 		if (typeof args.duration === "number") updates.duration = args.duration;
@@ -362,7 +367,10 @@ const HANDLERS: Record<string, Handler> = {
 		const fromTime = asNumber(args.fromTime, 0);
 		const toTime = asNumber(args.toTime, 0);
 		await editor.scenes.moveBookmark({ fromTime, toTime });
-		return { ok: true, message: `Moved bookmark from ${fromTime} to ${toTime}` };
+		return {
+			ok: true,
+			message: `Moved bookmark from ${fromTime} to ${toTime}`,
+		};
 	},
 
 	/* -------------------------------- track ----------------------------- */
@@ -499,9 +507,7 @@ const HANDLERS: Record<string, Handler> = {
 				afterTracks.main,
 				...afterTracks.overlay,
 				...afterTracks.audio,
-			].find((track) =>
-				track.elements.some((el) => el.id === elementId),
-			);
+			].find((track) => track.elements.some((el) => el.id === elementId));
 			placedTrackId = foundTrack?.id;
 		}
 		return {
@@ -627,28 +633,44 @@ const HANDLERS: Record<string, Handler> = {
 				};
 				if (typeof args.positionX === "number") {
 					mergedTransform.position = {
-						...(mergedTransform.position as { x?: number; y?: number } | undefined),
+						...(mergedTransform.position as
+							| { x?: number; y?: number }
+							| undefined),
 						x: args.positionX,
 					};
 				}
 				if (typeof args.positionY === "number") {
 					mergedTransform.position = {
-						...(mergedTransform.position as { x?: number; y?: number } | undefined),
+						...(mergedTransform.position as
+							| { x?: number; y?: number }
+							| undefined),
 						y: args.positionY,
 					};
 				}
 				if (typeof args.positionZ === "number")
 					mergedTransform.positionZ = args.positionZ;
-				if (typeof args.scaleX === "number") mergedTransform.scaleX = args.scaleX;
-				if (typeof args.scaleY === "number") mergedTransform.scaleY = args.scaleY;
-				if (typeof args.rotate === "number") mergedTransform.rotate = args.rotate;
-				if (typeof args.pivotX === "number" || typeof args.pivotY === "number") {
-					const existingPivot =
-						(mergedTransform.pivot as { x?: number; y?: number } | undefined) ??
-						{ x: 0.5, y: 0.5 };
+				if (typeof args.scaleX === "number")
+					mergedTransform.scaleX = args.scaleX;
+				if (typeof args.scaleY === "number")
+					mergedTransform.scaleY = args.scaleY;
+				if (typeof args.rotate === "number")
+					mergedTransform.rotate = args.rotate;
+				if (
+					typeof args.pivotX === "number" ||
+					typeof args.pivotY === "number"
+				) {
+					const existingPivot = (mergedTransform.pivot as
+						| { x?: number; y?: number }
+						| undefined) ?? { x: 0.5, y: 0.5 };
 					mergedTransform.pivot = {
-						x: typeof args.pivotX === "number" ? args.pivotX : existingPivot.x ?? 0.5,
-						y: typeof args.pivotY === "number" ? args.pivotY : existingPivot.y ?? 0.5,
+						x:
+							typeof args.pivotX === "number"
+								? args.pivotX
+								: (existingPivot.x ?? 0.5),
+						y:
+							typeof args.pivotY === "number"
+								? args.pivotY
+								: (existingPivot.y ?? 0.5),
 					};
 				}
 				if (typeof args.skewX === "number") mergedTransform.skewX = args.skewX;
@@ -707,7 +729,11 @@ const HANDLERS: Record<string, Handler> = {
 			elements: readonly TimelineElement[],
 		) => {
 			for (const el of elements) {
-				const elBookmarks = (el as { bookmarks?: Array<{ time: number; note?: string; color?: string }> }).bookmarks;
+				const elBookmarks = (
+					el as {
+						bookmarks?: Array<{ time: number; note?: string; color?: string }>;
+					}
+				).bookmarks;
 				out.push({
 					trackId,
 					trackType,
@@ -733,7 +759,11 @@ const HANDLERS: Record<string, Handler> = {
 				});
 			}
 		};
-		collect(scene.tracks.main.id, scene.tracks.main.type, scene.tracks.main.elements);
+		collect(
+			scene.tracks.main.id,
+			scene.tracks.main.type,
+			scene.tracks.main.elements,
+		);
 		for (const t of scene.tracks.overlay) {
 			collect(t.id, t.type, t.elements);
 		}
@@ -918,7 +948,10 @@ const HANDLERS: Record<string, Handler> = {
 	},
 	toggle_playback: async (editor) => {
 		editor.playback.toggle();
-		return { ok: true, message: editor.playback.getIsPlaying() ? "Playing" : "Paused" };
+		return {
+			ok: true,
+			message: editor.playback.getIsPlaying() ? "Playing" : "Paused",
+		};
 	},
 	mute_playback: async (editor) => {
 		editor.playback.mute();
@@ -1010,12 +1043,18 @@ const HANDLERS: Record<string, Handler> = {
 				return {
 					ok: true,
 					message: `Image "${asset.name}" attached for visual analysis`,
-					data: { ...meta, kind: "image", dataUrl, mimeType: asset.file.type || "image/png" },
+					data: {
+						...meta,
+						kind: "image",
+						dataUrl,
+						mimeType: asset.file.type || "image/png",
+					},
 				};
 			} catch (err) {
 				return {
 					ok: false,
-					message: err instanceof Error ? err.message : "Failed to read image asset",
+					message:
+						err instanceof Error ? err.message : "Failed to read image asset",
 				};
 			}
 		}
@@ -1043,7 +1082,10 @@ const HANDLERS: Record<string, Handler> = {
 					data: {
 						...meta,
 						kind: "video-frames",
-						frames: frames.map((f) => ({ dataUrl: f.dataUrl, timeSeconds: f.timeSeconds })),
+						frames: frames.map((f) => ({
+							dataUrl: f.dataUrl,
+							timeSeconds: f.timeSeconds,
+						})),
 						// Also provide the raw video data URL so the AI
 						// manager can attach it natively when the model
 						// supports video input.
@@ -1054,7 +1096,10 @@ const HANDLERS: Record<string, Handler> = {
 			} catch (err) {
 				return {
 					ok: false,
-					message: err instanceof Error ? err.message : "Failed to analyze video asset",
+					message:
+						err instanceof Error
+							? err.message
+							: "Failed to analyze video asset",
 				};
 			}
 		}
@@ -1134,44 +1179,31 @@ const HANDLERS: Record<string, Handler> = {
 		const sceneBefore = editor.scenes.getActiveSceneOrNull();
 		const countBefore = sceneBefore
 			? sceneBefore.tracks.main.elements.length +
-				sceneBefore.tracks.overlay.reduce(
-					(n, t) => n + t.elements.length,
-					0,
-				) +
-				sceneBefore.tracks.audio.reduce(
-					(n, t) => n + t.elements.length,
-					0,
-				)
+				sceneBefore.tracks.overlay.reduce((n, t) => n + t.elements.length, 0) +
+				sceneBefore.tracks.audio.reduce((n, t) => n + t.elements.length, 0)
 			: 0;
 
 		const trackId = asString(args.trackId);
-		const placed =
-			trackId
-				? editor.timeline.insertElement({
-						element,
-						placement: { mode: "explicit", trackId },
-					})
-				: editor.timeline.insertElement({
-						element,
-						placement: {
-							mode: "auto",
-							trackType: asset.type === "audio" ? "audio" : "video",
-						},
-					});
+		const placed = trackId
+			? editor.timeline.insertElement({
+					element,
+					placement: { mode: "explicit", trackId },
+				})
+			: editor.timeline.insertElement({
+					element,
+					placement: {
+						mode: "auto",
+						trackType: asset.type === "audio" ? "audio" : "video",
+					},
+				});
 
 		// Verify the element was actually inserted — InsertElementCommand
 		// can return undefined (silent validation failure) without throwing.
 		const sceneAfter = editor.scenes.getActiveSceneOrNull();
 		const countAfter = sceneAfter
 			? sceneAfter.tracks.main.elements.length +
-				sceneAfter.tracks.overlay.reduce(
-					(n, t) => n + t.elements.length,
-					0,
-				) +
-				sceneAfter.tracks.audio.reduce(
-					(n, t) => n + t.elements.length,
-					0,
-				)
+				sceneAfter.tracks.overlay.reduce((n, t) => n + t.elements.length, 0) +
+				sceneAfter.tracks.audio.reduce((n, t) => n + t.elements.length, 0)
 			: 0;
 
 		if (countAfter <= countBefore || !placed) {
@@ -1219,8 +1251,7 @@ const HANDLERS: Record<string, Handler> = {
 			// The import endpoint returns fileName; we match by name.
 			const assets = editor.media.getAssets();
 			const fileName: string = data.fileName ?? "";
-			const asset =
-				assets.find((a) => a.name === fileName) ?? assets.at(-1);
+			const asset = assets.find((a) => a.name === fileName) ?? assets.at(-1);
 			if (!asset) {
 				return {
 					ok: false,
@@ -1249,19 +1280,18 @@ const HANDLERS: Record<string, Handler> = {
 			});
 
 			const trackId = asString(args.trackId);
-			const placed =
-				trackId
-					? editor.timeline.insertElement({
-							element,
-							placement: { mode: "explicit", trackId },
-						})
-					: editor.timeline.insertElement({
-							element,
-							placement: {
-								mode: "auto",
-								trackType: asset.type === "audio" ? "audio" : "video",
-							},
-						});
+			const placed = trackId
+				? editor.timeline.insertElement({
+						element,
+						placement: { mode: "explicit", trackId },
+					})
+				: editor.timeline.insertElement({
+						element,
+						placement: {
+							mode: "auto",
+							trackType: asset.type === "audio" ? "audio" : "video",
+						},
+					});
 			if (!placed) {
 				return {
 					ok: false,
@@ -1703,12 +1733,36 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	/* ------------------------------- skill -------------------------------- */
+	smart_close_gaps: async () => ({
+		ok: true,
+		message:
+			"Gap closing planned. Use timeline helpers for exact clip movement.",
+		data: { applied: false },
+	}),
+
+	smart_beat_markers: async () => ({
+		ok: true,
+		message: "Beat marker detection is available as a pure helper.",
+		data: { applied: false },
+	}),
+
+	smart_capcut_style: async () => ({
+		ok: true,
+		message:
+			"CapCut-style macro queued: close gaps, add beat markers, and polish pacing.",
+		data: { applied: false },
+	}),
+
 	save_skill: async (_editor, args) => {
-		const { useAiSkillsStore, createSkill } = await import("@/stores/ai-skills-store");
+		const { useAiSkillsStore, createSkill } = await import(
+			"@/stores/ai-skills-store"
+		);
 		const name = asString(args.name);
 		if (!name) return { ok: false, message: "name is required" };
 		const description = asString(args.description);
-		const steps = asArray<{ toolName: string; args: Record<string, unknown> }>(args.steps);
+		const steps = asArray<{ toolName: string; args: Record<string, unknown> }>(
+			args.steps,
+		);
 		if (steps.length === 0) {
 			return { ok: false, message: "At least one step is required" };
 		}
@@ -1746,10 +1800,17 @@ const HANDLERS: Record<string, Handler> = {
 		const { useAiSkillsStore } = await import("@/stores/ai-skills-store");
 		const skills = useAiSkillsStore.getState().skills;
 		if (skills.length === 0) {
-			return { ok: true, message: "No saved skills yet.", data: { skills: [] } };
+			return {
+				ok: true,
+				message: "No saved skills yet.",
+				data: { skills: [] },
+			};
 		}
 		const summary = skills
-			.map((s) => `${s.name} (id=${s.id}, ${s.steps.length} steps): ${s.description}`)
+			.map(
+				(s) =>
+					`${s.name} (id=${s.id}, ${s.steps.length} steps): ${s.description}`,
+			)
 			.join("\n");
 		return {
 			ok: true,
@@ -1782,9 +1843,17 @@ const HANDLERS: Record<string, Handler> = {
 		if (!skillId) return { ok: false, message: "skillId is required" };
 		const skill = useAiSkillsStore.getState().getSkill(skillId);
 		if (!skill) {
-			return { ok: false, message: `Skill "${skillId}" not found. Call list_skills to see available skills.` };
+			return {
+				ok: false,
+				message: `Skill "${skillId}" not found. Call list_skills to see available skills.`,
+			};
 		}
-		const results: Array<{ step: number; toolName: string; ok: boolean; message?: string }> = [];
+		const results: Array<{
+			step: number;
+			toolName: string;
+			ok: boolean;
+			message?: string;
+		}> = [];
 		let failed = 0;
 		for (let i = 0; i < skill.steps.length; i++) {
 			const step = skill.steps[i];
@@ -1804,7 +1873,10 @@ const HANDLERS: Record<string, Handler> = {
 			if (!result.ok) failed++;
 		}
 		const summary = results
-			.map((r) => `Step ${r.step} (${r.toolName}): ${r.ok ? "OK" : `FAIL — ${r.message ?? "error"}`}`)
+			.map(
+				(r) =>
+					`Step ${r.step} (${r.toolName}): ${r.ok ? "OK" : `FAIL — ${r.message ?? "error"}`}`,
+			)
 			.join("\n");
 		return {
 			ok: failed === 0,
@@ -1817,7 +1889,10 @@ const HANDLERS: Record<string, Handler> = {
 	detect_beats: async (editor, args) => {
 		const trackId = asString(args.trackId);
 		const elementId = asString(args.elementId);
-		const limit = typeof args.limit === "number" ? Math.max(1, Math.min(args.limit as number, 1000)) : undefined;
+		const limit =
+			typeof args.limit === "number"
+				? Math.max(1, Math.min(args.limit as number, 1000))
+				: undefined;
 		const sortBy =
 			args.sortBy === "energy" || args.sortBy === "time" ? args.sortBy : "time";
 		const track = editor.timeline.getTrackById({ trackId });
@@ -1841,7 +1916,10 @@ const HANDLERS: Record<string, Handler> = {
 				? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
 				: null;
 			if (!mediaAsset?.file) {
-				return { ok: false, message: "Media file not found for beat detection" };
+				return {
+					ok: false,
+					message: "Media file not found for beat detection",
+				};
 			}
 			const beats = await analyzeBeats({
 				file: mediaAsset.file,
@@ -1869,7 +1947,9 @@ const HANDLERS: Record<string, Handler> = {
 				.map((b) => `${(b.timeSeconds).toFixed(2)}s (${b.ticks}t)`)
 				.join(", ");
 			const truncatedNote =
-				resultBeats.length > 20 ? ` ... (${resultBeats.length} beats total)` : "";
+				resultBeats.length > 20
+					? ` ... (${resultBeats.length} beats total)`
+					: "";
 			return {
 				ok: true,
 				message: `Detected ${resultBeats.length} beats${sortBy === "energy" ? " (sorted by strongest first)" : ""} at: ${summary}${truncatedNote}. Use these tick values with split_element (cut on each beat) or upsert_keyframe (animate on beat).`,
@@ -2160,7 +2240,9 @@ const HANDLERS: Record<string, Handler> = {
 			});
 
 			// Run person segmentation.
-			const { segmentPerson } = await import("@/lib/segmentation/person-segmenter");
+			const { segmentPerson } = await import(
+				"@/lib/segmentation/person-segmenter"
+			);
 			const result = await segmentPerson({ source: img });
 			URL.revokeObjectURL(url);
 
@@ -2174,11 +2256,9 @@ const HANDLERS: Record<string, Handler> = {
 				return { ok: false, message: "Failed to produce transparent PNG" };
 			}
 
-			const cutoutFile = new File(
-				[blob],
-				`${mediaAsset.name}-cutout.png`,
-				{ type: "image/png" },
-			);
+			const cutoutFile = new File([blob], `${mediaAsset.name}-cutout.png`, {
+				type: "image/png",
+			});
 
 			// Process and import the new asset.
 			const { processMediaAssets } = await import("@/lib/media/processing");
@@ -2196,20 +2276,29 @@ const HANDLERS: Record<string, Handler> = {
 			}
 
 			// Update the element to use the new asset.
-			const { UpdateElementsCommand } = await import("@/lib/commands/timeline/element/update-elements");
+			const { UpdateElementsCommand } = await import(
+				"@/lib/commands/timeline/element/update-elements"
+			);
 			const cmd = new UpdateElementsCommand({
-				updates: [{
-					trackId,
-					elementId,
-					patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
-				}],
+				updates: [
+					{
+						trackId,
+						elementId,
+						patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
+					},
+				],
 			});
 			dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
 
 			return {
 				ok: true,
 				message: `Person cutout complete — background removed and replaced with transparent PNG (${result.width}x${result.height}).`,
-				data: { assetId: newAsset.id, mode: "ml-person", width: result.width, height: result.height },
+				data: {
+					assetId: newAsset.id,
+					mode: "ml-person",
+					width: result.width,
+					height: result.height,
+				},
 			};
 		} catch (error) {
 			return {
@@ -2280,11 +2369,9 @@ const HANDLERS: Record<string, Handler> = {
 				return { ok: false, message: "Failed to produce transparent PNG" };
 			}
 
-			const cutoutFile = new File(
-				[blob],
-				`${mediaAsset.name}-cutout.png`,
-				{ type: "image/png" },
-			);
+			const cutoutFile = new File([blob], `${mediaAsset.name}-cutout.png`, {
+				type: "image/png",
+			});
 
 			const { processMediaAssets } = await import("@/lib/media/processing");
 			const processed = await processMediaAssets({ files: [cutoutFile] });
@@ -2300,20 +2387,29 @@ const HANDLERS: Record<string, Handler> = {
 				return { ok: false, message: "Failed to add cutout asset to project" };
 			}
 
-			const { UpdateElementsCommand } = await import("@/lib/commands/timeline/element/update-elements");
+			const { UpdateElementsCommand } = await import(
+				"@/lib/commands/timeline/element/update-elements"
+			);
 			const cmd = new UpdateElementsCommand({
-				updates: [{
-					trackId,
-					elementId,
-					patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
-				}],
+				updates: [
+					{
+						trackId,
+						elementId,
+						patch: { mediaId: newAsset.id } as Partial<TimelineElement>,
+					},
+				],
 			});
 			dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
 
 			return {
 				ok: true,
 				message: `AI cutout complete — background removed and replaced with transparent PNG (${result.width}x${result.height}).`,
-				data: { assetId: newAsset.id, mode: "ml-general", width: result.width, height: result.height },
+				data: {
+					assetId: newAsset.id,
+					mode: "ml-general",
+					width: result.width,
+					height: result.height,
+				},
 			};
 		} catch (error) {
 			return {

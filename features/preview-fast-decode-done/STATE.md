@@ -25,13 +25,13 @@
 
 ### Preview loop (`apps/web/src/components/editor/panels/preview/index.tsx`)
 
-4. **Cache adaptive scale for manual quality**:
+1. **Cache adaptive scale for manual quality**:
    - `lastScaleInputsRef` tracks `(quality, isPlaying, gpuDegraded)`
    - For manual tiers (high/medium/low), skip `resolveAdaptiveScale` call
      when inputs unchanged — saves one function call + math per frame
    - Auto mode still recalculates every frame (needs avgRenderMs)
 
-5. **Merge loading overlay check into main render loop**:
+2. **Merge loading overlay check into main render loop**:
    - Removed separate rAF loop (was ~60 callbacks/sec overhead)
    - Loading threshold check now runs at top of `render()` callback
    - Eliminates one `requestAnimationFrame` + one `performance.now()` per frame
@@ -39,7 +39,7 @@
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | exit 0 (5 warnings, pre-existing) |
 | `bun test apps/web/src` | 195 pass, 0 fail |

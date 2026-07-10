@@ -21,7 +21,7 @@ Blueprint ini sengaja menargetkan **parity fungsional** dan **interoperabilitas 
 Matriks berikut adalah sintesis 1:1 berbasis dokumentasi resmi Adobe HelpX, Adobe SDK docs, dan panduan scripting resmi/community docsforadobe untuk area yang dipublikasikan. Untuk **efek individual yang jumlahnya ratusan**, saya memetakan **family resmi** dan mendefinisikan sistem descriptor generik agar efek dapat ditambahkan sebagai data + kernel tanpa mendesain ulang UI/engine per efek. AE memang mendokumentasikan daftar efek lengkap beserta dukungan GPU, bit depth, dan multi-frame rendering; Premiere mendokumentasikan fixed effects, standard effects, family video/audio effects, family transitions, dan reorganisasi effects library v26. citeturn16view0turn26view0turn25view3turn25view5turn27view0turn26view1turn28view0turn28view1
 
 | Domain | Adobe After Effects | Adobe Premiere Pro | Implikasi untuk app Anda |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Model inti | Composition → Layers → Properties → Keyframes/Expressions | Project → Sequences → Tracks → Clips → Effects | Butuh **dua graph** di atas core yang sama |
 | Unit kerja utama | Composition | Sequence | Simpan keduanya sebagai first-class document |
 | Struktur visual | Layer stack, precomp, 2D/3D layers, cameras, lights, nulls, masks, mattes | Video/audio tracks, nested sequence, fixed effects, clip/track effects | Butuh **LayerGraph** dan **TrackGraph** |
@@ -49,7 +49,7 @@ jadikan semua efek sebagai **data-driven descriptors** dengan field `matchName`,
 Arsitektur berikut didesain agar satu core dapat melayani **mode editorial** dan **mode compositing**. Pendekatan ini kompatibel dengan sifat interchange OTIO/AAF/XML, plugin host ala AE/Premiere, color pipeline OCIO/ACES, serta playback/render GPU modern. OTIO didefinisikan sebagai interchange format/API untuk editorial cut information; OCIO adalah solusi color management untuk motion picture; OpenEXR ditujukan untuk HDR scene-linear multi-part/multi-channel; dan FFmpeg menyediakan codec/container foundation yang luas. citeturn8search4turn8search2turn15search1turn8search3
 
 | Layer | Rekomendasi | Trade-off |
-|---|---|---|
+| --- | --- | --- |
 | UI desktop | Qt | Paling matang untuk desktop cross-platform; lisensi perlu dipilih hati-hati |
 | Core media/time/render | C++20 | ABI-friendly untuk plugin native dan GPU backend |
 | Parser/importer/collab services | Rust | Lebih aman untuk komponen untrusted; tambah kompleksitas FFI |
@@ -294,7 +294,7 @@ flowchart LR
 Tabel berikut adalah **spesifikasi implementasi per family fitur**. Nama fitur disusun agar benar-benar bisa diturunkan menjadi backlog engineering. Kolom **Usaha/Waktu** adalah estimasi saya untuk tim berpengalaman desktop media software; itu bukan fakta dari Adobe.
 
 | Fitur | Padanan AE | Padanan Premiere | Tujuan & UI | Data inti | Algoritma/pipeline | Format/codec terkait | Batas performa | Edge cases & test cases | Usaha |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Workspace & paneling | Workspaces/panels/viewers | Workspaces, Properties, Graphics Templates, Scopes | Dockable panels, saved workspaces, keyboardable commands | `WorkspaceLayout`, `PanelState` | Event bus UI + persistent layout store | N/A | Switch workspace <100 ms | HiDPI, multi-monitor, lost panel recovery, localization | Medium, 4–8 minggu |
 | Project & asset management | Project panel, footage items, import prefs/proxies | Project panel, bins, templates, relink, Productions | Ingest, bins/folders, labels, metadata columns, relink, templates | `Project`, `Asset`, `Bin`, `MediaRef`, `ProxyRef` | Hashing, path abstraction, relink heuristics, background conform/peaks | MOV/MP4/MXF/PSD/AI/EXR/XML etc. | Import should not block UI; metadata scan async | Offline media, duplicate filenames, moved drives, missing fonts, sidecar metadata | High, 8–16 minggu |
 | Sequence/timeline engine | Basic timeline in comp time panel | Full NLE sequence/tracks/clips/nesting | Ripple/roll/slip/slide/insert/overwrite/lift/extract, snapping, markers, sequence index | `Sequence`, `Track`, `TrackItem`, `Transition`, `Marker` | Interval tree, overlap resolver, snap index, trim solver | AAF/XML/EDL/OTIO/FCP XML | 60 fps UI scrubbing for common edits | Gaps, linked A/V detach, differing timebases, nested sequences, zero-point offset | High, 12–24 minggu |
@@ -417,7 +417,7 @@ WS   /v1/collab/rooms/{roomId}/events
 **SDK berlapis yang saya rekomendasikan**
 
 | Layer SDK | Fungsi | Padanan ekosistem Adobe |
-|---|---|---|
+| --- | --- | --- |
 | UI Extension SDK | Panel dockable, commands, properties widgets, shortcuts | Premiere UXP panels/commands |
 | Script DOM SDK | Akses project/sequence/composition/effects/exports | AE/Premiere scripting guides |
 | Native Media SDK | Importer, exporter, preview/transmit, metadata adapters | Premiere importers/exporters/transmitters |
@@ -494,7 +494,7 @@ release notes Premiere terbaru juga sudah menyebut ekspor **OTIO** selain FCP XM
 **Urutan prioritas migration/interchange yang saya rekomendasikan**
 
 | Prioritas | Format / jalur | Alasan |
-|---|---|---|
+| --- | --- | --- |
 | Sangat tinggi | OTIO internal + import/export | Canonical editorial interchange modern |
 | Sangat tinggi | FCP XML import/export | Paling berguna untuk editor NLE lintas alat |
 | Sangat tinggi | AAF import/export | Penting untuk workflows Avid dan finishing |
@@ -522,7 +522,7 @@ dan treat review comments, XML/AAF/OTIO, MOGRT, preset files, serta scripts seba
 **Roadmap implementasi yang paling realistis**
 
 | Fase | Deliverable utama | Hasil |
-|---|---|---|
+| --- | --- | --- |
 | Fase fondasi | Asset DB, media I/O, sequence engine, playback, proxy, color pipeline dasar, export queue, OTIO/XML/EDL dasar | “Premiere-lite” yang usable |
 | Fase compositing | Layer/composition engine, masks/mattes, blend/composite, keyframes/curve editor, text/shapes, effects descriptor system | “After Effects-lite” untuk grafik dan comp dasar |
 | Fase finishing | Audio track mixer, VST3, scopes, HDR/OCIO/ACES penuh, preview files/smart render, translation reports | Post stack yang solid |

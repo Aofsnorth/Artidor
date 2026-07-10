@@ -55,7 +55,7 @@
 
 ## Files Changed
 
-```
+```text
 apps/web/src/lib/perf/render-perf-tracker.ts          (new)
 apps/web/src/lib/perf/render-perf-tracker.test.ts     (new)
 apps/web/src/lib/perf/preview-quality.ts              (resolveAdaptiveScale added)
@@ -71,10 +71,10 @@ apps/web/src/lib/whats-new/feed.ts                    (What's New entry)
 
 ## SOP Checks
 
-| Check        | Result |
-|-------------|--------|
+| Check | Result |
+| ------------- | -------- |
 | `bunx tsc --noEmit` | ✅ exit 0 |
-| `bun run lint:web`  | ✅ exit 0 (2 pre-existing warnings) |
+| `bun run lint:web` | ✅ exit 0 (2 pre-existing warnings) |
 | `bun test apps/web/src/lib/perf/` | ✅ all assertions passed |
 | `bun run build:web` | ✅ 1 successful, 1 total |
 

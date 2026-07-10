@@ -92,6 +92,7 @@ Theme switching triggers a dual-layer animation to ensure a smooth transition:
 
 1.  **View Transitions API**: Leverages the browser-native View Transitions API (if available) to capture screenshots and animate a full-screen circular wipe or cinematic cross-fade.
 2.  **CSS Variable Transition Fallback**: A smooth transition applied to background colors, borders, colors, and shadows to prevent raw layout thrashing on unsupported engines:
+
     ```css
     transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                 border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),

@@ -102,6 +102,12 @@ export function applyEffectPasses(options: any): OffscreenCanvas;
 
 export function applyMaskFeather(options: any): OffscreenCanvas;
 
+/**
+ * Drop the current GPU runtime so the next `initializeGpu` call creates a
+ * fresh device. Used to recover from device-lost errors.
+ */
+export function destroyGpu(): void;
+
 export function floorToFrame(arg0: FloorToFrameOptions): MediaTime | undefined;
 
 export function formatTimecode(arg0: FormatTimecodeOptions): string | undefined;

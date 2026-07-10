@@ -34,7 +34,7 @@ export function TabBar() {
 	);
 
 	return (
-		<div className="panel glass-strong relative flex h-full w-[4.5rem] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
+		<div className="panel glass-strong relative flex h-full w-18 shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
 			{/* Navigation Tabs. Each tab grows to fill the available
 		   vertical space (1fr) so the column always reaches the
 		   storage card below, regardless of the panel height. The
@@ -46,7 +46,7 @@ export function TabBar() {
 		   auto-rows-fr + min-h-[1.95rem] (~31px) each, the tabs use
 		   ~25.4rem of vertical space and leave the rest for the
 		   storage card and any padding. */}
-			<div className="relative grid min-h-0 flex-1 auto-rows-fr content-start gap-[2px] overflow-y-auto scrollbar-hidden px-1.5 py-2 z-20">
+			<div className="relative grid min-h-0 flex-1 auto-rows-fr content-start gap-0.5 overflow-y-auto scrollbar-hidden px-1.5 py-2 z-20">
 				{visibleTabKeys.map((tabKey) => {
 					const tab = tabs[tabKey];
 					const isAI = tabKey === "ai";
@@ -66,7 +66,7 @@ export function TabBar() {
 										"relative h-full w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-transparent px-1 py-1 min-h-[1.95rem]",
 										activeTab === tabKey
 											? "border-white/12 bg-white/[0.14] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_22px_rgba(0,0,0,0.55)]"
-											: "text-white/[0.55] hover:bg-white/[0.06] hover:text-white",
+											: "text-white/[0.55] hover:bg-white/6 hover:text-white",
 										aiDisabled &&
 											"opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/[0.55]",
 									)}

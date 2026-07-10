@@ -475,25 +475,19 @@ export function ProjectsBackground() {
 	}, []);
 
 	return (
-		<>
-			{/* 3D wireframe primitives + particle field — the heart of the
-			    new background. The canvas is fully opaque (it clears to
-			    #0c0d10 each frame), so it owns the base color. A subtle
-			    radial wash sits ON TOP of the canvas via z-1 to add the
-			    "studio 3D" atmospheric bloom without competing with the
-			    wireframes. */}
+		<div
+			aria-hidden
+			className="pointer-events-none absolute inset-0 z-0"
+		>
+			{/* 3D wireframe primitives + particle field */}
 			<canvas
 				ref={canvasRef}
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-0 size-full"
+				className="absolute inset-0 size-full"
 			/>
 
-			{/* Soft cyan + violet radial wash on top of the canvas for
-			    atmospheric depth. Two off-centre blooms give a moody
-			    studio feel without overwhelming the wireframes. */}
+			{/* Soft cyan + violet radial wash for atmospheric depth */}
 			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-1"
+				className="absolute inset-0"
 				style={{
 					background: [
 						"radial-gradient(ellipse 900px 600px at 18% 22%, rgba(120, 140, 220, 0.10) 0%, transparent 65%)",
@@ -502,27 +496,23 @@ export function ProjectsBackground() {
 				}}
 			/>
 
-			{/* Vignette — darkens edges for cinematic framing and keeps
-			    the page chrome (cards, header) as the focal point. */}
+			{/* Vignette */}
 			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-1"
+				className="absolute inset-0"
 				style={{
 					background:
 						"radial-gradient(ellipse 100% 100% at 50% 0%, transparent 55%, rgba(6, 7, 10, 0.55) 100%)",
 				}}
 			/>
 
-			{/* Bottom fade — smooth transition into the base, grounding
-			    the page near the bottom edge. */}
+			{/* Bottom fade */}
 			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-1"
+				className="absolute inset-0"
 				style={{
 					background:
 						"linear-gradient(to bottom, transparent 80%, #08090c 100%)",
 				}}
 			/>
-		</>
+		</div>
 	);
 }

@@ -4,6 +4,7 @@ import {
 	detectDeviceTier,
 	resolveAdaptiveScale,
 	resolveDecodeMaxDim,
+	resolvePreviewRenderScales,
 	resolvePreviewScale,
 } from "./preview-quality";
 
@@ -54,6 +55,30 @@ assert(
 	resolvePreviewScale({ quality: "low", isPlaying: true }) >= 0.15,
 	"scale never below 0.15",
 );
+
+// --- resolvePreviewRenderScales: render scale follows playback, decode scale stays idle ---
+{
+	const scales = resolvePreviewRenderScales({
+		quality: "low",
+		isPlaying: true,
+	});
+	assert(
+		scales.renderScale < scales.decodeScale,
+		"playback render scale is lower",
+	);
+	assert(scales.decodeScale === 0.4, "decode scale stays at idle low tier");
+}
+{
+	const low = resolvePreviewRenderScales({ quality: "low", isPlaying: true });
+	const medium = resolvePreviewRenderScales({
+		quality: "medium",
+		isPlaying: true,
+	});
+	assert(
+		low.decodeScale !== medium.decodeScale,
+		"manual quality changes update decode scale",
+	);
+}
 
 // --- resolveAdaptiveScale: manual tiers delegate unchanged ---
 assert(

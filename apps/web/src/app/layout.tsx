@@ -4,7 +4,7 @@ import "./globals.css";
 import { Toaster } from "../components/ui/sonner";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
-import { BotIdClient } from "botid/client";
+
 import { isEnvMissing, webEnv } from "@/lib/env/web";
 import { EnvWarningModal } from "@/components/env-warning-modal";
 import { Inter, Playfair_Display } from "next/font/google";
@@ -37,13 +37,6 @@ export const viewport = {
 	userScalable: true,
 } as const;
 
-const protectedRoutes = [
-	{
-		path: "/none",
-		method: "GET",
-	},
-];
-
 export default function RootLayout({
 	children,
 }: Readonly<{
@@ -51,9 +44,6 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<head>
-				<BotIdClient protect={protectedRoutes} />
-			</head>
 			<body
 				className={`${siteFont.variable} ${serifFont.variable} font-sans antialiased`}
 				suppressHydrationWarning

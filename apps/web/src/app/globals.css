@@ -797,68 +797,72 @@ body::-webkit-scrollbar,
 }
 
 /* ── AI takeover aurora overlay ────────────────────────────────── */
-/* A glowing border overlay shown while the AI is "taking control" of
-   the editor. No traveling orbs, no sweep effects — just a thick,
-   pulsing, firefly-like border glow.
+/* CSS-only perimeter runners. No JS animation loop, no layout reads. */
 
-   Design:
-   1. .ai-aurora-frame — the base inset border line. It is thicker
-      at the edges/corners because it sits behind the corner glows,
-      and its box-shadow is animated to pulse like a firefly (light
-      power rises and falls unevenly).
-   2. .ai-aurora-corner — four large corner glows (top-left, top-right,
-      bottom-right, bottom-left). Each pulses with a different timing,
-      creating a firefly/kunang-kunang effect where the light power at
-      the corners goes up and down independently.
-   3. .ai-aurora-edge — subtle mid-edge glows that pulse alongside the
-      corners so the whole perimeter feels alive, not just the corners. */
-
-/* Base frame: thick inset border with a soft outer glow. The corner
-   glows will sit on top and make the line feel much bigger at the
-   corners while the mid-edges stay thinner. */
 .ai-aurora-frame {
 	position: absolute;
-	inset: 0;
+	inset: 6px;
 	pointer-events: none;
+	border-radius: 18px;
 	box-shadow:
-		inset 0 0 0 2px rgba(255, 255, 255, 0.55),
-		inset 0 0 24px 4px rgba(255, 255, 255, 0.12),
-		0 0 40px 0 rgba(255, 255, 255, 0.1);
+		inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+		0 0 32px rgba(255, 255, 255, 0.12);
+	overflow: hidden;
 	animation: ai-aurora-firefly 3.2s ease-in-out infinite;
+}
+
+.ai-aurora-frame::before,
+.ai-aurora-frame::after {
+	position: absolute;
+	content: "";
+	border-radius: inherit;
+	pointer-events: none;
+}
+
+.ai-aurora-frame::before {
+	inset: 0;
+	background: conic-gradient(
+		from 0deg,
+		transparent 0deg,
+		transparent 52deg,
+		rgba(255, 255, 255, 0.95) 76deg,
+		transparent 102deg,
+		transparent 180deg,
+		transparent 232deg,
+		rgba(255, 255, 255, 0.85) 256deg,
+		transparent 282deg,
+		transparent 360deg
+	);
+	animation: ai-aurora-runner 2.8s linear infinite;
+}
+
+.ai-aurora-frame::after {
+	inset: 2px;
+	background: transparent;
+	box-shadow: inset 0 0 0 999px rgba(10, 10, 15, 0.01);
+	backdrop-filter: none;
 }
 
 /* Firefly light power: opacity and glow rise and fall unevenly. */
 @keyframes ai-aurora-firefly {
 	0%,
 	100% {
-		opacity: 0.55;
+		opacity: 0.65;
 		box-shadow:
-			inset 0 0 0 2px rgba(255, 255, 255, 0.55),
-			inset 0 0 24px 4px rgba(255, 255, 255, 0.12),
-			0 0 40px 0 rgba(255, 255, 255, 0.1);
+			inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+			0 0 32px rgba(255, 255, 255, 0.12);
 	}
-	30% {
-		opacity: 0.95;
-		box-shadow:
-			inset 0 0 0 4px rgba(255, 255, 255, 0.95),
-			inset 0 0 48px 8px rgba(255, 255, 255, 0.35),
-			0 0 80px 12px rgba(255, 255, 255, 0.28),
-			0 0 160px 32px rgba(255, 255, 255, 0.12);
-	}
-	55% {
-		opacity: 0.7;
-		box-shadow:
-			inset 0 0 0 2.5px rgba(255, 255, 255, 0.65),
-			inset 0 0 28px 5px rgba(255, 255, 255, 0.18),
-			0 0 48px 4px rgba(255, 255, 255, 0.14);
-	}
-	80% {
+	50% {
 		opacity: 1;
 		box-shadow:
-			inset 0 0 0 3.5px rgba(255, 255, 255, 1),
-			inset 0 0 56px 10px rgba(255, 255, 255, 0.45),
-			0 0 96px 16px rgba(255, 255, 255, 0.35),
-			0 0 200px 40px rgba(255, 255, 255, 0.16);
+			inset 0 0 0 1px rgba(255, 255, 255, 0.75),
+			0 0 52px rgba(255, 255, 255, 0.22);
+	}
+}
+
+@keyframes ai-aurora-runner {
+	to {
+		transform: rotate(1turn);
 	}
 }
 

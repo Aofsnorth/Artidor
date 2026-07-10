@@ -62,8 +62,8 @@ import {
 } from "@/lib/timeline";
 import { timelineTimeToPixels } from "@/lib/timeline/pixel-utils";
 import {
+	computeTrackVerticalSpans,
 	getTrackHeight,
-	getCumulativeHeightBefore,
 	getTotalTracksHeight,
 } from "./track-layout";
 import {
@@ -1270,11 +1270,13 @@ function TrackLabelsPanel({
 																type="button"
 																onClick={(e) => {
 																	e.stopPropagation();
-																	const next =
-																		opacityValue === 0 ? 100 : 0;
+																	const next = opacityValue === 0 ? 100 : 0;
 																	setTrackOpacity(track.id, next);
 																	const trackElements = track.elements;
-																	if (trackElements && trackElements.length > 0) {
+																	if (
+																		trackElements &&
+																		trackElements.length > 0
+																	) {
 																		editor.timeline.updateElements({
 																			updates: trackElements.map((el) => ({
 																				trackId: track.id,
@@ -1336,9 +1338,7 @@ function TrackLabelsPanel({
 																	}}
 																	disabled={isLocked}
 																	title={
-																		isTrackMuted
-																			? "Unmute track"
-																			: "Mute track"
+																		isTrackMuted ? "Unmute track" : "Mute track"
 																	}
 																	className="grid size-4 place-items-center rounded text-white/40 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 focus:outline-none"
 																>
@@ -1357,9 +1357,7 @@ function TrackLabelsPanel({
 																min="0"
 																max="100"
 																step="1"
-																value={
-																	isTrackMuted ? 0 : volumeValue
-																}
+																value={isTrackMuted ? 0 : volumeValue}
 																onChange={handleVolumeChange}
 																disabled={isLocked || isTrackMuted}
 																title={`Track volume: ${isTrackMuted ? "muted" : `${Math.round(volumeValue)}%`}`}
@@ -1504,33 +1502,34 @@ function TimelineTrackRows({
 	}, [tracksScrollRef]);
 
 	// Filter to only visible tracks (during non-drag operations)
+	const trackSpans = useMemo(
+		() =>
+			computeTrackVerticalSpans({
+				tracks,
+				extraHeights: tracks.map((_, index) => getTrackExpansionHeight(index)),
+				overrideHeights: trackHeights,
+			}),
+		[tracks, trackHeights, getTrackExpansionHeight],
+	);
+
 	const visibleTrackIndices = useMemo(() => {
 		// During drag, render all tracks so drop targets work everywhere
 		if (dragState.isDragging) return null; // null = render all
 
 		const visibleTop = Math.max(0, scrollViewport.top - OVERSCAN_PX);
-		const visibleBottom = scrollViewport.top + scrollViewport.height + OVERSCAN_PX;
+		const visibleBottom =
+			scrollViewport.top + scrollViewport.height + OVERSCAN_PX;
 
 		const indices = new Set<number>();
 		for (const { index } of sortedTracks) {
-			const trackTop = getCumulativeHeightBefore({
-				tracks,
-				trackIndex: index,
-				getExtraHeight: getTrackExpansionHeight,
-				overrideHeights: trackHeights,
-			});
-			const trackHeight =
-				getTrackHeight({
-					type: tracks[index].type,
-					overrideHeight: trackHeights[tracks[index].id],
-				}) + getTrackExpansionHeight(index);
-
-			if (trackTop + trackHeight >= visibleTop && trackTop <= visibleBottom) {
+			const span = trackSpans[index];
+			if (!span) continue;
+			if (span.top + span.height >= visibleTop && span.top <= visibleBottom) {
 				indices.add(index);
 			}
 		}
 		return indices;
-	}, [sortedTracks, scrollViewport, tracks, trackHeights, getTrackExpansionHeight, dragState.isDragging]);
+	}, [sortedTracks, scrollViewport, trackSpans, dragState.isDragging]);
 
 	return (
 		<>
@@ -1540,140 +1539,145 @@ function TimelineTrackRows({
 						visibleTrackIndices === null || visibleTrackIndices.has(index),
 				)
 				.map(({ track, index }) => {
-				const hasDraggedElement = track.elements.some((element) =>
-					dragState.dragElementIds.includes(element.id),
-				);
-				const trackAccent = getTrackTypeAccent({
-					type: track.type,
-					customColor: track.color,
-				});
-				const trackRowHeight =
-					getTrackHeight({
+					const hasDraggedElement = track.elements.some((element) =>
+						dragState.dragElementIds.includes(element.id),
+					);
+					const trackAccent = getTrackTypeAccent({
 						type: track.type,
-						overrideHeight: trackHeights[track.id],
-					}) + getTrackExpansionHeight(index);
-				return (
-					<ContextMenu key={track.id}>
-						<ContextMenuTrigger asChild>
-							<div
-								className={cn(
-									"group absolute left-0 right-0 rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
-									// Make ALL tracks overflow-visible during a drag so the
-									// dragged element can float above any target track, not
-									// just the source track. Without this, the dragged clip
-									// appears behind other tracks when crossing track boundaries.
-									dragState.isDragging || hasDraggedElement
-										? "overflow-visible"
-										: "overflow-hidden",
-									tracksWithSelection.has(track.id) && SELECTED_TRACK_ROW_CLASS,
-								)}
-								style={{
-									top: `${TIMELINE_CONTENT_TOP_PADDING_PX + getCumulativeHeightBefore({ tracks, trackIndex: index, getExtraHeight: getTrackExpansionHeight, overrideHeights: trackHeights })}px`,
-									height: `${trackRowHeight}px`,
-									zIndex: hasDraggedElement
-										? TIMELINE_LAYERS.dragLine + 1
-										: undefined,
-									// Track colour used to tint the whole row, which
-									// muddied the clip thumbnails. The accent now
-									// lives on a thin left stripe (rendered below
-									// as an absolute child) so the tile image
-									// stays clean while the colour cue is still
-									// visible at a glance.
-									borderColor: track.color ? trackAccent.accentSoft : undefined,
-								}}
-							>
-								{track.color ? (
-									<div
-										aria-hidden="true"
-										className="pointer-events-none absolute inset-0 z-20 rounded-xl"
-										style={{ borderLeft: `3px solid ${trackAccent.accent}` }}
+						customColor: track.color,
+					});
+					const span = trackSpans[index];
+					const trackRowHeight =
+						span?.height ??
+						getTrackHeight({
+							type: track.type,
+							overrideHeight: trackHeights[track.id],
+						});
+					return (
+						<ContextMenu key={track.id}>
+							<ContextMenuTrigger asChild>
+								<div
+									className={cn(
+										"group absolute left-0 right-0 rounded-xl border border-white/[0.04] bg-white/[0.014] shadow-[0_4px_18px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.03)] transition-colors hover:border-white/[0.08]",
+										// Make ALL tracks overflow-visible during a drag so the
+										// dragged element can float above any target track, not
+										// just the source track. Without this, the dragged clip
+										// appears behind other tracks when crossing track boundaries.
+										dragState.isDragging || hasDraggedElement
+											? "overflow-visible"
+											: "overflow-hidden",
+										tracksWithSelection.has(track.id) &&
+											SELECTED_TRACK_ROW_CLASS,
+									)}
+									style={{
+										top: `${TIMELINE_CONTENT_TOP_PADDING_PX + (span?.top ?? 0)}px`,
+										height: `${trackRowHeight}px`,
+										zIndex: hasDraggedElement
+											? TIMELINE_LAYERS.dragLine + 1
+											: undefined,
+										// Track colour used to tint the whole row, which
+										// muddied the clip thumbnails. The accent now
+										// lives on a thin left stripe (rendered below
+										// as an absolute child) so the tile image
+										// stays clean while the colour cue is still
+										// visible at a glance.
+										borderColor: track.color
+											? trackAccent.accentSoft
+											: undefined,
+									}}
+								>
+									{track.color ? (
+										<div
+											aria-hidden="true"
+											className="pointer-events-none absolute inset-0 z-20 rounded-xl"
+											style={{ borderLeft: `3px solid ${trackAccent.accent}` }}
+										/>
+									) : null}
+									<TimelineTrackContent
+										track={track}
+										zoomLevel={zoomLevel}
+										dragState={dragState}
+										rulerScrollRef={tracksScrollRef}
+										tracksScrollRef={tracksScrollRef}
+										lastMouseXRef={lastMouseXRef}
+										onSnapPointChange={onSnapPointChange}
+										onResizeStateChange={onResizeStateChange}
+										onElementMouseDown={onElementMouseDown}
+										onElementClick={onElementClick}
+										onTrackMouseDown={onTrackMouseDown}
+										onTrackMouseUp={onTrackMouseUp}
+										shouldIgnoreClick={shouldIgnoreClick}
+										targetElementId={
+											isDragOver
+												? (dropTarget?.targetElement?.elementId ?? null)
+												: null
+										}
 									/>
-								) : null}
-								<TimelineTrackContent
-									track={track}
-									zoomLevel={zoomLevel}
-									dragState={dragState}
-									rulerScrollRef={tracksScrollRef}
-									tracksScrollRef={tracksScrollRef}
-									lastMouseXRef={lastMouseXRef}
-									onSnapPointChange={onSnapPointChange}
-									onResizeStateChange={onResizeStateChange}
-									onElementMouseDown={onElementMouseDown}
-									onElementClick={onElementClick}
-									onTrackMouseDown={onTrackMouseDown}
-									onTrackMouseUp={onTrackMouseUp}
-									shouldIgnoreClick={shouldIgnoreClick}
-									targetElementId={
-										isDragOver
-											? (dropTarget?.targetElement?.elementId ?? null)
-											: null
-									}
-								/>
-								<TrackHeightHandle
-									trackId={track.id}
-									currentHeight={trackRowHeight}
-								/>
-							</div>
-						</ContextMenuTrigger>
-						<ContextMenuContent className="w-40">
-							<ContextMenuItem
-								icon={<HugeiconsIcon icon={TaskAdd02Icon} />}
-								onClick={(event: React.MouseEvent) => {
-									event.stopPropagation();
-									invokeAction("paste-copied");
-								}}
-							>
-								Paste elements
-							</ContextMenuItem>
-							{trackHeights[track.id] !== undefined && (
+									<TrackHeightHandle
+										trackId={track.id}
+										currentHeight={trackRowHeight}
+									/>
+								</div>
+							</ContextMenuTrigger>
+							<ContextMenuContent className="w-40">
 								<ContextMenuItem
-									icon={<HugeiconsIcon icon={RefreshIcon} />}
+									icon={<HugeiconsIcon icon={TaskAdd02Icon} />}
 									onClick={(event: React.MouseEvent) => {
 										event.stopPropagation();
-										resetTrackHeight(track.id);
+										invokeAction("paste-copied");
 									}}
 								>
-									Reset track height
+									Paste elements
 								</ContextMenuItem>
-							)}
-							<ContextMenuItem
-								icon={<HugeiconsIcon icon={VolumeHighIcon} />}
-								onClick={(event: React.MouseEvent) => {
-									event.stopPropagation();
-									timeline.toggleTrackMute({ trackId: track.id });
-								}}
-							>
-								{canTrackHaveAudio(track) && track.muted
-									? "Unmute track"
-									: "Mute track"}
-							</ContextMenuItem>
-							<ContextMenuItem
-								icon={<HugeiconsIcon icon={ViewIcon} />}
-								onClick={(event: React.MouseEvent) => {
-									event.stopPropagation();
-									timeline.toggleTrackVisibility({ trackId: track.id });
-								}}
-							>
-								{canTrackBeHidden(track) && track.hidden
-									? "Show track"
-									: "Hide track"}
-							</ContextMenuItem>
-							{track.id !== mainTrackId && (
+								{trackHeights[track.id] !== undefined && (
+									<ContextMenuItem
+										icon={<HugeiconsIcon icon={RefreshIcon} />}
+										onClick={(event: React.MouseEvent) => {
+											event.stopPropagation();
+											resetTrackHeight(track.id);
+										}}
+									>
+										Reset track height
+									</ContextMenuItem>
+								)}
 								<ContextMenuItem
-									icon={<HugeiconsIcon icon={Delete02Icon} />}
+									icon={<HugeiconsIcon icon={VolumeHighIcon} />}
 									onClick={(event: React.MouseEvent) => {
 										event.stopPropagation();
-										timeline.removeTrack({ trackId: track.id });
+										timeline.toggleTrackMute({ trackId: track.id });
 									}}
-									variant="destructive"
 								>
-									Delete track
+									{canTrackHaveAudio(track) && track.muted
+										? "Unmute track"
+										: "Mute track"}
 								</ContextMenuItem>
-							)}
-						</ContextMenuContent>
-					</ContextMenu>
-				);
-			})}
+								<ContextMenuItem
+									icon={<HugeiconsIcon icon={ViewIcon} />}
+									onClick={(event: React.MouseEvent) => {
+										event.stopPropagation();
+										timeline.toggleTrackVisibility({ trackId: track.id });
+									}}
+								>
+									{canTrackBeHidden(track) && track.hidden
+										? "Show track"
+										: "Hide track"}
+								</ContextMenuItem>
+								{track.id !== mainTrackId && (
+									<ContextMenuItem
+										icon={<HugeiconsIcon icon={Delete02Icon} />}
+										onClick={(event: React.MouseEvent) => {
+											event.stopPropagation();
+											timeline.removeTrack({ trackId: track.id });
+										}}
+										variant="destructive"
+									>
+										Delete track
+									</ContextMenuItem>
+								)}
+							</ContextMenuContent>
+						</ContextMenu>
+					);
+				})}
 		</>
 	);
 }
@@ -1990,8 +1994,6 @@ function TrackHeightHandle({
 	);
 }
 
-
-
 function DragGhost({
 	tracks,
 	dragState,
@@ -2006,8 +2008,7 @@ function DragGhost({
 	const isHd = useSettingsStore((s) => s.hdDragPreview);
 
 	// Container offset for converting client coords to container coords
-	const containerTop =
-		containerRef.current?.getBoundingClientRect().top ?? 0;
+	const containerTop = containerRef.current?.getBoundingClientRect().top ?? 0;
 
 	const ghosts: React.ReactNode[] = [];
 
@@ -2049,7 +2050,9 @@ function DragGhost({
 								{element.type}
 							</div>
 						)}
-						<span className={`truncate ${isHd ? "text-[0.62rem] font-medium text-white/90" : "text-[0.62rem] font-medium text-white/80"}`}>
+						<span
+							className={`truncate ${isHd ? "text-[0.62rem] font-medium text-white/90" : "text-[0.62rem] font-medium text-white/80"}`}
+						>
 							{element.name || element.type}
 						</span>
 					</div>

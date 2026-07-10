@@ -15,7 +15,7 @@ Canvas2D intermediate + `mediabunny` export + single main thread).
 From `apps/web/src/services/renderer/`:
 
 | Stage | Implementation | Cost characteristic |
-|---|---|---|
+| --- | --- | --- |
 | Scene → tree | `resolveRenderTree` + `scene-builder.ts` | runs every animation frame; pure JS |
 | Effect passes / mask feather | `gpu-renderer.ts` → `artidor-wasm` (wgpu) | GPU, off-thread capable |
 | Compositor | `compositor/wasm-compositor.ts` → wgpu | GPU, off-thread capable |
@@ -40,7 +40,7 @@ So the biggest, lowest-risk perf wins are all in the same shape:
 ### Option A — OffscreenCanvas + Web Worker (recommended first move)
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Bundle impact | ~0 (uses browser APIs only) |
 | Implementation cost | 1–2 weeks |
 | Risk | Low — existing render path is already OffscreenCanvas-friendly (`gpu-renderer.ts` accepts one) |
@@ -57,7 +57,7 @@ main thread" to "UI on main, raster+decode on worker".
 ### Option B — WebCodecs `VideoEncoder` instead of `mediabunny`
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Bundle impact | ~0 |
 | Implementation cost | 2–4 weeks (codec config negotiation, B-frame keyframe support, fallback matrix) |
 | Risk | Medium — WebCodecs API is uneven across Safari/Firefox/Chrome; AV1 support still landing |
@@ -73,7 +73,7 @@ the speedup lands without giving up the muxer abstraction.
 ### Option C — FFmpeg.wasm (lazy)
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Bundle impact | +25–35 MB lazy-loaded, +0 to initial |
 | Implementation cost | 5–8 days (FFmpeg CLI args → JS API mapping, decode/encode loop, fall-back path for unsupported codecs) |
 | Risk | Medium — codec licensing (x264 is GPL, x265 is more complex; FFmpeg.wasm is LGPL with optional GPL builds); slow compared to native (3–10×); doesn't help preview rendering, only export |
@@ -89,7 +89,7 @@ decision says otherwise.
 ### Option D — Native FFmpeg via Tauri sidecar
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Bundle impact | +0 (Rust binary installed separately) |
 | Implementation cost | 8–12 days (Tauri integration, IPC, codec license plumbing, CI matrix per OS) |
 | Risk | High — codec license (LGPL linking constraints), 80–120 MB installer, three-OS testing matrix |
@@ -108,7 +108,7 @@ is on the roadmap. For web-only, A alone is the right move.
 ### Option F — Worker per scene-element type
 
 | Aspect | Detail |
-|---|---|
+| --- | --- |
 | Bundle impact | 0 |
 | Implementation cost | 3–5 days per worker type |
 | Risk | Medium — message-passing overhead can eat the gain; OffscreenCanvas transferable is single-consumer |
@@ -141,7 +141,7 @@ bigger Option A work starts.
 ## 4. Recommended order
 
 | # | Item | Effort | Why this slot |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | Save-manager re-entrancy | 30 min | trivial; warmup PR |
 | 2 | Effects/Transitions memoize | 1 hr | trivial |
 | 3 | WASM pkg staleness CI job | 2 hr | prevents future regression class |

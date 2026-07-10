@@ -27,6 +27,6 @@ with two modes:
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | 6 warnings (pre-existing), 0 errors |

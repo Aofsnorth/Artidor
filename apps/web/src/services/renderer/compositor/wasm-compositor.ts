@@ -1,7 +1,9 @@
 import {
+	destroyGpu,
 	getCompositorCanvas,
 	initCompositor,
 	initCompositorWithCanvas,
+	initializeGpu,
 	releaseTexture,
 	renderFrame,
 	resizeCompositor,
@@ -60,6 +62,10 @@ class WasmCompositor {
 
 	ensureInitialized({ width, height }: { width: number; height: number }) {
 		if (!this.canvas) {
+			if (this.deviceLost) {
+				// Don't re-init until the GPU recovery promise has resolved
+				return;
+			}
 			initCompositor(width, height);
 			this.canvas = getCompositorCanvas();
 			this.initializedSize = { width, height };
@@ -90,6 +96,9 @@ class WasmCompositor {
 		height: number;
 	}) {
 		if (!this.canvas) {
+			if (this.deviceLost) {
+				return;
+			}
 			initCompositorWithCanvas(canvas);
 			this.canvas = canvas;
 			this.initializedSize = { width, height };
@@ -167,8 +176,54 @@ class WasmCompositor {
 		this.retainedTextureIdsB = tmp;
 	}
 
+	/** `true` while recovering from a GPU device-lost. */
+	private deviceLost = false;
+
 	render(frame: FrameDescriptor) {
-		renderFrame(frame);
+		if (this.deviceLost) {
+			// Drop frames silently until the compositor is re-created.
+			return;
+		}
+		try {
+			renderFrame(frame);
+		} catch (error) {
+			// wgpu panics when the GPU device is lost (tab backgrounded,
+			// driver reset, OOM). Mark as lost so the next
+			// ensureInitialized re-creates the compositor surface.
+			const message = error instanceof Error ? error.message : String(error);
+			if (
+				message.includes("createBuffer") ||
+				message.includes("device is lost") ||
+				message.includes("GPUDevice") ||
+				message.includes("panicked")
+			) {
+				console.warn("[compositor] GPU device lost, recovering...");
+				this.markDeviceLost();
+				return;
+			}
+			throw error;
+		}
+	}
+
+	private markDeviceLost() {
+		this.deviceLost = true;
+		this.canvas = null;
+		this.initializedSize = null;
+		this.uploadedTextures.clear();
+		this.retainedTextureIdsA.clear();
+		this.retainedTextureIdsB.clear();
+
+		// Destroy the dead Rust GPU runtime and spin up a new one so the
+		// next `initCompositor` request gets a fresh, working device.
+		try {
+			destroyGpu();
+			void initializeGpu().then(() => {
+				console.log("[compositor] GPU device recovered");
+				this.deviceLost = false;
+			});
+		} catch (err) {
+			console.error("[compositor] GPU recovery failed:", err);
+		}
 	}
 }
 

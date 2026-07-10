@@ -20,12 +20,7 @@ import { canElementHaveAudio, hasMediaId } from "@/lib/timeline/element-utils";
 import { canTrackHaveAudio } from "@/lib/timeline";
 import { mediaSupportsAudio } from "@/lib/media/media-utils";
 import { getSourceTimeAtClipTime, renderRetimedBuffer } from "@/lib/retime";
-import {
-	Input,
-	ALL_FORMATS,
-	BlobSource,
-	AudioBufferSink,
-} from "mediabunny";
+import { Input, ALL_FORMATS, BlobSource, AudioBufferSink } from "mediabunny";
 import { resolveAudioTrackByIndex } from "@/lib/media/mediabunny";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { yieldToEventLoop } from "@/lib/media/yield";
@@ -121,6 +116,13 @@ export function collectAudibleCandidates({
 			const mediaAsset = hasMediaId(element)
 				? (mediaMap.get(element.mediaId) ?? null)
 				: null;
+			if (
+				element.type === "audio" &&
+				element.sourceType === "upload" &&
+				!mediaAsset
+			) {
+				continue;
+			}
 			if (!doesElementHaveEnabledAudio({ element, mediaAsset })) continue;
 
 			candidates.push({ element, mediaAsset });
@@ -735,20 +737,6 @@ export async function collectAudioClips({
 					});
 				}
 			}
-
-			if (element.type === "video") {
-				if (mediaAsset && mediaSupportsAudio({ media: mediaAsset })) {
-					clips.push({
-						...collectMediaAudioClip({
-							element,
-							mediaAsset,
-							muted,
-							volume,
-						}),
-						trackId: track.id,
-					});
-				}
-			}
 		}
 	}
 
@@ -836,7 +824,9 @@ export async function createTimelineAudioBuffer({
 	}
 
 	onProgress?.(0.95);
-	const mastered = await applyAudioMasteringToBuffer({ audioBuffer: outputBuffer });
+	const mastered = await applyAudioMasteringToBuffer({
+		audioBuffer: outputBuffer,
+	});
 	onProgress?.(1.0);
 	return mastered;
 }

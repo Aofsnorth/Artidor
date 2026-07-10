@@ -15,14 +15,17 @@ seconds when seeking in long videos. The root cause was:
 ## Solution
 
 ### Fix 1: Eager GOP index build
+
 Build the GOP index during `initializeSink()` (blocking). Adds 50-200ms
 to import but ensures the FIRST seek is fast. Without this, the first
 seek fell back to mediabunny's packet scan = 5-20 seconds.
 
 ### Fix 2: Use `getCanvas()` for single-frame seek
+
 Replace `canvases(time)` iterator + `iterateToTime()` loop with
 `sink.getCanvas(time)` — a single-call API optimized for seeking to a
 specific timestamp. This skips:
+
 - Iterator setup overhead
 - Pre-decode of adjacent frames
 - Sequential frame-by-frame iteration
@@ -33,7 +36,7 @@ frame's timestamp for forward playback/prefetch.
 ## Performance Impact
 
 | Scenario | Before (Phase 1) | After (Phase 2) |
-|----------|------------------|-----------------|
+| ---------- | ------------------ | ----------------- |
 | First seek after import | 5-20s (no GOP index) | 50-200ms |
 | Long jump (1→13 min) | 720-2880ms | 50-200ms |
 | Short jump (< 8s) | 5-160ms | 5-160ms (unchanged) |
@@ -51,7 +54,7 @@ frame's timestamp for forward playback/prefetch.
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | exit 0 (6 pre-existing warnings) |
 | `bun test apps/web/src` | 203 pass, 0 fail |

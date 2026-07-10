@@ -15,7 +15,7 @@ addition to sound effects. Same API route, richer results.
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | 0 errors |
 | `bun run test` | all pass |

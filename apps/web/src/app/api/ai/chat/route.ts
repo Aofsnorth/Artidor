@@ -32,6 +32,7 @@ import {
 	type ChatRequest,
 } from "@/lib/ai/provider";
 import { OpenAIProvider } from "@/lib/ai/providers/openai";
+import { formatSseEvent } from "@/lib/ai/sse";
 import { AnthropicProvider } from "@/lib/ai/providers/anthropic";
 import { OllamaProvider } from "@/lib/ai/providers/ollama";
 import type { LLMProvider } from "@/lib/ai/provider";
@@ -98,7 +99,10 @@ const bodySchema = z.object({
 					}),
 				)
 				.optional(),
-			recentCommands: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
+			recentCommands: z
+				.array(z.record(z.string(), z.unknown()))
+				.max(200)
+				.optional(),
 			styleProfile: z.unknown().optional(),
 		})
 		.optional(),
@@ -127,12 +131,7 @@ const bodySchema = z.object({
 			apiKey: z.string().optional().default(""),
 			model: z.string().min(1),
 			kind: z
-				.enum([
-					"openai-compatible",
-					"anthropic-compatible",
-					"ollama",
-					"puter",
-				])
+				.enum(["openai-compatible", "anthropic-compatible", "ollama", "puter"])
 				.default("openai-compatible"),
 			// Optional media generation models. When empty, the
 			// corresponding generation tools are filtered out.
@@ -167,9 +166,7 @@ const bodySchema = z.object({
 	 *  - "global"  — edits span all projects.
 	 *  - "off"     — no style learning.
 	 */
-	learningScope: z
-		.enum(["project", "global", "off"])
-		.default("project"),
+	learningScope: z.enum(["project", "global", "off"]).default("project"),
 	/** Custom AI assistant name (default: "Arth"). */
 	aiName: z.string().max(60).optional(),
 	/** Extra personality instructions for the AI. */
@@ -177,7 +174,7 @@ const bodySchema = z.object({
 });
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs"; // Anthropic SDK + non-streaming OpenAI both work in nodejs
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
 	// AI is disabled until the endpoint is hardened (auth + rate limit + bot
@@ -221,7 +218,8 @@ export async function POST(request: Request) {
 			return new Response(
 				JSON.stringify({
 					error: "unauthorized",
-					message: "Sign in to use Arth, or add your own provider in the Arth panel.",
+					message:
+						"Sign in to use Arth, or add your own provider in the Arth panel.",
 				}),
 				{ status: 401, headers: { "content-type": "application/json" } },
 			);
@@ -380,41 +378,56 @@ export async function POST(request: Request) {
 	const stream = new ReadableStream({
 		async start(controller) {
 			try {
-				const response = await provider.chat(chatRequest);
-				// Stream the text in small chunks so the UI gets typing feedback.
-				const text = response.message.content;
-				const chunkSize = 16;
-				for (let i = 0; i < text.length; i += chunkSize) {
+				if (provider.chatStream) {
+					for await (const event of provider.chatStream(chatRequest)) {
+						if (event.type === "delta") {
+							controller.enqueue(
+								encoder.encode(formatSseEvent({ delta: event.delta })),
+							);
+							continue;
+						}
+						if (event.type === "tool-calls") {
+							controller.enqueue(
+								encoder.encode(formatSseEvent({ toolCalls: event.toolCalls })),
+							);
+							continue;
+						}
+						controller.enqueue(
+							encoder.encode(
+								formatSseEvent({
+									done: true,
+									usage: event.usage,
+									finishReason: event.finishReason,
+								}),
+							),
+						);
+					}
+				} else {
+					const response = await provider.chat(chatRequest);
+					controller.enqueue(
+						encoder.encode(formatSseEvent({ delta: response.message.content })),
+					);
+					if (response.toolCalls.length > 0) {
+						controller.enqueue(
+							encoder.encode(formatSseEvent({ toolCalls: response.toolCalls })),
+						);
+					}
 					controller.enqueue(
 						encoder.encode(
-							`data: ${JSON.stringify({ delta: text.slice(i, i + chunkSize) })}\n\n`,
+							formatSseEvent({
+								done: true,
+								usage: response.usage,
+								finishReason: response.finishReason,
+							}),
 						),
 					);
 				}
-				if (response.toolCalls.length > 0) {
-					controller.enqueue(
-						encoder.encode(
-							`data: ${JSON.stringify({ toolCalls: response.toolCalls })}\n\n`,
-						),
-					);
-				}
-				controller.enqueue(
-					encoder.encode(
-						`data: ${JSON.stringify({
-							done: true,
-							usage: response.usage,
-							finishReason: response.finishReason,
-						})}\n\n`,
-					),
-				);
 				controller.close();
 			} catch (err) {
 				const message =
 					err instanceof Error ? err.message : "AI request failed";
 				controller.enqueue(
-					encoder.encode(
-						`data: ${JSON.stringify({ error: message, done: true })}\n\n`,
-					),
+					encoder.encode(formatSseEvent({ error: message, done: true })),
 				);
 				controller.close();
 			}

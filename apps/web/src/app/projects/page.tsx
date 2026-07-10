@@ -280,7 +280,7 @@ export default function ProjectsPage() {
 					<StoragePersistenceDialog />
 					<ProjectsHeader />
 					<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
-					<main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
+					<main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
 						{isLoading || !isInitialized ? (
 							<ProjectsSkeleton />
 						) : projectsToDisplay.length === 0 ? (

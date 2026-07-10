@@ -119,6 +119,39 @@ export class EditorCore {
 			// because `process.env.NODE_ENV` is statically replaced to
 			// `"production"` at build time.
 			if (process.env.NODE_ENV !== "production") {
+				const insertMockVideo = (opts?: {
+					durationSeconds?: number;
+				}): string => {
+					const TICKS_PER_SECOND = 120_000;
+					const duration = (opts?.durationSeconds ?? 5) * TICKS_PER_SECOND;
+					const element = {
+						id: generateUUID(),
+						type: "video" as const,
+						name: "Mock Video",
+						startTime: 0,
+						duration,
+						trimStart: 0,
+						trimEnd: 0,
+						hidden: false,
+						mediaId: undefined,
+						sourceUrl: "",
+						transform: {
+							scaleX: 1,
+							scaleY: 1,
+							position: { x: 0, y: 0 },
+							rotate: 0,
+						},
+						opacity: 1,
+					};
+					const tracks = this.scenes.getActiveScene().tracks;
+					this.timeline.insertElement({
+						element: element as never,
+						placement: { mode: "explicit", trackId: tracks.main.id },
+					});
+					const afterTracks = this.scenes.getActiveScene().tracks;
+					const placed = afterTracks.main.elements.at(-1);
+					return placed?.id ?? element.id;
+				};
 				window.__ARTIDOR_DEBUG__ = {
 					getState: (): {
 						activeSceneId: string | null;
@@ -195,49 +228,14 @@ export class EditorCore {
 					 * so the renderer just skips it; the inspector
 					 * treats it like any other retimable element.
 					 */
-					insertMockVideo: (opts?: { durationSeconds?: number }): string => {
-						const TICKS_PER_SECOND = 120_000;
-						const duration = (opts?.durationSeconds ?? 5) * TICKS_PER_SECOND;
-						const element = {
-							id: generateUUID(),
-							type: "video" as const,
-							name: "Mock Video",
-							startTime: 0,
-							duration,
-							trimStart: 0,
-							trimEnd: 0,
-							hidden: false,
-							// InsertElementCommand's validateElementBasics
-							// rejects video elements that don't have a
-							// mediaId key (`requiresMediaId({ element })
-							// && !("mediaId" in element)`). Set it to
-							// undefined so the key is present but the
-							// renderer skips the element.
-							mediaId: undefined,
-							sourceUrl: "",
-							transform: {
-								scaleX: 1,
-								scaleY: 1,
-								position: { x: 0, y: 0 },
-								rotate: 0,
-							},
-							opacity: 1,
-						};
-						const tracks = this.scenes.getActiveScene().tracks;
-						this.timeline.insertElement({
-							element: element as never,
-							placement: { mode: "explicit", trackId: tracks.main.id },
-						});
-						// InsertElementCommand regenerates the id
-						// internally to avoid collisions; the id we
-						// passed in is overwritten. Read back the real
-						// id from the scene so callers can address
-						// the inserted element.
-						const afterTracks = this.scenes.getActiveScene().tracks;
-						const placed = afterTracks.main.elements.find(
-							(e) => e.name === "Mock Video",
-						);
-						return placed?.id ?? element.id;
+					insertMockVideo,
+					insertMockVideos: (
+						count: number,
+						opts?: { durationSeconds?: number },
+					): void => {
+						for (let i = 0; i < count; i++) {
+							insertMockVideo(opts);
+						}
 					},
 					/**
 					 * Test-only: open the "Save to preset" dialog with

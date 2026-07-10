@@ -20,7 +20,7 @@ advantage. Tauri gives us the same UI for free and a better backend.
 
 ## Architecture
 
-```
+```text
 Tauri Window (native)
 ├── WebView running Next.js (same code as web app)
 │   └── Detects Tauri runtime → switches to IPC backend
@@ -54,6 +54,7 @@ Tauri Window (native)
 ## User-facing impact
 
 Yes — desktop app gets:
+
 1. Exact web UI (parity)
 2. Faster rendering (native WGPU)
 3. Faster export (native FFmpeg)

@@ -5,6 +5,7 @@
 ## Changes
 
 ### Modified files
+
 - `apps/web/src/services/video-cache/service.ts`:
   - `initializeSink()`: GOP index now built eagerly (blocking) — adds
     50-200ms to import but ensures first seek is fast
@@ -18,7 +19,7 @@
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | exit 0 (6 pre-existing warnings) |
 | `bun test apps/web/src` | 203 pass, 0 fail |

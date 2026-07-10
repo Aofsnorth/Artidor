@@ -17,7 +17,7 @@ Artidor saat ini me-render video **100% di browser** via:
 Trade-off yang diketahui:
 
 | Pro | Kontra |
-|---|---|
+| --- | --- |
 | Zero install, no native binary | Codec terbatas (H.264, VP9, VP8, AV1 di modern browser) |
 | Pure local-first, MIT clean | Tidak bisa ProRes, DNxHR, H.265 encode di Firefox/Safari |
 | Bundle size kecil tanpa FFmpeg.wasm | Export konsisten lintas OS/browser tidak terjamin |
@@ -37,7 +37,7 @@ sebagai Web Worker. Import/export/transcode terjadi client-side.
 **Trade-off:**
 
 | Aspek | Detail |
-|---|---|
+| --- | --- |
 | **Bundle size** | +25–35 MB (core), +60 MB untuk build penuh dengan semua codec |
 | **Codec coverage** | H.264, H.265, VP9, AV1, ProRes (read-only), DNxHR (read-only), AAC, MP3, FLAC |
 | **Performance** | 3–10× lebih lambat dari native (WASM interpreter), cukup untuk export < 5 menit, tidak nyaman untuk > 15 menit |
@@ -46,6 +46,7 @@ sebagai Web Worker. Import/export/transcode terjadi client-side.
 | **Privacy** | ✅ — tidak ada data keluar device |
 
 **File yang akan terpengaruh:**
+
 - `apps/web/package.json` (tambah `@ffmpeg/ffmpeg`, `@ffmpeg/util`)
 - `apps/web/src/lib/export/` (tambah adapter FFmpeg.wasm)
 - `apps/web/src/lib/media/` (tambah path transcode)
@@ -57,6 +58,7 @@ sebagai Web Worker. Import/export/transcode terjadi client-side.
 **Estimasi kerja:** 5–8 hari (satu developer).
 
 **Risiko:**
+
 - Bundle size berdampak ke first-load. **Mitigasi:** lazy load FFmpeg.wasm hanya
   saat user memilih "Use FFmpeg" di export dialog.
 - Web Worker + WASM threading: bug Safari lama (sudah fix di Safari 17+).
@@ -65,6 +67,7 @@ sebagai Web Worker. Import/export/transcode terjadi client-side.
   require-corp` di response.)
 
 **Verifikasi awal yang harus dilakukan sebelum decide:**
+
 - Test dengan project 1080p 5 menit: berapa detik wall time untuk export H.265?
 - Test dengan file ProRes .mov: apakah read sukses?
 - Test di Firefox + Safari: apakah SharedArrayBuffer tersedia?
@@ -80,7 +83,7 @@ README), tinggal add FFmpeg sebagai sidecar. Browser tetap pakai pipeline saat i
 **Trade-off:**
 
 | Aspek | Detail |
-|---|---|
+| --- | --- |
 | **Bundle size (desktop)** | +80–120 MB (FFmpeg binary), installer +30 MB |
 | **Bundle size (web)** | Tidak berubah (zero impact) |
 | **Codec coverage** | Full FFmpeg, semua codec, semua container |
@@ -90,6 +93,7 @@ README), tinggal add FFmpeg sebagai sidecar. Browser tetap pakai pipeline saat i
 | **Privacy** | ✅ |
 
 **File yang akan terpengaruh:**
+
 - `apps/desktop/Cargo.toml` (tambah `ffmpeg-next` atau sidecar via `tauri-plugin-shell`)
 - `apps/desktop/src/` (tambah FFmpeg adapter module)
 - `apps/web/` (tambah feature detection: kalau desktop → pakai Rust adapter,
@@ -100,12 +104,14 @@ README), tinggal add FFmpeg sebagai sidecar. Browser tetap pakai pipeline saat i
 testing cross-OS, codec licensing review).
 
 **Risiko:**
+
 - FFmpeg licensing: LGPL/GPL dinamis. Perlu legal review sebelum ship.
 - Bundle size: installer desktop jadi > 200 MB. **Mitigasi:** opsional download
   (user pilih saat first launch).
 - Codec licensing di beberapa jurisdiction (H.265 punya patent pool).
 
 **Verifikasi awal:**
+
 - Build desktop dengan FFmpeg sidecar di Windows + macOS + Linux.
 - Test export 4K 10 menit: berapa wall time? (Expected: ~3–10 menit.)
 - Test import ProRes .mov, H.265 .mp4, AV1 .webm.
@@ -123,7 +129,7 @@ README).
 **Trade-off:**
 
 | Aspek | Detail |
-|---|---|
+| --- | --- |
 | **Bundle size** | Zero impact |
 | **Codec coverage** | Full |
 | **Performance** | Native, tergantung hardware server |
@@ -132,6 +138,7 @@ README).
 | **Privacy** | ⚠️ — video harus upload ke server. **Conflict dengan local-first philosophy** |
 
 **File yang akan terpengaruh:**
+
 - `apps/web/src/app/api/export/route.ts` (atau buat baru)
 - `docker-compose.yml` (tambah service ffmpeg-server)
 - `apps/web/src/components/editor/dialogs/export-dialog.tsx`
@@ -141,6 +148,7 @@ README).
 **Estimasi kerja:** 3–5 hari.
 
 **Risiko:**
+
 - **Bertentangan dengan local-first philosophy Artidor.** README eksplisit bilang
   "no uploads, no cloud relay". Opsi ini akan jadi opt-in advanced, tapi bisa
   disalahpahami user sebagai default.
@@ -148,6 +156,7 @@ README).
 - Tetap harus solve auth (siapa yang boleh pakai server orang lain?).
 
 **Verifikasi awal:**
+
 - Spin up Docker compose dengan ffmpeg-server, export dari local web app.
 - Test latency: 1080p 5 menit upload + transcode + download = berapa total wall time?
 
@@ -163,7 +172,7 @@ lewat `apps/web/src/lib/export/codecs.ts` (file shared).
 **Trade-off:**
 
 | Aspek | Detail |
-|---|---|
+| --- | --- |
 | **Bundle size (web)** | Lazy: 0 default, +25–35 MB saat user pilih "Advanced export" |
 | **Bundle size (desktop)** | +80–120 MB |
 | **Best UX** | ✅ — user web tetap zero-install, user desktop dapat kecepatan native |
@@ -173,6 +182,7 @@ lewat `apps/web/src/lib/export/codecs.ts` (file shared).
 **Estimasi kerja:** 12–18 hari (terbesar di antara semua opsi).
 
 **Risiko:**
+
 - WGSL/wgpu + FFmpeg.wasm interop di web: kemungkinan bug memory di Safari lama.
 - Desktop LGPL compliance: perlu dokumentasi link dinamis.
 
@@ -215,7 +225,7 @@ Per `AGENTS.md` §"Dependency and Framework Rules":
 > ada approval eksplisit per Opsi.
 
 | Opsi | Files Added | Files Modified |
-|---|---|---|
+| --- | --- | --- |
 | 1 — FFmpeg.wasm | `lib/export/ffmpeg-wasm-adapter.ts`, `workers/ffmpeg-worker.ts` | `package.json`, `export-dialog.tsx`, `next.config.ts`, `lib/media/`, `lib/export/index.ts` |
 | 2 — Desktop native | `apps/desktop/src/ffmpeg/`, `apps/desktop/build.rs` | `Cargo.toml`, `apps/web/src/lib/export/codecs.ts` (detect desktop), `lib/env/` |
 | 3 — Server-side | `app/api/export/ffmpeg/route.ts` | `docker-compose.yml`, `export-dialog.tsx`, `lib/env/`, `lib/export/codecs.ts` |

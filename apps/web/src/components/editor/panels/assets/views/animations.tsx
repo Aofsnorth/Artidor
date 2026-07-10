@@ -32,10 +32,7 @@ import {
 import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
-import {
-	getPaletteForId,
-	getSceneImageUrlForId,
-} from "@/components/editor/panels/assets/views/components/procedural-preview";
+import { getPaletteForId } from "@/components/editor/panels/assets/views/components/procedural-preview";
 
 const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
 	[
@@ -201,7 +198,6 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 
 	const previewStyle = useMemo(() => presetPreviewStyle(preset), [preset]);
 	const palette = useMemo(() => getPaletteForId(preset.type), [preset.type]);
-	const sceneImage = useMemo(() => getSceneImageUrlForId(preset.type), [preset.type]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
@@ -222,16 +218,11 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 			<div className="asset-preview-overlay" />
 
 			<div
-				className="relative size-full overflow-hidden rounded-sm mx-auto mt-2"
+				className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-zinc-950"
 				style={{ width: "80%", height: "80%" }}
 			>
 				<div
-					aria-hidden
-					className="absolute inset-0 bg-cover bg-center"
-					style={{ backgroundImage: `url("${sceneImage}")` }}
-				/>
-				<div
-					className="absolute inset-0 flex items-center justify-center z-10"
+					className="absolute inset-0 flex items-center justify-center"
 					style={previewStyle}
 				>
 					<PresetIcon preset={preset} paletteAccent={palette.accent} />

@@ -148,12 +148,29 @@ export class CanvasRenderer {
 				item.transform.height *= scaleY;
 			}
 		}
-		compositor.ensureInitialized({
-			width: this.width,
-			height: this.height,
-		});
-		compositor.syncTextures(textures);
-		compositor.render(frame);
+		// Guard the entire GPU pipeline — wgpu panics (device lost, driver
+		// reset, OOM) must not crash the render loop. A lost device means
+		// the preview freezes on the last good frame until page reload.
+		try {
+			compositor.ensureInitialized({
+				width: this.width,
+				height: this.height,
+			});
+			compositor.syncTextures(textures);
+			compositor.render(frame);
+		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			if (
+				msg.includes("createBuffer") ||
+				msg.includes("device is lost") ||
+				msg.includes("GPUDevice") ||
+				msg.includes("panicked")
+			) {
+				console.warn("[renderer] GPU device lost, preview frozen until reload:", msg);
+				return;
+			}
+			throw error;
+		}
 	}
 
 	async renderToCanvas({

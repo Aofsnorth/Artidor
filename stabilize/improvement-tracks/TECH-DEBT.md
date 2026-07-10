@@ -10,7 +10,7 @@
 ## Cara Baca
 
 | Field | Arti |
-|---|---|
+| --- | --- |
 | **Dampak** | High / Medium / Low — efek ke velocity / bug rate |
 | **Risiko** | High / Medium / Low — peluang regresi saat fix |
 | **Bidang** | Web / Rust / WASM / Docs / CI / Shared |
@@ -33,6 +33,7 @@ kontributor baru dan memperbesar bundle. Per README arsitektur, filosofi Rust-fi
 → semakin tipis TypeScript layer semakin baik.
 
 **Actionable Fix (dipecah jadi 2 fase):**
+
 1. **Fase 1 (audit):** petakan semua query di `apps/web/src/lib/db/` dan
    `apps/web/src/lib/auth/`, klasifikasikan: (a) yang bisa murni Drizzle,
    (b) yang butuh raw SQL via Kysely.
@@ -55,6 +56,7 @@ kontributor baru dan memperbesar bundle. Per README arsitektur, filosofi Rust-fi
 
 **Temuan:**
 Cek folder `__tests__/` di:
+
 - `apps/web/src/lib/animation/__tests__/` ✅ ada
 - `apps/web/src/lib/graphics/__tests__/` ✅ ada
 - `apps/web/src/lib/masks/__tests__/` ✅ ada
@@ -70,6 +72,7 @@ Cek folder `__tests__/` di:
 - `rust/crates/*/tests/` — perlu audit terpisah
 
 **Actionable Fix (fase per area):**
+
 1. **Phase 1:** Coverage minimal 60% untuk:
    - `lib/export/` (format, MIME, extension) — 5 test
    - `lib/storage/` (adapter, service) — 8 test
@@ -95,6 +98,7 @@ Cek folder `__tests__/` di:
 - **Risiko:** Medium (refactor pattern, harus hati-hati)
 
 **Temuan:**
+
 - `core/managers/` punya 14 file: `ai-manager`, `audio-manager`, `clipboard-manager`,
   `commands`, `diagnostics-manager`, `media-manager`, `playback-manager`,
   `project-manager`, `renderer-manager`, `save-manager`, `scenes-manager`,
@@ -104,6 +108,7 @@ Cek folder `__tests__/` di:
   binding, reactive)" tidak selalu jelas.
 
 **Actionable Fix (audit, bukan refactor besar):**
+
 1. Buat `apps/web/src/core/ARCHITECTURE.md` yang mendokumentasikan:
    - Kapan sesuatu jadi `manager` (long-lived, side-effect-heavy, stateful)
    - Kapan sesuatu jadi `hook` (React-specific binding, reactive)
@@ -127,12 +132,14 @@ Cek folder `__tests__/` di:
 **Temuan:**
 Sudah tercatat di `PROBLEM.MD` problem 004 placeholder. Stub `return null` masih
 di-import dan di-render di 2 halaman:
+
 - `apps/web/src/app/editor/[project_id]/page.tsx` baris 59–61, 110
 - `apps/web/src/app/projects/page.tsx` baris 93, 303
 
 Stub juga tulis ke localStorage key `last-seen-version` yang tidak ada pembaca.
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Hapus `apps/web/src/lib/changelog/components/changelog-notification.tsx`.
 2. Hapus import di `editor/[project_id]/page.tsx` dan `projects/page.tsx`.
 3. Hapus render di kedua file.
@@ -155,19 +162,23 @@ Stub juga tulis ke localStorage key `last-seen-version` yang tidak ada pembaca.
 **Temuan:**
 `TICKS_PER_SECOND = 120_000` ada di `lib/wasm/` (Rust-defined, di-import). Tapi
 ada literal lain yang tidak di-konsolidasikan:
+
 - `60` (fps default) di banyak tempat
 - `800` (debounce save) di `save-manager.ts` constructor default
 - `30_000` (storage poll interval) di `use-storage-estimate.ts`
 - `52vh` (modal max height) di `whats-new-card.tsx`
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Buat `apps/web/src/lib/constants.ts` dengan konstanta:
+
    ```ts
    export const DEFAULT_FPS = 60;
    export const SAVE_DEBOUNCE_MS = 800;
    export const STORAGE_POLL_INTERVAL_MS = 30_000;
    export const WHATS_NEW_MODAL_MAX_HEIGHT = "52vh";
    ```
+
 2. Replace literal di source.
 3. Test tidak boleh berubah (default sama).
 
@@ -187,6 +198,7 @@ Per `AGENTS.md` §"Code Quality Standard": "No unnecessary `any`". Perlu scan
 berapa banyak `any` di source.
 
 **Actionable Fix (audit → gradual):**
+
 1. `cd "C:\Users\Arthe\Documents\MyProject\Artidor" && grep -rn ": any" apps/web/src/ --include="*.ts" --include="*.tsx" | wc -l`
 2. Untuk setiap occurrence, evaluasi:
    - Bisa jadi `unknown` + type guard?
@@ -212,7 +224,9 @@ logger (jika ada), telemetry store (untuk AI events). Tidak ada format konsisten
 (timestamp, level, context).
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Pilih atau buat `apps/web/src/lib/log.ts`:
+
    ```ts
    export const log = {
      debug: (ctx: string, msg: string, data?: unknown) => { /* ... */ },
@@ -221,6 +235,7 @@ logger (jika ada), telemetry store (untuk AI events). Tidak ada format konsisten
      error: (ctx: string, msg: string, err?: unknown) => { /* ... */ },
    };
    ```
+
 2. Replace `console.log` di non-test source.
 3. Production: route ke telemetry (opt-in), bukan console.
 4. Test: log dipanggil dengan format benar.
@@ -241,6 +256,7 @@ logger (jika ada), telemetry store (untuk AI events). Tidak ada format konsisten
 import konsisten, atau ada campur relative (`../../`) dan alias.
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Audit import statement: `cd "C:\Users\Arthe\Documents\MyProject\Artidor" && grep -rn "from '\\.\\." apps/web/src/ | wc -l`
 2. Pilih konvensi: alias only, atau alias preferred + relative untuk sibling.
 3. Tambah Biome rule (jika belum ada) untuk enforce.
@@ -258,6 +274,7 @@ import konsisten, atau ada campur relative (`../../`) dan alias.
 
 **Temuan:**
 Pola error handling bervariasi:
+
 - `try/catch` dengan swallow (storage estimate)
 - `try/catch` dengan rethrow
 - `.catch(() => null)` pattern
@@ -266,13 +283,16 @@ Pola error handling bervariasi:
   di production, OK di test)
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Buat `apps/web/src/lib/errors.ts` dengan typed error classes:
+
    ```ts
    export class StorageError extends Error { ... }
    export class ExportError extends Error { ... }
    export class RenderError extends Error { ... }
    export class AIError extends Error { ... }
    ```
+
 2. Ganti generic `Error` di catch blocks.
 3. Tambah `userMessage` field untuk error yang ditampilkan ke user.
 4. Test: error type muncul dengan benar.
@@ -293,6 +313,7 @@ Tidak ada CI step yang memonitor bundle size. `@ffmpeg/ffmpeg`, `next`, `react`,
 `drizzle-orm`, `kysely`, dan 200+ dependencies lain bisa bengkak tanpa notice.
 
 **Actionable Fix (governance):**
+
 1. Tambah `@next/bundle-analyzer` ke devDependencies.
 2. Tambah script: `"analyze": "ANALYZE=true bun run build:web"`.
 3. Tambah CI job yang:
@@ -316,12 +337,14 @@ Tidak ada CI step yang memonitor bundle size. `@ffmpeg/ffmpeg`, `next`, `react`,
 **Temuan:**
 `PROGRESS_SUMMARY.md` dari 2026-06-17 (per entri maintenance). Setelah banyak
 commit baru, beberapa item di tabel mungkin sudah outdated. Cek klaim:
+
 - "58 efek" (latest)
 - "50 transisi" (latest)
 - "Shapes 75+ customizable" (latest)
 - "Frame interpolation uncommitted" (per PROGRESS_SUMMARY — perlu re-verify)
 
 **Actionable Fix (kecil, terlingkup):**
+
 1. Buat `scripts/verify-progress.sh` yang:
    - Hitung efek dari `lib/effects/definitions/index.ts`
    - Hitung transisi dari `lib/transitions/index.ts`
@@ -347,6 +370,7 @@ Cek apakah `tsconfig.json` punya `"strict": true` dan sub-flags
 type safety hole laten.
 
 **Actionable Fix (gradual):**
+
 1. Audit `tsconfig.json` saat ini.
 2. Set `"strict": true`.
 3. Fix errors satu per satu (jangan `// @ts-ignore`).
@@ -360,7 +384,7 @@ type safety hole laten.
 ## Out of Scope (Tidak Bisa Diubah Saat Ini)
 
 | Item | Alasan |
-|---|---|
+| --- | --- |
 | Hapus better-auth | Auth sensitive, governance protected |
 | Hapus Drizzle | Perlu keputusan roadmap |
 | Pindah ke Biome full (replace ESLint) | Biome sudah ada, mungkin sudah jadi default |

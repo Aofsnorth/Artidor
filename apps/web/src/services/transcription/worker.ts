@@ -2,14 +2,14 @@ import type {
 	AutomaticSpeechRecognitionPipeline,
 	AutomaticSpeechRecognitionOutput,
 } from "@huggingface/transformers";
-import type {
-	TranscriptionSegment,
-	TranscriptionWord,
-} from "@/lib/transcription/types";
+import type { TranscriptionSegment } from "@/lib/transcription/types";
 import {
 	DEFAULT_CHUNK_LENGTH_SECONDS,
 	DEFAULT_STRIDE_SECONDS,
+	DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
 } from "@/lib/transcription/audio";
+import { configureOnnxRuntime } from "./onnx-runtime";
+import { toTranscriptionSegments } from "./segments";
 
 export type WorkerMessage =
 	| { type: "init"; modelId: string }
@@ -63,10 +63,17 @@ async function handleInit({ modelId }: { modelId: string }) {
 		// library (multiple MB). Loading it only when the user actually
 		// starts transcription avoids bloating the worker's initial load
 		// for users who never use the feature.
-		const { pipeline } = await import("@huggingface/transformers");
+		const { env, pipeline } = await import("@huggingface/transformers");
+
+		configureOnnxRuntime(env);
+
+		// ponytail: always WASM + fp32. WebGPU in workers is unreliable;
+		// quantized (q4/q8) weights use MatMulNBits ops that WASM can't run.
+		// String "fp32" blanket-forces ALL sub-models (the old per-model
+		// object missed sub-models that fell back to default q8).
 		transcriber = (await pipeline("automatic-speech-recognition", modelId, {
-			dtype: "q4",
-			device: "auto",
+			dtype: "fp32",
+			device: "wasm",
 			progress_callback: (progressInfo: {
 				status?: string;
 				file?: string;
@@ -141,13 +148,11 @@ async function handleTranscribe({
 	cancelled = false;
 
 	try {
-		// Ask for WORD-level timestamps so captions can be cut on real word
-		// boundaries instead of linear interpolation (the old drift source).
 		const rawResult = await transcriber(audio, {
 			chunk_length_s: DEFAULT_CHUNK_LENGTH_SECONDS,
 			stride_length_s: DEFAULT_STRIDE_SECONDS,
 			language: language === "auto" ? undefined : language,
-			return_timestamps: "word",
+			return_timestamps: true,
 		});
 
 		if (cancelled) return;
@@ -155,40 +160,10 @@ async function handleTranscribe({
 		const result: AutomaticSpeechRecognitionOutput = Array.isArray(rawResult)
 			? rawResult[0]
 			: rawResult;
-
-		// With word timestamps, `chunks` is one entry per word. Collect the
-		// words (guarding null/!finite timestamps that Whisper emits on the
-		// final token), then fold them into a single segment carrying the
-		// per-word timing. buildCaptionChunks slices on these real boundaries.
-		const words: TranscriptionWord[] = [];
-		if (result.chunks) {
-			for (const chunk of result.chunks) {
-				const ts = chunk.timestamp;
-				const start = ts?.[0];
-				let end = ts?.[1];
-				if (typeof start !== "number" || !Number.isFinite(start)) continue;
-				// Whisper leaves the last word's end null — fall back to its start
-				// so the word still has a non-negative, finite duration.
-				if (typeof end !== "number" || !Number.isFinite(end) || end < start) {
-					end = start;
-				}
-				const text = chunk.text?.trim();
-				if (!text) continue;
-				words.push({ word: text, start, end });
-			}
-		}
-
-		const segments: TranscriptionSegment[] = [];
-		if (words.length > 0) {
-			const firstWord = words[0];
-			const lastWord = words[words.length - 1];
-			segments.push({
-				text: words.map((w) => w.word).join(" "),
-				start: firstWord?.start ?? 0,
-				end: lastWord?.end ?? firstWord?.start ?? 0,
-				words,
-			});
-		}
+		const segments = toTranscriptionSegments({
+			result,
+			durationSeconds: audio.length / DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
+		});
 
 		self.postMessage({
 			type: "transcribe-complete",

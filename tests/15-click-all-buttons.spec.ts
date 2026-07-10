@@ -128,7 +128,6 @@ test("Click every visible button in the editor — no fatal errors", async ({
 		failures,
 		`${failures.length} of ${seen.size} button(s) crashed:\n  - ${failures.join("\n  - ")}`,
 	).toEqual([]);
-	// biome-ignore lint/suspicious/noConsoleLog: diagnostic
 	console.log(
 		`Clicked ${clicked} of ${seen.size} unique buttons without fatal errors (out of ${buttonCount} total).`,
 	);

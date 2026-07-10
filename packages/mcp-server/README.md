@@ -11,7 +11,7 @@ Artidor is local-first: the editor's state lives in a **browser tab**, so this
 process can't run commands itself. It **relays** them into a running editor tab
 over a localhost WebSocket:
 
-```
+```text
 MCP client ──stdio──▶ @artidor/mcp-server ──ws://127.0.0.1:8765──▶ editor tab
 ```
 
@@ -24,18 +24,23 @@ MCP client ──stdio──▶ @artidor/mcp-server ──ws://127.0.0.1:8765─
 ## Usage
 
 1. **Build:**
+
    ```bash
    bun install
    cd packages/mcp-server && bun run build
    ```
+
 2. **Run the editor with the relay enabled.** Set the relay URL so the editor
    tab connects to this server, then open the editor (use `http://localhost`
    so the browser allows the local-only relay connection):
+
    ```bash
    # apps/web/.env.local
    NEXT_PUBLIC_MCP_RELAY_URL=ws://127.0.0.1:8765
    ```
+
 3. **Point your MCP client at the server.** Example MCP client config:
+
    ```json
    {
      "mcpServers": {
@@ -43,6 +48,7 @@ MCP client ──stdio──▶ @artidor/mcp-server ──ws://127.0.0.1:8765─
      }
    }
    ```
+
    The relay port can be changed with `ARTIDOR_MCP_PORT`.
 
 ## Constraints

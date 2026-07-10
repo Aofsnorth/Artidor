@@ -13,11 +13,13 @@
 ## Rollback Process
 
 For code regression:
+
 ```bash
 git revert <commit>
 ```
 
 For release:
+
 1. Stop rollout.
 2. Revert release commit.
 3. Redeploy previous version.

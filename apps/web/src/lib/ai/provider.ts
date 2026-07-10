@@ -97,6 +97,16 @@ export interface ChatResponse {
 	finishReason: string;
 }
 
+/** One event emitted while an LLM provider is producing a response. */
+export type ChatStreamEvent =
+	| { type: "delta"; delta: string }
+	| { type: "tool-calls"; toolCalls: ToolCall[] }
+	| {
+			type: "done";
+			usage?: ChatResponse["usage"];
+			finishReason: string;
+	  };
+
 /** A snapshot of the editor + telemetry the LLM should see at request time. */
 export interface ChatContext {
 	projectName?: string;
@@ -126,6 +136,10 @@ export interface ProviderConfig {
 export interface LLMProvider {
 	name: ProviderName;
 	chat(request: ChatRequest): Promise<ChatResponse>;
+	chatStream?(
+		request: ChatRequest,
+		signal?: AbortSignal,
+	): AsyncGenerator<ChatStreamEvent>;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -44,6 +44,15 @@ pub async fn initialize_gpu() -> Result<(), JsValue> {
     Ok(())
 }
 
+/// Drop the current GPU runtime so the next `initializeGpu` call creates a
+/// fresh device. Used to recover from device-lost errors.
+#[wasm_bindgen(js_name = destroyGpu)]
+pub fn destroy_gpu() {
+    GPU_RUNTIME.with(|runtime| {
+        runtime.replace(None);
+    });
+}
+
 pub(crate) fn with_gpu_runtime<T>(
     action: impl FnOnce(&GpuRuntime) -> Result<T, JsValue>,
 ) -> Result<T, JsValue> {

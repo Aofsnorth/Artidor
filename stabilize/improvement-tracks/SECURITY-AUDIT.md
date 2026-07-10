@@ -296,6 +296,7 @@ grep -rn "new Function" apps/web/src/
 
 File ini **read-only reference**. Update status `- [x]` `- [⚠️]` `- [🚨]` langsung
 tanpa approval, tapi:
+
 - Temuan CRITICAL → buat problem baru di `PROBLEM.MD` dan catat di `CRITICAL.MD`.
 - Temuan HIGH → buat problem baru di `PROBLEM.MD`.
 - Temuan MEDIUM/LOW → kumpulkan dulu, propose batch fix dalam satu PR.

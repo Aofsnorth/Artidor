@@ -4,7 +4,7 @@ Use this folder for bug triage, regression control, and quality stabilization.
 
 ## Struktur
 
-```
+```text
 stabilize/
 ├─ README.md              ← file ini (index)
 ├─ BUGS.md                ← bug tracker

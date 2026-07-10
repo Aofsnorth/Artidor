@@ -18,7 +18,7 @@ blocked because frozen objects have non-configurable properties.
 ## SOP Checks
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bunx tsc --noEmit` | exit 0 |
 | `bun run lint:web` | 0 errors |
 | `bun run test` | all pass |

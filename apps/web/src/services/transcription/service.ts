@@ -60,6 +60,12 @@ class TranscriptionService {
 
 					case "transcribe-error":
 						this.worker?.removeEventListener("message", handleMessage);
+						// ONNX runtime errors (e.g. "invalid data location") leave
+						// the session in a bad state — kill worker so next attempt
+						// reinitializes cleanly.
+						if (response.error.includes("invalid data location")) {
+							this.terminate();
+						}
 						reject(new Error(response.error));
 						break;
 

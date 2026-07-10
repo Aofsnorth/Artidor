@@ -164,7 +164,7 @@ client lain yang support MCP
 
 Jadi nanti AI agent bisa “mengontrol” Artidor lewat API resmi, bukan cuma kasih saran teks.
 
-13. Editor API
+1. Editor API
 Artidor akan punya public Editor API.
 
 Maksudnya semua hal yang bisa dilakukan di editor, bisa juga dilakukan lewat API.
@@ -181,7 +181,7 @@ AI editing workflows
 
 Ini fitur penting karena Artidor berubah dari sekadar aplikasi editor menjadi platform video editing engine.
 
-14. Built-in features bisa dimatikan
+1. Built-in features bisa dimatikan
 
 Karena fitur bawaan juga berjalan lewat Plugin API, user bisa disable built-in feature yang tidak dibutuhkan.
 
@@ -204,5 +204,3 @@ tanya-tanya
 follow tracking issue di GitHub
 dapat sneak peek
 dapat early build lewat Discord
-
-

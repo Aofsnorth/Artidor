@@ -6,18 +6,22 @@
  * return `{ ok: true }` on success or `{ ok: false, error: "..." }`
  * with a human-readable reason on failure.
  *
- * This endpoint is gated behind `AI_FEATURE_ENABLED` (same as
- * /api/ai/chat) to prevent unauthenticated use as an arbitrary-URL
- * fetch proxy. It doesn't bill anything (single-token response we
- * never read) and doesn't return LLM output — it only checks
- * authentication, model availability, and reachability.
+ * This endpoint is gated behind `AI_FEATURE_ENABLED` and per-IP rate
+ * limiting to prevent abuse as an arbitrary-URL fetch proxy, plus SSRF/DNS
+ * protection on the target URL. It uses only the client-supplied (BYOK)
+ * provider — never the server's key — so no signed-in session is required.
+ * It doesn't bill anything (single-token response we never read) and
+ * doesn't return LLM output — it only checks model availability and
+ * reachability.
  */
 
 import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeProviderBaseUrl, assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
-import { getOptionalSession } from "@/lib/auth/require-auth";
+import {
+	normalizeProviderBaseUrl,
+	assertSafeProviderUrlDns,
+} from "@/lib/ai/provider-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -88,16 +92,14 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
-	const session = await getOptionalSession();
-	if (!session) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
 	try {
-		// Auth check: this endpoint always uses the client-supplied provider
-		// config (BYOK) — it never touches the server's env-var LLM key, so
-		// there is no cost-abuse risk and anonymous access is allowed. Rate
-		// limiting + SSRF protection still apply.
+		// This endpoint always uses the client-supplied provider config
+		// (BYOK) — it never touches the server's env-var LLM key, so there
+		// is no cost-abuse risk and anonymous access is intentionally
+		// allowed (a signed-in session is NOT required to test your own
+		// key). The abuse surface (arbitrary-URL fetch proxy) is closed by
+		// the AI_FEATURE_ENABLED gate above, per-IP rate limiting, and the
+		// SSRF/DNS protection on the target URL — all of which still apply.
 		const { limited } = await checkRateLimit({ request });
 		if (limited) {
 			return Response.json(

@@ -17,13 +17,17 @@
 ## Risk Classification
 
 Low:
+
 - Docs, comments, small UI copy.
 
 Medium:
+
 - UI behavior, non-sensitive logic, tests.
 
 High:
+
 - Rust core, timeline logic, export, AI tool calls, storage, API routes.
 
 Critical:
+
 - Auth, MCP permissions, secrets, release, CI security, license, payment.

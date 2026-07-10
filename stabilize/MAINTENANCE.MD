@@ -118,6 +118,7 @@ File ini adalah log maintenance kronologis untuk branch `stabilize`. Setiap entr
 ### Ringkasan Jawaban Pengguna
 
 **Problem 001:**
+
 * Q1 (batas ruang lingkup, termasuk `content-collections` config + `entries/*.md`?) — **Iya** (termasuk).
 * Q2 (skema severity `critical | bug | risk | note`?) — **Iya** (pakai).
 * Q3 (deliverable inline ke `PROBLEM.MD` atau pesan terpisah?) — **Iya** (inline).
@@ -126,6 +127,7 @@ File ini adalah log maintenance kronologis untuk branch `stabilize`. Setiap entr
 * Q6 (stub mati `ChangelogNotification` — di sini atau dipecah?) — **Dipecah** → problem 004.
 
 **Problem 002:**
+
 * Q1 (permukaan mana yang memiliki bug?) — **a) hanya modal "What's New"**.
 * Q2 (entri mana yang memicu?) — **Entri pertama** (yang berisi path file panjang `apps/web/src/components/editor/panels/assets/views/components/procedural-preview.ts`).
 * Q3 (di mana diamati?) — **Browser desktop dan mobile**.

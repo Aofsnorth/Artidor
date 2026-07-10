@@ -3,6 +3,7 @@
 ## Checklist Summary
 
 ### Planning ✅
+
 - [x] Tasks clearly defined
 - [x] Scope broken into small changes
 - [x] Relevant files read before editing
@@ -11,6 +12,7 @@
 - [x] Rollback plan: git revert per commit
 
 ### Implementation ✅
+
 - [x] Changes are minimal (one concern per commit)
 - [x] No unrelated refactor
 - [x] No new dependencies added
@@ -21,6 +23,7 @@
 - [x] User privacy preserved (local-first, no uploads)
 
 ### Professional Quality Gate ✅
+
 - [x] SOLID principles followed
 - [x] Function/module responsibility is clear
 - [x] No unnecessary `any`
@@ -35,22 +38,26 @@
 - [x] Code is maintainable
 
 ### Documentation Gate ✅
+
 - [x] New files have JSDoc headers
 - [x] Exported functions documented
 - [x] What's New updated for all user-facing changes
 - [x] Inline comments where needed
 
 ### Dependency Gate ✅
+
 - [x] No new dependencies added
 - [x] No new npm packages
 - [x] No new Rust crates
 
 ### Roadmap Alignment ✅
+
 - [x] Stabilization: bug fixes, drag fixes, track walls
 - [x] Performance: import optimization, export worker, AV1 codec
 - [x] Export/render consistency: worker pipeline, codec fallback
 
 ### Commands ✅
+
 - [x] `bun run lint:web` — 0 errors
 - [x] `cd apps/web && bunx tsc --noEmit` — 0 errors
 - [x] `bun run test` — 179/179 pass
@@ -69,16 +76,18 @@
 ## Files Changed (20+ files across 15 commits)
 
 ### New Files
+
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `apps/web/src/services/renderer/export-worker.ts` | Web Worker for export pipeline |
 | `apps/web/src/services/renderer/export-worker-bridge.ts` | Main-thread bridge for worker |
 | `apps/web/src/services/renderer/scene-serializer.ts` | Serialize scene tree for worker transfer |
 | `apps/web/src/services/renderer/scene-deserializer.ts` | Deserialize scene tree in worker |
 
 ### Modified Files
+
 | File | Change |
-|------|--------|
+| ------ | -------- |
 | `timeline-toolbar.tsx` | Add scene, rename/delete buttons |
 | `vertical-audio-meter.tsx` | Masked colors, smooth radius |
 | `shortcuts-dialog.tsx` | Scrollable |
@@ -112,7 +121,7 @@
 ## Verification Results
 
 | Check | Result |
-|-------|--------|
+| ------- | -------- |
 | `bun run lint:web` | ✅ 0 errors |
 | `bunx tsc --noEmit` | ✅ 0 errors |
 | `bun run test` | ✅ 179/179 pass |

@@ -61,11 +61,10 @@ const backtickRef = /`([^`]*\/[^`]+\.(?:md|mjs|ts|tsx|json|yml|yaml|toml|rs)|doc
 
 function extractReferences(content) {
   const refs = new Set();
-  let m;
-  while ((m = markdownLink.exec(content)) !== null) {
+  for (const m of content.matchAll(markdownLink)) {
     refs.add(m[1]);
   }
-  while ((m = backtickRef.exec(content)) !== null) {
+  for (const m of content.matchAll(backtickRef)) {
     refs.add(m[1]);
   }
   return [...refs];

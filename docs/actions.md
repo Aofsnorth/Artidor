@@ -38,7 +38,7 @@ export function vNToVN1({ state }: { state: unknown }): unknown {
 }
 ```
 
-2. Register it in `src/stores/keybindings/migrations/index.ts` and bump `CURRENT_VERSION`.
+1. Register it in `src/stores/keybindings/migrations/index.ts` and bump `CURRENT_VERSION`.
 
 ### 2. Register the handler — `src/hooks/actions/use-editor-actions.ts`
 

@@ -1,4 +1,5 @@
 # Technical Spec — Visual Properties & Timeline Clip Controls  
+
 **Scope:** Alight-Motion-inspired editor features: **Color & Fill**, **Border & Shadow/Bayangan**, **Blending & Opacity**, **Move & Transform**, plus **selected clip timeline controls** seperti geser kiri/kanan, trim/perpanjang kiri/kanan, dan playhead nudge.
 
 > Catatan: ini bukan klaim struktur internal Alight Motion 1:1. Ini adalah spesifikasi teknis lengkap untuk membangun fitur serupa di editor kamu, dengan field-field yang serializable, keyframe-friendly, dan cocok untuk mobile editor.
@@ -236,7 +237,7 @@ type FillMode =
 ### Penjelasan mode
 
 | Mode | Definisi | Cocok untuk |
-|---|---|---|
+| --- | --- | --- |
 | `none` | Tidak ada isi/fill. Stroke masih bisa tampil. | Drawing progress, outline text, mask stroke |
 | `solid` | Warna tunggal RGBA. | Shape dasar, text, solid panel |
 | `linear-gradient` | Gradient mengikuti garis arah tertentu. | Modern card, background, title |
@@ -294,7 +295,7 @@ interface SolidFill {
 ### Field detail
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `color.r` | number | `1` | `0..1` | Ya | Red channel |
 | `color.g` | number | `1` | `0..1` | Ya | Green channel |
 | `color.b` | number | `1` | `0..1` | Ya | Blue channel |
@@ -317,7 +318,7 @@ interface GradientStop {
 ### Field detail gradient stop
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `id` | string | generated | - | Tidak | Identitas stop |
 | `offset` | number | auto | `0..1` | Ya | Posisi stop |
 | `color` | RGBAColor | white | `0..1` per channel | Ya | Warna stop |
@@ -358,7 +359,7 @@ type GradientInterpolationMode =
 ### Field detail linear gradient
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `stops` | GradientStop[] | 2 stop | min 2 | Ya | Daftar warna |
 | `start.x/y` | number | `0, 0.5` | `-1..2` | Ya | Titik awal gradient |
 | `end.x/y` | number | `1, 0.5` | `-1..2` | Ya | Titik akhir gradient |
@@ -387,7 +388,7 @@ interface RadialGradientFill {
 ### Field detail radial gradient
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `center.x/y` | number | `0.5, 0.5` | `-1..2` | Ya | Pusat gradient |
 | `radiusX` | number | `0.5` | `0..4` | Ya | Radius horizontal |
 | `radiusY` | number | `0.5` | `0..4` | Ya | Radius vertikal |
@@ -530,7 +531,7 @@ const colorFillAnimatable = [
 ### Interpolation rules
 
 | Properti | Interpolation |
-|---|---|
+| --- | --- |
 | RGBA color | Linear per channel atau color-space aware |
 | Alpha | Linear number |
 | Gradient stop offset | Linear |
@@ -596,7 +597,7 @@ function validateFillStyle(fill: FillStyle): string[] {
 ## 2.2 Perbedaan Border, Stroke, Outline
 
 | Istilah | Definisi | Contoh |
-|---|---|---|
+| --- | --- | --- |
 | Stroke | Garis mengikuti path shape/text/vector | Outline text, line art |
 | Border | Garis tepi bounding/object alpha | Border image/video/shape |
 | Outline | Stroke yang biasanya mengelilingi konten | Text outline |
@@ -676,7 +677,7 @@ interface StrokeDashPattern {
 ### Field detail dash
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `enabled` | boolean | `false` | boolean | Hold | Aktifkan dash |
 | `dash` | number | `12` | `0..1000` | Ya | Panjang dash |
 | `gap` | number | `8` | `0..1000` | Ya | Jarak antar dash |
@@ -775,7 +776,7 @@ type ShadowBlendMode =
 ## 2.7 Field detail shadow
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `enabled` | boolean | `false` | boolean | Hold | Aktif/tidak |
 | `type` | enum | `drop` | enum | Hold | Tipe shadow |
 | `color` | RGBAColor | black | `0..1` | Ya | Warna shadow |
@@ -850,7 +851,7 @@ const borderShadowAnimatable = [
 ### Interpolation rules
 
 | Properti | Interpolation |
-|---|---|
+| --- | --- |
 | Stroke width | Linear number |
 | Stroke color | Color interpolation |
 | Stroke alignment | Hold |
@@ -1082,7 +1083,7 @@ interface TrackMatteSettings {
 ## 3.5 Field detail Blending & Opacity
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `opacity` | number | `1` | `0..1` | Ya | Opacity seluruh layer |
 | `blendMode` | enum | `normal` | enum | Hold | Cara layer dicampur |
 | `alphaMode` | enum | `premultiplied` | enum | Tidak umum | Mode alpha internal |
@@ -1266,7 +1267,7 @@ interface Matrix4 {
 ## 4.4 Field detail Move & Transform
 
 | Field | Type | Default | Range | Animatable | Keterangan |
-|---|---|---:|---|---|---|
+| --- | --- | ---: | --- | --- | --- |
 | `position.x` | number | `0` | bebas | Ya | Posisi horizontal |
 | `position.y` | number | `0` | bebas | Ya | Posisi vertikal |
 | `position.z` | number | `0` | bebas | Ya | Depth/parallax |
@@ -1386,7 +1387,7 @@ Move & Transform
 ## 4.8 Gesture behavior
 
 | Gesture | No layer selected | Layer selected |
-|---|---|---|
+| --- | --- | --- |
 | One-finger drag preview | Pan preview atau scrub jika mode timeline | Move layer |
 | Two-finger pinch | Zoom preview | Scale selected layer jika transform mode aktif |
 | Two-finger rotate | Rotate preview optional | Rotate selected layer |
@@ -2564,7 +2565,7 @@ interface LayerMetadata {
 ## Indonesian labels
 
 | Internal | Label UI |
-|---|---|
+| --- | --- |
 | `Color & Fill` | Warna & Isi |
 | `Border & Shadow` | Border & Bayangan |
 | `Blending & Opacity` | Blending & Opacity |

@@ -38,7 +38,7 @@ If a step is skipped, document why.
 
 ## 3. Sensitive Paths (Level 2 — require explicit human approval)
 
-```
+```text
 .env*                        **/*.pem          **/*.key
 **/*secret*                  **/*token*
 .github/workflows/**         .github/dependabot.yml
@@ -99,6 +99,7 @@ Never run without explicit approval: `rm -rf`, `git push --force`,
    non-trivial work using `features/_template/` (FEATURE.md, PLAN.md,
    STATE.md, QA.md, RISKS.md, TODO.md).
 6. Create a feature branch:
+
    ```bash
    git checkout -b feat/<short-kebab-name>
    ```
@@ -117,6 +118,7 @@ Never run without explicit approval: `rm -rf`, `git push --force`,
 ### After editing
 
 1. Run applicable checks:
+
    ```bash
    bun run lint:web
    cd apps/web && bunx tsc --noEmit
@@ -125,6 +127,7 @@ Never run without explicit approval: `rm -rf`, `git push --force`,
    cargo check
    cargo test
    ```
+
 2. Update feature folder's `QA.md` with the actual commands run and
    their results.
 3. Update `STATE.md` (status, last-updated date).

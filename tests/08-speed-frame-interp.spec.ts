@@ -201,7 +201,6 @@ test.describe("Editor — Speed + Frame Interpolation", () => {
 		// heavy"; the chip being present and the section being
 		// visible is the baseline. We just log the gating state.
 		if (!gated) {
-			// biome-ignore lint/suspicious/noConsoleLog: diagnostic
 			console.log(
 				`AI chip not gated: title="${title}" disabled=${disabled}`,
 			);
