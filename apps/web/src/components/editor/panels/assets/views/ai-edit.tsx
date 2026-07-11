@@ -27,6 +27,7 @@ import {
 } from "react";
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { truncateLongStrings } from "@/lib/ai/chat-display-helpers";
 import {
 	ArrowDown03Icon,
 	AlertCircleIcon,
@@ -2633,6 +2634,24 @@ function AdvancedSettingsButton() {
 						max={20}
 						onChange={(v) => setAdvancedSettings({ compactionKeepLast: v })}
 					/>
+					<SettingRow
+						label={t("aiEdit.advanced.maxOutputTokens")}
+						description={t("aiEdit.advanced.maxOutputTokensDesc")}
+						value={settings.maxOutputTokens}
+						min={256}
+						max={8192}
+						step={128}
+						onChange={(v) => setAdvancedSettings({ maxOutputTokens: v })}
+					/>
+					<SettingRow
+						label={t("aiEdit.advanced.maxContextMessages")}
+						description={t("aiEdit.advanced.maxContextMessagesDesc")}
+						value={settings.maxContextMessages}
+						min={10}
+						max={200}
+						step={10}
+						onChange={(v) => setAdvancedSettings({ maxContextMessages: v })}
+					/>
 
 					{/* Learning scope — controls how the AI learns from edits */}
 					<div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-2">
@@ -2703,6 +2722,8 @@ function AdvancedSettingsButton() {
 							retryCooldownBase: 5,
 							compactionMessageThreshold: 20,
 							compactionKeepLast: 6,
+							maxOutputTokens: 4096,
+							maxContextMessages: 100,
 							learningScope: "project",
 						});
 						// Reset also re-enables telemetry to match the
@@ -2724,6 +2745,7 @@ function SettingRow({
 	value,
 	min,
 	max,
+	step,
 	onChange,
 }: {
 	label: string;
@@ -2731,6 +2753,7 @@ function SettingRow({
 	value: number;
 	min: number;
 	max: number;
+	step?: number;
 	onChange: (v: number) => void;
 }) {
 	return (
@@ -2746,6 +2769,7 @@ function SettingRow({
 				type="range"
 				min={min}
 				max={max}
+				step={step}
 				value={value}
 				onChange={(e) => onChange(Number(e.target.value))}
 				className="h-1 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-white/60"
@@ -2801,6 +2825,20 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 			content: trimmed,
 		});
 		setIsEditing(false);
+
+		// If the user edited a past user message, re-prompt from that point:
+		// drop every message that came after it and send the new text so the
+		// AI regenerates the rest of the conversation.
+		if (isUser) {
+			const messages = useAIStore.getState().messages;
+			const idx = messages.findIndex((m) => m.id === message.id);
+			if (idx >= 0) {
+				for (const m of messages.slice(idx + 1)) {
+					useAIStore.getState().removeMessage(m.id);
+				}
+				void editor.ai.send({ text: trimmed });
+			}
+		}
 	};
 
 	const handleCancelEdit = () => {
@@ -3282,6 +3320,76 @@ function getToolVisual(toolName: string): ToolVisual {
 }
 
 /**
+ * Render the structured data portion of a tool result. For view_asset
+ * results, show actual image/video thumbnails instead of raw base64 JSON.
+ */
+function ToolResultData({
+	name,
+	data,
+}: {
+	name: string;
+	data: unknown;
+}) {
+	if (name === "view_asset" && data && typeof data === "object") {
+		const asset = data as {
+			kind?: string;
+			dataUrl?: string;
+			videoDataUrl?: string;
+			frames?: Array<{ dataUrl: string; timeSeconds: number }>;
+		};
+		if (asset.kind === "image" && asset.dataUrl) {
+			return (
+				// biome-ignore lint/performance/noImgElement: data URLs are user-generated previews, not optimizable by next/image
+				<img
+					src={asset.dataUrl}
+					alt="Asset preview"
+					className="max-h-32 rounded-md border border-white/10 object-contain"
+				/>
+			);
+		}
+		if (asset.kind === "video-frames") {
+			return (
+				<div className="flex flex-col gap-2">
+					{asset.videoDataUrl && (
+						// biome-ignore lint/a11y/useMediaCaption: tool result previews have no captions
+						<video
+							src={asset.videoDataUrl}
+							controls
+							preload="metadata"
+							className="max-h-32 rounded-md border border-white/10"
+						/>
+					)}
+					<div className="flex flex-wrap gap-1.5">
+						{asset.frames?.slice(0, 6).map((frame, i) => (
+							<div
+								key={`${frame.timeSeconds.toFixed(2)}-${frame.dataUrl.slice(0, 16)}`}
+								className="relative"
+							>
+								{/* biome-ignore lint/performance/noImgElement: data URLs are user-generated previews */}
+								<img
+									src={frame.dataUrl}
+									alt={`Frame ${i + 1}`}
+									className="h-14 rounded-md border border-white/10 object-cover"
+								/>
+								<span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[8px] font-medium text-white/90">
+									{frame.timeSeconds.toFixed(1)}s
+								</span>
+							</div>
+						))}
+					</div>
+				</div>
+			);
+		}
+	}
+
+	return (
+		<pre className="max-h-40 overflow-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
+			{JSON.stringify(truncateLongStrings(data), null, 2)}
+		</pre>
+	);
+}
+
+/**
  * Expandable tool-call row with colorful category-based icons,
  * glow effects, and smooth animations. Click to expand and see
  * the arguments the AI passed, the result message, and any
@@ -3448,9 +3556,7 @@ function ToolCallRow({
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
 								{t("aiEdit.toolCalls.data")}
 							</div>
-							<pre className="max-h-40 overflow-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
-								{JSON.stringify(tc.result.data, null, 2)}
-							</pre>
+							<ToolResultData name={tc.name} data={tc.result.data} />
 						</div>
 					)}
 				</motion.div>
