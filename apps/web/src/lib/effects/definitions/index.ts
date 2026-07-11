@@ -79,6 +79,12 @@ import {
 	unsharpMaskEffectDefinition,
 	zoomBlurEffectDefinition,
 } from "./video/blur-advanced";
+import {
+	contourLinesEffectDefinition,
+	edgeGlowEffectDefinition,
+	innerGlowEffectDefinition,
+	matteEdgeEffectDefinition,
+} from "./video/stylized-edge";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -149,6 +155,10 @@ const defaultEffects = [
 	boxBlurEffectDefinition,
 	lensBlurEffectDefinition,
 	unsharpMaskEffectDefinition,
+	innerGlowEffectDefinition,
+	edgeGlowEffectDefinition,
+	contourLinesEffectDefinition,
+	matteEdgeEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
