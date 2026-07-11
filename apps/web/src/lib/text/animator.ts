@@ -16,6 +16,12 @@ export const TEXT_ANIMATOR_PRESETS: ReadonlyArray<{
 	{ value: "pop", label: "Pop" },
 	{ value: "typewriter", label: "Typewriter" },
 	{ value: "wave", label: "Wave (loop)" },
+	{ value: "blink", label: "Blink" },
+	{ value: "offset", label: "Offset" },
+	{ value: "spin", label: "Spin" },
+	{ value: "auto-shake", label: "Auto Shake" },
+	{ value: "repeat", label: "Repeat" },
+	{ value: "text-progress", label: "Text Progress" },
 ];
 
 export const TEXT_ANIMATOR_UNITS: ReadonlyArray<{
@@ -137,6 +143,43 @@ export function computeTextUnitAnimation({
 			return { ...IDENTITY, opacity: p, scale: 0.2 + p * 0.8 };
 		case "pop":
 			return { ...IDENTITY, opacity: p, scale: backOut(raw) };
+		case "blink": {
+			const cycle = localTimeSeconds / Math.max(0.0001, duration);
+			const visible = Math.floor(cycle * 2) % 2 === 0;
+			return { ...IDENTITY, opacity: visible ? 1 : 0 };
+		}
+		case "offset": {
+			const phase = unitIndex * 0.6 + localTimeSeconds * 2;
+			return { ...IDENTITY, offsetX: 0.1 * Math.sin(phase) };
+		}
+		case "spin": {
+			const rotations = localTimeSeconds / Math.max(0.0001, duration);
+			return { ...IDENTITY, rotate: (rotations * 360) % 360 };
+		}
+		case "auto-shake": {
+			const shake = localTimeSeconds * 18;
+			return {
+				...IDENTITY,
+				offsetX: 0.08 * Math.sin(shake + unitIndex),
+				offsetY: 0.05 * Math.cos(shake + unitIndex * 1.3),
+			};
+		}
+		case "repeat": {
+			const cycle = localTimeSeconds / Math.max(0.0001, duration);
+			const pulse = Math.sin(cycle * Math.PI * 2);
+			return { ...IDENTITY, scale: 0.9 + pulse * 0.1, opacity: 0.8 + pulse * 0.2 };
+		}
+		case "text-progress": {
+			const start = unitIndex * Math.max(0, stagger);
+			if (localTimeSeconds <= start) {
+				return { ...IDENTITY, opacity: 0, offsetX: -0.3 };
+			}
+			if (localTimeSeconds >= start + duration) {
+				return IDENTITY;
+			}
+			const progress = clamp01((localTimeSeconds - start) / Math.max(0.0001, duration));
+			return { ...IDENTITY, opacity: progress, offsetX: (1 - progress) * -0.3 };
+		}
 		default:
 			return IDENTITY;
 	}

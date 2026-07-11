@@ -350,7 +350,13 @@ export type TextAnimatorPreset =
 	| "zoom"
 	| "pop"
 	| "typewriter"
-	| "wave";
+	| "wave"
+	| "blink"
+	| "offset"
+	| "spin"
+	| "auto-shake"
+	| "repeat"
+	| "text-progress";
 
 /** Granularity the animator staggers over. */
 export type TextAnimatorUnit = "character" | "word";
