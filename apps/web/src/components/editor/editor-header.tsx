@@ -35,7 +35,11 @@ import { cn } from "@/utils/ui";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
 import { useViewerStore } from "@/stores/viewer-store";
 import { ViewIcon } from "@hugeicons/core-free-icons";
-import { LAYOUT_PRESETS, usePanelStore } from "@/stores/panel-store";
+import {
+	LAYOUT_PRESETS,
+	usePanelStore,
+	type LayoutPreset,
+} from "@/stores/panel-store";
 
 import { CloudStatusIndicator } from "./cloud-status-indicator";
 
@@ -423,6 +427,42 @@ function SettingsButton() {
 	);
 }
 
+function LayoutPresetPreview({ preset }: { preset: LayoutPreset }) {
+	const { tools, preview, properties, mainContent } = preset.sizes;
+	const totalTop = tools + preview + properties || 1;
+	const toolsW = (tools / totalTop) * 100;
+	const previewW = (preview / totalTop) * 100;
+	const propertiesW = (properties / totalTop) * 100;
+
+	return (
+		<svg
+			viewBox="0 0 100 60"
+			className="shrink-0 rounded-[2px] border border-white/10 bg-zinc-900"
+			width="28"
+			height="18"
+			aria-hidden="true"
+		>
+			<title>{preset.name}</title>
+			<rect x="0" y="0" width={toolsW} height={mainContent} fill="rgba(255,255,255,0.12)" />
+			<rect
+				x={toolsW}
+				y="0"
+				width={previewW}
+				height={mainContent}
+				fill="rgba(255,255,255,0.22)"
+			/>
+			<rect
+				x={toolsW + previewW}
+				y="0"
+				width={propertiesW}
+				height={mainContent}
+				fill="rgba(255,255,255,0.12)"
+			/>
+			<rect x="0" y={mainContent} width="100" height={100 - mainContent} fill="rgba(255,255,255,0.08)" />
+		</svg>
+	);
+}
+
 function LayoutPresetsDropdown() {
 	const activePreset = usePanelStore((s) => s.activePreset);
 	const setPreset = usePanelStore((s) => s.setPreset);
@@ -439,16 +479,23 @@ function LayoutPresetsDropdown() {
 					<HugeiconsIcon icon={DashboardSquareSettingIcon} className="size-4" />
 				</button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-48">
+			<DropdownMenuContent align="end" className="w-56">
 				{LAYOUT_PRESETS.map((preset) => (
 					<DropdownMenuItem
 						key={preset.id}
 						onClick={() => setPreset(preset.id)}
 						className={cn(
+							"flex items-center gap-2.5",
 							activePreset === preset.id && "bg-white/10 text-white",
 						)}
 					>
-						{preset.name}
+						<LayoutPresetPreview preset={preset} />
+						<span className="flex-1 truncate text-sm">{preset.name}</span>
+						{preset.scope === "pro" && (
+							<span className="rounded px-1 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-amber-300 ring-1 ring-amber-300/40">
+								Pro
+							</span>
+							)}
 					</DropdownMenuItem>
 				))}
 			</DropdownMenuContent>
