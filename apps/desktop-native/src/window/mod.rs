@@ -83,6 +83,8 @@ pub struct WindowState {
     /// Cached GDI fonts (Segoe UI at 5 sizes). Created once, reused
     /// across paints. Deleted on window destroy.
     pub fonts: FontCache,
+    /// Optional Direct2D context for D2D chrome rendering.
+    pub d2d: Option<crate::d2d::D2dContext>,
     /// App mode: home, project hub, or editor.
     pub mode: AppMode,
     /// Home screen state (hero, CTAs, recent-preview).
@@ -107,8 +109,8 @@ pub struct WindowState {
 }
 
 impl WindowState {
-    /// Create a new window state with the given child HWND + project.
-    pub fn new(child: HWND, project: Project) -> Self {
+    /// Create a new window state with the given parent HWND, child HWND + project.
+    pub fn new(parent: HWND, child: HWND, project: Project) -> Self {
         Self {
             child: Some(child),
             project,
@@ -122,6 +124,15 @@ impl WindowState {
             zoom_pps: 20.0,
             scroll_seconds: 0.0,
             fonts: FontCache::new(),
+            d2d: unsafe {
+                match crate::d2d::D2dContext::new(parent) {
+                    Ok(ctx) => Some(ctx),
+                    Err(e) => {
+                        eprintln!("D2D context creation failed: {e}");
+                        None
+                    }
+                }
+            },
             mode: AppMode::Home,
             home: HomeState::new(),
             projects: ProjectsState::new(),

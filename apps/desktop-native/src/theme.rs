@@ -4,13 +4,24 @@
 //! chrome components (header, footer, tab bar, panels, timeline). They
 //! are kept as `0xRRGGBB` and converted to Win32 `COLORREF` via `rgb()`.
 
+use windows::Win32::Graphics::Direct2D::Common::D2D1_COLOR_F;
+
 // Backgrounds (editor page uses dark-only pinning).
 /// Main editor background `#111114`.
 pub const BG: u32 = 0x111114;
 /// Deep footer bottom `#08080a`.
 pub const BG_DARK: u32 = 0x08080a;
+/// Pure white helper for translucent D2D text and borders.
+pub const WHITE: u32 = 0xFFFFFF;
 /// Panel surface `#0c0c10` (solid approximation of web glass `rgba(15,15,18,0.55)`).
 pub const PANEL_BG: u32 = 0x0c0c10;
+/// Glass panel D2D fill: `rgba(15,15,18,0.55)`.
+pub const PANEL_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 0.05882353,
+    g: 0.05882353,
+    b: 0.07058824,
+    a: 0.55,
+};
 
 // Borders (white overlaid on dark backgrounds).
 /// `white/10` border ≈ RGB(26,26,30).
@@ -91,6 +102,11 @@ pub const TOOLS_PCT: f32 = 0.28;
 /// Top-row allocation for the preview panel.
 pub const PREVIEW_PCT: f32 = 0.47;
 
+// D2D corner radii (pixels) — match the web Tailwind rounded tokens.
+pub const RADIUS_LG: f32 = 12.0;
+pub const RADIUS_MD: f32 = 10.0;
+pub const RADIUS_SM: f32 = 6.0;
+
 // Timeline constants.
 /// Track row height.
 pub const TRACK_ROW_H: i32 = 28;
@@ -118,4 +134,14 @@ pub const WINDOW_HEIGHT: i32 = 800;
 /// Convert `0xRRGGBB` → Win32 `COLORREF` (`0x00BBGGRR`).
 pub fn rgb(c: u32) -> u32 {
     ((c & 0xFF) << 16) | (c & 0xFF00) | ((c >> 16) & 0xFF)
+}
+
+/// Convert a packed `0xRRGGBB` + alpha to a D2D float color.
+pub fn to_d2d(hex: u32, alpha: f32) -> D2D1_COLOR_F {
+    D2D1_COLOR_F {
+        r: ((hex >> 16) & 0xFF) as f32 / 255.0,
+        g: ((hex >> 8) & 0xFF) as f32 / 255.0,
+        b: (hex & 0xFF) as f32 / 255.0,
+        a: alpha,
+    }
 }
