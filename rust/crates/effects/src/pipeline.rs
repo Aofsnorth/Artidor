@@ -121,6 +121,16 @@ const CONTOUR_LINES_SHADER_ID: &str = "contour-lines";
 const CONTOUR_LINES_SHADER_SOURCE: &str = include_str!("shaders/contour-lines.wgsl");
 const MATTE_EDGE_SHADER_ID: &str = "matte-edge";
 const MATTE_EDGE_SHADER_SOURCE: &str = include_str!("shaders/matte-edge.wgsl");
+const COLOR_BALANCE_SHADER_ID: &str = "color-balance";
+const COLOR_BALANCE_SHADER_SOURCE: &str = include_str!("shaders/color-balance.wgsl");
+const REPLACE_COLOR_SHADER_ID: &str = "replace-color";
+const REPLACE_COLOR_SHADER_SOURCE: &str = include_str!("shaders/replace-color.wgsl");
+const TINT_SHADER_ID: &str = "tint";
+const TINT_SHADER_SOURCE: &str = include_str!("shaders/tint.wgsl");
+const GRADIENT_OVERLAY_SHADER_ID: &str = "gradient-overlay";
+const GRADIENT_OVERLAY_SHADER_SOURCE: &str = include_str!("shaders/gradient-overlay.wgsl");
+const FOUR_COLOR_GRADIENT_SHADER_ID: &str = "four-color-gradient";
+const FOUR_COLOR_GRADIENT_SHADER_SOURCE: &str = include_str!("shaders/four-color-gradient.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -186,6 +196,11 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
     ShaderEntry { id: EDGE_GLOW_SHADER_ID, label: "effects-edge-glow-shader", source: EDGE_GLOW_SHADER_SOURCE },
     ShaderEntry { id: CONTOUR_LINES_SHADER_ID, label: "effects-contour-lines-shader", source: CONTOUR_LINES_SHADER_SOURCE },
     ShaderEntry { id: MATTE_EDGE_SHADER_ID, label: "effects-matte-edge-shader", source: MATTE_EDGE_SHADER_SOURCE },
+    ShaderEntry { id: COLOR_BALANCE_SHADER_ID, label: "effects-color-balance-shader", source: COLOR_BALANCE_SHADER_SOURCE },
+    ShaderEntry { id: REPLACE_COLOR_SHADER_ID, label: "effects-replace-color-shader", source: REPLACE_COLOR_SHADER_SOURCE },
+    ShaderEntry { id: TINT_SHADER_ID, label: "effects-tint-shader", source: TINT_SHADER_SOURCE },
+    ShaderEntry { id: GRADIENT_OVERLAY_SHADER_ID, label: "effects-gradient-overlay-shader", source: GRADIENT_OVERLAY_SHADER_SOURCE },
+    ShaderEntry { id: FOUR_COLOR_GRADIENT_SHADER_ID, label: "effects-four-color-gradient-shader", source: FOUR_COLOR_GRADIENT_SHADER_SOURCE },
 ];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
@@ -524,7 +539,12 @@ fn pack_effect_uniforms(
         | BOX_BLUR_SHADER_ID
         | LENS_BLUR_SHADER_ID
         | CONTOUR_LINES_SHADER_ID
-        | MATTE_EDGE_SHADER_ID => {
+        | MATTE_EDGE_SHADER_ID
+        | COLOR_BALANCE_SHADER_ID
+        | REPLACE_COLOR_SHADER_ID
+        | TINT_SHADER_ID
+        | GRADIENT_OVERLAY_SHADER_ID
+        | FOUR_COLOR_GRADIENT_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 

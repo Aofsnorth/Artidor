@@ -623,6 +623,48 @@ export const effects: EffectPresetDefinition[] = [
 		"filter:contrast(1.2);",
 	),
 
+	// ── Color Effects (B4)
+	ef(
+		"fx-color-balance",
+		"Color Balance",
+		"Color",
+		"Warm-cool color balance",
+		{ amount: 50 },
+		"filter:sepia(0.2) saturate(1.2);",
+	),
+	ef(
+		"fx-color-replace",
+		"Replace Color",
+		"Color",
+		"Replace a dominant color",
+		{ amount: 50 },
+		"filter:hue-rotate(90deg);",
+	),
+	ef(
+		"fx-color-tint",
+		"Tint",
+		"Color",
+		"Warm color tint",
+		{ amount: 50 },
+		"filter:sepia(0.3);",
+	),
+	ef(
+		"fx-color-gradient-overlay",
+		"Gradient Overlay",
+		"Color",
+		"Diagonal gradient overlay",
+		{ amount: 40 },
+		"filter:contrast(1.1);",
+	),
+	ef(
+		"fx-color-four-gradient",
+		"Four-Color Gradient",
+		"Color",
+		"Four-corner color gradient overlay",
+		{ amount: 40 },
+		"filter:contrast(1.1);",
+	),
+
 	// ── Particles (15)
 	ef(
 		"fx-particles-snow",
