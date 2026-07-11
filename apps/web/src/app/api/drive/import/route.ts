@@ -198,17 +198,56 @@ export async function POST(request: Request) {
 
 	const contentType =
 		response.headers.get("content-type") ?? "application/octet-stream";
-	const buffer = Buffer.from(await response.arrayBuffer());
-	if (buffer.byteLength > MAX_FILE_BYTES) {
+
+	// Stream the body into chunks instead of buffering the whole file via
+	// `arrayBuffer()` (one copy) then `Buffer.from` (a second copy) before
+	// base64 (a third). We also abort mid-stream the moment the transfer
+	// crosses the safety cap, so a missing or lying `content-length` header
+	// can't force a multi-hundred-MB memory spike on the server.
+	const reader = response.body?.getReader();
+	if (!reader) {
 		return NextResponse.json(
 			{
-				code: "too_large",
-				message: "File exceeded the 200 MB safety cap during transfer.",
+				code: "fetch_failed",
+				message: "Drive returned a bodyless response. Try a different file.",
 			} satisfies DriveImportError,
-			{ status: 413 },
+			{ status: 502 },
 		);
 	}
 
+	const chunks: Uint8Array[] = [];
+	let totalBytes = 0;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			if (value) {
+				totalBytes += value.byteLength;
+				if (totalBytes > MAX_FILE_BYTES) {
+					await reader.cancel();
+					return NextResponse.json(
+						{
+							code: "too_large",
+							message: "File exceeded the 200 MB safety cap during transfer.",
+						} satisfies DriveImportError,
+						{ status: 413 },
+					);
+				}
+				chunks.push(value);
+			}
+		}
+	} catch {
+		await reader.cancel().catch(() => {});
+		return NextResponse.json(
+			{
+				code: "fetch_failed",
+				message: "The download was interrupted. Try again.",
+			} satisfies DriveImportError,
+			{ status: 502 },
+		);
+	}
+
+	const buffer = Buffer.concat(chunks as Buffer[]);
 	const disposition = response.headers.get("content-disposition");
 	const fileName = extractFileName({ disposition, fileId, contentType });
 
