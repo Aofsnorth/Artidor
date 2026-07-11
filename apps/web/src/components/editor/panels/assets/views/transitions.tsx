@@ -18,8 +18,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import {
-	getSceneImageUrlForId,
-	getSceneImageUrlForIdWithOffset,
+	getTransitionPhotoPair,
 	getTransitionPalettes,
 } from "./components/procedural-preview";
 import {
@@ -94,13 +93,12 @@ export function TransitionsView() {
 
 	return (
 		<PanelView
-			title="Transitions"
-			actions={<PopOutAction id="transitions" title="Transitions" />}
+			title={t("catalog.titleTransitions")}
+			actions={<PopOutAction id="transitions" title={t("catalog.titleTransitions")} />}
 		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Add a transition between two adjacent clips. Select two clips on the
-					same track, then choose a transition.
+					{t("catalog.descriptionTransitions")}
 				</p>
 				<CategoryBar
 					categories={TRANSITION_CATEGORIES}
@@ -119,10 +117,7 @@ export function TransitionsView() {
 						))}
 					</AssetGrid>
 				) : (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				)}
 			</div>
 		</PanelView>
@@ -130,6 +125,7 @@ export function TransitionsView() {
 }
 
 function TransitionItem({ definition }: { definition: TransitionDefinition }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const { addTransition } = useTransitions();
 	const [busy, setBusy] = useState(false);
@@ -139,8 +135,8 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 		try {
 			const selected = editor.selection.getSelectedElements();
 			if (selected.length < 2) {
-				toast.error("Select two adjacent clips first", {
-					description: "Hold Shift and click on each clip on the timeline.",
+				toast.error(t("catalog.selectTwoClipsFirst"), {
+					description: t("catalog.selectTwoClipsShift"),
 				});
 				return;
 			}
@@ -154,14 +150,14 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			});
 
 			if (sorted.length < 2) {
-				toast.error("Could not find selected clips");
+				toast.error(t("catalog.couldNotFindSelectedClips"));
 				return;
 			}
 
 			const first = sorted[0];
 			const second = sorted[1];
 			if (!first || !second) {
-				toast.error("Select two clips");
+				toast.error(t("catalog.selectTwoClips"));
 				return;
 			}
 
@@ -172,7 +168,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 				(e) => e.id === first.elementId,
 			);
 			if (!firstEl) {
-				toast.error("First clip not found");
+				toast.error(t("catalog.firstClipNotFound"));
 				return;
 			}
 
@@ -192,17 +188,17 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 				duration,
 			});
 
-			toast.success(`${definition.name} added`, {
-				description: "Transition inserted between the two clips.",
+			toast.success(t("catalog.transitionAdded", { name: definition.name }), {
+				description: t("catalog.transitionInserted"),
 			});
 		} catch (error) {
-			toast.error("Failed to add transition", {
+			toast.error(t("catalog.failedToAddTransition"), {
 				description: error instanceof Error ? error.message : "Unknown error",
 			});
 		} finally {
 			setBusy(false);
 		}
-	}, [definition, editor, addTransition]);
+	}, [definition, editor, addTransition, t]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains nested add button, so outer button would be invalid HTML
@@ -232,7 +228,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 					size="icon"
 					variant="secondary"
 					className="size-5 bg-black/50 hover:bg-black/80 border border-white/10"
-					aria-label={`Add ${definition.name}`}
+					aria-label={t("catalog.addAria", { name: definition.name })}
 					onClick={(e) => {
 						e.stopPropagation();
 						handleAdd();
@@ -243,13 +239,6 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			</div>
 		</div>
 	);
-}
-
-function getTransitionPhotoUrl(_type: string, _plate: "A" | "B"): null {
-	// Backwards-compat: older call sites still reach for this. The
-	// transition preview now uses pure CSS via `getTransitionPalettes`
-	// — no more `source.unsplash.com` fetches.
-	return null;
 }
 
 function extractKeyframeName(css: string): string | null {
@@ -274,13 +263,8 @@ function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
-	const photoA = getTransitionPhotoUrl(definition.type, "A");
-	const photoB = getTransitionPhotoUrl(definition.type, "B");
-	void photoA;
-	void photoB;
+	const { a: photoA, b: photoB } = getTransitionPhotoPair(definition.type);
 	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
-	const sceneA = getSceneImageUrlForId(`${definition.type}-a`);
-	const sceneB = getSceneImageUrlForIdWithOffset(`${definition.type}-b`, 1);
 	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
 		`${definition.type} ${definition.name}`,
 	);
@@ -294,7 +278,7 @@ function TransitionPreview({
 				aria-hidden
 				className="absolute inset-0 bg-cover bg-center saturate-75"
 				style={{
-					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.34), ${paletteA.accent}), url("${sceneA}")`,
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.42), ${paletteA.accent}), url("${photoA.src}")`,
 				}}
 			/>
 			<div
@@ -302,7 +286,7 @@ function TransitionPreview({
 				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-75 transition-opacity duration-300 group-hover:opacity-100"
 				style={{
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
-					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.28), ${paletteB.accent}), url("${sceneB}")`,
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.38), ${paletteB.accent}), url("${photoB.src}")`,
 				}}
 			/>
 			<div

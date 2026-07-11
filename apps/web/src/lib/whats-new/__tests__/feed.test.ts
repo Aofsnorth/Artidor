@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the harness docs guard", () => {
+	test("the newest entry is the localization and border controls update", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-13-harness-link-guard",
+			"2026-07-14-localization-border-controls",
 		);
 	});
 });

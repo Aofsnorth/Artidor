@@ -8,7 +8,6 @@ import {
 	BookmarkAdd02Icon,
 	Delete02Icon,
 	Edit03Icon,
-	PlayIcon,
 	PlusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { PanelView } from "./base-panel";
@@ -25,15 +24,15 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/ui";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
 	filterCatalogItems,
 } from "@/components/editor/panels/assets/views/components/catalog-search";
+import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { useI18n } from "@/lib/i18n";
-
-const PRESET_THUMB_MIN_PX = 96;
 
 export function PresetsView() {
 	const { t } = useI18n();
@@ -55,7 +54,7 @@ export function PresetsView() {
 	);
 
 	return (
-		<PanelView title="Preset Tools">
+		<PanelView title={t("catalog.titlePresets")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<CatalogSearch
 					value={query}
@@ -65,21 +64,13 @@ export function PresetsView() {
 				{presets.length === 0 ? (
 					<EmptyState />
 				) : filteredPresets.length === 0 ? (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				) : (
-					<div
-						className="grid gap-2.5 pb-4"
-						style={{
-							gridTemplateColumns: `repeat(auto-fill, minmax(${PRESET_THUMB_MIN_PX}px, 1fr))`,
-						}}
-					>
+					<AssetGrid gap="gap-2">
 						{filteredPresets.map((preset) => (
 							<PresetCard key={preset.id} preset={preset} />
 						))}
-					</div>
+					</AssetGrid>
 				)}
 			</div>
 		</PanelView>
@@ -87,23 +78,25 @@ export function PresetsView() {
 }
 
 function EmptyState() {
+	const { t } = useI18n();
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
 			<HugeiconsIcon
 				icon={BookmarkAdd02Icon}
 				className="size-9 text-white/30"
 			/>
-			<p className="text-sm font-medium text-white/80">No presets yet</p>
+			<p className="text-sm font-medium text-white/80">
+				{t("catalog.emptyPresets")}
+			</p>
 			<p className="text-xs text-white/40 leading-relaxed text-balance">
-				Select a layer or group on the timeline, right-click, and choose{" "}
-				<span className="text-white/70">Save to preset</span>. Coin designs,
-				animated logos, or any styled layer can be reused here.
+				{t("catalog.emptyPresetsHint")}
 			</p>
 		</div>
 	);
 }
 
 function PresetCard({ preset }: { preset: UserPreset }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const removePreset = usePresetsStore((s) => s.removePreset);
 	const renamePreset = usePresetsStore((s) => s.renamePreset);
@@ -120,17 +113,17 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 			editor.command.execute({
 				command: new PasteCommand({ time, clipboardItems }),
 			});
-			toast.success(`Added "${preset.name}"`);
+			toast.success(t("catalog.presetAdded", { name: preset.name }));
 		} catch (error) {
 			console.error("Failed to insert preset:", error);
-			toast.error("Failed to add preset");
+			toast.error(t("catalog.failedToAddPreset"));
 		}
 	};
 
 	const handleDelete = (event?: React.MouseEvent) => {
 		event?.stopPropagation();
 		void removePreset(preset.id);
-		toast.success(`Deleted "${preset.name}"`);
+		toast.success(t("catalog.presetDeleted", { name: preset.name }));
 	};
 
 	const startRename = () => {
@@ -179,64 +172,72 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 		setIsDragging(false);
 	};
 
-	const kindLabel =
-		preset.kind === "group"
-			? "Group"
-			: preset.kind === "animation"
-				? "Animation"
-				: preset.kind === "project"
-					? "Project"
-					: "Element";
+	const kindLabel = t(`catalog.presetKind.${preset.kind}` as `catalog.presetKind.${UserPreset["kind"]}`);
 
 	return (
 		<ContextMenu>
 			<div ref={dragRef} className="group relative flex flex-col gap-1">
 				<ContextMenuTrigger asChild>
-					<button
-						type="button"
+					{/* biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid */}
+					<div
+						role="button"
+						tabIndex={0}
 						onClick={insertPreset}
 						draggable
 						onDragStart={handleDragStart}
 						onDragEnd={handleDragEnd}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" || event.key === " ") {
+								event.preventDefault();
+								insertPreset();
+							}
+						}}
 						className={cn(
-							"relative aspect-square w-full overflow-hidden rounded-lg border border-white/10 bg-[#0b0b0c]",
-							"transition hover:border-white/30 cursor-grab active:cursor-grabbing",
-							isDragging && "opacity-50",
+							"asset-preview-container cursor-grab active:cursor-grabbing",
+							isDragging && "opacity-50 pointer-events-none",
 						)}
-						title={`Apply "${preset.name}" — drag to timeline, or click to insert at the playhead`}
 					>
-						{preset.thumbnail ? (
-							// biome-ignore lint/performance/noImgElement: thumbnail is an in-memory data URL, not an optimizable asset
-							<img
-								src={preset.thumbnail}
-								alt={preset.name}
-								className="size-full object-contain"
-								loading="lazy"
-								draggable={false}
-							/>
-						) : (
-							<div className="flex size-full items-center justify-center">
-								<HugeiconsIcon
-									icon={BookmarkAdd02Icon}
-									className="size-5 text-white/30"
+						<div className="asset-preview-overlay" />
+						<div
+							className="relative mx-auto mt-2 size-full overflow-hidden rounded-md border border-white/10 bg-[#0b0b0c]"
+							style={{ width: "80%", height: "80%" }}
+						>
+							{preset.thumbnail ? (
+								// biome-ignore lint/performance/noImgElement: thumbnail is an in-memory data URL, not an optimizable asset
+								<img
+									src={preset.thumbnail}
+									alt={preset.name}
+									className="size-full object-contain"
+									loading="lazy"
+									draggable={false}
 								/>
-							</div>
-						)}
-						<div className="pointer-events-none absolute inset-x-1 top-1 flex items-center justify-between gap-1">
-							<span className="rounded bg-black/55 px-1.5 py-0.5 text-[0.55rem] font-semibold uppercase tracking-wider text-white/70 backdrop-blur-sm">
-								{kindLabel}
-							</span>
-							<span className="rounded bg-black/55 p-1 text-white/0 transition group-hover:text-white/80">
-								<HugeiconsIcon icon={PlayIcon} className="size-3" />
-							</span>
+							) : (
+								<div className="flex size-full items-center justify-center">
+									<HugeiconsIcon
+										icon={BookmarkAdd02Icon}
+										className="size-5 text-white/30"
+									/>
+								</div>
+							)}
 						</div>
-						<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition group-hover:opacity-100">
-							<div className="flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[0.65rem] font-semibold text-[#09090b]">
-								<HugeiconsIcon icon={PlusSignIcon} className="size-3" />
-								Apply
-							</div>
+						<div className="text-white/70 absolute left-1 top-1 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
+							{kindLabel}
 						</div>
-					</button>
+						<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
+							<Button
+								size="icon"
+								variant="secondary"
+								className="size-5 bg-black/50 hover:bg-black/80 border border-white/10"
+								aria-label={t("catalog.applyAria", { name: preset.name })}
+								onClick={(event) => {
+									event.stopPropagation();
+									insertPreset();
+								}}
+							>
+								<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-cyan-400" />
+							</Button>
+						</div>
+					</div>
 				</ContextMenuTrigger>
 				<div className="flex items-center justify-between gap-1 px-0.5">
 					{isRenaming ? (
@@ -251,7 +252,7 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 						<button
 							type="button"
 							onClick={startRename}
-							title={`Rename "${preset.name}"`}
+							title={t("catalog.renameAria", { name: preset.name })}
 							className="min-w-0 flex-1 truncate text-left text-[0.65rem] text-white/60 hover:text-white"
 						>
 							{preset.name}
@@ -264,8 +265,8 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 							startRename();
 						}}
 						className="shrink-0 rounded p-0.5 text-white/30 opacity-0 transition hover:text-white group-hover:opacity-100"
-						title="Rename preset"
-						aria-label={`Rename ${preset.name}`}
+						title={t("catalog.renamePreset")}
+						aria-label={t("catalog.renameAria", { name: preset.name })}
 					>
 						<HugeiconsIcon icon={Edit03Icon} className="size-3.5" />
 					</button>
@@ -273,8 +274,8 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 						type="button"
 						onClick={handleDelete}
 						className="shrink-0 rounded p-0.5 text-white/30 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
-						title="Delete preset"
-						aria-label={`Delete ${preset.name}`}
+						title={t("catalog.deletePreset")}
+						aria-label={t("catalog.deleteAria", { name: preset.name })}
 					>
 						<HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
 					</button>
@@ -285,13 +286,13 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 					icon={<HugeiconsIcon icon={PlusSignIcon} />}
 					onSelect={insertPreset}
 				>
-					Apply preset
+					{t("catalog.applyAria", { name: preset.name })}
 				</ContextMenuItem>
 				<ContextMenuItem
 					icon={<HugeiconsIcon icon={Edit03Icon} />}
 					onSelect={startRename}
 				>
-					Rename
+					{t("catalog.renamePreset")}
 				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuItem
@@ -299,7 +300,7 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 					variant="destructive"
 					onSelect={() => handleDelete()}
 				>
-					Delete
+					{t("catalog.deletePreset")}
 				</ContextMenuItem>
 			</ContextMenuContent>
 			{/* Floating drag ghost — keeps the preview visible while the

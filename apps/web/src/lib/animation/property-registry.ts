@@ -108,6 +108,10 @@ function createNumberPropertyDefinition({
 	};
 }
 
+function supportsMediaGraphicStyle(element: TimelineElement) {
+	return element.type === "video" || element.type === "image";
+}
+
 const ANIMATION_PROPERTY_REGISTRY: Record<
 	AnimationPropertyPath,
 	AnimationPropertyDefinition
@@ -406,6 +410,262 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 						},
 					}
 				: element,
+	}),
+	"graphicStyle.fillColor": {
+		kind: "color",
+		defaultInterpolation: "linear",
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.fillColor ?? "#ffffff")
+				: null,
+		coerceValue: ({ value }) => coerceColorValue({ value }),
+		setValue: ({ element, value }) =>
+			supportsMediaGraphicStyle(element)
+				? {
+						...element,
+						graphicStyle: { ...element.graphicStyle, fillColor: value as string },
+					}
+				: element,
+	},
+	"graphicStyle.fillOpacity": createNumberPropertyDefinition({
+		numericRange: { min: 0, max: 1, step: 0.01 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.fillOpacity ?? 0)
+				: null,
+		setValue: ({ element, value }) =>
+			supportsMediaGraphicStyle(element)
+				? {
+						...element,
+						graphicStyle: { ...element.graphicStyle, fillOpacity: value as number },
+					}
+				: element,
+	}),
+	"graphicStyle.stroke.color": {
+		kind: "color",
+		defaultInterpolation: "linear",
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.stroke?.color ?? "#000000")
+				: null,
+		coerceValue: ({ value }) => coerceColorValue({ value }),
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const stroke = element.graphicStyle?.stroke ?? {
+				enabled: false,
+				color: "#000000",
+				width: 2,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					stroke: { ...stroke, color: value as string },
+				},
+			};
+		},
+	},
+	"graphicStyle.stroke.width": createNumberPropertyDefinition({
+		numericRange: { min: 0, max: 128, step: 0.1 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.stroke?.width ?? 2)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const stroke = element.graphicStyle?.stroke ?? {
+				enabled: false,
+				color: "#000000",
+				width: 2,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					stroke: { ...stroke, width: value as number },
+				},
+			};
+		},
+	}),
+	"graphicStyle.border.color": {
+		kind: "color",
+		defaultInterpolation: "linear",
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.border?.color ?? "#ffffff")
+				: null,
+		coerceValue: ({ value }) => coerceColorValue({ value }),
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const border = element.graphicStyle?.border ?? {
+				enabled: false,
+				color: "#ffffff",
+				width: 4,
+				opacity: 1,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					border: { ...border, color: value as string },
+				},
+			};
+		},
+	},
+	"graphicStyle.border.width": createNumberPropertyDefinition({
+		numericRange: { min: 0, max: 128, step: 0.1 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.border?.width ?? 4)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const border = element.graphicStyle?.border ?? {
+				enabled: false,
+				color: "#ffffff",
+				width: 4,
+				opacity: 1,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					border: { ...border, width: value as number },
+				},
+			};
+		},
+	}),
+	"graphicStyle.border.opacity": createNumberPropertyDefinition({
+		numericRange: { min: 0, max: 1, step: 0.01 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.border?.opacity ?? 1)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const border = element.graphicStyle?.border ?? {
+				enabled: false,
+				color: "#ffffff",
+				width: 4,
+				opacity: 1,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					border: { ...border, opacity: value as number },
+				},
+			};
+		},
+	}),
+	"graphicStyle.shadow.color": {
+		kind: "color",
+		defaultInterpolation: "linear",
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.shadow?.color ?? "#000000")
+				: null,
+		coerceValue: ({ value }) => coerceColorValue({ value }),
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const shadow = element.graphicStyle?.shadow ?? {
+				enabled: false,
+				color: "#000000",
+				blur: 8,
+				offsetX: 0,
+				offsetY: 4,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					shadow: { ...shadow, color: value as string },
+				},
+			};
+		},
+	},
+	"graphicStyle.shadow.blur": createNumberPropertyDefinition({
+		numericRange: { min: 0, max: 256, step: 0.1 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.shadow?.blur ?? 8)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const shadow = element.graphicStyle?.shadow ?? {
+				enabled: false,
+				color: "#000000",
+				blur: 8,
+				offsetX: 0,
+				offsetY: 4,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					shadow: { ...shadow, blur: value as number },
+				},
+			};
+		},
+	}),
+	"graphicStyle.shadow.offsetX": createNumberPropertyDefinition({
+		numericRange: { min: -1024, max: 1024, step: 0.1 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.shadow?.offsetX ?? 0)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const shadow = element.graphicStyle?.shadow ?? {
+				enabled: false,
+				color: "#000000",
+				blur: 8,
+				offsetX: 0,
+				offsetY: 4,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					shadow: { ...shadow, offsetX: value as number },
+				},
+			};
+		},
+	}),
+	"graphicStyle.shadow.offsetY": createNumberPropertyDefinition({
+		numericRange: { min: -1024, max: 1024, step: 0.1 },
+		supportsElement: ({ element }) => supportsMediaGraphicStyle(element),
+		getValue: ({ element }) =>
+			supportsMediaGraphicStyle(element)
+				? (element.graphicStyle?.shadow?.offsetY ?? 4)
+				: null,
+		setValue: ({ element, value }) => {
+			if (!supportsMediaGraphicStyle(element)) return element;
+			const shadow = element.graphicStyle?.shadow ?? {
+				enabled: false,
+				color: "#000000",
+				blur: 8,
+				offsetX: 0,
+				offsetY: 4,
+			};
+			return {
+				...element,
+				graphicStyle: {
+					...element.graphicStyle,
+					shadow: { ...shadow, offsetY: value as number },
+				},
+			};
+		},
 	}),
 };
 

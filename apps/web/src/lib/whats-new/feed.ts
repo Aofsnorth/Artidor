@@ -18,6 +18,29 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-14-localization-border-controls",
+		date: "2026-07-14",
+		tag: "feature",
+		title: "New Border controls and fuller EN/ID localization",
+		items: [
+			"Border is now available in the Graphics Style panel for video and image clips: enable, set color, width, and opacity, and the border renders above the media in both preview and export.",
+			"Timeline toolbar labels and tooltips are now localized, including Select/Split, undo/redo, selection operations, grouping, bookmarks, linking, snapping, ripple editing, zoom, and drag modes.",
+			"Graphics Style panel labels (Color & Fill, Stroke, Border, Shadow) and catalog empty-state messages are now covered by the EN/ID dictionary.",
+		],
+	},
+	{
+		id: "2026-07-13-timeline-toolbar-layout",
+		date: "2026-07-13",
+		tag: "improvement",
+		title: "Timeline toolbar is now balanced, compact, and safer on small screens",
+		items: [
+			"The toolbar is visually balanced: Clipboard and Grouping controls moved to the right side, while Select/Split collapsed into a single dropdown to save space.",
+			"Responsive compact mode hides 'Add scene' and scene-name text labels on narrow viewports, and gaps/padding were reduced so the toolbar no longer collides at 125% UI scale.",
+			"Duplicate hover text fixed: tooltips no longer overlap with native title attributes.",
+			"The Split tool now uses a custom blade cursor instead of the generic crosshair, and the 'A' key switches back to the Select tool.",
+		],
+	},
+	{
 		id: "2026-07-13-harness-link-guard",
 		date: "2026-07-13",
 		tag: "improvement",

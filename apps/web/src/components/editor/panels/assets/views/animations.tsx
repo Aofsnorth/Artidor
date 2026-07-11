@@ -153,19 +153,19 @@ export function AnimationsView() {
 		(preset: AnimationPreset) => {
 			const result = apply(preset);
 			if (!result.ok) {
-				toast.error(result.error ?? "Could not apply animation");
+				toast.error(result.error ?? t("catalog.couldNotApplyAnimation"));
 				return;
 			}
-			toast.success(`${preset.name} applied`);
+			toast.success(t("catalog.animationApplied", { name: preset.name }));
 		},
-		[apply],
+		[apply, t],
 	);
 
 	return (
-		<PanelView title="Animations">
+		<PanelView title={t("catalog.titleAnimations")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Select an element on the timeline, then choose an animation to apply.
+					{t("catalog.descriptionAnimations")}
 				</p>
 				<CategoryBar
 					categories={ANIMATION_LABELS}
@@ -188,10 +188,7 @@ export function AnimationsView() {
 						))}
 					</AssetGrid>
 				) : (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				)}
 			</div>
 		</PanelView>

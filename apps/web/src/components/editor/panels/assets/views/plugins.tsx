@@ -20,12 +20,12 @@ import {
 	packageToInstalled,
 	buildSamplePluginPackage,
 } from "@/lib/plugins/importer";
-import type { InstalledPlugin, PluginCategory } from "@/lib/plugins/types";
+import type { InstalledPlugin } from "@/lib/plugins/types";
 import {
-	CATEGORY_DESCRIPTIONS,
-	CATEGORY_LABELS,
 	DANGEROUS_PERMISSIONS,
 	PLUGIN_CATEGORIES,
+	type PluginCategory,
+	type PluginExtensionType,
 } from "@/lib/plugins/types";
 import { PanelView } from "./base-panel";
 import { PopOutAction } from "@/components/editor/floating-window";
@@ -85,10 +85,10 @@ export function PluginsView() {
 				const installed = packageToInstalled({ pkg });
 				await installPlugin(installed);
 			} catch (err) {
-				toast.error(`Failed to install: ${(err as Error).message}`);
+				toast.error(t("plugins.failedToInstall", { error: (err as Error).message }));
 			}
 		},
-		[installPlugin],
+		[installPlugin, t],
 	);
 
 	const handleDownloadSample = useCallback(() => {
@@ -102,11 +102,11 @@ export function PluginsView() {
 			a.download = "demo-plugin.artpl";
 			a.click();
 			URL.revokeObjectURL(url);
-			toast.success("Downloaded sample plugin package");
+			toast.success(t("plugins.downloadedSample"));
 		} catch (err) {
-			toast.error(`Failed to download: ${(err as Error).message}`);
+			toast.error(t("plugins.failedToDownload", { error: (err as Error).message }));
 		}
-	}, []);
+	}, [t]);
 
 	const openDetail = useCallback((plugin: InstalledPlugin) => {
 		setDetailPlugin(plugin);
@@ -125,16 +125,16 @@ export function PluginsView() {
 				plugin.manifest.name,
 				plugin.manifest.id,
 				plugin.manifest.description,
-				CATEGORY_LABELS[plugin.manifest.category],
+				t(`plugins.category.${plugin.manifest.category}` as `plugins.category.${PluginCategory}`),
 				...(plugin.manifest.permissions ?? []),
 			],
 		});
-	}, [filter, plugins, query]);
+	}, [filter, plugins, query, t]);
 
 	return (
 		<PanelView
-			title="Plugins"
-			actions={<PopOutAction id="plugins" title="Plugins" />}
+			title={t("catalog.titlePlugins")}
+			actions={<PopOutAction id="plugins" title={t("catalog.titlePlugins")} />}
 		>
 			<div className="flex h-full flex-col gap-2 p-2">
 				{/* Import + Sample actions */}
@@ -145,16 +145,16 @@ export function PluginsView() {
 						onClick={handleImportClick}
 					>
 						<HugeiconsIcon icon={Upload04Icon} className="size-3.5" />
-						Import Plugin
+						{t("plugins.importPlugin")}
 					</button>
 					<button
 						type="button"
 						className="flex items-center justify-center gap-2 rounded-md border border-white/[0.12] bg-white/[0.04] px-3 py-1.5 text-[11.5px] font-medium text-white/60 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white/90"
 						onClick={handleDownloadSample}
-						title="Download a sample .artpl file for testing"
+						title={t("plugins.sampleTooltip")}
 					>
 						<HugeiconsIcon icon={Download04Icon} className="size-3.5" />
-						Sample
+						{t("plugins.sample")}
 					</button>
 					<input
 						ref={fileInputRef}
@@ -175,7 +175,7 @@ export function PluginsView() {
 						onClick={() => setFilter("all")}
 						count={plugins.length}
 					>
-						All
+						{t("catalog.allCategory")}
 					</CategoryChip>
 					{PLUGIN_CATEGORIES.map((cat) => {
 						const count = plugins.filter(
@@ -187,9 +187,9 @@ export function PluginsView() {
 								active={filter === cat}
 								onClick={() => setFilter(cat)}
 								count={count}
-								tooltip={CATEGORY_DESCRIPTIONS[cat]}
+								tooltip={t(`plugins.categoryDescription.${cat}` as `plugins.categoryDescription.${PluginCategory}`)}
 							>
-								{CATEGORY_LABELS[cat]}
+								{t(`plugins.category.${cat}` as `plugins.category.${PluginCategory}`)}
 							</CategoryChip>
 						);
 					})}
@@ -207,7 +207,7 @@ export function PluginsView() {
 						<div className="flex h-full items-center justify-center py-12 text-[11.5px] text-white/45">
 							<div className="flex items-center gap-2">
 								<div className="size-4 animate-spin rounded-full border-2 border-white/15 border-t-white/70" />
-								Loading plugins…
+								{t("plugins.loading")}
 							</div>
 						</div>
 					) : filteredPlugins.length === 0 ? (
@@ -292,12 +292,15 @@ function PluginCard({
 	onToggle: () => void;
 	onUninstall: () => void;
 }) {
+	const { t } = useI18n();
 	const { manifest, enabled } = plugin;
 	const extensions = manifest.extensions;
 	const extensionSummary =
 		extensions.length === 1
-			? `1 ${extensions[0].type}`
-			: `${extensions.length} extensions`;
+			? t("plugins.extension", {
+					type: t(`plugins.extension.${extensions[0].type}` as `plugins.extension.${PluginExtensionType}`),
+				})
+			: t("plugins.extensions", { count: extensions.length });
 	const permissions = manifest.permissions ?? [];
 	const visiblePermissions = permissions.slice(0, 3);
 	const overflowPermissions = permissions.length - visiblePermissions.length;
@@ -338,11 +341,11 @@ function PluginCard({
 						</span>
 						{hasDangerous && (
 							<span
-								title="Requests network or persistent-storage access"
+								title={t("plugins.sensitiveTooltip")}
 								className="ml-auto flex shrink-0 items-center gap-0.5 rounded border border-amber-300/30 bg-amber-400/10 px-1 py-px text-[9px] font-medium text-amber-200"
 							>
 								<HugeiconsIcon icon={AlertCircleIcon} className="size-2.5" />
-								SENSITIVE
+								{t("plugins.sensitive")}
 							</span>
 						)}
 					</div>
@@ -353,9 +356,9 @@ function PluginCard({
 					)}
 					<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-white/50">
 						<span className="rounded border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 uppercase tracking-[0.1em]">
-							{CATEGORY_LABELS[manifest.category]}
+							{t(`plugins.category.${manifest.category}` as `plugins.category.${PluginCategory}`)}
 						</span>
-						{manifest.author && <span>by {manifest.author}</span>}
+						{manifest.author && <span>{t("plugins.byAuthor", { author: manifest.author })}</span>}
 						<span>·</span>
 						<span>{extensionSummary}</span>
 						{visiblePermissions.length > 0 && (
@@ -399,7 +402,7 @@ function PluginCard({
 					}}
 				>
 					<HugeiconsIcon icon={InformationCircleIcon} className="size-3" />
-					Details
+					{t("plugins.details")}
 					<HugeiconsIcon
 						icon={ArrowDown01Icon}
 						className="size-2.5 -rotate-90"
@@ -418,13 +421,13 @@ function PluginCard({
 							e.stopPropagation();
 							onToggle();
 						}}
-						title={enabled ? "Disable plugin" : "Enable plugin"}
+						title={enabled ? t("plugins.disablePlugin") : t("plugins.enablePlugin")}
 					>
 						<HugeiconsIcon
 							icon={enabled ? ToggleOnIcon : ToggleOffIcon}
 							className="size-3.5"
 						/>
-						{enabled ? "Enabled" : "Disabled"}
+						{enabled ? t("plugins.enabled") : t("plugins.disabled")}
 					</button>
 					<button
 						type="button"
@@ -433,10 +436,10 @@ function PluginCard({
 							e.stopPropagation();
 							onUninstall();
 						}}
-						title="Uninstall plugin"
+						title={t("plugins.uninstallPlugin")}
 					>
 						<HugeiconsIcon icon={Trash04Icon} className="size-3.5" />
-						Uninstall
+						{t("plugins.uninstall")}
 					</button>
 				</div>
 			</div>
@@ -445,6 +448,7 @@ function PluginCard({
 }
 
 function EmptyState({ hasAnyPlugin }: { hasAnyPlugin: boolean }) {
+	const { t } = useI18n();
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center">
 			<div className="grid size-10 place-items-center rounded-full border border-white/[0.08] bg-white/[0.03]">
@@ -455,8 +459,8 @@ function EmptyState({ hasAnyPlugin }: { hasAnyPlugin: boolean }) {
 			</div>
 			<p className="max-w-[220px] text-[11.5px] leading-snug text-white/55">
 				{hasAnyPlugin
-					? "No plugins match this category."
-					: "No plugins installed yet. Import a .artpl file or download the sample to get started."}
+					? t("catalog.emptyPluginsNoMatch")
+					: t("catalog.emptyPluginsNoInstalled")}
 			</p>
 		</div>
 	);

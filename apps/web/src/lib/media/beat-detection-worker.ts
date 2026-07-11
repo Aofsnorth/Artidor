@@ -14,7 +14,11 @@
 
 /// <reference lib="webworker" />
 
-import type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
+import { secondsToBeatTicks } from "./beat-time";
+import type {
+	BeatDetectionOptions,
+	DetectedBeat,
+} from "./beat-detection-types";
 
 const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	minBpm: 60,
@@ -22,9 +26,6 @@ const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	thresholdRatio: 1.35,
 	minBeatGapMs: 200,
 };
-
-/** Ticks per second — must match the main-thread constant. */
-const TICKS_PER_SECOND = 960;
 
 export type WorkerRequest =
 	| {
@@ -78,7 +79,10 @@ function handleDetect({
 	try {
 		const opts = { ...DEFAULT_OPTIONS, ...options };
 		if (samples.length === 0 || sampleRate <= 0) {
-			self.postMessage({ type: "complete", beats: [] } satisfies WorkerResponse);
+			self.postMessage({
+				type: "complete",
+				beats: [],
+			} satisfies WorkerResponse);
 			return;
 		}
 
@@ -88,7 +92,11 @@ function handleDetect({
 		const energies: number[] = new Array(totalHops);
 
 		// Phase 1: Energy computation (the expensive part)
-		for (let i = 0, hop = 0; i < samples.length - windowSize; i += hopSize, hop++) {
+		for (
+			let i = 0, hop = 0;
+			i < samples.length - windowSize;
+			i += hopSize, hop++
+		) {
 			if (cancelled) return;
 			let sum = 0;
 			for (let j = 0; j < windowSize; j++) {
@@ -126,7 +134,7 @@ function handleDetect({
 			const timeSeconds = (i * hopSize) / sampleRate;
 			beats.push({
 				timeSeconds,
-				ticks: Math.round(timeSeconds * TICKS_PER_SECOND),
+				ticks: secondsToBeatTicks(timeSeconds),
 				energy: e,
 			});
 			lastIndex = i;

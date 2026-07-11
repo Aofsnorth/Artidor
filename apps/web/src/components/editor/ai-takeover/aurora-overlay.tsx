@@ -52,7 +52,7 @@ export const AuroraOverlay = memo(function AuroraOverlay() {
 		<div
 			aria-hidden
 			className={cn(
-				"fixed inset-0 z-[200]",
+				"fixed inset-0 z-200",
 				"transition-opacity duration-300",
 				mounted ? "opacity-100" : "opacity-0",
 				// Only lock the editor when co-edit mode is OFF.
@@ -68,18 +68,10 @@ export const AuroraOverlay = memo(function AuroraOverlay() {
 			    A subtle background frame plus bright "snakes" that
 			    travel around the perimeter of the editor window. */}
 			<div className="absolute inset-0 pointer-events-none overflow-hidden border border-white/5">
-				<div
-					className="absolute top-0 h-[2px] w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-top_3s_linear_infinite]"
-				/>
-				<div
-					className="absolute bottom-0 h-[2px] w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-bottom_3s_linear_infinite]"
-				/>
-				<div
-					className="absolute left-0 w-[2px] h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-left_3s_linear_infinite]"
-				/>
-				<div
-					className="absolute right-0 w-[2px] h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-right_3s_linear_infinite]"
-				/>
+				<div className="absolute top-0 h-0.5 w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-top_3s_linear_infinite]" />
+				<div className="absolute bottom-0 h-0.5 w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-bottom_3s_linear_infinite]" />
+				<div className="absolute left-0 w-0.5 h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-left_3s_linear_infinite]" />
+				<div className="absolute right-0 w-0.5 h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-right_3s_linear_infinite]" />
 				<div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(34,211,238,0.03)]" />
 			</div>
 			<style>{`

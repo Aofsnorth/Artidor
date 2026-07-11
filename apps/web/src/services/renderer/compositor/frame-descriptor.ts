@@ -24,7 +24,10 @@ import type {
 	QuadTransformDescriptor,
 } from "./types";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
-import { getTransformPerspectiveScale } from "@/lib/rendering";
+import {
+	getTransformPerspectiveScale,
+	resolveBlendMode,
+} from "@/lib/rendering";
 import { orderMediaGraphicStyleLayers } from "./media-graphic-style";
 
 export type TextureUploadDescriptor = {
@@ -107,11 +110,7 @@ function getOrCreateBlurBackdrop({
 }): HTMLCanvasElement | OffscreenCanvas {
 	const sourceKey = source as object;
 	const cached = blurBackgroundCache.get(sourceKey);
-	if (
-		cached &&
-		cached.width === width &&
-		cached.height === height
-	) {
+	if (cached && cached.width === width && cached.height === height) {
 		return cached.canvas;
 	}
 	const canvas = createOffscreenCanvas({ width, height });
@@ -343,7 +342,9 @@ async function collectVisualSourceNode({
 		transform,
 		textures,
 	});
-	const [beforeMediaLayers, afterMediaLayers] = orderMediaGraphicStyleLayers(styleLayers);
+	const [beforeMediaLayers, afterMediaLayers] =
+		orderMediaGraphicStyleLayers(styleLayers);
+	// borderLayer is already ordered after stroke/fill above media.
 	items.push(...beforeMediaLayers);
 
 	items.push({
@@ -351,7 +352,7 @@ async function collectVisualSourceNode({
 		textureId,
 		transform,
 		opacity: node.resolved.opacity,
-		blendMode: node.params.blendMode ?? "normal",
+		blendMode: resolveBlendMode(node.params.blendMode),
 		effectPassGroups: node.resolved.effectPasses,
 		mask,
 	});
@@ -379,18 +380,32 @@ function buildMediaGraphicStyleLayers({
 	fillLayer: FrameItemDescriptor | null;
 	shadowLayer: FrameItemDescriptor | null;
 	strokeLayer: FrameItemDescriptor | null;
+	borderLayer: FrameItemDescriptor | null;
 } {
-	const empty = { fillLayer: null, shadowLayer: null, strokeLayer: null };
+	const empty = {
+		fillLayer: null,
+		shadowLayer: null,
+		strokeLayer: null,
+		borderLayer: null,
+	};
 	if (node instanceof GraphicNode || node instanceof StickerNode) return empty;
-	const style = node.params.graphicStyle;
+	if (!node.resolved) return empty;
+	const style = node.resolved.graphicStyle;
 	if (!style) return empty;
 	const hasFill = (style.fillOpacity ?? 0) > 0;
 	const hasStroke = Boolean(style.stroke?.enabled && style.stroke.width > 0);
 	const hasShadow = Boolean(style.shadow?.enabled);
-	if (!hasFill && !hasStroke && !hasShadow) return empty;
+	const hasBorder = Boolean(
+		style.border?.enabled && style.border.width > 0 && (style.border.opacity ?? 0) > 0,
+	);
+	if (!hasFill && !hasStroke && !hasShadow && !hasBorder) return empty;
 
 	const maxPadding = Math.ceil(
-		Math.max(style.stroke?.width ?? 0, style.shadow?.blur ?? 0) * 2 +
+		Math.max(
+			style.stroke?.width ?? 0,
+			style.border?.width ?? 0,
+			style.shadow?.blur ?? 0,
+		) * 2 +
 			Math.abs(style.shadow?.offsetX ?? 0) +
 			Math.abs(style.shadow?.offsetY ?? 0),
 	);
@@ -435,20 +450,21 @@ function buildMediaGraphicStyleLayers({
 		};
 	};
 
-	const shadowLayer = hasShadow && style.shadow
-		? makeCanvasLayer({
-				id: "media-shadow-style",
-				padding: maxPadding,
-				draw: (ctx) => {
-					ctx.shadowColor = style.shadow?.color ?? "#000000";
-					ctx.shadowBlur = style.shadow?.blur ?? 0;
-					ctx.shadowOffsetX = style.shadow?.offsetX ?? 0;
-					ctx.shadowOffsetY = style.shadow?.offsetY ?? 0;
-					ctx.fillStyle = "rgba(0,0,0,1)";
-					ctx.fillRect(maxPadding, maxPadding, sourceWidth, sourceHeight);
-				},
-			})
-		: null;
+	const shadowLayer =
+		hasShadow && style.shadow
+			? makeCanvasLayer({
+					id: "media-shadow-style",
+					padding: maxPadding,
+					draw: (ctx) => {
+						ctx.shadowColor = style.shadow?.color ?? "#000000";
+						ctx.shadowBlur = style.shadow?.blur ?? 0;
+						ctx.shadowOffsetX = style.shadow?.offsetX ?? 0;
+						ctx.shadowOffsetY = style.shadow?.offsetY ?? 0;
+						ctx.fillStyle = "rgba(0,0,0,1)";
+						ctx.fillRect(maxPadding, maxPadding, sourceWidth, sourceHeight);
+					},
+				})
+			: null;
 	const fillLayer = hasFill
 		? makeCanvasLayer({
 				id: "media-fill-style",
@@ -460,25 +476,46 @@ function buildMediaGraphicStyleLayers({
 				},
 			})
 		: null;
-	const strokeLayer = hasStroke && style.stroke
-		? makeCanvasLayer({
-				id: "media-stroke-style",
-				padding: maxPadding,
-				draw: (ctx) => {
-					const stroke = style.stroke;
-					if (!stroke) return;
-					ctx.strokeStyle = stroke.color;
-					ctx.lineWidth = stroke.width;
-					ctx.strokeRect(
-						maxPadding + stroke.width / 2,
-						maxPadding + stroke.width / 2,
-						Math.max(1, sourceWidth - stroke.width),
-						Math.max(1, sourceHeight - stroke.width),
-					);
-				},
-			})
-		: null;
-	return { fillLayer, shadowLayer, strokeLayer };
+	const strokeLayer =
+		hasStroke && style.stroke
+			? makeCanvasLayer({
+					id: "media-stroke-style",
+					padding: maxPadding,
+					draw: (ctx) => {
+						const stroke = style.stroke;
+						if (!stroke) return;
+						ctx.strokeStyle = stroke.color;
+						ctx.lineWidth = stroke.width;
+						ctx.strokeRect(
+							maxPadding + stroke.width / 2,
+							maxPadding + stroke.width / 2,
+							Math.max(1, sourceWidth - stroke.width),
+							Math.max(1, sourceHeight - stroke.width),
+						);
+					},
+				})
+			: null;
+	const borderLayer =
+		hasBorder && style.border
+			? makeCanvasLayer({
+					id: "media-border-style",
+					padding: maxPadding,
+					draw: (ctx) => {
+						const border = style.border;
+						if (!border) return;
+						ctx.globalAlpha = Math.max(0, Math.min(1, border.opacity ?? 1));
+						ctx.strokeStyle = border.color;
+						ctx.lineWidth = border.width;
+						ctx.strokeRect(
+							maxPadding + border.width / 2,
+							maxPadding + border.width / 2,
+							Math.max(1, sourceWidth - border.width),
+							Math.max(1, sourceHeight - border.width),
+						);
+					},
+				})
+			: null;
+	return { fillLayer, shadowLayer, strokeLayer, borderLayer };
 }
 
 /**
@@ -589,7 +626,7 @@ function collectTextNode({
 		textureId,
 		transform: fullCanvasTransform(renderer),
 		opacity: node.resolved.opacity,
-		blendMode: node.params.blendMode ?? "normal",
+		blendMode: resolveBlendMode(node.params.blendMode),
 		effectPassGroups: node.resolved.effectPasses,
 		mask: null,
 	});
@@ -840,7 +877,14 @@ function drawTransformedCanvas({
 		// applies matrix [a c e; b d f; 0 0 1]. For skewX, b=tan(skewX); for
 		// skewY, c=tan(skewY). Combined with scale via separate ctx.scale call.
 		if (skewX !== 0 || skewY !== 0) {
-			ctx.transform(1, Math.tan((skewX * Math.PI) / 180), Math.tan((skewY * Math.PI) / 180), 1, 0, 0);
+			ctx.transform(
+				1,
+				Math.tan((skewX * Math.PI) / 180),
+				Math.tan((skewY * Math.PI) / 180),
+				1,
+				0,
+				0,
+			);
 		}
 		ctx.scale(flipX, flipY);
 		ctx.translate(-transform.centerX, -transform.centerY);

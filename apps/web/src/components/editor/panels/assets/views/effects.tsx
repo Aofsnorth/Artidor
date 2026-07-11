@@ -93,14 +93,12 @@ export function EffectsView() {
 
 	return (
 		<PanelView
-			title="Effects"
-			actions={<PopOutAction id="effects" title="Effects" />}
+			title={t("catalog.titleEffects")}
+			actions={<PopOutAction id="effects" title={t("catalog.titleEffects")} />}
 		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Effects process the selected clip or an effect track. Color correction
-					controls live in Adjustments; visible tint/frame layers live in
-					Overlays.
+					{t("catalog.descriptionEffects")}
 				</p>
 				<CategoryBar
 					categories={EFFECT_PANEL_CATEGORIES}
@@ -115,10 +113,7 @@ export function EffectsView() {
 				{filtered.length > 0 ? (
 					<EffectsGrid effects={filtered} />
 				) : (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				)}
 			</div>
 		</PanelView>

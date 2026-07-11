@@ -38,6 +38,7 @@ import {
 	TIMELINE_TRACK_THEME,
 	TRACK_TYPE_PALETTE,
 	getGroupColor,
+	SPLIT_CURSOR,
 } from "./theme";
 import {
 	ContextMenu,
@@ -713,11 +714,11 @@ function TimelineElement({
 					<div
 						className={cn(
 							"timeline-clip absolute top-0 select-none",
-							activeTool === "split" && "cursor-crosshair",
 							isAIActiveOnElement && "ai-element-active ai-element-transition",
 						)}
 						onMouseDownCapture={handleSplitToolMouseDown}
 						style={{
+							cursor: activeTool === "split" ? SPLIT_CURSOR : undefined,
 							left: `${elementLeft}px`,
 							width: `${elementWidth}px`,
 							height:
