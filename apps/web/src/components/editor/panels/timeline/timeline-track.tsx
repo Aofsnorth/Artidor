@@ -1,19 +1,19 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { MemoizedTimelineElement as TimelineElement } from "./timeline-element";
 import type { TimelineTrack } from "@/lib/timeline";
 import type { TimelineElement as TimelineElementType } from "@/lib/timeline";
 import type { SnapPoint } from "@/lib/timeline/snap-utils";
 import { TIMELINE_LAYERS } from "./layers";
-import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
-import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import type { ElementDragState } from "@/lib/timeline";
-import { useEditor } from "@/hooks/use-editor";
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { timelineTimeToSnappedPixels } from "@/lib/timeline/pixel-utils";
+import { shouldMountTimelineElement } from "./timeline-element-cull";
 import { Plus } from "lucide-react";
+
+export const HORIZONTAL_OVERSCAN_PX = 600;
 
 const TRANSITION_ADJACENCY_TOLERANCE_TICKS = 2;
 
@@ -21,9 +21,8 @@ interface TimelineTrackContentProps {
 	track: TimelineTrack;
 	zoomLevel: number;
 	dragState: ElementDragState;
-	rulerScrollRef: React.RefObject<HTMLDivElement | null>;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
-	lastMouseXRef: React.RefObject<number>;
+	scrollWindow: { left: number; right: number };
 	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
 	onResizeStateChange?: (params: { isResizing: boolean }) => void;
 	onElementMouseDown: (params: {
@@ -42,13 +41,12 @@ interface TimelineTrackContentProps {
 	targetElementId?: string | null;
 }
 
-export function TimelineTrackContent({
+function TimelineTrackContentInner({
 	track,
 	zoomLevel,
 	dragState,
-	rulerScrollRef,
 	tracksScrollRef,
-	lastMouseXRef,
+	scrollWindow,
 	onSnapPointChange,
 	onResizeStateChange,
 	onElementMouseDown,
@@ -60,12 +58,6 @@ export function TimelineTrackContent({
 }: TimelineTrackContentProps) {
 	const { isElementSelected, setElementSelection } = useElementSelection();
 	const setActiveTab = useAssetsPanelStore((state) => state.setActiveTab);
-	// Only subscribe to `timeline` and `scenes` — not `playback`. The
-	// `playback` subsystem fires every animation frame during playback.
-	const duration = useEditor(
-		(e) => e.timeline.getTotalDuration(),
-		["timeline", "scenes"],
-	);
 	const transitionPairs = useMemo(() => {
 		if (
 			track.type === "audio" ||
@@ -113,13 +105,9 @@ export function TimelineTrackContent({
 		[onElementClick, track],
 	);
 
-	useEdgeAutoScroll({
-		isActive: dragState.isDragging,
-		getMouseClientX: () => lastMouseXRef.current ?? 0,
-		rulerScrollRef,
-		tracksScrollRef,
-		contentWidth: duration * BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel,
-	});
+	// Horizontal scroll window is computed once by the parent
+	// (TimelineTrackRows) and shared with every track so each row no
+	// longer mounts its own scroll listener and rAF state.
 
 	const hasDraggedElement = track.elements.some((element) =>
 		dragState.dragElementIds.includes(element.id),
@@ -189,6 +177,27 @@ export function TimelineTrackContent({
 							elementId: element.id,
 						});
 
+						// Element-level horizontal cull: while not dragging, skip
+						// mounting clips fully outside the visible scroll window.
+						// This keeps every timeline re-render O(visible) instead of
+						// O(total clips) for long projects. During a drag we mount
+						// everything so cross-track drops and the dragged clip
+						// itself stay live.
+						if (
+							!dragState.isDragging &&
+							!shouldMountTimelineElement({
+								elementId: element.id,
+								startTime: element.startTime,
+								duration: element.duration,
+								zoomLevel,
+								windowLeft: scrollWindow.left,
+								windowRight: scrollWindow.right,
+								isSelected,
+							})
+						) {
+							return null;
+						}
+
 						return (
 							<TimelineElement
 								key={element.id}
@@ -243,3 +252,42 @@ export function TimelineTrackContent({
 		</div>
 	);
 }
+
+function timelineTrackContentAreEqual(
+	prev: TimelineTrackContentProps,
+	next: TimelineTrackContentProps,
+): boolean {
+	if (prev.track !== next.track) return false;
+	if (prev.zoomLevel !== next.zoomLevel) return false;
+	if (prev.tracksScrollRef !== next.tracksScrollRef) return false;
+	if (prev.scrollWindow !== next.scrollWindow) {
+		if (
+			prev.scrollWindow.left !== next.scrollWindow.left ||
+			prev.scrollWindow.right !== next.scrollWindow.right
+		) {
+			return false;
+		}
+	}
+	if (prev.dragState !== next.dragState) {
+		if (
+			prev.dragState.isDragging !== next.dragState.isDragging ||
+			prev.dragState.dragElementIds !== next.dragState.dragElementIds
+		) {
+			return false;
+		}
+	}
+	if (prev.onSnapPointChange !== next.onSnapPointChange) return false;
+	if (prev.onResizeStateChange !== next.onResizeStateChange) return false;
+	if (prev.onElementMouseDown !== next.onElementMouseDown) return false;
+	if (prev.onElementClick !== next.onElementClick) return false;
+	if (prev.onTrackMouseDown !== next.onTrackMouseDown) return false;
+	if (prev.onTrackMouseUp !== next.onTrackMouseUp) return false;
+	if (prev.shouldIgnoreClick !== next.shouldIgnoreClick) return false;
+	if (prev.targetElementId !== next.targetElementId) return false;
+	return true;
+}
+
+export const TimelineTrackContent = memo(
+	TimelineTrackContentInner,
+	timelineTrackContentAreEqual,
+);

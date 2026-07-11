@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useTimelineZoom } from "@/hooks/timeline/use-timeline-zoom";
 import {
+	memo,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -36,7 +37,7 @@ import {
 	type ReactNode,
 } from "react";
 import type { ElementDragState, DropTarget } from "@/lib/timeline";
-import { TimelineTrackContent } from "./timeline-track";
+import { TimelineTrackContent, HORIZONTAL_OVERSCAN_PX } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
 import { SelectionBox } from "@/lib/selection/selection-box";
 import { useBoxSelect } from "@/lib/selection/hooks/use-box-select";
@@ -60,6 +61,7 @@ import {
 	getTimelineZoomMin,
 	getTimelinePaddingPx,
 } from "@/lib/timeline";
+import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { timelineTimeToPixels } from "@/lib/timeline/pixel-utils";
 import {
 	computeTrackVerticalSpans,
@@ -667,6 +669,14 @@ export function Timeline() {
 		seek,
 	});
 
+	const handleTrackMouseDown = useCallback(
+		(event: React.MouseEvent) => {
+			handleSelectionMouseDown(event);
+			handleTracksMouseDown(event);
+		},
+		[handleSelectionMouseDown, handleTracksMouseDown],
+	);
+
 	const timelineHeaderHeight =
 		(timelineHeaderRef.current?.getBoundingClientRect().height ?? 0) +
 			TIMELINE_CONTENT_TOP_PADDING_PX || 0;
@@ -806,10 +816,7 @@ export function Timeline() {
 										onResizeStateChange={handleResizeStateChange}
 										onElementMouseDown={handleElementMouseDown}
 										onElementClick={handleElementClick}
-										onTrackMouseDown={(event) => {
-											handleSelectionMouseDown(event);
-											handleTracksMouseDown(event);
-										}}
+										onTrackMouseDown={handleTrackMouseDown}
 										onTrackMouseUp={handleTracksClick}
 										shouldIgnoreClick={shouldIgnoreClick}
 										isDragOver={isDragOver}
@@ -1430,7 +1437,7 @@ function TrackLabelsPanel({
 	);
 }
 
-function TimelineTrackRows({
+function TimelineTrackRowsInner({
 	mainTrackId,
 	zoomLevel,
 	dragState,
@@ -1470,6 +1477,12 @@ function TimelineTrackRows({
 	// Use bare useEditor() for stable method calls — no subscriptions.
 	const editor = useEditor();
 	const timeline = editor.timeline;
+	// Subscribe to duration only for edge auto-scroll content width.
+	// Other duration consumers (footer, ruler) keep their own subscriptions.
+	const duration = useEditor(
+		(e) => e.timeline.getTotalDuration(),
+		["timeline", "scenes"],
+	);
 	// Use passed tracks instead of fetching independently
 	// to avoid redundant useEditor subscriptions.
 	const tracks = tracksProp;
@@ -1522,18 +1535,46 @@ function TimelineTrackRows({
 		top: 0,
 		height: 800,
 	});
+	const [scrollWindow, setScrollWindow] = useState({
+		left: 0,
+		right: 4096,
+	});
 
-	// Listen to scroll events on the tracks container
+	// Listen to scroll events on the tracks container once for all rows
+	// (vertical viewport for virtualization + horizontal window for element
+	// culling). The per-track scroll listeners have been removed.
 	useEffect(() => {
 		const el = tracksScrollRef.current;
 		if (!el) return;
 		const update = () => {
-			setScrollViewport({ top: el.scrollTop, height: el.clientHeight });
+			setScrollViewport((prev) => {
+				const top = el.scrollTop;
+				const height = el.clientHeight;
+				return prev.top === top && prev.height === height
+					? prev
+					: { top, height };
+			});
+			setScrollWindow((prev) => {
+				const left = el.scrollLeft - HORIZONTAL_OVERSCAN_PX;
+				const right = el.scrollLeft + el.clientWidth + HORIZONTAL_OVERSCAN_PX;
+				return prev.left === left && prev.right === right
+					? prev
+					: { left, right };
+			});
 		};
 		update();
 		el.addEventListener("scroll", update, { passive: true });
 		return () => el.removeEventListener("scroll", update);
 	}, [tracksScrollRef]);
+
+	// One edge auto-scroll loop per drag, not one per track row.
+	useEdgeAutoScroll({
+		isActive: dragState.isDragging,
+		getMouseClientX: () => lastMouseXRef.current ?? 0,
+		rulerScrollRef: tracksScrollRef,
+		tracksScrollRef,
+		contentWidth: duration * BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel,
+	});
 
 	// Filter to only visible tracks (during non-drag operations)
 	const trackSpans = useMemo(
@@ -1631,9 +1672,8 @@ function TimelineTrackRows({
 										track={track}
 										zoomLevel={zoomLevel}
 										dragState={dragState}
-										rulerScrollRef={tracksScrollRef}
 										tracksScrollRef={tracksScrollRef}
-										lastMouseXRef={lastMouseXRef}
+										scrollWindow={scrollWindow}
 										onSnapPointChange={onSnapPointChange}
 										onResizeStateChange={onResizeStateChange}
 										onElementMouseDown={onElementMouseDown}
@@ -1715,6 +1755,40 @@ function TimelineTrackRows({
 		</>
 	);
 }
+
+function timelineTrackRowsAreEqual(
+	prev: React.ComponentProps<typeof TimelineTrackRowsInner>,
+	next: React.ComponentProps<typeof TimelineTrackRowsInner>,
+): boolean {
+	if (prev.mainTrackId !== next.mainTrackId) return false;
+	if (prev.zoomLevel !== next.zoomLevel) return false;
+	if (prev.tracksScrollRef !== next.tracksScrollRef) return false;
+	if (prev.lastMouseXRef !== next.lastMouseXRef) return false;
+	if (prev.tracks !== next.tracks) return false;
+	if (prev.isDragOver !== next.isDragOver) return false;
+	if (prev.dropTarget !== next.dropTarget) return false;
+	if (prev.onSnapPointChange !== next.onSnapPointChange) return false;
+	if (prev.onResizeStateChange !== next.onResizeStateChange) return false;
+	if (prev.onElementMouseDown !== next.onElementMouseDown) return false;
+	if (prev.onElementClick !== next.onElementClick) return false;
+	if (prev.onTrackMouseDown !== next.onTrackMouseDown) return false;
+	if (prev.onTrackMouseUp !== next.onTrackMouseUp) return false;
+	if (prev.shouldIgnoreClick !== next.shouldIgnoreClick) return false;
+	if (prev.dragState !== next.dragState) {
+		if (
+			prev.dragState.isDragging !== next.dragState.isDragging ||
+			prev.dragState.dragElementIds !== next.dragState.dragElementIds
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+const TimelineTrackRows = memo(
+	TimelineTrackRowsInner,
+	timelineTrackRowsAreEqual,
+);
 
 function TimelineGutter({
 	onMouseDown,

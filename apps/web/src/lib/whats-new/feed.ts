@@ -18,6 +18,19 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-16-editor-performance-phase-1",
+		date: "2026-07-16",
+		tag: "performance",
+		title: "Editor performance: faster load, smoother timeline, and leaner preview loop",
+		items: [
+			"Asset panel views, property panel tabs, CommandPalette, and EnvWarningModal are now lazy-loaded, so only the UI you open is fetched.",
+			"Page transitions and guide popovers now use CSS animations instead of `motion/react`, removing a large runtime dependency from the editor bundle.",
+			"Preview rAF loop stops when paused and idle; the render tree controller uses a shallow `useEffect` instead of `useDeepCompareEffect`.",
+			"Timeline track rows and content are now memoized, and per-track scroll/edge-scroll listeners are merged into a single shared listener per timeline.",
+			"Next.js barrel imports are optimized for `motion` and `react-icons` to reduce the chance of oversized chunks.",
+		],
+	},
+	{
 		id: "2026-07-16-ai-chat-controls-and-previews",
 		date: "2026-07-16",
 		tag: "improvement",
