@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { templates as presetTemplates } from "@/lib/presets/templates";
@@ -41,10 +41,17 @@ import {
 } from "@/components/editor/panels/assets/views/components/catalog-search";
 import { useI18n } from "@/lib/i18n";
 
-const TEMPLATE_LABELS = TEMPLATE_CATEGORIES.map((c) => c.label);
-const TEMPLATE_ID_TO_LABEL = new Map(
-	TEMPLATE_CATEGORIES.map((c) => [c.id, c.label]),
-);
+const TEMPLATE_CATEGORY_TO_KEY: Record<TemplateCategory, string> = {
+	intro: "templates.category.intro",
+	outro: "templates.category.outro",
+	"lower-third": "templates.category.lowerThird",
+	social: "templates.category.social",
+	vlog: "templates.category.vlog",
+	promo: "templates.category.promo",
+	slideshow: "templates.category.slideshow",
+	lyric: "templates.category.lyric",
+	tutorial: "templates.category.tutorial",
+};
 
 const PRESET_TEMPLATE_CATEGORY_MAP: Record<
 	PresetTemplateCategory,
@@ -88,10 +95,30 @@ const PRESET_BUILD_BY_ID = new Map(
 );
 
 export function TemplatesView() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
 	const editor = useEditor();
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => TEMPLATE_CATEGORIES.map((c) => t(TEMPLATE_CATEGORY_TO_KEY[c.id])),
+		[t],
+	);
+	const idToLabel = useMemo(
+		() =>
+			new Map(
+				TEMPLATE_CATEGORIES.map((c) => [
+					c.id,
+					t(TEMPLATE_CATEGORY_TO_KEY[c.id]),
+				]),
+			),
+		[t],
+	);
 
 	const allTemplates = useMemo(() => {
 		const existingIds = new Set(
@@ -109,7 +136,7 @@ export function TemplatesView() {
 		const categoryFiltered = filterByCategory({
 			items: allTemplates,
 			category,
-			getCategory: (template) => TEMPLATE_ID_TO_LABEL.get(template.category),
+			getCategory: (template) => idToLabel.get(template.category),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -118,10 +145,10 @@ export function TemplatesView() {
 				template.name,
 				template.id,
 				template.description,
-				TEMPLATE_ID_TO_LABEL.get(template.category),
+				idToLabel.get(template.category),
 			],
 		});
-	}, [allTemplates, category, query]);
+	}, [allTemplates, category, query, idToLabel]);
 
 	return (
 		<PanelView title={t("catalog.titleTemplates")}>
@@ -130,7 +157,7 @@ export function TemplatesView() {
 					{t("catalog.descriptionTemplates")}
 				</p>
 				<CategoryBar
-					categories={TEMPLATE_LABELS}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>
@@ -329,6 +356,7 @@ function TemplateItem({
 	template: ProjectTemplate;
 	onApply: () => void;
 }) {
+	const { t } = useI18n();
 	const durationSec = Math.round(template.durationTicks / TICKS_PER_SECOND);
 	const h = hashString(template.id);
 	const layoutType = h % 5;
@@ -418,7 +446,7 @@ function TemplateItem({
 				{template.name}
 			</MarqueeText>
 			<div className="text-white/70 absolute right-1.5 top-1.5 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
-				{durationSec}s
+				{t("templates.durationSeconds", { duration: durationSec })}
 			</div>
 		</div>
 	);
