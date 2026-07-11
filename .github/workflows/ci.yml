@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgresql://artidor:***@localhost:5432/artidor"
-      BETTER_AUTH_SECRET: "supersecret"
+      BETTER_AUTH_SECRET: "ci-only-secret-7f95e431a6b24d94b909f6237c82f521"
       NEXT_PUBLIC_SITE_URL: "http://localhost:3000"
       UPSTASH_REDIS_REST_URL: "https://your-upstash-redis-url"
       UPSTASH_REDIS_REST_TOKEN: "your-upstash-redis-token"
