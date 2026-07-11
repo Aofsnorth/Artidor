@@ -168,6 +168,10 @@ self.addEventListener("message", (event: MessageEvent) => {
 });
 
 async function handleExport(msg: WorkerInMessage) {
+	// A reused worker may have processed a previous cancellation. Cancellation
+	// only applies to one export run, never to the worker's lifetime.
+	isCancelled = false;
+
 	const {
 		sceneTree: serializedTree,
 		files: fileEntries,

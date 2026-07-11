@@ -887,18 +887,31 @@ export class AudioManager {
 				return null;
 			}
 
-			const decodedBuffer = await this.getDecodedBuffer({ clip });
-			if (!decodedBuffer) {
-				return null;
-			}
+			    const decodedBuffer = await this.getDecodedBuffer({ clip });
+			    if (!decodedBuffer) {
+			      this.preparedClipBuffers.delete(cacheKey);
+			      return null;
+			    }
 
-			return await renderRetimedBuffer({
-				audioContext,
-				sourceBuffer: decodedBuffer,
-				trimStart: clip.trimStart,
-				clipDuration: clip.duration,
-				retime: clip.retime,
-			});
+			    // Some containers (notably FLAC in several browsers) report an invalid
+			    // timeline duration — `NaN`, `Infinity`, or `0` — from media element
+			    // metadata even though the file imports and decodes fine. The
+			    // prepared-path resampler sizes its output from `clip.duration`; a
+			    // non-finite value makes the `createBuffer` call throw and the clip
+			    // silently never plays. Fall back to the decoded buffer's real
+			    // duration so the preview carries audio instead of being dropped.
+			    const effectiveDuration =
+			      Number.isFinite(clip.duration) && clip.duration > 0
+			        ? clip.duration
+			        : decodedBuffer.duration;
+
+			    return await renderRetimedBuffer({
+			      audioContext,
+			      sourceBuffer: decodedBuffer,
+			      trimStart: clip.trimStart,
+			      clipDuration: effectiveDuration,
+			      retime: clip.retime,
+			    });
 		})();
 
 		this.preparedClipBuffers.set(cacheKey, promise);
