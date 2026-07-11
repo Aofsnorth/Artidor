@@ -8,7 +8,7 @@ use js_sys::Object;
 use wasm_bindgen::{JsCast, JsValue, prelude::wasm_bindgen};
 
 use crate::gpu::{
-    import_canvas_texture, read_offscreen_canvas_property, read_serde_property, read_u32_property,
+    import_external_image, read_external_image_source, read_serde_property, read_u32_property,
     with_gpu_runtime,
 };
 
@@ -130,7 +130,7 @@ pub fn upload_texture(options: JsValue) -> Result<(), JsValue> {
                 ));
             };
 
-            let texture = import_canvas_texture(
+            let texture = import_external_image(
                 &gpu_runtime.context,
                 &source,
                 width,
@@ -197,7 +197,7 @@ pub fn render_frame(options: JsValue) -> Result<(), JsValue> {
 #[derive(Debug)]
 struct UploadTextureOptions {
     id: String,
-    source: wgpu::web_sys::OffscreenCanvas,
+    source: wgpu::ExternalImageSource,
     width: u32,
     height: u32,
 }
@@ -209,7 +209,7 @@ fn parse_upload_texture_options(value: JsValue) -> Result<UploadTextureOptions, 
 
     Ok(UploadTextureOptions {
         id: read_serde_property(&object, "id")?,
-        source: read_offscreen_canvas_property(&object, "source")?,
+        source: read_external_image_source(&object, "source")?,
         width: read_u32_property(&object, "width")?,
         height: read_u32_property(&object, "height")?,
     })
