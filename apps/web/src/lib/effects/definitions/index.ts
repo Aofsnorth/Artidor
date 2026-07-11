@@ -92,6 +92,19 @@ import {
 	replaceColorEffectDefinition,
 	tintEffectDefinition,
 } from "./video/color-effects";
+import {
+	rotateEffectDefinition,
+	scaleEffectDefinition,
+	flipHorizontalEffectDefinition,
+	flipVerticalEffectDefinition,
+	skewEffectDefinition,
+} from "./video/transform-effects";
+import {
+	textGlowEffectDefinition,
+	textStrokeEffectDefinition,
+	textShadowEffectDefinition,
+	text3dEffectDefinition,
+} from "./video/text-effects";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -171,6 +184,15 @@ const defaultEffects = [
 	tintEffectDefinition,
 	gradientOverlayEffectDefinition,
 	fourColorGradientEffectDefinition,
+	rotateEffectDefinition,
+	scaleEffectDefinition,
+	flipHorizontalEffectDefinition,
+	flipVerticalEffectDefinition,
+	skewEffectDefinition,
+	textGlowEffectDefinition,
+	textStrokeEffectDefinition,
+	textShadowEffectDefinition,
+	text3dEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
