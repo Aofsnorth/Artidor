@@ -19,7 +19,11 @@
 
 /// <reference lib="webworker" />
 
-import type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
+import { secondsToBeatTicks } from "./beat-time";
+import type {
+	BeatDetectionOptions,
+	DetectedBeat,
+} from "./beat-detection-types";
 
 const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	minBpm: 60,
@@ -27,8 +31,6 @@ const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	thresholdRatio: 1.35,
 	minBeatGapMs: 200,
 };
-
-const TICKS_PER_SECOND = 960;
 
 export type BeatAnalysisRequest = {
 	type: "analyze";
@@ -55,7 +57,10 @@ self.onmessage = async (event: MessageEvent<BeatAnalysisRequest>) => {
 	try {
 		const beats = await runFullPipeline(msg);
 		if (cancelled) return;
-		self.postMessage({ type: "complete", beats } satisfies BeatAnalysisResponse);
+		self.postMessage({
+			type: "complete",
+			beats,
+		} satisfies BeatAnalysisResponse);
 	} catch (err) {
 		if (cancelled) return;
 		self.postMessage({
@@ -65,8 +70,16 @@ self.onmessage = async (event: MessageEvent<BeatAnalysisRequest>) => {
 	}
 };
 
-async function runFullPipeline(msg: BeatAnalysisRequest): Promise<DetectedBeat[]> {
-	const { file, trimStartSeconds, durationSeconds, targetSampleRate, options = {} } = msg;
+async function runFullPipeline(
+	msg: BeatAnalysisRequest,
+): Promise<DetectedBeat[]> {
+	const {
+		file,
+		trimStartSeconds,
+		durationSeconds,
+		targetSampleRate,
+		options = {},
+	} = msg;
 	const opts = { ...DEFAULT_OPTIONS, ...options };
 
 	// Phase 1: Decode audio (10%)
@@ -86,7 +99,7 @@ async function runFullPipeline(msg: BeatAnalysisRequest): Promise<DetectedBeat[]
 	} finally {
 		ctx.close().catch(() => {});
 	}
-	postProgress(0.10);
+	postProgress(0.1);
 
 	// Phase 2: Trim + mono mixdown (10% → 30%)
 	const startSample = Math.floor(trimStartSeconds * audioBuffer.sampleRate);
@@ -110,9 +123,9 @@ async function runFullPipeline(msg: BeatAnalysisRequest): Promise<DetectedBeat[]
 			sum += audioBuffer.getChannelData(ch)[startSample + i] ?? 0;
 		}
 		samples[i] = sum / numChannels;
-		if (i % 65536 === 0 && i > 0) postProgress(0.10 + 0.20 * (i / trimmedLength));
+		if (i % 65536 === 0 && i > 0) postProgress(0.1 + 0.2 * (i / trimmedLength));
 	}
-	postProgress(0.30);
+	postProgress(0.3);
 
 	// Phase 3: Beat detection (30% → 100%)
 	return detectBeats(samples, audioBuffer.sampleRate, opts);
@@ -131,7 +144,11 @@ function detectBeats(
 	const energies: number[] = new Array(totalHops);
 
 	// Phase 3a: Energy computation (30% → 80%)
-	for (let i = 0, hop = 0; i < samples.length - windowSize; i += hopSize, hop++) {
+	for (
+		let i = 0, hop = 0;
+		i < samples.length - windowSize;
+		i += hopSize, hop++
+	) {
 		if (cancelled) return [];
 		let sum = 0;
 		for (let j = 0; j < windowSize; j++) {
@@ -140,7 +157,7 @@ function detectBeats(
 		}
 		energies[hop] = Math.sqrt(sum / windowSize);
 		if (hop % Math.max(1, Math.floor(totalHops / 20)) === 0) {
-			postProgress(0.30 + (hop / totalHops) * 0.50);
+			postProgress(0.3 + (hop / totalHops) * 0.5);
 		}
 	}
 
@@ -167,7 +184,7 @@ function detectBeats(
 		const timeSeconds = (i * hopSize) / sampleRate;
 		beats.push({
 			timeSeconds,
-			ticks: Math.round(timeSeconds * TICKS_PER_SECOND),
+			ticks: secondsToBeatTicks(timeSeconds),
 			energy: e,
 		});
 		lastIndex = i;
@@ -179,7 +196,10 @@ function detectBeats(
 
 function postProgress(progress: number): void {
 	if (cancelled) return;
-	self.postMessage({ type: "progress", progress } satisfies BeatAnalysisResponse);
+	self.postMessage({
+		type: "progress",
+		progress,
+	} satisfies BeatAnalysisResponse);
 }
 
 function average(values: number[]): number {

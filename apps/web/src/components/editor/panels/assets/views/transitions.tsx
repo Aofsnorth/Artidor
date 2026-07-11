@@ -17,9 +17,19 @@ import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { getTransitionPalettes } from "./components/procedural-preview";
+import {
+	getTransitionPhotoPair,
+	getTransitionPalettes,
+} from "./components/procedural-preview";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "./components/catalog-search";
 import type { TransitionDefinition } from "@/lib/transitions";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { useI18n } from "@/lib/i18n";
+import { MarqueeText } from "@/components/ui/marquee-text";
 
 const TRANSITION_CATEGORIES = [
 	"Fade",
@@ -46,6 +56,7 @@ const PRESET_TRANSITION_CATEGORY_BY_TYPE = new Map(
 );
 
 export function TransitionsView() {
+	const { t } = useI18n();
 	const transitions = useMemo(() => {
 		const existing = transitionsRegistry.getAll();
 		const existingTypes = new Set(
@@ -59,44 +70,62 @@ export function TransitionsView() {
 		];
 	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: transitions,
-				category,
-				getCategory: (def) =>
-					PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
-			}),
-		[transitions, category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: transitions,
+			category,
+			getCategory: (def) =>
+				PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (def) => [
+				def.name,
+				def.type,
+				PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
+				...(def.keywords ?? []),
+			],
+		});
+	}, [transitions, category, query]);
 
 	return (
 		<PanelView
-			title="Transitions"
-			actions={<PopOutAction id="transitions" title="Transitions" />}
+			title={t("catalog.titleTransitions")}
+			actions={<PopOutAction id="transitions" title={t("catalog.titleTransitions")} />}
 		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Add a transition between two adjacent clips. Select two clips on the
-					same track, then choose a transition.
+					{t("catalog.descriptionTransitions")}
 				</p>
 				<CategoryBar
 					categories={TRANSITION_CATEGORIES}
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid gap="gap-2">
-					{filtered.map((def) => (
-						<TransitionItem key={def.type} definition={def} />
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchTransitions")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filtered.map((def) => (
+							<TransitionItem key={def.type} definition={def} />
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState query={query} />
+				)}
 			</div>
 		</PanelView>
 	);
 }
 
 function TransitionItem({ definition }: { definition: TransitionDefinition }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const { addTransition } = useTransitions();
 	const [busy, setBusy] = useState(false);
@@ -106,8 +135,8 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 		try {
 			const selected = editor.selection.getSelectedElements();
 			if (selected.length < 2) {
-				toast.error("Select two adjacent clips first", {
-					description: "Hold Shift and click on each clip on the timeline.",
+				toast.error(t("catalog.selectTwoClipsFirst"), {
+					description: t("catalog.selectTwoClipsShift"),
 				});
 				return;
 			}
@@ -121,14 +150,14 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			});
 
 			if (sorted.length < 2) {
-				toast.error("Could not find selected clips");
+				toast.error(t("catalog.couldNotFindSelectedClips"));
 				return;
 			}
 
 			const first = sorted[0];
 			const second = sorted[1];
 			if (!first || !second) {
-				toast.error("Select two clips");
+				toast.error(t("catalog.selectTwoClips"));
 				return;
 			}
 
@@ -139,7 +168,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 				(e) => e.id === first.elementId,
 			);
 			if (!firstEl) {
-				toast.error("First clip not found");
+				toast.error(t("catalog.firstClipNotFound"));
 				return;
 			}
 
@@ -159,17 +188,17 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 				duration,
 			});
 
-			toast.success(`${definition.name} added`, {
-				description: "Transition inserted between the two clips.",
+			toast.success(t("catalog.transitionAdded", { name: definition.name }), {
+				description: t("catalog.transitionInserted"),
 			});
 		} catch (error) {
-			toast.error("Failed to add transition", {
+			toast.error(t("catalog.failedToAddTransition"), {
 				description: error instanceof Error ? error.message : "Unknown error",
 			});
 		} finally {
 			setBusy(false);
 		}
-	}, [definition, editor, addTransition]);
+	}, [definition, editor, addTransition, t]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains nested add button, so outer button would be invalid HTML
@@ -188,15 +217,18 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			<div className="asset-preview-overlay" />
 
 			<TransitionPreview definition={definition} />
-			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">
+			<MarqueeText
+				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
+				pxPerSecond={30}
+			>
 				{definition.name}
-			</span>
+			</MarqueeText>
 			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
 				<Button
 					size="icon"
 					variant="secondary"
 					className="size-5 bg-black/50 hover:bg-black/80 border border-white/10"
-					aria-label={`Add ${definition.name}`}
+					aria-label={t("catalog.addAria", { name: definition.name })}
 					onClick={(e) => {
 						e.stopPropagation();
 						handleAdd();
@@ -207,13 +239,6 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			</div>
 		</div>
 	);
-}
-
-function getTransitionPhotoUrl(_type: string, _plate: "A" | "B"): null {
-	// Backwards-compat: older call sites still reach for this. The
-	// transition preview now uses pure CSS via `getTransitionPalettes`
-	// — no more `source.unsplash.com` fetches.
-	return null;
 }
 
 function extractKeyframeName(css: string): string | null {
@@ -238,10 +263,7 @@ function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
-	const photoA = getTransitionPhotoUrl(definition.type, "A");
-	const photoB = getTransitionPhotoUrl(definition.type, "B");
-	void photoA;
-	void photoB;
+	const { a: photoA, b: photoB } = getTransitionPhotoPair(definition.type);
 	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
 	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
 		`${definition.type} ${definition.name}`,
@@ -254,15 +276,17 @@ function TransitionPreview({
 		>
 			<div
 				aria-hidden
-				className="absolute inset-0"
-				style={{ background: paletteA.background }}
+				className="absolute inset-0 bg-cover bg-center saturate-75"
+				style={{
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.42), ${paletteA.accent}), url("${photoA.src}")`,
+				}}
 			/>
 			<div
 				aria-hidden
-				className="absolute inset-0 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-75 transition-opacity duration-300 group-hover:opacity-100"
 				style={{
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
-					background: paletteB.background,
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.38), ${paletteB.accent}), url("${photoB.src}")`,
 				}}
 			/>
 			<div
@@ -270,7 +294,7 @@ function TransitionPreview({
 				className="pointer-events-none absolute inset-0 z-20 opacity-0 mix-blend-screen transition-opacity duration-200 group-hover:opacity-100"
 				style={{
 					background: usesColorEffect
-						? paletteB.background
+						? `linear-gradient(120deg, transparent, ${paletteB.accent}, transparent)`
 						: "linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent)",
 				}}
 			/>

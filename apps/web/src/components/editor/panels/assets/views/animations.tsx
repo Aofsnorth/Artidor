@@ -33,6 +33,12 @@ import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { getPaletteForId } from "@/components/editor/panels/assets/views/components/procedural-preview";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
 	[
@@ -111,6 +117,7 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 };
 
 export function AnimationsView() {
+	const { t } = useI18n();
 	const existingPresets = useAnimationPresets();
 	const apply = useApplyAnimationPreset();
 	const all = useMemo(() => {
@@ -122,49 +129,67 @@ export function AnimationsView() {
 		return [...presets.values()];
 	}, [existingPresets]);
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: all,
-				category,
-				getCategory: (p) => ANIMATION_KEY_TO_LABEL.get(p.category),
-			}),
-		[all, category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: all,
+			category,
+			getCategory: (p) => ANIMATION_KEY_TO_LABEL.get(p.category),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (preset) => [
+				preset.name,
+				preset.type,
+				ANIMATION_KEY_TO_LABEL.get(preset.category),
+				...(preset.keywords ?? []),
+			],
+		});
+	}, [all, category, query]);
 
 	const handleApplyPreset = useCallback(
 		(preset: AnimationPreset) => {
 			const result = apply(preset);
 			if (!result.ok) {
-				toast.error(result.error ?? "Could not apply animation");
+				toast.error(result.error ?? t("catalog.couldNotApplyAnimation"));
 				return;
 			}
-			toast.success(`${preset.name} applied`);
+			toast.success(t("catalog.animationApplied", { name: preset.name }));
 		},
-		[apply],
+		[apply, t],
 	);
 
 	return (
-		<PanelView title="Animations">
+		<PanelView title={t("catalog.titleAnimations")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Select an element on the timeline, then choose an animation to apply.
+					{t("catalog.descriptionAnimations")}
 				</p>
 				<CategoryBar
 					categories={ANIMATION_LABELS}
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid gap="gap-2">
-					{filtered.map((preset) => (
-						<AnimationPresetItem
-							key={preset.type}
-							preset={preset}
-							onApply={handleApplyPreset}
-						/>
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchMotion")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filtered.map((preset) => (
+							<AnimationPresetItem
+								key={preset.type}
+								preset={preset}
+								onApply={handleApplyPreset}
+							/>
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState query={query} />
+				)}
 			</div>
 		</PanelView>
 	);
@@ -229,7 +254,7 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 				</div>
 			</div>
 			<MarqueeText
-				className="text-foreground z-10 w-full px-2 text-[0.7rem] font-medium drop-shadow-md"
+				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
 				pxPerSecond={30}
 			>
 				{preset.name}

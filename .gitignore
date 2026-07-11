@@ -64,3 +64,6 @@ Thumbs.db
 
 # Project-local notes
 PROGRESS_SUMMARY.md
+.tmp_model/
+.superpowers/
+

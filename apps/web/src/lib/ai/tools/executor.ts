@@ -1909,6 +1909,7 @@ const HANDLERS: Record<string, Handler> = {
 
 		// Dynamic import — full pipeline runs in a Web Worker (zero UI freeze).
 		const { analyzeBeats } = await import("@/lib/media/beat-analysis");
+		const { offsetBeatsToTimeline } = await import("@/lib/media/beat-timeline");
 
 		try {
 			const mediaAssets = editor.media.getAssets();
@@ -1921,11 +1922,15 @@ const HANDLERS: Record<string, Handler> = {
 					message: "Media file not found for beat detection",
 				};
 			}
-			const beats = await analyzeBeats({
+			const clipRelativeBeats = await analyzeBeats({
 				file: mediaAsset.file,
 				trimStartSeconds: (element.trimStart ?? 0) / TICKS_PER_SECOND,
 				durationSeconds: element.duration / TICKS_PER_SECOND,
 				targetSampleRate: 8000,
+			});
+			const beats = offsetBeatsToTimeline({
+				clipStartTicks: element.startTime,
+				beats: clipRelativeBeats,
 			});
 			if (beats.length === 0) {
 				return {

@@ -250,11 +250,19 @@ export interface BaseTimelineElement {
 	bookmarks?: Bookmark[];
 }
 
+export interface MediaBorder {
+	enabled: boolean;
+	color: string;
+	width: number;
+	opacity: number;
+}
+
 export interface MediaGraphicStyle {
 	fillColor?: string;
 	fillOpacity?: number;
 	stroke?: TextStroke;
 	shadow?: TextShadow;
+	border?: MediaBorder;
 }
 
 export interface VideoElement extends BaseTimelineElement {

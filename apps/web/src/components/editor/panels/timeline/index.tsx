@@ -70,6 +70,7 @@ import {
 	SELECTED_TRACK_ROW_CLASS,
 	getTrackTypeAccent,
 	TRACK_COLOR_PRESETS,
+	SPLIT_CURSOR,
 } from "./theme";
 import {
 	Popover,
@@ -226,6 +227,7 @@ import { useBookmarkDrag } from "@/hooks/timeline/use-bookmark-drag";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useInitialScrollBottom } from "@/hooks/timeline/use-initial-scroll-bottom";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineToolStore } from "@/stores/timeline-tool-store";
 import { useEditor } from "@/hooks/use-editor";
 import { useTimelinePlayhead } from "@/hooks/timeline/use-timeline-playhead";
 import { DragLine } from "./drag-line";
@@ -280,6 +282,8 @@ const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 
 export function Timeline() {
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
+	const activeTool = useTimelineToolStore((s) => s.tool);
+	const setTimelineTool = useTimelineToolStore((s) => s.setTool);
 	const {
 		selectedElements,
 		clearElementSelection,
@@ -291,6 +295,35 @@ export function Timeline() {
 	// We only use it for stable method calls (seek, addTrack, etc).
 	const editor = useEditor();
 	const timeline = editor.timeline;
+
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			const target = event.target as HTMLElement | null;
+			const isTyping = target?.matches(
+				"input, textarea, select, [contenteditable='true']",
+			);
+			if (isTyping) return;
+
+			if (event.key.toLowerCase() === "a") {
+				event.preventDefault();
+				setTimelineTool("select");
+				return;
+			}
+
+			if (event.key.toLowerCase() === "b") {
+				event.preventDefault();
+				useTimelineToolStore.getState().toggleSplitTool();
+				return;
+			}
+
+			if (event.key === "Escape") {
+				setTimelineTool("select");
+			}
+		};
+
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [setTimelineTool]);
 	// Subscribe ONLY to scenes — not playback, not media, not selection.
 	// This prevents the entire timeline tree from re-rendering on every
 	// playback tick (which fires 60fps during playback).
@@ -640,7 +673,8 @@ export function Timeline() {
 
 	return (
 		<section
-			className="panel relative flex h-full flex-col overflow-hidden rounded-[2px] border border-white/10 bg-card/50"
+			className="panel relative flex h-full flex-col overflow-hidden rounded-xs border border-white/10 bg-card/50"
+			style={{ cursor: activeTool === "split" ? SPLIT_CURSOR : undefined }}
 			{...dragProps}
 			aria-label="Timeline"
 		>

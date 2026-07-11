@@ -7,6 +7,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { useEffect } from "react";
+import { Progress } from "@/components/ui/progress";
 import { useMemo, useReducer, useRef, useState } from "react";
 import { extractTimelineAudio, extractClipAudio } from "@/lib/media/mediabunny";
 import { useEditor } from "@/hooks/use-editor";
@@ -58,6 +60,9 @@ import {
 import type { DiagnosticSeverity } from "@/lib/diagnostics/types";
 import type { TextTrack } from "@/lib/timeline";
 
+import type { TranscriptionBackend } from "@/services/transcription/backend";
+import { getProcessingUpdate } from "@/lib/transcription/processing-state";
+
 const DIAGNOSTIC_BUTTON_VARIANT: Record<
 	DiagnosticSeverity,
 	"caution" | "destructive-foreground"
@@ -68,11 +73,22 @@ const DIAGNOSTIC_BUTTON_VARIANT: Record<
 
 type ProcessingState =
 	| { status: "idle"; error: string | null; warnings: string[] }
-	| { status: "processing"; step: string };
+	| {
+			status: "processing";
+			step: string;
+			progress: number | null;
+			backend?: TranscriptionBackend;
+			startedAt: number;
+	  };
 
 type ProcessingAction =
 	| { type: "start"; step: string }
-	| { type: "update_step"; step: string }
+	| {
+			type: "update_step";
+			step: string;
+			progress?: number | null;
+			backend?: TranscriptionBackend;
+	  }
 	| { type: "succeed"; warnings: string[] }
 	| { type: "fail"; error: string };
 
@@ -96,10 +112,22 @@ function processingReducer(
 ): ProcessingState {
 	switch (action.type) {
 		case "start":
-			return { status: "processing", step: action.step };
+			return {
+				status: "processing",
+				step: action.step,
+				progress: null,
+				startedAt: Date.now(),
+			};
 		case "update_step":
 			if (state.status !== "processing") return state;
-			return { status: "processing", step: action.step };
+			return {
+				status: "processing",
+				step: action.step,
+				progress:
+					action.progress !== undefined ? action.progress : state.progress,
+				backend: action.backend !== undefined ? action.backend : state.backend,
+				startedAt: state.startedAt,
+			};
 		case "succeed":
 			return { status: "idle", error: null, warnings: action.warnings };
 		case "fail":
@@ -124,15 +152,14 @@ export function Captions() {
 		e.diagnostics.getActive({ scope: TRANSCRIPTION_DIAGNOSTICS_SCOPE }),
 	);
 
-	const handleProgress = (progress: TranscriptionProgress) => {
-		if (progress.status === "loading-model") {
-			dispatch({
-				type: "update_step",
-				step: `Loading model ${Math.round(progress.progress)}%`,
-			});
-		} else if (progress.status === "transcribing") {
-			dispatch({ type: "update_step", step: "Transcribing..." });
-		}
+	const handleProgress = (progressData: TranscriptionProgress) => {
+		const update = getProcessingUpdate(progressData);
+		dispatch({
+			type: "update_step",
+			step: update.step,
+			progress: update.progress,
+			backend: update.backend,
+		});
 	};
 
 	const insertCaptions = ({
@@ -145,6 +172,7 @@ export function Captions() {
 	};
 
 	const handleGenerateTranscript = async () => {
+		if (processing.status === "processing") return;
 		dispatch({ type: "start", step: "Extracting audio..." });
 		try {
 			const audioBlob = await extractTimelineAudio({
@@ -207,6 +235,7 @@ export function Captions() {
 	});
 
 	const handleTranscribeSelectedClip = async () => {
+		if (processing.status === "processing") return;
 		if (!selectedElement) {
 			toast.error("Select a single audio or video clip first");
 			return;
@@ -273,6 +302,7 @@ export function Captions() {
 	};
 
 	const handleImportFile = async ({ file }: { file: File }) => {
+		if (processing.status === "processing") return;
 		dispatch({ type: "start", step: "Reading subtitle file..." });
 		try {
 			const input = await file.text();
@@ -404,6 +434,24 @@ export function Captions() {
 	const error = processing.status === "idle" ? processing.error : null;
 	const warnings = processing.status === "idle" ? processing.warnings : [];
 
+	const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+	const processingStartedAt =
+		processing.status === "processing" ? processing.startedAt : null;
+
+	useEffect(() => {
+		if (processing.status !== "processing" || processingStartedAt === null) {
+			setElapsedSeconds(0);
+			return;
+		}
+		const interval = setInterval(() => {
+			setElapsedSeconds(Math.floor((Date.now() - processingStartedAt) / 1000));
+		}, 1000);
+		return () => clearInterval(interval);
+	}, [processing.status, processingStartedAt]);
+
+	const elapsedLabel = formatCueTime(elapsedSeconds);
+
 	return (
 		<PanelView
 			title="Captions"
@@ -499,16 +547,45 @@ export function Captions() {
 						</SectionField>
 					</SectionFields>
 
+					{isProcessing && (
+						<div
+							className="border-border/70 bg-muted/35 flex flex-col gap-2 border p-3 rounded-md mt-auto"
+							aria-live="polite"
+						>
+							<div className="flex items-center justify-between gap-3 text-sm">
+								<span className="flex min-w-0 items-center gap-2">
+									<Spinner className="shrink-0" />
+									<span className="truncate">{processing.step}</span>
+								</span>
+								{processing.backend && (
+									<span className="text-muted-foreground text-xs uppercase">
+										{processing.backend}
+									</span>
+								)}
+							</div>
+							{processing.progress === null ? (
+								<p className="text-muted-foreground text-xs">
+									Running inference · {elapsedLabel}
+								</p>
+							) : (
+								<>
+									<Progress value={processing.progress} />
+									<p className="text-muted-foreground text-xs">
+										{Math.round(processing.progress)}% downloaded ·{" "}
+										{elapsedLabel}
+									</p>
+								</>
+							)}
+						</div>
+					)}
+
 					<Button
 						type="button"
-						className="mt-auto w-full"
+						className={isProcessing ? "w-full" : "mt-auto w-full"}
 						onClick={handleGenerateTranscript}
 						disabled={isProcessing || activeDiagnostics.length > 0}
 					>
-						{isProcessing && <Spinner className="mr-1" />}
-						{isProcessing
-							? processing.step
-							: "Generate transcript (full timeline)"}
+						Generate transcript (full timeline)
 					</Button>
 					<Button
 						type="button"

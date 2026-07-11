@@ -2,7 +2,11 @@ import { BaseNode } from "./base-node";
 import type { Effect, EffectPass } from "@/lib/effects/types";
 import type { Mask } from "@/lib/masks/types";
 import type { BlendMode, Transform } from "@/lib/rendering";
-import type { MediaGraphicStyle, RetimeConfig, VisualElement } from "@/lib/timeline";
+import type {
+	MediaGraphicStyle,
+	RetimeConfig,
+	VisualElement,
+} from "@/lib/timeline";
 import type { ParentChainEntry } from "../parenting-resolve";
 
 export interface VisualNodeParams {
@@ -26,6 +30,7 @@ export interface ResolvedVisualNodeState {
 	localTime: number;
 	transform: Transform;
 	opacity: number;
+	graphicStyle?: MediaGraphicStyle;
 	effectPasses: EffectPass[][];
 }
 

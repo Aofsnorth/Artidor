@@ -3,6 +3,7 @@ import {
 	getElementLocalTime,
 	resolveColorAtTime,
 	resolveGraphicParamsAtTime,
+	resolveMediaGraphicStyleAtTime,
 	resolveOpacityAtTime,
 	resolveTransformAtTime,
 } from "@/lib/animation";
@@ -178,6 +179,11 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		graphicStyle: resolveMediaGraphicStyleAtTime({
+			baseStyle: params.graphicStyle,
+			animations: params.animations,
+			localTime,
+		}),
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
 			animations: params.animations,

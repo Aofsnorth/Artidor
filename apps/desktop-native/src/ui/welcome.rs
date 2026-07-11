@@ -98,6 +98,39 @@ impl HomeState {
             .iter()
             .position(|r| x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)
     }
+
+    /// Update hover state for all hit-testable regions and return true if the
+    /// visual state changed. This lets `WM_MOUSEMOVE` only invalidate the window
+    /// when the cursor actually enters or leaves a hover target.
+    pub fn update_hover(&mut self, x: i32, y: i32) -> bool {
+        let hit =
+            |rect: &RECT| x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+        let mut dirty = false;
+
+        let mut buttons = [
+            &mut self.open_editor_btn,
+            &mut self.header_open_editor_btn,
+            &mut self.github_btn,
+            &mut self.github_pill,
+            &mut self.projects_link,
+        ];
+        for btn in &mut buttons {
+            let hovered = hit(&btn.rect);
+            dirty |= btn.hovered != hovered;
+            btn.hovered = hovered;
+        }
+        for btn in self.nav_links.iter_mut() {
+            let hovered = hit(&btn.rect);
+            dirty |= btn.hovered != hovered;
+            btn.hovered = hovered;
+        }
+
+        let hovered_recent = self.hit_test_card(x, y);
+        dirty |= self.hovered_recent != hovered_recent;
+        self.hovered_recent = hovered_recent;
+
+        dirty
+    }
 }
 
 impl Default for HomeState {
