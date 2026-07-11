@@ -84,6 +84,50 @@ pub const TRACK_SELECTED_BORDER: u32 = 0x4D4D52;
 /// Editor background clear for the compositor, normalised RGBA.
 pub const EDITOR_BG_CLEAR: [f32; 4] = [17.0 / 255.0, 17.0 / 255.0, 20.0 / 255.0, 1.0];
 
+// Translucent D2D surfaces used by multiple panels.
+/// Preview overlay / glass popover background `bg-black/60`.
+pub const OVERLAY_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.6,
+};
+/// Source-tabs container `bg-black/20`.
+pub const TAB_CONTAINER_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 0.0,
+    g: 0.0,
+    b: 0.0,
+    a: 0.2,
+};
+/// Active source tab background `bg-white/[0.12]`.
+pub const TAB_ACTIVE_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 0.12,
+};
+/// Chip / badge background `bg-white/[0.04]`.
+pub const CHIP_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 1.0,
+    g: 1.0,
+    b: 1.0,
+    a: 0.04,
+};
+/// Footer BETA pill background `bg-cyan-300/[0.055]`.
+pub const CYAN_SOFT_BG_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 103.0 / 255.0,
+    g: 232.0 / 255.0,
+    b: 249.0 / 255.0,
+    a: 0.055,
+};
+/// Footer BETA pill border `border-cyan-300/[0.16]`.
+pub const CYAN_SOFT_BORDER_D2D: D2D1_COLOR_F = D2D1_COLOR_F {
+    r: 103.0 / 255.0,
+    g: 232.0 / 255.0,
+    b: 249.0 / 255.0,
+    a: 0.16,
+};
+
 // Layout constants — match the web editor Tailwind classes.
 /// Header height `h-12`.
 pub const HEADER_H: i32 = 48;

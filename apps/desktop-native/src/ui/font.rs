@@ -16,6 +16,7 @@ use windows::core::PCWSTR;
 const DEFAULT_PITCH: u8 = 0;
 
 /// Font sizes in pixels (matches web rem-based sizes at 96dpi).
+pub const FONT_SIZE_HERO: i32 = 64; // web homepage hero text-[5.5rem] scaled down for 1280px window
 pub const FONT_SIZE_DISPLAY: i32 = 44; // hero headline
 pub const FONT_SIZE_TITLE: i32 = 20; // text-xl
 pub const FONT_SIZE_HEADER: i32 = 16; // text-base
@@ -93,9 +94,16 @@ pub fn create_display_serif_italic(size: i32) -> Option<HFONT> {
     create_font_with_face(size, FW_SEMIBOLD, true, "Times New Roman", FF_ROMAN)
 }
 
+/// Create a larger, medium-weight serif italic for the homepage hero headline.
+pub fn create_hero_serif_italic(size: i32) -> Option<HFONT> {
+    create_font_with_face(size, FW_MEDIUM, true, "Times New Roman", FF_ROMAN)
+}
+
 /// A cached set of fonts at common sizes. Created once per window and
 /// reused across paints. All fonts are deleted on drop.
 pub struct FontCache {
+    pub hero: HFONT,          // 64px medium landing headline
+    pub hero_serif: HFONT,    // 64px serif italic for the hero headline
     pub display: HFONT,       // 44px semibold landing headline
     pub display_serif: HFONT, // 44px serif italic for the hero accent word
     pub title: HFONT,         // 20px semibold
@@ -110,6 +118,8 @@ impl FontCache {
     /// if the requested face is unavailable.
     pub fn new() -> Self {
         Self {
+            hero: create_font(FONT_SIZE_HERO, FW_MEDIUM).unwrap_or_default(),
+            hero_serif: create_hero_serif_italic(FONT_SIZE_HERO).unwrap_or_default(),
             display: create_font(FONT_SIZE_DISPLAY, FW_SEMIBOLD).unwrap_or_default(),
             display_serif: create_display_serif_italic(FONT_SIZE_DISPLAY).unwrap_or_default(),
             title: create_font(FONT_SIZE_TITLE, FW_SEMIBOLD).unwrap_or_default(),
@@ -124,6 +134,12 @@ impl FontCache {
 impl Drop for FontCache {
     fn drop(&mut self) {
         unsafe {
+            if !self.hero.is_invalid() {
+                let _ = DeleteObject(self.hero.into());
+            }
+            if !self.hero_serif.is_invalid() {
+                let _ = DeleteObject(self.hero_serif.into());
+            }
             if !self.display.is_invalid() {
                 let _ = DeleteObject(self.display.into());
             }

@@ -606,3 +606,47 @@ Rollback plan:
 4. Remove What's New entry
 
 Approved by: User (explicit "go" approval for A+B+C background removal)
+
+## 2026-07-11 — image (png) + windows-numerics (Rust)
+
+Package: `image` (png feature) + `windows-numerics`
+Version: `image` 0.25 (promoted existing), `windows-numerics` 0.3.1 (transitive of `windows`)
+Ecosystem: cargo (Rust)
+
+Problem: The native Win32 home screen (`apps/desktop-native/src/ui/welcome.rs`) needs to render the same brand logo and editor-preview screenshot used by the web homepage. Without a PNG decoder, the only options are a low-fidelity placeholder rectangle or hand-rolling a PNG decoder from scratch. `windows-numerics` is needed for `Vector2`-typed Direct2D gradient APIs used by the D2D chrome.
+
+Decision: Promote `image` to a direct dependency in `apps/desktop-native` with only the `png` feature (the same minimal feature set already used by `apps/desktop-web/Cargo.toml`). Add `windows-numerics` (already a transitive dependency of the `windows` crate) as an explicit dependency so the D2D chrome can set gradient brush center/start/end points with typed vectors.
+
+Alternatives considered:
+
+1. **Windows Imaging Component (WIC)** — part of Win32; would require more unsafe COM boilerplate and a larger windows-rs feature surface than `image`. `image` is already used in the project, so it is the smaller, safer surface.
+2. **GDI+** — not bound by the `windows` crate in the current feature set; adding it would require new feature flags and more complex resource management.
+3. **Hand-rolled PNG decoder** — reinvents a well-tested codec, violates "Do Not Reinvent".
+4. **Keep placeholder** — leaves the home screen far from the web design; the user explicitly asked for parity.
+
+Security review:
+
+- `image` 0.25: no known critical CVEs, widely used, pure Rust (no unsafe in the png decoder path used here), no install scripts, no network access.
+- `windows-numerics`: official Microsoft crate, transitive of `windows`, generated typed helpers over the same COM interfaces; no new trust boundary.
+- Both crates are already in the workspace lockfile via other members, so supply-chain exposure is unchanged.
+
+Maintenance:
+
+- `image`: very active, stable 0.x API, good docs, standard Rust ecosystem crate.
+- `windows-numerics`: maintained by Microsoft alongside `windows-rs`, releases track `windows` crate.
+
+License: MIT/Apache-2.0 (both compatible with Artidor's MIT).
+
+Bundle/performance impact:
+
+- `image` with only `png` adds a small incremental cost (PNG decoding at home-screen load, once per window). No runtime cost for the editor path.
+- `windows-numerics` is a zero-runtime-cost wrapper; the D2D COM objects already existed.
+
+Rollback plan:
+
+1. Remove `image` and `windows-numerics` from `apps/desktop-native/Cargo.toml`.
+2. Remove `PngBitmap` and the logo/preview loading from `apps/desktop-native/src/ui/welcome.rs`.
+3. Remove `Vector2` usage from `apps/desktop-native/src/ui/d2d_gfx.rs` and switch back to `D2D1_POINT_2F` or recreate brushes each frame if necessary.
+4. `cargo check` should still pass after reverting the code changes.
+
+Approved by: User (implicit via "Lanjut" to continue home-screen parity work)
