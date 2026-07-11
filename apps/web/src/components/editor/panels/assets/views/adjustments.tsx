@@ -16,8 +16,14 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
 import { AdvancedView } from "./advanced";
 import { cn } from "@/utils/ui";
+import { useI18n } from "@/lib/i18n";
 
 const SUB_TABS = [
 	{ id: "library" as const, label: "Adjustments" },
@@ -91,21 +97,34 @@ export function AdjustmentsView() {
 }
 
 function AdjustmentsLibrary() {
-	const all = effectsRegistry.getAll();
-	const adjustments = all.filter((def) =>
-		isAdjustmentEffect({ effectType: def.type }),
+	const { t } = useI18n();
+	const adjustments = useMemo(
+		() =>
+			effectsRegistry
+				.getAll()
+				.filter((def) => isAdjustmentEffect({ effectType: def.type })),
+		[],
 	);
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: adjustments,
-				category,
-				getCategory: (def) => getAdjustCategory(def.type),
-			}),
-		[adjustments, category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: adjustments,
+			category,
+			getCategory: (def) => getAdjustCategory(def.type),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (def) => [
+				def.name,
+				def.type,
+				getAdjustCategory(def.type),
+				...(def.keywords ?? []),
+			],
+		});
+	}, [adjustments, category, query]);
 
 	return (
 		<div className="flex h-full flex-col gap-3 overflow-hidden">
@@ -116,8 +135,22 @@ function AdjustmentsLibrary() {
 					onChange={setCategory}
 				/>
 			</div>
+			<div className="px-2">
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchAdjustments")}
+				/>
+			</div>
 			<div className="flex-1 min-h-0 overflow-auto px-2 pb-3">
-				<AdjustmentsGrid adjustments={filtered} />
+				{filtered.length > 0 ? (
+					<AdjustmentsGrid adjustments={filtered} />
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</div>
 	);

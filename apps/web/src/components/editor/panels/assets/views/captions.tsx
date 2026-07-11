@@ -172,6 +172,7 @@ export function Captions() {
 	};
 
 	const handleGenerateTranscript = async () => {
+		if (processing.status === "processing") return;
 		dispatch({ type: "start", step: "Extracting audio..." });
 		try {
 			const audioBlob = await extractTimelineAudio({
@@ -234,6 +235,7 @@ export function Captions() {
 	});
 
 	const handleTranscribeSelectedClip = async () => {
+		if (processing.status === "processing") return;
 		if (!selectedElement) {
 			toast.error("Select a single audio or video clip first");
 			return;
@@ -300,6 +302,7 @@ export function Captions() {
 	};
 
 	const handleImportFile = async ({ file }: { file: File }) => {
+		if (processing.status === "processing") return;
 		dispatch({ type: "start", step: "Reading subtitle file..." });
 		try {
 			const input = await file.text();

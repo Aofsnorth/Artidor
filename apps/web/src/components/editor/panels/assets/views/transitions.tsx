@@ -17,9 +17,20 @@ import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { getTransitionPalettes } from "./components/procedural-preview";
+import {
+	getSceneImageUrlForId,
+	getSceneImageUrlForIdWithOffset,
+	getTransitionPalettes,
+} from "./components/procedural-preview";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "./components/catalog-search";
 import type { TransitionDefinition } from "@/lib/transitions";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { useI18n } from "@/lib/i18n";
+import { MarqueeText } from "@/components/ui/marquee-text";
 
 const TRANSITION_CATEGORIES = [
 	"Fade",
@@ -46,6 +57,7 @@ const PRESET_TRANSITION_CATEGORY_BY_TYPE = new Map(
 );
 
 export function TransitionsView() {
+	const { t } = useI18n();
 	const transitions = useMemo(() => {
 		const existing = transitionsRegistry.getAll();
 		const existingTypes = new Set(
@@ -59,17 +71,26 @@ export function TransitionsView() {
 		];
 	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: transitions,
-				category,
-				getCategory: (def) =>
-					PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
-			}),
-		[transitions, category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: transitions,
+			category,
+			getCategory: (def) =>
+				PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (def) => [
+				def.name,
+				def.type,
+				PRESET_TRANSITION_CATEGORY_BY_TYPE.get(def.type) ?? def.category,
+				...(def.keywords ?? []),
+			],
+		});
+	}, [transitions, category, query]);
 
 	return (
 		<PanelView
@@ -86,11 +107,23 @@ export function TransitionsView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid gap="gap-2">
-					{filtered.map((def) => (
-						<TransitionItem key={def.type} definition={def} />
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchTransitions")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filtered.map((def) => (
+							<TransitionItem key={def.type} definition={def} />
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</PanelView>
 	);
@@ -188,9 +221,12 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			<div className="asset-preview-overlay" />
 
 			<TransitionPreview definition={definition} />
-			<span className="text-foreground z-10 w-full truncate px-2 text-[0.7rem] font-medium drop-shadow-md">
+			<MarqueeText
+				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
+				pxPerSecond={30}
+			>
 				{definition.name}
-			</span>
+			</MarqueeText>
 			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
 				<Button
 					size="icon"
@@ -243,6 +279,8 @@ function TransitionPreview({
 	void photoA;
 	void photoB;
 	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
+	const sceneA = getSceneImageUrlForId(`${definition.type}-a`);
+	const sceneB = getSceneImageUrlForIdWithOffset(`${definition.type}-b`, 1);
 	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
 		`${definition.type} ${definition.name}`,
 	);
@@ -254,15 +292,17 @@ function TransitionPreview({
 		>
 			<div
 				aria-hidden
-				className="absolute inset-0"
-				style={{ background: paletteA.background }}
+				className="absolute inset-0 bg-cover bg-center saturate-75"
+				style={{
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.34), ${paletteA.accent}), url("${sceneA}")`,
+				}}
 			/>
 			<div
 				aria-hidden
-				className="absolute inset-0 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-75 transition-opacity duration-300 group-hover:opacity-100"
 				style={{
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
-					background: paletteB.background,
+					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.28), ${paletteB.accent}), url("${sceneB}")`,
 				}}
 			/>
 			<div
@@ -270,7 +310,7 @@ function TransitionPreview({
 				className="pointer-events-none absolute inset-0 z-20 opacity-0 mix-blend-screen transition-opacity duration-200 group-hover:opacity-100"
 				style={{
 					background: usesColorEffect
-						? paletteB.background
+						? `linear-gradient(120deg, transparent, ${paletteB.accent}, transparent)`
 						: "linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent)",
 				}}
 			/>

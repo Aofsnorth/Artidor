@@ -18,6 +18,12 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const PRESET_EFFECT_CATEGORY_BY_TYPE = new Map(
 	presetEffects.map((effect) => [effect.type, effect.category]),
@@ -47,6 +53,7 @@ const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map((effect) => ({
 const EFFECT_PANEL_CATEGORIES = EFFECT_CATEGORIES;
 
 export function EffectsView() {
+	const { t } = useI18n();
 	const effects = useMemo(() => {
 		for (const effect of PRESET_EFFECTS) {
 			if (!effectsRegistry.has(effect.type)) {
@@ -61,18 +68,28 @@ export function EffectsView() {
 			);
 	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: effects,
-				category,
-				getCategory: (def) =>
-					PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: effects,
+			category,
+			getCategory: (def) =>
+				PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
+				getEffectCategory(def.type),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (def) => [
+				def.name,
+				def.type,
+				PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
 					getEffectCategory(def.type),
-			}),
-		[effects, category],
-	);
+				...(def.keywords ?? []),
+			],
+		});
+	}, [effects, category, query]);
 
 	return (
 		<PanelView
@@ -90,7 +107,19 @@ export function EffectsView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<EffectsGrid effects={filtered} />
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchEffects")}
+				/>
+				{filtered.length > 0 ? (
+					<EffectsGrid effects={filtered} />
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</PanelView>
 	);

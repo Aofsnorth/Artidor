@@ -107,6 +107,7 @@ import { cn } from "@/utils/ui";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import { getTrackTypeForElementType } from "@/lib/timeline/placement/compatibility";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineToolStore } from "@/stores/timeline-tool-store";
 import { useAIControlStore } from "@/stores/ai-control-store";
 import { KEYFRAME_LANE_HEIGHT_PX } from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
@@ -116,6 +117,8 @@ import {
 	type ExpandedRow,
 } from "./expanded-layout";
 import type { SnapPoint } from "@/lib/timeline/snap-utils";
+import { frameRateToFloat } from "@/lib/fps/utils";
+import { getSplitTimeFromClipPointer } from "./split-tool";
 
 function ElementEnvelope({
 	element,
@@ -471,11 +474,9 @@ function TimelineElement({
 	// Only subscribe to `media` — not `playback`. The `playback` subsystem
 	// fires every animation frame during playback, causing unnecessary
 	// `getSnapshot()` calls for every clip card.
-	const mediaAssets = useEditor(
-		(e) => e.media.getAssets(),
-		["media"],
-	);
+	const mediaAssets = useEditor((e) => e.media.getAssets(), ["media"]);
 	const lockedTrackIds = useTimelineStore((s) => s.lockedTrackIds);
+	const activeTool = useTimelineToolStore((s) => s.tool);
 	const isTrackLocked = lockedTrackIds.has(track.id);
 	// AI takeover: when the AI is executing a tool that touches this
 	// element, apply a highlight pulse + smooth position/size transition
@@ -659,6 +660,28 @@ function TimelineElement({
 	const hasKeyframes = elementKeyframes.length > 0;
 	const expansionHeight = getExpansionHeight({ rows: expandedRows });
 	const baseTrackHeight = getTrackHeight({ type: track.type });
+	const handleSplitToolMouseDown = (
+		event: React.MouseEvent<HTMLDivElement>,
+	) => {
+		if (activeTool !== "split" || isTrackLocked) return;
+		const rect = event.currentTarget.getBoundingClientRect();
+		const splitTime = getSplitTimeFromClipPointer({
+			clipStart: element.startTime,
+			clipDuration: element.duration,
+			clientX: event.clientX,
+			left: rect.left,
+			width: rect.width,
+			fps: frameRateToFloat(editor.project.getActive().settings.fps),
+		});
+		if (splitTime === null) return;
+		event.preventDefault();
+		event.stopPropagation();
+		editor.timeline.splitElements({
+			elements: [{ trackId: track.id, elementId: element.id }],
+			splitTime,
+			retainSide: "both",
+		});
+	};
 
 	const expandedContent =
 		isExpanded && expandedRows.length > 0 ? (
@@ -690,8 +713,10 @@ function TimelineElement({
 					<div
 						className={cn(
 							"timeline-clip absolute top-0 select-none",
+							activeTool === "split" && "cursor-crosshair",
 							isAIActiveOnElement && "ai-element-active ai-element-transition",
 						)}
+						onMouseDownCapture={handleSplitToolMouseDown}
 						style={{
 							left: `${elementLeft}px`,
 							width: `${elementWidth}px`,
@@ -710,9 +735,13 @@ function TimelineElement({
 										? TIMELINE_LAYERS.dragLine + 1
 										: undefined,
 							pointerEvents:
-								isBeingDragged && dragState.dragElementIds.length > 0 ? "none" : undefined,
-						opacity:
-							isBeingDragged && dragState.dragElementIds.length > 0 ? 0 : undefined,
+								isBeingDragged && dragState.dragElementIds.length > 0
+									? "none"
+									: undefined,
+							opacity:
+								isBeingDragged && dragState.dragElementIds.length > 0
+									? 0
+									: undefined,
 							// Skip rendering for off-screen clips and isolate each clip's
 							// layout/paint from the rest of the timeline. This is the single
 							// biggest scroll-performance win in Firefox, which struggles with
@@ -1150,9 +1179,8 @@ function ElementInner({
 		const right = track.elements.some(
 			(el) =>
 				el.id !== element.id &&
-				Math.abs(
-					el.startTime - (element.startTime + element.duration),
-				) < SNAP_THRESHOLD,
+				Math.abs(el.startTime - (element.startTime + element.duration)) <
+					SNAP_THRESHOLD,
 		);
 		return { hasAdjacentLeft: left, hasAdjacentRight: right };
 	}, [track.elements, element.id, element.startTime, element.duration]);
@@ -1213,7 +1241,10 @@ function ElementInner({
 						<div
 							aria-hidden="true"
 							className="pointer-events-none absolute inset-0 z-10"
-							style={{ borderTop: `1.5px solid ${accent.accent}`, borderRadius }}
+							style={{
+								borderTop: `1.5px solid ${accent.accent}`,
+								borderRadius,
+							}}
 						/>
 						{/* Group visual indicator: left edge stripe */}
 						{groupColor && (

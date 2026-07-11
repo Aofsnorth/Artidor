@@ -371,9 +371,11 @@ export function ProjectsBackground() {
 
 			ctx.lineWidth = 1.0;
 			for (let i = 0; i < projectedParticles.length; i++) {
-				const a = projectedParticles[i]!;
+				const a = projectedParticles.at(i);
+				if (!a) continue;
 				for (let j = i + 1; j < projectedParticles.length; j++) {
-					const b = projectedParticles[j]!;
+					const b = projectedParticles.at(j);
+					if (!b) continue;
 					const dx = a.x - b.x;
 					const dy = a.y - b.y;
 					const dSq = dx * dx + dy * dy;
@@ -427,13 +429,13 @@ export function ProjectsBackground() {
 
 			for (const { primitive, projected } of drawList) {
 				const edges = edgesForKind(primitive.kind);
-				const baseAlpha = 0.6 + projected[0]!.depth * 0.4;
+				const baseAlpha = 0.6 + (projected.at(0)?.depth ?? 0) * 0.4;
 				ctx.lineWidth = 1.8;
 				ctx.strokeStyle = `hsla(${primitive.hue}, 88%, 78%, ${baseAlpha})`;
 				ctx.beginPath();
 				for (const [a, b] of edges) {
-					const pa = projected[a]!;
-					const pb = projected[b]!;
+					const pa = projected.at(a);
+					const pb = projected.at(b);
 					if (!pa || !pb) continue;
 					ctx.moveTo(pa.x, pa.y);
 					ctx.lineTo(pb.x, pb.y);

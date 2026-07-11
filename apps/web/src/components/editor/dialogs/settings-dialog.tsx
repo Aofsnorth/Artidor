@@ -22,6 +22,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/ui";
 import { ShortcutsEditor } from "./shortcuts-editor";
+import { LOCALES, useI18n, type Locale } from "@/lib/i18n";
 
 type SettingsTab = "general" | "ai" | "shortcuts" | "audio";
 
@@ -79,6 +80,7 @@ export function SettingsDialog({
 }
 
 function GeneralSettings() {
+	const { locale, setLocale, t } = useI18n();
 	const skipDeleteConfirm = useSettingsStore((s) => s.skipDeleteConfirm);
 	const setSkipDeleteConfirm = useSettingsStore((s) => s.setSkipDeleteConfirm);
 	const defaultFps = useSettingsStore((s) => s.defaultFps);
@@ -95,11 +97,30 @@ function GeneralSettings() {
 	return (
 		<div className="flex flex-col gap-5">
 			<header>
-				<h2 className="text-sm font-semibold text-white/85">General</h2>
+				<h2 className="text-sm font-semibold text-white/85">
+					{t("settings.general")}
+				</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
-					Common editor preferences.
+					{t("settings.commonPreferences")}
 				</p>
 			</header>
+
+			<SettingRow
+				title={t("settings.language")}
+				description={t("settings.languageDescription")}
+			>
+				<select
+					className="rounded-md border border-white/10 bg-white/4 px-2 py-1 text-sm text-white/85"
+					value={locale}
+					onChange={(event) => setLocale(event.currentTarget.value as Locale)}
+				>
+					{LOCALES.map((item) => (
+						<option key={item} value={item} className="bg-[#0b0b0d]">
+							{item === "id" ? "Indonesia" : "English"}
+						</option>
+					))}
+				</select>
+			</SettingRow>
 
 			<SettingRow
 				title="Don't ask before deleting projects"
@@ -125,20 +146,14 @@ function GeneralSettings() {
 				title="Show FPS monitor"
 				description="Display a realtime editor FPS badge in the bottom-left while editing. Measures UI smoothness, not video frame rate. Turning it off stops all measurement."
 			>
-				<Switch
-					checked={showFpsMonitor}
-					onCheckedChange={setShowFpsMonitor}
-				/>
+				<Switch checked={showFpsMonitor} onCheckedChange={setShowFpsMonitor} />
 			</SettingRow>
 
 			<SettingRow
 				title="HD drag preview"
 				description="Show detailed, opaque preview when dragging clips on the timeline. When off, drag previews are lightweight transparent outlines."
 			>
-				<Switch
-					checked={hdDragPreview}
-					onCheckedChange={setHdDragPreview}
-				/>
+				<Switch checked={hdDragPreview} onCheckedChange={setHdDragPreview} />
 			</SettingRow>
 
 			<SettingRow
@@ -179,9 +194,7 @@ function AISettings() {
 	const aiCoEditMode = useSettingsStore((s) => s.aiCoEditMode);
 	const setAiCoEditMode = useSettingsStore((s) => s.setAiCoEditMode);
 	const aiPermissionMode = useSettingsStore((s) => s.aiPermissionMode);
-	const setAiPermissionMode = useSettingsStore(
-		(s) => s.setAiPermissionMode,
-	);
+	const setAiPermissionMode = useSettingsStore((s) => s.setAiPermissionMode);
 
 	return (
 		<div className="flex flex-col gap-5">
@@ -218,7 +231,8 @@ function AISettings() {
 						className="w-full resize-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-2 text-[12px] text-white/80 outline-none transition-colors placeholder:text-white/30 focus:border-white/20"
 					/>
 					<p className="text-[10.5px] text-white/40">
-						Extra instructions that shape the AI's tone and style. Leave empty for default behavior.
+						Extra instructions that shape the AI's tone and style. Leave empty
+						for default behavior.
 					</p>
 				</div>
 			</div>
@@ -227,10 +241,7 @@ function AISettings() {
 				title="Co-edit mode"
 				description="When enabled, you can keep editing the timeline, preview, and properties while the AI is in control. The editor stays interactive instead of being locked. A thin border glow still shows the AI is active."
 			>
-				<Switch
-					checked={aiCoEditMode}
-					onCheckedChange={setAiCoEditMode}
-				/>
+				<Switch checked={aiCoEditMode} onCheckedChange={setAiCoEditMode} />
 			</SettingRow>
 
 			<SettingRow
@@ -369,9 +380,7 @@ function AudioSettings() {
 	return (
 		<div className="flex flex-col gap-5">
 			<header>
-				<h2 className="text-sm font-semibold text-white/85">
-					Audio Waveform
-				</h2>
+				<h2 className="text-sm font-semibold text-white/85">Audio Waveform</h2>
 				<p className="mt-0.5 text-[12px] text-white/50">
 					Configure how audio waveforms appear on the timeline.
 				</p>
@@ -418,8 +427,8 @@ function AudioSettings() {
 						vertical bars, default style
 					</li>
 					<li>
-						<strong className="text-white/70">Lines</strong> — Dense thin
-						lines, more detail
+						<strong className="text-white/70">Lines</strong> — Dense thin lines,
+						more detail
 					</li>
 					<li>
 						<strong className="text-white/70">Liquid</strong> — Smooth bezier
@@ -430,8 +439,8 @@ function AudioSettings() {
 						peaks with accent markers
 					</li>
 					<li>
-						<strong className="text-white/70">Graph</strong> — Continuous
-						smooth line (DAW-style)
+						<strong className="text-white/70">Graph</strong> — Continuous smooth
+						line (DAW-style)
 					</li>
 				</ul>
 			</div>

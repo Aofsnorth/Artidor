@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	Plug01Icon,
@@ -31,6 +31,11 @@ import { PanelView } from "./base-panel";
 import { PopOutAction } from "@/components/editor/floating-window";
 import { PluginDetailDialog } from "./plugin-detail-dialog";
 import { cn } from "@/utils/ui";
+import {
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Plugin Manager panel. Lives in the left assets panel under the
@@ -45,8 +50,10 @@ import { cn } from "@/utils/ui";
  * through the zustand store so the UI stays in sync with IndexedDB.
  */
 export function PluginsView() {
+	const { t } = useI18n();
 	const { plugins, loaded, loadPlugins } = usePluginsStore();
 	const [filter, setFilter] = useState<PluginCategory | "all">("all");
+	const [query, setQuery] = useState("");
 	const [detailPlugin, setDetailPlugin] = useState<InstalledPlugin | null>(
 		null,
 	);
@@ -106,10 +113,23 @@ export function PluginsView() {
 		setDetailOpen(true);
 	}, []);
 
-	const filteredPlugins =
-		filter === "all"
-			? plugins
-			: plugins.filter((p) => p.manifest.category === filter);
+	const filteredPlugins = useMemo(() => {
+		const categoryFiltered =
+			filter === "all"
+				? plugins
+				: plugins.filter((plugin) => plugin.manifest.category === filter);
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (plugin) => [
+				plugin.manifest.name,
+				plugin.manifest.id,
+				plugin.manifest.description,
+				CATEGORY_LABELS[plugin.manifest.category],
+				...(plugin.manifest.permissions ?? []),
+			],
+		});
+	}, [filter, plugins, query]);
 
 	return (
 		<PanelView
@@ -174,6 +194,12 @@ export function PluginsView() {
 						);
 					})}
 				</div>
+
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchPlugins")}
+				/>
 
 				{/* Plugin list */}
 				<div className="scrollbar-hidden flex-1 space-y-2 overflow-y-auto">

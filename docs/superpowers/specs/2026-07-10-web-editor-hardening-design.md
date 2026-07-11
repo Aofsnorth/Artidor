@@ -108,13 +108,17 @@ Expose the renderer-supported W3C/Canvas blend set: normal, multiply, screen, ov
 
 Effects use GPU passes already supported by the renderer. Previews remain visibility-gated and queue-bounded. Multi-pass effects have conservative preview quality and pass limits. No CPU per-pixel loop runs on the main thread.
 
-## Phase 5: Performance, Audio, Export
+## Phase 5: Performance, Beat Detection, Transcription, and Export
 
-Establish measurements before optimization: editor interaction latency, dropped preview frames, memory growth, effect-preview queue time, transcription/model loading, audio detection accuracy on fixtures, and export duration for representative projects.
+Establish measurements before optimization: editor interaction latency, dropped preview frames, seek latency, memory growth, effect-preview queue time, beat-analysis duration, transcription model/load/inference duration, audio detection accuracy on fixtures, and export duration for representative projects.
 
-Profile three times on the same fixtures. Optimize only evidenced bottlenecks. Likely targets include renderer subscriptions, frame allocation, media decode caching, timeline virtualization, effect pass reuse, and export warm-up. Add regression tests or benchmark scripts for changed logic.
+Run each benchmark three times on identical fixtures and report median plus worst-case results. "Top performance" means meeting recorded budgets and improving or preserving the repository baseline; it does not mean an unverifiable claim against proprietary CapCut internals. Optimize only evidenced bottlenecks. Likely targets include renderer subscriptions, frame allocation, media decode caching, timeline virtualization, effect pass reuse, worker scheduling, model reuse, and export warm-up. Add regression tests or benchmark scripts for changed logic.
 
-Verify audio detection with silent, speech, music, short, long, mono, and stereo fixtures. Fix reproducible failures only. Preserve local-first media handling.
+Beat detection must remain available to editor workflows and typed AI tools through the existing worker-backed implementation. If AI cannot currently consume beat markers, expose the existing result through a typed read-only editor boundary rather than adding another analyzer. Analysis must not block the main thread and repeated requests for the same media should reuse cached results.
+
+Verify audio and beat detection with silent, speech, steady music, tempo changes, short, long, mono, and stereo fixtures. Verify transcription model loading is single-flight, inference is cancellable where the existing runtime permits it, and repeated clips reuse the loaded model. Fix reproducible failures only. Preserve local-first media handling.
+
+Preview, beat detection, transcription, and export receive explicit budgets after baseline collection. Any optimization that reduces output correctness, frame accuracy, audio sync, transcription quality, export compatibility, or project safety is rejected.
 
 ## Phase 6: Security and Scalability Audit
 

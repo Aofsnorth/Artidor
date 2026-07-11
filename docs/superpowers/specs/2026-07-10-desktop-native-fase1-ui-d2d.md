@@ -49,10 +49,10 @@ Replace the main-window GDI `BeginPaint`/`EndPaint` path with a **Direct2D** `ID
 
 Create `src/d2d/mod.rs` responsible for:
 
-- `D2D1Factory`, `ID2D1Device`, `ID2D1DeviceContext`.
+- `ID2D1Device` and `ID2D1DeviceContext` (created with `D2D1CreateDevice` on the DXGI device from a D3D11 device).
 - `IDXGISwapChain1` tied to the main `HWND`.
 - `IDWriteFactory` (DirectWrite).
-- `IWICImagingFactory2` (for loading PNG/SVG assets if needed).
+- `IWICImagingFactory` (optional; only if PNG/SVG assets are loaded later, requires `Win32_Graphics_Imaging` + `Win32_System_Com`).
 - Resize + present.
 - Cached solid-color brushes, gradient brushes, and effect instances.
 
@@ -197,17 +197,22 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Controls",
     "Win32_UI_Controls_Dialogs",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_Graphics_Gdi",
     "Win32_Graphics_Direct2D",
     "Win32_Graphics_Direct2D_Common",
     "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
     "Win32_Graphics_Dxgi",
     "Win32_Graphics_Dxgi_Common",
-    "Win32_Graphics_Imaging",
     "Win32_System_LibraryLoader",
-    "Win32_UI_Input_KeyboardAndMouse",
 ]
 ```
+
+`Win32_Graphics_Direct3D` and `Win32_Graphics_Direct3D11` are required because the `IDXGISwapChain1` used by `ID2D1DeviceContext` must be created from a D3D11 device.
+
+`Win32_Graphics_Imaging` and `Win32_System_Com` are **not** part of the core D2D/DirectWrite setup; add them only if the optional `IWICImagingFactory` image-loading path is implemented later.
 
 No new external crates. The `windows` crate is already in use.
 

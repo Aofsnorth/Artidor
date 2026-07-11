@@ -37,6 +37,12 @@ import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import type { EditorCore } from "@/core";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const TEMPLATE_LABELS = TEMPLATE_CATEGORIES.map((c) => c.label);
 const TEMPLATE_ID_TO_LABEL = new Map(
@@ -85,7 +91,9 @@ const PRESET_BUILD_BY_ID = new Map(
 );
 
 export function TemplatesView() {
+	const { t } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 	const editor = useEditor();
 
 	const allTemplates = useMemo(() => {
@@ -100,15 +108,23 @@ export function TemplatesView() {
 		];
 	}, []);
 
-	const filteredTemplates = useMemo(
-		() =>
-			filterByCategory({
-				items: allTemplates,
-				category,
-				getCategory: (t) => TEMPLATE_ID_TO_LABEL.get(t.category),
-			}),
-		[allTemplates, category],
-	);
+	const filteredTemplates = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: allTemplates,
+			category,
+			getCategory: (template) => TEMPLATE_ID_TO_LABEL.get(template.category),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (template) => [
+				template.name,
+				template.id,
+				template.description,
+				TEMPLATE_ID_TO_LABEL.get(template.category),
+			],
+		});
+	}, [allTemplates, category, query]);
 
 	return (
 		<PanelView title="Templates">
@@ -122,15 +138,27 @@ export function TemplatesView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid min={132}>
-					{filteredTemplates.map((template) => (
-						<TemplateItem
-							key={template.id}
-							template={template}
-							onApply={() => applyTemplate({ editor, template })}
-						/>
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchTemplates")}
+				/>
+				{filteredTemplates.length > 0 ? (
+					<AssetGrid min={132}>
+						{filteredTemplates.map((template) => (
+							<TemplateItem
+								key={template.id}
+								template={template}
+								onApply={() => applyTemplate({ editor, template })}
+							/>
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</PanelView>
 	);

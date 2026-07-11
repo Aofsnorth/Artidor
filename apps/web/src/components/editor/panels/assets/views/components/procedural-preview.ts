@@ -30,6 +30,33 @@ const DEFAULT_PALETTE = {
 	label: "default",
 } as const;
 
+const TRANSITION_PALETTES = [
+	{
+		background:
+			"linear-gradient(135deg, #101014 0%, #2a2420 46%, #7c6f62 100%)",
+		accent: "rgba(214,202,184,0.42)",
+		label: "neutral-warm",
+	},
+	{
+		background:
+			"linear-gradient(135deg, #0b1116 0%, #1f2a33 48%, #71808a 100%)",
+		accent: "rgba(190,203,212,0.4)",
+		label: "neutral-cool",
+	},
+	{
+		background:
+			"linear-gradient(135deg, #0f1110 0%, #242b24 52%, #6f7a68 100%)",
+		accent: "rgba(197,207,186,0.38)",
+		label: "neutral-sage",
+	},
+	{
+		background:
+			"linear-gradient(135deg, #130f12 0%, #2c2329 50%, #7a6a75 100%)",
+		accent: "rgba(213,196,208,0.38)",
+		label: "neutral-mauve",
+	},
+] as const;
+
 const PALETTES: ReadonlyArray<typeof DEFAULT_PALETTE> = [DEFAULT_PALETTE];
 
 /**
@@ -45,11 +72,16 @@ export function getPaletteForId(_id: string): (typeof PALETTES)[number] {
  * hashes are offset so two adjacent items in the transition grid never
  * end up showing the same A and B backgrounds.
  */
-export function getTransitionPalettes(_type: string): {
-	a: (typeof PALETTES)[number];
-	b: (typeof PALETTES)[number];
+export function getTransitionPalettes(type: string): {
+	a: (typeof TRANSITION_PALETTES)[number];
+	b: (typeof TRANSITION_PALETTES)[number];
 } {
-	return { a: DEFAULT_PALETTE, b: DEFAULT_PALETTE };
+	const baseIndex = hashString(type) % TRANSITION_PALETTES.length;
+	const nextIndex = (baseIndex + 1) % TRANSITION_PALETTES.length;
+	return {
+		a: TRANSITION_PALETTES[baseIndex] ?? TRANSITION_PALETTES[0],
+		b: TRANSITION_PALETTES[nextIndex] ?? TRANSITION_PALETTES[1],
+	};
 }
 
 /**
