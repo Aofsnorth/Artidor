@@ -151,6 +151,7 @@ import {
 	useAssetsPanelStore,
 	type Tab as AssetsTab,
 } from "@/stores/assets-panel-store";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Sanitize schema for AI-generated markdown. Restricts the rehype-sanitize
@@ -255,8 +256,25 @@ const QUICK_ACTIONS: {
 ];
 
 export function AIEditView() {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const telemetryEvents = useTelemetryStore((s) => s.events);
+
+	const quickActions = useMemo(
+		() =>
+			QUICK_ACTIONS.map((action) => ({
+				...action,
+				label:
+					action.label === "Motion graphic"
+						? t("aiEdit.quickAction.motionGraphic")
+						: action.label === "60s reel"
+							? t("aiEdit.quickAction.60sReel")
+							: action.label === "Cinematic grade"
+								? t("aiEdit.quickAction.cinematicGrade")
+								: t("aiEdit.quickAction.matchStyle"),
+			})),
+		[t],
+	);
 	const telemetryEnabled = useTelemetryStore((s) => s.enabled);
 	const telemetrySetEnabled = useTelemetryStore((s) => s.setEnabled);
 
@@ -580,7 +598,7 @@ export function AIEditView() {
 
 				{/* Quick actions — collapses to dropdown on narrow screens */}
 				<QuickActionsBar
-					actions={QUICK_ACTIONS}
+					actions={quickActions}
 					isBusy={isBusy}
 					onPick={handleQuickAction}
 				/>
@@ -609,8 +627,8 @@ export function AIEditView() {
 								<TypingDots />
 								<span className="text-[11px] text-white/55">
 									{status === "awaiting-tools"
-										? "Executing actions…"
-										: "Thinking…"}
+										? t("aiEdit.status.executingActions")
+										: t("aiEdit.status.thinking")}
 								</span>
 							</div>
 						</div>
@@ -629,7 +647,7 @@ export function AIEditView() {
 										{retryIn}s
 									</span>
 									<span className="text-[11px] text-amber-200/60">
-										Retry {retryCount}/5…
+										{t("aiEdit.status.retryCount", { count: retryCount })}/5…
 									</span>
 								</div>
 								<button
@@ -637,7 +655,7 @@ export function AIEditView() {
 									onClick={handleCancel}
 									className="rounded border border-amber-400/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-200/70 transition-colors hover:bg-amber-400/10 hover:text-amber-100"
 								>
-									Cancel retry
+									{t("aiEdit.retry.cancel")}
 								</button>
 							</div>
 						</div>
@@ -645,12 +663,14 @@ export function AIEditView() {
 					{queueCount > 0 && (
 						<div className="flex items-center justify-center gap-1.5 self-center rounded-full border border-white/[0.08] bg-white/[0.03] px-2.5 py-1 text-[10px] text-white/45">
 							<HugeiconsIcon icon={Chat01Icon} className="size-2.5" />
-							{queueCount} message{queueCount > 1 ? "s" : ""} queued
+							{queueCount > 1
+								? t("aiEdit.queue.plural", { count: queueCount })
+								: t("aiEdit.queue.singular", { count: queueCount })}
 							<button
 								type="button"
 								onClick={handleClearQueue}
 								className="ml-1 text-white/30 transition-colors hover:text-red-300"
-								title="Clear queued messages (keeps current task running)"
+								title={t("aiEdit.queue.clearTooltip")}
 							>
 								<HugeiconsIcon icon={Cancel01Icon} className="size-2.5" />
 							</button>
@@ -667,7 +687,7 @@ export function AIEditView() {
 								type="button"
 								onClick={() => setError(null)}
 								className="shrink-0 text-red-400/50 transition-colors hover:text-red-300"
-								aria-label="Dismiss error"
+								aria-label={t("aiEdit.error.dismiss")}
 							>
 								<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
 							</button>
@@ -681,7 +701,7 @@ export function AIEditView() {
 						<button
 							type="button"
 							onClick={scrollToTop}
-							title="Scroll to top"
+							title={t("aiEdit.scroll.top")}
 							className="pointer-events-auto sticky top-1 left-1/2 z-[5] flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
 						>
 							<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
@@ -694,7 +714,7 @@ export function AIEditView() {
 						<button
 							type="button"
 							onClick={scrollToBottom}
-							title="Scroll to bottom"
+							title={t("aiEdit.scroll.bottom")}
 							className="pointer-events-auto sticky bottom-1 left-1/2 z-[5] flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-[#1a1a1e]/90 text-white/60 backdrop-blur transition-all hover:text-white/90 hover:border-white/20"
 						>
 							<HugeiconsIcon icon={ArrowDown03Icon} className="size-3" />
@@ -717,7 +737,7 @@ export function AIEditView() {
 							)}
 						>
 							<HugeiconsIcon icon={Upload01Icon} className="size-3" />
-							{isExtracting ? "Analysing…" : "Reference"}
+							{isExtracting ? t("aiEdit.reference.analysing") : t("aiEdit.reference.label")}
 						</button>
 						<input
 							ref={fileInputRef}
@@ -738,7 +758,7 @@ export function AIEditView() {
 									type="button"
 									onClick={() => editor.ai.clearReference()}
 									className="ml-0.5 text-white/30 hover:text-white/60"
-									aria-label="Clear reference"
+									aria-label={t("aiEdit.reference.clear")}
 								>
 									<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
 								</button>
@@ -749,14 +769,14 @@ export function AIEditView() {
 					{!referenceVideoName && (
 						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/15 transition-opacity group-hover/ref:opacity-0">
 							<HugeiconsIcon icon={Upload01Icon} className="size-2" />
-							ref
+							{t("aiEdit.reference.ref")}
 						</span>
 					)}
 					{/* Reference indicator — always visible when a ref is set */}
 					{referenceVideoName && (
 						<span className="pointer-events-none flex h-3 items-center gap-0.5 text-[8px] text-white/25 transition-opacity group-hover/ref:opacity-0">
 							<HugeiconsIcon icon={Video01Icon} className="size-2" />
-							ref set
+							{t("aiEdit.reference.refSet")}
 						</span>
 					)}
 				</div>
@@ -784,7 +804,7 @@ export function AIEditView() {
 						value={draft}
 						onChange={(e) => handleDraftChange(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder={`Ask ${aiName} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset`}
+						placeholder={t("aiEdit.composer.placeholder", { name: aiName })}
 						rows={2}
 						className="w-full resize-none border-none bg-transparent text-[12.5px] text-white/95 outline-none placeholder:text-white/30"
 					/>
@@ -792,8 +812,8 @@ export function AIEditView() {
 						<span className="flex items-center gap-1 text-[9.5px] text-white/30">
 							<HugeiconsIcon icon={AttachmentIcon} className="size-3" />
 							{isBusy
-								? "Enter to queue · Shift+Enter for newline"
-								: "Enter to send · Shift+Enter for newline"}
+								? t("aiEdit.composer.hint.queue")
+								: t("aiEdit.composer.hint.send")}
 						</span>
 						{isBusy ? (
 							<div className="flex items-center gap-1.5">
@@ -803,17 +823,17 @@ export function AIEditView() {
 											type="button"
 											onClick={handleSteer}
 											className="flex items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 py-1 text-[10.5px] font-medium text-amber-200/90 transition-colors hover:bg-amber-400/10 hover:border-amber-400/30"
-											title="Interrupt the current generation and send this message next"
+											title={t("aiEdit.composer.steerTitle")}
 										>
 											<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3" />
-											Steer
+											{t("aiEdit.composer.steer")}
 										</button>
 										<button
 											type="submit"
 											className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-white/[0.08]"
 										>
 											<HugeiconsIcon icon={ChatAdd01Icon} className="size-3" />
-											Queue
+											{t("aiEdit.composer.queue")}
 										</button>
 									</>
 								)}
@@ -821,10 +841,10 @@ export function AIEditView() {
 									type="button"
 									onClick={handleStop}
 									className="flex items-center gap-1 rounded-lg border border-white/15 bg-white/[0.04] px-2.5 py-1 text-[10.5px] font-medium text-white/80 transition-colors hover:bg-red-500/10 hover:text-red-300 hover:border-red-400/20"
-									title="Stop current generation (queued messages continue)"
+									title={t("aiEdit.composer.stopTitle")}
 								>
 									<HugeiconsIcon icon={StopIcon} className="size-3" />
-									Stop
+									{t("aiEdit.composer.stop")}
 								</button>
 							</div>
 						) : (
@@ -838,7 +858,7 @@ export function AIEditView() {
 										: "cursor-not-allowed bg-white/[0.06] text-white/20",
 								)}
 							>
-								Send
+								{t("aiEdit.composer.send")}
 								<HugeiconsIcon icon={ArrowUp02Icon} className="size-3" />
 							</button>
 						)}
@@ -872,6 +892,7 @@ function AssetMentionDropdown({
 	onSelect: (name: string) => void;
 	onClose: () => void;
 }) {
+	const { t } = useI18n();
 	const filtered = useMemo(() => {
 		const q = query.toLowerCase();
 		const base = q
@@ -902,7 +923,7 @@ function AssetMentionDropdown({
 			className="absolute bottom-full left-0 right-0 mb-1 max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-[#1a1a1e] shadow-xl z-50"
 		>
 			<div className="px-2 py-1 text-[9.5px] uppercase tracking-wider text-white/35 border-b border-white/[0.06]">
-				Assets · click to mention
+				{t("aiEdit.mention.header")}
 			</div>
 			{filtered.map((asset) => (
 				<button
@@ -943,13 +964,14 @@ function ProvidersDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-h-[85vh] max-w-xl overflow-hidden">
 				<DialogHeader>
-					<DialogTitle>AI Providers</DialogTitle>
+					<DialogTitle>{t("aiEdit.providers.title")}</DialogTitle>
 					<DialogDescription>
-						Configure the AI endpoints used by Arth.
+						{t("aiEdit.providers.description")}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="max-h-[60vh] gap-3 overflow-y-auto">
@@ -957,7 +979,7 @@ function ProvidersDialog({
 				</DialogBody>
 				<DialogFooter className="border-t border-white/[0.06] bg-black/20">
 					<Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
-						Done
+						{t("aiEdit.providers.done")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -982,6 +1004,7 @@ function ChatHistoryDropdown({
 	onDelete: (id: string) => void;
 	onNew: () => void;
 }) {
+	const { t } = useI18n();
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draftName, setDraftName] = useState("");
 	const editInputRef = useRef<HTMLInputElement>(null);
@@ -997,12 +1020,12 @@ function ChatHistoryDropdown({
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
-					aria-label="Chat history"
-					title="Chat history"
+					aria-label={t("aiEdit.history.title")}
+					title={t("aiEdit.history.title")}
 					className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
 				>
 					<HugeiconsIcon icon={Chat01Icon} className="size-2.5" />
-					History
+					{t("aiEdit.history.label")}
 					{conversations.length > 0 && (
 						<span className="ml-0.5 rounded-full bg-white/15 px-1 text-[8px]">
 							{conversations.length}
@@ -1022,12 +1045,12 @@ function ChatHistoryDropdown({
 						icon={ChatAdd01Icon}
 						className="size-3.5 text-white/60"
 					/>
-					New chat
+					{t("aiEdit.history.newChat")}
 				</DropdownMenuItem>
 				<DropdownMenuSeparator className="bg-white/[0.08]" />
 				{conversations.length === 0 ? (
 					<div className="px-2 py-2 text-[10px] text-white/40">
-						No saved conversations yet.
+						{t("aiEdit.history.empty")}
 					</div>
 				) : (
 					conversations.map((c) => (
@@ -1074,7 +1097,7 @@ function ChatHistoryDropdown({
 										setEditingId(c.id);
 										setDraftName(c.name);
 									}}
-									aria-label="Rename"
+									aria-label={t("aiEdit.history.rename")}
 									className="grid size-5 place-items-center rounded text-white/40 hover:bg-white/10 hover:text-white"
 								>
 									<HugeiconsIcon icon={Edit01Icon} className="size-3" />
@@ -1085,7 +1108,7 @@ function ChatHistoryDropdown({
 										e.stopPropagation();
 										onDelete(c.id);
 									}}
-									aria-label="Delete"
+									aria-label={t("aiEdit.history.delete")}
 									className="grid size-5 place-items-center rounded text-white/40 hover:bg-red-500/20 hover:text-red-300"
 								>
 									<HugeiconsIcon icon={Delete02Icon} className="size-3" />
@@ -1106,6 +1129,7 @@ function ChatHistoryDropdown({
  * tools.
  */
 function McpServerChip() {
+	const { t } = useI18n();
 	const connections = useMcpStore((s) => s.connections);
 	const [manageOpen, setManageOpen] = useState(false);
 	const [addOpen, setAddOpen] = useState(false);
@@ -1118,11 +1142,13 @@ function McpServerChip() {
 		<>
 			<button
 				type="button"
-				aria-label="MCP servers"
+				aria-label={t("aiEdit.mcp.title")}
 				title={
-					connectedCount > 0
-						? `${connectedCount} MCP server${connectedCount > 1 ? "s" : ""} connected — click to manage`
-						: "MCP servers — external tools (click to manage)"
+					connectedCount === 0
+						? t("aiEdit.mcp.title")
+						: connectedCount === 1
+							? t("aiEdit.mcp.connectedSingular", { count: connectedCount })
+							: t("aiEdit.mcp.connectedPlural", { count: connectedCount })
 				}
 				onClick={() => setManageOpen(true)}
 				className={cn(
@@ -1172,6 +1198,7 @@ function McpManageDialog({
 	onOpenChange: (open: boolean) => void;
 	onAddClick: () => void;
 }) {
+	const { t } = useI18n();
 	const servers = useMcpStore((s) => s.servers);
 	const connections = useMcpStore((s) => s.connections);
 	const removeServer = useMcpStore((s) => s.removeServer);
@@ -1212,10 +1239,9 @@ function McpManageDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-h-[85vh] max-w-lg overflow-hidden">
 				<DialogHeader>
-					<DialogTitle>MCP Servers</DialogTitle>
+					<DialogTitle>{t("aiEdit.mcp.manage.title")}</DialogTitle>
 					<DialogDescription>
-						External tool servers that extend Arth's capabilities —
-						filesystem, web search, databases, custom integrations.
+						{t("aiEdit.mcp.manage.description")}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody className="max-h-[60vh] gap-3 overflow-y-auto">
@@ -1229,15 +1255,15 @@ function McpManageDialog({
 							</div>
 							<div className="flex flex-col gap-1">
 								<span className="text-[13px] font-medium text-white/70">
-									No MCP servers configured
+									{t("aiEdit.mcp.manage.emptyTitle")}
 								</span>
 								<span className="text-[11px] text-white/35">
-									Add a server to let Arth use external tools.
+									{t("aiEdit.mcp.manage.emptyHint")}
 								</span>
 							</div>
 							<Button size="sm" onClick={onAddClick} className="mt-1">
 								<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
-								Add MCP Server
+								{t("aiEdit.mcp.manage.add")}
 							</Button>
 						</div>
 					) : (
@@ -1273,7 +1299,7 @@ function McpManageDialog({
 							className="mr-auto"
 						>
 							<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
-							Add Server
+							{t("aiEdit.mcp.manage.addAnother")}
 						</Button>
 					)}
 					<Button
@@ -1281,7 +1307,7 @@ function McpManageDialog({
 						variant="ghost"
 						onClick={() => onOpenChange(false)}
 					>
-						Done
+						{t("aiEdit.mcp.manage.done")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -1310,33 +1336,34 @@ function McpServerCard({
 	onReconnect: () => void;
 	onDelete: () => void;
 }) {
+	const { t } = useI18n();
 	const [expanded, setExpanded] = useState(false);
 
 	const statusConfig = {
 		connected: {
 			dot: "bg-green-400",
-			label: "Connected",
+			label: t("aiEdit.mcp.status.connected"),
 			text: "text-green-300",
 			border: "border-green-400/15",
 			bg: "bg-green-400/[0.03]",
 		},
 		connecting: {
 			dot: "bg-yellow-400 animate-pulse",
-			label: "Connecting",
+			label: t("aiEdit.mcp.status.connecting"),
 			text: "text-yellow-300",
 			border: "border-yellow-400/15",
 			bg: "bg-yellow-400/[0.03]",
 		},
 		error: {
 			dot: "bg-red-400",
-			label: "Error",
+			label: t("aiEdit.mcp.status.error"),
 			text: "text-red-300",
 			border: "border-red-400/15",
 			bg: "bg-red-400/[0.03]",
 		},
 		disconnected: {
 			dot: "bg-white/20",
-			label: "Disconnected",
+			label: t("aiEdit.mcp.status.disconnected"),
 			text: "text-white/40",
 			border: "border-white/[0.06]",
 			bg: "bg-white/[0.02]",
@@ -1382,7 +1409,9 @@ function McpServerCard({
 				{/* Tool count badge */}
 				{hasTools && (
 					<span className="shrink-0 rounded-full bg-white/[0.06] px-2 py-0.5 text-[9px] font-semibold text-white/60">
-						{tools.length} {tools.length === 1 ? "tool" : "tools"}
+						{tools.length === 1
+							? t("aiEdit.mcp.toolCountSingular", { count: tools.length })
+							: t("aiEdit.mcp.toolCountPlural", { count: tools.length })}
 					</span>
 				)}
 
@@ -1392,7 +1421,7 @@ function McpServerCard({
 						type="button"
 						onClick={() => setExpanded((e) => !e)}
 						className="grid size-5 shrink-0 place-items-center rounded text-white/30 transition hover:bg-white/[0.06] hover:text-white/70"
-						aria-label={expanded ? "Collapse tools" : "Expand tools"}
+						aria-label={expanded ? t("aiEdit.mcp.collapseTools") : t("aiEdit.mcp.expandTools")}
 					>
 						<HugeiconsIcon
 							icon={ArrowDown03Icon}
@@ -1416,7 +1445,7 @@ function McpServerCard({
 						onClick={onReconnect}
 						className="mt-1.5 text-[10px] font-medium text-red-300/80 underline hover:text-red-200"
 					>
-						Try reconnect
+						{t("aiEdit.mcp.tryReconnect")}
 					</button>
 				</div>
 			)}
@@ -1430,7 +1459,7 @@ function McpServerCard({
 				>
 					<div className="flex flex-col gap-1 px-3 py-2">
 						<span className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-white/30">
-							Available tools
+							{t("aiEdit.mcp.availableTools")}
 						</span>
 						{tools.map((tool) => (
 							<div
@@ -1461,7 +1490,7 @@ function McpServerCard({
 						"relative h-4 w-7 rounded-full transition-colors",
 						server.enabled ? "bg-green-400/30" : "bg-white/[0.08]",
 					)}
-					aria-label={server.enabled ? "Disable server" : "Enable server"}
+					aria-label={server.enabled ? t("aiEdit.mcp.disableServer") : t("aiEdit.mcp.enableServer")}
 				>
 					<span
 						className={cn(
@@ -1473,7 +1502,7 @@ function McpServerCard({
 					/>
 				</button>
 				<span className="text-[10px] text-white/40">
-					{server.enabled ? "Enabled" : "Disabled"}
+					{server.enabled ? t("aiEdit.mcp.enabled") : t("aiEdit.mcp.disabled")}
 				</span>
 
 				{/* Reconnect button */}
@@ -1483,7 +1512,7 @@ function McpServerCard({
 						onClick={onReconnect}
 						className="ml-auto text-[10px] font-medium text-white/40 transition hover:text-white/80"
 					>
-						Reconnect
+						{t("aiEdit.mcp.reconnect")}
 					</button>
 				)}
 
@@ -1492,10 +1521,10 @@ function McpServerCard({
 					type="button"
 					onClick={onDelete}
 					className="flex items-center gap-1 text-[10px] font-medium text-red-300/50 transition hover:text-red-300"
-					aria-label="Delete server"
+					aria-label={t("aiEdit.mcp.deleteServer")}
 				>
 					<HugeiconsIcon icon={Delete02Icon} className="size-3" />
-					Remove
+					{t("aiEdit.mcp.remove")}
 				</button>
 			</div>
 		</div>
@@ -1513,6 +1542,7 @@ function McpAddDialog({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }) {
+	const { t } = useI18n();
 	const addServer = useMcpStore((s) => s.addServer);
 	const [name, setName] = useState("");
 	const [url, setUrl] = useState("");
@@ -1531,15 +1561,15 @@ function McpAddDialog({
 		setError(null);
 
 		if (!name.trim()) {
-			setError("Server name is required.");
+			setError(t("aiEdit.mcp.add.error.nameRequired"));
 			return;
 		}
 		if (!url.trim()) {
-			setError("SSE URL is required.");
+			setError(t("aiEdit.mcp.add.error.urlRequired"));
 			return;
 		}
 		if (!/^https?:\/\//i.test(url.trim())) {
-			setError("URL must start with http:// or https://");
+			setError(t("aiEdit.mcp.add.error.urlInvalid"));
 			return;
 		}
 
@@ -1571,10 +1601,9 @@ function McpAddDialog({
 		>
 			<DialogContent className="max-w-md overflow-hidden">
 				<DialogHeader>
-					<DialogTitle>Add MCP Server</DialogTitle>
+					<DialogTitle>{t("aiEdit.mcp.add.title")}</DialogTitle>
 					<DialogDescription>
-						Connect to an MCP-compatible server to give Arth access to
-						external tools.
+						{t("aiEdit.mcp.add.description")}
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
@@ -1585,13 +1614,13 @@ function McpAddDialog({
 								htmlFor="mcp-name"
 								className="text-[11px] font-medium text-white/60"
 							>
-								Server name
+								{t("aiEdit.mcp.add.nameLabel")}
 							</label>
 							<Input
 								id="mcp-name"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
-								placeholder="My MCP Server"
+								placeholder={t("aiEdit.mcp.add.namePlaceholder")}
 								autoFocus
 								className="h-9 text-[12px]"
 							/>
@@ -1603,17 +1632,17 @@ function McpAddDialog({
 								htmlFor="mcp-url"
 								className="text-[11px] font-medium text-white/60"
 							>
-								SSE URL
+								{t("aiEdit.mcp.add.urlLabel")}
 							</label>
 							<Input
 								id="mcp-url"
 								value={url}
 								onChange={(e) => setUrl(e.target.value)}
-								placeholder="http://localhost:3001/sse"
+								placeholder={t("aiEdit.mcp.add.urlPlaceholder")}
 								className="h-9 font-mono text-[11px]"
 							/>
 							<span className="text-[10px] text-white/30">
-								The SSE endpoint of the MCP server.
+								{t("aiEdit.mcp.add.urlHint")}
 							</span>
 						</div>
 
@@ -1623,15 +1652,15 @@ function McpAddDialog({
 								htmlFor="mcp-token"
 								className="text-[11px] font-medium text-white/60"
 							>
-								Bearer token{" "}
-								<span className="text-white/30">(optional)</span>
+								{t("aiEdit.mcp.add.tokenLabel")}{" "}
+								<span className="text-white/30">{t("aiEdit.mcp.add.tokenOptional")}</span>
 							</label>
 							<Input
 								id="mcp-token"
 								type="password"
 								value={token}
 								onChange={(e) => setToken(e.target.value)}
-								placeholder="For authenticated MCP servers"
+								placeholder={t("aiEdit.mcp.add.tokenPlaceholder")}
 								className="h-9 font-mono text-[11px]"
 							/>
 						</div>
@@ -1653,11 +1682,11 @@ function McpAddDialog({
 							variant="ghost"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							{t("aiEdit.mcp.add.cancel")}
 						</Button>
 						<Button type="submit" size="sm">
 							<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
-							Add Server
+							{t("aiEdit.mcp.add.addServer")}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -1767,6 +1796,7 @@ function StatusBar({
 	onRenameConversation: (id: string, name: string) => void;
 	onDeleteConversation: (id: string) => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-gradient-to-b from-[#0c0c10] to-[#08080c]">
 			{/* Top accent line */}
@@ -1829,10 +1859,10 @@ function StatusBar({
 								)}
 							>
 								{isRetrying
-									? `retry in ${retryIn}s`
+									? t("aiEdit.status.retryIn", { count: retryIn })
 									: isStreaming
-										? "working…"
-										: "AI copilot"}
+										? t("aiEdit.status.working")
+										: t("aiEdit.status.aiCopilot")}
 							</span>
 						</div>
 					</div>
@@ -1848,14 +1878,14 @@ function StatusBar({
 							)}
 						>
 							{isRetrying
-								? `retry ${retryCount}`
+								? t("aiEdit.status.retryCount", { count: retryCount })
 								: isStreaming
-									? "live"
-									: "ready"}
+									? t("aiEdit.status.live")
+									: t("aiEdit.status.ready")}
 						</span>
 						{queueCount > 0 && (
 							<span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[8.5px] uppercase tracking-wider text-white/60">
-								{queueCount} queued
+								{t("aiEdit.status.queued", { count: queueCount })}
 							</span>
 						)}
 						<ChatHistoryDropdown
@@ -1868,12 +1898,12 @@ function StatusBar({
 						<button
 							type="button"
 							onClick={onNewChat}
-							aria-label="New chat"
-							title="New chat — clears conversation and summary"
+							aria-label={t("aiEdit.history.newChatTitle")}
+							title={t("aiEdit.history.newChatTitle")}
 							className="flex h-5 items-center gap-1 rounded border border-white/[0.08] bg-white/[0.03] px-1.5 text-[9px] font-medium text-white/50 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
 						>
 							<HugeiconsIcon icon={ChatAdd01Icon} className="size-2.5" />
-							New
+							{t("aiEdit.history.new")}
 						</button>
 					</div>
 				</div>
@@ -1890,7 +1920,7 @@ function StatusBar({
 								? "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
 								: "border-amber-300/25 bg-amber-400/[0.05] hover:border-amber-300/40 hover:bg-amber-400/[0.08]",
 						)}
-						title="Manage AI providers"
+						title={t("aiEdit.providers.manage")}
 					>
 						<span className="flex min-w-0 items-center gap-1.5">
 							<HugeiconsIcon
@@ -1909,7 +1939,7 @@ function StatusBar({
 								</>
 							) : (
 								<span className="text-[11px] text-amber-100">
-									Set up AI provider
+									{t("aiEdit.providers.setup")}
 								</span>
 							)}
 						</span>
@@ -1925,11 +1955,11 @@ function StatusBar({
 								onChange={(e) =>
 									onSelectProvider(e.target.value || null)
 								}
-								title="Select AI provider for this project"
+								title={t("aiEdit.providers.selectTitle")}
 								className="h-7 appearance-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 pr-6 text-[10px] text-white/70 outline-none transition-colors hover:border-white/15 hover:bg-white/[0.05] focus:border-white/25"
 							>
 								<option value="" className="bg-[#1a1a1e]">
-									Default
+									{t("aiEdit.providers.default")}
 								</option>
 								{allProviders
 									.filter((p) => p.enabled)
@@ -1961,8 +1991,8 @@ function StatusBar({
 							onClick={onToggleAutoLearn}
 							title={
 								autoLearnEnabled
-									? "Auto-learning is ON — the AI learns from your edits. Click to disable."
-									: "Auto-learning is OFF. Click to enable — the AI will learn from your edits."
+									? t("aiEdit.autoLearn.onTitle")
+									: t("aiEdit.autoLearn.offTitle")
 							}
 							className={cn(
 								"flex items-center gap-1.5 rounded transition-colors hover:text-white/70",
@@ -1971,8 +2001,8 @@ function StatusBar({
 						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-2.5" />
 							{autoLearnEnabled
-								? `${recentCount} edits learned`
-								: "Auto-learn off"}
+								? t("aiEdit.autoLearn.editsLearned", { count: recentCount })
+								: t("aiEdit.autoLearn.off")}
 							<span
 								className={cn(
 									"ml-0.5 inline-block size-1.5 rounded-full",
@@ -1983,10 +2013,12 @@ function StatusBar({
 						{compactedSummary && (
 							<span
 								className="flex items-center gap-1.5"
-								title={`Compacted ${compactedSummary.compactedCount} older messages to save context space`}
+								title={t("aiEdit.compaction.title", {
+									count: compactedSummary.compactedCount,
+								})}
 							>
 								<HugeiconsIcon icon={ArrowDown03Icon} className="size-2.5" />
-								{compactedSummary.compactedCount} compacted
+								{t("aiEdit.compaction.count", { count: compactedSummary.compactedCount })}
 							</span>
 						)}
 					</div>
@@ -2005,7 +2037,7 @@ function StatusBar({
 								type="button"
 								onClick={onClearReference}
 								className="grid size-4 place-items-center rounded text-white/40 transition-colors hover:bg-white/10 hover:text-white"
-								aria-label="Clear reference video"
+								aria-label={t("aiEdit.reference.clearVideo")}
 							>
 								<HugeiconsIcon icon={Cancel01Icon} className="size-2.5" />
 							</button>
@@ -2031,6 +2063,7 @@ function QuickActionsBar({
 	isBusy: boolean;
 	onPick: (prompt: string) => void;
 }) {
+	const { t } = useI18n();
 	const containerRef = useRef<HTMLDivElement>(null);
 	const innerRef = useRef<HTMLDivElement>(null);
 	const [overflow, setOverflow] = useState(false);
@@ -2095,7 +2128,7 @@ function QuickActionsBar({
 				className={cn(buttonClass, "shrink-0")}
 			>
 				<HugeiconsIcon icon={Cursor02Icon} className="size-3" />
-				More
+				{t("aiEdit.common.more")}
 				<HugeiconsIcon
 					icon={ArrowDown03Icon}
 					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
@@ -2105,7 +2138,7 @@ function QuickActionsBar({
 				<>
 					<button
 						type="button"
-						aria-label="Close menu"
+						aria-label={t("aiEdit.common.closeMenu")}
 						className="fixed inset-0 z-40 cursor-default"
 						onClick={() => setDropdownOpen(false)}
 					/>
@@ -2143,12 +2176,14 @@ function QuickActionsBar({
 function OverflowRow({
 	children,
 	className,
-	moreLabel = "More",
+	moreLabel,
 }: {
 	children: React.ReactNode[];
 	className?: string;
 	moreLabel?: string;
 }) {
+	const { t } = useI18n();
+	const label = moreLabel ?? t("aiEdit.common.more");
 	const containerRef = useRef<HTMLDivElement>(null);
 	const innerRef = useRef<HTMLDivElement>(null);
 	const [overflow, setOverflow] = useState(false);
@@ -2186,7 +2221,7 @@ function OverflowRow({
 				onClick={() => setDropdownOpen((o) => !o)}
 				className="flex h-6 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 text-[10px] font-medium text-white/60 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
 			>
-				{moreLabel}
+				{label}
 				<HugeiconsIcon
 					icon={ArrowDown03Icon}
 					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
@@ -2196,7 +2231,7 @@ function OverflowRow({
 				<>
 					<button
 						type="button"
-						aria-label="Close menu"
+						aria-label={t("aiEdit.common.closeMenu")}
 						className="fixed inset-0 z-40 cursor-default"
 						onClick={() => setDropdownOpen(false)}
 					/>
@@ -2239,6 +2274,7 @@ function EmptyState({
 	onPick: (text: string) => void;
 	recentCount: number;
 }) {
+	const { t } = useI18n();
 	const suggestions = useMemo(() => {
 		// Pick 4 random suggestions from the 640-entry pool.
 		// Shuffle by sorting on a random key, then take the first 4.
@@ -2275,14 +2311,12 @@ function EmptyState({
 			{/* Greeting */}
 			<div className="flex flex-col items-center gap-1 text-center">
 				<span className="font-serif text-[15px] text-white/95">
-					Welcome to Artidor
+					{t("aiEdit.empty.welcome")}
 				</span>
 				<p className="max-w-[240px] text-[11px] leading-relaxed text-white/45">
-					Describe what you want in plain English. Arth can edit clips, add
-					effects, build motion graphics, and import media
 					{recentCount > 0
-						? ` — it has learned from ${recentCount} of your edits.`
-						: "."}
+						? t("aiEdit.empty.descriptionWithEdits", { count: recentCount })
+						: t("aiEdit.empty.descriptionNoEdits")}
 				</p>
 			</div>
 
@@ -2323,6 +2357,7 @@ function EmptyState({
  * created and updates in real time as the AI progresses through steps.
  */
 function PlanCard({ plan }: { plan: Plan }) {
+	const { t } = useI18n();
 	const doneCount = plan.steps.filter((s) => s.status === "done").length;
 	const skippedCount = plan.steps.filter(
 		(s) => s.status === "skipped",
@@ -2369,8 +2404,10 @@ function PlanCard({ plan }: { plan: Plan }) {
 						{plan.title}
 					</span>
 					<span className="text-[9.5px] text-white/40">
-						{doneCount}/{activeCount} steps
-						{skippedCount > 0 ? ` · ${skippedCount} skipped` : ""}
+						{t("aiEdit.plan.steps", { done: doneCount, total: activeCount })}
+						{skippedCount > 0
+							? t("aiEdit.plan.skipped", { count: skippedCount })
+							: ""}
 					</span>
 				</div>
 				{/* Progress ring */}
@@ -2379,7 +2416,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 						className="size-7 -rotate-90"
 						viewBox="0 0 28 28"
 						role="img"
-						aria-label={`Plan progress: ${progress}%`}
+						aria-label={t("aiEdit.plan.progressAria", { progress })}
 					>
 						<circle
 							cx="14"
@@ -2519,6 +2556,7 @@ function PlanCard({ plan }: { plan: Plan }) {
  * persisted via the AI store (localStorage).
  */
 function AdvancedSettingsButton() {
+	const { t } = useI18n();
 	const settings = useAIStore((s) => s.advancedSettings);
 	const setAdvancedSettings = useAIStore((s) => s.setAdvancedSettings);
 	const setTelemetryEnabled = useTelemetryStore((s) => s.setEnabled);
@@ -2528,8 +2566,8 @@ function AdvancedSettingsButton() {
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					aria-label="Advanced AI settings"
-					title="Advanced AI settings — tune tool rounds, retries, compaction"
+					aria-label={t("aiEdit.advanced.title")}
+					title={t("aiEdit.advanced.title")}
 					className="group flex size-6 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] transition-all hover:border-white/15 hover:bg-white/[0.05]"
 				>
 					<HugeiconsIcon
@@ -2549,37 +2587,37 @@ function AdvancedSettingsButton() {
 						className="size-3.5 text-white/60"
 					/>
 					<span className="text-[11px] font-semibold text-white/80">
-						Advanced AI Settings
+						{t("aiEdit.advanced.header")}
 					</span>
 				</div>
 				<div className="flex flex-col gap-2.5">
 					<SettingRow
-						label="Max tool rounds"
-						description="Max LLM tool-call cycles per message"
+						label={t("aiEdit.advanced.maxToolRounds")}
+						description={t("aiEdit.advanced.maxToolRoundsDesc")}
 						value={settings.maxToolRounds}
 						min={1}
 						max={1000}
 						onChange={(v) => setAdvancedSettings({ maxToolRounds: v })}
 					/>
 					<SettingRow
-						label="Max retry attempts"
-						description="Auto-retries on error before giving up"
+						label={t("aiEdit.advanced.maxRetryAttempts")}
+						description={t("aiEdit.advanced.maxRetryAttemptsDesc")}
 						value={settings.maxRetryAttempts}
 						min={0}
 						max={50}
 						onChange={(v) => setAdvancedSettings({ maxRetryAttempts: v })}
 					/>
 					<SettingRow
-						label="Retry cooldown (s)"
-						description="Base seconds per retry attempt"
+						label={t("aiEdit.advanced.retryCooldown")}
+						description={t("aiEdit.advanced.retryCooldownDesc")}
 						value={settings.retryCooldownBase}
 						min={1}
 						max={60}
 						onChange={(v) => setAdvancedSettings({ retryCooldownBase: v })}
 					/>
 					<SettingRow
-						label="Compaction threshold"
-						description="Message count before auto-compacting"
+						label={t("aiEdit.advanced.compactionThreshold")}
+						description={t("aiEdit.advanced.compactionThresholdDesc")}
 						value={settings.compactionMessageThreshold}
 						min={5}
 						max={100}
@@ -2588,8 +2626,8 @@ function AdvancedSettingsButton() {
 						}
 					/>
 					<SettingRow
-						label="Keep last (compaction)"
-						description="Recent messages kept during compaction"
+						label={t("aiEdit.advanced.keepLast")}
+						description={t("aiEdit.advanced.keepLastDesc")}
 						value={settings.compactionKeepLast}
 						min={2}
 						max={20}
@@ -2600,11 +2638,11 @@ function AdvancedSettingsButton() {
 					<div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-2">
 						<div className="flex items-center gap-1.5">
 							<span className="text-[10.5px] font-semibold text-white/70">
-								Style learning
+								{t("aiEdit.advanced.styleLearning")}
 							</span>
 						</div>
 						<p className="text-[9.5px] leading-snug text-white/40">
-							How the AI learns your editing style.
+							{t("aiEdit.advanced.styleLearningDesc")}
 						</p>
 						<div className="mt-0.5 flex gap-1">
 							{(
@@ -2631,23 +2669,27 @@ function AdvancedSettingsButton() {
 											: "border-white/[0.06] bg-white/[0.02] text-white/50 hover:bg-white/[0.04] hover:text-white/70",
 									)}
 								>
-									{opt.label}
+									{opt.value === "project"
+										? t("aiEdit.advanced.scope.project")
+										: opt.value === "global"
+											? t("aiEdit.advanced.scope.global")
+											: t("aiEdit.advanced.scope.off")}
 								</button>
 							))}
 						</div>
 						{settings.learningScope === "project" && (
 							<p className="text-[9px] text-white/30">
-								Learns from edits in this project only.
+								{t("aiEdit.advanced.scope.projectHint")}
 							</p>
 						)}
 						{settings.learningScope === "global" && (
 							<p className="text-[9px] text-white/30">
-								Learns from edits across all projects.
+								{t("aiEdit.advanced.scope.globalHint")}
 							</p>
 						)}
 						{settings.learningScope === "off" && (
 							<p className="text-[9px] text-white/30">
-								No style learning — AI won't reference edit history.
+								{t("aiEdit.advanced.scope.offHint")}
 							</p>
 						)}
 					</div>
@@ -2669,7 +2711,7 @@ function AdvancedSettingsButton() {
 					}}
 					className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
 				>
-					Reset to defaults
+					{t("aiEdit.advanced.reset")}
 				</button>
 			</PopoverContent>
 		</Popover>
@@ -2722,6 +2764,7 @@ function isAssistantQuestion(message: ChatMessage): boolean {
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+	const { t } = useI18n();
 	const isUser = message.role === "user";
 	const isTool = message.role === "tool";
 	const editor = useEditor();
@@ -2828,14 +2871,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 									onClick={handleCancelEdit}
 									className="rounded border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-white/60 hover:bg-white/[0.06]"
 								>
-									Cancel
+									{t("aiEdit.message.cancel")}
 								</button>
 								<button
 									type="button"
 									onClick={handleSaveEdit}
 									className="rounded border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-200 hover:bg-emerald-400/20"
 								>
-									Save
+									{t("aiEdit.message.save")}
 								</button>
 							</div>
 						</div>
@@ -2900,36 +2943,36 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 						<button
 							type="button"
 							onClick={handleCopy}
-							title={copied ? "Copied!" : "Copy message"}
+							title={copied ? t("aiEdit.message.copiedTitle") : t("aiEdit.message.copyTitle")}
 							className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/80"
 						>
 							<HugeiconsIcon
 								icon={copied ? CheckmarkSquare01Icon : Copy02Icon}
 								className="size-2.5"
 							/>
-							{copied ? "Copied" : "Copy"}
+							{copied ? t("aiEdit.message.copied") : t("aiEdit.message.copy")}
 						</button>
 						<button
 							type="button"
 							onClick={() => setIsEditing(true)}
-							title="Edit message"
+							title={t("aiEdit.message.editTitle")}
 							className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/80"
 						>
 							<HugeiconsIcon icon={Edit01Icon} className="size-2.5" />
-							Edit
+							{t("aiEdit.message.edit")}
 						</button>
 						{isUser && toolCallCount === 0 && (
 							<button
 								type="button"
 								onClick={handleRevert}
-								title="Revert all AI edits made for this message"
+								title={t("aiEdit.message.revertTitle")}
 								className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-amber-400/10 hover:text-amber-200"
 							>
 								<HugeiconsIcon
 									icon={ArrowTurnBackwardIcon}
 									className="size-2.5"
 								/>
-								Revert
+								{t("aiEdit.message.revert")}
 							</button>
 						)}
 					</div>
@@ -2966,8 +3009,10 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 									: "text-white/35",
 							)}>
 								{successCount === toolCallCount
-									? `${toolCallCount} action${toolCallCount > 1 ? "s" : ""} completed`
-									: `${successCount}/${toolCallCount} actions done`}
+									? toolCallCount === 1
+										? t("aiEdit.toolCalls.completedSingular", { count: toolCallCount })
+										: t("aiEdit.toolCalls.completedPlural", { count: toolCallCount })
+									: t("aiEdit.toolCalls.done", { done: successCount, total: toolCallCount })}
 							</span>
 						</div>
 						{message.toolCalls?.map((tc, i) => (
@@ -3253,6 +3298,7 @@ function ToolCallRow({
 	};
 	idx: number;
 }) {
+	const { t } = useI18n();
 	const [expanded, setExpanded] = useState(false);
 	const visual = getToolVisual(tc.name);
 
@@ -3375,7 +3421,7 @@ function ToolCallRow({
 					{Object.keys(tc.args).length > 0 && (
 						<div className="mb-2">
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
-								Arguments
+								{t("aiEdit.toolCalls.arguments")}
 							</div>
 							<pre className="overflow-x-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
 								{JSON.stringify(tc.args, null, 2)}
@@ -3386,7 +3432,7 @@ function ToolCallRow({
 					{tc.result?.message && (
 						<div className="mb-2">
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
-								Result
+								{t("aiEdit.toolCalls.result")}
 							</div>
 							<p className={cn(
 								"text-[10px] leading-relaxed",
@@ -3400,7 +3446,7 @@ function ToolCallRow({
 					{tc.result?.data !== undefined && tc.result?.data !== null && (
 						<div>
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
-								Data
+								{t("aiEdit.toolCalls.data")}
 							</div>
 							<pre className="max-h-40 overflow-auto rounded bg-black/30 px-2 py-1.5 text-[9.5px] leading-relaxed text-white/70 font-mono whitespace-pre-wrap break-words">
 								{JSON.stringify(tc.result.data, null, 2)}
