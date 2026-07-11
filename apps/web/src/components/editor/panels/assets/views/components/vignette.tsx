@@ -16,6 +16,7 @@ import {
 	SectionTitle,
 } from "@/components/section";
 import { cn } from "@/utils/ui";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * DaVinci-style Vignette. Five controls — Amount, Offset,
@@ -33,6 +34,7 @@ export function VignetteSubTab({
 	element: VisualElement;
 	trackId: string;
 }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const effects = element.effects ?? [];
 	const effect = effects.find((e) => e.type === "davinci-adjust");
@@ -102,12 +104,12 @@ export function VignetteSubTab({
 									icon={ArrowTurnBackwardIcon}
 									className="mr-1 size-3"
 								/>
-								Reset
+								{t("vignette.reset")}
 							</Button>
 						)
 					}
 				>
-					<SectionTitle>Vignette</SectionTitle>
+					<SectionTitle>{t("vignette.title")}</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<VignettePreview
@@ -121,11 +123,11 @@ export function VignetteSubTab({
 
 			<Section collapsible defaultOpen sectionKey="vignette-shape">
 				<SectionHeader>
-					<SectionTitle>Shape</SectionTitle>
+					<SectionTitle>{t("vignette.shapeTitle")}</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<SectionFields>
-						<SectionField label="Offset">
+						<SectionField label={t("vignette.offset")}>
 							<Slider
 								min={-1}
 								max={1}
@@ -134,7 +136,7 @@ export function VignetteSubTab({
 								onValueChange={(v) => setParam("vig_offset", v[0] ?? 0)}
 							/>
 						</SectionField>
-						<SectionField label="Softness">
+						<SectionField label={t("vignette.softness")}>
 							<Slider
 								min={0}
 								max={1}
@@ -143,7 +145,7 @@ export function VignetteSubTab({
 								onValueChange={(v) => setParam("vig_softness", v[0] ?? 0.5)}
 							/>
 						</SectionField>
-						<SectionField label="Roundness">
+						<SectionField label={t("vignette.roundness")}>
 							<Slider
 								min={-1}
 								max={1}
@@ -158,11 +160,11 @@ export function VignetteSubTab({
 
 			<Section collapsible defaultOpen sectionKey="vignette-zones">
 				<SectionHeader>
-					<SectionTitle>Per-zone amount</SectionTitle>
+					<SectionTitle>{t("vignette.perZoneAmount")}</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<SectionFields>
-						<SectionField label="Shadows">
+						<SectionField label={t("vignette.shadows")}>
 							<Slider
 								min={-1}
 								max={1}
@@ -171,7 +173,7 @@ export function VignetteSubTab({
 								onValueChange={(v) => setParam("vig_shadow", v[0] ?? 0)}
 							/>
 						</SectionField>
-						<SectionField label="Midtones">
+						<SectionField label={t("vignette.midtones")}>
 							<Slider
 								min={-1}
 								max={1}
@@ -180,7 +182,7 @@ export function VignetteSubTab({
 								onValueChange={(v) => setParam("vig_midtone", v[0] ?? 0)}
 							/>
 						</SectionField>
-						<SectionField label="Highlights">
+						<SectionField label={t("vignette.highlights")}>
 							<Slider
 								min={-1}
 								max={1}
@@ -214,6 +216,7 @@ function VignettePreview({
 	roundness: number;
 	amount: number;
 }) {
+	const { t } = useI18n();
 	const w = 240;
 	const h = 130;
 	const cx = w / 2;
@@ -241,7 +244,7 @@ function VignettePreview({
 				viewBox={`0 0 ${w} ${h}`}
 				className="w-full"
 				role="img"
-				aria-label="Vignette shape preview"
+				aria-label={t("vignette.previewAria")}
 			>
 				<defs>
 					<radialGradient id="vignette-grad" cx="50%" cy="50%" r="50%">

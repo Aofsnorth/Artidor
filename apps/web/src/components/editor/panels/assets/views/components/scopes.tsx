@@ -6,6 +6,7 @@ import { ChartHistogramIcon, Refresh01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { samplePreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Real-time video scopes — Waveform (luminance), Vectorscope
@@ -21,6 +22,7 @@ import { cn } from "@/utils/ui";
  * colour-bar targets in the vectorscope.
  */
 export function ScopesCard() {
+	const { t } = useI18n();
 	const waveformRef = useRef<HTMLCanvasElement>(null);
 	const vectorscopeRef = useRef<HTMLCanvasElement>(null);
 	const paradeRef = useRef<HTMLCanvasElement>(null);
@@ -109,7 +111,7 @@ export function ScopesCard() {
 						"absolute inset-0 size-full transition-opacity duration-150",
 						active === "waveform" ? "opacity-100" : "opacity-0",
 					)}
-					aria-label="Waveform scope"
+					aria-label={t("scopes.waveformAria")}
 				/>
 				<canvas
 					ref={vectorscopeRef}
@@ -119,7 +121,7 @@ export function ScopesCard() {
 						"absolute inset-0 size-full transition-opacity duration-150",
 						active === "vectorscope" ? "opacity-100" : "opacity-0",
 					)}
-					aria-label="Vectorscope"
+					aria-label={t("scopes.vectorscopeAria")}
 				/>
 				<canvas
 					ref={paradeRef}
@@ -129,7 +131,7 @@ export function ScopesCard() {
 						"absolute inset-0 size-full transition-opacity duration-150",
 						active === "parade" ? "opacity-100" : "opacity-0",
 					)}
-					aria-label="RGB parade scope"
+					aria-label={t("scopes.rgbParadeAria")}
 				/>
 				<ScopeLabel active={active} />
 			</div>
@@ -149,10 +151,11 @@ function ScopeToolbar({
 	frozen: boolean;
 	onFreezeToggle: () => void;
 }) {
+	const { t } = useI18n();
 	const options: Array<{ id: typeof active; label: string }> = [
-		{ id: "waveform", label: "Waveform" },
-		{ id: "vectorscope", label: "Vectorscope" },
-		{ id: "parade", label: "Parade" },
+		{ id: "waveform", label: t("scopes.waveform") },
+		{ id: "vectorscope", label: t("scopes.vectorscope") },
+		{ id: "parade", label: t("scopes.parade") },
 	];
 	return (
 		<div className="flex items-center gap-2">
@@ -181,11 +184,11 @@ function ScopeToolbar({
 				size="sm"
 				variant={frozen ? "secondary" : "ghost"}
 				onClick={onFreezeToggle}
-				title={frozen ? "Resume live scopes" : "Freeze current frame"}
+				title={frozen ? t("scopes.resumeTooltip") : t("scopes.freezeTooltip")}
 				className="h-7 px-2"
 			>
 				<HugeiconsIcon icon={Refresh01Icon} className="size-3.5" />
-				{frozen ? "Frozen" : "Freeze"}
+				{frozen ? t("scopes.frozen") : t("scopes.freeze")}
 			</Button>
 		</div>
 	);
@@ -196,10 +199,11 @@ function ScopeLabel({
 }: {
 	active: "waveform" | "vectorscope" | "parade";
 }) {
+	const { t } = useI18n();
 	const label = {
-		waveform: "Y · 0–255 luma",
-		vectorscope: "U/V chroma",
-		parade: "R · G · B",
+		waveform: t("scopes.label.waveform"),
+		vectorscope: t("scopes.label.vectorscope"),
+		parade: t("scopes.label.parade"),
 	}[active];
 	return (
 		<div className="pointer-events-none absolute right-1.5 top-1.5 rounded bg-black/60 px-1.5 py-0.5 font-mono text-[0.58rem] tracking-wider text-white/55">
@@ -213,23 +217,24 @@ function ScopeLegend({
 }: {
 	active: "waveform" | "vectorscope" | "parade";
 }) {
+	const { t } = useI18n();
 	const items = {
 		waveform: [
-			{ color: "rgba(255,255,255,0.9)", label: "Luminance (Y)" },
+			{ color: "rgba(255,255,255,0.9)", label: t("scopes.legend.luminance") },
 			{
 				color: "rgba(255,255,255,0.35)",
-				label: "0 / 255 markers",
+				label: t("scopes.legend.markers"),
 			},
 		],
 		vectorscope: [
-			{ color: "rgba(96,165,250,0.95)", label: "B-Y" },
-			{ color: "rgba(239,68,68,0.95)", label: "R-Y" },
-			{ color: "rgba(34,197,94,0.95)", label: "G-Y" },
+			{ color: "rgba(96,165,250,0.95)", label: t("scopes.legend.by") },
+			{ color: "rgba(239,68,68,0.95)", label: t("scopes.legend.ry") },
+			{ color: "rgba(34,197,94,0.95)", label: t("scopes.legend.gy") },
 		],
 		parade: [
-			{ color: "rgba(239,68,68,0.95)", label: "Red" },
-			{ color: "rgba(34,197,94,0.95)", label: "Green" },
-			{ color: "rgba(96,165,250,0.95)", label: "Blue" },
+			{ color: "rgba(239,68,68,0.95)", label: t("scopes.legend.red") },
+			{ color: "rgba(34,197,94,0.95)", label: t("scopes.legend.green") },
+			{ color: "rgba(96,165,250,0.95)", label: t("scopes.legend.blue") },
 		],
 	}[active];
 	return (
@@ -246,7 +251,7 @@ function ScopeLegend({
 			))}
 			<div className="ml-auto flex items-center gap-1.5 text-white/40">
 				<HugeiconsIcon icon={ChartHistogramIcon} className="size-3" />
-				<span>Live · ~12 fps</span>
+				<span>{t("scopes.legend.live")}</span>
 			</div>
 		</div>
 	);
