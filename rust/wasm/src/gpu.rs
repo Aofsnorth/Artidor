@@ -67,14 +67,14 @@ pub(crate) fn with_gpu_runtime<T>(
     })
 }
 
-pub(crate) fn import_canvas_texture(
+pub(crate) fn import_external_image(
     context: &GpuContext,
-    canvas: &wgpu::web_sys::OffscreenCanvas,
+    source: &wgpu::ExternalImageSource,
     width: u32,
     height: u32,
     label: &'static str,
 ) -> wgpu::Texture {
-    context.import_offscreen_canvas_texture(canvas, width, height, label)
+    context.import_external_image(source, width, height, label)
 }
 
 pub(crate) fn render_texture_to_canvas(
@@ -95,13 +95,38 @@ pub(crate) fn read_property(object: &Object, name: &str) -> Result<JsValue, JsVa
         .map_err(|_| JsValue::from_str(&format!("Missing property '{name}'")))
 }
 
-pub(crate) fn read_offscreen_canvas_property(
+pub(crate) fn read_external_image_source(
     object: &Object,
     name: &str,
-) -> Result<wgpu::web_sys::OffscreenCanvas, JsValue> {
-    read_property(object, name)?
-        .dyn_into::<wgpu::web_sys::OffscreenCanvas>()
-        .map_err(|_| JsValue::from_str(&format!("Property '{name}' must be an OffscreenCanvas")))
+) -> Result<wgpu::ExternalImageSource, JsValue> {
+    parse_external_image_source(read_property(object, name)?)
+}
+
+pub(crate) fn parse_external_image_source(
+    value: JsValue,
+) -> Result<wgpu::ExternalImageSource, JsValue> {
+    if let Some(bitmap) = value.dyn_ref::<wgpu::web_sys::ImageBitmap>() {
+        return Ok(wgpu::ExternalImageSource::ImageBitmap(bitmap.clone()));
+    }
+    if let Some(image) = value.dyn_ref::<wgpu::web_sys::HtmlImageElement>() {
+        return Ok(wgpu::ExternalImageSource::HTMLImageElement(image.clone()));
+    }
+    if let Some(video) = value.dyn_ref::<wgpu::web_sys::HtmlVideoElement>() {
+        return Ok(wgpu::ExternalImageSource::HTMLVideoElement(video.clone()));
+    }
+    if let Some(canvas) = value.dyn_ref::<wgpu::web_sys::HtmlCanvasElement>() {
+        return Ok(wgpu::ExternalImageSource::HTMLCanvasElement(canvas.clone()));
+    }
+    if let Some(canvas) = value.dyn_ref::<wgpu::web_sys::OffscreenCanvas>() {
+        return Ok(wgpu::ExternalImageSource::OffscreenCanvas(canvas.clone()));
+    }
+    if let Some(data) = value.dyn_ref::<wgpu::web_sys::ImageData>() {
+        return Ok(wgpu::ExternalImageSource::ImageData(data.clone()));
+    }
+
+    Err(JsValue::from_str(
+        "source must be an ImageBitmap, HTMLImageElement, HTMLVideoElement, HTMLCanvasElement, OffscreenCanvas, or ImageData",
+    ))
 }
 
 pub(crate) fn read_u32_property(object: &Object, name: &str) -> Result<u32, JsValue> {

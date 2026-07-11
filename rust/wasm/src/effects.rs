@@ -7,12 +7,12 @@ use serde::Deserialize;
 use wasm_bindgen::{JsCast, JsValue, prelude::wasm_bindgen};
 
 use crate::gpu::{
-    import_canvas_texture, read_offscreen_canvas_property, read_serde_property, read_u32_property,
+    import_external_image, read_external_image_source, read_serde_property, read_u32_property,
     render_texture_to_canvas, with_gpu_runtime,
 };
 
 struct ApplyEffectPassesOptions {
-    source: wgpu::web_sys::OffscreenCanvas,
+    source: wgpu::ExternalImageSource,
     width: u32,
     height: u32,
     passes: Vec<EffectPassInput>,
@@ -42,7 +42,7 @@ pub fn apply_effect_passes(options: JsValue) -> Result<wgpu::web_sys::OffscreenC
     } = parse_apply_effect_passes_options(options)?;
 
     with_gpu_runtime(|runtime| {
-        let source_texture = import_canvas_texture(
+        let source_texture = import_external_image(
             &runtime.context,
             &source,
             width,
@@ -93,7 +93,7 @@ fn parse_apply_effect_passes_options(value: JsValue) -> Result<ApplyEffectPasses
         .map_err(|_| JsValue::from_str("applyEffectPasses expects an options object"))?;
 
     Ok(ApplyEffectPassesOptions {
-        source: read_offscreen_canvas_property(&object, "source")?,
+        source: read_external_image_source(&object, "source")?,
         width: read_u32_property(&object, "width")?,
         height: read_u32_property(&object, "height")?,
         passes: read_serde_property(&object, "passes")?,
