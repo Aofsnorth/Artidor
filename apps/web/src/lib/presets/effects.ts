@@ -514,6 +514,38 @@ export const effects: EffectPresetDefinition[] = [
 		{ amount: 1 },
 		"filter:invert(1) hue-rotate(180deg);",
 	),
+	ef(
+		"fx-style-kaleidoscope",
+		"Kaleidoscope",
+		"Stylize",
+		"Radial mirror segments",
+		{ amount: 50 },
+		"filter:contrast(1.2);",
+	),
+	ef(
+		"fx-style-tile",
+		"Tile",
+		"Stylize",
+		"Repeating tile mosaic",
+		{ amount: 40 },
+		"filter:contrast(1.2);",
+	),
+	ef(
+		"fx-style-checker",
+		"Checker",
+		"Stylize",
+		"Checkerboard overlay",
+		{ amount: 30 },
+		"filter:contrast(1.2);",
+	),
+	ef(
+		"fx-style-grid",
+		"Grid",
+		"Stylize",
+		"Wireframe grid overlay",
+		{ amount: 35 },
+		"filter:contrast(1.2);",
+	),
 
 	// ── Particles (15)
 	ef(

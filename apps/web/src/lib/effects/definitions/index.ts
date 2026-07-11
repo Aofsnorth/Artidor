@@ -66,6 +66,12 @@ import {
 	dropShadowEffectDefinition,
 	outerGlowEffectDefinition,
 } from "./video/stroke-shadow-glow";
+import {
+	checkerEffectDefinition,
+	gridEffectDefinition,
+	kaleidoscopeEffectDefinition,
+	tileEffectDefinition,
+} from "./video/geometric";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -127,6 +133,10 @@ const defaultEffects = [
 	strokeEffectDefinition,
 	dropShadowEffectDefinition,
 	outerGlowEffectDefinition,
+	kaleidoscopeEffectDefinition,
+	tileEffectDefinition,
+	checkerEffectDefinition,
+	gridEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
