@@ -11,13 +11,13 @@
   "files": [
     "artidor_wasm_bg.wasm",
     "artidor_wasm.js",
-    "artidor_wasm_bg.js",
-    "artidor_wasm.d.ts"
+    "artidor_wasm.d.ts",
+    "auto-init.js"
   ],
-  "main": "artidor_wasm.js",
+  "main": "auto-init.js",
   "types": "artidor_wasm.d.ts",
   "sideEffects": [
-    "./artidor_wasm.js",
+    "./auto-init.js",
     "./snippets/*"
   ]
 }

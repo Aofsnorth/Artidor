@@ -59,7 +59,14 @@ const TRANSITION_PALETTES = [
 
 const PALETTES: ReadonlyArray<typeof DEFAULT_PALETTE> = [DEFAULT_PALETTE];
 
-const TRANSITION_PHOTOS = [
+type TransitionPhoto = {
+	src: string;
+	pageUrl: string;
+	photographer: string;
+	license: string;
+};
+
+const DOCUMENTED_TRANSITION_PHOTOS: TransitionPhoto[] = [
 	{
 		src: "/assets/transition-previews/venice-interior.webp",
 		pageUrl: "https://unsplash.com/photos/HzJd0GAdukc",
@@ -84,7 +91,22 @@ const TRANSITION_PHOTOS = [
 		photographer: "Ricardo Gomez Angel",
 		license: "Unsplash License",
 	},
-] as const;
+];
+
+const DOWNLOADED_TRANSITION_PHOTOS: TransitionPhoto[] = Array.from(
+	{ length: 60 },
+	(_, i) => ({
+		src: `/assets/transition-previews/${i}.jpg`,
+		pageUrl: "https://unsplash.com",
+		photographer: "Unsplash",
+		license: "Unsplash License",
+	}),
+);
+
+const TRANSITION_PHOTOS: ReadonlyArray<TransitionPhoto> = [
+	...DOCUMENTED_TRANSITION_PHOTOS,
+	...DOWNLOADED_TRANSITION_PHOTOS,
+];
 
 export function getTransitionPhotoPair(type: string) {
 	const baseIndex = hashString(type) % TRANSITION_PHOTOS.length;

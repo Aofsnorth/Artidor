@@ -7,11 +7,11 @@
     "rust/wasm/pkg"
   ],
   "scripts": {
-    "build:wasm": "wasm-pack build rust/wasm --target bundler --out-dir pkg && rm -f rust/wasm/pkg/.gitignore",
+    "build:wasm": "wasm-pack build rust/wasm --target web --out-dir pkg && bun scripts/wasm-package-init.js && rm -f rust/wasm/pkg/.gitignore",
     "build:web": "turbo run build --filter=@artidor/web",
     "clean:web": "bun x rimraf apps/web/.next apps/web/.content-collections/cache node_modules/.cache",
     "deploy:web": "turbo run deploy --filter=@artidor/web",
-    "dev:wasm": "cargo watch -w rust/crates -w rust/wasm/src -s 'wasm-pack build rust/wasm --target bundler --out-dir pkg'",
+    "dev:wasm": "cargo watch -w rust/crates -w rust/wasm/src -s 'wasm-pack build rust/wasm --target web --out-dir pkg && bun scripts/wasm-package-init.js'",
     "dev:web": "turbo run dev --filter=@artidor/web",
     "dev:web:clean": "bun run clean:web && bun run dev:web",
     "format:web": "biome format apps/web/src/services/renderer --write --max-diagnostics=1000",

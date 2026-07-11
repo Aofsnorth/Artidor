@@ -1,4 +1,4 @@
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "../components/ui/sonner";

@@ -135,6 +135,11 @@ export class ProjectManager {
 		this.active = newProject;
 		this.notify();
 
+		// A new project is a fresh editing context; any element selection
+		// from the previous project is stale and would make the Properties
+		// panel try to inspect non-existent elements.
+		this.editor.selection.clearSelection();
+
 		this.editor.media.clearAllAssets();
 		this.editor.scenes.initializeScenes({
 			scenes: newProject.scenes,
@@ -173,6 +178,11 @@ export class ProjectManager {
 
 			this.active = project;
 			this.notify();
+
+			// Switching projects is a fresh context; clear any selection carried
+			// over from the previous project so the Properties panel lands on
+			// the Details view instead of trying to inspect missing elements.
+			this.editor.selection.clearSelection();
 
 			if (project.scenes && project.scenes.length > 0) {
 				this.editor.scenes.initializeScenes({

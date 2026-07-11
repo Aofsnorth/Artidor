@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { PopOutAction } from "@/components/editor/floating-window";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
@@ -29,6 +29,12 @@ const SUB_TABS = [
 	{ id: "library" as const, labelKey: "advanced.subTabAdjustments" as const },
 	{ id: "advanced" as const, labelKey: "advanced.subTabAdvanced" as const },
 ];
+
+const ADJUST_CATEGORY_TO_KEY: Record<string, string> = {
+	Basic: "adjustmentsCatalog.category.basic",
+	Color: "adjustmentsCatalog.category.color",
+	Effects: "adjustmentsCatalog.category.effects",
+};
 
 /**
  * Top-level card shown when the user clicks the Adjust tab in the
@@ -98,7 +104,7 @@ export function AdjustmentsView() {
 }
 
 function AdjustmentsLibrary() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const adjustments = useMemo(
 		() =>
 			effectsRegistry
@@ -109,11 +115,36 @@ function AdjustmentsLibrary() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => ADJUST_CATEGORIES.map((c) => t(ADJUST_CATEGORY_TO_KEY[c])),
+		[t],
+	);
+	const categoryToLabel = useMemo(
+		() =>
+			new Map<string, string>(
+				ADJUST_CATEGORIES.map((c) => [c, t(ADJUST_CATEGORY_TO_KEY[c])]),
+			),
+		[t],
+	);
+
+	const getAdjustCategoryLabel = useCallback(
+		(type: string) => {
+			const cat = getAdjustCategory(type);
+			return cat ? categoryToLabel.get(cat) : undefined;
+		},
+		[categoryToLabel],
+	);
+
 	const filtered = useMemo(() => {
 		const categoryFiltered = filterByCategory({
 			items: adjustments,
 			category,
-			getCategory: (def) => getAdjustCategory(def.type),
+			getCategory: (def) => getAdjustCategoryLabel(def.type),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -121,17 +152,17 @@ function AdjustmentsLibrary() {
 			getText: (def) => [
 				def.name,
 				def.type,
-				getAdjustCategory(def.type),
+				getAdjustCategoryLabel(def.type),
 				...(def.keywords ?? []),
 			],
 		});
-	}, [adjustments, category, query]);
+	}, [adjustments, category, query, getAdjustCategoryLabel]);
 
 	return (
 		<div className="flex h-full flex-col gap-3 overflow-hidden">
 			<div className="px-2 pt-2">
 				<CategoryBar
-					categories={ADJUST_CATEGORIES}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>

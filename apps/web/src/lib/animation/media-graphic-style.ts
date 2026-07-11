@@ -1,6 +1,6 @@
 import type { ElementAnimations } from "./types";
 import type { MediaGraphicStyle } from "@/lib/timeline";
-import { resolveAnimationPathValueAtTime } from "./resolve";
+import { resolveColorAtTime, resolveNumberAtTime } from "./resolve";
 
 export function resolveMediaGraphicStyleAtTime({
 	baseStyle,
@@ -17,84 +17,84 @@ export function resolveMediaGraphicStyleAtTime({
 	const shadow = baseStyle?.shadow;
 	return {
 		...baseStyle,
-		fillColor: resolveAnimationPathValueAtTime({
+		fillColor: resolveColorAtTime({
 			animations,
 			propertyPath: "graphicStyle.fillColor",
 			localTime,
-			fallbackValue: baseStyle?.fillColor ?? "#ffffff",
+			baseColor: baseStyle?.fillColor ?? "#ffffff",
 		}),
-		fillOpacity: resolveAnimationPathValueAtTime({
+		fillOpacity: resolveNumberAtTime({
 			animations,
 			propertyPath: "graphicStyle.fillOpacity",
 			localTime,
-			fallbackValue: baseStyle?.fillOpacity ?? 0,
+			baseValue: baseStyle?.fillOpacity ?? 0,
 		}),
 		stroke: stroke
 			? {
 					...stroke,
-					color: resolveAnimationPathValueAtTime({
+					color: resolveColorAtTime({
 						animations,
 						propertyPath: "graphicStyle.stroke.color",
 						localTime,
-						fallbackValue: stroke.color,
+						baseColor: stroke.color,
 					}),
-					width: resolveAnimationPathValueAtTime({
+					width: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.stroke.width",
 						localTime,
-						fallbackValue: stroke.width,
+						baseValue: stroke.width,
 					}),
 				}
 			: undefined,
 		border: border
 			? {
 					...border,
-					color: resolveAnimationPathValueAtTime({
+					color: resolveColorAtTime({
 						animations,
 						propertyPath: "graphicStyle.border.color",
 						localTime,
-						fallbackValue: border.color,
+						baseColor: border.color,
 					}),
-					width: resolveAnimationPathValueAtTime({
+					width: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.border.width",
 						localTime,
-						fallbackValue: border.width,
+						baseValue: border.width,
 					}),
-					opacity: resolveAnimationPathValueAtTime({
+					opacity: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.border.opacity",
 						localTime,
-						fallbackValue: border.opacity ?? 1,
+						baseValue: border.opacity ?? 1,
 					}),
 				}
 			: undefined,
 		shadow: shadow
 			? {
 					...shadow,
-					color: resolveAnimationPathValueAtTime({
+					color: resolveColorAtTime({
 						animations,
 						propertyPath: "graphicStyle.shadow.color",
 						localTime,
-						fallbackValue: shadow.color,
+						baseColor: shadow.color,
 					}),
-					blur: resolveAnimationPathValueAtTime({
+					blur: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.shadow.blur",
 						localTime,
-						fallbackValue: shadow.blur,
+						baseValue: shadow.blur,
 					}),
-					offsetX: resolveAnimationPathValueAtTime({
+					offsetX: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.shadow.offsetX",
 						localTime,
-						fallbackValue: shadow.offsetX,
+						baseValue: shadow.offsetX,
 					}),
-					offsetY: resolveAnimationPathValueAtTime({
+					offsetY: resolveNumberAtTime({
 						animations,
 						propertyPath: "graphicStyle.shadow.offsetY",
 						localTime,
-						fallbackValue: shadow.offsetY,
+						baseValue: shadow.offsetY,
 					}),
 				}
 			: undefined,

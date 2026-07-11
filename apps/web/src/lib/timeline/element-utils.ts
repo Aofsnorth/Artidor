@@ -29,6 +29,7 @@ import { buildDefaultEffectInstance } from "@/lib/effects";
 import { buildDefaultGraphicInstance } from "@/lib/graphics";
 import type { ParamValues } from "@/lib/params";
 import { capitalizeFirstLetter } from "@/utils/string";
+import type { EditorCore } from "@/core";
 
 export function canElementHaveAudio(
 	element: TimelineElement,
@@ -167,6 +168,18 @@ export function buildTextElement({
 		opacity: t.opacity ?? DEFAULTS.text.element.opacity,
 		blendMode: t.blendMode ?? DEFAULTS.element.blendMode,
 	};
+}
+
+/**
+ * Returns the id of the first existing text overlay track, or creates a new
+ * text track and returns its id. Used by quick-add actions (e.g. the Text
+ * asset panel) so a preset always lands on a text track without requiring a
+ * drag-and-drop.
+ */
+export function findOrCreateTextTrack(editor: EditorCore): string {
+	const tracks = editor.scenes.getActiveScene().tracks;
+	const existingTextTrack = tracks.overlay.find((track) => track.type === "text");
+	return existingTextTrack?.id ?? editor.timeline.addTrack({ type: "text" });
 }
 
 export function buildEffectElement({

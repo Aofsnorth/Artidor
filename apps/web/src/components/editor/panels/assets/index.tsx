@@ -12,7 +12,7 @@ import { EffectsView } from "./views/effects";
 import { TransitionsView } from "./views/transitions";
 import { AdjustmentsView } from "./views/adjustments";
 import { AnimationsView } from "./views/animations";
-import { TemplatesView } from "./views/templates";
+import { TemplatesView } from "./views/templates-coming-soon";
 import { QuickToolsView } from "./views/quick-tools";
 import { FiltersView } from "./views/filters";
 import { OverlaysView } from "./views/overlays";

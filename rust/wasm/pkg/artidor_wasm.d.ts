@@ -165,3 +165,72 @@ export function roundToFrame(arg0: RoundToFrameOptions): MediaTime | undefined;
 export function snappedSeekTime(arg0: SnappedSeekTimeOptions): MediaTime | undefined;
 
 export function uploadTexture(options: any): void;
+
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+
+export interface InitOutput {
+    readonly memory: WebAssembly.Memory;
+    readonly initializeGpu: () => any;
+    readonly destroyGpu: () => void;
+    readonly applyMaskFeather: (a: any) => [number, number, number];
+    readonly applyEffectPasses: (a: any) => [number, number, number];
+    readonly getCompositorCanvas: () => [number, number, number];
+    readonly initCompositor: (a: number, b: number) => [number, number];
+    readonly initCompositorWithCanvas: (a: any) => [number, number];
+    readonly releaseTexture: (a: number, b: number) => [number, number];
+    readonly renderFrame: (a: any) => [number, number];
+    readonly resizeCompositor: (a: number, b: number) => [number, number];
+    readonly uploadTexture: (a: any) => [number, number];
+    readonly formatTimecode: (a: any) => [number, number];
+    readonly guessTimecodeFormat: (a: any) => any;
+    readonly parseTimecode: (a: any) => any;
+    readonly TICKS_PER_SECOND: () => number;
+    readonly floorToFrame: (a: any) => any;
+    readonly isFrameAligned: (a: any) => number;
+    readonly lastFrameTime: (a: any) => any;
+    readonly mediaTimeAdd: (a: any) => any;
+    readonly mediaTimeClamp: (a: any) => any;
+    readonly mediaTimeFromFrame: (a: any) => any;
+    readonly mediaTimeFromSeconds: (a: any) => any;
+    readonly mediaTimeMax: (a: any) => any;
+    readonly mediaTimeMin: (a: any) => any;
+    readonly mediaTimeSub: (a: any) => any;
+    readonly mediaTimeToFrame: (a: any) => [number, bigint];
+    readonly mediaTimeToSeconds: (a: any) => number;
+    readonly roundToFrame: (a: any) => any;
+    readonly snappedSeekTime: (a: any) => any;
+    readonly wasm_bindgen__convert__closures_____invoke__h49b96db86b53e7f6: (a: number, b: number, c: any) => [number, number];
+    readonly wasm_bindgen__convert__closures_____invoke__h33bc222f80de2d45: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h7639701990bf035a: (a: number, b: number, c: any) => void;
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __wbindgen_exn_store: (a: number) => void;
+    readonly __externref_table_alloc: () => number;
+    readonly __wbindgen_externrefs: WebAssembly.Table;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_destroy_closure: (a: number, b: number) => void;
+    readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_start: () => void;
+}
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+
+/**
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
+ *
+ * @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
+ *
+ * @returns {InitOutput}
+ */
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+
+/**
+ * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+ * for everything else, calls `WebAssembly.instantiate` directly.
+ *
+ * @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
+ *
+ * @returns {Promise<InitOutput>}
+ */
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

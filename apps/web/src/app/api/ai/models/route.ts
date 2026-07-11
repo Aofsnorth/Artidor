@@ -36,6 +36,38 @@ const bodySchema = z.object({
 		.default("openai-compatible"),
 });
 
+/**
+ * MiniMax exposes an OpenAI/Anthropic-compatible chat API but does not
+ * implement the `/v1/models` listing endpoint. Return a curated list of
+ * known models so users can select `MiniMax-M3` (and siblings) without
+ * hitting a 404.
+ */
+const MINIMAX_HOSTS = new Set([
+	"api.minimax.io",
+	"api.minimaxi.com",
+	"api.minimaxi.cc",
+]);
+
+const MINIMAX_MODELS: ModelEntry[] = [
+	{ id: "MiniMax-M3", provider: "minimax" },
+	{ id: "MiniMax-M2.7", provider: "minimax" },
+	{ id: "MiniMax-M2.7-highspeed", provider: "minimax" },
+	{ id: "MiniMax-M2.5", provider: "minimax" },
+	{ id: "MiniMax-M2.5-highspeed", provider: "minimax" },
+	{ id: "MiniMax-M2.1", provider: "minimax" },
+	{ id: "MiniMax-M2.1-highspeed", provider: "minimax" },
+	{ id: "MiniMax-M2", provider: "minimax" },
+];
+
+function isMiniMaxHost(baseUrl: string): boolean {
+	try {
+		const host = new URL(baseUrl).hostname.toLowerCase();
+		return MINIMAX_HOSTS.has(host);
+	} catch {
+		return false;
+	}
+}
+
 interface ModelEntry {
 	id: string;
 	/** Provider label shown in the dropdown (e.g. "openai", "ollama"). */
@@ -150,6 +182,12 @@ async function fetchModelsFromProvider({
 	kind: "openai-compatible" | "anthropic-compatible" | "ollama";
 	providerLabel: string;
 }): Promise<ModelEntry[]> {
+	// MiniMax-compatible endpoints don't expose a model list, so return
+	// the curated model set immediately to avoid a 404.
+	if (isMiniMaxHost(normalizedBaseUrl)) {
+		return [...MINIMAX_MODELS];
+	}
+
 	// Build the request URL + headers based on provider kind.
 	let url: string;
 	let headers: Record<string, string> = {};

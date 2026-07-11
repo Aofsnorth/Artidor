@@ -35,6 +35,15 @@ pub struct ToolbarButtons {
     pub fullscreen: RECT,
     pub draw_btn: RECT,
     pub quality_btn: RECT,
+    // Timeline toolbar hit-test rects (new in D2D chrome).
+    pub timeline_add_scene: RECT,
+    pub timeline_tool_toggle: RECT,
+    pub timeline_scene_selector: RECT,
+    pub timeline_snapping: RECT,
+    pub timeline_ripple: RECT,
+    pub timeline_zoom_out: RECT,
+    pub timeline_zoom_slider: RECT,
+    pub timeline_zoom_in: RECT,
 }
 
 /// Format a time value as HH:MM:SS:FF (hours:minutes:seconds:frames).

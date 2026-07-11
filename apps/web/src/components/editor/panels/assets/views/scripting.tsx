@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Eraser, Play, Square } from "lucide-react";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import { createScriptingWorker } from "@/services/scripting";
 import type {
 	ScriptingWorkerMessage,
@@ -34,6 +35,7 @@ await artidor.run("play");
 `;
 
 export function ScriptingView() {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const [code, setCode] = useState(SAMPLE_SCRIPT);
 	const [running, setRunning] = useState(false);
@@ -85,7 +87,7 @@ export function ScriptingView() {
 					append({ level: msg.level, text: msg.text });
 					break;
 				case "done":
-					append({ level: "system", text: "✓ Script finished" });
+					append({ level: "system", text: t("scripting.scriptFinished") });
 					stop();
 					break;
 				case "error":
@@ -104,15 +106,15 @@ export function ScriptingView() {
 			type: "exec",
 			code,
 		} satisfies ScriptingWorkerMessage);
-	}, [code, editor, append, stop]);
+	}, [code, editor, append, stop, t]);
 
 	return (
 		<div className="flex h-full flex-col gap-2 p-3">
 			<div className="flex items-center justify-between">
 				<div className="text-[11.5px] font-medium text-white/70">
-					Scripting
+					{t("scripting.title")}
 					<span className="ml-1.5 text-white/35">
-						automate via the Editor API
+						{t("scripting.subtitle")}
 					</span>
 				</div>
 				<div className="flex items-center gap-1.5">
@@ -122,7 +124,7 @@ export function ScriptingView() {
 							onClick={stop}
 							className="flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] text-white/80 transition hover:bg-white/[0.08]"
 						>
-							<Square className="size-3" /> Stop
+							<Square className="size-3" /> {t("scripting.stop")}
 						</button>
 					) : (
 						<button
@@ -130,13 +132,13 @@ export function ScriptingView() {
 							onClick={run}
 							className="flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-[11px] font-medium text-black transition hover:bg-white/90"
 						>
-							<Play className="size-3" /> Run
+							<Play className="size-3" /> {t("scripting.run")}
 						</button>
 					)}
 					<button
 						type="button"
 						onClick={() => setOutput([])}
-						title="Clear output"
+						title={t("scripting.clearOutput")}
 						className="flex items-center rounded-md border border-white/10 bg-white/[0.04] p-1 text-white/60 transition hover:bg-white/[0.08]"
 					>
 						<Eraser className="size-3" />
@@ -149,13 +151,13 @@ export function ScriptingView() {
 				value={code}
 				onChange={(event) => setCode(event.target.value)}
 				className="h-1/2 w-full resize-none rounded-md border border-white/10 bg-black/30 p-2.5 font-mono text-[11.5px] leading-relaxed text-white/85 outline-none focus:border-white/25"
-				placeholder="// write a script that calls artidor.run(...)"
+				placeholder={t("scripting.placeholder")}
 			/>
 
 			<div className="flex-1 overflow-auto rounded-md border border-white/10 bg-black/40 p-2.5 font-mono text-[11px] leading-relaxed">
 				{output.length === 0 ? (
 					<span className="text-white/30">
-						Output appears here. Try <code>await artidor.commands()</code>.
+						{t("scripting.outputHint", { code: "await artidor.commands()" })}
 					</span>
 				) : (
 					output.map((line, index) => (
