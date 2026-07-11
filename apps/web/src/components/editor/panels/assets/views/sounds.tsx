@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -29,6 +29,7 @@ import {
 	ALL_CATEGORY,
 	CategoryBar,
 } from "@/components/editor/panels/assets/views/category-bar";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/utils/ui";
 
 /**
@@ -36,25 +37,7 @@ import { cn } from "@/utils/ui";
  * search query (content is remote), and the active chip is derived from the
  * current query so typing a custom search clears the selection.
  */
-const SOUND_CATEGORIES: { label: string; query: string }[] = [
-	{ label: "Whoosh", query: "whoosh" },
-	{ label: "Impact", query: "impact" },
-	{ label: "Click", query: "click" },
-	{ label: "Riser", query: "riser" },
-	{ label: "Pop", query: "pop" },
-	{ label: "Cinematic", query: "cinematic" },
-	{ label: "Ambient", query: "ambient" },
-	{ label: "Lofi", query: "lofi" },
-	{ label: "Nature", query: "nature" },
-	{ label: "Beep", query: "beep" },
-];
-const SOUND_LABELS = SOUND_CATEGORIES.map((c) => c.label);
-const SOUND_LABEL_TO_QUERY = new Map(
-	SOUND_CATEGORIES.map((c) => [c.label, c.query]),
-);
-const SOUND_QUERY_TO_LABEL = new Map(
-	SOUND_CATEGORIES.map((c) => [c.query, c.label]),
-);
+
 import {
 	FavouriteIcon,
 	FilterMailIcon,
@@ -65,13 +48,17 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 
 export function SoundsView() {
+	const { t } = useI18n();
+
 	return (
 		<div className="flex h-full flex-col">
 			<Tabs defaultValue="sound-effects" className="flex h-full flex-col">
 				<div className="px-3 pt-4 pb-0">
 					<TabsList>
-						<TabsTrigger value="sound-effects">Sound effects</TabsTrigger>
-						<TabsTrigger value="saved">Saved</TabsTrigger>
+						<TabsTrigger value="sound-effects">
+							{t("sounds.tab.soundEffects")}
+						</TabsTrigger>
+						<TabsTrigger value="saved">{t("sounds.tab.saved")}</TabsTrigger>
 					</TabsList>
 				</div>
 				<Separator className="my-4" />
@@ -112,6 +99,31 @@ function SoundEffectsView() {
 		setHasNextPage,
 		setTotalCount,
 	} = useSoundsStore();
+	const { t } = useI18n();
+
+	const soundCategories = useMemo(
+		() => [
+			{ label: t("sounds.category.whoosh"), query: "whoosh" },
+			{ label: t("sounds.category.impact"), query: "impact" },
+			{ label: t("sounds.category.click"), query: "click" },
+			{ label: t("sounds.category.riser"), query: "riser" },
+			{ label: t("sounds.category.pop"), query: "pop" },
+			{ label: t("sounds.category.cinematic"), query: "cinematic" },
+			{ label: t("sounds.category.ambient"), query: "ambient" },
+			{ label: t("sounds.category.lofi"), query: "lofi" },
+			{ label: t("sounds.category.nature"), query: "nature" },
+			{ label: t("sounds.category.beep"), query: "beep" },
+		],
+		[t],
+	);
+	const soundLabels = soundCategories.map((c) => c.label);
+	const soundLabelToQuery = new Map(
+		soundCategories.map((c) => [c.label, c.query]),
+	);
+	const soundQueryToLabel = new Map(
+		soundCategories.map((c) => [c.query, c.label]),
+	);
+
 	const {
 		results: searchResults,
 		isLoading: isSearching,
@@ -174,7 +186,9 @@ function SoundEffectsView() {
 					console.error("Failed to fetch top sounds:", error);
 					setError({
 						error:
-							error instanceof Error ? error.message : "Failed to load sounds",
+							error instanceof Error
+								? error.message
+								: t("sounds.error.loadFailed"),
 					});
 				}
 			} finally {
@@ -199,6 +213,7 @@ function SoundEffectsView() {
 		setCurrentPage,
 		setHasNextPage,
 		setTotalCount,
+		t,
 	]);
 
 	useEffect(() => {
@@ -256,7 +271,7 @@ function SoundEffectsView() {
 		<div className="mt-1 flex h-full flex-col gap-5">
 			<div className="flex items-center gap-3">
 				<Input
-					placeholder="Search sound effects"
+					placeholder={t("sounds.searchPlaceholder")}
 					className="w-full"
 					containerClassName="w-full"
 					value={searchQuery}
@@ -281,12 +296,12 @@ function SoundEffectsView() {
 							checked={showCommercialOnly}
 							onCheckedChange={() => toggleCommercialFilter()}
 						>
-							Show only commercially licensed
+							{t("sounds.filter.commercialOnly")}
 						</DropdownMenuCheckboxItem>
 						<div className="text-muted-foreground px-2 py-1.5 text-xs">
 							{showCommercialOnly
-								? "Only showing sounds licensed for commercial use"
-								: "Showing all sounds regardless of license"}
+								? t("sounds.filter.commercialOnlyHint")
+								: t("sounds.filter.allSoundsHint")}
 						</div>
 					</DropdownMenuContent>
 				</DropdownMenu>
@@ -294,15 +309,15 @@ function SoundEffectsView() {
 
 			<div className="relative min-w-0 max-w-full">
 				<CategoryBar
-					categories={SOUND_LABELS}
-					value={SOUND_QUERY_TO_LABEL.get(searchQuery) ?? ALL_CATEGORY}
+					categories={soundLabels}
+					value={soundQueryToLabel.get(searchQuery) ?? ALL_CATEGORY}
 					className="w-full min-w-0 max-w-full scroll-smooth pr-8"
 					onChange={(label) =>
 						setSearchQuery({
 							query:
 								label === ALL_CATEGORY
 									? ""
-									: (SOUND_LABEL_TO_QUERY.get(label) ?? ""),
+									: (soundLabelToQuery.get(label) ?? ""),
 						})
 					}
 				/>
@@ -321,11 +336,13 @@ function SoundEffectsView() {
 					<div className="flex flex-col gap-4">
 						{isLoading && !searchQuery && (
 							<div className="text-muted-foreground text-sm">
-								Loading sounds...
+								{t("sounds.loading.sounds")}
 							</div>
 						)}
 						{isSearching && searchQuery && (
-							<div className="text-muted-foreground text-sm">Searching...</div>
+							<div className="text-muted-foreground text-sm">
+								{t("sounds.loading.searching")}
+							</div>
 						)}
 						{displayedSounds.map((sound) => (
 							<AudioItem
@@ -337,12 +354,14 @@ function SoundEffectsView() {
 						))}
 						{!isLoading && !isSearching && displayedSounds.length === 0 && (
 							<div className="text-muted-foreground text-sm">
-								{searchQuery ? "No sounds found" : "No sounds available"}
+								{searchQuery
+									? t("sounds.empty.noSearchResults")
+									: t("sounds.empty.noSounds")}
 							</div>
 						)}
 						{isLoadingMore && (
 							<div className="text-muted-foreground py-4 text-center text-sm">
-								Loading more sounds...
+								{t("sounds.loading.moreSounds")}
 							</div>
 						)}
 					</div>
@@ -353,6 +372,7 @@ function SoundEffectsView() {
 }
 
 function SavedSoundsView() {
+	const { t } = useI18n();
 	const {
 		savedSounds,
 		isLoadingSavedSounds,
@@ -430,7 +450,7 @@ function SavedSoundsView() {
 		return (
 			<div className="flex h-full items-center justify-center">
 				<div className="text-muted-foreground text-sm">
-					Loading saved sounds...
+					{t("sounds.saved.loading")}
 				</div>
 			</div>
 		);
@@ -440,7 +460,7 @@ function SavedSoundsView() {
 		return (
 			<div className="flex h-full items-center justify-center">
 				<div className="text-destructive text-sm">
-					Error: {savedSoundsError}
+					{t("sounds.saved.error", { error: savedSoundsError })}
 				</div>
 			</div>
 		);
@@ -454,9 +474,11 @@ function SavedSoundsView() {
 					className="text-muted-foreground size-10"
 				/>
 				<div className="flex flex-col gap-2 text-center">
-					<p className="text-lg font-medium">No saved sounds</p>
+					<p className="text-lg font-medium">
+						{t("sounds.saved.empty.title")}
+					</p>
 					<p className="text-muted-foreground text-sm text-balance">
-						Click the heart icon on any sound to save it here
+						{t("sounds.saved.empty.hint")}
 					</p>
 				</div>
 			</div>
@@ -467,8 +489,9 @@ function SavedSoundsView() {
 		<div className="mt-1 flex h-full flex-col gap-5">
 			<div className="flex items-center justify-between">
 				<p className="text-muted-foreground text-sm">
-					{savedSounds.length} saved{" "}
-					{savedSounds.length === 1 ? "sound" : "sounds"}
+					{savedSounds.length === 1
+						? t("sounds.saved.countSingular", { count: savedSounds.length })
+						: t("sounds.saved.countPlural", { count: savedSounds.length })}
 				</p>
 				<Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
 					<DialogTrigger asChild>
@@ -477,20 +500,21 @@ function SavedSoundsView() {
 							size="sm"
 							className="text-muted-foreground hover:text-destructive h-auto !opacity-100"
 						>
-							Clear all
+							{t("sounds.saved.clearAll")}
 						</Button>
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Clear all saved sounds?</DialogTitle>
+							<DialogTitle>{t("sounds.saved.clearConfirm.title")}</DialogTitle>
 							<DialogDescription>
-								This will permanently remove all {savedSounds.length} saved
-								sounds from your collection. This action cannot be undone.
+								{t("sounds.saved.clearConfirm.description", {
+									count: savedSounds.length,
+								})}
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
 							<Button variant="text" onClick={() => setShowClearDialog(false)}>
-								Cancel
+								{t("sounds.saved.clearConfirm.cancel")}
 							</Button>
 							<Button
 								variant="destructive"
@@ -502,7 +526,7 @@ function SavedSoundsView() {
 									setShowClearDialog(false);
 								}}
 							>
-								Clear all sounds
+								{t("sounds.saved.clearConfirm.confirm")}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -534,6 +558,7 @@ interface AudioItemProps {
 }
 
 function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
+	const { t } = useI18n();
 	const { addSoundToTimeline, isSoundSaved, toggleSavedSound } =
 		useSoundsStore();
 	const isSaved = isSoundSaved({ soundId: sound.id });
@@ -586,7 +611,7 @@ function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
 					size="icon"
 					className="text-muted-foreground hover:text-foreground w-auto !opacity-100"
 					onClick={handleAddToTimeline}
-					title="Add to timeline"
+					title={t("sounds.audioItem.addToTimeline")}
 				>
 					<HugeiconsIcon icon={PlusSignIcon} />
 				</Button>
@@ -599,7 +624,11 @@ function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
 							: "text-muted-foreground"
 					}`}
 					onClick={handleSaveClick}
-					title={isSaved ? "Remove from saved" : "Save sound"}
+					title={
+						isSaved
+							? t("sounds.audioItem.removeFromSaved")
+							: t("sounds.audioItem.save")
+					}
 				>
 					<HugeiconsIcon
 						icon={FavouriteIcon}

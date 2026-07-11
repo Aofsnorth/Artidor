@@ -9,6 +9,7 @@ import { CtaSection } from "@/components/landing/cta-section";
 import { PageShell } from "@/components/landing/page-shell";
 import { WhatsNewCard } from "@/components/whats-new/whats-new-card";
 import { AiDisclaimerBanner } from "@/components/landing/ai-disclaimer-banner";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site/brand";
 
@@ -33,6 +34,9 @@ export default async function Home() {
 			</main>
 			<Footer />
 			<WhatsNewCard />
+			<div className="fixed bottom-4 right-4 z-50">
+				<LanguageSwitcher />
+			</div>
 		</PageShell>
 	);
 }

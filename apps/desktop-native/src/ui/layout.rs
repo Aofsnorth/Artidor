@@ -32,6 +32,10 @@ pub struct Layout {
     pub viewport: RECT,
     /// The viewport toolbar rect (transport controls, bottom of preview).
     pub viewport_toolbar: RECT,
+    /// Top overlay controls inside the preview panel (Fit, aspect, fullscreen, more).
+    pub preview_overlay: RECT,
+    /// Top toolbar strip inside the timeline panel (add scene, select/split, zoom).
+    pub timeline_toolbar: RECT,
 }
 
 impl Layout {
@@ -105,12 +109,31 @@ impl Layout {
             right: pg_x + row_w,
             bottom: inner_y + inner_h,
         };
-        // Ruler is the top strip of the timeline panel.
-        l.ruler = RECT {
+        // Timeline top toolbar strip (add scene, select/split, zoom).
+        const TIMELINE_TOOLBAR_H: i32 = 36;
+        l.timeline_toolbar = RECT {
             left: l.timeline.left,
             top: l.timeline.top,
             right: l.timeline.right,
-            bottom: l.timeline.top + RULER_H,
+            bottom: l.timeline.top + TIMELINE_TOOLBAR_H,
+        };
+
+        // Ruler is below the timeline toolbar.
+        l.ruler = RECT {
+            left: l.timeline.left,
+            top: l.timeline_toolbar.bottom,
+            right: l.timeline.right,
+            bottom: l.timeline_toolbar.bottom + RULER_H,
+        };
+
+        // Preview top-right overlay controls (Fit, aspect, fullscreen, more).
+        const PREVIEW_OVERLAY_H: i32 = 28;
+        const PREVIEW_OVERLAY_W: i32 = 144;
+        l.preview_overlay = RECT {
+            left: l.preview.right - PREVIEW_OVERLAY_W - 12,
+            top: l.preview.top + 10,
+            right: l.preview.right - 12,
+            bottom: l.preview.top + 10 + PREVIEW_OVERLAY_H,
         };
 
         // Viewport canvas = preview minus toolbar strip at bottom.

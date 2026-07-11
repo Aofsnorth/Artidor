@@ -750,7 +750,12 @@ export class AudioManager {
 		const fadeIn = clip.timelineElement.fadeInDuration ?? 0;
 		const fadeOut = clip.timelineElement.fadeOutDuration ?? 0;
 		const hasFade = fadeIn > 0 || fadeOut > 0;
-		return hasCurve || hasKeyframedVolume || maintainPitch || hasFade;
+		// FLAC is decoded natively via decodeAudioData in decodeClipBuffer because
+		// mediabunny's WebCodecs-based streaming sink can decode to silence in
+		// browsers whose AudioDecoder does not support FLAC. Force the prepared
+		// path so FLAC clips always use decodeClipBuffer.
+		const needsNativeDecode = isFlacFile(clip.file);
+		return hasCurve || hasKeyframedVolume || maintainPitch || hasFade || needsNativeDecode;
 	}
 
 	private hasCurveRetime({ clip }: { clip: AudioClipSource }): boolean {
@@ -925,6 +930,24 @@ export class AudioManager {
 			return null;
 		}
 
+		// For native audio uploads (including FLAC), prefer the browser's Web
+		// Audio decoder over mediabunny's WebCodecs-based sink. Some browsers
+		// support FLAC via decodeAudioData but not via AudioDecoder, which would
+		// otherwise decode to silence during timeline preview. The export mix path
+		// and waveform already use this same native decode for audio files.
+		if (clip.timelineElement.type === "audio") {
+			try {
+				const arrayBuffer = await clip.file.arrayBuffer();
+				return await audioContext.decodeAudioData(arrayBuffer.slice(0));
+			} catch (error) {
+				console.info(
+					"[audio-manager] native decode failed for audio clip, falling back to mediabunny:",
+					clip.file.name,
+					error,
+				);
+			}
+		}
+
 		const input = new Input({
 			source: new BlobSource(clip.file),
 			formats: ALL_FORMATS,
@@ -1036,4 +1059,16 @@ export class AudioManager {
 			return null;
 		}
 	}
+}
+
+/**
+ * Detects FLAC files by MIME type or extension. Browsers do not always report
+ * `audio/flac` for `.flac` files (especially when the OS/file picker does not
+ * know the type), so we fall back to the file extension. This matches the
+ * detection used by the waveform component and the Tauri media bridge.
+ */
+function isFlacFile(file: File): boolean {
+	const type = file.type.toLowerCase();
+	if (type === "audio/flac" || type === "audio/x-flac") return true;
+	return /\.flac$/i.test(file.name);
 }

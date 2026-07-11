@@ -8,6 +8,7 @@ import { ArrowTurnBackwardIcon } from "@hugeicons/core-free-icons";
 import type { VisualElement } from "@/lib/timeline";
 import { cn } from "@/utils/ui";
 import { DEFAULT_CURVE, type CurvePoint } from "@/lib/colors/curves";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * DaVinci-style HSL qualifier curves. Seven curve pairs:
@@ -21,13 +22,48 @@ import { DEFAULT_CURVE, type CurvePoint } from "@/lib/colors/curves";
  */
 
 const HSL_CURVES = [
-	{ id: "hsl_hue_sat", label: "Hue vs Sat", x: "Hue", y: "Sat" },
-	{ id: "hsl_hue_lum", label: "Hue vs Lum", x: "Hue", y: "Lum" },
-	{ id: "hsl_hue_hue", label: "Hue vs Hue", x: "Hue (in)", y: "Hue (out)" },
-	{ id: "hsl_sat_sat", label: "Sat vs Sat", x: "Sat", y: "Sat" },
-	{ id: "hsl_sat_lum", label: "Sat vs Lum", x: "Sat", y: "Lum" },
-	{ id: "hsl_lum_sat", label: "Lum vs Sat", x: "Lum", y: "Sat" },
-	{ id: "hsl_lum_hue", label: "Lum vs Hue", x: "Lum", y: "Hue" },
+	{
+		id: "hsl_hue_sat",
+		labelKey: "hslCurves.curve.hueVsSat",
+		xKey: "hslCurves.axis.hue",
+		yKey: "hslCurves.axis.saturation",
+	},
+	{
+		id: "hsl_hue_lum",
+		labelKey: "hslCurves.curve.hueVsLum",
+		xKey: "hslCurves.axis.hue",
+		yKey: "hslCurves.axis.luminance",
+	},
+	{
+		id: "hsl_hue_hue",
+		labelKey: "hslCurves.curve.hueVsHue",
+		xKey: "hslCurves.axis.hueIn",
+		yKey: "hslCurves.axis.hueOut",
+	},
+	{
+		id: "hsl_sat_sat",
+		labelKey: "hslCurves.curve.satVsSat",
+		xKey: "hslCurves.axis.saturation",
+		yKey: "hslCurves.axis.saturation",
+	},
+	{
+		id: "hsl_sat_lum",
+		labelKey: "hslCurves.curve.satVsLum",
+		xKey: "hslCurves.axis.saturation",
+		yKey: "hslCurves.axis.luminance",
+	},
+	{
+		id: "hsl_lum_sat",
+		labelKey: "hslCurves.curve.lumVsSat",
+		xKey: "hslCurves.axis.luminance",
+		yKey: "hslCurves.axis.saturation",
+	},
+	{
+		id: "hsl_lum_hue",
+		labelKey: "hslCurves.curve.lumVsHue",
+		xKey: "hslCurves.axis.luminance",
+		yKey: "hslCurves.axis.hue",
+	},
 ] as const;
 
 type HslCurveId = (typeof HSL_CURVES)[number]["id"];
@@ -39,6 +75,7 @@ export function HslCurvesSubTab({
 	element: VisualElement;
 	trackId: string;
 }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const effects = element.effects ?? [];
 	const hslCurveEffect = effects.find((e) => e.type === "hsl-curve");
@@ -114,7 +151,7 @@ export function HslCurvesSubTab({
 									: "text-white/55 hover:bg-white/[0.08] hover:text-white",
 							)}
 						>
-							{curve.label}
+							{t(curve.labelKey)}
 						</button>
 					);
 				})}
@@ -122,19 +159,16 @@ export function HslCurvesSubTab({
 
 			<CurveEditor
 				key={active.id}
-				label={active.label}
-				xLabel={active.x}
-				yLabel={active.y}
+				label={t(active.labelKey)}
+				xLabel={t(active.xKey)}
+				yLabel={t(active.yKey)}
 				points={parseCurve(params[active.id])}
 				onChange={(p) => updateCurve(active.id, p)}
 				onReset={() => updateCurve(active.id, [...DEFAULT_CURVE])}
 			/>
 
 			<p className="px-1 text-[0.66rem] text-white/45 leading-relaxed">
-				HSL curves let you re-shape one component (saturation, luminance, or
-				hue) as a function of another. Click on the curve to add a point, drag
-				to reshape, double-click a point to remove. Defaults are linear (no
-				change).
+				{t("hslCurves.description")}
 			</p>
 		</div>
 	);
@@ -155,6 +189,7 @@ function CurveEditor({
 	onChange: (points: CurvePoint[]) => void;
 	onReset: () => void;
 }) {
+	const { t } = useI18n();
 	const width = 280;
 	const height = 160;
 	const padding = 8;
@@ -203,7 +238,7 @@ function CurveEditor({
 					className="h-6 px-2 text-[0.6rem]"
 				>
 					<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="mr-1 size-3" />
-					Reset
+					{t("hslCurves.reset")}
 				</Button>
 			</div>
 			<svg
@@ -212,7 +247,7 @@ function CurveEditor({
 				height={height}
 				viewBox={`0 0 ${width} ${height}`}
 				role="img"
-				aria-label={`${label} curve editor`}
+				aria-label={t("hslCurves.aria.curveEditor", { label })}
 				className="w-full cursor-crosshair"
 				onPointerDown={(e) => {
 					const pt = fromPointer(e);

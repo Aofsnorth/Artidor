@@ -16,6 +16,7 @@ import { patternCraftGradients } from "@/data/colors/pattern-craft";
 import { colors } from "@/data/colors/solid";
 import { syntaxUIGradients } from "@/data/colors/syntax-ui";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import { effectPreviewService } from "@/services/renderer/effect-preview";
 import { cn } from "@/utils/ui";
 
@@ -34,6 +35,7 @@ const BlurPreview = memo(
 		isSelected: boolean;
 		onSelect: () => void;
 	}) => {
+		const { t } = useI18n();
 		const canvasRef = useRef<HTMLCanvasElement>(null);
 
 		useEffect(() => {
@@ -62,7 +64,7 @@ const BlurPreview = memo(
 				)}
 				onClick={onSelect}
 				type="button"
-				aria-label={`Select ${blur.label} blur`}
+				aria-label={t("editor.background.selectBlur", { label: blur.label })}
 			>
 				<canvas
 					ref={canvasRef}
@@ -94,6 +96,7 @@ const BackgroundPreviews = memo(
 		onSelect: (bg: string) => void;
 		useBackgroundColor?: boolean;
 	}) => {
+		const { t } = useI18n();
 		return useMemo(
 			() =>
 				backgrounds.map((bg) => (
@@ -117,7 +120,7 @@ const BackgroundPreviews = memo(
 						}
 						onClick={() => onSelect(bg)}
 						type="button"
-						aria-label={`Select background ${bg}`}
+						aria-label={t("editor.background.selectBackground", { color: bg })}
 					/>
 				)),
 			[
@@ -126,6 +129,7 @@ const BackgroundPreviews = memo(
 				currentBackgroundColor,
 				onSelect,
 				useBackgroundColor,
+				t,
 			],
 		);
 	},
@@ -134,12 +138,32 @@ const BackgroundPreviews = memo(
 BackgroundPreviews.displayName = "BackgroundPreviews";
 
 const COLOR_SECTIONS = [
-	{ title: "Colors", backgrounds: colors, useBackgroundColor: true },
-	{ title: "Pattern craft", backgrounds: patternCraftGradients },
-	{ title: "Syntax UI", backgrounds: syntaxUIGradients },
+	{
+		id: "colors",
+		titleKey: "editor.background.section.colors",
+		backgrounds: colors,
+		useBackgroundColor: true,
+	},
+	{
+		id: "pattern-craft",
+		titleKey: "editor.background.section.patternCraft",
+		backgrounds: patternCraftGradients,
+	},
+	{
+		id: "syntax-ui",
+		titleKey: "editor.background.section.syntaxUi",
+		backgrounds: syntaxUIGradients,
+	},
 ] as const;
 
+const BLUR_LABEL_KEYS: Record<number, string> = {
+	100: "editor.background.blurLight",
+	200: "editor.background.blurMedium",
+	500: "editor.background.blurHeavy",
+};
+
 export function BackgroundContent() {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 
@@ -178,12 +202,12 @@ export function BackgroundContent() {
 			BACKGROUND_BLUR_INTENSITY_PRESETS.map((blur) => (
 				<BlurPreview
 					key={blur.value}
-					blur={blur}
+					blur={{ ...blur, label: t(BLUR_LABEL_KEYS[blur.value]) }}
 					isSelected={isBlurBackground && currentBlurIntensity === blur.value}
 					onSelect={() => handleBlurSelect(blur.value)}
 				/>
 			)),
-		[isBlurBackground, currentBlurIntensity, handleBlurSelect],
+		[isBlurBackground, currentBlurIntensity, handleBlurSelect, t],
 	);
 
 	return (
@@ -195,7 +219,7 @@ export function BackgroundContent() {
 				showTopBorder={false}
 			>
 				<SectionHeader>
-					<SectionTitle>Blur</SectionTitle>
+					<SectionTitle>{t("editor.background.section.blur")}</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
 					<div className="flex flex-wrap gap-2">{blurPreviews}</div>
@@ -203,13 +227,13 @@ export function BackgroundContent() {
 			</Section>
 			{COLOR_SECTIONS.map((section) => (
 				<Section
-					key={section.title}
+					key={section.id}
 					collapsible
 					defaultOpen={false}
-					sectionKey={`settings:background-${section.title.toLowerCase().replace(/\s+/g, "-")}`}
+					sectionKey={`settings:background-${section.id}`}
 				>
 					<SectionHeader>
-						<SectionTitle>{section.title}</SectionTitle>
+						<SectionTitle>{t(section.titleKey)}</SectionTitle>
 					</SectionHeader>
 					<SectionContent>
 						<div className="flex flex-wrap gap-2">

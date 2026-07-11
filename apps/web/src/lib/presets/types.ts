@@ -176,7 +176,9 @@ export type EffectPresetCategory =
 	| "Retro"
 	| "Cinematic"
 	| "Artistic"
-	| "Generator";
+	| "Generator"
+	| "Transform"
+	| "Text";
 
 export interface EffectPresetParams {
 	[key: string]: number | string | boolean;

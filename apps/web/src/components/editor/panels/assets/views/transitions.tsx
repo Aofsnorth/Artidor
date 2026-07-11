@@ -269,6 +269,13 @@ function TransitionPreview({
 		`${definition.type} ${definition.name}`,
 	);
 
+	const overlayA = usesColorEffect
+		? `linear-gradient(135deg, rgba(10,10,12,0.42), ${paletteA.accent})`
+		: `linear-gradient(135deg, rgba(10,10,12,0.55), rgba(10,10,12,0.15))`;
+	const overlayB = usesColorEffect
+		? `linear-gradient(135deg, rgba(10,10,12,0.38), ${paletteB.accent})`
+		: `linear-gradient(135deg, rgba(10,10,12,0.55), rgba(10,10,12,0.12))`;
+
 	return (
 		<div
 			className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 bg-zinc-950"
@@ -276,17 +283,17 @@ function TransitionPreview({
 		>
 			<div
 				aria-hidden
-				className="absolute inset-0 bg-cover bg-center saturate-75"
+				className="absolute inset-0 bg-cover bg-center saturate-[0.6]"
 				style={{
-					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.42), ${paletteA.accent}), url("${photoA.src}")`,
+					backgroundImage: `${overlayA}, url("${photoA.src}")`,
 				}}
 			/>
 			<div
 				aria-hidden
-				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-75 transition-opacity duration-300 group-hover:opacity-100"
+				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-[0.6] transition-opacity duration-300 group-hover:opacity-100"
 				style={{
 					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
-					backgroundImage: `linear-gradient(135deg, rgba(10,10,12,0.38), ${paletteB.accent}), url("${photoB.src}")`,
+					backgroundImage: `${overlayB}, url("${photoB.src}")`,
 				}}
 			/>
 			<div

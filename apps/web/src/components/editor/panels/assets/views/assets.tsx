@@ -44,6 +44,7 @@ import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useEditor } from "@/hooks/use-editor";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { useI18n } from "@/lib/i18n";
 import { invokeAction } from "@/lib/actions";
 import { processMediaAssets } from "@/lib/media/processing";
 import { showMediaUploadToast } from "@/lib/media/upload-toast";
@@ -82,6 +83,7 @@ export function MediaView() {
 	const editor = useEditor();
 	const mediaFiles = useEditor((e) => e.media.getAssets());
 	const activeProject = useEditor((e) => e.project.getActive());
+	const { t } = useI18n();
 
 	const {
 		mediaViewMode,
@@ -110,7 +112,7 @@ export function MediaView() {
 	const processFiles = async ({ files }: { files: File[] }) => {
 		if (!files || files.length === 0) return;
 		if (!activeProject) {
-			toast.error("No active project");
+			toast.error(t("assets.noActiveProject"));
 			return;
 		}
 
@@ -354,7 +356,7 @@ export function MediaView() {
 			<input {...fileInputProps} />
 
 			<PanelView
-				title="Assets"
+				title={t("assets.title")}
 				actions={
 					<MediaActions
 						mediaViewMode={mediaViewMode}
@@ -417,7 +419,7 @@ export function MediaView() {
 									<EmptyLibraryState onImport={openFilePicker} />
 								) : (
 									<SelectableSurface
-										ariaLabel="Assets"
+										ariaLabel={t("assets.title")}
 										orderedIds={orderedMediaIds}
 										revealId={highlightMediaId}
 										onRevealComplete={clearHighlight}
@@ -442,18 +444,18 @@ export function MediaView() {
 				<AlertDialog open={!!deleteFolderId} onOpenChange={(open) => !open && setDeleteFolderId(null)}>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Delete folder?</AlertDialogTitle>
+							<AlertDialogTitle>{t("assets.deleteFolderTitle")}</AlertDialogTitle>
 							<AlertDialogDescription>
-								Assets inside this folder will be moved back to the library root. This action cannot be undone.
+								{t("assets.deleteFolderDescription")}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel>Cancel</AlertDialogCancel>
+							<AlertDialogCancel>{t("assets.cancel")}</AlertDialogCancel>
 							<AlertDialogAction
 								onClick={confirmDeleteFolder}
 								className="bg-red-500 hover:bg-red-600 text-white"
 							>
-								Delete
+								{t("assets.delete")}
 							</AlertDialogAction>
 						</AlertDialogFooter>
 					</AlertDialogContent>
@@ -487,14 +489,27 @@ function AssetSourceTabs({
 	activeSource: AssetSource;
 	onChange: (source: AssetSource) => void;
 }) {
+	const { t } = useI18n();
 	const sources: Array<{
 		key: AssetSource;
 		label: string;
 		description: string;
 	}> = [
-		{ key: "library", label: "Library", description: "Local project media" },
-		{ key: "stock", label: "Stock", description: "Browse licensed assets" },
-		{ key: "cloud", label: "Cloud", description: "Synced team media" },
+		{
+			key: "library",
+			label: t("assets.source.library.label"),
+			description: t("assets.source.library.description"),
+		},
+		{
+			key: "stock",
+			label: t("assets.source.stock.label"),
+			description: t("assets.source.stock.description"),
+		},
+		{
+			key: "cloud",
+			label: t("assets.source.cloud.label"),
+			description: t("assets.source.cloud.description"),
+		},
 	];
 
 	return (
@@ -533,19 +548,20 @@ function QuickAccessGrid({
 }: {
 	stats: { all: number; video: number; audio: number; image: number };
 }) {
+	const { t } = useI18n();
 	const cards = [
 		{
-			label: "Videos",
+			label: t("assets.quickAccess.videos"),
 			value: stats.video,
 			tone: "from-blue-400/[0.22] to-cyan-300/[0.08]",
 		},
 		{
-			label: "Audio",
+			label: t("assets.quickAccess.audio"),
 			value: stats.audio,
 			tone: "from-emerald-300/[0.22] to-lime-300/[0.08]",
 		},
 		{
-			label: "Images",
+			label: t("assets.quickAccess.images"),
 			value: stats.image,
 			tone: "from-violet-300/[0.22] to-fuchsia-300/[0.08]",
 		},
@@ -574,6 +590,7 @@ function QuickAccessGrid({
 }
 
 function EmptyLibraryState({ onImport }: { onImport: () => void }) {
+	const { t } = useI18n();
 	return (
 		<button
 			type="button"
@@ -596,15 +613,15 @@ function EmptyLibraryState({ onImport }: { onImport: () => void }) {
 
 			<div className="relative max-w-md space-y-2">
 				<h3 className="font-serif text-lg text-white">
-					Your creative journey begins here
+					{t("assets.empty.title")}
 				</h3>
 				<p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
-					Import media or drag and drop to get started.
+					{t("assets.empty.description")}
 				</p>
 			</div>
 
 			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2 text-xs text-white/85">
-				Import media
+				{t("assets.empty.importButton")}
 			</span>
 		</button>
 	);
@@ -615,17 +632,16 @@ function RemoteAssetPlaceholder({
 }: {
 	source: Exclude<AssetSource, "library">;
 }) {
+	const { t } = useI18n();
 	const copy =
 		source === "stock"
 			? {
-					title: "Stock library is coming soon",
-					description:
-						"The UI is ready for stock footage, audio, and templates. Use local imports while backend search is wired up.",
+					title: t("assets.remote.stock.title"),
+					description: t("assets.remote.stock.description"),
 				}
 			: {
-					title: "Cloud media is coming soon",
-					description:
-						"This slot is prepared for synced files, shared team folders, and remote project assets.",
+					title: t("assets.remote.cloud.title"),
+					description: t("assets.remote.cloud.description"),
 				};
 
 	return (
@@ -640,7 +656,7 @@ function RemoteAssetPlaceholder({
 				</p>
 			</div>
 			<p className="text-[0.6rem] font-medium uppercase tracking-[0.16em] text-white/[0.32]">
-				Local imports stay in the header action
+				{t("assets.remote.localImportsHint")}
 			</p>
 		</div>
 	);
@@ -658,6 +674,7 @@ interface StockVideoResult {
 }
 
 function StockVideoSearch() {
+	const { t } = useI18n();
 	const [query, setQuery] = useState("");
 	const [results, setResults] = useState<StockVideoResult[]>([]);
 	const [loading, setLoading] = useState(false);
@@ -687,12 +704,12 @@ function StockVideoSearch() {
 			setResults(data.results);
 			setSearched(true);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Search failed");
+			setError(err instanceof Error ? err.message : t("assets.stock.searchFailed"));
 			setResults([]);
 		} finally {
 			setLoading(false);
 		}
-	}, []);
+	}, [t]);
 
 	const handleQueryChange = (value: string) => {
 		setQuery(value);
@@ -707,7 +724,7 @@ function StockVideoSearch() {
 					type="text"
 					value={query}
 					onChange={(e) => handleQueryChange(e.target.value)}
-					placeholder="Search stock videos..."
+					placeholder={t("assets.stock.placeholder")}
 					className="h-9 w-full rounded-lg border border-white/10 bg-black/30 px-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-white/20"
 				/>
 				{loading && (
@@ -723,7 +740,7 @@ function StockVideoSearch() {
 
 			{!loading && !error && searched && results.length === 0 && (
 				<p className="py-8 text-center text-xs text-white/40">
-					No videos found. Try a different search term.
+					{t("assets.stock.noResults")}
 				</p>
 			)}
 
@@ -750,10 +767,14 @@ function StockVideoSearch() {
 							)}
 							<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
 								<p className="truncate text-[0.65rem] text-white/70">
-									{video.duration}s · {video.width}×{video.height}
+									{t("assets.stock.durationAndResolution", {
+										duration: video.duration,
+										width: video.width,
+										height: video.height,
+									})}
 								</p>
 								<p className="truncate text-[0.6rem] text-white/40">
-									by {video.author}
+									{t("assets.stock.byAuthor", { author: video.author })}
 								</p>
 							</div>
 						</a>
@@ -764,10 +785,10 @@ function StockVideoSearch() {
 			{!loading && !error && !searched && (
 				<div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
 					<p className="text-sm font-semibold text-white/70">
-						Search Pexels stock videos
+						{t("assets.stock.initialTitle")}
 					</p>
 					<p className="max-w-[16rem] text-xs text-white/40">
-						Free, licensed stock footage. Search for nature, city, abstract, or any topic.
+						{t("assets.stock.initialDescription")}
 					</p>
 				</div>
 			)}
@@ -852,21 +873,24 @@ function MediaItemWithContextMenu({
 		ids: string[];
 	}) => void;
 }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const { isSelected, selectedIds } = useSelection();
 	const idsToDelete = isSelected(item.id) ? selectedIds : [item.id];
 	const deleteLabel =
-		idsToDelete.length > 1 ? `Delete ${idsToDelete.length} items` : "Delete";
+		idsToDelete.length > 1
+			? t("assets.contextMenu.deleteCount", { count: idsToDelete.length })
+			: t("assets.contextMenu.delete");
 	const folders = useEditor((e) => e.media.getFolders());
 
 	const handleExtractAudio = async () => {
 		if (!activeProject) {
-			toast.error("No active project");
+			toast.error(t("assets.noActiveProject"));
 			return;
 		}
 		if (item.type !== "video") {
-			toast.error("Only video assets can extract audio");
+			toast.error(t("assets.extractAudio.onlyVideo"));
 			return;
 		}
 
@@ -875,7 +899,7 @@ function MediaItemWithContextMenu({
 				const { extractAssetAudio } = await import("@/lib/media/mediabunny");
 				const audioBlob = await extractAssetAudio({ asset: item });
 				if (!audioBlob || audioBlob.size === 0) {
-					throw new Error("No audio track found");
+					throw new Error(t("assets.extractAudio.noAudioTrack"));
 				}
 
 				const audioName = `${item.name.replace(/\.[^.]+$/, "")} (Audio)`;
@@ -885,7 +909,7 @@ function MediaItemWithContextMenu({
 				const processed = await processMediaAssets({ files: [audioFile] });
 				const asset = processed[0];
 				if (!asset) {
-					throw new Error("Could not process audio");
+					throw new Error(t("assets.extractAudio.processFailed"));
 				}
 
 				const stored = await editor.media.addMediaAsset({
@@ -893,14 +917,14 @@ function MediaItemWithContextMenu({
 					asset,
 				});
 				if (!stored) {
-					throw new Error("Could not save audio");
+					throw new Error(t("assets.extractAudio.saveFailed"));
 				}
 				return stored;
 			},
 			{
-				loading: "Extracting audio...",
-				success: "Audio extracted and added to library",
-				error: (err: Error) => err.message || "Failed to extract audio",
+				loading: t("assets.extractAudio.loading"),
+				success: t("assets.extractAudio.success"),
+				error: (err: Error) => err.message || t("assets.extractAudio.errorFallback"),
 			},
 		);
 	};
@@ -919,21 +943,23 @@ function MediaItemWithContextMenu({
 		<ContextMenu>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent>
-				<ContextMenuItem>Export clips</ContextMenuItem>
+				<ContextMenuItem>{t("assets.contextMenu.exportClips")}</ContextMenuItem>
 				{item.type === "video" && (
 					<ContextMenuItem onClick={handleExtractAudio}>
-						Extract audio
+						{t("assets.contextMenu.extractAudio")}
 					</ContextMenuItem>
 				)}
 				{folders.length > 0 && (
 					<ContextMenuSub>
-						<ContextMenuSubTrigger>Move to folder</ContextMenuSubTrigger>
+						<ContextMenuSubTrigger>
+							{t("assets.contextMenu.moveToFolder")}
+						</ContextMenuSubTrigger>
 						<ContextMenuSubContent className="w-48">
 							<ContextMenuItem
 								onClick={() => handleMoveToFolder(null)}
 								disabled={!item.folderId}
 							>
-								(Library root)
+								{t("assets.contextMenu.libraryRoot")}
 							</ContextMenuItem>
 							{folders.map((folder) => (
 								<ContextMenuItem
@@ -1072,6 +1098,7 @@ function MediaPreview({
 	item: MediaAsset;
 	variant?: "grid" | "compact";
 }) {
+	const { t } = useI18n();
 	const shouldShowDurationBadge = variant === "grid";
 
 	if (item.type === "image") {
@@ -1113,7 +1140,7 @@ function MediaPreview({
 		return (
 			<MediaTypePlaceholder
 				icon={Video01Icon}
-				label="Video"
+				label={t("assets.mediaType.video")}
 				duration={item.duration}
 				variant="muted"
 			/>
@@ -1124,7 +1151,7 @@ function MediaPreview({
 		return (
 			<MediaTypePlaceholder
 				icon={MusicNote03Icon}
-				label="Audio"
+				label={t("assets.mediaType.audio")}
 				duration={item.duration}
 				variant="bordered"
 			/>
@@ -1132,7 +1159,11 @@ function MediaPreview({
 	}
 
 	return (
-		<MediaTypePlaceholder icon={Image02Icon} label="Unknown" variant="muted" />
+		<MediaTypePlaceholder
+			icon={Image02Icon}
+			label={t("assets.mediaType.unknown")}
+			variant="muted"
+		/>
 	);
 }
 
@@ -1153,6 +1184,7 @@ function MediaActions({
 	onSort: ({ key }: { key: MediaSortKey }) => void;
 	onImport: () => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<div className="flex shrink-0 gap-1.5">
 			<TooltipProvider>
@@ -1177,8 +1209,8 @@ function MediaActions({
 					<TooltipContent>
 						<p>
 							{mediaViewMode === "grid"
-								? "Switch to list view"
-								: "Switch to grid view"}
+								? t("assets.viewSwitch.list")
+								: t("assets.viewSwitch.grid")}
 						</p>
 					</TooltipContent>
 				</Tooltip>
@@ -1198,28 +1230,28 @@ function MediaActions({
 						</TooltipTrigger>
 						<DropdownMenuContent align="end">
 							<SortMenuItem
-								label="Name"
+								label={t("assets.sort.name")}
 								sortKey="name"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Type"
+								label={t("assets.sort.type")}
 								sortKey="type"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="Duration"
+								label={t("assets.sort.duration")}
 								sortKey="duration"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
 								onSort={onSort}
 							/>
 							<SortMenuItem
-								label="File size"
+								label={t("assets.sort.size")}
 								sortKey="size"
 								currentSortBy={sortBy}
 								currentSortOrder={sortOrder}
@@ -1229,8 +1261,14 @@ function MediaActions({
 					</DropdownMenu>
 					<TooltipContent>
 						<p>
-							Sort by {sortBy} (
-							{sortOrder === "asc" ? "ascending" : "descending"})
+							{t("assets.sort.tooltip", {
+								sortBy: t(`assets.sort.${sortBy}`),
+								sortOrder: t(
+									sortOrder === "asc"
+										? "assets.sort.ascending"
+										: "assets.sort.descending",
+								),
+							})}
 						</p>
 					</TooltipContent>
 				</Tooltip>
@@ -1243,7 +1281,7 @@ function MediaActions({
 				className="h-8 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-black hover:bg-white/90"
 			>
 				<HugeiconsIcon icon={CloudUploadIcon} />
-				Import
+				{t("assets.import")}
 			</Button>
 		</div>
 	);

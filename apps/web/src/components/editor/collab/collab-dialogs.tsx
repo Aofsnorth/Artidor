@@ -37,35 +37,36 @@ import { useCollabStore } from "@/stores/collab-store";
 import { cn } from "@/utils/ui";
 import { toast } from "sonner";
 import type { CollabMode } from "@/lib/collab/types";
+import { useI18n } from "@/lib/i18n";
 
 const MODE_OPTIONS: {
 	mode: CollabMode;
-	label: string;
-	description: string;
+	labelKey: string;
+	descriptionKey: string;
 	icon: typeof EyeIcon;
 }[] = [
 	{
 		mode: "view",
-		label: "View",
-		description: "Collaborators can watch but not edit.",
+		labelKey: "collaboration.mode.view",
+		descriptionKey: "collaboration.mode.viewDescription",
 		icon: EyeIcon,
 	},
 	{
 		mode: "comment",
-		label: "Comment",
-		description: "Collaborators can view and leave comments on the timeline.",
+		labelKey: "collaboration.mode.comment",
+		descriptionKey: "collaboration.mode.commentDescription",
 		icon: Comment02Icon,
 	},
 	{
 		mode: "edit",
-		label: "Edit",
-		description: "Collaborators can fully edit the timeline. Element locking prevents conflicts.",
+		labelKey: "collaboration.mode.edit",
+		descriptionKey: "collaboration.mode.editDescription",
 		icon: PencilEdit02Icon,
 	},
 	{
 		mode: "suggest",
-		label: "Suggest",
-		description: "Collaborators propose edits; the host approves or rejects each one.",
+		labelKey: "collaboration.mode.suggest",
+		descriptionKey: "collaboration.mode.suggestDescription",
 		icon: Idea01Icon,
 	},
 ];
@@ -78,10 +79,11 @@ export function CollabModePicker({
 	mode: CollabMode;
 	onChange: (mode: CollabMode) => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<div className="flex flex-col gap-1.5">
 			<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-				Permission mode
+				{t("collaboration.startDialog.permissionModeLabel")}
 			</span>
 			<div className="grid grid-cols-2 gap-2">
 				{MODE_OPTIONS.map((opt) => (
@@ -110,11 +112,11 @@ export function CollabModePicker({
 									mode === opt.mode ? "text-white/90" : "text-white/70",
 								)}
 							>
-								{opt.label}
+								{t(opt.labelKey)}
 							</span>
 						</span>
 						<span className="text-[9.5px] leading-relaxed text-white/40">
-							{opt.description}
+							{t(opt.descriptionKey)}
 						</span>
 					</button>
 				))}
@@ -133,6 +135,7 @@ export function StartCollabDialog({
 }) {
 	const editor = useEditor();
 	const collab = useCollabStore();
+	const { t } = useI18n();
 	const [nickname, setNickname] = useState(collab.nickname ?? "");
 	const [mode, setMode] = useState<CollabMode>("edit");
 	const [creating, setCreating] = useState(false);
@@ -141,22 +144,27 @@ export function StartCollabDialog({
 	const handleCreate = async () => {
 		const name = nickname.trim();
 		if (name.length < 1) {
-			toast.error("Enter a nickname", {
-				description: "Collaborators will see this name on your cursor.",
+			toast.error(t("collaboration.startDialog.nicknameRequiredTitle"), {
+				description: t("collaboration.startDialog.nicknameRequiredDescription"),
 			});
 			return;
 		}
 		const project = editor.project.getActiveOrNull();
-		const projectName = project?.metadata.name ?? "Shared project";
+		const projectName = project?.metadata.name ?? t("collaboration.defaultProjectName");
 		setCreating(true);
 		try {
 			await editor.collab.host({ projectName, mode, nickname: name });
-			toast.success("Collaboration session started", {
-				description: "Share the link with your team.",
+			const joinUrl = useCollabStore.getState().joinUrl;
+			toast.success(t("collaboration.toast.sessionStarted.title"), {
+				description: joinUrl
+					? t("collaboration.toast.sessionStarted.description", { joinUrl })
+					: t("collaboration.toast.sessionStarted.descriptionNoLink"),
 			});
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Could not start collaboration.",
+				err instanceof Error
+					? err.message
+					: t("collaboration.toast.startError"),
 			);
 		} finally {
 			setCreating(false);
@@ -168,12 +176,12 @@ export function StartCollabDialog({
 		try {
 			await navigator.clipboard.writeText(collab.joinUrl);
 			setCopied(true);
-			toast.success("Link copied", {
-				description: "Send this to your collaborators.",
+			toast.success(t("collaboration.toast.linkCopied.title"), {
+				description: t("collaboration.toast.linkCopied.description"),
 			});
 			setTimeout(() => setCopied(false), 1800);
 		} catch {
-			toast.error("Could not copy link");
+			toast.error(t("collaboration.toast.copyError"));
 		}
 	};
 
@@ -196,12 +204,15 @@ export function StartCollabDialog({
 							<HugeiconsIcon icon={UserAddIcon} className="size-4 text-white/85" />
 						</span>
 						<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
-							Start collaborating
+							{isActive
+								? t("collaboration.startDialog.activeTitle")
+								: t("collaboration.startDialog.title")}
 						</DialogTitle>
 					</div>
 					<DialogDescription className="pt-1 text-[0.8rem] leading-relaxed text-white/55">
-						Invite your team to edit together in real time. Each person gets a
-						colored cursor on the timeline.
+						{isActive
+							? t("collaboration.startDialog.activeDescription")
+							: t("collaboration.startDialog.description")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -210,12 +221,12 @@ export function StartCollabDialog({
 						<>
 							<div className="flex flex-col gap-1.5">
 								<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-									Your nickname
+									{t("collaboration.startDialog.nicknameLabel")}
 								</span>
 								<Input
 									value={nickname}
 									onChange={(e) => setNickname(e.target.value)}
-									placeholder="e.g. Alex"
+									placeholder={t("collaboration.startDialog.nicknamePlaceholder")}
 									maxLength={50}
 									className="h-9 border-white/[0.1] bg-white/[0.04] text-[0.8rem] text-white/90 placeholder:text-white/30"
 								/>
@@ -228,14 +239,16 @@ export function StartCollabDialog({
 								className="h-9 gap-1.5 self-start bg-white px-4 text-[0.78rem] font-medium text-black hover:bg-white/90"
 							>
 								<HugeiconsIcon icon={UserAddIcon} className="size-3.5" />
-								{creating ? "Starting…" : "Start session"}
+								{creating
+									? t("collaboration.startDialog.startingButton")
+									: t("collaboration.startDialog.startButton")}
 							</Button>
 						</>
 					) : (
 						<>
 							<div className="flex flex-col gap-2">
 								<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-									Share link
+									{t("collaboration.startDialog.shareLinkLabel")}
 								</span>
 								<div className="flex items-center gap-2">
 									<input
@@ -254,16 +267,23 @@ export function StartCollabDialog({
 											icon={copied ? CheckIcon : Copy01Icon}
 											className="size-3.5"
 										/>
-										{copied ? "Copied" : "Copy"}
+										{copied
+											? t("collaboration.startDialog.copiedButton")
+											: t("collaboration.startDialog.copyButton")}
 									</Button>
 								</div>
 							</div>
 							<div className="flex items-center gap-2 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[10px] text-white/50">
 								<HugeiconsIcon icon={Link01Icon} className="size-3 shrink-0" />
 								<span>
-									{collab.collaborators.length} collaborator
-									{collab.collaborators.length !== 1 ? "s" : ""} connected ·
-									Mode: {collab.mode}
+									{collab.collaborators.length === 1
+										? t("collaboration.startDialog.statusSingular", {
+												mode: collab.mode,
+											})
+										: t("collaboration.startDialog.statusPlural", {
+												count: collab.collaborators.length,
+												mode: collab.mode,
+											})}
 								</span>
 							</div>
 							<Button
@@ -272,7 +292,7 @@ export function StartCollabDialog({
 								onClick={() => void editor.collab.disconnect()}
 								className="h-8 self-start text-[0.74rem] text-white/50 hover:text-white/80"
 							>
-								End session
+								{t("collaboration.startDialog.endSessionButton")}
 							</Button>
 						</>
 					)}
@@ -294,27 +314,30 @@ export function JoinCollabDialog({
 }) {
 	const editor = useEditor();
 	const collab = useCollabStore();
+	const { t } = useI18n();
 	const [nickname, setNickname] = useState(collab.nickname ?? "");
 	const [joining, setJoining] = useState(false);
 
 	const handleJoin = async () => {
 		const name = nickname.trim();
 		if (name.length < 1) {
-			toast.error("Enter a nickname", {
-				description: "Others will see this name on your cursor.",
+			toast.error(t("collaboration.joinDialog.nicknameRequiredTitle"), {
+				description: t("collaboration.joinDialog.nicknameRequiredDescription"),
 			});
 			return;
 		}
 		setJoining(true);
 		try {
 			await editor.collab.join({ roomId, nickname: name });
-			toast.success("Joined collaboration", {
-				description: `You're now editing with the team.`,
+			toast.success(t("collaboration.toast.joined.title"), {
+				description: t("collaboration.toast.joined.description"),
 			});
 			onOpenChange(false);
 		} catch (err) {
 			toast.error(
-				err instanceof Error ? err.message : "Could not join collaboration.",
+				err instanceof Error
+					? err.message
+					: t("collaboration.toast.joinError"),
 			);
 		} finally {
 			setJoining(false);
@@ -338,23 +361,22 @@ export function JoinCollabDialog({
 							<HugeiconsIcon icon={UserAddIcon} className="size-4 text-white/85" />
 						</span>
 						<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
-							Join collaboration
+							{t("collaboration.joinDialog.title")}
 						</DialogTitle>
 					</div>
 					<DialogDescription className="pt-1 text-[0.8rem] leading-relaxed text-white/55">
-						Enter your name to join the editing session. You'll get a colored
-						cursor on the timeline.
+						{t("collaboration.joinDialog.description")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="relative flex flex-col gap-4 px-6 pt-4 pb-6">
 					<div className="flex flex-col gap-1.5">
 						<span className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-							Your nickname
+							{t("collaboration.joinDialog.nicknameLabel")}
 						</span>
 						<Input
 							value={nickname}
 							onChange={(e) => setNickname(e.target.value)}
-							placeholder="e.g. Sam"
+							placeholder={t("collaboration.joinDialog.nicknamePlaceholder")}
 							maxLength={50}
 							autoFocus
 							onKeyDown={(e) => {
@@ -370,7 +392,9 @@ export function JoinCollabDialog({
 						className="h-9 gap-1.5 self-start bg-white px-4 text-[0.78rem] font-medium text-black hover:bg-white/90"
 					>
 						<HugeiconsIcon icon={UserAddIcon} className="size-3.5" />
-						{joining ? "Joining…" : "Join session"}
+						{joining
+							? t("collaboration.joinDialog.joiningButton")
+							: t("collaboration.joinDialog.joinButton")}
 					</Button>
 				</div>
 			</DialogContent>

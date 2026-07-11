@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 
@@ -40,18 +40,21 @@ import {
 } from "@/components/editor/panels/assets/views/components/catalog-search";
 import { useI18n } from "@/lib/i18n";
 
-const ANIMATION_CATEGORIES: { key: AnimationPresetCategory; label: string }[] =
-	[
-		{ key: "entrance", label: "Entrance" },
-		{ key: "emphasis", label: "Emphasis" },
-		{ key: "exit", label: "Exit" },
-		{ key: "combo", label: "Combo" },
-		{ key: "loop", label: "Loop" },
-	];
-const ANIMATION_LABELS = ANIMATION_CATEGORIES.map((c) => c.label);
-const ANIMATION_KEY_TO_LABEL = new Map(
-	ANIMATION_CATEGORIES.map((c) => [c.key, c.label]),
-);
+const ANIMATION_CATEGORIES: AnimationPresetCategory[] = [
+	"entrance",
+	"emphasis",
+	"exit",
+	"combo",
+	"loop",
+];
+
+const ANIMATION_CATEGORY_TO_KEY: Record<AnimationPresetCategory, string> = {
+	entrance: "animationsCatalog.category.entrance",
+	emphasis: "animationsCatalog.category.emphasis",
+	exit: "animationsCatalog.category.exit",
+	combo: "animationsCatalog.category.combo",
+	loop: "animationsCatalog.category.loop",
+};
 
 const MOTION_CATEGORY_TO_ANIMATION_CATEGORY: Record<
 	MotionPreset["category"],
@@ -117,7 +120,7 @@ const CATEGORY_ICONS: Record<AnimationPresetCategory, React.ReactNode> = {
 };
 
 export function AnimationsView() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const existingPresets = useAnimationPresets();
 	const apply = useApplyAnimationPreset();
 	const all = useMemo(() => {
@@ -131,11 +134,31 @@ export function AnimationsView() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => ANIMATION_CATEGORIES.map((key) => t(ANIMATION_CATEGORY_TO_KEY[key])),
+		[t],
+	);
+	const keyToLabel = useMemo(
+		() =>
+			new Map(
+				ANIMATION_CATEGORIES.map((key) => [
+					key,
+					t(ANIMATION_CATEGORY_TO_KEY[key]),
+				]),
+			),
+		[t],
+	);
+
 	const filtered = useMemo(() => {
 		const categoryFiltered = filterByCategory({
 			items: all,
 			category,
-			getCategory: (p) => ANIMATION_KEY_TO_LABEL.get(p.category),
+			getCategory: (p) => keyToLabel.get(p.category),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -143,11 +166,11 @@ export function AnimationsView() {
 			getText: (preset) => [
 				preset.name,
 				preset.type,
-				ANIMATION_KEY_TO_LABEL.get(preset.category),
+				keyToLabel.get(preset.category),
 				...(preset.keywords ?? []),
 			],
 		});
-	}, [all, category, query]);
+	}, [all, category, query, keyToLabel]);
 
 	const handleApplyPreset = useCallback(
 		(preset: AnimationPreset) => {
@@ -168,7 +191,7 @@ export function AnimationsView() {
 					{t("catalog.descriptionAnimations")}
 				</p>
 				<CategoryBar
-					categories={ANIMATION_LABELS}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>

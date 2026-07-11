@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { parseCssDeclarations } from "@/lib/presets/css-parser";
 import { overlays as presetOverlays } from "@/lib/presets/overlays";
 import type { OverlaySubcategory } from "@/lib/presets/types";
@@ -49,6 +49,22 @@ export const OVERLAY_CATEGORIES = [
 	"Prismatic",
 	"VHS",
 ] as const;
+
+const OVERLAY_CATEGORY_TO_KEY: Record<string, string> = {
+	"Color Wash": "overlays.category.colorWash",
+	Frames: "overlays.category.frames",
+	Vignette: "overlays.category.vignette",
+	Light: "overlays.category.light",
+	Flash: "overlays.category.flash",
+	Texture: "overlays.category.texture",
+	Weather: "overlays.category.weather",
+	Particles: "overlays.category.particles",
+	Glitch: "overlays.category.glitch",
+	Paper: "overlays.category.paper",
+	Neon: "overlays.category.neon",
+	Prismatic: "overlays.category.prismatic",
+	VHS: "overlays.category.vhs",
+};
 
 const OVERLAY_SUBCATEGORY_MAP: Partial<Record<OverlaySubcategory, string>> = {
 	LightLeak: "Light",
@@ -500,15 +516,32 @@ const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
 OVERLAY_PRESETS.push(...presetOverlayPresets);
 
 export function OverlaysView() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => OVERLAY_CATEGORIES.map((c) => t(OVERLAY_CATEGORY_TO_KEY[c])),
+		[t],
+	);
+	const categoryToLabel = useMemo(
+		() =>
+			new Map<string, string>(
+				OVERLAY_CATEGORIES.map((c) => [c, t(OVERLAY_CATEGORY_TO_KEY[c])]),
+			),
+		[t],
+	);
 
 	const filtered = useMemo(() => {
 		const categoryFiltered = filterByCategory({
 			items: OVERLAY_PRESETS,
 			category,
-			getCategory: (preset) => preset.category,
+			getCategory: (preset) => categoryToLabel.get(preset.category),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -516,11 +549,11 @@ export function OverlaysView() {
 			getText: (preset) => [
 				preset.name,
 				preset.id,
-				preset.category,
+				categoryToLabel.get(preset.category),
 				preset.description,
 			],
 		});
-	}, [category, query]);
+	}, [category, query, categoryToLabel]);
 
 	return (
 		<PanelView title={t("catalog.titleOverlays")}>
@@ -529,7 +562,7 @@ export function OverlaysView() {
 					{t("catalog.descriptionOverlays")}
 				</p>
 				<CategoryBar
-					categories={OVERLAY_CATEGORIES}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>
@@ -593,6 +626,7 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 }
 
 function OverlayPreview({ preset }: { preset: OverlayPreset }) {
+	const { t } = useI18n();
 	return (
 		<div className="relative size-full overflow-hidden rounded-sm p-2">
 			<div
@@ -607,7 +641,7 @@ function OverlayPreview({ preset }: { preset: OverlayPreset }) {
 				)}
 			</div>
 			<div className="absolute bottom-1.5 left-1.5 rounded bg-black/[0.46] px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.14em] text-white/[0.62]">
-				OVR
+				{t("overlays.badge")}
 			</div>
 		</div>
 	);

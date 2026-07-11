@@ -18,6 +18,37 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-16-ai-chat-controls-and-previews",
+		date: "2026-07-16",
+		tag: "improvement",
+		title: "AI chat: token/context controls, editable message re-prompt, faster image previews",
+		items: [
+			"Added Max output tokens and Context window sliders in Advanced AI settings so you can cap model replies and how much conversation history is sent per request.",
+			"Editing a user message now automatically drops the follow-up messages and re-prompts the AI from that point.",
+			"view_asset image and video results now render as compact thumbnails instead of dumping raw base64 JSON into the chat, fixing UI lag after frame captures.",
+		],
+	},
+	{
+		id: "2026-07-16-flac-timeline-preview-audio",
+		date: "2026-07-16",
+		tag: "fix",
+		title: "FLAC audio now plays during timeline preview",
+		items: [
+			"FLAC uploads are now imported reliably even when the browser or OS does not report an audio MIME type.",
+			"Timeline preview decoding now uses the browser's Web Audio API for FLAC before falling back to the streaming decoder, fixing silent playback in browsers whose AudioDecoder does not support FLAC.",
+		],
+	},
+	{
+		id: "2026-07-15-transform-text-effects",
+		date: "2026-07-15",
+		tag: "feature",
+		title: "New Transform and Text effect categories",
+		items: [
+			"The Effects catalog now has Transform and Text categories with 9 new presets: Rotate, Scale, Flip Horizontal, Flip Vertical, Skew, Text Glow, Text Stroke, Text Shadow, and Text 3D.",
+			"Each preset maps to a GPU-accelerated WGSL shader in the Rust effects pipeline, so previews and exports render the same result.",
+		],
+	},
+	{
 		id: "2026-07-14-localization-border-controls",
 		date: "2026-07-14",
 		tag: "feature",
@@ -26,6 +57,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Border is now available in the Graphics Style panel for video and image clips: enable, set color, width, and opacity, and the border renders above the media in both preview and export.",
 			"Timeline toolbar labels and tooltips are now localized, including Select/Split, undo/redo, selection operations, grouping, bookmarks, linking, snapping, ripple editing, zoom, and drag modes.",
 			"Graphics Style panel labels (Color & Fill, Stroke, Border, Shadow) and catalog empty-state messages are now covered by the EN/ID dictionary.",
+			"A language switcher is now available on the home page header, and a language selector is available inside the editor Settings panel; both persist to the same preference.",
+			"All remaining landing page sections (AI Showcase, Features, How it Works, Pledge, CTA, and the AI disclaimer) are now localized in English and Indonesian.",
 		],
 	},
 	{

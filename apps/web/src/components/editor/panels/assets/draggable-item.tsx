@@ -213,7 +213,7 @@ export function DraggableItem({
 					{shouldShowLabel && (
 						<div className="mt-1 flex w-full justify-center">
 							<MarqueeText
-								className="text-foreground z-10 w-full text-center text-[0.7rem] font-medium drop-shadow-md"
+								className="text-foreground z-10 w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
 								pxPerSecond={30}
 							>
 								{name}

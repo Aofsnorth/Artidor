@@ -171,6 +171,8 @@ const bodySchema = z.object({
 	aiName: z.string().max(60).optional(),
 	/** Extra personality instructions for the AI. */
 	aiPersonality: z.string().max(2000).optional(),
+	/** Maximum tokens the model is allowed to return. */
+	maxOutputTokens: z.number().int().min(256).max(8192).default(4096),
 });
 
 export const dynamic = "force-dynamic";
@@ -371,7 +373,7 @@ export async function POST(request: Request) {
 		messages: chatMessages,
 		tools,
 		temperature: 0.4,
-		maxTokens: 4096,
+		maxTokens: body.maxOutputTokens,
 	};
 
 	const encoder = new TextEncoder();

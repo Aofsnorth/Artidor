@@ -2,10 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { roundToFrame } from "artidor-wasm";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { useEditor } from "@/hooks/use-editor";
-import { buildTextElement } from "@/lib/timeline/element-utils";
+import {
+	buildTextElement,
+	findOrCreateTextTrack,
+} from "@/lib/timeline/element-utils";
 import type { TimelineDragData } from "@/lib/timeline/drag";
 import { getPaletteForId } from "./components/procedural-preview";
 import {
@@ -103,34 +107,48 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const editor = useEditor();
 	const [busy, setBusy] = useState(false);
 
-	const handleAdd = useCallback(async () => {
-		setBusy(true);
-		try {
-			const currentTime = editor.playback.getCurrentTime();
-			const raw = preset.build();
-			const element = buildTextElement({
-				raw,
-				startTime: currentTime,
-			});
+	const handleAdd = useCallback(
+		async ({ currentTime }: { currentTime: number }) => {
+			setBusy(true);
+			try {
+				const project = editor.project.getActive();
+				const startTime =
+					roundToFrame({
+						time: currentTime,
+						rate: project.settings.fps,
+					}) ?? currentTime;
 
-			editor.timeline.insertElement({
-				element,
-				placement: { mode: "auto" },
-			});
+				const trackId = findOrCreateTextTrack(editor);
+				const element = buildTextElement({
+					raw: preset.build(),
+					startTime,
+				});
 
-			// Note: no auto fade-in. A fade-up preset starts at opacity 0, which
-			// left freshly-added text invisible at the playhead (looked like a bug).
-			// Users can add an entrance animation explicitly from the Animation tab.
+				const result = editor.timeline.insertElement({
+					element,
+					placement: { mode: "explicit", trackId },
+				});
 
-			toast.success(t("catalog.textAdded", { name: preset.name }));
-		} catch (error) {
-			toast.error(t("catalog.couldNotAddText"), {
-				description: error instanceof Error ? error.message : "Unknown error",
-			});
-		} finally {
-			setBusy(false);
-		}
-	}, [editor, preset, t]);
+				if (!result) {
+					throw new Error("Text clip could not be inserted on the timeline.");
+				}
+
+				// Note: no auto fade-in. A fade-up preset starts at opacity 0, which
+				// left freshly-added text invisible at the playhead (looked like a bug).
+				// Users can add an entrance animation explicitly from the Animation tab.
+
+				toast.success(t("textTrack.added", { name: preset.name }));
+			} catch (error) {
+				toast.error(t("catalog.couldNotAddText"), {
+					description:
+						error instanceof Error ? error.message : "Unknown error",
+				});
+			} finally {
+				setBusy(false);
+			}
+		},
+		[editor, preset, t],
+	);
 
 	const previewData = preset.build();
 	const photoUrl = getTextPhotoUrl(preset.id);

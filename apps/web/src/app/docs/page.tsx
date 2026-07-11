@@ -1,19 +1,24 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { BasePage } from "@/app/base-page";
 import { cn } from "@/utils/ui";
+import { normalizeLocale, translate } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-	title: "Docs — Artidor",
-	description:
-		"Documentation for Artidor — AI copilot, MCP server integration, keyboard shortcuts, and editor features.",
-	alternates: {
-		canonical: "/docs",
-	},
-};
+export async function generateMetadata(): Promise<Metadata> {
+	const h = await headers();
+	const locale = normalizeLocale(h.get("accept-language"));
+	return {
+		title: translate({ locale, key: "docs.title" }),
+		description: translate({ locale, key: "docs.description" }),
+		alternates: {
+			canonical: "/docs",
+		},
+	};
+}
 
 interface DocSection {
 	id: string;
-	title: string;
+	titleKey: string;
 	icon: string;
 	content: DocBlock[];
 }
@@ -29,7 +34,7 @@ type DocBlock =
 const SECTIONS: DocSection[] = [
 	{
 		id: "getting-started",
-		title: "Getting Started",
+		titleKey: "docs.sections.gettingStarted",
 		icon: "🚀",
 		content: [
 			{
@@ -59,7 +64,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "ai-copilot",
-		title: "AI Copilot (Arth)",
+		titleKey: "docs.sections.aiCopilot",
 		icon: "✨",
 		content: [
 			{
@@ -124,7 +129,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "mcp-server",
-		title: "MCP Server — External AI Integration",
+		titleKey: "docs.sections.mcpServer",
 		icon: "🔌",
 		content: [
 			{
@@ -264,7 +269,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "mcp-client",
-		title: "MCP Client — Connect External MCP Servers to Arth",
+		titleKey: "docs.sections.mcpClient",
 		icon: "🧩",
 		content: [
 			{
@@ -298,7 +303,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "keyboard-shortcuts",
-		title: "Keyboard Shortcuts",
+		titleKey: "docs.sections.keyboardShortcuts",
 		icon: "⌨️",
 		content: [
 			{
@@ -324,7 +329,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "project-management",
-		title: "Project Management",
+		titleKey: "docs.sections.projectManagement",
 		icon: "📁",
 		content: [
 			{
@@ -360,7 +365,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "collaboration",
-		title: "Real-time Collaboration",
+		titleKey: "docs.sections.collaboration",
 		icon: "👥",
 		content: [
 			{
@@ -381,7 +386,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "export",
-		title: "Export & Rendering",
+		titleKey: "docs.sections.export",
 		icon: "🎬",
 		content: [
 			{
@@ -406,7 +411,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "privacy-security",
-		title: "Privacy & Security",
+		titleKey: "docs.sections.privacySecurity",
 		icon: "🔒",
 		content: [
 			{
@@ -430,7 +435,7 @@ const SECTIONS: DocSection[] = [
 	},
 	{
 		id: "troubleshooting",
-		title: "Troubleshooting",
+		titleKey: "docs.sections.troubleshooting",
 		icon: "🔧",
 		content: [
 			{
@@ -484,23 +489,24 @@ const SECTIONS: DocSection[] = [
 	},
 ];
 
-export default function DocsPage() {
+export default async function DocsPage() {
+	const h = await headers();
+	const locale = normalizeLocale(h.get("accept-language"));
 	return (
 		<BasePage maxWidth="6xl">
 			<div className="flex flex-col gap-2 text-center">
 				<h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">
-					Documentation
+					{translate({ locale, key: "docs.header" })}
 				</h1>
 				<p className="mx-auto max-w-2xl text-lg leading-relaxed text-white/55">
-					Everything you need to know about Artidor — AI copilot, MCP server
-					integration, features, and troubleshooting.
+					{translate({ locale, key: "docs.subtitle" })}
 				</p>
 			</div>
 
 			{/* Table of contents */}
 			<div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
 				<div className="mb-3 text-sm font-semibold text-white/70">
-					Table of Contents
+					{translate({ locale, key: "docs.tableOfContents" })}
 				</div>
 				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
 					{SECTIONS.map((s) => (
@@ -510,7 +516,7 @@ export default function DocsPage() {
 							className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/55 transition-colors hover:bg-white/[0.04] hover:text-white/85"
 						>
 							<span className="text-base">{s.icon}</span>
-							{s.title}
+							{translate({ locale, key: s.titleKey })}
 						</a>
 					))}
 				</div>
@@ -527,7 +533,7 @@ export default function DocsPage() {
 						<div className="flex items-center gap-3 border-b border-white/[0.08] pb-3">
 							<span className="text-2xl">{section.icon}</span>
 							<h2 className="text-2xl font-bold tracking-tight text-white">
-								{section.title}
+								{translate({ locale, key: section.titleKey })}
 							</h2>
 						</div>
 						<div className="flex flex-col gap-3">

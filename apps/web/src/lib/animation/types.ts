@@ -25,6 +25,13 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"graphicStyle.fillOpacity",
 	"graphicStyle.stroke.color",
 	"graphicStyle.stroke.width",
+	"graphicStyle.border.color",
+	"graphicStyle.border.width",
+	"graphicStyle.border.opacity",
+	"graphicStyle.shadow.color",
+	"graphicStyle.shadow.blur",
+	"graphicStyle.shadow.offsetX",
+	"graphicStyle.shadow.offsetY",
 ] as const;
 
 export type AnimationPropertyPath = (typeof ANIMATION_PROPERTY_PATHS)[number];
@@ -74,6 +81,13 @@ export interface AnimationPropertyValueMap {
 	"graphicStyle.fillOpacity": number;
 	"graphicStyle.stroke.color": string;
 	"graphicStyle.stroke.width": number;
+	"graphicStyle.border.color": string;
+	"graphicStyle.border.width": number;
+	"graphicStyle.border.opacity": number;
+	"graphicStyle.shadow.color": string;
+	"graphicStyle.shadow.blur": number;
+	"graphicStyle.shadow.offsetX": number;
+	"graphicStyle.shadow.offsetY": number;
 }
 export type DynamicAnimationPathValue = ParamValues[string];
 export type AnimationValueForPath<TPath extends AnimationPath> =

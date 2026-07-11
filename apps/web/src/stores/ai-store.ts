@@ -129,6 +129,10 @@ export interface AdvancedAISettings {
 	compactionMessageThreshold: number;
 	/** Number of recent messages to keep during compaction (default: 6). */
 	compactionKeepLast: number;
+	/** Maximum tokens the model is allowed to return (default: 4096). */
+	maxOutputTokens: number;
+	/** Maximum messages from the conversation to send per request (default: 100). */
+	maxContextMessages: number;
 	/**
 	 * Controls how the AI learns from the user's editing style:
 	 *  - "project" — only learn from edits in the current project.
@@ -146,6 +150,8 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedAISettings = {
 	retryCooldownBase: 5,
 	compactionMessageThreshold: 20,
 	compactionKeepLast: 6,
+	maxOutputTokens: 4096,
+	maxContextMessages: 100,
 	learningScope: "off",
 };
 
@@ -703,6 +709,17 @@ export const useAIStore = create<AIState>()(
 				}),
 				advancedSettings: state.advancedSettings,
 			}),
+			merge: (persisted, current) => {
+				const p = persisted as Partial<AIState> | undefined;
+				return {
+					...current,
+					...p,
+					advancedSettings: {
+						...current.advancedSettings,
+						...(p?.advancedSettings ?? {}),
+					},
+				} as AIState;
+			},
 			onRehydrateStorage: (state) => {
 				// After zustand rehydrates from localStorage, remove any
 				// revert snapshots that no longer have a matching message.

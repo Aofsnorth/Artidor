@@ -66,6 +66,45 @@ import {
 	dropShadowEffectDefinition,
 	outerGlowEffectDefinition,
 } from "./video/stroke-shadow-glow";
+import {
+	checkerEffectDefinition,
+	gridEffectDefinition,
+	kaleidoscopeEffectDefinition,
+	tileEffectDefinition,
+} from "./video/geometric";
+import {
+	boxBlurEffectDefinition,
+	directionalBlurEffectDefinition,
+	lensBlurEffectDefinition,
+	unsharpMaskEffectDefinition,
+	zoomBlurEffectDefinition,
+} from "./video/blur-advanced";
+import {
+	contourLinesEffectDefinition,
+	edgeGlowEffectDefinition,
+	innerGlowEffectDefinition,
+	matteEdgeEffectDefinition,
+} from "./video/stylized-edge";
+import {
+	colorBalanceEffectDefinition,
+	fourColorGradientEffectDefinition,
+	gradientOverlayEffectDefinition,
+	replaceColorEffectDefinition,
+	tintEffectDefinition,
+} from "./video/color-effects";
+import {
+	rotateEffectDefinition,
+	scaleEffectDefinition,
+	flipHorizontalEffectDefinition,
+	flipVerticalEffectDefinition,
+	skewEffectDefinition,
+} from "./video/transform-effects";
+import {
+	textGlowEffectDefinition,
+	textStrokeEffectDefinition,
+	textShadowEffectDefinition,
+	text3dEffectDefinition,
+} from "./video/text-effects";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -127,6 +166,33 @@ const defaultEffects = [
 	strokeEffectDefinition,
 	dropShadowEffectDefinition,
 	outerGlowEffectDefinition,
+	kaleidoscopeEffectDefinition,
+	tileEffectDefinition,
+	checkerEffectDefinition,
+	gridEffectDefinition,
+	zoomBlurEffectDefinition,
+	directionalBlurEffectDefinition,
+	boxBlurEffectDefinition,
+	lensBlurEffectDefinition,
+	unsharpMaskEffectDefinition,
+	innerGlowEffectDefinition,
+	edgeGlowEffectDefinition,
+	contourLinesEffectDefinition,
+	matteEdgeEffectDefinition,
+	colorBalanceEffectDefinition,
+	replaceColorEffectDefinition,
+	tintEffectDefinition,
+	gradientOverlayEffectDefinition,
+	fourColorGradientEffectDefinition,
+	rotateEffectDefinition,
+	scaleEffectDefinition,
+	flipHorizontalEffectDefinition,
+	flipVerticalEffectDefinition,
+	skewEffectDefinition,
+	textGlowEffectDefinition,
+	textStrokeEffectDefinition,
+	textShadowEffectDefinition,
+	text3dEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
