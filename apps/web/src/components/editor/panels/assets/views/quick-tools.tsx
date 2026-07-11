@@ -9,11 +9,13 @@ import { useReverseVideo } from "@/hooks/use-reverse-video";
 import { useStabilizeVideo } from "@/hooks/use-stabilize-video";
 import { useAutoReframe } from "@/hooks/use-auto-reframe";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/utils/ui";
 
 type ToolId = "teleprompter" | "reverse" | "stabilize" | "auto-reframe" | null;
 
 export function QuickToolsView() {
+	const { t } = useI18n();
 	const [activeTool, setActiveTool] = useState<ToolId>(null);
 	const { reverse: reverseVideo, isProcessing: reversing } = useReverseVideo();
 	const { stabilize, isProcessing: stabilizing } = useStabilizeVideo();
@@ -33,14 +35,14 @@ export function QuickToolsView() {
 	}> = [
 		{
 			id: "teleprompter",
-			label: "Teleprompter",
-			description: "Read scripts while recording with auto-scroll text.",
+			label: t("quickTools.teleprompterLabel"),
+			description: t("quickTools.teleprompterDescription"),
 			onClick: () => setActiveTool("teleprompter"),
 		},
 		{
 			id: "reverse",
-			label: "Reverse Video",
-			description: "Play a video clip backwards (creates a new reversed clip).",
+			label: t("quickTools.reverseVideoLabel"),
+			description: t("quickTools.reverseVideoDescription"),
 			onClick: () => {
 				void reverseVideo();
 			},
@@ -48,8 +50,8 @@ export function QuickToolsView() {
 		},
 		{
 			id: "stabilize",
-			label: "Stabilize",
-			description: "Reduce camera shake by applying compensating keyframes.",
+			label: t("quickTools.stabilizeLabel"),
+			description: t("quickTools.stabilizeDescription"),
 			onClick: () => {
 				void stabilize();
 			},
@@ -57,8 +59,8 @@ export function QuickToolsView() {
 		},
 		{
 			id: "auto-reframe",
-			label: "Auto Reframe",
-			description: "Crop and follow the subject for a new aspect ratio.",
+			label: t("quickTools.autoReframeLabel"),
+			description: t("quickTools.autoReframeDescription"),
 			onClick: () => {
 				const target = editor.project.getActive().settings.canvasSize;
 				void reframe({ targetSize: target });
@@ -68,11 +70,10 @@ export function QuickToolsView() {
 	];
 
 	return (
-		<PanelView title="Quick Tools">
+		<PanelView title={t("quickTools.title")}>
 			<div className="flex flex-col gap-2 pb-3">
 				<p className="text-muted-foreground text-xs">
-					One-tap tools for common operations. Select a video clip first for
-					tools that need a source.
+					{t("quickTools.description")}
 				</p>
 				{tools.map((tool) => (
 					<button
