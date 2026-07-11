@@ -113,6 +113,14 @@ const LENS_BLUR_SHADER_ID: &str = "lens-blur";
 const LENS_BLUR_SHADER_SOURCE: &str = include_str!("shaders/lens-blur.wgsl");
 const UNSHARP_MASK_SHADER_ID: &str = "unsharp-mask";
 const UNSHARP_MASK_SHADER_SOURCE: &str = include_str!("shaders/unsharp-mask.wgsl");
+const INNER_GLOW_SHADER_ID: &str = "inner-glow";
+const INNER_GLOW_SHADER_SOURCE: &str = include_str!("shaders/inner-glow.wgsl");
+const EDGE_GLOW_SHADER_ID: &str = "edge-glow";
+const EDGE_GLOW_SHADER_SOURCE: &str = include_str!("shaders/edge-glow.wgsl");
+const CONTOUR_LINES_SHADER_ID: &str = "contour-lines";
+const CONTOUR_LINES_SHADER_SOURCE: &str = include_str!("shaders/contour-lines.wgsl");
+const MATTE_EDGE_SHADER_ID: &str = "matte-edge";
+const MATTE_EDGE_SHADER_SOURCE: &str = include_str!("shaders/matte-edge.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -174,6 +182,10 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
     ShaderEntry { id: BOX_BLUR_SHADER_ID, label: "effects-box-blur-shader", source: BOX_BLUR_SHADER_SOURCE },
     ShaderEntry { id: LENS_BLUR_SHADER_ID, label: "effects-lens-blur-shader", source: LENS_BLUR_SHADER_SOURCE },
     ShaderEntry { id: UNSHARP_MASK_SHADER_ID, label: "effects-unsharp-mask-shader", source: UNSHARP_MASK_SHADER_SOURCE },
+    ShaderEntry { id: INNER_GLOW_SHADER_ID, label: "effects-inner-glow-shader", source: INNER_GLOW_SHADER_SOURCE },
+    ShaderEntry { id: EDGE_GLOW_SHADER_ID, label: "effects-edge-glow-shader", source: EDGE_GLOW_SHADER_SOURCE },
+    ShaderEntry { id: CONTOUR_LINES_SHADER_ID, label: "effects-contour-lines-shader", source: CONTOUR_LINES_SHADER_SOURCE },
+    ShaderEntry { id: MATTE_EDGE_SHADER_ID, label: "effects-matte-edge-shader", source: MATTE_EDGE_SHADER_SOURCE },
 ];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
@@ -510,7 +522,9 @@ fn pack_effect_uniforms(
         | GRID_SHADER_ID
         | ZOOM_BLUR_SHADER_ID
         | BOX_BLUR_SHADER_ID
-        | LENS_BLUR_SHADER_ID => {
+        | LENS_BLUR_SHADER_ID
+        | CONTOUR_LINES_SHADER_ID
+        | MATTE_EDGE_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -694,6 +708,22 @@ fn pack_effect_uniforms(
             }
         }
         UNSHARP_MASK_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let intensity = read_number_uniform(pass, "u_intensity")?;
+            scalars[0] = amount;
+            scalars[1] = intensity;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_intensity" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        INNER_GLOW_SHADER_ID | EDGE_GLOW_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             let intensity = read_number_uniform(pass, "u_intensity")?;
             scalars[0] = amount;

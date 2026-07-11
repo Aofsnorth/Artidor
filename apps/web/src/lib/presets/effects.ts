@@ -589,6 +589,40 @@ export const effects: EffectPresetDefinition[] = [
 		"filter:contrast(1.2);",
 	),
 
+	// ── Edge & Glow (B3)
+	ef(
+		"fx-light-inner-glow",
+		"Inner Glow",
+		"Glow",
+		"Soft glow from interior edges",
+		{ amount: 40, intensity: 60 },
+		"filter:brightness(1.1);",
+	),
+	ef(
+		"fx-light-edge-glow",
+		"Edge Glow",
+		"Glow",
+		"Warm glow along edges",
+		{ amount: 35, intensity: 70 },
+		"filter:brightness(1.1);",
+	),
+	ef(
+		"fx-style-contour-lines",
+		"Contour Lines",
+		"Stylize",
+		"Edge contour line drawing",
+		{ amount: 50 },
+		"filter:contrast(2);",
+	),
+	ef(
+		"fx-style-matte-edge",
+		"Matte Edge",
+		"Stylize",
+		"Dark matte edge outline",
+		{ amount: 40 },
+		"filter:contrast(1.2);",
+	),
+
 	// ── Particles (15)
 	ef(
 		"fx-particles-snow",

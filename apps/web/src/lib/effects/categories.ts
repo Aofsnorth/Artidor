@@ -84,6 +84,10 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	tile: "Stylize",
 	checker: "Texture",
 	grid: "Texture",
+	"inner-glow": "Light",
+	"edge-glow": "Light",
+	"contour-lines": "Stylize",
+	"matte-edge": "Stylize",
 	// Color tools that currently live in the Effects panel
 	hsl: "Color",
 	curves: "Color",
