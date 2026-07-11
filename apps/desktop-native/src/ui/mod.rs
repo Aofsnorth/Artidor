@@ -110,7 +110,7 @@ pub unsafe fn paint_chrome(
 /// Full D2D port of `paint_chrome`. Delegates to `d2d_chrome::paint_chrome_d2d`
 /// so the D2D rendering path is self-contained.
 pub unsafe fn d2d_paint(
-    ctx: &D2dContext,
+    ctx: &mut D2dContext,
     layout: &layout::Layout,
     _client: &RECT,
     project: &Project,

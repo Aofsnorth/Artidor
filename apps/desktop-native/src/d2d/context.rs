@@ -1,16 +1,13 @@
 //! Direct2D / DXGI rendering context for the native desktop shell.
 
-use core::mem::ManuallyDrop;
-
 use windows::core::{BOOL, Error, Interface, Result};
 use windows::Win32::Foundation::{E_FAIL, HMODULE, HWND, RECT};
 use windows::Win32::Graphics::Direct2D::{
-    Common::{D2D1_COLOR_F, D2D1_PIXEL_FORMAT},
-    D2D1CreateDevice, D2D1_BITMAP_OPTIONS_TARGET, D2D1_BITMAP_PROPERTIES1,
-    D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_UNIT_MODE_PIXELS, ID2D1Bitmap1, ID2D1Device,
-    ID2D1DeviceContext, ID2D1RenderTarget,
+    Common::D2D1_COLOR_F,
+    D2D1CreateDevice, D2D1_DEVICE_CONTEXT_OPTIONS_NONE, D2D1_UNIT_MODE_PIXELS, ID2D1Bitmap1,
+    ID2D1Device, ID2D1DeviceContext, ID2D1LinearGradientBrush, ID2D1RadialGradientBrush,
+    ID2D1RenderTarget,
 };
-use windows::Win32::Graphics::Direct2D::Common::D2D1_ALPHA_MODE_IGNORE;
 use windows::Win32::Graphics::Direct3D::{
     D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_WARP, D3D_FEATURE_LEVEL_10_0,
     D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1,
@@ -35,12 +32,20 @@ use crate::d2d::font::D2dFontCache;
 pub struct D2dContext {
     d2d_context: ID2D1DeviceContext,
     swap_chain: IDXGISwapChain1,
+    // Keep these COM objects alive for the lifetime of the D2D context.
+    #[allow(dead_code)]
     d2d_device: ID2D1Device,
+    #[allow(dead_code)]
     dxgi_device: IDXGIDevice,
+    #[allow(dead_code)]
     d3d_device: ID3D11Device,
     target: Option<ID2D1Bitmap1>,
     rt: ID2D1RenderTarget,
     fonts: D2dFontCache,
+    /// Cached gradient brushes for chrome fills.
+    pub header_gradient: Option<ID2D1LinearGradientBrush>,
+    pub footer_gradient: Option<ID2D1LinearGradientBrush>,
+    pub radial_glow: Option<ID2D1RadialGradientBrush>,
 }
 
 impl D2dContext {
@@ -97,6 +102,9 @@ impl D2dContext {
             target: None,
             rt,
             fonts: D2dFontCache::new()?,
+            header_gradient: None,
+            footer_gradient: None,
+            radial_glow: None,
         };
         ctx.bind_target()?;
         Ok(ctx)

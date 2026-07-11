@@ -14,6 +14,8 @@ use windows::Win32::Graphics::DirectWrite::{
 use windows::Win32::System::Com::{CoInitializeEx, COINIT_MULTITHREADED};
 
 /// Cached DirectWrite text formats for the chrome.
+#[derive(Clone)]
+#[allow(dead_code)] // `display` and `display_serif` are reserved for future D2D hero text.
 pub struct D2dFontCache {
     pub body: IDWriteTextFormat,
     pub body_bold: IDWriteTextFormat,

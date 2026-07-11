@@ -6,10 +6,17 @@
 //! file is still named `welcome.rs` for historical reasons; it is exposed
 //! as the `home` module via `#[path = "welcome.rs"]` in `ui/mod.rs`.
 
+use std::path::PathBuf;
+
 use windows::Win32::Foundation::{COLORREF, HWND, POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
-    DT_CALCRECT, DT_CENTER, DT_END_ELLIPSIS, DT_LEFT, DT_SINGLELINE, DT_VCENTER, DT_WORDBREAK,
-    DrawTextW, SelectObject, SetBkMode, SetTextColor, TRANSPARENT,
+    CreateCompatibleDC, CreateDIBSection, CreateRoundRectRgn, DeleteDC, DeleteObject, HBITMAP,
+    HDC, SelectClipRgn,
+};
+use windows::Win32::Graphics::Gdi::{
+    BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, DT_CALCRECT, DT_CENTER, DT_END_ELLIPSIS,
+    DT_LEFT, DT_SINGLELINE, DT_VCENTER, DT_WORDBREAK, DrawTextW, GetDC, ReleaseDC, SelectObject,
+    SetBkMode, SetStretchBltMode, SetTextColor, StretchBlt, TRANSPARENT, HALFTONE,
 };
 use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
 
@@ -46,6 +53,10 @@ const NAV_LABELS: [&str; 7] = [
 const PROJECTS_LABEL: &str = "Projects";
 const GITHUB_PILL_TEXT: &str = "40k+";
 const GITHUB_STAR: &str = "★";
+const ARROW_RIGHT: &str = "→";
+const GITHUB_ICON: &str = "G"; // placeholder for the GitHub octocat mark
+const SPARKLE: &str = "✦"; // placeholder for the lucide Sparkles icon
+const COMMAND_ICON: &str = "⌘"; // placeholder for the lucide Command icon
 
 const STATS: [(&str, &str); 4] = [
     ("40k+", "GitHub stars"),
@@ -53,6 +64,114 @@ const STATS: [(&str, &str); 4] = [
     ("3", "Platforms (web / desktop / API)"),
     ("MIT", "License"),
 ];
+
+/// In-memory RGBA bitmap loaded from a PNG file for GDI drawing.
+struct PngBitmap {
+    hbm: HBITMAP,
+    width: i32,
+    height: i32,
+}
+
+impl PngBitmap {
+    /// Load a PNG from `path` and create a 32-bit top-down DIB section.
+    unsafe fn load(path: &std::path::Path) -> Option<Self> {
+        let img = image::open(path).ok()?.to_rgba8();
+        let (width, height) = (img.width() as i32, img.height() as i32);
+        let mut pixels = img.into_raw();
+        // BGRA byte order for GDI.
+        for chunk in pixels.chunks_exact_mut(4) {
+            chunk.swap(0, 2);
+        }
+
+        let bmi = BITMAPINFO {
+            bmiHeader: BITMAPINFOHEADER {
+                biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                biWidth: width,
+                biHeight: -height, // top-down
+                biPlanes: 1,
+                biBitCount: 32,
+                biCompression: BI_RGB.0 as u32,
+                biSizeImage: 0,
+                biXPelsPerMeter: 0,
+                biYPelsPerMeter: 0,
+                biClrUsed: 0,
+                biClrImportant: 0,
+            },
+            bmiColors: [Default::default(); 1],
+        };
+
+        let hdc_screen = GetDC(None);
+        let mut bits: *mut std::ffi::c_void = std::ptr::null_mut();
+        let hbm = CreateDIBSection(
+            Some(hdc_screen),
+            &bmi,
+            DIB_RGB_COLORS,
+            &mut bits,
+            None,
+            0,
+        )
+        .ok()?;
+        let _ = ReleaseDC(None, hdc_screen);
+
+        if !bits.is_null() {
+            let bytes = pixels.len();
+            std::ptr::copy_nonoverlapping(pixels.as_ptr(), bits as *mut u8, bytes);
+        }
+        Some(Self { hbm, width, height })
+    }
+
+    /// Draw the bitmap into `dest` using `StretchBlt`. The image is scaled
+    /// to fill the rectangle while preserving aspect if `letterbox` is true.
+    unsafe fn draw(&self, hdc: HDC, dest: &RECT) {
+        let mem = CreateCompatibleDC(Some(hdc));
+        if mem.is_invalid() {
+            return;
+        }
+        let old = SelectObject(mem, self.hbm.into());
+        let _ = SetStretchBltMode(hdc, HALFTONE);
+        let _ = StretchBlt(
+            hdc,
+            dest.left,
+            dest.top,
+            dest.right - dest.left,
+            dest.bottom - dest.top,
+            Some(mem),
+            0,
+            0,
+            self.width,
+            self.height,
+            windows::Win32::Graphics::Gdi::SRCCOPY,
+        );
+        let _ = SelectObject(mem, old);
+        let _ = DeleteDC(mem);
+    }
+}
+
+impl Drop for PngBitmap {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = DeleteObject(self.hbm.into());
+        }
+    }
+}
+
+/// Locate the repo root by walking up from the executable until `apps/web/public`
+/// is found, returning the root path. Falls back to the current working dir.
+fn find_repo_root() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        let mut dir = exe.parent().map(PathBuf::from);
+        while let Some(ref mut d) = dir {
+            let marker = d.join("apps").join("web").join("public");
+            if marker.is_dir() {
+                return d.clone();
+            }
+            if !d.pop() {
+                break;
+            }
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
 
 /// A clickable button with a rectangle and hover state.
 #[derive(Clone, Copy, Default)]
@@ -74,11 +193,21 @@ pub struct HomeState {
     pub recent: Vec<persistence::RecentProject>,
     pub hovered_recent: Option<usize>,
     pub card_rects: Vec<RECT>,
+    /// Loaded brand logo and hero preview bitmaps from the web public assets.
+    logo: Option<PngBitmap>,
+    preview: Option<PngBitmap>,
 }
 
 impl HomeState {
     /// Create a new home screen, loading the recent-projects list from disk.
     pub fn new() -> Self {
+        let root = find_repo_root();
+        let (logo, preview) = unsafe {
+            (
+                PngBitmap::load(&root.join("apps/web/public/logos/artidor/logo-uploaded.png")),
+                PngBitmap::load(&root.join("apps/web/public/editor-preview.png")),
+            )
+        };
         Self {
             open_editor_btn: HomeButton::default(),
             header_open_editor_btn: HomeButton::default(),
@@ -89,6 +218,8 @@ impl HomeState {
             recent: persistence::load_recent_projects(),
             hovered_recent: None,
             card_rects: Vec::new(),
+            logo,
+            preview,
         }
     }
 
@@ -212,20 +343,24 @@ unsafe fn draw_header(
         );
 
         // Brand logo.
-        let logo = RECT {
+        let logo_rect = RECT {
             left: client.left + 24,
             top: client.top + (HEADER_H - LOGO_SIZE) / 2,
             right: client.left + 24 + LOGO_SIZE,
             bottom: client.top + (HEADER_H - LOGO_SIZE) / 2 + LOGO_SIZE,
         };
-        rounded_fill_rect(hdc, &logo, 0x2A3F8C, 4);
-        draw_text_centered(hdc, "A", &logo, 0xFFFFFF);
+        if let Some(ref logo) = state.logo {
+            logo.draw(hdc, &logo_rect);
+        } else {
+            rounded_fill_rect(hdc, &logo_rect, 0x2A3F8C, 4);
+            draw_text_centered(hdc, "A", &logo_rect, 0xFFFFFF);
+        }
 
         // Brand name.
         let brand = RECT {
-            left: logo.right + 10,
+            left: logo_rect.right + 10,
             top: client.top,
-            right: logo.right + 100,
+            right: logo_rect.right + 100,
             bottom: client.top + HEADER_H,
         };
         let prev = SelectObject(hdc, fonts.header.into());
@@ -237,7 +372,8 @@ unsafe fn draw_header(
         let star_w = text_size(hdc, GITHUB_STAR).0;
         let pill_text_w = text_size(hdc, GITHUB_PILL_TEXT).0;
         let github_w = star_w + pill_text_w + 22;
-        let open_w = text_size(hdc, "Open editor").0 + 28;
+        let sparkle_w = text_size(hdc, SPARKLE).0;
+        let open_w = text_size(hdc, "Open editor").0 + sparkle_w + 34;
         let _ = SelectObject(hdc, fonts.body.into());
 
         let right_end = client.right - 24;
@@ -271,7 +407,24 @@ unsafe fn draw_header(
             0xFFFFFF
         };
         rounded_fill_rect(hdc, &header_open, header_open_bg, PILL_H / 2);
-        draw_text_centered(hdc, "Open editor", &header_open, LANDING_BLACK);
+        let open_text_w = text_size(hdc, "Open editor").0;
+        let open_content_w = sparkle_w + open_text_w + 6;
+        let open_content_x = header_open.left + (open_w - open_content_w) / 2;
+        let open_sparkle_r = RECT {
+            left: open_content_x,
+            top: header_open.top,
+            right: open_content_x + sparkle_w,
+            bottom: header_open.bottom,
+        };
+        draw_text_left(hdc, SPARKLE, &open_sparkle_r, LANDING_BLACK);
+        let open_text_x = open_sparkle_r.right + 6;
+        let open_text_r = RECT {
+            left: open_text_x,
+            top: header_open.top,
+            right: open_text_x + open_text_w,
+            bottom: header_open.bottom,
+        };
+        draw_text_left(hdc, "Open editor", &open_text_r, LANDING_BLACK);
 
         // GitHub stars pill.
         let github_bg = if state.github_pill.hovered {
@@ -398,17 +551,29 @@ unsafe fn draw_hero(
         };
         draw_text_left(hdc, eyebrow_text, &eyebrow_text_r, LANDING_TEXT_MUTED);
 
-        // Headline — line 1.
-        let line1_h = 54;
+        // Headline — editorial serif, with "respects" tinted silver to
+        // approximate the web's gradient/glow accent. Uses a larger hero
+        // font (64px) to match the web's oversized landing typography.
+        let line1_h = 76;
+        let line2_h = 76;
         let line1 = RECT {
             left: client.left,
-            top: eyebrow.bottom + 16,
+            top: eyebrow.bottom + 20,
             right: client.right,
-            bottom: eyebrow.bottom + 16 + line1_h,
+            bottom: eyebrow.bottom + 20 + line1_h,
         };
-        let _ = SelectObject(hdc, fonts.display.into());
+        let line2_top = line1.bottom + 6;
+        let line2 = RECT {
+            left: client.left,
+            top: line2_top,
+            right: client.right,
+            bottom: line2_top + line2_h,
+        };
+
+        let _ = SelectObject(hdc, fonts.hero_serif.into());
         SetTextColor(hdc, COLORREF(rgb(0xFFFFFF)));
         SetBkMode(hdc, TRANSPARENT);
+
         let mut t1: Vec<u16> = "The video editor".encode_utf16().collect();
         let mut r1 = line1;
         let _ = DrawTextW(
@@ -418,59 +583,42 @@ unsafe fn draw_hero(
             DT_CENTER | DT_SINGLELINE | DT_VCENTER,
         );
 
-        // Headline — line 2 with "respects" in serif silver.
-        let line2_h = 54;
-        let line2_top = line1.bottom + 4;
-        let line2 = RECT {
-            left: client.left,
-            top: line2_top,
-            right: client.right,
-            bottom: line2_top + line2_h,
-        };
-
-        let that = "that ";
-        let respects = "respects";
-        let machine = " your machine.";
-
-        let (that_w, _) = text_size(hdc, that);
-        let _ = SelectObject(hdc, fonts.display_serif.into());
-        let (respects_w, _) = text_size(hdc, respects);
-        let _ = SelectObject(hdc, fonts.display.into());
-        let (machine_w, _) = text_size(hdc, machine);
-
-        let total_w = that_w + respects_w + machine_w;
+        let prefix = "that ";
+        let accent = "respects";
+        let suffix = " your machine.";
+        let (prefix_w, _) = text_size(hdc, prefix);
+        let (accent_w, _) = text_size(hdc, accent);
+        let (suffix_w, _) = text_size(hdc, suffix);
+        let total_w = prefix_w + accent_w + suffix_w;
         let line2_x = cx - total_w / 2;
-        let line2_y = line2_top + (line2_h - 44) / 2;
 
         let mut r = RECT {
             left: line2_x,
-            top: line2_y,
-            right: line2_x + that_w + 4,
-            bottom: line2_y + 44,
+            top: line2_top,
+            right: line2_x + prefix_w + 4,
+            bottom: line2_top + line2_h,
         };
-        let mut buf: Vec<u16> = that.encode_utf16().collect();
+        let mut buf: Vec<u16> = prefix.encode_utf16().collect();
         let _ = DrawTextW(hdc, &mut buf, &mut r, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-        let _ = SelectObject(hdc, fonts.display_serif.into());
         SetTextColor(hdc, COLORREF(rgb(LANDING_SILVER)));
         let mut r = RECT {
-            left: line2_x + that_w,
-            top: line2_y,
-            right: line2_x + that_w + respects_w + 4,
-            bottom: line2_y + 44,
+            left: line2_x + prefix_w,
+            top: line2_top,
+            right: line2_x + prefix_w + accent_w + 4,
+            bottom: line2_top + line2_h,
         };
-        let mut buf: Vec<u16> = respects.encode_utf16().collect();
+        let mut buf: Vec<u16> = accent.encode_utf16().collect();
         let _ = DrawTextW(hdc, &mut buf, &mut r, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
-        let _ = SelectObject(hdc, fonts.display.into());
         SetTextColor(hdc, COLORREF(rgb(0xFFFFFF)));
         let mut r = RECT {
-            left: line2_x + that_w + respects_w,
-            top: line2_y,
+            left: line2_x + prefix_w + accent_w,
+            top: line2_top,
             right: line2_x + total_w + 4,
-            bottom: line2_y + 44,
+            bottom: line2_top + line2_h,
         };
-        let mut buf: Vec<u16> = machine.encode_utf16().collect();
+        let mut buf: Vec<u16> = suffix.encode_utf16().collect();
         let _ = DrawTextW(hdc, &mut buf, &mut r, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
         let _ = SelectObject(hdc, prev);
@@ -506,8 +654,16 @@ unsafe fn draw_hero(
         let _ = SelectObject(hdc, fonts.body.into());
         let primary_text = "Open the editor";
         let secondary_text = "Star on GitHub";
-        let primary_w = text_size(hdc, primary_text).0 + 44;
-        let secondary_w = text_size(hdc, secondary_text).0 + 44 + text_size(hdc, GITHUB_STAR).0;
+        let arrow_w = text_size(hdc, ARROW_RIGHT).0;
+        let gh_icon_w = text_size(hdc, GITHUB_ICON).0;
+        let star_w = text_size(hdc, GITHUB_STAR).0;
+        let primary_w = text_size(hdc, primary_text).0 + 44 + arrow_w + 6;
+        let secondary_w = text_size(hdc, secondary_text).0
+            + 44
+            + gh_icon_w
+            + star_w
+            + text_size(hdc, GITHUB_PILL_TEXT).0
+            + 18;
         let gap = 12;
         let total_w = primary_w + gap + secondary_w;
         let cta_y = tagline_bottom + 28;
@@ -540,7 +696,23 @@ unsafe fn draw_hero(
             0xFFFFFF
         };
         rounded_fill_rect(hdc, &primary, primary_bg, CTA_H / 2);
-        draw_text_centered(hdc, primary_text, &primary, LANDING_BLACK);
+        let primary_text_w = text_size(hdc, primary_text).0;
+        let primary_content_w = primary_text_w + arrow_w + 6;
+        let primary_content_x = primary.left + (primary_w - primary_content_w) / 2;
+        let primary_text_r = RECT {
+            left: primary_content_x,
+            top: primary.top,
+            right: primary_content_x + primary_text_w,
+            bottom: primary.bottom,
+        };
+        draw_text_left(hdc, primary_text, &primary_text_r, LANDING_BLACK);
+        let arrow_r = RECT {
+            left: primary_text_r.right + 6,
+            top: primary.top,
+            right: primary_text_r.right + 6 + arrow_w,
+            bottom: primary.bottom,
+        };
+        draw_text_left(hdc, ARROW_RIGHT, &arrow_r, LANDING_BLACK);
 
         let secondary_bg = if state.github_btn.hovered {
             0x1c1c20
@@ -550,30 +722,49 @@ unsafe fn draw_hero(
         rounded_fill_rect(hdc, &secondary, secondary_bg, CTA_H / 2);
         rounded_border_rect(hdc, &secondary, LANDING_PILL_BORDER, CTA_H / 2);
 
-        let star_w = text_size(hdc, GITHUB_STAR).0;
-        let content_w = star_w + text_size(hdc, secondary_text).0 + 6;
-        let content_x = secondary.left + (secondary_w - content_w) / 2;
-        let star_r = RECT {
+        let gh_count_w = text_size(hdc, GITHUB_PILL_TEXT).0;
+        let secondary_content_w = gh_icon_w + text_size(hdc, secondary_text).0 + star_w + gh_count_w + 18;
+        let content_x = secondary.left + (secondary_w - secondary_content_w) / 2;
+        let gh_icon_r = RECT {
             left: content_x,
             top: secondary.top,
-            right: content_x + star_w,
+            right: content_x + gh_icon_w,
             bottom: secondary.bottom,
         };
-        draw_text_left(hdc, GITHUB_STAR, &star_r, AMBER);
+        draw_text_left(hdc, GITHUB_ICON, &gh_icon_r, TEXT_BRIGHT);
         let secondary_text_r = RECT {
-            left: content_x + star_w + 6,
+            left: gh_icon_r.right + 6,
             top: secondary.top,
-            right: secondary.right - 8,
+            right: gh_icon_r.right + 6 + text_size(hdc, secondary_text).0,
             bottom: secondary.bottom,
         };
         draw_text_left(hdc, secondary_text, &secondary_text_r, TEXT_BRIGHT);
+        let star_r = RECT {
+            left: secondary_text_r.right + 6,
+            top: secondary.top,
+            right: secondary_text_r.right + 6 + star_w,
+            bottom: secondary.bottom,
+        };
+        draw_text_left(hdc, GITHUB_STAR, &star_r, AMBER);
+        let count_r = RECT {
+            left: star_r.right + 4,
+            top: secondary.top,
+            right: star_r.right + 4 + gh_count_w,
+            bottom: secondary.bottom,
+        };
+        draw_text_left(hdc, GITHUB_PILL_TEXT, &count_r, TEXT_BRIGHT);
 
         secondary.bottom
     }
 }
 
 /// Draw the glassmorphic editor preview frame.
-unsafe fn draw_preview(hdc: windows::Win32::Graphics::Gdi::HDC, fonts: &FontCache, rect: &RECT) {
+unsafe fn draw_preview(
+    hdc: windows::Win32::Graphics::Gdi::HDC,
+    state: &HomeState,
+    fonts: &FontCache,
+    rect: &RECT,
+) {
     unsafe {
         let _w = rect.right - rect.left;
         let h = rect.bottom - rect.top;
@@ -624,58 +815,82 @@ unsafe fn draw_preview(hdc: windows::Win32::Graphics::Gdi::HDC, fonts: &FontCach
 
         let _ = SelectObject(hdc, fonts.tiny.into());
         let preview_label = "artidor — live preview";
+        let cmd_w = text_size(hdc, COMMAND_ICON).0;
         let label_w = text_size(hdc, preview_label).0;
-        let label_r = RECT {
-            left: rect.left + 56,
+        let title_x = rect.left + 56;
+        let cmd_r = RECT {
+            left: title_x,
             top: rect.top,
-            right: rect.left + 56 + label_w + 4,
+            right: title_x + cmd_w,
+            bottom: rect.top + chrome_h,
+        };
+        draw_text_left(hdc, COMMAND_ICON, &cmd_r, TEXT_DIM);
+        let label_r = RECT {
+            left: cmd_r.right + 4,
+            top: rect.top,
+            right: cmd_r.right + 4 + label_w + 4,
             bottom: rect.top + chrome_h,
         };
         draw_text_left(hdc, preview_label, &label_r, TEXT_DIM);
 
         let ai_label = "AI editing";
-        let ai_w = text_size(hdc, ai_label).0 + text_size(hdc, GITHUB_STAR).0 + 4;
+        let sparkle_w = text_size(hdc, SPARKLE).0;
+        let ai_w = text_size(hdc, ai_label).0 + sparkle_w + 8;
         let ai_r = RECT {
             left: rect.right - ai_w - 16,
             top: rect.top,
             right: rect.right - 16,
             bottom: rect.top + chrome_h,
         };
-        let star_r = RECT {
+        let sparkle_r = RECT {
             left: ai_r.left,
             top: ai_r.top,
-            right: ai_r.left + text_size(hdc, GITHUB_STAR).0,
+            right: ai_r.left + sparkle_w,
             bottom: ai_r.bottom,
         };
-        draw_text_left(hdc, GITHUB_STAR, &star_r, AMBER);
+        draw_text_left(hdc, SPARKLE, &sparkle_r, AMBER);
         let ai_text_r = RECT {
-            left: star_r.right + 4,
+            left: sparkle_r.right + 4,
             top: ai_r.top,
             right: ai_r.right,
             bottom: ai_r.bottom,
         };
         draw_text_left(hdc, ai_label, &ai_text_r, TEXT_FAINT);
 
-        let _ = windows::Win32::Graphics::Gdi::RestoreDC(hdc, saved);
-
-        // Placeholder screenshot area.
-        let placeholder = RECT {
+        // Screenshot area clipped to the rounded frame.
+        let image = RECT {
             left: rect.left + 1,
             top: rect.top + chrome_h + 1,
             right: rect.right - 1,
             bottom: rect.bottom - 1,
         };
-        gradient_fill_v(hdc, &placeholder, 0x0c0c10, 0x111114);
+        let rgn = CreateRoundRectRgn(
+            rect.left,
+            rect.top,
+            rect.right + 1,
+            rect.bottom + 1,
+            24,
+            24,
+        );
+        let _ = SelectClipRgn(hdc, Some(rgn));
+        if let Some(ref preview) = state.preview {
+            preview.draw(hdc, &image);
+        } else {
+            gradient_fill_v(hdc, &image, 0x0c0c10, 0x111114);
+            let _ = SelectObject(hdc, fonts.body.into());
+            let center_label = "Editor preview";
+            let center_r = RECT {
+                left: rect.left,
+                top: rect.top + chrome_h + (h - chrome_h) / 2 - 10,
+                right: rect.right,
+                bottom: rect.top + chrome_h + (h - chrome_h) / 2 + 20,
+            };
+            draw_text_centered(hdc, center_label, &center_r, TEXT_FAINT);
+        }
+        let _ = SelectClipRgn(hdc, None);
+        let _ = windows::Win32::Graphics::Gdi::DeleteObject(rgn.into());
 
-        let _ = SelectObject(hdc, fonts.body.into());
-        let center_label = "Editor preview";
-        let center_r = RECT {
-            left: rect.left,
-            top: rect.top + chrome_h + (h - chrome_h) / 2 - 10,
-            right: rect.right,
-            bottom: rect.top + chrome_h + (h - chrome_h) / 2 + 20,
-        };
-        draw_text_centered(hdc, center_label, &center_r, TEXT_FAINT);
+        let _ = windows::Win32::Graphics::Gdi::RestoreDC(hdc, saved);
 
         // Bottom reflection.
         let reflection_h = 48;
@@ -829,7 +1044,7 @@ pub unsafe fn draw_home(
             right: preview_x + preview_w,
             bottom: preview_y + preview_h,
         };
-        draw_preview(hdc, fonts, &preview);
+        draw_preview(hdc, state, fonts, &preview);
 
         let stats = RECT {
             left: preview_x,

@@ -133,7 +133,7 @@ impl WindowState {
                     }
                 }
             },
-            mode: AppMode::Editor,
+            mode: AppMode::Home,
             home: HomeState::new(),
             projects: ProjectsState::new(),
             last_autosave_ms: 0,
