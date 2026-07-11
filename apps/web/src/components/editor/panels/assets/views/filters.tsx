@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { PlusSignIcon } from "@hugeicons/core-free-icons";
@@ -9,6 +9,7 @@ import {
 	FILTER_CATEGORIES,
 	FILTER_PRESETS,
 	type FilterPreset,
+	type FilterCategory,
 } from "@/lib/filters";
 import {
 	ALL_CATEGORY,
@@ -28,22 +29,54 @@ import {
 } from "@/components/editor/panels/assets/views/components/catalog-search";
 import { useI18n } from "@/lib/i18n";
 
-const FILTER_LABELS = FILTER_CATEGORIES.map((c) => c.label);
-const FILTER_ID_TO_LABEL = new Map(
-	FILTER_CATEGORIES.map((c) => [c.id, c.label]),
-);
+const FILTER_CATEGORY_TO_KEY: Record<FilterCategory, string> = {
+	cinematic: "filters.category.cinematic",
+	vintage: "filters.category.vintage",
+	film: "filters.category.film",
+	bw: "filters.category.bw",
+	warm: "filters.category.warm",
+	cool: "filters.category.cool",
+	moody: "filters.category.moody",
+	dream: "filters.category.dream",
+	retro: "filters.category.retro",
+	neon: "filters.category.neon",
+	polaroid: "filters.category.polaroid",
+	movie: "filters.category.movie",
+	korea: "filters.category.korea",
+	social: "filters.category.social",
+};
 
 export function FiltersView() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
 	const editor = useEditor();
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => FILTER_CATEGORIES.map((c) => t(FILTER_CATEGORY_TO_KEY[c.id])),
+		[t],
+	);
+	const idToLabel = useMemo(
+		() =>
+			new Map(
+				FILTER_CATEGORIES.map((c) => [
+					c.id,
+					t(FILTER_CATEGORY_TO_KEY[c.id]),
+				]),
+			),
+		[t],
+	);
 
 	const filtered = useMemo(() => {
 		const categoryFiltered = filterByCategory({
 			items: FILTER_PRESETS,
 			category,
-			getCategory: (p) => FILTER_ID_TO_LABEL.get(p.category),
+			getCategory: (p) => idToLabel.get(p.category),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -51,10 +84,10 @@ export function FiltersView() {
 			getText: (preset) => [
 				preset.name,
 				preset.id,
-				FILTER_ID_TO_LABEL.get(preset.category),
+				idToLabel.get(preset.category),
 			],
 		});
-	}, [category, query]);
+	}, [category, query, idToLabel]);
 
 	return (
 		<PanelView title={t("catalog.titleFilters")}>
@@ -63,7 +96,7 @@ export function FiltersView() {
 					{t("catalog.descriptionFilters")}
 				</p>
 				<CategoryBar
-					categories={FILTER_LABELS}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>

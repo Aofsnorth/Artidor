@@ -52,8 +52,25 @@ const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map((effect) => ({
  */
 const EFFECT_PANEL_CATEGORIES = EFFECT_CATEGORIES;
 
+const EFFECT_CATEGORY_TO_KEY: Record<string, string> = {
+	Basic: "effectsCatalog.category.basic",
+	Blur: "effectsCatalog.category.blur",
+	Light: "effectsCatalog.category.light",
+	Glitch: "effectsCatalog.category.glitch",
+	Retro: "effectsCatalog.category.retro",
+	Cinematic: "effectsCatalog.category.cinematic",
+	Stylize: "effectsCatalog.category.stylize",
+	Distortion: "effectsCatalog.category.distortion",
+	Transform: "effectsCatalog.category.transform",
+	Text: "effectsCatalog.category.text",
+	Particles: "effectsCatalog.category.particles",
+	Texture: "effectsCatalog.category.texture",
+	Artistic: "effectsCatalog.category.artistic",
+	Generator: "effectsCatalog.category.generator",
+};
+
 export function EffectsView() {
-	const { t } = useI18n();
+	const { t, locale } = useI18n();
 	const effects = useMemo(() => {
 		for (const effect of PRESET_EFFECTS) {
 			if (!effectsRegistry.has(effect.type)) {
@@ -70,13 +87,40 @@ export function EffectsView() {
 	const [category, setCategory] = useState(ALL_CATEGORY);
 	const [query, setQuery] = useState("");
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset category selection when locale changes
+	useEffect(() => {
+		setCategory(ALL_CATEGORY);
+	}, [locale]);
+
+	const categoryLabels = useMemo(
+		() => EFFECT_PANEL_CATEGORIES.map((c) => t(EFFECT_CATEGORY_TO_KEY[c])),
+		[t],
+	);
+	const categoryToLabel = useMemo(
+		() =>
+			new Map<string, string>(
+				EFFECT_PANEL_CATEGORIES.map((c) => [
+					c,
+					t(EFFECT_CATEGORY_TO_KEY[c]),
+				]),
+			),
+		[t],
+	);
+
+	const getEffectCategoryLabel = useCallback(
+		(type: string) => {
+			const cat =
+				PRESET_EFFECT_CATEGORY_BY_TYPE.get(type) ?? getEffectCategory(type);
+			return cat ? categoryToLabel.get(cat) : undefined;
+		},
+		[categoryToLabel],
+	);
+
 	const filtered = useMemo(() => {
 		const categoryFiltered = filterByCategory({
 			items: effects,
 			category,
-			getCategory: (def) =>
-				PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
-				getEffectCategory(def.type),
+			getCategory: (def) => getEffectCategoryLabel(def.type),
 		});
 		return filterCatalogItems({
 			items: categoryFiltered,
@@ -84,12 +128,11 @@ export function EffectsView() {
 			getText: (def) => [
 				def.name,
 				def.type,
-				PRESET_EFFECT_CATEGORY_BY_TYPE.get(def.type) ??
-					getEffectCategory(def.type),
+				getEffectCategoryLabel(def.type),
 				...(def.keywords ?? []),
 			],
 		});
-	}, [effects, category, query]);
+	}, [effects, category, query, getEffectCategoryLabel]);
 
 	return (
 		<PanelView
@@ -101,7 +144,7 @@ export function EffectsView() {
 					{t("catalog.descriptionEffects")}
 				</p>
 				<CategoryBar
-					categories={EFFECT_PANEL_CATEGORIES}
+					categories={categoryLabels}
 					value={category}
 					onChange={setCategory}
 				/>
