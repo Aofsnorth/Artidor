@@ -1,15 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEditor } from "@/hooks/use-editor";
 import { useI18n } from "@/lib/i18n";
 import { stickers as presetStickers } from "@/lib/presets/stickers";
@@ -32,6 +30,36 @@ import { useStickersStore } from "@/stores/stickers-store";
 import { cn } from "@/utils/ui";
 import { HappyIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import {
+	ALL_CATEGORY,
+	CategoryBar,
+} from "@/components/editor/panels/assets/views/category-bar";
+import { CatalogSearch } from "@/components/editor/panels/assets/views/components/catalog-search";
+
+const STICKER_CATEGORY_KEYS: Exclude<StickerCategory, "all">[] = [
+	"flags",
+	"shapes",
+	"emoji",
+	"reactions",
+	"vlog",
+	"business",
+	"decors",
+	"retro",
+];
+
+const STICKER_CATEGORY_TO_KEY: Record<
+	Exclude<StickerCategory, "all">,
+	string
+> = {
+	flags: "catalog.elementCategory.flags",
+	shapes: "catalog.elementCategory.shapes",
+	emoji: "catalog.elementCategory.emoji",
+	reactions: "catalog.elementCategory.reactions",
+	vlog: "catalog.elementCategory.vlog",
+	business: "catalog.elementCategory.business",
+	decors: "catalog.elementCategory.decors",
+	retro: "catalog.elementCategory.retro",
+};
 
 export function StickersView() {
 	const { t } = useI18n();
@@ -52,54 +80,64 @@ export function StickersView() {
 		}
 	}, [browseContent, browseStickers, viewMode]);
 
+	const categoryLabels = useMemo(
+		() => STICKER_CATEGORY_KEYS.map((key) => t(STICKER_CATEGORY_TO_KEY[key])),
+		[t],
+	);
+
+	const keyToLabel = useMemo(
+		() =>
+			new Map<StickerCategory, string>(
+				STICKER_CATEGORY_KEYS.map((key) => [
+					key,
+					t(STICKER_CATEGORY_TO_KEY[key]),
+				]),
+			),
+		[t],
+	);
+
+	const selectedLabel =
+		selectedCategory === "all"
+			? ALL_CATEGORY
+			: (keyToLabel.get(selectedCategory) ?? ALL_CATEGORY);
+
+	const handleCategoryChange = useCallback(
+		(label: string) => {
+			if (label === ALL_CATEGORY) {
+				setSelectedCategory({ category: "all" });
+				return;
+			}
+
+			for (const [key, categoryLabel] of keyToLabel) {
+				if (categoryLabel === label) {
+					setSelectedCategory({ category: key });
+					return;
+				}
+			}
+		},
+		[keyToLabel, setSelectedCategory],
+	);
+
 	return (
 		<div className="flex h-full flex-col py-2">
-			<div className="px-2">
-				<Input
-					size="sm"
-					variant="default"
-					placeholder={t("stickers.searchPlaceholder")}
+			<div className="flex flex-col gap-2 px-2">
+				<CategoryBar
+					categories={categoryLabels}
+					value={selectedLabel}
+					onChange={handleCategoryChange}
+				/>
+				<CatalogSearch
 					value={searchQuery}
-					onChange={(e) => {
-						setSearchQuery({ query: e.target.value });
-						void searchStickers({ query: e.target.value });
+					onChange={(value) => {
+						setSearchQuery({ query: value });
+						void searchStickers({ query: value });
 					}}
-					showClearIcon
-					onClear={() => {
-						setSearchQuery({ query: "" });
-						void searchStickers({ query: "" });
-					}}
-					className="w-full"
-					containerClassName="w-full"
+					placeholder={t("catalog.searchElements")}
 				/>
 			</div>
-
-			<Tabs
-				value={selectedCategory}
-				onValueChange={(value) => {
-					setSelectedCategory({ category: value as StickerCategory });
-				}}
-				variant="underline"
-				className="mt-2 flex min-h-0 flex-1 flex-col"
-			>
-				<TabsList
-					aria-label={t("stickers.categoriesAria")}
-					className="w-full overflow-x-auto scrollbar-hidden"
-				>
-					{Object.entries(STICKER_CATEGORIES).map(([key, label]) => (
-						<TabsTrigger
-							key={key}
-							value={key}
-							className="shrink-0 whitespace-nowrap"
-						>
-							{label}
-						</TabsTrigger>
-					))}
-				</TabsList>
-				<div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
-					<StickersContentView />
-				</div>
-			</Tabs>
+			<div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
+				<StickersContentView />
+			</div>
 		</div>
 	);
 }
@@ -437,7 +475,7 @@ function PresetStickerItem({ item }: { item: PresetSticker }) {
 				}}
 				onAddToTimeline={handleAdd}
 				aspectRatio={1}
-				shouldShowLabel={false}
+				shouldShowLabel
 				isRounded
 				variant="card"
 				containerClassName="w-full"
@@ -581,7 +619,7 @@ function StickerItem({
 				dragData={dragData}
 				onAddToTimeline={handleAdd}
 				aspectRatio={1}
-				shouldShowLabel={false}
+				shouldShowLabel
 				isRounded
 				variant="card"
 				containerClassName={containerClassName ?? "w-full"}
