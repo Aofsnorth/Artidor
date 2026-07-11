@@ -13,6 +13,8 @@ export function resolveMediaGraphicStyleAtTime({
 }): MediaGraphicStyle | undefined {
 	if (!baseStyle && !animations) return undefined;
 	const stroke = baseStyle?.stroke;
+	const border = baseStyle?.border;
+	const shadow = baseStyle?.shadow;
 	return {
 		...baseStyle,
 		fillColor: resolveAnimationPathValueAtTime({
@@ -41,6 +43,58 @@ export function resolveMediaGraphicStyleAtTime({
 						propertyPath: "graphicStyle.stroke.width",
 						localTime,
 						fallbackValue: stroke.width,
+					}),
+				}
+			: undefined,
+		border: border
+			? {
+					...border,
+					color: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.border.color",
+						localTime,
+						fallbackValue: border.color,
+					}),
+					width: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.border.width",
+						localTime,
+						fallbackValue: border.width,
+					}),
+					opacity: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.border.opacity",
+						localTime,
+						fallbackValue: border.opacity ?? 1,
+					}),
+				}
+			: undefined,
+		shadow: shadow
+			? {
+					...shadow,
+					color: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.shadow.color",
+						localTime,
+						fallbackValue: shadow.color,
+					}),
+					blur: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.shadow.blur",
+						localTime,
+						fallbackValue: shadow.blur,
+					}),
+					offsetX: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.shadow.offsetX",
+						localTime,
+						fallbackValue: shadow.offsetX,
+					}),
+					offsetY: resolveAnimationPathValueAtTime({
+						animations,
+						propertyPath: "graphicStyle.shadow.offsetY",
+						localTime,
+						fallbackValue: shadow.offsetY,
 					}),
 				}
 			: undefined,
