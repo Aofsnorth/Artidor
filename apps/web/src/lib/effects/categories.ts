@@ -75,6 +75,10 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	wave: "Stylize",
 	ripple: "Stylize",
 	fisheye: "Stylize",
+	kaleidoscope: "Stylize",
+	tile: "Stylize",
+	checker: "Texture",
+	grid: "Texture",
 	// Color tools that currently live in the Effects panel
 	hsl: "Color",
 	curves: "Color",
