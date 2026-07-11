@@ -20,9 +20,9 @@ import {
 } from "@/components/section";
 import { BackgroundContent } from "./background";
 import {
-	FEATURE_LABELS,
 	TOGGLEABLE_FEATURES,
 	useFeatureFlagsStore,
+	type ToggleableFeature,
 } from "@/stores/feature-flags-store";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,6 +36,7 @@ import { cn } from "@/utils/ui";
 import { dimensionToAspectRatio } from "@/utils/geometry";
 import { formatNumberForDisplay } from "@/utils/math";
 import { OcSquarePlusIcon } from "@/components/icons";
+import { useI18n } from "@/lib/i18n";
 import type { TCanvasSize } from "@/lib/project/types";
 
 type SettingsView = "project-info" | "background" | "features";
@@ -102,6 +103,7 @@ function useCanvasDimensionDraft({
 }
 
 export function SettingsView() {
+	const { t } = useI18n();
 	const [view, setView] = useState<SettingsView>("project-info");
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
@@ -221,9 +223,15 @@ export function SettingsView() {
 			actions={
 				<Tabs value={view} onValueChange={(v) => setView(v as SettingsView)}>
 					<TabsList>
-						<TabsTrigger value="project-info">Project info</TabsTrigger>
-						<TabsTrigger value="background">Background</TabsTrigger>
-						<TabsTrigger value="features">Features</TabsTrigger>
+						<TabsTrigger value="project-info">
+							{t("editor.settings.tab.projectInfo")}
+						</TabsTrigger>
+						<TabsTrigger value="background">
+							{t("editor.settings.tab.background")}
+						</TabsTrigger>
+						<TabsTrigger value="features">
+							{t("editor.settings.tab.features")}
+						</TabsTrigger>
 					</TabsList>
 				</Tabs>
 			}
@@ -232,7 +240,9 @@ export function SettingsView() {
 				<div className="flex flex-col">
 					<Section showTopBorder={false}>
 						<SectionHeader>
-							<SectionTitle className="flex-1">Name</SectionTitle>
+							<SectionTitle className="flex-1">
+								{t("editor.settings.section.name")}
+							</SectionTitle>
 							<span className="text-sm truncate">
 								{activeProject.metadata.name}
 							</span>
@@ -240,7 +250,9 @@ export function SettingsView() {
 					</Section>
 					<Section showTopBorder={false}>
 						<SectionHeader className="justify-between">
-							<SectionTitle className="flex-1">Frame rate</SectionTitle>
+							<SectionTitle className="flex-1">
+								{t("editor.settings.section.frameRate")}
+							</SectionTitle>
 							<Select
 								value={String(
 									Math.round(frameRateToFloat(activeProject.settings.fps)),
@@ -251,7 +263,7 @@ export function SettingsView() {
 								}}
 							>
 								<SelectTrigger className="bg-transparent border-none p-1 h-auto">
-									<SelectValue placeholder="Select a frame rate" />
+									<SelectValue placeholder={t("editor.settings.frameRatePlaceholder")} />
 								</SelectTrigger>
 								<SelectContent>
 									{FPS_PRESETS.map((preset) => (
@@ -269,7 +281,9 @@ export function SettingsView() {
 						sectionKey="settings:aspect-ratio"
 					>
 						<SectionHeader>
-							<SectionTitle className="flex-1">Aspect ratio</SectionTitle>
+							<SectionTitle className="flex-1">
+								{t("editor.settings.section.aspectRatio")}
+							</SectionTitle>
 						</SectionHeader>
 						<SectionContent className="px-2 flex flex-col gap-1 pb-2">
 							{presetItems.map((preset) => (
@@ -288,7 +302,7 @@ export function SettingsView() {
 							<div className="pb-2">
 								<AspectRatioItem
 									key="custom"
-									label="Custom"
+									label={t("editor.settings.section.custom")}
 									previewIcon={<OcSquarePlusIcon />}
 									isSelected={isCustomSelected}
 									onClick={selectCustomCanvasSize}
@@ -297,7 +311,7 @@ export function SettingsView() {
 											<NumberField
 												value={widthDraft.displayValue}
 												className="w-full"
-												aria-label="Canvas width"
+												aria-label={t("editor.settings.aria.canvasWidth")}
 												onFocus={widthDraft.onFocus}
 												onChange={widthDraft.onChange}
 												onBlur={widthDraft.onBlur}
@@ -305,7 +319,7 @@ export function SettingsView() {
 											<NumberField
 												value={heightDraft.displayValue}
 												className="w-full"
-												aria-label="Canvas height"
+												aria-label={t("editor.settings.aria.canvasHeight")}
 												onFocus={heightDraft.onFocus}
 												onChange={heightDraft.onChange}
 												onBlur={heightDraft.onBlur}
@@ -385,27 +399,41 @@ function AspectRatioPreview({ ratio }: { ratio?: string }) {
  * disappear from the tab bar and persist across reloads.
  */
 function FeaturesContent() {
+	const { t } = useI18n();
 	const enabled = useFeatureFlagsStore((s) => s.enabled);
 	const setEnabled = useFeatureFlagsStore((s) => s.setEnabled);
+
+	const featureLabelKeys: Record<ToggleableFeature, string> = {
+		ai: "editor.settings.featureLabels.ai",
+		captions: "editor.settings.featureLabels.captions",
+		transitions: "editor.settings.featureLabels.transitions",
+		effects: "editor.settings.featureLabels.effects",
+		audio: "editor.settings.featureLabels.audio",
+		motion: "editor.settings.featureLabels.motion",
+		adjustment: "editor.settings.featureLabels.adjustment",
+		scripting: "editor.settings.featureLabels.scripting",
+	};
 
 	return (
 		<div className="flex flex-col">
 			<Section showTopBorder={false}>
 				<SectionHeader>
-					<SectionTitle className="flex-1">Built-in features</SectionTitle>
+					<SectionTitle className="flex-1">
+						{t("editor.settings.section.builtInFeatures")}
+					</SectionTitle>
 				</SectionHeader>
 				<SectionContent className="flex flex-col gap-1 px-2 pb-2">
 					<p className="px-1 pb-1 text-xs text-muted-foreground">
-						Turn off tools you don't use — they're removed from the tab bar.
+						{t("editor.settings.featureDescription")}
 					</p>
 					{TOGGLEABLE_FEATURES.map((feature) => (
 						<div
 							key={feature}
 							className="flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-muted/40"
 						>
-							<span className="text-sm">{FEATURE_LABELS[feature]}</span>
+							<span className="text-sm">{t(featureLabelKeys[feature])}</span>
 							<Switch
-								aria-label={FEATURE_LABELS[feature]}
+								aria-label={t(featureLabelKeys[feature])}
 								checked={enabled[feature] !== false}
 								onCheckedChange={(value) => setEnabled(feature, value)}
 							/>
