@@ -969,6 +969,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"templates.category.slideshow": "Slideshow",
 		"templates.category.lyric": "Lyric",
 		"templates.category.tutorial": "Tutorial",
+		"templates.comingSoon.badge": "Coming Soon",
+		"templates.comingSoon.message": "Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
 
 		"filters.category.cinematic": "Cinematic",
 		"filters.category.vintage": "Vintage",
@@ -2032,6 +2034,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"templates.category.slideshow": "Slideshow",
 		"templates.category.lyric": "Lyric",
 		"templates.category.tutorial": "Tutorial",
+		"templates.comingSoon.badge": "Coming Soon",
+		"templates.comingSoon.message": "Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
 
 		"filters.category.cinematic": "Cinematic",
 		"filters.category.vintage": "Vintage",
