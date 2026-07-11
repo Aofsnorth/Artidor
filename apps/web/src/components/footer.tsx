@@ -1,38 +1,46 @@
+"use client";
+
 import Link from "next/link";
 import { RiDiscordFill, RiTwitterXLine } from "react-icons/ri";
 import { FaGithub } from "react-icons/fa6";
 import Image from "next/image";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
-import { capitalizeFirstLetter } from "@/utils/string";
+import { useI18n } from "@/lib/i18n";
 
 type Category = "resources" | "company";
 
 interface FooterLink {
-	label: string;
+	labelKey: string;
 	href: string;
 }
 
 type CategoryLinks = Record<Category, FooterLink[]>;
 
+const CATEGORY_KEYS: Record<Category, string> = {
+	resources: "home.footer.category.resources",
+	company: "home.footer.category.company",
+};
+
 const links: CategoryLinks = {
 	resources: [
-		{ label: "Docs", href: "/docs" },
-		{ label: "Roadmap", href: "/roadmap" },
-		{ label: "Changelog", href: "/changelog" },
-		{ label: "Blog", href: "/blog" },
-		{ label: "Privacy", href: "/privacy" },
-		{ label: "Terms of use", href: "/terms" },
+		{ labelKey: "home.footer.link.docs", href: "/docs" },
+		{ labelKey: "home.footer.link.roadmap", href: "/roadmap" },
+		{ labelKey: "home.footer.link.changelog", href: "/changelog" },
+		{ labelKey: "home.footer.link.blog", href: "/blog" },
+		{ labelKey: "home.footer.link.privacy", href: "/privacy" },
+		{ labelKey: "home.footer.link.terms", href: "/terms" },
 	],
 	company: [
-		{ label: "Contributors", href: "/contributors" },
-		{ label: "Sponsors", href: "/sponsors" },
-		{ label: "Brand", href: "/brand" },
-		{ label: "About", href: `${SOCIAL_LINKS.github}/blob/main/README.md` },
+		{ labelKey: "home.footer.link.contributors", href: "/contributors" },
+		{ labelKey: "home.footer.link.sponsors", href: "/sponsors" },
+		{ labelKey: "home.footer.link.brand", href: "/brand" },
+		{ labelKey: "home.footer.link.about", href: `${SOCIAL_LINKS.github}/blob/main/README.md` },
 	],
 };
 
 export function Footer() {
+	const { t } = useI18n();
 	return (
 		<footer className="relative mx-auto mt-12 w-full max-w-6xl px-6 pb-12">
 			<div className="panel glass-strong relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur md:p-10">
@@ -55,8 +63,7 @@ export function Footer() {
 							</span>
 						</div>
 						<p className="max-w-xs text-[13.5px] font-light leading-relaxed text-white/55">
-							The privacy-first video editor that respects your machine. Free,
-							open-source, runs in your browser or on your desktop.
+							{t("home.footer.tagline")}
 						</p>
 						<div className="mt-5 flex gap-2">
 							<Link
@@ -64,7 +71,7 @@ export function Footer() {
 								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label="GitHub"
+								aria-label={t("home.footer.social.github")}
 							>
 								<FaGithub className="size-4" />
 							</Link>
@@ -73,7 +80,7 @@ export function Footer() {
 								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label="X (Twitter)"
+								aria-label={t("home.footer.social.x")}
 							>
 								<RiTwitterXLine className="size-4" />
 							</Link>
@@ -82,7 +89,7 @@ export function Footer() {
 								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
-								aria-label="Discord"
+								aria-label={t("home.footer.social.discord")}
 							>
 								<RiDiscordFill className="size-4" />
 							</Link>
@@ -93,7 +100,7 @@ export function Footer() {
 						{(Object.keys(links) as Category[]).map((category) => (
 							<div key={category} className="flex flex-col gap-3">
 								<h3 className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">
-									{capitalizeFirstLetter({ string: category })}
+									{t(CATEGORY_KEYS[category])}
 								</h3>
 								<ul className="flex flex-col gap-2 text-[13.5px]">
 									{links[category].map((link) => (
@@ -110,7 +117,7 @@ export function Footer() {
 														: undefined
 												}
 											>
-												{link.label}
+												{t(link.labelKey)}
 											</Link>
 										</li>
 									))}
@@ -122,11 +129,11 @@ export function Footer() {
 
 				<div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-[12px] text-white/45 md:flex-row md:items-center">
 					<span>
-						© {new Date().getFullYear()} Artidor. MIT-licensed. Built in public.
+						{t("home.footer.copyright", { year: new Date().getFullYear() })}
 					</span>
 					<span className="flex items-center gap-2 text-white/40">
 						<span className="size-1.5 rounded-full bg-emerald-400" />
-						All systems normal
+						{t("home.footer.status")}
 					</span>
 				</div>
 			</div>

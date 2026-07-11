@@ -26,6 +26,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Border is now available in the Graphics Style panel for video and image clips: enable, set color, width, and opacity, and the border renders above the media in both preview and export.",
 			"Timeline toolbar labels and tooltips are now localized, including Select/Split, undo/redo, selection operations, grouping, bookmarks, linking, snapping, ripple editing, zoom, and drag modes.",
 			"Graphics Style panel labels (Color & Fill, Stroke, Border, Shadow) and catalog empty-state messages are now covered by the EN/ID dictionary.",
+			"A language switcher is now available on the home page header, and a language selector is available inside the editor Settings panel; both persist to the same preference.",
+			"All remaining landing page sections (AI Showcase, Features, How it Works, Pledge, CTA, and the AI disclaimer) are now localized in English and Indonesian.",
 		],
 	},
 	{

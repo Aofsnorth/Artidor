@@ -24,8 +24,10 @@ import { FaGithub } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useGitHubRepo } from "@/hooks/use-github-repo";
+import { useI18n } from "@/lib/i18n";
 
 export function Hero() {
+	const { t } = useI18n();
 	const reducedMotion = useReducedMotion();
 	const { formatted: repoStats } = useGitHubRepo();
 	// When the user prefers reduced motion, we skip the entrance
@@ -48,9 +50,9 @@ export function Hero() {
 						<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
 						<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
 					</span>
-					Now with Arth — your AI co-pilot
+					{t("home.hero.eyebrow.primary")}
 					<span className="text-white/30">·</span>
-					<span className="text-white/55">Try the editor</span>
+					<span className="text-white/55">{t("home.hero.eyebrow.secondary")}</span>
 				</div>
 
 				{/* leading-[1.15] + pb give the italic serif descenders (y, p, g)
@@ -59,24 +61,21 @@ export function Hero() {
 				   so it blends seamlessly with the white text on either side. */}
 				<h1 className="text-balance pb-[0.12em] font-serif text-5xl font-medium italic leading-[1.15] tracking-[-0.02em] md:text-7xl lg:text-[5.5rem]">
 					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
-						The video editor
+						{t("home.hero.headline.line1")}
 						<br />
-						that{" "}
+						{t("home.hero.headline.line2")}{" "}
 					</span>
 					<span className="bg-gradient-to-b from-[#ffffff] via-[#d7dee9] to-[#9aa7ba] bg-clip-text text-transparent [filter:drop-shadow(0_0_24px_rgba(214,224,240,0.55))_drop-shadow(0_0_9px_rgba(255,255,255,0.5))]">
-						respects
+						{t("home.hero.headline.highlight")}
 					</span>
 					<span className="bg-gradient-to-b from-white to-white/80 bg-clip-text text-transparent">
 						{" "}
-						your machine.
+						{t("home.hero.headline.line3")}
 					</span>
 				</h1>
 
 				<p className="text-pretty mx-auto mt-7 max-w-2xl text-base font-light leading-relaxed tracking-wide text-white/65 md:text-lg">
-					Artidor is a free, open-source video editor that runs entirely in your
-					browser or on your desktop. No uploads, no paywalls, no
-					&quot;Pro&quot; tier. Now with Arth, an AI co-pilot that learns how you
-					edit.
+					{t("home.hero.description")}
 				</p>
 
 				<div className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -85,7 +84,7 @@ export function Hero() {
 							size="lg"
 							className="h-11 rounded-full bg-white px-5 text-sm font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
 						>
-							Open the editor
+							{t("home.hero.cta.openEditor")}
 							<ArrowRight className="ml-1 size-4" />
 						</Button>
 					</Link>
@@ -96,7 +95,7 @@ export function Hero() {
 							className="h-11 rounded-full border-white/15 bg-white/[0.04] px-5 text-sm font-medium text-white/90 backdrop-blur hover:bg-white/[0.08]"
 						>
 							<FaGithub className="mr-1.5 size-4" />
-							Star on GitHub
+							{t("home.hero.cta.starGitHub")}
 							<Star className="ml-1.5 size-3.5 text-amber-300" />
 							{repoStats?.stars ? (
 								<span className="ml-0.5 tabular-nums text-white/85">
@@ -131,12 +130,12 @@ export function Hero() {
 						const isStars = s.key === "stars";
 						const display = isStars ? starsLabel : s.value;
 						return (
-							<div key={s.label} className="flex flex-col gap-1">
+							<div key={s.labelKey} className="flex flex-col gap-1">
 								<div className="font-serif text-2xl font-medium italic text-white md:text-3xl">
 									{display}
 								</div>
 								<div className="text-[10.5px] uppercase tracking-[0.14em] text-white/45">
-									{s.label}
+									{t(s.labelKey)}
 								</div>
 							</div>
 						);
@@ -148,10 +147,10 @@ export function Hero() {
 }
 
 const STATS = [
-	{ key: "stars", label: "GitHub stars" },
-	{ value: "0", label: "Dollars required" },
-	{ value: "3", label: "Platforms (web / desktop / API)" },
-	{ value: "MIT", label: "License" },
+	{ key: "stars", labelKey: "home.hero.stat.stars" },
+	{ value: "0", labelKey: "home.hero.stat.dollars" },
+	{ value: "3", labelKey: "home.hero.stat.platforms" },
+	{ value: "MIT", labelKey: "home.hero.stat.license" },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -161,6 +160,7 @@ const STATS = [
 const EDITOR_PREVIEW_SRC = "/editor-preview.png";
 
 function HeroPreview() {
+	const { t } = useI18n();
 	// Real screenshot of the running editor, captured by
 	// `bun run scripts/capture-editor-screenshot.ts`. Rendered inside
 	// a glassmorphic frame so it looks intentional, not a flat
@@ -177,11 +177,11 @@ function HeroPreview() {
 				<span className="size-2.5 rounded-full bg-[#28c840]/70" />
 				<div className="ml-4 flex items-center gap-1.5 text-[10.5px] text-white/55">
 					<Command className="size-3" />
-					artidor — live preview
+					{t("home.hero.chrome.preview")}
 				</div>
 				<div className="ml-auto flex items-center gap-1 text-[10.5px] text-white/45">
 					<Sparkles className="size-3 text-amber-200" />
-					AI editing
+					{t("home.hero.chrome.ai")}
 				</div>
 			</div>
 
@@ -192,7 +192,7 @@ function HeroPreview() {
 			   rather than overlapping it. */}
 			<Image
 				src={EDITOR_PREVIEW_SRC}
-				alt="Artidor editor — live screenshot of the running app"
+				alt={t("home.hero.imageAlt")}
 				fill
 				sizes="(min-width: 1024px) 1024px, 100vw"
 				className="object-cover object-top pt-9"

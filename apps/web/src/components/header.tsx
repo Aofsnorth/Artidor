@@ -10,20 +10,22 @@ import { cn } from "@/utils/ui";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
 import { useGitHubRepo } from "@/hooks/use-github-repo";
+import { useI18n } from "@/lib/i18n";
 
 const NAV_LINKS = [
-	{ label: "Features", href: "/#features" },
-	{ label: "Arth", href: "/#ai-copilot" },
-	{ label: "Docs", href: "/docs" },
-	{ label: "Roadmap", href: "/roadmap" },
-	{ label: "Changelog", href: "/changelog" },
-	{ label: "Contributors", href: "/contributors" },
-	{ label: "Blog", href: "/blog" },
+	{ labelKey: "home.nav.features", href: "/#features" },
+	{ labelKey: "home.nav.ai", href: "/#ai-copilot" },
+	{ labelKey: "home.nav.docs", href: "/docs" },
+	{ labelKey: "home.nav.roadmap", href: "/roadmap" },
+	{ labelKey: "home.nav.changelog", href: "/changelog" },
+	{ labelKey: "home.nav.contributors", href: "/contributors" },
+	{ labelKey: "home.nav.blog", href: "/blog" },
 ];
 
 export function Header() {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const closeMenu = () => setIsMenuOpen(false);
+	const { t } = useI18n();
 	const { data: repoData, formatted: repoStats } = useGitHubRepo();
 	// While the data is loading, fall back to a placeholder that
 	// matches the visual width of the eventual number. This keeps
@@ -49,56 +51,54 @@ export function Header() {
 			   `max-w-7xl` lines the header up with the rest of the page
 			   content (hero, features, footer all use the same width). */}
 			<div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-16">
-				<div className="flex items-center gap-3 md:gap-8">
-					<Link
-						href="/"
-						className="flex items-center gap-2.5"
-						aria-label="Artidor home"
-					>
-						{/* Plain <img> is intentional — the logo is a local
-						   asset and we want it to render before hydration. */}
-						{/* biome-ignore lint/performance/noImgElement: logo, see comment above */}
-						<img
-							src={DEFAULT_LOGO_URL}
-							alt="Artidor Logo"
-							width={28}
-							height={28}
-							className="size-7 rounded-md"
-						/>
-						<span className="text-[15px] font-semibold tracking-[-0.01em] text-white">
-							Artidor
-						</span>
-					</Link>
+				<Link
+					href="/"
+					className="flex items-center gap-2.5"
+					aria-label="Artidor home"
+				>
+					{/* Plain <img> is intentional — the logo is a local
+					   asset and we want it to render before hydration. */}
+					{/* biome-ignore lint/performance/noImgElement: logo, see comment above */}
+					<img
+						src={DEFAULT_LOGO_URL}
+						alt="Artidor Logo"
+						width={28}
+						height={28}
+						className="size-7 rounded-md"
+					/>
+					<span className="text-[15px] font-semibold tracking-[-0.01em] text-white">
+						Artidor
+					</span>
+				</Link>
 
-					<nav
-						className="hidden items-center gap-1 md:flex"
-						aria-label="Primary"
+				<nav
+					className="hidden flex-1 items-center justify-center gap-1 md:flex"
+					aria-label={t("home.nav.primaryAria")}
 					>
-						{NAV_LINKS.map((link) => (
-							<Link key={link.href} href={link.href}>
-								<Button
-									variant="text"
-									className="h-8 px-3 text-[13px] text-white/65 hover:text-white"
-								>
-									{link.label}
-								</Button>
-							</Link>
-						))}
-					</nav>
-				</div>
+					{NAV_LINKS.map((link) => (
+						<Link key={link.href} href={link.href}>
+							<Button
+								variant="text"
+								className="h-8 px-3 text-[13px] text-white/65 hover:text-white"
+							>
+								{t(link.labelKey)}
+							</Button>
+						</Link>
+					))}
+				</nav>
 
 				<div className="flex items-center gap-2">
-					<div className="hidden items-center gap-2 md:flex">
-						<Link
-							href={SOCIAL_LINKS.github}
-							prefetch={false}
-							className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/80 transition-colors hover:bg-white/[0.08]"
-							aria-label={`Artidor on GitHub, ${repoStats?.stars ?? ""} stars`}
-						>
-							<FaGithub className="size-3" />
-							{starsLabel}
-						</Link>
-					</div>
+					<Link
+						href={SOCIAL_LINKS.github}
+						prefetch={false}
+						className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/80 transition-colors hover:bg-white/[0.08] md:flex"
+						aria-label={t("home.nav.githubStars", {
+							stars: repoStats?.stars ?? "",
+						})}
+					>
+						<FaGithub className="size-3" />
+						{starsLabel}
+					</Link>
 
 					<Link href="/projects" prefetch className="hidden md:inline-flex">
 						<Button
@@ -106,7 +106,7 @@ export function Header() {
 							className="h-8 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#0a0a0c] hover:bg-white/90"
 						>
 							<Sparkles className="mr-1.5 size-3.5" />
-							Open editor
+							{t("home.nav.openEditor")}
 							<ArrowRight className="ml-1 size-3.5" />
 						</Button>
 					</Link>
@@ -114,7 +114,7 @@ export function Header() {
 					<button
 						type="button"
 						className="rounded-md p-1.5 text-white/85 hover:bg-white/[0.06] hover:text-white md:hidden"
-						aria-label="Toggle menu"
+						aria-label={t("home.nav.menuOpen")}
 						aria-expanded={isMenuOpen}
 						onClick={() => setIsMenuOpen(!isMenuOpen)}
 					>
@@ -133,7 +133,7 @@ export function Header() {
 				<div className="relative h-full">
 					<button
 						type="button"
-						aria-label="Close menu"
+						aria-label={t("home.nav.menuClose")}
 						className="absolute inset-0"
 						onClick={closeMenu}
 						onKeyDown={(event) => {
@@ -149,7 +149,7 @@ export function Header() {
 					/>
 					<nav
 						className="mx-auto flex h-full w-full max-w-7xl flex-col gap-2 px-6 pt-24"
-						aria-label="Mobile primary"
+						aria-label={t("home.nav.mobileAria")}
 					>
 						{NAV_LINKS.map((link, index) => (
 							<motion.div
@@ -170,7 +170,7 @@ export function Header() {
 									className="text-2xl font-semibold text-white"
 									onClick={() => setIsMenuOpen(false)}
 								>
-									{link.label}
+									{t(link.labelKey)}
 								</Link>
 							</motion.div>
 						))}
@@ -179,7 +179,7 @@ export function Header() {
 							className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[14px] font-medium text-[#0a0a0c]"
 							onClick={() => setIsMenuOpen(false)}
 						>
-							Open editor
+							{t("home.nav.openEditor")}
 							<ArrowRight className="size-4" />
 						</Link>
 					</nav>
