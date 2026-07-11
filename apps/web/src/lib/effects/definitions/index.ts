@@ -85,6 +85,13 @@ import {
 	innerGlowEffectDefinition,
 	matteEdgeEffectDefinition,
 } from "./video/stylized-edge";
+import {
+	colorBalanceEffectDefinition,
+	fourColorGradientEffectDefinition,
+	gradientOverlayEffectDefinition,
+	replaceColorEffectDefinition,
+	tintEffectDefinition,
+} from "./video/color-effects";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -159,6 +166,11 @@ const defaultEffects = [
 	edgeGlowEffectDefinition,
 	contourLinesEffectDefinition,
 	matteEdgeEffectDefinition,
+	colorBalanceEffectDefinition,
+	replaceColorEffectDefinition,
+	tintEffectDefinition,
+	gradientOverlayEffectDefinition,
+	fourColorGradientEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {

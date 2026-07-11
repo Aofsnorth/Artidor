@@ -88,6 +88,11 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	"edge-glow": "Light",
 	"contour-lines": "Stylize",
 	"matte-edge": "Stylize",
+	"color-balance": "Color",
+	"replace-color": "Color",
+	tint: "Color",
+	"gradient-overlay": "Color",
+	"four-color-gradient": "Color",
 	// Color tools that currently live in the Effects panel
 	hsl: "Color",
 	curves: "Color",
