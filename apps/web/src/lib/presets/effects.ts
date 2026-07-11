@@ -149,6 +149,48 @@ export const effects: EffectPresetDefinition[] = [
 		"filter:blur(10px);",
 	),
 
+	// ── Advanced Blur (B2)
+	ef(
+		"fx-blur-zoom-radial",
+		"Zoom Blur",
+		"Blur",
+		"Radial zoom blur from center",
+		{ amount: 50 },
+		"filter:blur(12px);",
+	),
+	ef(
+		"fx-blur-directional",
+		"Directional Blur",
+		"Blur",
+		"Directional motion streak",
+		{ amount: 50, direction: 0 },
+		"filter:blur(10px);",
+	),
+	ef(
+		"fx-blur-box-uniform",
+		"Box Blur",
+		"Blur",
+		"Uniform box blur",
+		{ amount: 40 },
+		"filter:blur(8px);",
+	),
+	ef(
+		"fx-blur-lens-bokeh",
+		"Lens Blur",
+		"Blur",
+		"Bokeh-style out-of-focus blur",
+		{ amount: 40 },
+		"filter:blur(10px);",
+	),
+	ef(
+		"fx-sharpen-unsharp-mask",
+		"Unsharp Mask",
+		"Blur",
+		"Sharpening via unsharp mask",
+		{ amount: 30, intensity: 50 },
+		"filter:contrast(1.1);",
+	),
+
 	// ── Glow (15)
 	ef(
 		"fx-glow-soft",
