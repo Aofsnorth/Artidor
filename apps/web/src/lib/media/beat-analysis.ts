@@ -20,10 +20,18 @@
  *   });
  */
 
-import type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
-import type { BeatAnalysisRequest, BeatAnalysisResponse } from "./beat-analysis-worker";
+import type {
+	BeatDetectionOptions,
+	DetectedBeat,
+} from "./beat-detection-types";
+import { createBeatAnalysisGate } from "./beat-analysis-gate";
+import type {
+	BeatAnalysisRequest,
+	BeatAnalysisResponse,
+} from "./beat-analysis-worker";
 
 let worker: Worker | null = null;
+const analysisGate = createBeatAnalysisGate();
 
 function getWorker(): Worker {
 	if (worker) return worker;
@@ -65,55 +73,58 @@ export async function analyzeBeats({
 }): Promise<DetectedBeat[]> {
 	const w = getWorker();
 
-	return new Promise<DetectedBeat[]>((resolve, reject) => {
-		let settled = false;
+	return analysisGate.run(
+		() =>
+			new Promise<DetectedBeat[]>((resolve, reject) => {
+				let settled = false;
 
-		const handleMessage = (event: MessageEvent<BeatAnalysisResponse>) => {
-			const res = event.data;
-			switch (res.type) {
-				case "progress":
-					onProgress?.(res.progress);
-					break;
-				case "complete":
-					cleanup();
-					settled = true;
-					resolve(res.beats);
-					break;
-				case "error":
-					cleanup();
-					settled = true;
-					reject(new Error(res.error));
-					break;
-				case "cancelled":
-					cleanup();
-					settled = true;
-					reject(new DOMException("Beat analysis cancelled", "AbortError"));
-					break;
-			}
-		};
+				const handleMessage = (event: MessageEvent<BeatAnalysisResponse>) => {
+					const res = event.data;
+					switch (res.type) {
+						case "progress":
+							onProgress?.(res.progress);
+							break;
+						case "complete":
+							cleanup();
+							settled = true;
+							resolve(res.beats);
+							break;
+						case "error":
+							cleanup();
+							settled = true;
+							reject(new Error(res.error));
+							break;
+						case "cancelled":
+							cleanup();
+							settled = true;
+							reject(new DOMException("Beat analysis cancelled", "AbortError"));
+							break;
+					}
+				};
 
-		const handleAbort = () => {
-			if (settled) return;
-			w.postMessage({ type: "cancel" });
-		};
+				const handleAbort = () => {
+					if (settled) return;
+					w.postMessage({ type: "cancel" });
+				};
 
-		function cleanup(): void {
-			w.removeEventListener("message", handleMessage);
-			signal?.removeEventListener("abort", handleAbort);
-		}
+				function cleanup(): void {
+					w.removeEventListener("message", handleMessage);
+					signal?.removeEventListener("abort", handleAbort);
+				}
 
-		w.addEventListener("message", handleMessage);
-		signal?.addEventListener("abort", handleAbort);
+				w.addEventListener("message", handleMessage);
+				signal?.addEventListener("abort", handleAbort);
 
-		const request: BeatAnalysisRequest = {
-			type: "analyze",
-			file,
-			trimStartSeconds,
-			durationSeconds,
-			targetSampleRate,
-			options,
-		};
-		// File is cloneable (not transferable), so we just post it.
-		w.postMessage(request);
-	});
+				const request: BeatAnalysisRequest = {
+					type: "analyze",
+					file,
+					trimStartSeconds,
+					durationSeconds,
+					targetSampleRate,
+					options,
+				};
+				// File is cloneable (not transferable), so we just post it.
+				w.postMessage(request);
+			}),
+	);
 }

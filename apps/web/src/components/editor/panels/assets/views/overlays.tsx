@@ -16,6 +16,12 @@ import { useEditor } from "@/hooks/use-editor";
 import type { ParamValues } from "@/lib/params";
 import { buildGraphicElement } from "@/lib/timeline/element-utils";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 interface OverlayPreset {
 	id: string;
@@ -494,35 +500,53 @@ const presetOverlayPresets: OverlayPreset[] = presetOverlays.map((overlay) => ({
 OVERLAY_PRESETS.push(...presetOverlayPresets);
 
 export function OverlaysView() {
+	const { t } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: OVERLAY_PRESETS,
-				category,
-				getCategory: (preset) => preset.category,
-			}),
-		[category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: OVERLAY_PRESETS,
+			category,
+			getCategory: (preset) => preset.category,
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (preset) => [
+				preset.name,
+				preset.id,
+				preset.category,
+				preset.description,
+			],
+		});
+	}, [category, query]);
 
 	return (
-		<PanelView title="Overlays">
+		<PanelView title={t("catalog.titleOverlays")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Graphic overlays are timeline layers. Use Effects for processing a
-					clip; use Overlays for visible tint, frame, and wash elements.
+					{t("catalog.descriptionOverlays")}
 				</p>
 				<CategoryBar
 					categories={OVERLAY_CATEGORIES}
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid gap="gap-2">
-					{filtered.map((preset) => (
-						<OverlayItem key={preset.id} preset={preset} />
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchOverlays")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filtered.map((preset) => (
+							<OverlayItem key={preset.id} preset={preset} />
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState query={query} />
+				)}
 			</div>
 		</PanelView>
 	);

@@ -10,6 +10,7 @@ import { EnvWarningModal } from "@/components/env-warning-modal";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { I18nProvider } from "@/lib/i18n";
 
 const siteFont = Inter({
 	subsets: ["latin"],
@@ -60,23 +61,25 @@ export default function RootLayout({
 					disableTransitionOnChange={true}
 				>
 					<TooltipProvider>
-						<Toaster />
-						<Script
-							src="https://cdn.databuddy.cc/databuddy.js"
-							strategy="afterInteractive"
-							async
-							data-client-id="UP-Wcoy5arxFeK7oyjMMZ"
-							data-disabled={webEnv.NODE_ENV === "development"}
-							data-track-attributes={false}
-							data-track-errors={true}
-							data-track-outgoing-links={false}
-							data-track-web-vitals={false}
-							data-track-sessions={false}
-						/>
-						<EnvWarningModal isMissing={isEnvMissing} />
-						{children}
-						<Analytics />
-						<SpeedInsights />
+						<I18nProvider>
+							<Toaster />
+							<Script
+								src="https://cdn.databuddy.cc/databuddy.js"
+								strategy="afterInteractive"
+								async
+								data-client-id="UP-Wcoy5arxFeK7oyjMMZ"
+								data-disabled={webEnv.NODE_ENV === "development"}
+								data-track-attributes={false}
+								data-track-errors={true}
+								data-track-outgoing-links={false}
+								data-track-web-vitals={false}
+								data-track-sessions={false}
+							/>
+							<EnvWarningModal isMissing={isEnvMissing} />
+							{children}
+							<Analytics />
+							<SpeedInsights />
+						</I18nProvider>
 					</TooltipProvider>
 				</ThemeProvider>
 			</body>

@@ -21,6 +21,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { clearDragData, setDragData } from "@/lib/drag-data";
 import type { TimelineDragData } from "@/lib/timeline/drag";
 import { cn } from "@/utils/ui";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * 1×1 transparent GIF, used as a drag ghost for the asset cards. Setting
@@ -83,6 +84,7 @@ export function DraggableItem({
 	variant = "card",
 	isDraggable = true,
 }: DraggableItemProps) {
+	const { t } = useI18n();
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
 	const dragRef = useRef<HTMLDivElement>(null);
@@ -192,7 +194,7 @@ export function DraggableItem({
 							{onClick && (
 								<button
 									type="button"
-									aria-label={`Preview ${name}`}
+									aria-label={t("catalog.previewAria", { name })}
 									className="absolute inset-0 z-10 cursor-default rounded-[inherit] bg-transparent focus:outline-none focus:ring-2 focus:ring-white/30"
 									draggable={isDraggable}
 									onClick={onClick}
@@ -269,7 +271,7 @@ export function DraggableItem({
 								{shouldShowPlusOnDrag && (
 									<PlusButton
 										onClick={handleAddToTimeline}
-										tooltipText="Add to timeline or drag to position"
+										tooltipText={t("catalog.addToTimelineTooltip")}
 									/>
 								)}
 							</AspectRatio>

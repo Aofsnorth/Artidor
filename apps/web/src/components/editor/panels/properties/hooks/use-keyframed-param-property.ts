@@ -1,5 +1,3 @@
-"use client";
-
 import { useEditor } from "@/hooks/use-editor";
 import {
 	buildGraphicParamPath,

@@ -3,8 +3,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { PlusSignIcon } from "@hugeicons/core-free-icons";
 import { templates as presetTemplates } from "@/lib/presets/templates";
 import type {
 	TemplateBuild,
@@ -33,10 +31,15 @@ import {
 } from "@/components/editor/panels/assets/views/category-bar";
 import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { cn } from "@/utils/ui";
 import { MarqueeText } from "@/components/ui/marquee-text";
 import type { EditorCore } from "@/core";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const TEMPLATE_LABELS = TEMPLATE_CATEGORIES.map((c) => c.label);
 const TEMPLATE_ID_TO_LABEL = new Map(
@@ -85,7 +88,9 @@ const PRESET_BUILD_BY_ID = new Map(
 );
 
 export function TemplatesView() {
+	const { t } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 	const editor = useEditor();
 
 	const allTemplates = useMemo(() => {
@@ -100,37 +105,53 @@ export function TemplatesView() {
 		];
 	}, []);
 
-	const filteredTemplates = useMemo(
-		() =>
-			filterByCategory({
-				items: allTemplates,
-				category,
-				getCategory: (t) => TEMPLATE_ID_TO_LABEL.get(t.category),
-			}),
-		[allTemplates, category],
-	);
+	const filteredTemplates = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: allTemplates,
+			category,
+			getCategory: (template) => TEMPLATE_ID_TO_LABEL.get(template.category),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (template) => [
+				template.name,
+				template.id,
+				template.description,
+				TEMPLATE_ID_TO_LABEL.get(template.category),
+			],
+		});
+	}, [allTemplates, category, query]);
 
 	return (
-		<PanelView title="Templates">
+		<PanelView title={t("catalog.titleTemplates")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Start with a pre-built template and replace the placeholder media with
-					your own.
+					{t("catalog.descriptionTemplates")}
 				</p>
 				<CategoryBar
 					categories={TEMPLATE_LABELS}
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid min={132}>
-					{filteredTemplates.map((template) => (
-						<TemplateItem
-							key={template.id}
-							template={template}
-							onApply={() => applyTemplate({ editor, template })}
-						/>
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchTemplates")}
+				/>
+				{filteredTemplates.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filteredTemplates.map((template) => (
+							<TemplateItem
+								key={template.id}
+								template={template}
+								onApply={() => applyTemplate({ editor, template, t })}
+							/>
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState query={query} />
+				)}
 			</div>
 		</PanelView>
 	);
@@ -139,17 +160,19 @@ export function TemplatesView() {
 function applyTemplate({
 	editor,
 	template,
+	t,
 }: {
 	editor: EditorCore;
 	template: ProjectTemplate;
+	t: (key: string, values?: Record<string, string | number>) => string;
 }) {
 	if (PRESET_TEMPLATE_IDS.has(template.id)) {
 		const build = PRESET_BUILD_BY_ID.get(template.id);
 		if (!build) {
-			toast.error("Template preset unavailable");
+			toast.error(t("catalog.templatePresetUnavailable"));
 			return;
 		}
-		applyPresetTemplate({ editor, name: template.name, build: build() });
+		applyPresetTemplate({ editor, name: template.name, build: build(), t });
 		return;
 	}
 
@@ -164,10 +187,10 @@ function applyTemplate({
 			activeSceneId: project.currentSceneId,
 		});
 		editor.project.saveCurrentProject();
-		toast.success(`Template "${template.name}" applied`);
+		toast.success(t("catalog.templateApplied", { name: template.name }));
 	} catch (err) {
 		console.error("Failed to apply template:", err);
-		toast.error("Failed to apply template");
+		toast.error(t("catalog.failedToApplyTemplate"));
 	}
 }
 
@@ -186,10 +209,12 @@ function applyPresetTemplate({
 	editor,
 	name,
 	build,
+	t,
 }: {
 	editor: EditorCore;
 	name: string;
 	build: TemplateBuild;
+	t: (key: string, values?: Record<string, string | number>) => string;
 }) {
 	const canvasW = DEFAULT_CANVAS_SIZE.width;
 	const canvasH = DEFAULT_CANVAS_SIZE.height;
@@ -290,20 +315,12 @@ function applyPresetTemplate({
 		}
 
 		editor.project.saveCurrentProject();
-		toast.success(`Template "${name}" applied`);
+		toast.success(t("catalog.templateApplied", { name }));
 	} catch (err) {
 		console.error("Failed to apply preset template:", err);
-		toast.error("Failed to apply template");
+		toast.error(t("catalog.failedToApplyTemplate"));
 	}
 }
-
-function getTemplatePhotoUrl(_templateId: string): null {
-	// Backwards-compat. The template preview now uses `getPaletteForId`
-	// for a procedural background — no remote thumbnail fetch.
-	return null;
-}
-
-
 
 function TemplateItem({
 	template,
@@ -315,19 +332,28 @@ function TemplateItem({
 	const durationSec = Math.round(template.durationTicks / TICKS_PER_SECOND);
 	const h = hashString(template.id);
 	const layoutType = h % 5;
-	const photoUrl = getTemplatePhotoUrl(template.id);
-	void photoUrl;
+
 	const templatePalette = getPaletteForId(template.id);
 
 	return (
-		<button
-			type="button"
+		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
+		<div
+			role="button"
+			tabIndex={0}
 			onClick={onApply}
-			className={cn(
-				"group bg-accent hover:bg-accent/70 relative flex flex-col overflow-hidden rounded-sm p-2 text-left transition-colors aspect-[4/5]",
-			)}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" || event.key === " ") {
+					event.preventDefault();
+					onApply();
+				}
+			}}
+			className="asset-preview-container group cursor-pointer"
 		>
-			<div className="relative flex w-full flex-1 items-center justify-center overflow-hidden rounded-sm border border-white/10">
+			<div className="asset-preview-overlay" />
+			<div
+				className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10"
+				style={{ width: "80%", height: "80%" }}
+			>
 				<div
 					aria-hidden
 					className="absolute inset-0"
@@ -385,21 +411,15 @@ function TemplateItem({
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
 			</div>
-			<div className="flex w-full min-w-0 items-center justify-between gap-2 text-[0.68rem]">
-				<MarqueeText
-					className="text-foreground min-w-0 flex-1 font-medium"
-					pxPerSecond={30}
-				>
-					{template.name}
-				</MarqueeText>
-				<span className="text-muted-foreground shrink-0 tabular-nums">
-					{durationSec}s
-				</span>
+			<MarqueeText
+				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
+				pxPerSecond={30}
+			>
+				{template.name}
+			</MarqueeText>
+			<div className="text-white/70 absolute right-1.5 top-1.5 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
+				{durationSec}s
 			</div>
-			<HugeiconsIcon
-				icon={PlusSignIcon}
-				className="absolute right-1 top-1 size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-			/>
-		</button>
+		</div>
 	);
 }

@@ -157,6 +157,40 @@ impl ProjectsState {
     pub fn scroll_by(&mut self, delta: i32) {
         self.scroll_y = (self.scroll_y + delta).clamp(0, self.max_scroll_y);
     }
+
+    /// Update hover state for all hit-testable regions and return true if the
+    /// visual state changed. This lets `WM_MOUSEMOVE` only invalidate the window
+    /// when the cursor actually enters or leaves a hover target.
+    pub fn update_hover(&mut self, x: i32, y: i32) -> bool {
+        let hit =
+            |rect: &RECT| x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+        let mut dirty = false;
+
+        let mut buttons = [
+            &mut self.home_btn,
+            &mut self.new_project_btn,
+            &mut self.search_pill,
+            &mut self.sort_btn,
+            &mut self.view_grid_btn,
+            &mut self.view_list_btn,
+        ];
+        for btn in &mut buttons {
+            let hovered = hit(&btn.rect);
+            dirty |= btn.hovered != hovered;
+            btn.hovered = hovered;
+        }
+        for btn in self.templates.iter_mut() {
+            let hovered = hit(&btn.rect);
+            dirty |= btn.hovered != hovered;
+            btn.hovered = hovered;
+        }
+
+        let hovered_card = self.hit_test_card(x, y);
+        dirty |= self.hovered_card != hovered_card;
+        self.hovered_card = hovered_card;
+
+        dirty
+    }
 }
 
 impl Default for ProjectsState {

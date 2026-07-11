@@ -228,34 +228,13 @@ export function useTimelineDragDrop({
 					snapToStart: false,
 				});
 				const best =
-					startSnap.snapDistance <= endSnap.snapDistance
-						? startSnap
-						: endSnap;
+					startSnap.snapDistance <= endSnap.snapDistance ? startSnap : endSnap;
 				if (best.snapPoint) {
 					target.xPosition = best.snappedTime;
 				}
 			}
 
 			target.xPosition = getSnappedTime({ time: target.xPosition });
-
-			if (
-				dragData?.type === "media" &&
-				(dragData as MediaDragData).mediaType === "image" &&
-				!target.isNewTrack &&
-				!target.targetElement
-			) {
-				const orderedTracks = [
-					...sceneTracks.overlay,
-					sceneTracks.main,
-					...sceneTracks.audio,
-				];
-				const hovered = orderedTracks[target.trackIndex];
-				if (hovered && hovered.id === sceneTracks.main.id) {
-					target.isNewTrack = true;
-					target.trackIndex = sceneTracks.overlay.length;
-					target.targetElement = null;
-				}
-			}
 
 			setDropTarget(target);
 			e.dataTransfer.dropEffect = "copy";

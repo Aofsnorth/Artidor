@@ -9,14 +9,29 @@ import {
 	TRANSCRIPTION_MODELS,
 } from "@/lib/transcription/models";
 import type { WorkerMessage, WorkerResponse } from "./worker";
+import type { TranscriptionBackend } from "./backend";
 
 type ProgressCallback = (progress: TranscriptionProgress) => void;
+
+export function createModelLoadGate() {
+	const inflight = new Map<string, Promise<unknown>>();
+	return {
+		run<T>(key: string, load: () => Promise<T>): Promise<T> {
+			const existing = inflight.get(key) as Promise<T> | undefined;
+			if (existing) return existing;
+			const promise = load().finally(() => inflight.delete(key));
+			inflight.set(key, promise);
+			return promise;
+		},
+	};
+}
 
 class TranscriptionService {
 	private worker: Worker | null = null;
 	private currentModelId: TranscriptionModelId | null = null;
 	private isInitialized = false;
 	private isInitializing = false;
+	private activeBackend: TranscriptionBackend | null = null;
 
 	async transcribe({
 		audioData,
@@ -46,6 +61,8 @@ class TranscriptionService {
 							status: "transcribing",
 							progress: response.progress,
 							message: "Transcribing audio...",
+							backend: this.activeBackend ?? undefined,
+							isIndeterminate: true,
 						});
 						break;
 
@@ -136,7 +153,12 @@ class TranscriptionService {
 							status: "loading-model",
 							progress: response.progress,
 							message: `Loading ${model.name} model...`,
+							backend: response.backend,
 						});
+						break;
+
+					case "backend-selected":
+						this.activeBackend = response.backend;
 						break;
 
 					case "init-complete":
@@ -186,6 +208,7 @@ class TranscriptionService {
 		this.isInitialized = false;
 		this.isInitializing = false;
 		this.currentModelId = null;
+		this.activeBackend = null;
 	}
 }
 

@@ -82,19 +82,23 @@ function InspectorView() {
 	useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
 	const { activeTabPerType, setActiveTab } = usePropertiesStore();
-	const arePrimaryTabsHidden = usePropertiesStore((s) => s.arePrimaryTabsHidden);
-	const setPrimaryTabsHidden = usePropertiesStore((s) => s.setPrimaryTabsHidden);
+	const arePrimaryTabsHidden = usePropertiesStore(
+		(s) => s.arePrimaryTabsHidden,
+	);
+	const setPrimaryTabsHidden = usePropertiesStore(
+		(s) => s.setPrimaryTabsHidden,
+	);
 	const toolMode = useToolModeStore((s) => s.toolMode);
 
 	if (toolMode === "draw" || toolMode === "vector") {
 		return (
 			<>
-				<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
+				<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
 					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 						Drawing
 					</div>
 				</div>
-				<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
+				<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/12">
 					<DrawToolConfigPanel />
 				</ScrollArea>
 			</>
@@ -163,7 +167,7 @@ function InspectorView() {
 
 	return (
 		<>
-			<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
+			<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
 				<div className="flex items-center justify-between gap-2">
 					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 						Inspector
@@ -171,10 +175,14 @@ function InspectorView() {
 					<div className="flex shrink-0 items-center gap-1.5">
 						<button
 							type="button"
-							className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+							className="rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white"
 							onClick={() => setPrimaryTabsHidden(!arePrimaryTabsHidden)}
 							aria-pressed={arePrimaryTabsHidden}
-							aria-label={arePrimaryTabsHidden ? "Show inspector main tabs" : "Hide inspector main tabs"}
+							aria-label={
+								arePrimaryTabsHidden
+									? "Show inspector main tabs"
+									: "Hide inspector main tabs"
+							}
 						>
 							<span className="inline-flex items-center gap-1">
 								<HugeiconsIcon
@@ -187,7 +195,7 @@ function InspectorView() {
 						</button>
 						<button
 							type="button"
-							className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+							className="rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white"
 							onClick={() => setActiveTab(element.type, config.defaultTab)}
 						>
 							Reset all
@@ -196,7 +204,7 @@ function InspectorView() {
 				</div>
 				{!arePrimaryTabsHidden && (
 					<div
-						className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
+						className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/8 bg-black/20 p-1 text-[0.64rem]"
 						onWheel={handleHorizontalTabWheel}
 					>
 						{primaryTabs.map((tab) => (
@@ -207,13 +215,14 @@ function InspectorView() {
 											type="button"
 											disabled={!tab.target}
 											className={cn(
-												"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/[0.06] hover:text-white focus:outline-none",
-												tab.isActive && "bg-white/[0.12] text-white shadow-sm",
+												"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/6 hover:text-white focus:outline-none",
+												tab.isActive && "bg-white/12 text-white shadow-sm",
 												!tab.target &&
 													"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
 											)}
 											onClick={() => {
-												if (tab.target) setActiveTab(element.type, tab.target.id);
+												if (tab.target)
+													setActiveTab(element.type, tab.target.id);
 											}}
 										>
 											{!tab.target && (
@@ -228,7 +237,7 @@ function InspectorView() {
 									{!tab.target && (
 										<TooltipContent
 											side="bottom"
-											className="max-w-[180px] text-center"
+											className="max-w-45 text-center"
 										>
 											This tab is not available for the selected element.
 										</TooltipContent>
@@ -271,7 +280,7 @@ function InspectorView() {
 												"h-7 shrink-0 rounded-md border px-2.5 text-[0.68rem] flex items-center justify-center gap-1.5",
 												tab.id === activeTab.id
 													? "border-white/20 bg-white text-black hover:bg-white/90"
-													: "border-white/[0.06] bg-white/[0.025] text-white/[0.5] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+													: "border-white/6 bg-white/2.5 text-white/50 hover:border-white/15 hover:bg-white/8 hover:text-white",
 											)}
 										>
 											<span className="opacity-70 shrink-0">{tab.icon}</span>
@@ -286,7 +295,7 @@ function InspectorView() {
 				</div>
 			}
 
-			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/[0.12]">
+			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/12">
 				{activeTab.content({
 					trackId: track.id,
 					trackName: track.name,
@@ -303,7 +312,7 @@ function InspectorView() {
 
 function InspectorHeader({ disabled }: { disabled?: boolean }) {
 	return (
-		<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
+		<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
 			<div className="flex items-center justify-between gap-2">
 				<div className="min-w-0 truncate text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 					Inspector
@@ -311,7 +320,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 				<button
 					type="button"
 					disabled={disabled}
-					className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+					className="shrink-0 rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 				>
 					Reset all
 				</button>
@@ -324,7 +333,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 			   panel to work with. */}
 			{!disabled && (
 				<div
-					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/[0.08] bg-black/20 p-1 text-[0.64rem]"
+					className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/8 bg-black/20 p-1 text-[0.64rem]"
 					onWheel={handleHorizontalTabWheel}
 					style={{
 						maskImage:
@@ -480,8 +489,7 @@ function SelectedElementSummary({
 	// would render a broken image icon — guard against that here.
 	const isAudioMedia = media?.type === "audio";
 	const thumbnail =
-		media?.thumbnailUrl ??
-		(media && !isAudioMedia ? media.url : undefined);
+		media?.thumbnailUrl ?? (media && !isAudioMedia ? media.url : undefined);
 	const mediaSummarySize = usePropertiesStore((s) => s.mediaSummarySize);
 	const setMediaSummarySize = usePropertiesStore((s) => s.setMediaSummarySize);
 	const favoriteMediaIds = usePropertiesStore((s) => s.favoriteMediaIds);
@@ -495,12 +503,12 @@ function SelectedElementSummary({
 
 	if (mediaSummarySize === "hidden") {
 		return (
-			<div className="mx-3.5 mt-3 flex shrink-0 items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5">
+			<div className="mx-3.5 mt-3 flex shrink-0 items-center justify-between gap-2 rounded-md border border-white/6 bg-white/2 px-2.5 py-1.5">
 				<EditableElementName
 					element={element}
 					trackId={trackId}
 					displayName={displayName}
-					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/[0.9]"
+					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/90"
 				/>
 				<MediaSummaryMenu
 					size={mediaSummarySize}
@@ -512,8 +520,8 @@ function SelectedElementSummary({
 
 	if (mediaSummarySize === "compact") {
 		return (
-			<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] p-1.5 shadow-inner shadow-white/[0.02]">
-				<div className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-white/[0.06]">
+			<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-2 rounded-lg border border-white/8 bg-white/3 p-1.5 shadow-inner shadow-white/2">
+				<div className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-md border border-white/10 bg-white/6">
 					{thumbnail ? (
 						<Image
 							src={thumbnail}
@@ -531,7 +539,7 @@ function SelectedElementSummary({
 					element={element}
 					trackId={trackId}
 					displayName={displayName}
-					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/[0.9]"
+					className="min-w-0 flex-1 text-[0.78rem] font-medium text-white/90"
 				/>
 				<StarButton
 					isFavorited={isFavorited}
@@ -549,8 +557,8 @@ function SelectedElementSummary({
 	// "default" — original card layout, now wired to favourite state and
 	// with the size dropdown slotted in next to the star.
 	return (
-		<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 shadow-inner shadow-white/[0.02]">
-			<div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+		<div className="mx-3.5 mt-3 flex shrink-0 items-center gap-3 rounded-xl border border-white/8 bg-white/[0.035] p-2.5 shadow-inner shadow-white/2">
+			<div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-white/10 bg-white/6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
 				{thumbnail ? (
 					<Image
 						src={thumbnail}
@@ -569,10 +577,10 @@ function SelectedElementSummary({
 					element={element}
 					trackId={trackId}
 					displayName={displayName}
-					className="text-sm font-medium text-white/[0.92]"
+					className="text-sm font-medium text-white/92"
 				/>
 				<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[0.65rem] text-white/42">
-					<span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 uppercase tracking-[0.12em]">
+					<span className="rounded-full border border-white/8 bg-white/4 px-1.5 py-0.5 uppercase tracking-[0.12em]">
 						{element.type}
 					</span>
 					{"sourceDuration" in element && element.sourceDuration ? (
@@ -705,7 +713,6 @@ function EditableElementName({
 	);
 }
 
-
 /**
  * Star button that toggles the media favourite flag. Filled yellow when
  * the media is favourited, dim outline otherwise. Disabled (no-op click)
@@ -737,10 +744,10 @@ function StarButton({
 			className={cn(
 				"grid size-7 shrink-0 place-items-center rounded-md border transition focus:outline-none",
 				isFavorited
-					? "border-yellow-500/30 bg-yellow-400/[0.08] text-yellow-300 hover:border-yellow-500/50 hover:bg-yellow-400/[0.14]"
-					: "border-white/[0.08] bg-white/[0.03] text-white/[0.42] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
+					? "border-yellow-500/30 bg-yellow-400/8 text-yellow-300 hover:border-yellow-500/50 hover:bg-yellow-400/14"
+					: "border-white/8 bg-white/3 text-white/42 hover:border-white/15 hover:bg-white/8 hover:text-white",
 				disabled &&
-					"cursor-not-allowed opacity-40 hover:bg-white/[0.03] hover:text-white/[0.42]",
+					"cursor-not-allowed opacity-40 hover:bg-white/3 hover:text-white/42",
 			)}
 		>
 			<HugeiconsIcon
@@ -775,7 +782,7 @@ function MediaSummaryMenu({
 							<button
 								type="button"
 								aria-label="Media card options"
-								className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus:outline-none"
+								className="grid size-7 shrink-0 place-items-center rounded-md border border-white/8 bg-white/3 text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white focus:outline-none"
 							>
 								<HugeiconsIcon icon={MoreHorizontalIcon} className="size-3.5" />
 							</button>
@@ -787,7 +794,7 @@ function MediaSummaryMenu({
 			<DropdownMenuContent
 				align="end"
 				sideOffset={6}
-				className="z-100 min-w-[11rem] rounded-lg border border-white/[0.08] bg-[#09090b]/95 p-1 text-white/95 shadow-xl backdrop-blur-md"
+				className="z-100 min-w-44 rounded-lg border border-white/8 bg-[#09090b]/95 p-1 text-white/95 shadow-xl backdrop-blur-md"
 			>
 				<DropdownMenuLabel className="px-2 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-white/40">
 					Card size
@@ -806,19 +813,19 @@ function MediaSummaryMenu({
 				>
 					<DropdownMenuRadioItem
 						value="default"
-						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/8 focus:text-white data-[state=checked]:text-white"
 					>
 						Default
 					</DropdownMenuRadioItem>
 					<DropdownMenuRadioItem
 						value="compact"
-						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/8 focus:text-white data-[state=checked]:text-white"
 					>
 						Compact
 					</DropdownMenuRadioItem>
 					<DropdownMenuRadioItem
 						value="hidden"
-						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/[0.08] focus:text-white data-[state=checked]:text-white"
+						className="rounded-md text-[0.78rem] text-white/85 focus:bg-white/8 focus:text-white data-[state=checked]:text-white"
 					>
 						Hidden
 					</DropdownMenuRadioItem>
@@ -835,16 +842,9 @@ function MediaSummaryMenu({
  * element type so the user can visually identify the media at a glance
  * instead of seeing a broken image or a plain uppercase label.
  */
-function MediaTypeIcon({
-	type,
-	size,
-}: {
-	type: string;
-	size: "sm" | "md";
-}) {
+function MediaTypeIcon({ type, size }: { type: string; size: "sm" | "md" }) {
 	const px = size === "sm" ? 14 : 20;
-	const iconClass =
-		size === "sm" ? "text-white/[0.4]" : "text-white/[0.35]";
+	const iconClass = size === "sm" ? "text-white/[0.4]" : "text-white/35";
 
 	if (type === "audio") {
 		return (
@@ -857,20 +857,16 @@ function MediaTypeIcon({
 		);
 	}
 	if (type === "video") {
-		return (
-			<HugeiconsIcon icon={Video01Icon} size={px} className={iconClass} />
-		);
+		return <HugeiconsIcon icon={Video01Icon} size={px} className={iconClass} />;
 	}
 	if (type === "image") {
-		return (
-			<HugeiconsIcon icon={Image02Icon} size={px} className={iconClass} />
-		);
+		return <HugeiconsIcon icon={Image02Icon} size={px} className={iconClass} />;
 	}
 	// Text, shape, effect, or any unknown type — render the label.
 	return (
 		<span
 			className={cn(
-				"uppercase text-white/[0.35]",
+				"uppercase text-white/35",
 				size === "sm" ? "text-[0.55rem]" : "text-[0.65rem]",
 			)}
 		>

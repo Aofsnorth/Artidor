@@ -1,3 +1,5 @@
+import type { TranscriptionBackend } from "./backend";
+
 type OnnxRuntimeEnvironment = {
 	useWasmCache: boolean;
 	backends: {
@@ -11,12 +13,18 @@ type OnnxRuntimeEnvironment = {
 };
 
 /** Avoids blob-backed ONNX modules that violate the application's CSP. */
-export function configureOnnxRuntime(
-	transformersEnv: OnnxRuntimeEnvironment,
-): void {
-	transformersEnv.useWasmCache = false;
+export function configureOnnxRuntime({
+	runtime,
+	backend,
+}: {
+	runtime: OnnxRuntimeEnvironment;
+	backend: TranscriptionBackend;
+}): void {
+	runtime.useWasmCache = false;
 
-	const wasm = transformersEnv.backends.onnx.wasm;
+	if (backend !== "wasm") return;
+
+	const wasm = runtime.backends.onnx.wasm;
 	if (!wasm) return;
 
 	wasm.numThreads = 1;

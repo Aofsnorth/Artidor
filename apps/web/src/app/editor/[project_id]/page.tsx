@@ -18,7 +18,11 @@ import { TransitionsView } from "@/components/editor/panels/assets/views/transit
 import { AdjustmentsView } from "@/components/editor/panels/assets/views/adjustments";
 import { PluginsView } from "@/components/editor/panels/assets/views/plugins";
 import { EditorHeader } from "@/components/editor/editor-header";
-import { VerticalAudioMeter } from "@/components/editor/vertical-audio-meter";
+import {
+	AUDIO_METER_WIDTH_DEFAULT_PX,
+	VerticalAudioMeter,
+} from "@/components/editor/vertical-audio-meter";
+import { ProjectDetailsCard } from "@/components/editor/project-details-card";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { usePanelStore } from "@/stores/panel-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
@@ -29,7 +33,11 @@ import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
 import { usePluginsStore } from "@/lib/plugins/store";
 import { useViewerStore } from "@/stores/viewer-store";
-import { Cancel01Icon, ViewIcon, SparklesIcon } from "@hugeicons/core-free-icons";
+import {
+	Cancel01Icon,
+	ViewIcon,
+	SparklesIcon,
+} from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/utils/ui";
 import { Button } from "@/components/ui/button";
@@ -247,7 +255,11 @@ function DialogAutoOpener() {
 
 	useEffect(() => {
 		const dialog = searchParams.get("dialog");
-		if (dialog === "templates" || dialog === "teleprompter" || dialog === "settings") {
+		if (
+			dialog === "templates" ||
+			dialog === "teleprompter" ||
+			dialog === "settings"
+		) {
 			setOpen(dialog, true);
 			// Clean the URL so the dialog doesn't re-open on refresh.
 			const url = new URL(window.location.href);
@@ -326,6 +338,35 @@ function EditorFooterChrome() {
 	return <EditorFooter />;
 }
 
+/**
+ * Shared right-hand column for the properties panel. The audio meter is
+ * resizable, and the project details card below it must always share the
+ * same width so the column never shows an empty gutter on one side.
+ */
+const METER_DETAILS_MIN_PX = 64;
+const METER_DETAILS_MAX_PX = 220;
+
+function MeterDetailsColumn() {
+	const [width, setWidth] = useState(AUDIO_METER_WIDTH_DEFAULT_PX);
+	const clampedSetWidth = (next: number) => {
+		setWidth(
+			Math.max(
+				METER_DETAILS_MIN_PX,
+				Math.min(METER_DETAILS_MAX_PX, Math.round(next)),
+			),
+		);
+	};
+	return (
+		<div
+			className="flex shrink-0 flex-col items-stretch gap-2"
+			style={{ width: `${width}px` }}
+		>
+			<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
+			<ProjectDetailsCard />
+		</div>
+	);
+}
+
 function EditorLayout() {
 	usePasteMedia();
 	const params = useParams();
@@ -358,7 +399,13 @@ function EditorPanels() {
 			resetPanels();
 			setLayoutVersion((v) => v + 1);
 		}
-	}, [panels.tools, panels.properties, panels.preview, panels.timeline, resetPanels]);
+	}, [
+		panels.tools,
+		panels.properties,
+		panels.preview,
+		panels.timeline,
+		resetPanels,
+	]);
 	// Pin the top row (which holds the preview) to a fixed pixel height
 	// when the editor viewport changes size — e.g. when the window enters
 	// or exits fullscreen. The vertical split is otherwise purely
@@ -501,7 +548,7 @@ function EditorPanels() {
 										<div className="flex-1 min-w-0">
 											<PropertiesPanel />
 										</div>
-										<VerticalAudioMeter />
+										<MeterDetailsColumn />
 									</div>
 									<PopOutButton id="properties" title="Properties" />
 								</div>
@@ -565,7 +612,7 @@ function EditorPanels() {
 						<div className="flex min-h-0 max-h-full flex-1 min-w-0 self-start overflow-hidden">
 							<PropertiesPanel />
 						</div>
-						<VerticalAudioMeter />
+						<MeterDetailsColumn />
 					</div>
 				</FloatingWindow>
 			)}
@@ -660,11 +707,11 @@ function LazyOverlays() {
  * When takeover is not active, renders children unchanged.
  */
 function AITakeoverChatBoost({ children }: { children: React.ReactNode }) {
-	const takeoverActive = useAIControlStoreSafe((s) => s.takeoverState === "active");
+	const takeoverActive = useAIControlStoreSafe(
+		(s) => s.takeoverState === "active",
+	);
 	return (
-		<div
-			className={takeoverActive ? "relative z-210" : "contents"}
-		>
+		<div className={takeoverActive ? "relative z-210" : "contents"}>
 			{children}
 		</div>
 	);

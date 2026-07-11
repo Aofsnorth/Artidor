@@ -5,9 +5,15 @@
 //! Mirrors `apps/desktop-web/src/main.rs` (thin entry, logic in modules).
 
 #![windows_subsystem = "windows"]
+// The native shell is a thin unsafe wrapper over the windows-rs Win32 API.
+// Rust 2024 emits `unsafe_op_in_unsafe_fn` warnings for every unsafe call
+// inside an unsafe function; suppressing the lint keeps the build output
+// focused on actionable issues.
+#![allow(unsafe_op_in_unsafe_fn)]
 
 mod ai;
 mod dialogs;
+mod d2d;
 mod export;
 mod media;
 mod playback;
@@ -19,8 +25,9 @@ mod window;
 
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Gdi::{
-    BLACK_BRUSH, BeginPaint, EndPaint, GetStockObject, HBRUSH, InvalidateRect, PAINTSTRUCT,
-    UpdateWindow,
+    BLACK_BRUSH, BeginPaint, BitBlt, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
+    DeleteObject, EndPaint, GetStockObject, HBITMAP, HBRUSH, HDC, HGDIOBJ, InvalidateRect,
+    PAINTSTRUCT, SRCCOPY, SelectObject, UpdateWindow,
 };
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -35,14 +42,14 @@ use windows::core::{Error, HRESULT, PCWSTR, w};
 use crate::render::viewport::viewport_proc;
 use crate::state::Project;
 use crate::theme::{WINDOW_HEIGHT, WINDOW_WIDTH};
-
+use crate::ui::d2d_paint;
 use crate::ui::layout::Layout;
 use crate::ui::paint_chrome;
 use crate::window::shortcuts::{
     handle_keydown, handle_lbuttondown, handle_lbuttonup, handle_mousemove, handle_mousewheel,
     handle_timer,
 };
-use crate::window::{WindowState, sync_viewport_child, window_state_mut};
+use crate::window::{AppMode, WindowState, sync_viewport_child, window_state_mut};
 
 const CLASS_NAME: PCWSTR = w!("ArtidorNativeWndClass");
 const CHILD_CLASS_NAME: PCWSTR = w!("ArtidorNativeViewportClass");
@@ -65,82 +72,47 @@ unsafe extern "system" fn main_proc(
             WM_ERASEBKGND => LRESULT(1),
             WM_PAINT => {
                 let mut ps: PAINTSTRUCT = core::mem::zeroed();
-                let hdc = BeginPaint(hwnd, &mut ps);
+                let screen_hdc = BeginPaint(hwnd, &mut ps);
                 let mut client = RECT::default();
                 if GetClientRect(hwnd, &mut client).is_ok() {
-                    let layout =
-                        Layout::compute(client.right - client.left, client.bottom - client.top);
+                    let w = client.right - client.left;
+                    let h = client.bottom - client.top;
+                    let layout = Layout::compute(w, h);
+
                     if let Some(state) = window_state_mut(hwnd) {
-                        // Select the body font for all chrome text.
-                        let prev_font = windows::Win32::Graphics::Gdi::SelectObject(
-                            hdc,
-                            state.fonts.body.into(),
-                        );
-                        match state.mode {
-                            crate::window::AppMode::Home => {
-                                crate::ui::home::draw_home(
-                                    hdc,
-                                    hwnd,
-                                    &client,
-                                    &mut state.home,
-                                    &state.fonts,
-                                );
-                            }
-                            crate::window::AppMode::Projects => {
-                                crate::ui::projects::draw_projects(
-                                    hdc,
-                                    hwnd,
-                                    &client,
-                                    &mut state.projects,
-                                    &state.fonts,
-                                );
-                            }
-                            crate::window::AppMode::Editor => {
-                                paint_chrome(
-                                    hdc,
+                        let mode = state.mode;
+                        if mode == AppMode::Editor {
+                            if let Some(d2d) = &mut state.d2d {
+                                d2d.begin_draw(&crate::theme::to_d2d(crate::theme::BG, 1.0));
+                                if let Err(e) = d2d_paint(
+                                    d2d,
                                     &layout,
                                     &client,
                                     &state.project,
                                     state.selected_track,
                                     state.playing,
                                     state.selected_element,
-                                    &state.teleprompter_text,
-                                    state.teleprompter_on,
-                                    state.zoom_pps,
-                                    state.scroll_seconds,
-                                    &mut state.header_btns,
                                     state.active_tab,
                                     &mut state.tab_rects,
                                     state.looping,
                                     &mut state.toolbar_btns,
-                                );
+                                    &mut state.header_btns,
+                                    state.zoom_pps,
+                                    state.scroll_seconds,
+                                ) {
+                                    eprintln!("D2D paint failed: {e}");
+                                }
+                                if let Err(e) = d2d.end_draw() {
+                                    eprintln!("D2D present failed: {e}");
+                                }
+                            } else {
+                                paint_gdi_editor(hwnd, screen_hdc, &client, &layout, state);
                             }
+                        } else {
+                            paint_gdi_editor(hwnd, screen_hdc, &client, &layout, state);
                         }
-                        let _ = windows::Win32::Graphics::Gdi::SelectObject(hdc, prev_font);
                     } else {
-                        let fallback = Project::new_untitled("loading", 0);
-                        let mut dummy_btns = crate::ui::header::HeaderButtons::default();
-                        let mut dummy_tabs = Vec::new();
-                        let mut dummy_toolbar =
-                            crate::ui::viewport_toolbar::ToolbarButtons::default();
-                        paint_chrome(
-                            hdc,
-                            &layout,
-                            &client,
-                            &fallback,
-                            0,
-                            false,
-                            None,
-                            "",
-                            false,
-                            20.0,
-                            0.0,
-                            &mut dummy_btns,
-                            crate::state::AssetsTab::Assets,
-                            &mut dummy_tabs,
-                            false,
-                            &mut dummy_toolbar,
-                        );
+                        paint_gdi_fallback(screen_hdc, &client, &layout);
                     }
                 }
                 let _ = EndPaint(hwnd, &ps);
@@ -148,6 +120,15 @@ unsafe extern "system" fn main_proc(
             }
             WM_SIZE => {
                 sync_viewport_child(hwnd);
+                if let Some(state) = window_state_mut(hwnd) {
+                    if let Some(d2d) = &mut state.d2d {
+                        let width = (lparam.0 as u32) & 0xFFFF;
+                        let height = (lparam.0 as u32) >> 16;
+                        if let Err(e) = d2d.resize(width, height) {
+                            eprintln!("D2D resize failed: {e}");
+                        }
+                    }
+                }
                 let _ = InvalidateRect(Some(hwnd), None, false);
                 LRESULT(0)
             }
@@ -209,6 +190,142 @@ unsafe extern "system" fn main_proc(
             }
             _ => DefWindowProcW(hwnd, msg, wparam, lparam),
         }
+    }
+}
+
+/// GDI editor chrome path used for Home/Projects and as a D2D fallback.
+unsafe fn paint_gdi_editor(
+    hwnd: HWND,
+    screen_hdc: HDC,
+    client: &RECT,
+    layout: &Layout,
+    state: &mut WindowState,
+) {
+    let w = client.right - client.left;
+    let h = client.bottom - client.top;
+
+    let mut mem_hdc = HDC::default();
+    let mut mem_bmp: HBITMAP = HBITMAP::default();
+    let mut old_bmp: HGDIOBJ = HGDIOBJ::default();
+    let mut using_mem = false;
+    if w > 0 && h > 0 {
+        mem_hdc = CreateCompatibleDC(Some(screen_hdc));
+        if !mem_hdc.is_invalid() {
+            mem_bmp = CreateCompatibleBitmap(screen_hdc, w, h);
+            if !mem_bmp.is_invalid() {
+                old_bmp = SelectObject(mem_hdc, mem_bmp.into());
+                using_mem = true;
+            } else {
+                let _ = DeleteDC(mem_hdc);
+                mem_hdc = HDC::default();
+            }
+        }
+    }
+    let draw_hdc = if using_mem { mem_hdc } else { screen_hdc };
+
+    let prev_font = SelectObject(draw_hdc, state.fonts.body.into());
+    match state.mode {
+        AppMode::Home => {
+            crate::ui::home::draw_home(
+                draw_hdc,
+                hwnd,
+                client,
+                &mut state.home,
+                &state.fonts,
+            );
+        }
+        AppMode::Projects => {
+            crate::ui::projects::draw_projects(
+                draw_hdc,
+                hwnd,
+                client,
+                &mut state.projects,
+                &state.fonts,
+            );
+        }
+        AppMode::Editor => {
+            paint_chrome(
+                draw_hdc,
+                layout,
+                client,
+                &state.project,
+                state.selected_track,
+                state.playing,
+                state.selected_element,
+                &state.teleprompter_text,
+                state.teleprompter_on,
+                state.zoom_pps,
+                state.scroll_seconds,
+                &mut state.header_btns,
+                state.active_tab,
+                &mut state.tab_rects,
+                state.looping,
+                &mut state.toolbar_btns,
+            );
+        }
+    }
+    let _ = SelectObject(draw_hdc, prev_font);
+
+    if using_mem {
+        let _ = BitBlt(screen_hdc, 0, 0, w, h, Some(mem_hdc), 0, 0, SRCCOPY);
+        let _ = SelectObject(mem_hdc, old_bmp);
+        let _ = DeleteObject(mem_bmp.into());
+        let _ = DeleteDC(mem_hdc);
+    }
+}
+
+/// GDI fallback when no `WindowState` is available yet.
+unsafe fn paint_gdi_fallback(screen_hdc: HDC, client: &RECT, layout: &Layout) {
+    let w = client.right - client.left;
+    let h = client.bottom - client.top;
+
+    let mut mem_hdc = HDC::default();
+    let mut mem_bmp: HBITMAP = HBITMAP::default();
+    let mut old_bmp: HGDIOBJ = HGDIOBJ::default();
+    let mut using_mem = false;
+    if w > 0 && h > 0 {
+        mem_hdc = CreateCompatibleDC(Some(screen_hdc));
+        if !mem_hdc.is_invalid() {
+            mem_bmp = CreateCompatibleBitmap(screen_hdc, w, h);
+            if !mem_bmp.is_invalid() {
+                old_bmp = SelectObject(mem_hdc, mem_bmp.into());
+                using_mem = true;
+            } else {
+                let _ = DeleteDC(mem_hdc);
+                mem_hdc = HDC::default();
+            }
+        }
+    }
+    let draw_hdc = if using_mem { mem_hdc } else { screen_hdc };
+
+    let fallback = Project::new_untitled("loading", 0);
+    let mut dummy_btns = crate::ui::header::HeaderButtons::default();
+    let mut dummy_tabs = Vec::new();
+    let mut dummy_toolbar = crate::ui::viewport_toolbar::ToolbarButtons::default();
+    paint_chrome(
+        draw_hdc,
+        layout,
+        client,
+        &fallback,
+        0,
+        false,
+        None,
+        "",
+        false,
+        20.0,
+        0.0,
+        &mut dummy_btns,
+        crate::state::AssetsTab::Assets,
+        &mut dummy_tabs,
+        false,
+        &mut dummy_toolbar,
+    );
+
+    if using_mem {
+        let _ = BitBlt(screen_hdc, 0, 0, w, h, Some(mem_hdc), 0, 0, SRCCOPY);
+        let _ = SelectObject(mem_hdc, old_bmp);
+        let _ = DeleteObject(mem_bmp.into());
+        let _ = DeleteDC(mem_hdc);
     }
 }
 
@@ -283,7 +400,7 @@ fn main() -> Result<(), Error> {
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0);
         let project = Project::new_untitled("untitled", now_ms);
-        let state = Box::new(WindowState::new(child, project));
+        let state = Box::new(WindowState::new(hwnd, child, project));
         SetWindowLongPtrW(
             hwnd,
             windows::Win32::UI::WindowsAndMessaging::GWLP_USERDATA,

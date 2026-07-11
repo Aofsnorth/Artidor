@@ -72,24 +72,33 @@ export interface Transform3D extends Transform {
 	perspective?: number;
 }
 
-export type BlendMode =
-	| "normal"
-	| "darken"
-	| "multiply"
-	| "color-burn"
-	| "lighten"
-	| "screen"
-	| "plus-lighter"
-	| "color-dodge"
-	| "overlay"
-	| "soft-light"
-	| "hard-light"
-	| "difference"
-	| "exclusion"
-	| "hue"
-	| "saturation"
-	| "color"
-	| "luminosity";
+export const BLEND_MODES = [
+	"normal",
+	"darken",
+	"multiply",
+	"color-burn",
+	"lighten",
+	"screen",
+	"plus-lighter",
+	"color-dodge",
+	"overlay",
+	"soft-light",
+	"hard-light",
+	"difference",
+	"exclusion",
+	"hue",
+	"saturation",
+	"color",
+	"luminosity",
+] as const;
+
+export type BlendMode = (typeof BLEND_MODES)[number];
+
+export function resolveBlendMode(value: unknown): BlendMode {
+	return BLEND_MODES.includes(value as BlendMode)
+		? (value as BlendMode)
+		: "normal";
+}
 
 /**
  * A scene-level 3D camera. When present, the renderer applies a perspective

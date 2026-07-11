@@ -9,6 +9,7 @@
  */
 
 import { cn } from "@/utils/ui";
+import { useI18n } from "@/lib/i18n";
 
 export const ALL_CATEGORY = "All";
 
@@ -24,6 +25,7 @@ export function CategoryBar({
 	onChange: (category: string) => void;
 	className?: string;
 }) {
+	const { t } = useI18n();
 	const items = [ALL_CATEGORY, ...categories];
 	return (
 		<div
@@ -46,7 +48,7 @@ export function CategoryBar({
 								: "border-transparent bg-white/[0.04] text-white/55 hover:bg-white/[0.08] hover:text-white/80",
 						)}
 					>
-						{category}
+						{category === ALL_CATEGORY ? t("catalog.allCategory") : category}
 					</button>
 				);
 			})}

@@ -11,9 +11,9 @@ import { cn } from "@/utils/ui";
  * both L/R channel bars labelled; the upper bound prevents the meter
  * from consuming more than a third of the properties panel width.
  */
-const AUDIO_METER_WIDTH_MIN_PX = 56;
-const AUDIO_METER_WIDTH_MAX_PX = 220;
-const AUDIO_METER_WIDTH_DEFAULT_PX = 64;
+export const AUDIO_METER_WIDTH_MIN_PX = 56;
+export const AUDIO_METER_WIDTH_MAX_PX = 220;
+export const AUDIO_METER_WIDTH_DEFAULT_PX = 64;
 
 const VIS_BAR_COUNT = 24;
 const VIS_HEIGHT_PX = 96;
@@ -22,7 +22,13 @@ const CLIP_THRESHOLD_PCT = 98;
 const CLIP_HOLD_MS = 1500;
 const CLIP_DECAY_PER_FRAME = 2;
 
-export function VerticalAudioMeter() {
+export function VerticalAudioMeter({
+	width: controlledWidth,
+	onResize,
+}: {
+	width?: number;
+	onResize?: (nextWidth: number) => void;
+} = {}) {
 	const editor = useEditor();
 	const isPlaying = useEditor(
 		(e) => e.playback.getIsPlaying(),
@@ -52,15 +58,22 @@ export function VerticalAudioMeter() {
 	// Width is stored unconstrained but clamped on every update so a
 	// stray drag (or a future programmatic call) can never collapse
 	// the column to nothing or push it past the properties panel.
-	const [width, setWidthRaw] = useState(AUDIO_METER_WIDTH_DEFAULT_PX);
-	const setWidth = (next: number) => {
-		setWidthRaw(
+	const [internalWidth, setInternalWidthRaw] = useState(
+		AUDIO_METER_WIDTH_DEFAULT_PX,
+	);
+	const setInternalWidth = (next: number) => {
+		setInternalWidthRaw(
 			Math.max(
 				AUDIO_METER_WIDTH_MIN_PX,
 				Math.min(AUDIO_METER_WIDTH_MAX_PX, Math.round(next)),
 			),
 		);
 	};
+	const width =
+		controlledWidth === undefined ? internalWidth : controlledWidth;
+	const setWidth = controlledWidth === undefined
+		? setInternalWidth
+		: (onResize ?? (() => {}));
 
 	// Direct DOM refs. Each channel is one <div> with height set via
 	// inline style. We update the style imperatively inside the rAF

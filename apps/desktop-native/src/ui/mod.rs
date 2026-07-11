@@ -4,6 +4,8 @@
 
 pub mod ai;
 pub mod assets;
+pub mod d2d_chrome;
+pub mod d2d_gfx;
 pub mod font;
 pub mod footer;
 pub mod gfx;
@@ -19,10 +21,15 @@ pub mod viewport_toolbar;
 
 use windows::Win32::Foundation::RECT;
 use windows::Win32::Graphics::Gdi::HDC;
+use windows::core::Result;
 
-use crate::state::Project;
+use crate::d2d::D2dContext;
+use crate::state::{AssetsTab, Project};
 use crate::theme::{BG, BORDER, PANEL_BG};
+use crate::ui::d2d_gfx::D2dGfx;
 use crate::ui::gfx::{border_rect, draw_text_centered, fill_rect};
+use crate::ui::header::HeaderButtons;
+use crate::ui::viewport_toolbar::ToolbarButtons;
 use crate::window::timeline_duration;
 
 /// Paint the editor chrome (everything except the viewport child window).
@@ -96,6 +103,44 @@ pub unsafe fn paint_chrome(
             draw_teleprompter_overlay(hdc, &layout.viewport, project, teleprompter_text);
         }
     }
+}
+
+/// Paint the editor chrome using Direct2D.
+///
+/// Full D2D port of `paint_chrome`. Delegates to `d2d_chrome::paint_chrome_d2d`
+/// so the D2D rendering path is self-contained.
+pub unsafe fn d2d_paint(
+    ctx: &D2dContext,
+    layout: &layout::Layout,
+    _client: &RECT,
+    project: &Project,
+    selected_track: usize,
+    playing: bool,
+    selected_element: Option<(usize, usize)>,
+    active_tab: AssetsTab,
+    tab_rects: &mut Vec<RECT>,
+    looping: bool,
+    toolbar_btns: &mut ToolbarButtons,
+    header_btns: &mut HeaderButtons,
+    zoom_pps: f64,
+    scroll_seconds: f64,
+) -> Result<()> {
+    let mut gfx = D2dGfx::new(ctx)?;
+    crate::ui::d2d_chrome::paint_chrome_d2d(
+        &mut gfx,
+        layout,
+        project,
+        selected_track,
+        playing,
+        selected_element,
+        active_tab,
+        tab_rects,
+        looping,
+        toolbar_btns,
+        header_btns,
+        zoom_pps,
+        scroll_seconds,
+    )
 }
 
 /// Draw the teleprompter overlay: scrolling text over the preview's

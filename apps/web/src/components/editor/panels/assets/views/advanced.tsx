@@ -7,6 +7,7 @@ import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import {
 	MasterSection,
 	PerBandHslSection,
@@ -31,15 +32,15 @@ type SubTabId =
 	| "scopes"
 	| "lut";
 
-const SUB_TABS: Array<{ id: SubTabId; label: string }> = [
-	{ id: "wheels", label: "Wheels" },
-	{ id: "hsl", label: "HSL" },
-	{ id: "qualifier", label: "Qualifier" },
-	{ id: "vignette", label: "Vignette" },
-	{ id: "hsl-curves", label: "HSL Curves" },
-	{ id: "curves", label: "Curves" },
-	{ id: "scopes", label: "Scopes" },
-	{ id: "lut", label: "LUT" },
+const SUB_TABS: Array<{ id: SubTabId; labelKey: string }> = [
+	{ id: "wheels", labelKey: "advanced.wheels" },
+	{ id: "hsl", labelKey: "advanced.hsl" },
+	{ id: "qualifier", labelKey: "advanced.qualifier" },
+	{ id: "vignette", labelKey: "advanced.vignette" },
+	{ id: "hsl-curves", labelKey: "advanced.hslCurves" },
+	{ id: "curves", labelKey: "advanced.curves" },
+	{ id: "scopes", labelKey: "advanced.scopes" },
+	{ id: "lut", labelKey: "advanced.lut" },
 ];
 
 /**
@@ -74,6 +75,7 @@ export function AdvancedView({
 	 */
 	embedded?: boolean;
 } = {}) {
+	const { t } = useI18n();
 	const { selectedElements } = useElementSelection();
 	const editor = useEditor();
 	const [activeSubTab, setActiveSubTab] = useState<SubTabId>("wheels");
@@ -81,16 +83,18 @@ export function AdvancedView({
 	if (selectedElements.length === 0) {
 		return wrapEmpty({
 			embedded,
-			title: "No layer selected",
-			body: "Select a video or image on the timeline to colour-correct it here.",
+			t,
+			title: t("advanced.noLayerSelected"),
+			body: t("advanced.selectVideoOrImage"),
 		});
 	}
 
 	if (selectedElements.length > 1) {
 		return wrapEmpty({
 			embedded,
-			title: "Multiple layers selected",
-			body: `Colour tools work on a single layer — pick one element to continue (${selectedElements.length} currently selected).`,
+			t,
+			title: t("advanced.multipleLayersSelected"),
+			body: t("advanced.pickOneElement", { count: selectedElements.length }),
 		});
 	}
 
@@ -103,8 +107,9 @@ export function AdvancedView({
 	if (!element || !isColorableElement(element)) {
 		return wrapEmpty({
 			embedded,
-			title: "Pick a video or image",
-			body: "Colour tools work on video, image, and graphic layers. Audio and text layers don't have colour parameters.",
+			t,
+			title: t("advanced.pickVideoOrImage"),
+			body: t("advanced.colorToolsUnsupported"),
 		});
 	}
 
@@ -127,7 +132,7 @@ export function AdvancedView({
 										: "border-white/[0.06] bg-white/[0.025] text-white/[0.55] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
 								)}
 							>
-								{tab.label}
+								{t(tab.labelKey)}
 							</button>
 						);
 					})}
@@ -166,7 +171,7 @@ export function AdvancedView({
 		</>
 	);
 
-	return embedded ? content : <PanelView title="Advanced">{content}</PanelView>;
+	return embedded ? content : <PanelView title={t("advanced.title")}>{content}</PanelView>;
 }
 
 /**
@@ -176,10 +181,12 @@ export function AdvancedView({
  */
 function wrapEmpty({
 	embedded,
+	t,
 	title,
 	body,
 }: {
 	embedded: boolean;
+	t: (key: string, values?: Record<string, string | number>) => string;
 	title: string;
 	body: string;
 }): React.ReactElement {
@@ -190,7 +197,7 @@ function wrapEmpty({
 			body={body}
 		/>
 	);
-	return embedded ? inner : <PanelView title="Advanced">{inner}</PanelView>;
+	return embedded ? inner : <PanelView title={t("advanced.title")}>{inner}</PanelView>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -251,15 +258,20 @@ function CurvesSubTab({
 		}
 	};
 
+	const { t } = useI18n();
 	const channels = [
 		{
 			key: "rgb_curve",
-			label: "Master (RGB)",
+			label: t("advanced.masterRgb"),
 			color: "rgba(255,255,255,0.95)",
 		},
-		{ key: "red_curve", label: "Red", color: "rgba(239,68,68,0.95)" },
-		{ key: "green_curve", label: "Green", color: "rgba(34,197,94,0.95)" },
-		{ key: "blue_curve", label: "Blue", color: "rgba(59,130,246,0.95)" },
+		{ key: "red_curve", label: t("advanced.red"), color: "rgba(239,68,68,0.95)" },
+		{
+			key: "green_curve",
+			label: t("advanced.green"),
+			color: "rgba(34,197,94,0.95)",
+		},
+		{ key: "blue_curve", label: t("advanced.blue"), color: "rgba(59,130,246,0.95)" },
 	] as const;
 
 	return (
@@ -291,6 +303,7 @@ function CurveChannelControl({
 	onChange: (points: CurvePoint[]) => void;
 	onReset: () => void;
 }) {
+	const { t } = useI18n();
 	const width = 240;
 	const height = 140;
 	const padding = 8;
@@ -341,7 +354,7 @@ function CurveChannelControl({
 					onClick={onReset}
 					className="text-[0.6rem] uppercase tracking-wider text-white/40 hover:text-white/80 transition"
 				>
-					Reset
+					{t("advanced.reset")}
 				</button>
 			</div>
 			<svg
@@ -350,7 +363,7 @@ function CurveChannelControl({
 				height={height}
 				viewBox={`0 0 ${width} ${height}`}
 				role="img"
-				aria-label={`${label} curve editor`}
+				aria-label={t("advanced.curveEditorAria", { label })}
 				className="w-full cursor-crosshair"
 				onPointerDown={(e) => {
 					const pt = fromPointer(e);
