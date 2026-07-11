@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import useDeepCompareEffect from "use-deep-compare-effect";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
@@ -96,7 +95,7 @@ function RenderTreeController() {
 
 	const { width, height } = usePreviewSize();
 
-	useDeepCompareEffect(() => {
+	useEffect(() => {
 		if (!activeProject) return;
 
 		const duration = editor.timeline.getTotalDuration();
@@ -110,7 +109,15 @@ function RenderTreeController() {
 		});
 
 		editor.renderer.setRenderTree({ renderTree });
-	}, [tracks, mediaAssets, activeProject?.settings.background, width, height]);
+	}, [
+		tracks,
+		mediaAssets,
+		activeProject,
+		editor.timeline.getTotalDuration,
+		editor.renderer.setRenderTree,
+		width,
+		height,
+	]);
 
 	return null;
 }
@@ -204,256 +211,254 @@ function PreviewCanvas({
 	// second, each of which would do property reads, scale calculations,
 	// and a setSize call before reaching the "nothing changed" early-exit.
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
-	const needsRenderRef = useRef(true); // start true to render the first frame
-	const rafEnabled = isPlaying || needsRenderRef.current;
+	const [needsRender, setNeedsRender] = useState(true); // start true to render the first frame
+	const rafEnabled = isPlaying || needsRender;
 
 	const render = useCallback(() => {
-		if (!canvasRef.current || !renderTree) return;
-
-		// Clear the "needs render" flag — the rAF loop will stop on the next
-		// React render if playback is also paused. The flag is re-set when
-		// the render tree changes (see the useEffect below) or when playback
-		// advances a frame (the frame !== lastFrameRef.current check below
-		// triggers a re-render, which re-sets the flag via the useEffect).
-		needsRenderRef.current = false;
-
-		// Loading overlay check: if a render is in flight and has exceeded
-		// the 80 ms threshold, show the overlay via direct DOM manipulation
-		// (NOT React state — setState inside rAF causes re-render jank).
-		const LOADING_THRESHOLD_MS = 80;
-		if (
-			renderingRef.current &&
-			renderStartRef.current > 0 &&
-			performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
-		) {
-			if (!isLoadingRef.current && loadingOverlayRef.current) {
-				isLoadingRef.current = true;
-				loadingOverlayRef.current.style.opacity = "1";
-			}
-		}
-
-		if (renderingRef.current) {
-			pendingRenderRef.current = true;
-			return;
-		}
-
-		const renderTime = Math.min(
-			editor.playback.getCurrentTime(),
-			editor.timeline.getLastFrameTime(),
-		);
-		const ticksPerFrame = Math.round(
-			(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
-		);
-		const frame = Math.floor(renderTime / ticksPerFrame);
-
-		// Read playback state early — needed for delta-frame skip and scale.
+		// Read playback state once at the start so the finally block can
+		// decide whether to keep the rAF loop alive.
 		const isPlaying = editor.playback.getIsPlaying();
+		try {
+			if (!canvasRef.current || !renderTree) return;
 
-		// Delta-frame skip: if the frame index, render tree, scale, AND
-		// playback state are all unchanged from the last successful render,
-		// the composited output is identical — skip the entire pipeline
-		// (resolve → build descriptor → texture upload → GPU render). This
-		// is the single biggest per-frame optimization for paused playback:
-		// when the user is not playing and not scrubbing, the rAF loop runs
-		// but produces zero GPU work. It also catches the case where
-		// playback reached the end of the timeline (frame stays the same).
-		//
-		// The frame cache check below handles the case where the frame IS
-		// different but was recently rendered (backward scrub). This check
-		// handles the case where nothing changed at all.
-		const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
-		if (
-			frame === lastFrameRef.current &&
-			renderTree === lastSceneRef.current &&
-			lastScaleRef.current > 0 &&
-			scaleInputs === lastScaleInputsRef.current
-		) {
-			return;
-		}
-
-		// Resolution scaling: render the preview at a fraction of project
-		// resolution (and cap video decode to match) on weak machines /
-		// during playback. The output canvas keeps its native size and the
-		// compositor result is stretched up on blit — cheap, and the whole
-		// transform pipeline derives from renderer.width/height so it all
-		// scales coherently. Decode cap follows the *idle* tier so play/pause
-		// never rebuilds the video decoder.
-		const fps = renderer.fps.numerator / renderer.fps.denominator || 30;
-		const frameBudgetMs = 1000 / fps;
-		const avgRenderMs = perfTrackerRef.current.getAverageRenderMs();
-		// For manual quality tiers, the scale is deterministic from
-		// (quality, isPlaying, gpuDegraded) — skip the recalculation when
-		// those inputs haven't changed. Auto mode always recalculates
-		// because avgRenderMs changes every frame.
-		// (scaleInputs is already computed above for the delta-frame skip.)
-		let scale: number;
-		let idleScale: number;
-		if (
-			previewQuality !== "auto" &&
-			scaleInputs === lastScaleInputsRef.current &&
-			idleScaleRef.current > 0
-		) {
-			scale = lastScaleRef.current;
-			idleScale = idleScaleRef.current;
-		} else {
-			const scales = resolvePreviewRenderScales({
-				quality: previewQuality,
-				isPlaying,
-				gpuDegraded,
-				avgRenderMs: avgRenderMs || undefined,
-				frameBudgetMs,
-			});
-			scale = scales.renderScale;
-			idleScale = scales.decodeScale;
-			idleScaleRef.current = idleScale;
-			lastScaleInputsRef.current = scaleInputs;
-		}
-		renderer.setSize({
-			width: Math.max(2, Math.round(nativeWidth * scale)),
-			height: Math.max(2, Math.round(nativeHeight * scale)),
-			// canvasSize stays at the project canvas so the transform
-			// pipeline keeps computing positions in canvas coords.
-			// The scale pass in CanvasRenderer.render() then maps the
-			// resulting frame down to the (output) buffer size.
-			canvasSize: { width: nativeWidth, height: nativeHeight },
-		});
-		renderer.maxSourceDim = resolveDecodeMaxDim({
-			renderWidth: nativeWidth,
-			renderHeight: nativeHeight,
-			scale: idleScale,
-		});
-
-		// Re-render the same frame when scale changes (e.g. pause → sharpen).
-		// Check the composited frame cache first — if we already rendered this
-		// exact (frame, scale) combination, blit the cached bitmap instead of
-		// re-running the full pipeline. This makes backward scrubbing and
-		// re-seeks to recently-visited frames instant (0ms vs 5-80ms).
-		const cacheKey = `${frame}:${scale.toFixed(3)}`;
-		const cachedFrame = frameCacheRef.current.get(cacheKey);
-		if (
-			cachedFrame &&
-			frame === lastFrameRef.current &&
-			renderTree === lastSceneRef.current
-		) {
-			// Cache hit for the current frame — no need to re-render.
-			// (This branch is mainly for scale changes where we need to re-render,
-			//  but if the scale is the same we skip entirely.)
-		}
-		if (
-			frame !== lastFrameRef.current ||
-			renderTree !== lastSceneRef.current ||
-			scale !== lastScaleRef.current
-		) {
-			// Check the frame cache before committing to a full render.
-			const cached = frameCacheRef.current.get(cacheKey);
-			if (cached && renderTree === lastSceneRef.current) {
-				// Cache hit — blit the cached bitmap to the canvas. This is
-				// ~0.5ms (a single drawImage) vs 5-80ms for a full re-render.
-				const ctx = canvasRef.current.getContext("2d");
-				if (ctx) {
-					ctx.drawImage(
-						cached.bitmap,
-						0,
-						0,
-						canvasRef.current.width,
-						canvasRef.current.height,
-					);
-					lastSceneRef.current = renderTree;
-					lastFrameRef.current = frame;
-					lastScaleRef.current = scale;
-					// Move to end (most recently used) for LRU.
-					frameCacheRef.current.delete(cacheKey);
-					frameCacheRef.current.set(cacheKey, cached);
-					return;
+			// Loading overlay check: if a render is in flight and has exceeded
+			// the 80 ms threshold, show the overlay via direct DOM manipulation
+			// (NOT React state — setState inside rAF causes re-render jank).
+			const LOADING_THRESHOLD_MS = 80;
+			if (
+				renderingRef.current &&
+				renderStartRef.current > 0 &&
+				performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
+			) {
+				if (!isLoadingRef.current && loadingOverlayRef.current) {
+					isLoadingRef.current = true;
+					loadingOverlayRef.current.style.opacity = "1";
 				}
 			}
 
-			renderingRef.current = true;
-			pendingRenderRef.current = false;
-			renderStartRef.current = performance.now();
-			const token = ++renderTokenRef.current;
-
-			// Freeze: if playback is playing AND this is a scene/scale
-			// change (not a routine frame advance), pause playback so the
-			// video stays on the current frame instead of advancing with a
-			// stale visual. Resume after.
-			//
-			// Only freeze for scene/scale changes — not for every frame
-			// during normal playback. Freezing on every frame causes rapid
-			// pause/play cycles that stutter audio (each pause stops audio
-			// playback, each play re-inits the audio context + re-decodes).
-			const isSceneChange =
-				renderTree !== lastSceneRef.current || scale !== lastScaleRef.current;
-			const isCurrentlyPlaying = editor.playback.getIsPlaying();
-			if (isCurrentlyPlaying && isSceneChange) {
-				wasPlayingBeforeRenderRef.current = true;
-				editor.playback.pause();
+			if (renderingRef.current) {
+				pendingRenderRef.current = true;
+				return;
 			}
 
-			renderer
-				.renderToCanvas({
-					node: renderTree,
-					time: renderTime,
-					targetCanvas: canvasRef.current,
-				})
-				.then(() => {
-					if (token === renderTokenRef.current && !pendingRenderRef.current) {
+			const renderTime = Math.min(
+				editor.playback.getCurrentTime(),
+				editor.timeline.getLastFrameTime(),
+			);
+			const ticksPerFrame = Math.round(
+				(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
+			);
+			const frame = Math.floor(renderTime / ticksPerFrame);
+
+			// Delta-frame skip: if the frame index, render tree, scale, AND
+			// playback state are all unchanged from the last successful render,
+			// the composited output is identical — skip the entire pipeline
+			// (resolve → build descriptor → texture upload → GPU render). This
+			// is the single biggest per-frame optimization for paused playback:
+			// when the user is not playing and not scrubbing, the rAF loop runs
+			// but produces zero GPU work. It also catches the case where
+			// playback reached the end of the timeline (frame stays the same).
+			//
+			// The frame cache check below handles the case where the frame IS
+			// different but was recently rendered (backward scrub). This check
+			// handles the case where nothing changed at all.
+			const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+			if (
+				frame === lastFrameRef.current &&
+				renderTree === lastSceneRef.current &&
+				lastScaleRef.current > 0 &&
+				scaleInputs === lastScaleInputsRef.current
+			) {
+				return;
+			}
+
+			// Resolution scaling: render the preview at a fraction of project
+			// resolution (and cap video decode to match) on weak machines /
+			// during playback. The output canvas keeps its native size and the
+			// compositor result is stretched up on blit — cheap, and the whole
+			// transform pipeline derives from renderer.width/height so it all
+			// scales coherently. Decode cap follows the *idle* tier so play/pause
+			// never rebuilds the video decoder.
+			const fps = renderer.fps.numerator / renderer.fps.denominator || 30;
+			const frameBudgetMs = 1000 / fps;
+			const avgRenderMs = perfTrackerRef.current.getAverageRenderMs();
+			// For manual quality tiers, the scale is deterministic from
+			// (quality, isPlaying, gpuDegraded) — skip the recalculation when
+			// those inputs haven't changed. Auto mode always recalculates
+			// because avgRenderMs changes every frame.
+			// (scaleInputs is already computed above for the delta-frame skip.)
+			let scale: number;
+			let idleScale: number;
+			if (
+				previewQuality !== "auto" &&
+				scaleInputs === lastScaleInputsRef.current &&
+				idleScaleRef.current > 0
+			) {
+				scale = lastScaleRef.current;
+				idleScale = idleScaleRef.current;
+			} else {
+				const scales = resolvePreviewRenderScales({
+					quality: previewQuality,
+					isPlaying,
+					gpuDegraded,
+					avgRenderMs: avgRenderMs || undefined,
+					frameBudgetMs,
+				});
+				scale = scales.renderScale;
+				idleScale = scales.decodeScale;
+				idleScaleRef.current = idleScale;
+				lastScaleInputsRef.current = scaleInputs;
+			}
+			renderer.setSize({
+				width: Math.max(2, Math.round(nativeWidth * scale)),
+				height: Math.max(2, Math.round(nativeHeight * scale)),
+				// canvasSize stays at the project canvas so the transform
+				// pipeline keeps computing positions in canvas coords.
+				// The scale pass in CanvasRenderer.render() then maps the
+				// resulting frame down to the (output) buffer size.
+				canvasSize: { width: nativeWidth, height: nativeHeight },
+			});
+			renderer.maxSourceDim = resolveDecodeMaxDim({
+				renderWidth: nativeWidth,
+				renderHeight: nativeHeight,
+				scale: idleScale,
+			});
+
+			// Re-render the same frame when scale changes (e.g. pause → sharpen).
+			// Check the composited frame cache first — if we already rendered this
+			// exact (frame, scale) combination, blit the cached bitmap instead of
+			// re-running the full pipeline. This makes backward scrubbing and
+			// re-seeks to recently-visited frames instant (0ms vs 5-80ms).
+			const cacheKey = `${frame}:${scale.toFixed(3)}`;
+			const cachedFrame = frameCacheRef.current.get(cacheKey);
+			if (
+				cachedFrame &&
+				frame === lastFrameRef.current &&
+				renderTree === lastSceneRef.current
+			) {
+				// Cache hit for the current frame — no need to re-render.
+				// (This branch is mainly for scale changes where we need to re-render,
+				//  but if the scale is the same we skip entirely.)
+			}
+			if (
+				frame !== lastFrameRef.current ||
+				renderTree !== lastSceneRef.current ||
+				scale !== lastScaleRef.current
+			) {
+				// Check the frame cache before committing to a full render.
+				const cached = frameCacheRef.current.get(cacheKey);
+				if (cached && renderTree === lastSceneRef.current) {
+					// Cache hit — blit the cached bitmap to the canvas. This is
+					// ~0.5ms (a single drawImage) vs 5-80ms for a full re-render.
+					const ctx = canvasRef.current.getContext("2d");
+					if (ctx) {
+						ctx.drawImage(
+							cached.bitmap,
+							0,
+							0,
+							canvasRef.current.width,
+							canvasRef.current.height,
+						);
 						lastSceneRef.current = renderTree;
 						lastFrameRef.current = frame;
 						lastScaleRef.current = scale;
-						// Cache the rendered frame as an ImageBitmap for instant
-						// re-blit on backward scrub / re-seek. ImageBitmap is
-						// GPU-backed and transferable — createImageBitmap is
-						// ~1-2ms (a GPU copy) and drawImage(bitmap) is ~0.5ms.
-						// Only cache during playback or when paused (not during
-						// active scene edits which change the render tree).
-						const canvas = canvasRef.current;
-						if (canvas && typeof createImageBitmap === "function") {
-							const key = `${frame}:${scale.toFixed(3)}`;
-							createImageBitmap(canvas)
-								.then((bitmap) => {
-									if (token !== renderTokenRef.current) {
-										bitmap.close();
-										return;
-									}
-									const cache = frameCacheRef.current;
-									cache.set(key, { bitmap, frame, scale });
-									// Evict oldest entries (FIFO — JS Maps preserve
-									// insertion order, so .next().value is oldest).
-									while (cache.size > FRAME_CACHE_SIZE) {
-										const oldest = cache.keys().next().value;
-										if (oldest === undefined) break;
-										const evicted = cache.get(oldest);
-										evicted?.bitmap.close();
-										cache.delete(oldest);
-									}
-								})
-								.catch(() => {
-									// createImageBitmap can fail on very large
-									// canvases or OOM — silently skip caching.
-								});
+						// Move to end (most recently used) for LRU.
+						frameCacheRef.current.delete(cacheKey);
+						frameCacheRef.current.set(cacheKey, cached);
+						return;
+					}
+				}
+
+				renderingRef.current = true;
+				pendingRenderRef.current = false;
+				renderStartRef.current = performance.now();
+				const token = ++renderTokenRef.current;
+
+				// Freeze: if playback is playing AND this is a scene/scale
+				// change (not a routine frame advance), pause playback so the
+				// video stays on the current frame instead of advancing with a
+				// stale visual. Resume after.
+				//
+				// Only freeze for scene/scale changes — not for every frame
+				// during normal playback. Freezing on every frame causes rapid
+				// pause/play cycles that stutter audio (each pause stops audio
+				// playback, each play re-inits the audio context + re-decodes).
+				const isSceneChange =
+					renderTree !== lastSceneRef.current || scale !== lastScaleRef.current;
+				if (isPlaying && isSceneChange) {
+					wasPlayingBeforeRenderRef.current = true;
+					editor.playback.pause();
+				}
+
+				renderer
+					.renderToCanvas({
+						node: renderTree,
+						time: renderTime,
+						targetCanvas: canvasRef.current,
+					})
+					.then(() => {
+						if (token === renderTokenRef.current && !pendingRenderRef.current) {
+							lastSceneRef.current = renderTree;
+							lastFrameRef.current = frame;
+							lastScaleRef.current = scale;
+							// Cache the rendered frame as an ImageBitmap for instant
+							// re-blit on backward scrub / re-seek. ImageBitmap is
+							// GPU-backed and transferable — createImageBitmap is
+							// ~1-2ms (a GPU copy) and drawImage(bitmap) is ~0.5ms.
+							// Only cache during playback or when paused (not during
+							// active scene edits which change the render tree).
+							const canvas = canvasRef.current;
+							if (canvas && typeof createImageBitmap === "function") {
+								const key = `${frame}:${scale.toFixed(3)}`;
+								createImageBitmap(canvas)
+									.then((bitmap) => {
+										if (token !== renderTokenRef.current) {
+											bitmap.close();
+											return;
+										}
+										const cache = frameCacheRef.current;
+										cache.set(key, { bitmap, frame, scale });
+										// Evict oldest entries (FIFO — JS Maps preserve
+										// insertion order, so .next().value is oldest).
+										while (cache.size > FRAME_CACHE_SIZE) {
+											const oldest = cache.keys().next().value;
+											if (oldest === undefined) break;
+											const evicted = cache.get(oldest);
+											evicted?.bitmap.close();
+											cache.delete(oldest);
+										}
+									})
+									.catch(() => {
+										// createImageBitmap can fail on very large
+										// canvases or OOM — silently skip caching.
+									});
+							}
 						}
-					}
-				})
-				.catch(() => {
-					// Release the lock on failure (e.g. the GPU is still warming
-					// up, or a transient frame/device error) so the next frame
-					// retries instead of leaving the preview permanently stuck.
-				})
-				.finally(() => {
-					const duration = performance.now() - renderStartRef.current;
-					perfTrackerRef.current.recordRender(duration);
-					renderingRef.current = false;
-					if (isLoadingRef.current && loadingOverlayRef.current) {
-						isLoadingRef.current = false;
-						loadingOverlayRef.current.style.opacity = "0";
-					}
-					// Resume playback if we froze it for this render.
-					if (wasPlayingBeforeRenderRef.current) {
-						wasPlayingBeforeRenderRef.current = false;
-						editor.playback.play();
-					}
-				});
+					})
+					.catch(() => {
+						// Release the lock on failure (e.g. the GPU is still warming
+						// up, or a transient frame/device error) so the next frame
+						// retries instead of leaving the preview permanently stuck.
+					})
+					.finally(() => {
+						const duration = performance.now() - renderStartRef.current;
+						perfTrackerRef.current.recordRender(duration);
+						renderingRef.current = false;
+						if (isLoadingRef.current && loadingOverlayRef.current) {
+							isLoadingRef.current = false;
+							loadingOverlayRef.current.style.opacity = "0";
+						}
+						// Resume playback if we froze it for this render.
+						if (wasPlayingBeforeRenderRef.current) {
+							wasPlayingBeforeRenderRef.current = false;
+							editor.playback.play();
+						}
+					});
+			}
+		} finally {
+			if (!isPlaying && !pendingRenderRef.current) {
+				setNeedsRender(false);
+			}
 		}
 	}, [
 		renderer,
@@ -475,19 +480,19 @@ function PreviewCanvas({
 	// the old render tree and must not be re-blitted after an edit.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the renderTree identity changes so the cached frame bitmaps are invalidated, even though the value itself is not read inside the body.
 	useEffect(() => {
-		needsRenderRef.current = true;
+		setNeedsRender(true);
 		const cache = frameCacheRef.current;
 		for (const [, entry] of cache) {
 			entry.bitmap.close();
 		}
 		cache.clear();
-	}, [renderTree]);
+	}, [renderTree, setNeedsRender]);
 
 	// Mark a render as needed when the canvas size changes (panel resize).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the canvas size changes to request a fresh render, even though the dimensions are not read inside the body.
 	useEffect(() => {
-		needsRenderRef.current = true;
-	}, [nativeWidth, nativeHeight]);
+		setNeedsRender(true);
+	}, [nativeWidth, nativeHeight, setNeedsRender]);
 
 	// When paused, listen for playback-seek events (scrubbing) and mark a
 	// render as needed so the rAF loop re-enables for one frame. During
@@ -495,7 +500,7 @@ function PreviewCanvas({
 	useEffect(() => {
 		if (isPlaying) return;
 		const onSeek = () => {
-			needsRenderRef.current = true;
+			setNeedsRender(true);
 		};
 		window.addEventListener("playback-seek", onSeek);
 		window.addEventListener("playback-update", onSeek);

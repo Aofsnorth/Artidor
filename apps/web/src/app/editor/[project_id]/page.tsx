@@ -13,10 +13,6 @@ import { TabBar } from "@/components/editor/panels/assets/tabbar";
 import { PropertiesPanel } from "@/components/editor/panels/properties";
 import { Timeline } from "@/components/editor/panels/timeline";
 import { PreviewPanel } from "@/components/editor/panels/preview";
-import { EffectsView } from "@/components/editor/panels/assets/views/effects";
-import { TransitionsView } from "@/components/editor/panels/assets/views/transitions";
-import { AdjustmentsView } from "@/components/editor/panels/assets/views/adjustments";
-import { PluginsView } from "@/components/editor/panels/assets/views/plugins";
 import { EditorHeader } from "@/components/editor/editor-header";
 import {
 	AUDIO_METER_WIDTH_DEFAULT_PX,
@@ -88,6 +84,30 @@ const TemplatesDialog = lazy(() =>
 const SettingsDialog = lazy(() =>
 	import("@/components/editor/dialogs/settings-dialog").then((m) => ({
 		default: m.SettingsDialog,
+	})),
+);
+
+// Lazy-loaded asset sub-views that can be popped out into their own window.
+// They share the same chunks as the assets panel, so they are only fetched
+// when the user actually opens the panel in a floating window.
+const LazyEffectsView = lazy(() =>
+	import("@/components/editor/panels/assets/views/effects").then((m) => ({
+		default: m.EffectsView,
+	})),
+);
+const LazyTransitionsView = lazy(() =>
+	import("@/components/editor/panels/assets/views/transitions").then((m) => ({
+		default: m.TransitionsView,
+	})),
+);
+const LazyAdjustmentsView = lazy(() =>
+	import("@/components/editor/panels/assets/views/adjustments").then((m) => ({
+		default: m.AdjustmentsView,
+	})),
+);
+const LazyPluginsView = lazy(() =>
+	import("@/components/editor/panels/assets/views/plugins").then((m) => ({
+		default: m.PluginsView,
 	})),
 );
 
@@ -631,7 +651,9 @@ function EditorPanels() {
 					title="Effects"
 					state={floatingPanels.effects}
 				>
-					<EffectsView />
+					<Suspense fallback={null}>
+						<LazyEffectsView />
+					</Suspense>
 				</FloatingWindow>
 			)}
 			{floatingPanels.transitions && (
@@ -640,7 +662,9 @@ function EditorPanels() {
 					title="Transitions"
 					state={floatingPanels.transitions}
 				>
-					<TransitionsView />
+					<Suspense fallback={null}>
+						<LazyTransitionsView />
+					</Suspense>
 				</FloatingWindow>
 			)}
 			{floatingPanels.adjust && (
@@ -649,7 +673,9 @@ function EditorPanels() {
 					title="Adjustments"
 					state={floatingPanels.adjust}
 				>
-					<AdjustmentsView />
+					<Suspense fallback={null}>
+						<LazyAdjustmentsView />
+					</Suspense>
 				</FloatingWindow>
 			)}
 			{floatingPanels.plugins && (
@@ -658,7 +684,9 @@ function EditorPanels() {
 					title="Plugins"
 					state={floatingPanels.plugins}
 				>
-					<PluginsView />
+					<Suspense fallback={null}>
+						<LazyPluginsView />
+					</Suspense>
 				</FloatingWindow>
 			)}
 		</div>

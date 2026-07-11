@@ -6,11 +6,11 @@ import { TooltipProvider } from "../components/ui/tooltip";
 import { baseMetaData } from "./metadata";
 
 import { isEnvMissing, webEnv } from "@/lib/env/web";
-import { EnvWarningModal } from "@/components/env-warning-modal";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { I18nProvider } from "@/lib/i18n";
+import { DynamicEnvWarningModal } from "@/components/dynamic-env-warning-modal";
 
 const siteFont = Inter({
 	subsets: ["latin"],
@@ -75,7 +75,7 @@ export default function RootLayout({
 								data-track-web-vitals={false}
 								data-track-sessions={false}
 							/>
-							<EnvWarningModal isMissing={isEnvMissing} />
+							<DynamicEnvWarningModal isMissing={isEnvMissing} />
 							{children}
 							<Analytics />
 							<SpeedInsights />

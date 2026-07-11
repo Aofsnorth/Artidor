@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EditorCore } from "@/core";
 import { startEditorBridge } from "@/lib/api/bridge";
 import { getMcpConnectionManager } from "@/stores/mcp-store";
-import { CommandPalette } from "@/components/editor/command-palette";
+
+const LazyCommandPalette = lazy(() =>
+	import("@/components/editor/command-palette").then((m) => ({
+		default: m.CommandPalette,
+	})),
+);
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsListener } from "@/hooks/use-keybindings";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
@@ -224,5 +229,9 @@ function EditorRuntimeBindings() {
 
 	useEditorActions();
 	useKeybindingsListener();
-	return <CommandPalette />;
+	return (
+		<Suspense fallback={null}>
+			<LazyCommandPalette />
+		</Suspense>
+	);
 }

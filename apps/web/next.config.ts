@@ -165,6 +165,8 @@ const nextConfig: NextConfig = {
 			"date-fns",
 			"nanoid",
 			"zod",
+			"motion",
+			"react-icons",
 		],
 	},
 	images: {
