@@ -9,136 +9,157 @@ use crate::{EffectPass, UniformValue};
 
 const GAUSSIAN_BLUR_SHADER_ID: &str = "gaussian-blur";
 const GAUSSIAN_BLUR_SHADER_SOURCE: &str = include_str!("shaders/gaussian_blur.wgsl");
-
 const BRIGHTNESS_SHADER_ID: &str = "brightness";
 const BRIGHTNESS_SHADER_SOURCE: &str = include_str!("shaders/brightness.wgsl");
-
 const CONTRAST_SHADER_ID: &str = "contrast";
 const CONTRAST_SHADER_SOURCE: &str = include_str!("shaders/contrast.wgsl");
-
 const SATURATION_SHADER_ID: &str = "saturation";
 const SATURATION_SHADER_SOURCE: &str = include_str!("shaders/saturation.wgsl");
-
 const HUE_ROTATE_SHADER_ID: &str = "hue-rotate";
 const HUE_ROTATE_SHADER_SOURCE: &str = include_str!("shaders/hue_rotate.wgsl");
-
 const TEMPERATURE_SHADER_ID: &str = "temperature";
 const TEMPERATURE_SHADER_SOURCE: &str = include_str!("shaders/temperature.wgsl");
-
 const SEPIA_SHADER_ID: &str = "sepia";
 const SEPIA_SHADER_SOURCE: &str = include_str!("shaders/sepia.wgsl");
-
 const GRAYSCALE_SHADER_ID: &str = "grayscale";
 const GRAYSCALE_SHADER_SOURCE: &str = include_str!("shaders/grayscale.wgsl");
-
 const INVERT_SHADER_ID: &str = "invert";
 const INVERT_SHADER_SOURCE: &str = include_str!("shaders/invert.wgsl");
-
 const HIGHLIGHTS_SHADER_ID: &str = "highlights";
 const HIGHLIGHTS_SHADER_SOURCE: &str = include_str!("shaders/highlights.wgsl");
-
 const SHADOWS_SHADER_ID: &str = "shadows";
 const SHADOWS_SHADER_SOURCE: &str = include_str!("shaders/shadows.wgsl");
-
 const SHARPEN_SHADER_ID: &str = "sharpen";
 const SHARPEN_SHADER_SOURCE: &str = include_str!("shaders/sharpen.wgsl");
-
 const CHROMATIC_ABERRATION_SHADER_ID: &str = "chromatic-aberration";
 const CHROMATIC_ABERRATION_SHADER_SOURCE: &str = include_str!("shaders/chromatic-aberration.wgsl");
-
 const CHROMA_KEY_SHADER_ID: &str = "chroma-key";
 const CHROMA_KEY_SHADER_SOURCE: &str = include_str!("shaders/chroma-key.wgsl");
-
 const REMOVE_BACKGROUND_SHADER_ID: &str = "remove-background";
 const REMOVE_BACKGROUND_SHADER_SOURCE: &str = include_str!("shaders/remove-background.wgsl");
-
 const POSTERIZE_SHADER_ID: &str = "posterize";
 const POSTERIZE_SHADER_SOURCE: &str = include_str!("shaders/posterize.wgsl");
-
 const EDGE_DETECT_SHADER_ID: &str = "edge-detect";
 const EDGE_DETECT_SHADER_SOURCE: &str = include_str!("shaders/edge-detect.wgsl");
-
 const HALFTONE_SHADER_ID: &str = "halftone";
 const HALFTONE_SHADER_SOURCE: &str = include_str!("shaders/halftone.wgsl");
-
 const MIRROR_SHADER_ID: &str = "mirror";
 const MIRROR_SHADER_SOURCE: &str = include_str!("shaders/mirror.wgsl");
-
 const SWIRL_SHADER_ID: &str = "swirl";
 const SWIRL_SHADER_SOURCE: &str = include_str!("shaders/swirl.wgsl");
-
 const BULGE_SHADER_ID: &str = "bulge";
 const BULGE_SHADER_SOURCE: &str = include_str!("shaders/bulge.wgsl");
-
 const TWIST_SHADER_ID: &str = "twist";
 const TWIST_SHADER_SOURCE: &str = include_str!("shaders/twist.wgsl");
-
 const THERMAL_SHADER_ID: &str = "thermal";
 const THERMAL_SHADER_SOURCE: &str = include_str!("shaders/thermal.wgsl");
-
 const MOTION_BLUR_SHADER_ID: &str = "motion-blur";
 const MOTION_BLUR_SHADER_SOURCE: &str = include_str!("shaders/motion-blur.wgsl");
-
 const WAVE_SHADER_ID: &str = "wave";
 const WAVE_SHADER_SOURCE: &str = include_str!("shaders/wave.wgsl");
-
 const RIPPLE_SHADER_ID: &str = "ripple";
 const RIPPLE_SHADER_SOURCE: &str = include_str!("shaders/ripple.wgsl");
-
 const PIXELATE_SHADER_ID: &str = "pixelate";
 const PIXELATE_SHADER_SOURCE: &str = include_str!("shaders/pixelate.wgsl");
-
 const FISHEYE_SHADER_ID: &str = "fisheye";
 const FISHEYE_SHADER_SOURCE: &str = include_str!("shaders/fisheye.wgsl");
-
 const SCANLINES_SHADER_ID: &str = "scanlines";
 const SCANLINES_SHADER_SOURCE: &str = include_str!("shaders/scanlines.wgsl");
-
 const EMBOSS_SHADER_ID: &str = "emboss";
 const EMBOSS_SHADER_SOURCE: &str = include_str!("shaders/emboss.wgsl");
-
 const GLOW_SHADER_ID: &str = "glow";
 const GLOW_SHADER_SOURCE: &str = include_str!("shaders/glow.wgsl");
-
 const VIBRANCE_SHADER_ID: &str = "vibrance";
 const VIBRANCE_SHADER_SOURCE: &str = include_str!("shaders/vibrance.wgsl");
-
 const VIGNETTE_SHADER_ID: &str = "vignette";
 const VIGNETTE_SHADER_SOURCE: &str = include_str!("shaders/vignette.wgsl");
-
 const GRAIN_SHADER_ID: &str = "grain";
 const GRAIN_SHADER_SOURCE: &str = include_str!("shaders/grain.wgsl");
-
 const DEHAZE_SHADER_ID: &str = "dehaze";
 const DEHAZE_SHADER_SOURCE: &str = include_str!("shaders/dehaze.wgsl");
-
 const CLARITY_SHADER_ID: &str = "clarity";
 const CLARITY_SHADER_SOURCE: &str = include_str!("shaders/clarity.wgsl");
-
 const FADE_SHADER_ID: &str = "fade";
 const FADE_SHADER_SOURCE: &str = include_str!("shaders/fade.wgsl");
-
 const WHITES_SHADER_ID: &str = "whites";
 const WHITES_SHADER_SOURCE: &str = include_str!("shaders/whites.wgsl");
-
 const BLACKS_SHADER_ID: &str = "blacks";
 const BLACKS_SHADER_SOURCE: &str = include_str!("shaders/blacks.wgsl");
-
 const COLOR_WHEELS_SHADER_ID: &str = "color-wheels";
 const COLOR_WHEELS_SHADER_SOURCE: &str = include_str!("shaders/color-wheels.wgsl");
-
 const VELOCITY_BLUR_SHADER_ID: &str = "velocity-blur";
 const VELOCITY_BLUR_SHADER_SOURCE: &str = include_str!("shaders/velocity-blur.wgsl");
-
 const STROKE_SHADER_ID: &str = "stroke";
 const STROKE_SHADER_SOURCE: &str = include_str!("shaders/stroke.wgsl");
-
 const DROP_SHADOW_SHADER_ID: &str = "drop-shadow";
 const DROP_SHADOW_SHADER_SOURCE: &str = include_str!("shaders/drop-shadow.wgsl");
-
 const OUTER_GLOW_SHADER_ID: &str = "outer-glow";
 const OUTER_GLOW_SHADER_SOURCE: &str = include_str!("shaders/outer-glow.wgsl");
+const KALEIDOSCOPE_SHADER_ID: &str = "kaleidoscope";
+const KALEIDOSCOPE_SHADER_SOURCE: &str = include_str!("shaders/kaleidoscope.wgsl");
+const TILE_SHADER_ID: &str = "tile";
+const TILE_SHADER_SOURCE: &str = include_str!("shaders/tile.wgsl");
+const CHECKER_SHADER_ID: &str = "checker";
+const CHECKER_SHADER_SOURCE: &str = include_str!("shaders/checker.wgsl");
+const GRID_SHADER_ID: &str = "grid";
+const GRID_SHADER_SOURCE: &str = include_str!("shaders/grid.wgsl");
 
+struct ShaderEntry {
+    id: &'static str,
+    label: &'static str,
+    source: &'static str,
+}
+
+const SHADER_REGISTRY: &[ShaderEntry] = &[
+    ShaderEntry { id: GAUSSIAN_BLUR_SHADER_ID, label: "effects-gaussian-blur-shader", source: GAUSSIAN_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: BRIGHTNESS_SHADER_ID, label: "effects-brightness-shader", source: BRIGHTNESS_SHADER_SOURCE },
+    ShaderEntry { id: CONTRAST_SHADER_ID, label: "effects-contrast-shader", source: CONTRAST_SHADER_SOURCE },
+    ShaderEntry { id: SATURATION_SHADER_ID, label: "effects-saturation-shader", source: SATURATION_SHADER_SOURCE },
+    ShaderEntry { id: HUE_ROTATE_SHADER_ID, label: "effects-hue-rotate-shader", source: HUE_ROTATE_SHADER_SOURCE },
+    ShaderEntry { id: TEMPERATURE_SHADER_ID, label: "effects-temperature-shader", source: TEMPERATURE_SHADER_SOURCE },
+    ShaderEntry { id: SEPIA_SHADER_ID, label: "effects-sepia-shader", source: SEPIA_SHADER_SOURCE },
+    ShaderEntry { id: GRAYSCALE_SHADER_ID, label: "effects-grayscale-shader", source: GRAYSCALE_SHADER_SOURCE },
+    ShaderEntry { id: INVERT_SHADER_ID, label: "effects-invert-shader", source: INVERT_SHADER_SOURCE },
+    ShaderEntry { id: HIGHLIGHTS_SHADER_ID, label: "effects-highlights-shader", source: HIGHLIGHTS_SHADER_SOURCE },
+    ShaderEntry { id: SHADOWS_SHADER_ID, label: "effects-shadows-shader", source: SHADOWS_SHADER_SOURCE },
+    ShaderEntry { id: SHARPEN_SHADER_ID, label: "effects-sharpen-shader", source: SHARPEN_SHADER_SOURCE },
+    ShaderEntry { id: CHROMATIC_ABERRATION_SHADER_ID, label: "effects-chromatic-aberration-shader", source: CHROMATIC_ABERRATION_SHADER_SOURCE },
+    ShaderEntry { id: CHROMA_KEY_SHADER_ID, label: "effects-chroma-key-shader", source: CHROMA_KEY_SHADER_SOURCE },
+    ShaderEntry { id: REMOVE_BACKGROUND_SHADER_ID, label: "effects-remove-background-shader", source: REMOVE_BACKGROUND_SHADER_SOURCE },
+    ShaderEntry { id: POSTERIZE_SHADER_ID, label: "effects-posterize-shader", source: POSTERIZE_SHADER_SOURCE },
+    ShaderEntry { id: EDGE_DETECT_SHADER_ID, label: "effects-edge-detect-shader", source: EDGE_DETECT_SHADER_SOURCE },
+    ShaderEntry { id: HALFTONE_SHADER_ID, label: "effects-halftone-shader", source: HALFTONE_SHADER_SOURCE },
+    ShaderEntry { id: MIRROR_SHADER_ID, label: "effects-mirror-shader", source: MIRROR_SHADER_SOURCE },
+    ShaderEntry { id: SWIRL_SHADER_ID, label: "effects-swirl-shader", source: SWIRL_SHADER_SOURCE },
+    ShaderEntry { id: BULGE_SHADER_ID, label: "effects-bulge-shader", source: BULGE_SHADER_SOURCE },
+    ShaderEntry { id: TWIST_SHADER_ID, label: "effects-twist-shader", source: TWIST_SHADER_SOURCE },
+    ShaderEntry { id: THERMAL_SHADER_ID, label: "effects-thermal-shader", source: THERMAL_SHADER_SOURCE },
+    ShaderEntry { id: MOTION_BLUR_SHADER_ID, label: "effects-motion-blur-shader", source: MOTION_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: WAVE_SHADER_ID, label: "effects-wave-shader", source: WAVE_SHADER_SOURCE },
+    ShaderEntry { id: RIPPLE_SHADER_ID, label: "effects-ripple-shader", source: RIPPLE_SHADER_SOURCE },
+    ShaderEntry { id: PIXELATE_SHADER_ID, label: "effects-pixelate-shader", source: PIXELATE_SHADER_SOURCE },
+    ShaderEntry { id: FISHEYE_SHADER_ID, label: "effects-fisheye-shader", source: FISHEYE_SHADER_SOURCE },
+    ShaderEntry { id: SCANLINES_SHADER_ID, label: "effects-scanlines-shader", source: SCANLINES_SHADER_SOURCE },
+    ShaderEntry { id: EMBOSS_SHADER_ID, label: "effects-emboss-shader", source: EMBOSS_SHADER_SOURCE },
+    ShaderEntry { id: GLOW_SHADER_ID, label: "effects-glow-shader", source: GLOW_SHADER_SOURCE },
+    ShaderEntry { id: VIBRANCE_SHADER_ID, label: "effects-vibrance-shader", source: VIBRANCE_SHADER_SOURCE },
+    ShaderEntry { id: VIGNETTE_SHADER_ID, label: "effects-vignette-shader", source: VIGNETTE_SHADER_SOURCE },
+    ShaderEntry { id: GRAIN_SHADER_ID, label: "effects-grain-shader", source: GRAIN_SHADER_SOURCE },
+    ShaderEntry { id: DEHAZE_SHADER_ID, label: "effects-dehaze-shader", source: DEHAZE_SHADER_SOURCE },
+    ShaderEntry { id: CLARITY_SHADER_ID, label: "effects-clarity-shader", source: CLARITY_SHADER_SOURCE },
+    ShaderEntry { id: FADE_SHADER_ID, label: "effects-fade-shader", source: FADE_SHADER_SOURCE },
+    ShaderEntry { id: WHITES_SHADER_ID, label: "effects-whites-shader", source: WHITES_SHADER_SOURCE },
+    ShaderEntry { id: BLACKS_SHADER_ID, label: "effects-blacks-shader", source: BLACKS_SHADER_SOURCE },
+    ShaderEntry { id: COLOR_WHEELS_SHADER_ID, label: "effects-color-wheels-shader", source: COLOR_WHEELS_SHADER_SOURCE },
+    ShaderEntry { id: VELOCITY_BLUR_SHADER_ID, label: "effects-velocity-blur-shader", source: VELOCITY_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: STROKE_SHADER_ID, label: "effects-stroke-shader", source: STROKE_SHADER_SOURCE },
+    ShaderEntry { id: DROP_SHADOW_SHADER_ID, label: "effects-drop-shadow-shader", source: DROP_SHADOW_SHADER_SOURCE },
+    ShaderEntry { id: OUTER_GLOW_SHADER_ID, label: "effects-outer-glow-shader", source: OUTER_GLOW_SHADER_SOURCE },
+    ShaderEntry { id: KALEIDOSCOPE_SHADER_ID, label: "effects-kaleidoscope-shader", source: KALEIDOSCOPE_SHADER_SOURCE },
+    ShaderEntry { id: TILE_SHADER_ID, label: "effects-tile-shader", source: TILE_SHADER_SOURCE },
+    ShaderEntry { id: CHECKER_SHADER_ID, label: "effects-checker-shader", source: CHECKER_SHADER_SOURCE },
+    ShaderEntry { id: GRID_SHADER_ID, label: "effects-grid-shader", source: GRID_SHADER_SOURCE },
+];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
     pub width: u32,
@@ -206,316 +227,6 @@ impl EffectPipeline {
                     label: Some("effects-fullscreen-shader"),
                     source: wgpu::ShaderSource::Wgsl(FULLSCREEN_SHADER_SOURCE.into()),
                 });
-        let gaussian_blur_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-gaussian-blur-shader"),
-                    source: wgpu::ShaderSource::Wgsl(GAUSSIAN_BLUR_SHADER_SOURCE.into()),
-                });
-        let brightness_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-brightness-shader"),
-                    source: wgpu::ShaderSource::Wgsl(BRIGHTNESS_SHADER_SOURCE.into()),
-                });
-        let contrast_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-contrast-shader"),
-                    source: wgpu::ShaderSource::Wgsl(CONTRAST_SHADER_SOURCE.into()),
-                });
-        let saturation_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-saturation-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SATURATION_SHADER_SOURCE.into()),
-                });
-        let hue_rotate_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-hue-rotate-shader"),
-                    source: wgpu::ShaderSource::Wgsl(HUE_ROTATE_SHADER_SOURCE.into()),
-                });
-        let temperature_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-temperature-shader"),
-                    source: wgpu::ShaderSource::Wgsl(TEMPERATURE_SHADER_SOURCE.into()),
-                });
-        let sepia_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-sepia-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SEPIA_SHADER_SOURCE.into()),
-                });
-        let grayscale_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-grayscale-shader"),
-                    source: wgpu::ShaderSource::Wgsl(GRAYSCALE_SHADER_SOURCE.into()),
-                });
-        let invert_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-invert-shader"),
-                    source: wgpu::ShaderSource::Wgsl(INVERT_SHADER_SOURCE.into()),
-                });
-        let highlights_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-highlights-shader"),
-                    source: wgpu::ShaderSource::Wgsl(HIGHLIGHTS_SHADER_SOURCE.into()),
-                });
-        let shadows_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-shadows-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SHADOWS_SHADER_SOURCE.into()),
-                });
-        let shadows_shader_module = shadows_shader_module;
-        let sharpen_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-sharpen-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SHARPEN_SHADER_SOURCE.into()),
-                });
-        let chromatic_aberration_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-chromatic-aberration-shader"),
-                    source: wgpu::ShaderSource::Wgsl(CHROMATIC_ABERRATION_SHADER_SOURCE.into()),
-                });
-        let chroma_key_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-chroma-key-shader"),
-                    source: wgpu::ShaderSource::Wgsl(CHROMA_KEY_SHADER_SOURCE.into()),
-                });
-        let remove_background_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-remove-background-shader"),
-                    source: wgpu::ShaderSource::Wgsl(REMOVE_BACKGROUND_SHADER_SOURCE.into()),
-                });
-        let posterize_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-posterize-shader"),
-                    source: wgpu::ShaderSource::Wgsl(POSTERIZE_SHADER_SOURCE.into()),
-                });
-        let edge_detect_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-edge-detect-shader"),
-                    source: wgpu::ShaderSource::Wgsl(EDGE_DETECT_SHADER_SOURCE.into()),
-                });
-        let halftone_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-halftone-shader"),
-                    source: wgpu::ShaderSource::Wgsl(HALFTONE_SHADER_SOURCE.into()),
-                });
-        let mirror_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-mirror-shader"),
-                    source: wgpu::ShaderSource::Wgsl(MIRROR_SHADER_SOURCE.into()),
-                });
-        let swirl_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-swirl-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SWIRL_SHADER_SOURCE.into()),
-                });
-        let bulge_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-bulge-shader"),
-                    source: wgpu::ShaderSource::Wgsl(BULGE_SHADER_SOURCE.into()),
-                });
-        let twist_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-twist-shader"),
-                    source: wgpu::ShaderSource::Wgsl(TWIST_SHADER_SOURCE.into()),
-                });
-        let thermal_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-thermal-shader"),
-                    source: wgpu::ShaderSource::Wgsl(THERMAL_SHADER_SOURCE.into()),
-                });
-        let motion_blur_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-motion-blur-shader"),
-                    source: wgpu::ShaderSource::Wgsl(MOTION_BLUR_SHADER_SOURCE.into()),
-                });
-        let wave_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-wave-shader"),
-                    source: wgpu::ShaderSource::Wgsl(WAVE_SHADER_SOURCE.into()),
-                });
-        let ripple_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-ripple-shader"),
-                    source: wgpu::ShaderSource::Wgsl(RIPPLE_SHADER_SOURCE.into()),
-                });
-        let pixelate_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-pixelate-shader"),
-                    source: wgpu::ShaderSource::Wgsl(PIXELATE_SHADER_SOURCE.into()),
-                });
-        let fisheye_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-fisheye-shader"),
-                    source: wgpu::ShaderSource::Wgsl(FISHEYE_SHADER_SOURCE.into()),
-                });
-        let scanlines_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-scanlines-shader"),
-                    source: wgpu::ShaderSource::Wgsl(SCANLINES_SHADER_SOURCE.into()),
-                });
-        let emboss_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-emboss-shader"),
-                    source: wgpu::ShaderSource::Wgsl(EMBOSS_SHADER_SOURCE.into()),
-                });
-        let glow_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-glow-shader"),
-                    source: wgpu::ShaderSource::Wgsl(GLOW_SHADER_SOURCE.into()),
-                });
-        let vibrance_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-vibrance-shader"),
-                    source: wgpu::ShaderSource::Wgsl(VIBRANCE_SHADER_SOURCE.into()),
-                });
-        let vignette_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-vignette-shader"),
-                    source: wgpu::ShaderSource::Wgsl(VIGNETTE_SHADER_SOURCE.into()),
-                });
-        let grain_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-grain-shader"),
-                    source: wgpu::ShaderSource::Wgsl(GRAIN_SHADER_SOURCE.into()),
-                });
-        let dehaze_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-dehaze-shader"),
-                    source: wgpu::ShaderSource::Wgsl(DEHAZE_SHADER_SOURCE.into()),
-                });
-        let clarity_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-clarity-shader"),
-                    source: wgpu::ShaderSource::Wgsl(CLARITY_SHADER_SOURCE.into()),
-                });
-        let fade_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-fade-shader"),
-                    source: wgpu::ShaderSource::Wgsl(FADE_SHADER_SOURCE.into()),
-                });
-        let whites_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-whites-shader"),
-                    source: wgpu::ShaderSource::Wgsl(WHITES_SHADER_SOURCE.into()),
-                });
-        let blacks_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-blacks-shader"),
-                    source: wgpu::ShaderSource::Wgsl(BLACKS_SHADER_SOURCE.into()),
-                });
-        let color_wheels_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-color-wheels-shader"),
-                    source: wgpu::ShaderSource::Wgsl(COLOR_WHEELS_SHADER_SOURCE.into()),
-                });
-        let velocity_blur_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-velocity-blur-shader"),
-                    source: wgpu::ShaderSource::Wgsl(VELOCITY_BLUR_SHADER_SOURCE.into()),
-                });
-        let stroke_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-stroke-shader"),
-                    source: wgpu::ShaderSource::Wgsl(STROKE_SHADER_SOURCE.into()),
-                });
-        let drop_shadow_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-drop-shadow-shader"),
-                    source: wgpu::ShaderSource::Wgsl(DROP_SHADOW_SHADER_SOURCE.into()),
-                });
-        let outer_glow_shader_module =
-            context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some("effects-outer-glow-shader"),
-                    source: wgpu::ShaderSource::Wgsl(OUTER_GLOW_SHADER_SOURCE.into()),
-                });
-
         let pipeline_layout =
             context
                 .device()
@@ -566,194 +277,18 @@ impl EffectPipeline {
                 })
         };
 
-        let gaussian_blur_pipeline = build_pipeline(
-            "effects-gaussian-blur-pipeline",
-            &gaussian_blur_shader_module,
-        );
-
         let mut pipelines = HashMap::new();
-        pipelines.insert(GAUSSIAN_BLUR_SHADER_ID.to_string(), gaussian_blur_pipeline);
-        pipelines.insert(
-            BRIGHTNESS_SHADER_ID.to_string(),
-            build_pipeline("effects-brightness-pipeline", &brightness_shader_module),
-        );
-        pipelines.insert(
-            CONTRAST_SHADER_ID.to_string(),
-            build_pipeline("effects-contrast-pipeline", &contrast_shader_module),
-        );
-        pipelines.insert(
-            SATURATION_SHADER_ID.to_string(),
-            build_pipeline("effects-saturation-pipeline", &saturation_shader_module),
-        );
-        pipelines.insert(
-            HUE_ROTATE_SHADER_ID.to_string(),
-            build_pipeline("effects-hue-rotate-pipeline", &hue_rotate_shader_module),
-        );
-        pipelines.insert(
-            TEMPERATURE_SHADER_ID.to_string(),
-            build_pipeline("effects-temperature-pipeline", &temperature_shader_module),
-        );
-        pipelines.insert(
-            SEPIA_SHADER_ID.to_string(),
-            build_pipeline("effects-sepia-pipeline", &sepia_shader_module),
-        );
-        pipelines.insert(
-            GRAYSCALE_SHADER_ID.to_string(),
-            build_pipeline("effects-grayscale-pipeline", &grayscale_shader_module),
-        );
-        pipelines.insert(
-            INVERT_SHADER_ID.to_string(),
-            build_pipeline("effects-invert-pipeline", &invert_shader_module),
-        );
-        pipelines.insert(
-            HIGHLIGHTS_SHADER_ID.to_string(),
-            build_pipeline("effects-highlights-pipeline", &highlights_shader_module),
-        );
-        pipelines.insert(
-            SHADOWS_SHADER_ID.to_string(),
-            build_pipeline("effects-shadows-pipeline", &shadows_shader_module),
-        );
-        pipelines.insert(
-            SHARPEN_SHADER_ID.to_string(),
-            build_pipeline("effects-sharpen-pipeline", &sharpen_shader_module),
-        );
-        pipelines.insert(
-            CHROMATIC_ABERRATION_SHADER_ID.to_string(),
-            build_pipeline(
-                "effects-chromatic-aberration-pipeline",
-                &chromatic_aberration_shader_module,
-            ),
-        );
-        pipelines.insert(
-            CHROMA_KEY_SHADER_ID.to_string(),
-            build_pipeline("effects-chroma-key-pipeline", &chroma_key_shader_module),
-        );
-        pipelines.insert(
-            REMOVE_BACKGROUND_SHADER_ID.to_string(),
-            build_pipeline(
-                "effects-remove-background-pipeline",
-                &remove_background_shader_module,
-            ),
-        );
-        pipelines.insert(
-            POSTERIZE_SHADER_ID.to_string(),
-            build_pipeline("effects-posterize-pipeline", &posterize_shader_module),
-        );
-        pipelines.insert(
-            EDGE_DETECT_SHADER_ID.to_string(),
-            build_pipeline("effects-edge-detect-pipeline", &edge_detect_shader_module),
-        );
-        pipelines.insert(
-            HALFTONE_SHADER_ID.to_string(),
-            build_pipeline("effects-halftone-pipeline", &halftone_shader_module),
-        );
-        pipelines.insert(
-            MIRROR_SHADER_ID.to_string(),
-            build_pipeline("effects-mirror-pipeline", &mirror_shader_module),
-        );
-        pipelines.insert(
-            SWIRL_SHADER_ID.to_string(),
-            build_pipeline("effects-swirl-pipeline", &swirl_shader_module),
-        );
-        pipelines.insert(
-            BULGE_SHADER_ID.to_string(),
-            build_pipeline("effects-bulge-pipeline", &bulge_shader_module),
-        );
-        pipelines.insert(
-            TWIST_SHADER_ID.to_string(),
-            build_pipeline("effects-twist-pipeline", &twist_shader_module),
-        );
-        pipelines.insert(
-            THERMAL_SHADER_ID.to_string(),
-            build_pipeline("effects-thermal-pipeline", &thermal_shader_module),
-        );
-        pipelines.insert(
-            MOTION_BLUR_SHADER_ID.to_string(),
-            build_pipeline("effects-motion-blur-pipeline", &motion_blur_shader_module),
-        );
-        pipelines.insert(
-            WAVE_SHADER_ID.to_string(),
-            build_pipeline("effects-wave-pipeline", &wave_shader_module),
-        );
-        pipelines.insert(
-            RIPPLE_SHADER_ID.to_string(),
-            build_pipeline("effects-ripple-pipeline", &ripple_shader_module),
-        );
-        pipelines.insert(
-            PIXELATE_SHADER_ID.to_string(),
-            build_pipeline("effects-pixelate-pipeline", &pixelate_shader_module),
-        );
-        pipelines.insert(
-            FISHEYE_SHADER_ID.to_string(),
-            build_pipeline("effects-fisheye-pipeline", &fisheye_shader_module),
-        );
-        pipelines.insert(
-            SCANLINES_SHADER_ID.to_string(),
-            build_pipeline("effects-scanlines-pipeline", &scanlines_shader_module),
-        );
-        pipelines.insert(
-            EMBOSS_SHADER_ID.to_string(),
-            build_pipeline("effects-emboss-pipeline", &emboss_shader_module),
-        );
-        pipelines.insert(
-            GLOW_SHADER_ID.to_string(),
-            build_pipeline("effects-glow-pipeline", &glow_shader_module),
-        );
-        pipelines.insert(
-            VIBRANCE_SHADER_ID.to_string(),
-            build_pipeline("effects-vibrance-pipeline", &vibrance_shader_module),
-        );
-        pipelines.insert(
-            VIGNETTE_SHADER_ID.to_string(),
-            build_pipeline("effects-vignette-pipeline", &vignette_shader_module),
-        );
-        pipelines.insert(
-            GRAIN_SHADER_ID.to_string(),
-            build_pipeline("effects-grain-pipeline", &grain_shader_module),
-        );
-        pipelines.insert(
-            DEHAZE_SHADER_ID.to_string(),
-            build_pipeline("effects-dehaze-pipeline", &dehaze_shader_module),
-        );
-        pipelines.insert(
-            CLARITY_SHADER_ID.to_string(),
-            build_pipeline("effects-clarity-pipeline", &clarity_shader_module),
-        );
-        pipelines.insert(
-            FADE_SHADER_ID.to_string(),
-            build_pipeline("effects-fade-pipeline", &fade_shader_module),
-        );
-        pipelines.insert(
-            WHITES_SHADER_ID.to_string(),
-            build_pipeline("effects-whites-pipeline", &whites_shader_module),
-        );
-        pipelines.insert(
-            BLACKS_SHADER_ID.to_string(),
-            build_pipeline("effects-blacks-pipeline", &blacks_shader_module),
-        );
-        pipelines.insert(
-            COLOR_WHEELS_SHADER_ID.to_string(),
-            build_pipeline("effects-color-wheels-pipeline", &color_wheels_shader_module),
-        );
-        pipelines.insert(
-            VELOCITY_BLUR_SHADER_ID.to_string(),
-            build_pipeline(
-                "effects-velocity-blur-pipeline",
-                &velocity_blur_shader_module,
-            ),
-        );
-        pipelines.insert(
-            STROKE_SHADER_ID.to_string(),
-            build_pipeline("effects-stroke-pipeline", &stroke_shader_module),
-        );
-        pipelines.insert(
-            DROP_SHADOW_SHADER_ID.to_string(),
-            build_pipeline("effects-drop-shadow-pipeline", &drop_shadow_shader_module),
-        );
-        pipelines.insert(
-            OUTER_GLOW_SHADER_ID.to_string(),
-            build_pipeline("effects-outer-glow-pipeline", &outer_glow_shader_module),
-        );
+        for entry in SHADER_REGISTRY {
+            let module = context.device().create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(entry.label),
+                source: wgpu::ShaderSource::Wgsl(entry.source.into()),
+            });
+            let pipeline_label = format!("effects-{}-pipeline", entry.id);
+            pipelines.insert(
+                entry.id.to_string(),
+                build_pipeline(&pipeline_label, &module),
+            );
+        }
 
         Self {
             uniform_bind_group_layout,
@@ -953,7 +488,11 @@ fn pack_effect_uniforms(
         | SWIRL_SHADER_ID
         | BULGE_SHADER_ID
         | TWIST_SHADER_ID
-        | THERMAL_SHADER_ID => {
+        | THERMAL_SHADER_ID
+        | KALEIDOSCOPE_SHADER_ID
+        | TILE_SHADER_ID
+        | CHECKER_SHADER_ID
+        | GRID_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -1251,80 +790,27 @@ fn read_vec3_uniform(pass: &EffectPass, uniform: &str) -> Result<[f32; 3], Effec
 mod tests {
     use super::*;
 
-    /// Every fragment shader registered in the pipeline, paired with its id.
-    /// Keep this in sync with the `pipelines.insert(...)` calls above so the
-    /// validation test below covers the full set.
-    const ALL_SHADERS: &[(&str, &str)] = &[
-        (GAUSSIAN_BLUR_SHADER_ID, GAUSSIAN_BLUR_SHADER_SOURCE),
-        (BRIGHTNESS_SHADER_ID, BRIGHTNESS_SHADER_SOURCE),
-        (CONTRAST_SHADER_ID, CONTRAST_SHADER_SOURCE),
-        (SATURATION_SHADER_ID, SATURATION_SHADER_SOURCE),
-        (HUE_ROTATE_SHADER_ID, HUE_ROTATE_SHADER_SOURCE),
-        (TEMPERATURE_SHADER_ID, TEMPERATURE_SHADER_SOURCE),
-        (SEPIA_SHADER_ID, SEPIA_SHADER_SOURCE),
-        (GRAYSCALE_SHADER_ID, GRAYSCALE_SHADER_SOURCE),
-        (INVERT_SHADER_ID, INVERT_SHADER_SOURCE),
-        (HIGHLIGHTS_SHADER_ID, HIGHLIGHTS_SHADER_SOURCE),
-        (SHADOWS_SHADER_ID, SHADOWS_SHADER_SOURCE),
-        (SHARPEN_SHADER_ID, SHARPEN_SHADER_SOURCE),
-        (
-            CHROMATIC_ABERRATION_SHADER_ID,
-            CHROMATIC_ABERRATION_SHADER_SOURCE,
-        ),
-        (CHROMA_KEY_SHADER_ID, CHROMA_KEY_SHADER_SOURCE),
-        (REMOVE_BACKGROUND_SHADER_ID, REMOVE_BACKGROUND_SHADER_SOURCE),
-        (POSTERIZE_SHADER_ID, POSTERIZE_SHADER_SOURCE),
-        (EDGE_DETECT_SHADER_ID, EDGE_DETECT_SHADER_SOURCE),
-        (HALFTONE_SHADER_ID, HALFTONE_SHADER_SOURCE),
-        (MIRROR_SHADER_ID, MIRROR_SHADER_SOURCE),
-        (SWIRL_SHADER_ID, SWIRL_SHADER_SOURCE),
-        (BULGE_SHADER_ID, BULGE_SHADER_SOURCE),
-        (TWIST_SHADER_ID, TWIST_SHADER_SOURCE),
-        (THERMAL_SHADER_ID, THERMAL_SHADER_SOURCE),
-        (MOTION_BLUR_SHADER_ID, MOTION_BLUR_SHADER_SOURCE),
-        (WAVE_SHADER_ID, WAVE_SHADER_SOURCE),
-        (RIPPLE_SHADER_ID, RIPPLE_SHADER_SOURCE),
-        (PIXELATE_SHADER_ID, PIXELATE_SHADER_SOURCE),
-        (FISHEYE_SHADER_ID, FISHEYE_SHADER_SOURCE),
-        (SCANLINES_SHADER_ID, SCANLINES_SHADER_SOURCE),
-        (EMBOSS_SHADER_ID, EMBOSS_SHADER_SOURCE),
-        (GLOW_SHADER_ID, GLOW_SHADER_SOURCE),
-        (VIBRANCE_SHADER_ID, VIBRANCE_SHADER_SOURCE),
-        (VIGNETTE_SHADER_ID, VIGNETTE_SHADER_SOURCE),
-        (GRAIN_SHADER_ID, GRAIN_SHADER_SOURCE),
-        (DEHAZE_SHADER_ID, DEHAZE_SHADER_SOURCE),
-        (CLARITY_SHADER_ID, CLARITY_SHADER_SOURCE),
-        (FADE_SHADER_ID, FADE_SHADER_SOURCE),
-        (WHITES_SHADER_ID, WHITES_SHADER_SOURCE),
-        (BLACKS_SHADER_ID, BLACKS_SHADER_SOURCE),
-        (COLOR_WHEELS_SHADER_ID, COLOR_WHEELS_SHADER_SOURCE),
-        (VELOCITY_BLUR_SHADER_ID, VELOCITY_BLUR_SHADER_SOURCE),
-        (STROKE_SHADER_ID, STROKE_SHADER_SOURCE),
-        (DROP_SHADOW_SHADER_ID, DROP_SHADOW_SHADER_SOURCE),
-        (OUTER_GLOW_SHADER_ID, OUTER_GLOW_SHADER_SOURCE),
-    ];
-
-    /// Parse every WGSL fragment shader through naga's front-end. wgpu only
-    /// compiles shader modules lazily at runtime, so without this a malformed
-    /// shader would slip through `cargo check`/`build` and only blow up in the
-    /// browser. The front-end performs lexing, parsing, name resolution and
-    /// type inference, so this catches the realistic authoring bugs: syntax
-    /// errors, undeclared identifiers, wrong argument counts, and type
-    /// mismatches.
+    /// Parse every WGSL fragment shader registered in the pipeline through
+    /// naga's front-end. wgpu only compiles shader modules lazily at runtime,
+    /// so without this a malformed shader would slip through `cargo check`/
+    /// `build` and only blow up in the browser. The front-end performs lexing,
+    /// parsing, name resolution and type inference, so this catches the realistic
+    /// authoring bugs: syntax errors, undeclared identifiers, wrong argument
+    /// counts, and type mismatches.
     ///
-    /// We intentionally stop at `parse_str` and do not run the full
-    /// `Validator`: each effect shader carries a vestigial `vertex_main` (it
-    /// returns a bare `vec4` without `@builtin(position)`), which standalone
-    /// validation rejects. That entry point is dead code — the real pipeline
-    /// always pairs the effect's `fragment_main` with the shared
-    /// `fullscreen.wgsl` vertex stage, so wgpu never validates it.
+    /// We intentionally stop at `parse_str` and do not run the full `Validator`:
+    /// each effect shader carries a vestigial `vertex_main` (it returns a bare
+    /// `vec4` without `@builtin(position)`), which standalone validation rejects.
+    /// That entry point is dead code — the real pipeline always pairs the
+    /// effect's `fragment_main` with the shared `fullscreen.wgsl` vertex stage,
+    /// so wgpu never validates it.
     #[test]
     fn all_shaders_parse_as_wgsl() {
         use wgpu::naga::front::wgsl;
 
-        for (id, source) in ALL_SHADERS {
-            wgsl::parse_str(source)
-                .unwrap_or_else(|err| panic!("WGSL parse error in shader '{id}': {err}"));
+        for entry in SHADER_REGISTRY {
+            wgsl::parse_str(entry.source)
+                .unwrap_or_else(|err| panic!("WGSL parse error in shader '{}': {err}", entry.id));
         }
     }
 }
