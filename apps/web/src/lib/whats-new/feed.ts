@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-15-transform-text-effects",
+		date: "2026-07-15",
+		tag: "feature",
+		title: "New Transform and Text effect categories",
+		items: [
+			"The Effects catalog now has Transform and Text categories with 9 new presets: Rotate, Scale, Flip Horizontal, Flip Vertical, Skew, Text Glow, Text Stroke, Text Shadow, and Text 3D.",
+			"Each preset maps to a GPU-accelerated WGSL shader in the Rust effects pipeline, so previews and exports render the same result.",
+		],
+	},
+	{
 		id: "2026-07-14-localization-border-controls",
 		date: "2026-07-14",
 		tag: "feature",

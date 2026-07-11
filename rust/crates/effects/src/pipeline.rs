@@ -131,6 +131,24 @@ const GRADIENT_OVERLAY_SHADER_ID: &str = "gradient-overlay";
 const GRADIENT_OVERLAY_SHADER_SOURCE: &str = include_str!("shaders/gradient-overlay.wgsl");
 const FOUR_COLOR_GRADIENT_SHADER_ID: &str = "four-color-gradient";
 const FOUR_COLOR_GRADIENT_SHADER_SOURCE: &str = include_str!("shaders/four-color-gradient.wgsl");
+const ROTATE_SHADER_ID: &str = "rotate";
+const ROTATE_SHADER_SOURCE: &str = include_str!("shaders/rotate.wgsl");
+const SCALE_SHADER_ID: &str = "scale";
+const SCALE_SHADER_SOURCE: &str = include_str!("shaders/scale.wgsl");
+const FLIP_HORIZONTAL_SHADER_ID: &str = "flip-horizontal";
+const FLIP_HORIZONTAL_SHADER_SOURCE: &str = include_str!("shaders/flip-horizontal.wgsl");
+const FLIP_VERTICAL_SHADER_ID: &str = "flip-vertical";
+const FLIP_VERTICAL_SHADER_SOURCE: &str = include_str!("shaders/flip-vertical.wgsl");
+const SKEW_SHADER_ID: &str = "skew";
+const SKEW_SHADER_SOURCE: &str = include_str!("shaders/skew.wgsl");
+const TEXT_GLOW_SHADER_ID: &str = "text-glow";
+const TEXT_GLOW_SHADER_SOURCE: &str = include_str!("shaders/text-glow.wgsl");
+const TEXT_STROKE_SHADER_ID: &str = "text-stroke";
+const TEXT_STROKE_SHADER_SOURCE: &str = include_str!("shaders/text-stroke.wgsl");
+const TEXT_SHADOW_SHADER_ID: &str = "text-shadow";
+const TEXT_SHADOW_SHADER_SOURCE: &str = include_str!("shaders/text-shadow.wgsl");
+const TEXT_3D_SHADER_ID: &str = "text-3d";
+const TEXT_3D_SHADER_SOURCE: &str = include_str!("shaders/text-3d.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -201,6 +219,15 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
     ShaderEntry { id: TINT_SHADER_ID, label: "effects-tint-shader", source: TINT_SHADER_SOURCE },
     ShaderEntry { id: GRADIENT_OVERLAY_SHADER_ID, label: "effects-gradient-overlay-shader", source: GRADIENT_OVERLAY_SHADER_SOURCE },
     ShaderEntry { id: FOUR_COLOR_GRADIENT_SHADER_ID, label: "effects-four-color-gradient-shader", source: FOUR_COLOR_GRADIENT_SHADER_SOURCE },
+    ShaderEntry { id: ROTATE_SHADER_ID, label: "effects-rotate-shader", source: ROTATE_SHADER_SOURCE },
+    ShaderEntry { id: SCALE_SHADER_ID, label: "effects-scale-shader", source: SCALE_SHADER_SOURCE },
+    ShaderEntry { id: FLIP_HORIZONTAL_SHADER_ID, label: "effects-flip-horizontal-shader", source: FLIP_HORIZONTAL_SHADER_SOURCE },
+    ShaderEntry { id: FLIP_VERTICAL_SHADER_ID, label: "effects-flip-vertical-shader", source: FLIP_VERTICAL_SHADER_SOURCE },
+    ShaderEntry { id: SKEW_SHADER_ID, label: "effects-skew-shader", source: SKEW_SHADER_SOURCE },
+    ShaderEntry { id: TEXT_GLOW_SHADER_ID, label: "effects-text-glow-shader", source: TEXT_GLOW_SHADER_SOURCE },
+    ShaderEntry { id: TEXT_STROKE_SHADER_ID, label: "effects-text-stroke-shader", source: TEXT_STROKE_SHADER_SOURCE },
+    ShaderEntry { id: TEXT_SHADOW_SHADER_ID, label: "effects-text-shadow-shader", source: TEXT_SHADOW_SHADER_SOURCE },
+    ShaderEntry { id: TEXT_3D_SHADER_ID, label: "effects-text-3d-shader", source: TEXT_3D_SHADER_SOURCE },
 ];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
@@ -544,7 +571,12 @@ fn pack_effect_uniforms(
         | REPLACE_COLOR_SHADER_ID
         | TINT_SHADER_ID
         | GRADIENT_OVERLAY_SHADER_ID
-        | FOUR_COLOR_GRADIENT_SHADER_ID => {
+        | FOUR_COLOR_GRADIENT_SHADER_ID
+        | ROTATE_SHADER_ID
+        | SCALE_SHADER_ID
+        | FLIP_HORIZONTAL_SHADER_ID
+        | FLIP_VERTICAL_SHADER_ID
+        | TEXT_3D_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -751,6 +783,54 @@ fn pack_effect_uniforms(
 
             for uniform in pass.uniforms.keys() {
                 if uniform == "u_amount" || uniform == "u_intensity" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        TEXT_GLOW_SHADER_ID | TEXT_STROKE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let intensity = read_number_uniform(pass, "u_intensity")?;
+            scalars[0] = amount;
+            scalars[1] = intensity;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_intensity" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        TEXT_SHADOW_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let intensity = read_number_uniform(pass, "u_intensity")?;
+            direction = read_vec2_uniform(pass, "u_direction")?;
+            scalars[0] = amount;
+            scalars[1] = intensity;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_intensity" || uniform == "u_direction" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        SKEW_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            direction = read_vec2_uniform(pass, "u_direction")?;
+            scalars[0] = amount;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_direction" {
                     continue;
                 }
                 return Err(EffectsError::UnsupportedUniform {

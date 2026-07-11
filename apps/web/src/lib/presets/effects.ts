@@ -1519,6 +1519,82 @@ export const effects: EffectPresetDefinition[] = [
 		"background-color:#fff;",
 	),
 
+	// ── Transform (B5)
+	ef(
+		"rotate",
+		"Rotate",
+		"Transform",
+		"Rotate the frame around its center",
+		{ amount: 50 },
+		"transform:rotate(15deg);",
+	),
+	ef(
+		"scale",
+		"Scale",
+		"Transform",
+		"Zoom the frame in or out from the center",
+		{ amount: 50 },
+		"transform:scale(1.1);",
+	),
+	ef(
+		"flip-horizontal",
+		"Flip Horizontal",
+		"Transform",
+		"Mirror the frame horizontally",
+		{ amount: 100 },
+		"transform:scaleX(-1);",
+	),
+	ef(
+		"flip-vertical",
+		"Flip Vertical",
+		"Transform",
+		"Mirror the frame vertically",
+		{ amount: 100 },
+		"transform:scaleY(-1);",
+	),
+	ef(
+		"skew",
+		"Skew",
+		"Transform",
+		"Slant the frame along an axis",
+		{ amount: 30, axis: "x" },
+		"transform:skewX(10deg);",
+	),
+
+	// ── Text (B5)
+	ef(
+		"text-glow",
+		"Text Glow",
+		"Text",
+		"Soft glow around text edges",
+		{ amount: 40, intensity: 60 },
+		"filter:drop-shadow(0 0 8px #fff);",
+	),
+	ef(
+		"text-stroke",
+		"Text Stroke",
+		"Text",
+		"Outline stroke around text",
+		{ amount: 40, intensity: 80 },
+		"filter:drop-shadow(0 0 2px #fff);",
+	),
+	ef(
+		"text-shadow",
+		"Text Shadow",
+		"Text",
+		"Drop shadow behind text",
+		{ amount: 40, intensity: 50, direction: 45 },
+		"filter:drop-shadow(4px 4px 4px #000);",
+	),
+	ef(
+		"text-3d",
+		"Text 3D",
+		"Text",
+		"Extruded depth behind text",
+		{ amount: 50 },
+		"filter:drop-shadow(3px 3px 0 #000);",
+	),
+
 	// ── Added: distinct named presets (replacing the old "Effect N" filler).
 	ef(
 		"fx-color-bleach",

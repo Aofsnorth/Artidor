@@ -16,6 +16,8 @@ export const EFFECT_CATEGORIES = [
 	"Cinematic",
 	"Stylize",
 	"Distortion",
+	"Transform",
+	"Text",
 	"Particles",
 	"Texture",
 	"Artistic",
@@ -98,6 +100,17 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	curves: "Color",
 	lut: "Color",
 	"color-wheels": "Color",
+	// Transform (B5)
+	rotate: "Transform",
+	scale: "Transform",
+	"flip-horizontal": "Transform",
+	"flip-vertical": "Transform",
+	skew: "Transform",
+	// Text (B5)
+	"text-glow": "Text",
+	"text-stroke": "Text",
+	"text-shadow": "Text",
+	"text-3d": "Text",
 };
 
 const ADJUST_CATEGORY_MAP: Record<string, string> = {
