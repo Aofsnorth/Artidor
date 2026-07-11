@@ -84,15 +84,17 @@ export function Footer() {
 							>
 								<RiTwitterXLine className="size-4" />
 							</Link>
-							<Link
-								href={SOCIAL_LINKS.discord}
-								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={t("home.footer.social.discord")}
-							>
-								<RiDiscordFill className="size-4" />
-							</Link>
+							{SOCIAL_LINKS.discord && (
+								<Link
+									href={SOCIAL_LINKS.discord}
+									className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+									target="_blank"
+									rel="noopener noreferrer"
+									aria-label={t("home.footer.social.discord")}
+								>
+									<RiDiscordFill className="size-4" />
+								</Link>
+							)}
 						</div>
 					</div>
 
