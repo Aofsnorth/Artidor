@@ -36,6 +36,11 @@ const EFFECT_CATEGORY_MAP: Record<string, string> = {
 	blur: "Blur",
 	"motion-blur": "Blur",
 	"velocity-blur": "Blur",
+	"zoom-blur": "Blur",
+	"directional-blur": "Blur",
+	"box-blur": "Blur",
+	"lens-blur": "Blur",
+	"unsharp-mask": "Blur",
 	// Light
 	glow: "Light",
 	"outer-glow": "Light",

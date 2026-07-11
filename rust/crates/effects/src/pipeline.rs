@@ -103,6 +103,16 @@ const CHECKER_SHADER_ID: &str = "checker";
 const CHECKER_SHADER_SOURCE: &str = include_str!("shaders/checker.wgsl");
 const GRID_SHADER_ID: &str = "grid";
 const GRID_SHADER_SOURCE: &str = include_str!("shaders/grid.wgsl");
+const ZOOM_BLUR_SHADER_ID: &str = "zoom-blur";
+const ZOOM_BLUR_SHADER_SOURCE: &str = include_str!("shaders/zoom-blur.wgsl");
+const DIRECTIONAL_BLUR_SHADER_ID: &str = "directional-blur";
+const DIRECTIONAL_BLUR_SHADER_SOURCE: &str = include_str!("shaders/directional-blur.wgsl");
+const BOX_BLUR_SHADER_ID: &str = "box-blur";
+const BOX_BLUR_SHADER_SOURCE: &str = include_str!("shaders/box-blur.wgsl");
+const LENS_BLUR_SHADER_ID: &str = "lens-blur";
+const LENS_BLUR_SHADER_SOURCE: &str = include_str!("shaders/lens-blur.wgsl");
+const UNSHARP_MASK_SHADER_ID: &str = "unsharp-mask";
+const UNSHARP_MASK_SHADER_SOURCE: &str = include_str!("shaders/unsharp-mask.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -159,6 +169,11 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
     ShaderEntry { id: TILE_SHADER_ID, label: "effects-tile-shader", source: TILE_SHADER_SOURCE },
     ShaderEntry { id: CHECKER_SHADER_ID, label: "effects-checker-shader", source: CHECKER_SHADER_SOURCE },
     ShaderEntry { id: GRID_SHADER_ID, label: "effects-grid-shader", source: GRID_SHADER_SOURCE },
+    ShaderEntry { id: ZOOM_BLUR_SHADER_ID, label: "effects-zoom-blur-shader", source: ZOOM_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: DIRECTIONAL_BLUR_SHADER_ID, label: "effects-directional-blur-shader", source: DIRECTIONAL_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: BOX_BLUR_SHADER_ID, label: "effects-box-blur-shader", source: BOX_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: LENS_BLUR_SHADER_ID, label: "effects-lens-blur-shader", source: LENS_BLUR_SHADER_SOURCE },
+    ShaderEntry { id: UNSHARP_MASK_SHADER_ID, label: "effects-unsharp-mask-shader", source: UNSHARP_MASK_SHADER_SOURCE },
 ];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
@@ -492,7 +507,10 @@ fn pack_effect_uniforms(
         | KALEIDOSCOPE_SHADER_ID
         | TILE_SHADER_ID
         | CHECKER_SHADER_ID
-        | GRID_SHADER_ID => {
+        | GRID_SHADER_ID
+        | ZOOM_BLUR_SHADER_ID
+        | BOX_BLUR_SHADER_ID
+        | LENS_BLUR_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -506,7 +524,7 @@ fn pack_effect_uniforms(
                 });
             }
         }
-        MOTION_BLUR_SHADER_ID => {
+        MOTION_BLUR_SHADER_ID | DIRECTIONAL_BLUR_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             direction = read_vec2_uniform(pass, "u_direction")?;
             scalars[0] = amount;
@@ -667,6 +685,22 @@ fn pack_effect_uniforms(
 
             for uniform in pass.uniforms.keys() {
                 if uniform == "u_radius" || uniform == "u_intensity" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        UNSHARP_MASK_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let intensity = read_number_uniform(pass, "u_intensity")?;
+            scalars[0] = amount;
+            scalars[1] = intensity;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount" || uniform == "u_intensity" {
                     continue;
                 }
                 return Err(EffectsError::UnsupportedUniform {

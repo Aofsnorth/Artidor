@@ -72,6 +72,13 @@ import {
 	kaleidoscopeEffectDefinition,
 	tileEffectDefinition,
 } from "./video/geometric";
+import {
+	boxBlurEffectDefinition,
+	directionalBlurEffectDefinition,
+	lensBlurEffectDefinition,
+	unsharpMaskEffectDefinition,
+	zoomBlurEffectDefinition,
+} from "./video/blur-advanced";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -137,6 +144,11 @@ const defaultEffects = [
 	tileEffectDefinition,
 	checkerEffectDefinition,
 	gridEffectDefinition,
+	zoomBlurEffectDefinition,
+	directionalBlurEffectDefinition,
+	boxBlurEffectDefinition,
+	lensBlurEffectDefinition,
+	unsharpMaskEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {
