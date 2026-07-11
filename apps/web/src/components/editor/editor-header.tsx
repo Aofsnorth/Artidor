@@ -292,19 +292,21 @@ function ProjectDropdown() {
 
 					<DropdownMenuSeparator className="bg-white/10" />
 
-					<DropdownMenuItem
-						asChild
-						icon={<FaDiscord className="size-4!" />}
-						className="hover:bg-white/[0.08] transition-colors focus:bg-white/[0.08] focus:text-white rounded"
-					>
-						<Link
-							href={SOCIAL_LINKS.discord}
-							target="_blank"
-							rel="noopener noreferrer"
+					{SOCIAL_LINKS.discord && (
+						<DropdownMenuItem
+							asChild
+							icon={<FaDiscord className="size-4!" />}
+							className="hover:bg-white/[0.08] transition-colors focus:bg-white/[0.08] focus:text-white rounded"
 						>
-							Discord
-						</Link>
-					</DropdownMenuItem>
+							<Link
+								href={SOCIAL_LINKS.discord}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								Discord
+							</Link>
+						</DropdownMenuItem>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<RenameProjectDialog
