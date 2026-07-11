@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import { stickers as presetStickers } from "@/lib/presets/stickers";
 import type { Sticker as PresetSticker } from "@/lib/presets/types";
 import { resolveStickerIntrinsicSize } from "@/lib/stickers";
@@ -33,6 +34,7 @@ import { HappyIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
 export function StickersView() {
+	const { t } = useI18n();
 	const {
 		browseContent,
 		browseStickers,
@@ -56,7 +58,7 @@ export function StickersView() {
 				<Input
 					size="sm"
 					variant="default"
-					placeholder="Search..."
+					placeholder={t("stickers.searchPlaceholder")}
 					value={searchQuery}
 					onChange={(e) => {
 						setSearchQuery({ query: e.target.value });
@@ -81,7 +83,7 @@ export function StickersView() {
 				className="mt-2 flex min-h-0 flex-1 flex-col"
 			>
 				<TabsList
-					aria-label="Sticker categories"
+					aria-label={t("stickers.categoriesAria")}
 					className="w-full overflow-x-auto scrollbar-hidden"
 				>
 					{Object.entries(STICKER_CATEGORIES).map(([key, label]) => (
@@ -142,6 +144,8 @@ function StickerRow({ items }: { items: StickerData[] }) {
 }
 
 function EmptyView({ message }: { message: string }) {
+	const { t } = useI18n();
+
 	return (
 		<div className="bg-background flex h-full flex-col items-center justify-center gap-3 p-4">
 			<HugeiconsIcon
@@ -149,7 +153,7 @@ function EmptyView({ message }: { message: string }) {
 				className="text-muted-foreground size-10"
 			/>
 			<div className="flex flex-col gap-2 text-center">
-				<p className="text-lg font-medium">No stickers found</p>
+				<p className="text-lg font-medium">{t("stickers.empty.title")}</p>
 				<p className="text-muted-foreground text-sm text-balance">{message}</p>
 			</div>
 		</div>
@@ -180,6 +184,7 @@ function RegionBanner({ region }: { region: string }) {
 }
 
 function StickersContentView() {
+	const { t } = useI18n();
 	const {
 		browseContent,
 		clearRecentStickers,
@@ -213,7 +218,7 @@ function StickersContentView() {
 					{isRegionSearch && <RegionBanner region={regionLabel} />}
 					<div className="flex items-center justify-between">
 						<span className="text-muted-foreground text-sm">
-							{searchResults.total} results
+							{t("stickers.resultsCount", { count: searchResults.total })}
 						</span>
 					</div>
 					<StickerGrid items={searchResults.items} />
@@ -223,7 +228,11 @@ function StickersContentView() {
 
 		// "all" tab search — sections are in browseContent, fall through to section rendering below
 		if (selectedCategory !== "all" && searchQuery) {
-			return <EmptyView message={`No stickers found for "${searchQuery}"`} />;
+			return (
+				<EmptyView
+					message={t("stickers.empty.search", { query: searchQuery })}
+				/>
+			);
 		}
 	}
 
@@ -241,10 +250,12 @@ function StickersContentView() {
 			<EmptyView
 				message={
 					viewMode === "search"
-						? `No stickers found for "${searchQuery}"`
+						? t("stickers.empty.search", { query: searchQuery })
 						: selectedCategory === "all"
-							? "No stickers available yet."
-							: `No stickers available in ${categoryLabel.toLowerCase()} yet.`
+							? t("stickers.empty.noStickers")
+							: t("stickers.empty.noCategory", {
+									category: categoryLabel.toLowerCase(),
+								})
 				}
 			/>
 		);
@@ -276,6 +287,7 @@ function StickerSection({
 	onClearRecent: () => void;
 	onSeeAll: (category: StickerCategory) => void;
 }) {
+	const { t } = useI18n();
 	const hasHeader =
 		Boolean(section.title) || section.id === "recent" || section.action;
 
@@ -297,7 +309,7 @@ function StickerSection({
 								size="sm"
 								className="h-auto gap-1 p-0 text-xs text-muted-foreground"
 							>
-								Clear
+								{t("stickers.section.clear")}
 							</Button>
 						)}
 
@@ -310,7 +322,7 @@ function StickerSection({
 									onSeeAll(section.action?.category as StickerCategory);
 								}}
 							>
-								See all
+								{t("stickers.section.seeAll")}
 							</Button>
 						)}
 					</div>
@@ -327,6 +339,7 @@ function StickerSection({
 }
 
 function PresetStickersSection() {
+	const { t } = useI18n();
 	const grouped = useMemo(
 		() =>
 			presetStickers.reduce<Record<string, PresetSticker[]>>((acc, sticker) => {
@@ -339,7 +352,9 @@ function PresetStickersSection() {
 
 	return (
 		<div className="flex flex-col gap-3">
-			<p className="text-xs text-muted-foreground">Stickers</p>
+			<p className="text-xs text-muted-foreground">
+				{t("stickers.section.stickersTitle")}
+			</p>
 			{Object.entries(grouped).map(([subcategory, items]) => (
 				<div key={subcategory} className="flex flex-col gap-2">
 					<p className="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">
@@ -357,6 +372,7 @@ function PresetStickersSection() {
 }
 
 function PresetStickerItem({ item }: { item: PresetSticker }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const [isAdding, setIsAdding] = useState(false);
 	const pathData =
@@ -378,7 +394,7 @@ function PresetStickerItem({ item }: { item: PresetSticker }) {
 			});
 		} catch (error) {
 			console.error("Failed to add preset sticker:", error);
-			toast.error("Failed to add sticker to timeline");
+			toast.error(t("stickers.addError"));
 		} finally {
 			setIsAdding(false);
 		}
@@ -446,11 +462,11 @@ function StickerItem({
 	shouldCapSize = false,
 	containerClassName,
 }: StickerItemProps) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const { addToRecentStickers } = useStickersStore();
 	const [isAdding, setIsAdding] = useState(false);
 	const [hasImageError, setHasImageError] = useState(false);
-
 
 	useEffect(() => {
 		if (!item.id) {
@@ -501,7 +517,7 @@ function StickerItem({
 			addToRecentStickers({ stickerId: item.id });
 		} catch (error) {
 			console.error("Failed to add sticker:", error);
-			toast.error("Failed to add sticker to timeline");
+			toast.error(t("stickers.addError"));
 		} finally {
 			setIsAdding(false);
 		}
