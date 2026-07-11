@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import {
 	TooltipProvider,
 	Tooltip,
@@ -16,6 +17,7 @@ import { sliderToZoom, zoomToSlider } from "@/lib/timeline/zoom-utils";
 import { invokeAction } from "@/lib/actions";
 import { cn } from "@/utils/ui";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { useTimelineToolStore } from "@/stores/timeline-tool-store";
 import { ScenesView } from "@/components/editor/scenes-view";
 import { canDeleteScene } from "@/lib/scenes";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +30,7 @@ import {
 	AlignLeftIcon,
 	AlignRightIcon,
 	AlignHorizontalCenterIcon,
+	ArrowDown01Icon,
 	Bookmark01Icon,
 	Bookmark02Icon,
 	Camera01Icon,
@@ -35,6 +38,7 @@ import {
 	ClipboardIcon,
 	Copy01Icon,
 	Copy02Icon,
+	Cursor01Icon,
 	Delete02Icon,
 	EaseCurveControlPointsIcon,
 	EyeIcon,
@@ -91,19 +95,23 @@ export function TimelineToolbar({
 
 	return (
 		<ScrollArea className="scrollbar-hidden overflow-x-auto overflow-y-hidden">
-			<div className="grid h-10 grid-cols-[1fr_auto_1fr] items-center border-b border-white/10 bg-transparent px-3.5 py-0.5 z-20">
+			<div className="grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/10 bg-transparent px-2 py-0.5 z-20">
 				{/* Left Section: + Track, Separator, Action Buttons */}
-				<div className="flex min-w-0 items-center gap-2 justify-start">
+				<div className="flex min-w-0 items-center gap-1 justify-start">
 					<AddSceneButton />
-					<div className="h-5 w-px bg-white/10 mx-1" />
+					<div className="h-5 w-px bg-white/10 mx-0.5" />
+					<TimelineToolToggle />
+					<div className="h-5 w-px bg-white/10 mx-0.5" />
 					<ToolbarLeftSection />
 				</div>
 
-				{/* Center Section: Scene Selector with navigation arrows */}
-				<SceneSelector />
+				{/* Center Section: Scene Selector */}
+				<div className="-translate-x-6">
+					<SceneSelector />
+				</div>
 
 				{/* Right Section: Snapping, Ripple, Zoom controls */}
-				<div className="justify-self-end">
+				<div className="flex min-w-0 items-center justify-end">
 					<ToolbarRightSection
 						zoomLevel={zoomLevel}
 						minZoom={minZoom}
@@ -118,6 +126,7 @@ export function TimelineToolbar({
 
 function AddSceneButton() {
 	const editor = useEditor();
+	const { t } = useI18n();
 
 	const handleAddScene = async () => {
 		const scenes = editor.scenes.getScenes();
@@ -133,25 +142,142 @@ function AddSceneButton() {
 		<Button
 			variant="ghost"
 			size="sm"
-			className="h-7 gap-1.5 px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
-			aria-label="Add new scene"
+			className="h-7 gap-1.5 px-1.5 sm:px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
+			aria-label={t("timeline.toolbar.addScene.aria")}
 			onClick={handleAddScene}
 		>
 			<Plus className="size-3" />
-			Add scene
+			<span className="hidden sm:inline">{t("timeline.toolbar.addScene")}</span>
 		</Button>
 	);
 }
 
+function TimelineToolToggle() {
+	const tool = useTimelineToolStore((s) => s.tool);
+	const setTool = useTimelineToolStore((s) => s.setTool);
+	const { t } = useI18n();
+
+	const isSelect = tool === "select";
+	const label = isSelect ? t("timeline.toolbar.select") : t("timeline.toolbar.split");
+	const shortcut = isSelect ? "A" : "B";
+
+	return (
+		<DropdownMenu>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<DropdownMenuTrigger asChild>
+						<button
+							type="button"
+							aria-label={`${label} (${shortcut})`}
+							className={cn(
+								"flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-1.5 text-white/70 transition hover:bg-white/[0.08] hover:text-white focus:outline-none",
+							)}
+						>
+							{isSelect ? (
+								<HugeiconsIcon icon={Cursor01Icon} className="size-3.5" />
+							) : (
+								<svg
+									viewBox="0 0 16 16"
+									className="size-3.5"
+									fill="none"
+									aria-label={t("timeline.toolbar.split")}
+									role="img"
+								>
+									<title>{t("timeline.toolbar.split")}</title>
+									<path
+										d="M4.5 2.5L7.8 7.2M8.2 8.8L11.5 13.5"
+										stroke="currentColor"
+										strokeWidth="1.4"
+										strokeLinecap="round"
+									/>
+									<path
+										d="M11.5 2.5L8.2 7.2M7.8 8.8L4.5 13.5"
+										stroke="currentColor"
+										strokeWidth="1.4"
+										strokeLinecap="round"
+									/>
+									<circle cx="4.5" cy="13.5" r="1.4" fill="currentColor" />
+									<circle cx="11.5" cy="13.5" r="1.4" fill="currentColor" />
+								</svg>
+							)}
+							<HugeiconsIcon
+								icon={ArrowDown01Icon}
+								className="size-2.5 text-white/40"
+							/>
+						</button>
+					</DropdownMenuTrigger>
+				</TooltipTrigger>
+				<TooltipContent side="bottom">{`${label} · ${shortcut}`}</TooltipContent>
+			</Tooltip>
+			<DropdownMenuContent align="start" className="z-100 min-w-32">
+				<DropdownMenuItem
+					onClick={() => setTool("select")}
+					className={cn(
+						"gap-2 text-xs",
+						isSelect && "bg-white/[0.08] text-white",
+					)}
+				>
+					<HugeiconsIcon icon={Cursor01Icon} className="size-3.5" />
+					<span className="flex-1">{t("timeline.toolbar.select")}</span>
+					<span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[0.65rem] text-white/40">
+						A
+					</span>
+					{isSelect && (
+						<HugeiconsIcon icon={Tick01Icon} className="size-3 text-white/70" />
+					)}
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					onClick={() => setTool("split")}
+					className={cn(
+						"gap-2 text-xs",
+						!isSelect && "bg-white/[0.08] text-white",
+					)}
+				>
+					<svg
+						viewBox="0 0 16 16"
+						className="size-3.5"
+						fill="none"
+						aria-label={t("timeline.toolbar.split")}
+						role="img"
+					>
+						<title>{t("timeline.toolbar.split")}</title>
+						<path
+							d="M4.5 2.5L7.8 7.2M8.2 8.8L11.5 13.5"
+							stroke="currentColor"
+							strokeWidth="1.4"
+							strokeLinecap="round"
+						/>
+						<path
+							d="M11.5 2.5L8.2 7.2M7.8 8.8L4.5 13.5"
+							stroke="currentColor"
+							strokeWidth="1.4"
+							strokeLinecap="round"
+						/>
+						<circle cx="4.5" cy="13.5" r="1.4" fill="currentColor" />
+						<circle cx="11.5" cy="13.5" r="1.4" fill="currentColor" />
+					</svg>
+					<span className="flex-1">{t("timeline.toolbar.split")}</span>
+					<span className="rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[0.65rem] text-white/40">
+						B
+					</span>
+					{!isSelect && (
+						<HugeiconsIcon icon={Tick01Icon} className="size-3 text-white/70" />
+					)}
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
 function AddTrackSubmenu() {
 	const editor = useEditor();
+	const { t } = useI18n();
 	const trackOptions = [
-		{ label: "Video track", type: "video" as const },
-		{ label: "Audio track", type: "audio" as const },
-		{ label: "Camera track", type: "camera" as const },
-		{ label: "Text track", type: "text" as const },
-		{ label: "Image track", type: "image" as const },
-		{ label: "Effect track", type: "effect" as const },
+		{ label: t("timeline.toolbar.track.video"), type: "video" as const },
+		{ label: t("timeline.toolbar.track.audio"), type: "audio" as const },
+		{ label: t("timeline.toolbar.track.camera"), type: "camera" as const },
+		{ label: t("timeline.toolbar.track.text"), type: "text" as const },
+		{ label: t("timeline.toolbar.track.image"), type: "image" as const },
+		{ label: t("timeline.toolbar.track.effect"), type: "effect" as const },
 	];
 
 	return (
@@ -162,7 +288,7 @@ function AddTrackSubmenu() {
 					className="gap-2"
 				>
 					<Plus className="size-3.5" />
-					Add track
+					{t("timeline.toolbar.addTrack")}
 				</DropdownMenuItem>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent side="right" align="start" className="z-100 w-40">
@@ -278,6 +404,7 @@ function SceneItem({
 
 function ToolbarLeftSection() {
 	const editor = useEditor();
+	const { t } = useI18n();
 	const freezeFrame = useFreezeFrame();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 	const allTimelineElements = useEditor((e) =>
@@ -285,13 +412,7 @@ function ToolbarLeftSection() {
 			.flat()
 			.flatMap((track) => track.elements),
 	);
-	const [hasClipboardEntry, setHasClipboardEntry] = useState(() =>
-		editor.clipboard.hasEntry(),
-	);
-	const playhead = useEditor(
-		(e) => e.playback.getCurrentTime(),
-		["playback"],
-	);
+	const playhead = useEditor((e) => e.playback.getCurrentTime(), ["playback"]);
 	const canUndo = useEditor((e) => e.command.canUndo());
 	const canRedo = useEditor((e) => e.command.canRedo());
 	const alignDirection = useMemo(() => {
@@ -304,45 +425,29 @@ function ToolbarLeftSection() {
 		}
 		return "center";
 	}, [editor, selectedElements, playhead]);
-	useEffect(
-		() =>
-			editor.clipboard.subscribe(() =>
-				setHasClipboardEntry(editor.clipboard.hasEntry()),
-			),
-		[editor],
-	);
-
 	const hasSelection = selectedElements.length > 0;
 	const singleSelection = selectedElements.length === 1;
 	const canSelectAll = allTimelineElements.length > selectedElements.length;
 	const canAlignToPlayhead = alignDirection !== "center";
-	const canAddBeatMarkers =
-		singleSelection &&
-		selectedElements.some((ref) => {
-			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
-			const element = track?.elements.find((el) => el.id === ref.elementId);
-			return element?.type === "audio" || element?.type === "video";
-		});
 	const alignIcon =
 		alignDirection === "left"
 			? AlignLeftIcon
 			: alignDirection === "right"
 				? AlignRightIcon
 				: AlignHorizontalCenterIcon;
-
 	return (
-		<div className="flex items-center gap-0.5">
+		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={400}>
 				{/* History */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={UndoIcon} />}
-					tooltip="Undo"
+					tooltip={t("timeline.toolbar.undo")}
 					disabled={!canUndo}
 					onClick={() => invokeAction("undo")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={RedoIcon} />}
-					tooltip="Redo"
+					tooltip={t("timeline.toolbar.redo")}
 					disabled={!canRedo}
 					onClick={() => invokeAction("redo")}
 				/>
@@ -352,31 +457,15 @@ function ToolbarLeftSection() {
 				{/* Selection */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={TickDouble01Icon} />}
-					tooltip="Select all"
+					tooltip={t("timeline.toolbar.selectAll")}
 					disabled={!canSelectAll}
 					onClick={() => invokeAction("select-all")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Tick01Icon} />}
-					tooltip="Deselect all"
+					tooltip={t("timeline.toolbar.deselectAll")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("deselect-all")}
-				/>
-
-				<SectionDivider />
-
-				{/* Clipboard */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Copy01Icon} />}
-					tooltip="Copy layer"
-					disabled={!hasSelection}
-					onClick={() => invokeAction("copy-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={ClipboardIcon} />}
-					tooltip="Paste layer at playhead"
-					disabled={!hasClipboardEntry}
-					onClick={() => invokeAction("paste-copied")}
 				/>
 
 				<SectionDivider />
@@ -384,7 +473,7 @@ function ToolbarLeftSection() {
 				{/* Edit operations */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={SnowIcon} />}
-					tooltip="Freeze frame"
+					tooltip={t("timeline.toolbar.freezeFrame")}
 					disabled={!singleSelection}
 					onClick={(e) => {
 						e.stopPropagation();
@@ -394,43 +483,43 @@ function ToolbarLeftSection() {
 				<GraphEditorToolbarButton />
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Delete02Icon} />}
-					tooltip="Delete selected"
+					tooltip={t("timeline.toolbar.deleteSelected")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("delete-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={ScissorIcon} />}
-					tooltip="Split clip"
+					tooltip={t("timeline.toolbar.splitClip")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("split")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Copy02Icon} />}
-					tooltip="Duplicate selected"
+					tooltip={t("timeline.toolbar.duplicateSelected")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("duplicate-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
-					tooltip="Split left"
+					tooltip={t("timeline.toolbar.splitLeft")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("split-left")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={AlignRightIcon} />}
-					tooltip="Split right"
+					tooltip={t("timeline.toolbar.splitRight")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("split-right")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={alignIcon} />}
-					tooltip="Align to playhead"
+					tooltip={t("timeline.toolbar.alignToPlayhead")}
 					disabled={!canAlignToPlayhead}
 					onClick={() => invokeAction("align-to-playhead")}
 				/>
 				<ToolbarButton
 					icon={<StretchHorizontal className="size-3.5" />}
-					tooltip="Extend to playhead"
+					tooltip={t("timeline.toolbar.extendToPlayhead")}
 					disabled={!canAlignToPlayhead}
 					onClick={() => invokeAction("extend-to-playhead")}
 				/>
@@ -440,31 +529,21 @@ function ToolbarLeftSection() {
 				{/* Grouping & parenting */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={GroupLayersIcon} />}
-					tooltip="Group selected"
+					tooltip={t("timeline.toolbar.groupSelected")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("group-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={GitMergeIcon} />}
-					tooltip="Combine selected"
+					tooltip={t("timeline.toolbar.combineSelected")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("combine-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Layers01Icon} />}
-					tooltip="Ungroup selected"
+					tooltip={t("timeline.toolbar.ungroupSelected")}
 					disabled={!hasSelection}
 					onClick={() => invokeAction("ungroup-selected")}
-				/>
-
-				<SectionDivider />
-
-				{/* Audio */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
-					tooltip="Add beat markers"
-					disabled={!canAddBeatMarkers}
-					onClick={() => invokeAction("add-beat-markers")}
 				/>
 			</TooltipProvider>
 		</div>
@@ -477,11 +556,12 @@ function ToolbarLeftSection() {
  * hard-coded count of buttons per group.
  */
 function SectionDivider() {
-	return <div className="mx-1 h-5 w-px bg-white/10" />;
+	return <div className="mx-0.5 h-5 w-px bg-white/10" />;
 }
 
 function SceneSelector() {
 	const editor = useEditor();
+	const { t } = useI18n();
 	const currentScene = editor.scenes.getActiveScene();
 	const scenes = editor.scenes.getScenes();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
@@ -534,11 +614,11 @@ function SceneSelector() {
 						type="button"
 						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
 					>
-					<span className="tracking-wide select-none">
-						{hasKeyframeLayers
-							? "Keyframes"
-							: currentScene?.name || "Main scene"}
-					</span>
+						<span className="tracking-wide select-none">
+							{hasKeyframeLayers
+								? t("timeline.toolbar.keyframes")
+								: currentScene?.name || t("timeline.toolbar.mainScene")}
+						</span>
 						<div className="h-3 w-px bg-white/15" />
 						<HugeiconsIcon
 							icon={Layers01Icon}
@@ -555,7 +635,7 @@ function SceneSelector() {
 									onChange={(event) =>
 										setKeyframeLayerSearch(event.target.value)
 									}
-									placeholder="Search keyframes"
+									placeholder={t("timeline.toolbar.keyframesSearch")}
 									className="h-7 w-full rounded-md border border-white/10 bg-black/30 px-2 text-xs text-white outline-none placeholder:text-white/35"
 									onKeyDown={(event) => event.stopPropagation()}
 								/>
@@ -604,19 +684,21 @@ function SceneSelector() {
 						</>
 					) : (
 						<>
-						{scenes.map((scene, idx) => (
-							<SceneItem
-								key={scene.id}
-								scene={scene}
-								isActive={currentScene?.id === scene.id}
-								index={idx}
-								onSwitch={() => editor.scenes.switchToScene({ sceneId: scene.id })}
-							/>
-						))}
-						<div className="my-1 h-px bg-white/10" />
-						<AddTrackSubmenu />
-					</>
-				)}
+							{scenes.map((scene, idx) => (
+								<SceneItem
+									key={scene.id}
+									scene={scene}
+									isActive={currentScene?.id === scene.id}
+									index={idx}
+									onSwitch={() =>
+										editor.scenes.switchToScene({ sceneId: scene.id })
+									}
+								/>
+							))}
+							<div className="my-1 h-px bg-white/10" />
+							<AddTrackSubmenu />
+						</>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 
@@ -628,12 +710,11 @@ function SceneSelector() {
 				<button
 					type="button"
 					className="group relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-					title="Manage scenes"
-					aria-label="Manage scenes"
+					aria-label={t("timeline.toolbar.manageScenes")}
 				>
 					<HugeiconsIcon icon={ClapperboardIcon} className="size-3.5" />
 					<span className="pointer-events-none absolute -bottom-6 whitespace-nowrap rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[0.6rem] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-						Manage scenes
+						{t("timeline.toolbar.manageScenes")}
 					</span>
 				</button>
 			</ScenesView>
@@ -652,6 +733,7 @@ function ToolbarRightSection({
 	onZoomChange: (zoom: number) => void;
 	onZoom: (options: { direction: "in" | "out" }) => void;
 }) {
+	const { t } = useI18n();
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
@@ -673,6 +755,25 @@ function ToolbarRightSection({
 
 	const editor = useEditor();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const hasSelection = selectedElements.length > 0;
+	const canLinkParent = selectedElements.length === 2;
+	const canAddBeatMarkers =
+		selectedElements.length === 1 &&
+		selectedElements.some((ref) => {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((el) => el.id === ref.elementId);
+			return element?.type === "audio" || element?.type === "video";
+		});
+	const [hasClipboardEntry, setHasClipboardEntry] = useState(() =>
+		editor.clipboard.hasEntry(),
+	);
+	useEffect(
+		() =>
+			editor.clipboard.subscribe(() =>
+				setHasClipboardEntry(editor.clipboard.hasEntry()),
+			),
+		[editor],
+	);
 	const selectedTimelineElements = useMemo(
 		() =>
 			selectedElements.flatMap((ref) => {
@@ -682,39 +783,42 @@ function ToolbarRightSection({
 			}),
 		[editor, selectedElements],
 	);
-	const canLinkParent = selectedElements.length === 2;
 	const canUnlinkParent = selectedTimelineElements.some(
 		(element) => (element as { parentId?: string }).parentId,
 	);
 
 	return (
-		<div className="flex items-center gap-1.5 p-0.5 z-20">
+		<div className="flex items-center gap-1 z-20">
 			<TooltipProvider delayDuration={400}>
 				{/* Bookmarks */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Bookmark02Icon} />}
 					isActive={isCurrentlyBookmarked}
-					tooltip={isCurrentlyBookmarked ? "Remove bookmark" : "Add bookmark"}
+					tooltip={
+						isCurrentlyBookmarked
+							? t("timeline.toolbar.removeBookmark")
+							: t("timeline.toolbar.addBookmark")
+					}
 					onClick={() => invokeAction("toggle-bookmark")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Bookmark01Icon} />}
-					tooltip="Toggle bookmark on selected element"
+					tooltip={t("timeline.toolbar.toggleElementBookmark")}
 					onClick={() => invokeAction("toggle-element-bookmark")}
 				/>
 
 				<SectionDivider />
 
-				{/* Linking (moved from left for balance) */}
+				{/* Linking */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Link01Icon} />}
-					tooltip="Link parent"
+					tooltip={t("timeline.toolbar.linkParent")}
 					disabled={!canLinkParent}
 					onClick={() => invokeAction("link-parent")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Unlink01Icon} />}
-					tooltip="Unlink parent"
+					tooltip={t("timeline.toolbar.unlinkParent")}
 					disabled={!canUnlinkParent}
 					onClick={() => invokeAction("unlink-parent")}
 				/>
@@ -725,14 +829,14 @@ function ToolbarRightSection({
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={MagnetIcon} />}
 					isActive={snappingEnabled}
-					tooltip="Magnet"
+					tooltip={t("timeline.toolbar.magnet")}
 					onClick={() => toggleSnapping()}
 				/>
 
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Target01Icon} />}
 					isActive={autoScrollEnabled}
-					tooltip="Auto-scroll timeline during playback"
+					tooltip={t("timeline.toolbar.autoScroll")}
 					onClick={() => toggleAutoScroll()}
 				>
 					{autoScrollEnabled && (
@@ -766,7 +870,7 @@ function ToolbarRightSection({
 								</Button>
 							</DropdownMenuTrigger>
 						</TooltipTrigger>
-						<TooltipContent>Playhead drag mode</TooltipContent>
+						<TooltipContent>{t("timeline.toolbar.playheadDragMode")}</TooltipContent>
 					</Tooltip>
 					<DropdownMenuContent align="start" className="z-100 w-44">
 						<DropdownMenuItem
@@ -787,11 +891,11 @@ function ToolbarRightSection({
 							}}
 						>
 							<div className="flex flex-col gap-0.5">
-								<span className="text-xs font-medium">Auto</span>
+								<span className="text-xs font-medium">{t("timeline.toolbar.dragMode.auto")}</span>
 								<span className="text-[0.65rem] text-white/40">
 									{scrubDragMode === "auto" && autoPlayWhileScrubbing
-										? "On — play while dragging"
-										: "Off — press to enable"}
+										? t("timeline.toolbar.dragMode.autoOn")
+										: t("timeline.toolbar.dragMode.autoOff")}
 								</span>
 							</div>
 						</DropdownMenuItem>
@@ -802,9 +906,9 @@ function ToolbarRightSection({
 							onClick={() => setScrubDragMode("smart")}
 						>
 							<div className="flex flex-col gap-0.5">
-								<span className="text-xs font-medium">Smart</span>
+								<span className="text-xs font-medium">{t("timeline.toolbar.dragMode.smart")}</span>
 								<span className="text-[0.65rem] text-white/40">
-									Preserve play state while dragging
+									{t("timeline.toolbar.dragMode.smartDescription")}
 								</span>
 							</div>
 						</DropdownMenuItem>
@@ -814,7 +918,7 @@ function ToolbarRightSection({
 				<ToolbarButton
 					icon={<OcRippleIcon size={20} className="scale-110" />}
 					isActive={rippleEditingEnabled}
-					tooltip="Ripple editing"
+					tooltip={t("timeline.toolbar.rippleEditing")}
 					onClick={() => toggleRippleEditing()}
 				/>
 
@@ -823,18 +927,24 @@ function ToolbarRightSection({
 				{/* Audio */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={VolumeOffIcon} />}
-					tooltip="Toggle source audio (mute video clip's original audio)"
+					tooltip={t("timeline.toolbar.toggleSourceAudio")}
 					onClick={() => invokeAction("toggle-source-audio")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={VolumeMute02Icon} />}
-					tooltip="Toggle elements muted (selected)"
+					tooltip={t("timeline.toolbar.toggleElementsMuted")}
 					onClick={() => invokeAction("toggle-elements-muted-selected")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={EyeIcon} />}
-					tooltip="Toggle elements visibility (selected)"
+					tooltip={t("timeline.toolbar.toggleElementsVisibility")}
 					onClick={() => invokeAction("toggle-elements-visibility-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
+					tooltip={t("timeline.toolbar.addBeatMarkers")}
+					disabled={!canAddBeatMarkers}
+					onClick={() => invokeAction("add-beat-markers")}
 				/>
 
 				<SectionDivider />
@@ -842,7 +952,7 @@ function ToolbarRightSection({
 				{/* View */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Maximize01Icon} />}
-					tooltip="Fit timeline to view"
+					tooltip={t("timeline.toolbar.fitToScreen")}
 					onClick={() => invokeAction("fit-to-screen")}
 				/>
 
@@ -851,17 +961,33 @@ function ToolbarRightSection({
 				{/* Insert */}
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Camera01Icon} />}
-					tooltip="Add camera layer"
+					tooltip={t("timeline.toolbar.addCameraLayer")}
 					onClick={() => invokeAction("add-camera")}
 				/>
 				<ToolbarButton
 					icon={<HugeiconsIcon icon={Square01Icon} />}
-					tooltip="Add null layer"
+					tooltip={t("timeline.toolbar.addNullLayer")}
 					onClick={() => invokeAction("add-null-layer")}
+				/>
+
+				<SectionDivider />
+
+				{/* Clipboard */}
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={Copy01Icon} />}
+					tooltip={t("timeline.toolbar.copyLayer")}
+					disabled={!hasSelection}
+					onClick={() => invokeAction("copy-selected")}
+				/>
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={ClipboardIcon} />}
+					tooltip={t("timeline.toolbar.pasteLayer")}
+					disabled={!hasClipboardEntry}
+					onClick={() => invokeAction("paste-copied")}
 				/>
 			</TooltipProvider>
 
-			<div className="mx-1 h-5 w-px bg-white/10" />
+			<SectionDivider />
 
 			<div className="flex items-center gap-1">
 				<Button
@@ -869,7 +995,7 @@ function ToolbarRightSection({
 					size="icon"
 					className="size-7"
 					onClick={() => onZoom({ direction: "out" })}
-					aria-label="Zoom out"
+					aria-label={t("timeline.toolbar.zoomOut")}
 				>
 					<HugeiconsIcon icon={SearchMinusIcon} size={15} />
 				</Button>
@@ -888,7 +1014,7 @@ function ToolbarRightSection({
 					size="icon"
 					className="size-7"
 					onClick={() => onZoom({ direction: "in" })}
-					aria-label="Zoom in"
+					aria-label={t("timeline.toolbar.zoomIn")}
 				>
 					<HugeiconsIcon icon={SearchAddIcon} size={15} />
 				</Button>

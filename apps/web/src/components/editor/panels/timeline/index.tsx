@@ -70,6 +70,7 @@ import {
 	SELECTED_TRACK_ROW_CLASS,
 	getTrackTypeAccent,
 	TRACK_COLOR_PRESETS,
+	SPLIT_CURSOR,
 } from "./theme";
 import {
 	Popover,
@@ -302,6 +303,12 @@ export function Timeline() {
 				"input, textarea, select, [contenteditable='true']",
 			);
 			if (isTyping) return;
+
+			if (event.key.toLowerCase() === "a") {
+				event.preventDefault();
+				setTimelineTool("select");
+				return;
+			}
 
 			if (event.key.toLowerCase() === "b") {
 				event.preventDefault();
@@ -666,10 +673,8 @@ export function Timeline() {
 
 	return (
 		<section
-			className={cn(
-				"panel relative flex h-full flex-col overflow-hidden rounded-xs border border-white/10 bg-card/50",
-				activeTool === "split" && "cursor-crosshair",
-			)}
+			className="panel relative flex h-full flex-col overflow-hidden rounded-xs border border-white/10 bg-card/50"
+			style={{ cursor: activeTool === "split" ? SPLIT_CURSOR : undefined }}
 			{...dragProps}
 			aria-label="Timeline"
 		>

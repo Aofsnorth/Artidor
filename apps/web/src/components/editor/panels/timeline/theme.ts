@@ -40,6 +40,9 @@ export const SELECTED_TRACK_ROW_CLASS =
 	"border-white/[0.18] bg-white/[0.065] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_12px_34px_rgba(0,0,0,0.28)]";
 export const DEFAULT_TIMELINE_BOOKMARK_COLOR = "#ffffff";
 
+const splitCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7 5L12 12L17 19" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M17 5L12 12L7 19" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="7" cy="18" r="2.5" fill="white"/><circle cx="17" cy="18" r="2.5" fill="white"/></svg>`;
+export const SPLIT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(splitCursorSvg)}") 12 12, crosshair`;
+
 /**
  * Curated color presets for custom track colors. The user picks from these
  * in a compact swatch row inside the track-label popover.

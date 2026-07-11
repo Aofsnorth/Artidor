@@ -66,7 +66,7 @@ export function TextView() {
 	}, [category, query]);
 
 	return (
-		<PanelView title="Text">
+		<PanelView title={t("catalog.titleText")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<CategoryBar
 					categories={TEXT_LABELS}
@@ -85,10 +85,7 @@ export function TextView() {
 						))}
 					</AssetGrid>
 				) : (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				)}
 			</div>
 		</PanelView>
@@ -102,6 +99,7 @@ function getTextPhotoUrl(_presetId: string): null {
 }
 
 function TextPresetItem({ preset }: { preset: TextPreset }) {
+	const { t } = useI18n();
 	const editor = useEditor();
 	const [busy, setBusy] = useState(false);
 
@@ -124,15 +122,15 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 			// left freshly-added text invisible at the playhead (looked like a bug).
 			// Users can add an entrance animation explicitly from the Animation tab.
 
-			toast.success(`${preset.name} added`);
+			toast.success(t("catalog.textAdded", { name: preset.name }));
 		} catch (error) {
-			toast.error("Could not add text", {
+			toast.error(t("catalog.couldNotAddText"), {
 				description: error instanceof Error ? error.message : "Unknown error",
 			});
 		} finally {
 			setBusy(false);
 		}
-	}, [editor, preset]);
+	}, [editor, preset, t]);
 
 	const previewData = preset.build();
 	const photoUrl = getTextPhotoUrl(preset.id);

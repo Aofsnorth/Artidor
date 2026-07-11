@@ -523,11 +523,10 @@ export function OverlaysView() {
 	}, [category, query]);
 
 	return (
-		<PanelView title="Overlays">
+		<PanelView title={t("catalog.titleOverlays")}>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">
-					Graphic overlays are timeline layers. Use Effects for processing a
-					clip; use Overlays for visible tint, frame, and wash elements.
+					{t("catalog.descriptionOverlays")}
 				</p>
 				<CategoryBar
 					categories={OVERLAY_CATEGORIES}
@@ -546,10 +545,7 @@ export function OverlaysView() {
 						))}
 					</AssetGrid>
 				) : (
-					<CatalogEmptyState
-						query={query}
-						label={t("catalog.noResults", { query: query.trim() })}
-					/>
+					<CatalogEmptyState query={query} />
 				)}
 			</div>
 		</PanelView>

@@ -6,8 +6,11 @@
 //!
 //! Mirrors `apps/desktop-web/src/render/viewport.rs`.
 
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::ValidateRect;
+use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::{
+    BeginPaint, CreateSolidBrush, DeleteObject, EndPaint, FillRect, GetClientRect, HBRUSH,
+    PAINTSTRUCT, ValidateRect,
+};
 use windows::Win32::UI::WindowsAndMessaging::{
     DefWindowProcW, GWLP_USERDATA, GetParent, GetWindowLongPtrW, WM_ERASEBKGND, WM_PAINT,
 };
@@ -43,7 +46,9 @@ pub unsafe extern "system" fn viewport_proc(
                     let h = client_height(hwnd);
                     let parent = GetParent(hwnd).unwrap_or_default();
                     let project = window_state(parent).map(|s| &s.project);
-                    let _ = renderer.render(w, h, project);
+                    if let Err(e) = renderer.render(w, h, project) {
+                        eprintln!("Viewport render failed ({}x{}): {e}", w, h);
+                    }
                 }
                 let _ = ValidateRect(Some(hwnd), None);
                 LRESULT(0)

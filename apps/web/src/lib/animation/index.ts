@@ -98,6 +98,8 @@ export {
 	type GroupKeyframeRef,
 } from "./property-groups";
 
+export { resolveMediaGraphicStyleAtTime } from "./media-graphic-style";
+
 export {
 	type EasingMode,
 	getEasingModeForKind,

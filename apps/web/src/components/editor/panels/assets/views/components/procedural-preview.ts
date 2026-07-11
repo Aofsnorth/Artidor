@@ -59,6 +59,42 @@ const TRANSITION_PALETTES = [
 
 const PALETTES: ReadonlyArray<typeof DEFAULT_PALETTE> = [DEFAULT_PALETTE];
 
+const TRANSITION_PHOTOS = [
+	{
+		src: "/assets/transition-previews/venice-interior.webp",
+		pageUrl: "https://unsplash.com/photos/HzJd0GAdukc",
+		photographer: "Falco Negenman",
+		license: "Unsplash License",
+	},
+	{
+		src: "/assets/transition-previews/concrete-stairs.webp",
+		pageUrl: "https://unsplash.com/photos/Z61MuLuFQDQ",
+		photographer: "Ricardo Gomez Angel",
+		license: "Unsplash License",
+	},
+	{
+		src: "/assets/transition-previews/spiral-stair.webp",
+		pageUrl: "https://unsplash.com/photos/ScEKf8u7y-c",
+		photographer: "Len Cruz",
+		license: "Unsplash License",
+	},
+	{
+		src: "/assets/transition-previews/diagonal-building.webp",
+		pageUrl: "https://unsplash.com/photos/-cf0jq-ldjg",
+		photographer: "Ricardo Gomez Angel",
+		license: "Unsplash License",
+	},
+] as const;
+
+export function getTransitionPhotoPair(type: string) {
+	const baseIndex = hashString(type) % TRANSITION_PHOTOS.length;
+	const nextIndex = (baseIndex + 1) % TRANSITION_PHOTOS.length;
+	return {
+		a: TRANSITION_PHOTOS[baseIndex] ?? TRANSITION_PHOTOS[0],
+		b: TRANSITION_PHOTOS[nextIndex] ?? TRANSITION_PHOTOS[1],
+	};
+}
+
 /**
  * Pick a palette deterministically from the item id. Same id always
  * returns the same palette, so a re-render never flickers.

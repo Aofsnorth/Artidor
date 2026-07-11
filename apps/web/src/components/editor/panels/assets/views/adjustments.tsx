@@ -26,8 +26,8 @@ import { cn } from "@/utils/ui";
 import { useI18n } from "@/lib/i18n";
 
 const SUB_TABS = [
-	{ id: "library" as const, label: "Adjustments" },
-	{ id: "advanced" as const, label: "Advanced" },
+	{ id: "library" as const, labelKey: "advanced.subTabAdjustments" as const },
+	{ id: "advanced" as const, labelKey: "advanced.subTabAdvanced" as const },
 ];
 
 /**
@@ -48,16 +48,17 @@ const SUB_TABS = [
  * the user a single tap to reach the colour tools.
  */
 export function AdjustmentsView() {
+	const { t } = useI18n();
 	const [activeSubTab, setActiveSubTab] = useState<"library" | "advanced">(
 		"library",
 	);
 
 	return (
 		<PanelView
-			title="Adjust"
+			title={t("catalog.titleAdjust")}
 			actions={
 				activeSubTab === "library" ? (
-					<PopOutAction id="adjust" title="Adjustments" />
+					<PopOutAction id="adjust" title={t("catalog.titleAdjustments")} />
 				) : null
 			}
 		>
@@ -78,7 +79,7 @@ export function AdjustmentsView() {
 										: "border-white/[0.06] bg-white/[0.025] text-white/[0.55] hover:border-white/15 hover:bg-white/[0.08] hover:text-white",
 								)}
 							>
-								{tab.label}
+								{t(tab.labelKey)}
 							</button>
 						);
 					})}
