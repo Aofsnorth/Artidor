@@ -13,6 +13,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 export type FloatablePanelId =
 	| "assets"
@@ -153,6 +154,7 @@ export const useEditorUIStore = create<EditorUIStore>()(
 		}),
 		{
 			name: "editor-ui",
+			storage: browserStorage,
 			partialize: (state) => ({
 				focusMode: state.focusMode,
 				floatingPanels: state.floatingPanels,

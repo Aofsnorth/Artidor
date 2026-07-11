@@ -778,20 +778,29 @@ export class AudioManager {
 	}): void {
 		clipGain.gain.cancelScheduledValues(startTimestamp);
 
+		// The per-track volume slider (timeline store `trackSliders`) must
+		// apply on top of the element's own gain. The live update path
+		// (`applyLiveAudioUpdates`) already multiplies it in, but clips
+		// rescheduled with fades or keyframed volume lost it here and jumped
+		// back to full volume after a pause/play. Fold it in once.
+		const trackSliderPercent =
+			useTimelineStore.getState().trackSliders[clip.trackId] ?? 100;
+		const trackSliderMul = trackSliderPercent / 100;
+
 		const hasKeyframedVolume = hasAnimatedVolume({ element: clip.timelineElement });
 		const fadeIn = clip.timelineElement.fadeInDuration ?? 0;
 		const fadeOut = clip.timelineElement.fadeOutDuration ?? 0;
 		const hasFade = fadeIn > 0 || fadeOut > 0;
 
 		if (!hasKeyframedVolume && !hasFade) {
-			clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
+			clipGain.gain.setValueAtTime(clip.volume * trackSliderMul, startTimestamp);
 			return;
 		}
 
 		if (!hasKeyframedVolume && hasFade) {
 			// Fast path for static volume + fade (no keyframes).
 			// Avoid generating thousands of points which can cause WebAudio to drop events or mute.
-			const baseGain = clip.volume;
+			const baseGain = clip.volume * trackSliderMul;
 			const clipDuration = clip.duration;
 
 			// Helper to schedule a point, ensuring we don't schedule in the past
@@ -837,11 +846,11 @@ export class AudioManager {
 		});
 
 		if (points.length === 0) {
-			clipGain.gain.setValueAtTime(clip.volume, startTimestamp);
+			clipGain.gain.setValueAtTime(clip.volume * trackSliderMul, startTimestamp);
 			return;
 		}
 
-		clipGain.gain.setValueAtTime(points[0].gain, startTimestamp);
+		clipGain.gain.setValueAtTime(points[0].gain * trackSliderMul, startTimestamp);
 		for (let index = 1; index < points.length; index++) {
 			const point = points[index];
 			const pointTimestamp =
@@ -850,7 +859,7 @@ export class AudioManager {
 				continue;
 			}
 
-			clipGain.gain.linearRampToValueAtTime(point.gain, pointTimestamp);
+			clipGain.gain.linearRampToValueAtTime(point.gain * trackSliderMul, pointTimestamp);
 		}
 	}
 

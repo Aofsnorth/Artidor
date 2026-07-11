@@ -7,7 +7,8 @@
  */
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import type { WaveformVariant } from "@/components/editor/panels/timeline/audio-waveform";
 
 interface ProjectWaveformSettings {
@@ -79,7 +80,7 @@ export const useWaveformSettingsStore = create<WaveformSettingsStore>()(
 		}),
 		{
 			name: "artidor.waveform-settings",
-			storage: createJSONStorage(() => localStorage),
+			storage: browserStorage,
 			version: 1,
 		},
 	),

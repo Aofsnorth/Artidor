@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import { PANEL_CONFIG } from "@/lib/panels/layout";
 
 export interface PanelSizes {
@@ -24,43 +25,51 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
 	{
 		id: "default",
 		name: "Default",
+			storage: browserStorage,
 		sizes: { tools: 28, preview: 47, properties: 25, mainContent: 64, timeline: 36 },
 	},
 	{
 		id: "compact",
 		name: "Compact",
+			storage: browserStorage,
 		sizes: { tools: 20, preview: 55, properties: 25, mainContent: 70, timeline: 30 },
 	},
 	{
 		id: "color-grading",
 		name: "Color Grading",
+			storage: browserStorage,
 		scope: "pro",
 		sizes: { tools: 15, preview: 50, properties: 35, mainContent: 60, timeline: 40 },
 	},
 	{
 		id: "effects-focus",
 		name: "Effects Focus",
+			storage: browserStorage,
 		scope: "pro",
 		sizes: { tools: 35, preview: 40, properties: 25, mainContent: 64, timeline: 36 },
 	},
 	{
 		id: "audio-mix",
 		name: "Audio Mix",
+			storage: browserStorage,
 		sizes: { tools: 20, preview: 40, properties: 20, mainContent: 45, timeline: 55 },
 	},
 	{
 		id: "fullscreen-preview",
 		name: "Fullscreen Preview",
+			storage: browserStorage,
 		sizes: { tools: 15, preview: 65, properties: 20, mainContent: 80, timeline: 20 },
 	},
 	{
 		id: "minimal-tools",
 		name: "Minimal Tools",
+			storage: browserStorage,
 		sizes: { tools: 12, preview: 58, properties: 30, mainContent: 70, timeline: 30 },
 	},
 	{
 		id: "timeline-focus",
 		name: "Timeline Focus",
+			storage: browserStorage,
 		sizes: { tools: 18, preview: 42, properties: 25, mainContent: 45, timeline: 55 },
 	},
 ];
@@ -134,6 +143,7 @@ export const usePanelStore = create<PanelState>()(
 		}),
 		{
 			name: "panel-sizes",
+			storage: browserStorage,
 			version: 6,
 			migrate: (persistedState, version) => {
 				// react-resizable-panels v2→v4 changed size units: bare numbers

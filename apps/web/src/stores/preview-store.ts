@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import { isGuideId, type GuideId } from "@/lib/guides";
 import { DEFAULT_GRID_CONFIG } from "@/lib/guides/grid";
 import type { GridConfig } from "@/lib/guides/types";
@@ -89,6 +90,7 @@ export const usePreviewStore = create<PreviewState>()(
 		}),
 		{
 			name: "preview-settings",
+			storage: browserStorage,
 			version: 4,
 			migrate: (persistedState) => {
 				const state = persistedState as PersistedPreviewState | undefined;

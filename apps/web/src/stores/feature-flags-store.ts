@@ -13,6 +13,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 /** Tab keys that can be toggled off by the user. */
 export const TOGGLEABLE_FEATURES = [
@@ -63,7 +64,7 @@ export const useFeatureFlagsStore = create<FeatureFlagsStore>()(
 					},
 				})),
 		}),
-		{ name: "feature-flags" },
+		{ name: "feature-flags", storage: browserStorage },
 	),
 );
 

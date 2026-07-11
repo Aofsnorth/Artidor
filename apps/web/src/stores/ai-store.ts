@@ -9,6 +9,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import type { StyleProfile } from "@/lib/ai/style/extractor";
 
 export type ChatRole = "user" | "assistant" | "system" | "tool";
@@ -674,6 +675,7 @@ export const useAIStore = create<AIState>()(
 		}),
 		{
 			name: "artidor-ai-chat",
+			storage: browserStorage,
 			partialize: (state) => ({
 				projectId: state.projectId,
 				messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),

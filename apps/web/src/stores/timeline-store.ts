@@ -5,6 +5,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 interface TimelineStore {
 	snappingEnabled: boolean;
@@ -206,6 +207,7 @@ export const useTimelineStore = create<TimelineStore>()(
 		}),
 		{
 			name: "timeline-store",
+			storage: browserStorage,
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,

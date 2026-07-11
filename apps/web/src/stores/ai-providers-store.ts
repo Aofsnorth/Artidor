@@ -125,7 +125,7 @@ function generateId(): string {
 function createEncryptedStorage() {
 	return createJSONStorage(() => ({
 		getItem: async (name: string): Promise<string | null> => {
-			const raw = localStorage.getItem(name);
+			const raw = window.localStorage.getItem(name);
 			if (!raw) return null;
 			try {
 				const parsed = JSON.parse(raw) as {
@@ -155,13 +155,13 @@ function createEncryptedStorage() {
 						}
 					}
 				}
-				localStorage.setItem(name, JSON.stringify(parsed));
+				window.localStorage.setItem(name, JSON.stringify(parsed));
 			} catch {
-				localStorage.setItem(name, value);
+				window.localStorage.setItem(name, value);
 			}
 		},
 		removeItem: (name: string): Promise<void> => {
-			localStorage.removeItem(name);
+			window.localStorage.removeItem(name);
 			return Promise.resolve();
 		},
 	}));

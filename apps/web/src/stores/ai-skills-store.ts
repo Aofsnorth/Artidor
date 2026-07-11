@@ -17,6 +17,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 /**
  * A single step in a skill recipe: one tool call with its arguments.
@@ -88,6 +89,7 @@ export const useAiSkillsStore = create<AiSkillsState>()(
 		}),
 		{
 			name: "artidor-ai-skills",
+			storage: browserStorage,
 		},
 	),
 );

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 export interface CustomFont {
 	/** User-given name (from the file name). */
@@ -83,6 +84,7 @@ export const useCustomFontsStore = create<CustomFontsState>()(
 		}),
 		{
 			name: "artidor-custom-fonts",
+			storage: browserStorage,
 			// Only persist favorites — custom fonts are re-loaded via FontFace
 			// API on each session and don't survive a refresh anyway (the
 			// FontFace is gone once the page reloads). Persisting the `fonts`

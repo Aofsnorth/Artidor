@@ -11,6 +11,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import {
 	McpClientConnection,
 	type McpConnection,
@@ -89,6 +90,7 @@ export const useMcpStore = create<McpState>()(
 		}),
 		{
 			name: "artidor-mcp-servers",
+			storage: browserStorage,
 			partialize: (state) => ({ servers: state.servers }),
 		},
 	),

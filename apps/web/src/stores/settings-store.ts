@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import type { PreviewQuality } from "@/lib/perf/preview-quality";
 
 /**
@@ -118,6 +119,7 @@ export const useSettingsStore = create<SettingsState>()(
 		}),
 		{
 			name: "app-settings",
+			storage: browserStorage,
 		},
 	),
 );
