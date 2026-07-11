@@ -18,6 +18,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-16-flac-timeline-preview-audio",
+		date: "2026-07-16",
+		tag: "fix",
+		title: "FLAC audio now plays during timeline preview",
+		items: [
+			"FLAC uploads are now imported reliably even when the browser or OS does not report an audio MIME type.",
+			"Timeline preview decoding now uses the browser's Web Audio API for FLAC before falling back to the streaming decoder, fixing silent playback in browsers whose AudioDecoder does not support FLAC.",
+		],
+	},
+	{
 		id: "2026-07-15-transform-text-effects",
 		date: "2026-07-15",
 		tag: "feature",

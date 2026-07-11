@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the transform and text effects update", () => {
+	test("the newest entry is the FLAC timeline preview audio fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-15-transform-text-effects",
+			"2026-07-16-flac-timeline-preview-audio",
 		);
 	});
 });
