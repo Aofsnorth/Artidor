@@ -20,6 +20,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 export interface TelemetryEvent {
 	id: string;
@@ -89,7 +90,7 @@ export const useTelemetryStore = create<TelemetryState>()(
 					.reverse(),
 			byCommand: (name) => get().events.filter((e) => e.command === name),
 		}),
-		{ name: "artidor-ai-telemetry" },
+		{ name: "artidor-ai-telemetry", storage: browserStorage },
 	),
 );
 

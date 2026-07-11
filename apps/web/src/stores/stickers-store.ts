@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import {
 	browseAll,
 	browseCategory,
@@ -204,6 +205,7 @@ export const useStickersStore = create<StickersStore>()(
 		}),
 		{
 			name: "stickers-settings",
+			storage: browserStorage,
 			version: 1,
 			migrate: (persistedState) => {
 				if (

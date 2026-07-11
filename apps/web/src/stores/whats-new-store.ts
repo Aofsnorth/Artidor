@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import { getLatestWhatsNewId } from "@/lib/whats-new/feed";
 
 interface WhatsNewStore {
@@ -41,6 +42,7 @@ export const useWhatsNewStore = create<WhatsNewStore>()(
 		}),
 		{
 			name: "whats-new",
+			storage: browserStorage,
 			// Only the seen marker is persisted; open state is per-session.
 			partialize: (state) => ({ lastSeenId: state.lastSeenId }),
 		},

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 
 /**
  * Shared swatch state for any colour control (draw tools, etc.):
@@ -60,6 +61,6 @@ export const useColorPaletteStore = create<ColorPaletteState>()(
 			},
 			clearRecentColors: () => set({ recentColors: [] }),
 		}),
-		{ name: "color-palette" },
+		{ name: "color-palette", storage: browserStorage },
 	),
 );

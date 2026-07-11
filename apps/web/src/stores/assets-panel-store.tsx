@@ -1,6 +1,7 @@
 import type { ElementType } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import {
 	ArrowRightDoubleIcon,
 	ClosedCaptionIcon,
@@ -249,6 +250,7 @@ export const useAssetsPanelStore = create<AssetsPanelStore>()(
 		}),
 		{
 			name: "assets-panel",
+			storage: browserStorage,
 			partialize: (state) => ({
 				mediaViewMode: state.mediaViewMode,
 				mediaSortBy: state.mediaSortBy,

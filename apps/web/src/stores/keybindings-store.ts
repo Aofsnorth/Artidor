@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import type { TActionWithOptionalArgs } from "@/lib/actions";
 import { getDefaultShortcuts } from "@/lib/actions";
 import { isTypableDOMElement } from "@/utils/browser";
@@ -163,6 +164,7 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 		}),
 		{
 			name: "opencut-keybindings",
+			storage: browserStorage,
 			version: CURRENT_VERSION,
 			partialize: (state) => ({
 				keybindings: state.keybindings,

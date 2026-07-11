@@ -9,6 +9,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { browserStorage } from "@/stores/browser-storage";
 import type {
 	CollabMode,
 	Collaborator,
@@ -139,6 +140,7 @@ export const useCollabStore = create<CollabState>()(
 		}),
 		{
 			name: "artidor-collab",
+			storage: browserStorage,
 			// Only persist the nickname so the user doesn't re-enter it each time.
 			// Room state is ephemeral — reconnecting always re-joins fresh.
 			partialize: (state) => ({ nickname: state.nickname }),
