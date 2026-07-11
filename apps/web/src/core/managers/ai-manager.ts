@@ -811,6 +811,16 @@ export class AIManager {
 			}),
 		);
 
+		// Respect the user's context-window limit. Keep any system/compacted
+		// summary messages and drop the oldest non-system messages first so
+		// long conversations don't exceed the model's context.
+		const maxContext = Math.max(1, storeState.advancedSettings.maxContextMessages);
+		if (messages.length > maxContext) {
+			const systemCount = messages.filter((m) => m.role === "system").length;
+			const keepRecent = Math.max(0, maxContext - systemCount);
+			messages.splice(systemCount, messages.length - systemCount - keepRecent);
+		}
+
 		// Make the request. Include the user's selected provider config so
 		// the server uses the client-managed endpoint rather than env vars.
 		// Pass the project's per-project provider override if set.
@@ -966,6 +976,7 @@ export class AIManager {
 					learningScope,
 					aiName: useSettingsStore.getState().aiName,
 					aiPersonality: useSettingsStore.getState().aiPersonality,
+					maxOutputTokens: storeState.advancedSettings.maxOutputTokens,
 					provider: providerConfig
 						? {
 								baseUrl: providerConfig.baseUrl,

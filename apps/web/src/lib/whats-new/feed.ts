@@ -18,6 +18,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-16-ai-chat-controls-and-previews",
+		date: "2026-07-16",
+		tag: "improvement",
+		title: "AI chat: token/context controls, editable message re-prompt, faster image previews",
+		items: [
+			"Added Max output tokens and Context window sliders in Advanced AI settings so you can cap model replies and how much conversation history is sent per request.",
+			"Editing a user message now automatically drops the follow-up messages and re-prompts the AI from that point.",
+			"view_asset image and video results now render as compact thumbnails instead of dumping raw base64 JSON into the chat, fixing UI lag after frame captures.",
+		],
+	},
+	{
 		id: "2026-07-16-flac-timeline-preview-audio",
 		date: "2026-07-16",
 		tag: "fix",
