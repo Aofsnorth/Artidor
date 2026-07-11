@@ -62,6 +62,7 @@ import type { TextTrack } from "@/lib/timeline";
 
 import type { TranscriptionBackend } from "@/services/transcription/backend";
 import { getProcessingUpdate } from "@/lib/transcription/processing-state";
+import { useI18n } from "@/lib/i18n";
 
 const DIAGNOSTIC_BUTTON_VARIANT: Record<
 	DiagnosticSeverity,
@@ -136,6 +137,7 @@ function processingReducer(
 }
 
 export function Captions() {
+	const { t } = useI18n();
 	const [selectedLanguage, setSelectedLanguage] =
 		useState<TranscriptionLanguage>("auto");
 	const [selectedModel, setSelectedModel] = useState<TranscriptionModelId>(
@@ -173,7 +175,7 @@ export function Captions() {
 
 	const handleGenerateTranscript = async () => {
 		if (processing.status === "processing") return;
-		dispatch({ type: "start", step: "Extracting audio..." });
+		dispatch({ type: "start", step: t("captions.step.extractAudio") });
 		try {
 			const audioBlob = await extractTimelineAudio({
 				tracks: editor.scenes.getActiveScene().tracks,
@@ -182,18 +184,18 @@ export function Captions() {
 				onProgress: (progress) =>
 					dispatch({
 						type: "update_step",
-						step: `Extracting audio ${Math.round(progress)}%`,
+						step: t("captions.step.extractAudioProgress", { progress: Math.round(progress) }),
 					}),
 			});
 
-			dispatch({ type: "update_step", step: "Preparing audio..." });
+			dispatch({ type: "update_step", step: t("captions.step.prepareAudio") });
 			const { samples } = await decodeAudioToFloat32({
 				audioBlob,
 				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
 			});
 
 			if (samples.length === 0) {
-				dispatch({ type: "fail", error: "No audio found in timeline" });
+				dispatch({ type: "fail", error: t("captions.error.noAudioInTimeline") });
 				return;
 			}
 
@@ -204,11 +206,11 @@ export function Captions() {
 				onProgress: handleProgress,
 			});
 
-			dispatch({ type: "update_step", step: "Generating captions..." });
+			dispatch({ type: "update_step", step: t("captions.step.generateCaptions") });
 			const captionChunks = buildCaptionChunks({ segments: result.segments });
 
 			if (!insertCaptions({ captions: captionChunks })) {
-				dispatch({ type: "fail", error: "No captions were generated" });
+				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
 				return;
 			}
 
@@ -220,7 +222,7 @@ export function Captions() {
 				error:
 					error instanceof Error
 						? error.message
-						: "An unexpected error occurred",
+						: t("captions.error.unexpected"),
 			});
 		}
 	};
@@ -237,29 +239,29 @@ export function Captions() {
 	const handleTranscribeSelectedClip = async () => {
 		if (processing.status === "processing") return;
 		if (!selectedElement) {
-			toast.error("Select a single audio or video clip first");
+			toast.error(t("captions.toast.selectSingleClip"));
 			return;
 		}
 		if (selectedElement.type !== "video" && selectedElement.type !== "audio") {
-			toast.error("Selected element is not an audio or video clip");
+			toast.error(t("captions.toast.selectedNotAudioVideo"));
 			return;
 		}
 
-		dispatch({ type: "start", step: "Extracting clip audio..." });
+		dispatch({ type: "start", step: t("captions.step.extractClipAudio") });
 		try {
 			const audioBlob = await extractClipAudio({
 				element: selectedElement,
 				mediaAssets: editor.media.getAssets(),
 			});
 
-			dispatch({ type: "update_step", step: "Preparing audio..." });
+			dispatch({ type: "update_step", step: t("captions.step.prepareAudio") });
 			const { samples } = await decodeAudioToFloat32({
 				audioBlob,
 				sampleRate: DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
 			});
 
 			if (samples.length === 0) {
-				dispatch({ type: "fail", error: "No audio found in selected clip" });
+				dispatch({ type: "fail", error: t("captions.error.noAudioInClip") });
 				return;
 			}
 
@@ -270,7 +272,7 @@ export function Captions() {
 				onProgress: handleProgress,
 			});
 
-			dispatch({ type: "update_step", step: "Generating captions..." });
+			dispatch({ type: "update_step", step: t("captions.step.generateCaptions") });
 			const rawChunks = buildCaptionChunks({ segments: result.segments });
 			const offsetSeconds = selectedElement.startTime / TICKS_PER_SECOND;
 			const captionChunks = rawChunks.map((chunk) => ({
@@ -279,11 +281,11 @@ export function Captions() {
 			}));
 
 			if (!insertCaptions({ captions: captionChunks })) {
-				dispatch({ type: "fail", error: "No captions were generated" });
+				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
 				return;
 			}
 
-			toast.success("Captions added for selected clip");
+			toast.success(t("captions.toast.clipCaptionsAdded"));
 			dispatch({ type: "succeed", warnings: [] });
 		} catch (error) {
 			console.error("Transcription failed:", error);
@@ -292,7 +294,7 @@ export function Captions() {
 				error:
 					error instanceof Error
 						? error.message
-						: "An unexpected error occurred",
+						: t("captions.error.unexpected"),
 			});
 		}
 	};
@@ -303,7 +305,7 @@ export function Captions() {
 
 	const handleImportFile = async ({ file }: { file: File }) => {
 		if (processing.status === "processing") return;
-		dispatch({ type: "start", step: "Reading subtitle file..." });
+		dispatch({ type: "start", step: t("captions.step.readSubtitleFile") });
 		try {
 			const input = await file.text();
 			const result = parseSubtitleFile({
@@ -314,22 +316,22 @@ export function Captions() {
 			if (result.captions.length === 0) {
 				dispatch({
 					type: "fail",
-					error: "No valid subtitle cues were found in the subtitle file",
+					error: t("captions.error.noValidCues"),
 				});
 				return;
 			}
 
-			dispatch({ type: "update_step", step: "Importing subtitles..." });
+			dispatch({ type: "update_step", step: t("captions.step.importSubtitles") });
 
 			if (!insertCaptions({ captions: result.captions })) {
-				dispatch({ type: "fail", error: "No captions were generated" });
+				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
 				return;
 			}
 
 			const nextWarnings = [...result.warnings];
 			if (result.skippedCueCount > 0) {
 				nextWarnings.unshift(
-					`Imported ${result.captions.length} subtitle cue(s) and skipped ${result.skippedCueCount} malformed cue(s).`,
+					t("captions.warning.importedWithSkipped", { count: result.captions.length, skipped: result.skippedCueCount }),
 				);
 			}
 
@@ -341,7 +343,7 @@ export function Captions() {
 				error:
 					error instanceof Error
 						? error.message
-						: "An unexpected error occurred",
+						: t("captions.error.unexpected"),
 			});
 		}
 	};
@@ -375,7 +377,7 @@ export function Captions() {
 
 	const handleCancel = () => {
 		transcriptionService.cancel();
-		dispatch({ type: "fail", error: "Transcription cancelled" });
+		dispatch({ type: "fail", error: t("captions.cancelled") });
 	};
 
 	// Subscribe to the stable track reference. Deriving cue objects inside the
@@ -422,13 +424,13 @@ export function Captions() {
 			duration: cue.duration,
 		}));
 		if (cues.length === 0) {
-			toast.error("No captions to export");
+			toast.error(t("captions.error.noCaptionsToExport"));
 			return;
 		}
 		const content =
 			format === "srt" ? exportCuesToSrt({ cues }) : exportCuesToAss({ cues });
 		downloadSubtitleFile({ content, fileName: `captions.${format}` });
-		toast.success(`Exported captions.${format}`);
+		toast.success(t("captions.toast.exported", { format }));
 	};
 
 	const error = processing.status === "idle" ? processing.error : null;
@@ -454,7 +456,7 @@ export function Captions() {
 
 	return (
 		<PanelView
-			title="Captions"
+			title={t("captions.title")}
 			contentClassName="px-0 flex flex-col h-full"
 			actions={
 				<TooltipProvider>
@@ -487,7 +489,7 @@ export function Captions() {
 							className="items-center justify-center gap-1.5"
 						>
 							<HugeiconsIcon icon={CloudUploadIcon} />
-							Import
+							{t("captions.import")}
 						</Button>
 					</div>
 				</TooltipProvider>
@@ -508,16 +510,16 @@ export function Captions() {
 			>
 				<SectionContent className="flex flex-col gap-4 h-full pt-1">
 					<SectionFields>
-						<SectionField label="Language">
+						<SectionField label={t("captions.languageLabel")}>
 							<Select
 								value={selectedLanguage}
 								onValueChange={(value) => handleLanguageChange({ value })}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a language" />
+									<SelectValue placeholder={t("captions.languagePlaceholder")} />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="auto">Auto detect</SelectItem>
+									<SelectItem value="auto">{t("captions.autoDetect")}</SelectItem>
 									{TRANSCRIPTION_LANGUAGES.map((language) => (
 										<SelectItem key={language.code} value={language.code}>
 											{language.name}
@@ -526,7 +528,7 @@ export function Captions() {
 								</SelectContent>
 							</Select>
 						</SectionField>
-						<SectionField label="Model">
+						<SectionField label={t("captions.modelLabel")}>
 							<Select
 								value={selectedModel}
 								onValueChange={(value) =>
@@ -534,7 +536,7 @@ export function Captions() {
 								}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder="Select a model" />
+									<SelectValue placeholder={t("captions.modelPlaceholder")} />
 								</SelectTrigger>
 								<SelectContent>
 									{TRANSCRIPTION_MODELS.map((model) => (
@@ -565,14 +567,14 @@ export function Captions() {
 							</div>
 							{processing.progress === null ? (
 								<p className="text-muted-foreground text-xs">
-									Running inference · {elapsedLabel}
+									{t("captions.runningInference", { seconds: elapsedLabel })}
 								</p>
 							) : (
 								<>
 									<Progress value={processing.progress} />
 									<p className="text-muted-foreground text-xs">
-										{Math.round(processing.progress)}% downloaded ·{" "}
-										{elapsedLabel}
+										{t("captions.downloadProgress", { progress: Math.round(processing.progress), seconds: elapsedLabel })}
+										
 									</p>
 								</>
 							)}
@@ -585,7 +587,7 @@ export function Captions() {
 						onClick={handleGenerateTranscript}
 						disabled={isProcessing || activeDiagnostics.length > 0}
 					>
-						Generate transcript (full timeline)
+						{t("captions.generateTranscript")}
 					</Button>
 					<Button
 						type="button"
@@ -593,9 +595,9 @@ export function Captions() {
 						className="w-full"
 						onClick={handleTranscribeSelectedClip}
 						disabled={isProcessing || !selectedElement}
-						title="Select a single video or audio clip first"
+						title={t("captions.selectClipTooltip")}
 					>
-						Transcribe selected clip
+						{t("captions.transcribeSelectedClip")}
 					</Button>
 					{isProcessing && (
 						<Button
@@ -604,7 +606,7 @@ export function Captions() {
 							className="w-full"
 							onClick={handleCancel}
 						>
-							Cancel
+							{t("captions.cancel")}
 						</Button>
 					)}
 					{error && (
@@ -626,7 +628,7 @@ export function Captions() {
 						<div className="flex flex-col gap-2">
 							<div className="flex items-center justify-between">
 								<span className="text-[0.62rem] font-semibold uppercase tracking-wider text-muted-foreground">
-									{captionCues.length} cues
+									{t("captions.cueCount", { count: captionCues.length })}
 								</span>
 								<div className="flex items-center gap-1.5">
 									<Button
@@ -635,7 +637,7 @@ export function Captions() {
 										size="sm"
 										onClick={() => exportCaptions({ format: "srt" })}
 									>
-										Export SRT
+										{t("captions.exportSrt")}
 									</Button>
 									<Button
 										type="button"
@@ -643,7 +645,7 @@ export function Captions() {
 										size="sm"
 										onClick={() => exportCaptions({ format: "ass" })}
 									>
-										Export ASS
+										{t("captions.exportAss")}
 									</Button>
 								</div>
 							</div>
@@ -661,7 +663,7 @@ export function Captions() {
 													time: Math.round(cue.startTime * TICKS_PER_SECOND),
 												})
 											}
-											title="Jump to cue"
+											title={t("captions.jumpToCue")}
 										>
 											{formatCueTime(cue.startTime)}
 										</button>
