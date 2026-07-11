@@ -21,8 +21,10 @@ import {
 	Scissors,
 	Film,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export function AIShowcaseSection() {
+	const { t } = useI18n();
 	return (
 		<section
 			id="ai-copilot"
@@ -32,44 +34,48 @@ export function AIShowcaseSection() {
 				<div>
 					<div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10.5px] uppercase tracking-[0.18em] text-white/65 backdrop-blur">
 						<Sparkles className="size-3 text-amber-200" />
-						Arth — AI Co-Pilot
+						{t("home.aiShowcase.eyebrow")}
 					</div>
 					<h2 className="text-balance font-serif text-4xl font-medium italic leading-[1.05] tracking-[-0.01em] md:text-5xl">
-						Edit in plain English.
+						{t("home.aiShowcase.headline.line1")}
 						<br />
-						<span className="text-white/55">The editor does the rest.</span>
+						<span className="text-white/55">
+							{t("home.aiShowcase.headline.line2")}
+						</span>
 					</h2>
 					<p className="text-pretty mt-5 max-w-md text-[15px] font-light leading-relaxed text-white/65">
-						Arth speaks every command the editor speaks:
-						split, trim, retime, keyframe, transition, color-grade, import,
-						export. You describe the intent. It issues the tool calls.
+						{t("home.aiShowcase.body")}
 					</p>
 
 					<ul className="mt-8 flex flex-col gap-3 text-[13.5px] text-white/75">
 						{[
 							{
 								icon: Scissors,
-								title: "Self-improving",
-								body: "Every cut, split, keyframe and effect you apply is logged. Arth reads your last 20 edits and matches your pacing, easing, and pacing.",
+								titleKey: "home.aiShowcase.feature.selfImproving.title",
+								bodyKey: "home.aiShowcase.feature.selfImproving.body",
 							},
 							{
 								icon: Film,
-								title: "Style from a reference",
-								body: "Drop in a finished video. The extractor reads its cuts-per-minute, palette, motion energy and audio tempo, then imitates it on your timeline.",
+								titleKey: "home.aiShowcase.feature.styleReference.title",
+								bodyKey: "home.aiShowcase.feature.styleReference.body",
 							},
 							{
 								icon: Sliders,
-								title: "40+ tools, one model",
-								body: "Add tracks, change fps, drop captions, apply a cinematic grade, export to MP4 — all from the same chat box. The model picks the right tool for the job.",
+								titleKey: "home.aiShowcase.feature.tools.title",
+								bodyKey: "home.aiShowcase.feature.tools.body",
 							},
 						].map((f) => (
-							<li key={f.title} className="flex items-start gap-3">
+							<li key={f.titleKey} className="flex items-start gap-3">
 								<span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.05] text-white/85">
 									<f.icon className="size-3.5" />
 								</span>
 								<div>
-									<div className="font-medium text-white">{f.title}</div>
-									<div className="mt-0.5 text-white/55">{f.body}</div>
+									<div className="font-medium text-white">
+										{t(f.titleKey)}
+									</div>
+									<div className="mt-0.5 text-white/55">
+										{t(f.bodyKey)}
+									</div>
 								</div>
 							</li>
 						))}
@@ -87,6 +93,7 @@ export function AIShowcaseSection() {
 /* -------------------------------------------------------------------------- */
 
 function ChatMockup() {
+	const { t } = useI18n();
 	return (
 		<div className="panel glass-strong relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_40px_120px_-30px_rgba(0,0,0,0.7)]">
 			{/* Window chrome */}
@@ -96,11 +103,11 @@ function ChatMockup() {
 				<span className="size-2.5 rounded-full bg-[#28c840]/70" />
 				<div className="ml-4 flex items-center gap-1.5 text-[10.5px] text-white/50">
 					<Command className="size-3" />
-					Artidor · Arth
+					{t("home.aiShowcase.chat.windowTitle")}
 				</div>
 				<div className="ml-auto flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[9.5px] text-white/55">
 					<Sparkles className="size-2.5 text-amber-200" />
-					live
+					{t("home.aiShowcase.chat.liveBadge")}
 				</div>
 			</div>
 
@@ -113,8 +120,7 @@ function ChatMockup() {
 					transition={{ duration: 0.4 }}
 					className="ml-auto max-w-[85%] self-end rounded-2xl rounded-br-sm border border-white/12 bg-white/[0.07] px-3.5 py-2 text-[13px] text-white"
 				>
-					Make a 60-second reel. Trim the longest clip, add captions, drop in a
-					beat-synced zoom on every cut.
+					{t("home.aiShowcase.chat.userPrompt")}
 				</motion.div>
 
 				{/* AI thinking + reply */}
@@ -126,8 +132,7 @@ function ChatMockup() {
 					className="flex w-full flex-col gap-2 self-start"
 				>
 					<div className="max-w-[88%] rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.03] px-3.5 py-2.5 text-[13px] leading-relaxed text-white/90">
-						Got it. Trimming the long take, generating captions, then setting
-						beat cuts at the strongest transients in the audio.
+						{t("home.aiShowcase.chat.aiReply")}
 					</div>
 
 					{/* Tool call cards */}
@@ -135,27 +140,27 @@ function ChatMockup() {
 						{[
 							{
 								icon: Scissors,
-								name: "split_element",
-								detail: "Long take @ 00:00:42",
+								nameKey: "home.aiShowcase.chat.toolName.split",
+								detailKey: "home.aiShowcase.chat.toolDetail.split",
 							},
 							{
 								icon: Mic,
-								name: "transcribe",
-								detail: "Audio track · 47 segments",
+								nameKey: "home.aiShowcase.chat.toolName.transcribe",
+								detailKey: "home.aiShowcase.chat.toolDetail.transcribe",
 							},
 							{
 								icon: Sliders,
-								name: "upsert_keyframe",
-								detail: "scale 1 → 1.08 at every cut",
+								nameKey: "home.aiShowcase.chat.toolName.keyframe",
+								detailKey: "home.aiShowcase.chat.toolDetail.keyframe",
 							},
 							{
 								icon: Video,
-								name: "update_element",
-								detail: "Captions on 4 overlay tracks",
+								nameKey: "home.aiShowcase.chat.toolName.update",
+								detailKey: "home.aiShowcase.chat.toolDetail.update",
 							},
 						].map((tool, i) => (
 							<motion.div
-								key={tool.name}
+								key={tool.nameKey}
 								initial={{ opacity: 0, x: -4 }}
 								whileInView={{ opacity: 1, x: 0 }}
 								viewport={{ once: true }}
@@ -163,11 +168,15 @@ function ChatMockup() {
 								className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-2.5 py-1.5 text-[11.5px] text-white/75"
 							>
 								<tool.icon className="size-3.5 shrink-0 text-white/55" />
-								<span className="shrink-0 font-mono text-white">{tool.name}</span>
+								<span className="shrink-0 font-mono text-white">
+									{t(tool.nameKey)}
+								</span>
 								<span className="shrink-0 text-white/35">·</span>
-								<span className="min-w-0 truncate text-white/55">{tool.detail}</span>
+								<span className="min-w-0 truncate text-white/55">
+									{t(tool.detailKey)}
+								</span>
 								<span className="ml-auto shrink-0 text-[10px] text-emerald-300/85">
-									ok
+									{t("home.aiShowcase.chat.toolStatus")}
 								</span>
 							</motion.div>
 						))}
@@ -182,7 +191,7 @@ function ChatMockup() {
 					transition={{ duration: 0.4, delay: 1.7 }}
 					className="ml-auto max-w-[80%] self-end rounded-2xl rounded-br-sm border border-white/12 bg-white/[0.07] px-3.5 py-2 text-[13px] text-white"
 				>
-					Now match the cut pacing of the reference video I attached earlier.
+					{t("home.aiShowcase.chat.followUp")}
 				</motion.div>
 
 				<motion.div
@@ -193,12 +202,11 @@ function ChatMockup() {
 					className="flex max-w-[88%] flex-col gap-2 self-start"
 				>
 					<div className="rounded-2xl rounded-bl-sm border border-white/10 bg-white/[0.03] px-3.5 py-2 text-[13px] leading-relaxed text-white/90">
-						Reference was 48 cpm, soft fades. Re-cutting at 47 cpm with 180 ms
-						crossfades and the same 35% warm-tone lift.
+						{t("home.aiShowcase.chat.aiReply2")}
 					</div>
 					<div className="flex items-center gap-1.5 text-[10.5px] text-white/55">
 						<Sparkles className="size-3 text-amber-200" />
-						Style profile applied: 48 cpm · 0.6s avg shot · warm grade
+						{t("home.aiShowcase.chat.styleProfile")}
 					</div>
 				</motion.div>
 
@@ -212,11 +220,10 @@ function ChatMockup() {
 				>
 					<Sparkles className="size-3.5 text-white/45" />
 					<span className="text-[12px] text-white/45">
-						Ask Arth to edit, plan a motion graphic, or describe what you
-						want…
+						{t("home.aiShowcase.chat.composerPlaceholder")}
 					</span>
 					<span className="ml-auto flex items-center gap-1 rounded-md bg-white px-2 py-1 text-[10px] font-medium text-[#0a0a0c]">
-						Send
+						{t("home.aiShowcase.chat.sendButton")}
 						<ArrowRight className="size-3" />
 					</span>
 				</motion.div>
