@@ -39,6 +39,7 @@ import {
 	type ProviderKind,
 } from "@/stores/ai-providers-store";
 import { fetchPuterModelsAndMedia } from "@/lib/ai/puter-client";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/utils/ui";
 
 interface AIProvidersManagerProps {
@@ -52,20 +53,20 @@ interface AIProvidersManagerProps {
 
 const KIND_LABELS: Record<ProviderKind, { label: string; hint: string }> = {
 	"openai-compatible": {
-		label: "OpenAI-compatible",
-		hint: "OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM, llama.cpp server, etc.",
+		label: "aiProviders.kind.openaiCompatible.label",
+		hint: "aiProviders.kind.openaiCompatible.hint",
 	},
 	"anthropic-compatible": {
-		label: "Anthropic (Claude)",
-		hint: "Anthropic Messages API — Claude models. Uses a different schema than OpenAI.",
+		label: "aiProviders.kind.anthropicCompatible.label",
+		hint: "aiProviders.kind.anthropicCompatible.hint",
 	},
 	ollama: {
-		label: "Ollama (local)",
-		hint: "Local Ollama HTTP server. Same /v1/chat/completions schema, no API key.",
+		label: "aiProviders.kind.ollama.label",
+		hint: "aiProviders.kind.ollama.hint",
 	},
 	puter: {
-		label: "Puter.js (free, browser-based)",
-		hint: "Uses Puter.js — runs in the browser via your Puter account. No API key needed. WARNING: Puter may use your data for training.",
+		label: "aiProviders.kind.puter.label",
+		hint: "aiProviders.kind.puter.hint",
 	},
 };
 
@@ -120,7 +121,10 @@ interface TestResult {
  * surface a human-readable message instead of the raw "Unexpected end of
  * JSON input" exception.
  */
-async function parseTestResponse(response: Response): Promise<TestResult> {
+async function parseTestResponse(
+	response: Response,
+	t: (key: string, values?: Record<string, string | number>) => string,
+): Promise<TestResult> {
 	const contentType = response.headers.get("content-type") ?? "";
 	const isJson = contentType.includes("application/json");
 	if (!response.ok || !isJson) {
@@ -133,8 +137,11 @@ async function parseTestResponse(response: Response): Promise<TestResult> {
 		return {
 			ok: false,
 			error: text
-				? `Server returned HTTP ${response.status}: ${text}`
-				: `Server returned HTTP ${response.status}. Please try again.`,
+				? t("aiProviders.test.serverErrorWithText", {
+						status: response.status,
+						text,
+				  })
+				: t("aiProviders.test.serverError", { status: response.status }),
 		};
 	}
 	try {
@@ -142,7 +149,9 @@ async function parseTestResponse(response: Response): Promise<TestResult> {
 	} catch (err) {
 		return {
 			ok: false,
-			error: `Could not read server response: ${err instanceof Error ? err.message : String(err)}`,
+			error: t("aiProviders.test.parseError", {
+				error: err instanceof Error ? err.message : String(err),
+			}),
 		};
 	}
 }
@@ -150,6 +159,7 @@ async function parseTestResponse(response: Response): Promise<TestResult> {
 export function AIProvidersManager({
 	variant = "panel",
 }: AIProvidersManagerProps) {
+	const { t } = useI18n();
 	const providers = useAIProvidersStore((s) => s.providers);
 	const addProvider = useAIProvidersStore((s) => s.addProvider);
 	const updateProvider = useAIProvidersStore((s) => s.updateProvider);
@@ -191,7 +201,7 @@ export function AIProvidersManager({
 						kind: provider.kind,
 					}),
 				});
-				const result = await parseTestResponse(response);
+				const result = await parseTestResponse(response, t);
 				markTestResult(provider.id, result.ok);
 				if (!result.ok) {
 					// Surface the failure to the user too — markTestResult
@@ -210,7 +220,7 @@ export function AIProvidersManager({
 				setTestingId(null);
 			}
 		},
-		[markTestResult],
+		[markTestResult, t],
 	);
 
 	const containerClass =
@@ -248,7 +258,7 @@ export function AIProvidersManager({
 						className="flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/[0.1] bg-white/[0.02] text-[0.71875rem] font-medium text-white/60 transition-all hover:border-white/20 hover:bg-white/[0.04] hover:text-white/85"
 					>
 						<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-						Add Provider
+						{t("aiProviders.list.addProvider")}
 					</button>
 				</>
 			)}
@@ -280,16 +290,16 @@ export function AIProvidersManager({
 /* -------------------------------------------------------------------------- */
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
+	const { t } = useI18n();
 	return (
 		<div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/[0.08] bg-white/[0.015] p-8 text-center">
 			<div className="grid size-12 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.03]">
 				<HugeiconsIcon icon={PlugIcon} className="size-5 text-white/40" />
 			</div>
 			<div className="space-y-1.5">
-				<p className="text-[0.8125rem] font-medium text-white/80">No AI providers yet</p>
+				<p className="text-[0.8125rem] font-medium text-white/80">{t("aiProviders.empty.title")}</p>
 				<p className="max-w-[300px] text-[0.6875rem] leading-relaxed text-white/40">
-					Add a provider to use AI features. OpenAI, Together, Groq, OpenRouter,
-					LM Studio, Ollama, and any other OpenAI-compatible endpoint work.
+					{t("aiProviders.empty.description")}
 				</p>
 			</div>
 			<button
@@ -298,7 +308,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 				className="mt-1 flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-[0.71875rem] font-medium text-[#0a0a0c] transition hover:bg-white/90"
 			>
 				<HugeiconsIcon icon={Add01Icon} className="size-3.5" />
-				Add your first provider
+				{t("aiProviders.empty.addFirst")}
 			</button>
 		</div>
 	);
@@ -321,15 +331,20 @@ function ProviderCard({
 	onSetDefault: () => void;
 	onToggleEnabled: () => void;
 }) {
+	const { t } = useI18n();
 	const Icon = KIND_ICONS[provider.kind];
 	const accent = KIND_ACCENTS[provider.kind];
-	const kindLabel = KIND_LABELS[provider.kind].label;
+	const kindLabelKey = KIND_LABELS[provider.kind].label;
 	const lastTestLabel =
 		provider.lastTestedAt === undefined
-			? "Never tested"
+			? t("aiProviders.provider.neverTested")
 			: provider.lastTestOk === true
-				? `OK ${formatRelativeTime(provider.lastTestedAt)}`
-				: `Failed ${formatRelativeTime(provider.lastTestedAt)}`;
+				? t("aiProviders.provider.okAt", {
+						time: formatRelativeTime(provider.lastTestedAt, t),
+				  })
+				: t("aiProviders.provider.failedAt", {
+						time: formatRelativeTime(provider.lastTestedAt, t),
+			  });
 
 	return (
 		<div
@@ -376,16 +391,16 @@ function ProviderCard({
 						</span>
 						{provider.isDefault && (
 							<span
-								title="Default provider — used by Arth"
+								title={t("aiProviders.provider.defaultTooltip")}
 								className="shrink-0 rounded border border-cyan-300/30 bg-cyan-400/15 px-1.5 py-px text-[0.5625rem] font-semibold uppercase tracking-wider text-cyan-200"
 							>
-								Default
+								{t("aiProviders.provider.defaultBadge")}
 							</span>
 						)}
 					</div>
 					{/* Kind label — small uppercase tag */}
 					<div className="mt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-white/35">
-						{kindLabel}
+						{t(kindLabelKey)}
 					</div>
 					{/* Model + base url */}
 					<div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[0.65625rem]">
@@ -428,7 +443,7 @@ function ProviderCard({
 						)}
 						{!provider.enabled && (
 							<span className="ml-auto rounded bg-white/[0.06] px-1.5 py-px text-[0.5625rem] font-medium uppercase tracking-wide text-white/40">
-								Disabled
+								{t("aiProviders.provider.disabled")}
 							</span>
 						)}
 					</div>
@@ -442,10 +457,10 @@ function ProviderCard({
 						type="button"
 						onClick={onSetDefault}
 						className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
-						title="Use this provider for Arth"
+						title={t("aiProviders.provider.setDefaultTooltip")}
 					>
 						<HugeiconsIcon icon={ArrowRight01Icon} className="size-3" />
-						Set default
+						{t("aiProviders.provider.setDefault")}
 					</button>
 				)}
 				<button
@@ -453,7 +468,7 @@ function ProviderCard({
 					onClick={onTest}
 					disabled={testing}
 					className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white disabled:cursor-wait disabled:opacity-40"
-					title="Send a tiny test request to verify the connection"
+					title={t("aiProviders.provider.testTooltip")}
 				>
 					{testing ? (
 						<HugeiconsIcon
@@ -463,7 +478,7 @@ function ProviderCard({
 					) : (
 						<HugeiconsIcon icon={PlugIcon} className="size-3" />
 					)}
-					Test
+					{t("aiProviders.provider.test")}
 				</button>
 				<button
 					type="button"
@@ -471,7 +486,7 @@ function ProviderCard({
 					className="flex h-6 items-center gap-1 rounded-md px-2 text-[0.625rem] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white"
 				>
 					<HugeiconsIcon icon={Edit01Icon} className="size-3" />
-					Edit
+					{t("aiProviders.provider.edit")}
 				</button>
 				<div className="ml-auto flex items-center gap-1">
 					<button
@@ -484,13 +499,15 @@ function ProviderCard({
 								: "text-white/40 hover:bg-white/[0.06] hover:text-white/80",
 						)}
 					>
-						{provider.enabled ? "Enabled" : "Enable"}
+						{provider.enabled
+							? t("aiProviders.provider.enabled")
+							: t("aiProviders.provider.enable")}
 					</button>
 					<button
 						type="button"
 						onClick={onDelete}
 						className="grid size-6 place-items-center rounded-md text-white/40 transition hover:bg-red-500/10 hover:text-red-300"
-						title="Remove this provider"
+						title={t("aiProviders.provider.removeTooltip")}
 					>
 						<HugeiconsIcon icon={Delete02Icon} className="size-3" />
 					</button>
@@ -511,14 +528,15 @@ function ConfirmDeleteDialog({
 	onOpenChange: (open: boolean) => void;
 	onConfirm: () => void;
 }) {
+	const { t } = useI18n();
 	return (
 		<Dialog open={provider !== null} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-sm">
 				<DialogHeader>
-					<DialogTitle>Remove provider?</DialogTitle>
+					<DialogTitle>{t("aiProviders.delete.title")}</DialogTitle>
 					<DialogDescription>
 						{provider
-							? `"${provider.name}" will be removed from Arth. This only removes it from this device — your API key and account on the provider are untouched.`
+							? t("aiProviders.delete.description", { name: provider.name })
 							: null}
 					</DialogDescription>
 				</DialogHeader>
@@ -529,11 +547,11 @@ function ConfirmDeleteDialog({
 							variant="ghost"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							{t("aiProviders.delete.cancel")}
 						</Button>
 						<Button size="sm" variant="destructive" onClick={onConfirm}>
 							<HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-							Remove
+							{t("aiProviders.delete.confirm")}
 						</Button>
 					</div>
 				</DialogFooter>
@@ -559,6 +577,7 @@ function ProviderFormDialog({
 	addProvider: AIProvidersStore["addProvider"];
 	updateProvider: AIProvidersStore["updateProvider"];
 }) {
+	const { t } = useI18n();
 	// Form state — local because it lives across invalidations.
 	const isEditing = provider !== null;
 	const [name, setName] = useState(provider?.name ?? "");
@@ -670,7 +689,9 @@ function ProviderFormDialog({
 			} catch (err) {
 				if (cancelled) return;
 				setPuterModelsError(
-					err instanceof Error ? err.message : "Failed to fetch Puter models",
+					err instanceof Error
+						? err.message
+						: t("aiProviders.test.fetchPuterModelsFailed"),
 				);
 			} finally {
 				if (!cancelled) setPuterModelsLoading(false);
@@ -708,7 +729,9 @@ function ProviderFormDialog({
 				error?: string;
 			};
 			if (!res.ok || data.error) {
-				setFetchedModelsError(data.error ?? `HTTP ${res.status}`);
+				setFetchedModelsError(
+					data.error ?? t("aiProviders.test.httpError", { status: res.status }),
+				);
 			} else if (data.models && data.models.length > 0) {
 				setFetchedModels(data.models);
 				// Auto-select the first model if none is set yet.
@@ -716,16 +739,16 @@ function ProviderFormDialog({
 					setModel(data.models[0].id);
 				}
 			} else {
-				setFetchedModelsError("No models returned by the provider.");
+				setFetchedModelsError(t("aiProviders.test.noModelsReturned"));
 			}
 		} catch (err) {
 			setFetchedModelsError(
-				err instanceof Error ? err.message : "Failed to fetch models.",
+				err instanceof Error ? err.message : t("aiProviders.test.fetchModelsFailed"),
 			);
 		} finally {
 			setFetchedModelsLoading(false);
 		}
-	}, [baseUrl, apiKey, kind, model]);
+	}, [baseUrl, apiKey, kind, model, t]);
 
 	const handleKindChange = useCallback(
 		(next: ProviderKind) => {
@@ -743,25 +766,25 @@ function ProviderFormDialog({
 
 	const validate = useCallback((): boolean => {
 		const next: typeof errors = {};
-		if (!name.trim()) next.name = "Give the provider a name.";
+		if (!name.trim()) next.name = t("aiProviders.form.nameRequired");
 		// Puter.js runs entirely client-side — no base URL or API key needed.
 		if (kind !== "puter") {
 			if (!baseUrl.trim()) {
-				next.baseUrl = "Base URL is required.";
+				next.baseUrl = t("aiProviders.form.baseUrlRequired");
 			} else if (!/^https?:\/\//i.test(baseUrl.trim())) {
-				next.baseUrl = "Base URL must start with http:// or https://";
+				next.baseUrl = t("aiProviders.form.baseUrlInvalid");
 			}
 			if (
 				(kind === "openai-compatible" || kind === "anthropic-compatible") &&
 				!apiKey.trim()
 			) {
-				next.apiKey = "API key is required for this provider.";
+				next.apiKey = t("aiProviders.form.apiKeyRequired");
 			}
 		}
-		if (!model.trim()) next.model = "Model name is required.";
+		if (!model.trim()) next.model = t("aiProviders.form.modelRequired");
 		setErrors(next);
 		return Object.keys(next).length === 0;
-	}, [name, baseUrl, apiKey, model, kind]);
+	}, [name, baseUrl, apiKey, model, kind, t]);
 
 	const handleSave = useCallback(() => {
 		if (!validate()) return;
@@ -862,29 +885,30 @@ function ProviderFormDialog({
 					kind,
 				}),
 			});
-			const result = await parseTestResponse(response);
+			const result = await parseTestResponse(response, t);
 			if (result.ok) {
 				setTestError(null);
 			} else {
-				setTestError(result.error ?? "Unknown error");
+				setTestError(result.error ?? t("aiProviders.test.unknownError"));
 			}
 		} catch (err) {
 			setTestError(err instanceof Error ? err.message : String(err));
 		} finally {
 			setTesting(false);
 		}
-	}, [apiKey, baseUrl, kind, model, validate]);
+	}, [apiKey, baseUrl, kind, model, t, validate]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
 					<DialogTitle>
-						{isEditing ? "Edit provider" : "Add AI provider"}
+						{isEditing
+							? t("aiProviders.form.editTitle")
+							: t("aiProviders.form.addTitle")}
 					</DialogTitle>
 					<DialogDescription>
-						Works with OpenAI, Together, Groq, OpenRouter, LM Studio, vLLM,
-						llama.cpp, or local Ollama.
+						{t("aiProviders.form.description")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -892,12 +916,12 @@ function ProviderFormDialog({
 					{/* Name */}
 					<div className="space-y-1.5">
 						<Label htmlFor="provider-name" className="text-[0.6875rem] text-white/70">
-							Name
+							{t("aiProviders.form.nameLabel")}
 						</Label>
 						<Input
 							id="provider-name"
 							value={name}
-							placeholder="My OpenAI account"
+							placeholder={t("aiProviders.form.namePlaceholder")}
 							onChange={(e) => setName(e.target.value)}
 							className={cn(errors.name && "border-red-400/40")}
 						/>
@@ -908,7 +932,9 @@ function ProviderFormDialog({
 
 					{/* Type selector */}
 					<div className="space-y-1.5">
-						<Label className="text-[0.6875rem] text-white/70">Type</Label>
+						<Label className="text-[0.6875rem] text-white/70">
+							{t("aiProviders.form.typeLabel")}
+						</Label>
 						<div className="grid grid-cols-2 gap-2">
 							{(Object.keys(KIND_LABELS) as ProviderKind[]).map((k) => {
 								const meta = KIND_LABELS[k];
@@ -926,10 +952,10 @@ function ProviderFormDialog({
 										)}
 									>
 										<span className="text-[0.6875rem] font-medium">
-											{meta.label}
+											{t(meta.label)}
 										</span>
 										<span className="text-[0.59375rem] leading-snug text-white/40">
-											{meta.hint}
+											{t(meta.hint)}
 										</span>
 									</button>
 								);
@@ -946,18 +972,13 @@ function ProviderFormDialog({
 								/>
 								<div className="flex flex-col gap-1">
 									<p className="text-[0.6875rem] font-semibold text-amber-200">
-										Puter.js — Data Usage Warning
+										{t("aiProviders.form.puterWarningTitle")}
 									</p>
 									<p className="text-[0.625rem] leading-relaxed text-amber-100/80">
-										Puter.js is a free, browser-based AI provider. It runs
-										entirely in your browser using your Puter account — no API
-										key needed. However, Puter may use your conversation data
-										for model training. Do not use Puter.js with sensitive or
-										private content.
+										{t("aiProviders.form.puterWarningBody")}
 									</p>
 									<p className="text-[0.625rem] text-amber-100/60">
-										You will see a mandatory confirmation dialog before Puter.js
-										is activated.
+										{t("aiProviders.form.puterWarningNote")}
 									</p>
 								</div>
 							</div>
@@ -971,12 +992,12 @@ function ProviderFormDialog({
 								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 							>
 								<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
-								Base URL
+								{t("aiProviders.form.baseUrlLabel")}
 							</Label>
 							<Input
 								id="provider-base-url"
 								value={baseUrl}
-								placeholder="https://api.openai.com/v1"
+								placeholder={t("aiProviders.form.baseUrlPlaceholder")}
 								onChange={(e) => setBaseUrl(e.target.value)}
 								className={cn("font-mono", errors.baseUrl && "border-red-400/40")}
 							/>
@@ -992,10 +1013,10 @@ function ProviderFormDialog({
 								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 							>
 								<HugeiconsIcon icon={Key01Icon} className="size-3" />
-								API Key
+								{t("aiProviders.form.apiKeyLabel")}
 								{kind === "ollama" && (
 									<span className="text-[0.625rem] font-normal text-white/40">
-										— not required for Ollama
+										{t("aiProviders.form.apiKeyNotRequired")}
 									</span>
 								)}
 							</Label>
@@ -1003,7 +1024,11 @@ function ProviderFormDialog({
 								id="provider-api-key"
 								type="password"
 								value={apiKey}
-								placeholder={kind === "ollama" ? "(leave blank)" : "sk-..."}
+								placeholder={
+									kind === "ollama"
+										? t("aiProviders.form.apiKeyPlaceholderBlank")
+										: t("aiProviders.form.apiKeyPlaceholder")
+								}
 								onChange={(e) => setApiKey(e.target.value)}
 								className={cn("font-mono", errors.apiKey && "border-red-400/40")}
 								disabled={kind === "ollama"}
@@ -1022,10 +1047,10 @@ function ProviderFormDialog({
 							className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
 						>
 							<HugeiconsIcon icon={SparklesIcon} className="size-3" />
-							Model
+							{t("aiProviders.form.modelLabel")}
 							{kind === "puter" && puterModelsLoading && (
 								<span className="text-[0.625rem] font-normal text-white/40">
-									— fetching available models…
+									{t("aiProviders.form.modelFetching")}
 								</span>
 							)}
 						</Label>
@@ -1036,14 +1061,14 @@ function ProviderFormDialog({
 										icon={Loading02Icon}
 										className="size-3.5 animate-spin"
 									/>
-									Loading models from Puter…
+									{t("aiProviders.form.modelLoadingPuter")}
 								</div>
 							) : puterModelsError ? (
 								<div className="flex flex-col gap-1.5">
 									<Input
 										id="provider-model"
 										value={model}
-										placeholder="Enter model id manually"
+										placeholder={t("aiProviders.form.modelPlaceholderManual")}
 										onChange={(e) => setModel(e.target.value)}
 										className={cn(
 											"font-mono",
@@ -1051,7 +1076,7 @@ function ProviderFormDialog({
 										)}
 									/>
 									<p className="text-[0.625rem] text-amber-300/80">
-										{puterModelsError} — enter model id manually.
+										{t("aiProviders.form.puterModelError", { error: puterModelsError })}
 									</p>
 								</div>
 							) : puterModels.length > 0 ? (
@@ -1060,7 +1085,7 @@ function ProviderFormDialog({
 									value={model}
 									onChange={setModel}
 									options={puterModels}
-									placeholder="Select a model…"
+									placeholder={t("aiProviders.form.modelPlaceholderSelect")}
 									className={cn(
 										errors.model && "border-red-400/40",
 									)}
@@ -1072,7 +1097,7 @@ function ProviderFormDialog({
 										value={model}
 										onChange={setModel}
 										options={fetchedModels}
-										placeholder="Select a model…"
+										placeholder={t("aiProviders.form.modelPlaceholderSelect")}
 										className={cn(
 											errors.model && "border-red-400/40",
 										)}
@@ -1083,7 +1108,9 @@ function ProviderFormDialog({
 										disabled={fetchedModelsLoading}
 										className="self-start text-[0.625rem] text-white/40 transition-colors hover:text-white/60"
 									>
-										{fetchedModelsLoading ? "Refreshing…" : "Refresh models"}
+										{fetchedModelsLoading
+											? t("aiProviders.form.refreshing")
+											: t("aiProviders.form.refresh")}
 									</button>
 								</div>
 							) : (
@@ -1107,8 +1134,8 @@ function ProviderFormDialog({
 											}
 											title={
 												!baseUrl.trim()
-													? "Enter a base URL first"
-													: "Fetch available models from this provider"
+													? t("aiProviders.form.fetchTitleBlank")
+													: t("aiProviders.form.fetchTitle")
 											}
 											className={cn(
 												"flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[0.65625rem] font-medium transition-colors",
@@ -1124,17 +1151,17 @@ function ProviderFormDialog({
 													fetchedModelsLoading && "animate-spin",
 												)}
 											/>
-											Fetch
+											{t("aiProviders.form.fetch")}
 										</button>
 									</div>
 									{fetchedModelsError && (
 										<p className="text-[0.625rem] text-amber-300/80">
-											{fetchedModelsError} — you can still type a model id manually.
+											{t("aiProviders.form.fetchedModelError", { error: fetchedModelsError })}
 										</p>
 									)}
 									{!fetchedModelsError && (
 										<p className="text-[0.625rem] text-white/25">
-											Type a model id or click Fetch to load available models.
+											{t("aiProviders.form.modelHint")}
 										</p>
 									)}
 								</div>
@@ -1158,19 +1185,21 @@ function ProviderFormDialog({
 						<div className="flex items-center gap-1.5">
 							<HugeiconsIcon icon={SparklesIcon} className="size-3 text-white/40" />
 							<span className="text-[0.6875rem] font-medium text-white/60">
-								Media generation models
+								{t("aiProviders.form.mediaModelsTitle")}
 							</span>
-							<span className="text-[0.59375rem] text-white/30">(optional)</span>
+							<span className="text-[0.59375rem] text-white/30">
+								{t("aiProviders.form.mediaModelsOptional")}
+							</span>
 						</div>
 						<p className="text-[0.625rem] leading-relaxed text-white/30">
 							{kind === "puter"
-								? "Select from the available models fetched from your Puter account. When a field is empty, the AI cannot call that type of generation tool."
-								: "Fill in only the models your provider supports. When a field is empty, the AI cannot call that type of generation tool."}
+								? t("aiProviders.form.mediaModelsPuterHint")
+								: t("aiProviders.form.mediaModelsHint")}
 						</p>
 						<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 							<MediaModelField
 								id="provider-video-model"
-								label="Video model"
+								label={t("aiProviders.mediaModel.video")}
 								value={videoModel}
 								placeholder="e.g. sora-2, seedance-1.0-pro"
 								onChange={setVideoModel}
@@ -1178,7 +1207,7 @@ function ProviderFormDialog({
 							/>
 							<MediaModelField
 								id="provider-image-model"
-								label="Image model"
+								label={t("aiProviders.mediaModel.image")}
 								value={imageModel}
 								placeholder="e.g. dall-e-3, flux-1"
 								onChange={setImageModel}
@@ -1186,7 +1215,7 @@ function ProviderFormDialog({
 							/>
 							<MediaModelField
 								id="provider-audio-model"
-								label="Audio model"
+								label={t("aiProviders.mediaModel.audio")}
 								value={audioModel}
 								placeholder="e.g. tts-1, bark"
 								onChange={setAudioModel}
@@ -1194,7 +1223,7 @@ function ProviderFormDialog({
 							/>
 							<MediaModelField
 								id="provider-media-model"
-								label="Media model"
+								label={t("aiProviders.mediaModel.media")}
 								value={mediaModel}
 								placeholder="e.g. music-gen, audio-lm"
 								onChange={setMediaModel}
@@ -1215,8 +1244,7 @@ function ProviderFormDialog({
 					) : (
 						!testing && (
 							<p className="text-[0.625rem] leading-relaxed text-white/35">
-								Click <span className="text-white/55">Test</span> to verify the
-								connection before saving — one tiny prompt, max_tokens=1.
+								{t("aiProviders.form.testHint")}
 							</p>
 						)
 					)}
@@ -1233,17 +1261,15 @@ function ProviderFormDialog({
 								</div>
 							</div>
 							<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
-								Puter.js Data Usage Warning
+								{t("aiProviders.puterWarning.title")}
 							</h3>
 							<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
-								Puter.js is a free, browser-based AI provider that uses your
-								Puter account. <strong>Puter may use your conversation data
-								for model training.</strong> Do not use Puter.js with
-								sensitive, private, or confidential content.
+								{t("aiProviders.puterWarning.bodyPrefix")}{" "}
+								<strong>{t("aiProviders.puterWarning.bodyStrong")}</strong>{" "}
+								{t("aiProviders.puterWarning.bodySuffix")}
 							</p>
 							<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
-								By clicking "I Understand & Accept", you acknowledge that
-								your data may be used for training purposes.
+								{t("aiProviders.puterWarning.acknowledge")}
 							</p>
 							<div className="flex flex-col gap-2">
 								<button
@@ -1258,8 +1284,8 @@ function ProviderFormDialog({
 									)}
 								>
 									{puterCountdown > 0
-										? `Please wait ${puterCountdown}s…`
-										: "I Understand & Accept"}
+										? t("aiProviders.puterWarning.wait", { count: puterCountdown })
+										: t("aiProviders.puterWarning.accept")}
 								</button>
 								<button
 									type="button"
@@ -1272,13 +1298,18 @@ function ProviderFormDialog({
 											: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
 									)}
 								>
-									Cancel
+									{t("aiProviders.puterWarning.cancel")}
 								</button>
 							</div>
 							{puterCountdown > 0 && (
 								<p className="mt-3 text-center text-[0.5625rem] text-white/30">
-									This warning cannot be dismissed for {puterCountdown} more
-									second{puterCountdown > 1 ? "s" : ""}.
+									{puterCountdown > 1
+										? t("aiProviders.puterWarning.cannotDismissPlural", {
+												count: puterCountdown,
+										  })
+										: t("aiProviders.puterWarning.cannotDismissSingular", {
+												count: puterCountdown,
+										  })}
 								</p>
 							)}
 						</div>
@@ -1301,17 +1332,19 @@ function ProviderFormDialog({
 						) : (
 							<HugeiconsIcon icon={PlugIcon} className="size-3.5" />
 						)}
-						Test
+						{t("aiProviders.form.test")}
 					</Button>
 					<Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("aiProviders.form.cancel")}
 					</Button>
 					<Button size="sm" onClick={handleSave}>
 						<HugeiconsIcon
 							icon={isEditing ? Edit01Icon : Add01Icon}
 							className="size-3.5"
 						/>
-						{isEditing ? "Save changes" : "Add provider"}
+						{isEditing
+							? t("aiProviders.form.save")
+							: t("aiProviders.form.add")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -1355,12 +1388,23 @@ function defaultModelForKind(kind: ProviderKind): string {
 	return "gpt-4o-mini";
 }
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(
+	timestamp: number,
+	t: (key: string, values?: Record<string, string | number>) => string,
+): string {
 	const diff = Date.now() - timestamp;
-	if (diff < 60_000) return "just now";
-	if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
-	if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
-	return `${Math.round(diff / 86_400_000)}d ago`;
+	if (diff < 60_000) return t("aiProviders.relativeTime.justNow");
+	if (diff < 3_600_000)
+		return t("aiProviders.relativeTime.minutesAgo", {
+			count: Math.round(diff / 60_000),
+		});
+	if (diff < 86_400_000)
+		return t("aiProviders.relativeTime.hoursAgo", {
+			count: Math.round(diff / 3_600_000),
+		});
+	return t("aiProviders.relativeTime.daysAgo", {
+		count: Math.round(diff / 86_400_000),
+	});
 }
 
 /**
@@ -1390,6 +1434,7 @@ function SearchableModelSelect({
 	placeholder?: string;
 	className?: string;
 }) {
+	const { t } = useI18n();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -1503,7 +1548,7 @@ function SearchableModelSelect({
 					<span className={cn("truncate", !value && "text-white/30")}>
 						{value
 							? `${selectedModel?.name ?? value}${selectedModel ? ` (${selectedModel.provider})` : ""}`
-							: (placeholder ?? "— Select —")}
+							: (placeholder ?? t("aiProviders.modelSelect.placeholder"))}
 					</span>
 					<HugeiconsIcon
 						icon={ArrowDown03Icon}
@@ -1533,7 +1578,7 @@ function SearchableModelSelect({
 							value={query}
 							onChange={(e) => handleQueryChange(e.target.value)}
 							onKeyDown={handleKeyDown}
-							placeholder="Search models…"
+							placeholder={t("aiProviders.modelSelect.searchPlaceholder")}
 							className="h-full w-full bg-transparent font-mono text-[0.75rem] text-white/90 outline-none placeholder:text-white/30"
 						/>
 					</div>
@@ -1572,7 +1617,7 @@ function SearchableModelSelect({
 					)}
 					{filtered.length === 0 && (
 						<div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-3 text-center text-[0.6875rem] text-white/40 shadow-xl">
-							No models match &ldquo;{query}&rdquo;
+							{t("aiProviders.modelSelect.noMatch", { query })}
 						</div>
 					)}
 				</>
@@ -1602,11 +1647,12 @@ function MediaModelField({
 	onChange: (v: string) => void;
 	options: Array<{ id: string; provider: string; name?: string }>;
 }) {
+	const { t } = useI18n();
 	if (options.length > 0) {
 		// Build options with a "None" entry prepended so the user can
 		// clear the selection from the searchable dropdown itself.
 		const optsWithNone = [
-			{ id: "", provider: "", name: "— None —" },
+			{ id: "", provider: "", name: t("aiProviders.modelSelect.none") },
 			...options,
 		];
 		return (
@@ -1619,7 +1665,7 @@ function MediaModelField({
 					value={value}
 					onChange={onChange}
 					options={optsWithNone}
-					placeholder="— None —"
+					placeholder={t("aiProviders.modelSelect.none")}
 					className="h-8 text-[0.6875rem]"
 				/>
 			</div>
