@@ -20,6 +20,12 @@ import type { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
 import { cn } from "@/utils/ui";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const FILTER_LABELS = FILTER_CATEGORIES.map((c) => c.label);
 const FILTER_ID_TO_LABEL = new Map(
@@ -27,18 +33,27 @@ const FILTER_ID_TO_LABEL = new Map(
 );
 
 export function FiltersView() {
+	const { t } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 	const editor = useEditor();
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: FILTER_PRESETS,
-				category,
-				getCategory: (p) => FILTER_ID_TO_LABEL.get(p.category),
-			}),
-		[category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: FILTER_PRESETS,
+			category,
+			getCategory: (p) => FILTER_ID_TO_LABEL.get(p.category),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (preset) => [
+				preset.name,
+				preset.id,
+				FILTER_ID_TO_LABEL.get(preset.category),
+			],
+		});
+	}, [category, query]);
 
 	return (
 		<PanelView title="Filters">
@@ -52,15 +67,27 @@ export function FiltersView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid>
-					{filtered.map((preset) => (
-						<FilterItem
-							key={preset.id}
-							preset={preset}
-							onApply={() => applyFilter({ editor, preset })}
-						/>
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchFilters")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid>
+						{filtered.map((preset) => (
+							<FilterItem
+								key={preset.id}
+								preset={preset}
+								onApply={() => applyFilter({ editor, preset })}
+							/>
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</PanelView>
 	);

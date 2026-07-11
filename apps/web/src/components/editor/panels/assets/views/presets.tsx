@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -26,32 +26,62 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { cn } from "@/utils/ui";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const PRESET_THUMB_MIN_PX = 96;
 
 export function PresetsView() {
+	const { t } = useI18n();
 	const { presets, isLoaded, loadPresets } = usePresetsStore();
+	const [query, setQuery] = useState("");
 
 	useEffect(() => {
 		if (!isLoaded) void loadPresets();
 	}, [isLoaded, loadPresets]);
 
+	const filteredPresets = useMemo(
+		() =>
+			filterCatalogItems({
+				items: presets,
+				query,
+				getText: (preset) => [preset.name, preset.id],
+			}),
+		[presets, query],
+	);
+
 	return (
 		<PanelView title="Preset Tools">
-			{presets.length === 0 ? (
-				<EmptyState />
-			) : (
-				<div
-					className="grid gap-2.5 pb-4"
-					style={{
-						gridTemplateColumns: `repeat(auto-fill, minmax(${PRESET_THUMB_MIN_PX}px, 1fr))`,
-					}}
-				>
-					{presets.map((preset) => (
-						<PresetCard key={preset.id} preset={preset} />
-					))}
-				</div>
-			)}
+			<div className="flex flex-col gap-3 pb-3">
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchPresets")}
+				/>
+				{presets.length === 0 ? (
+					<EmptyState />
+				) : filteredPresets.length === 0 ? (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				) : (
+					<div
+						className="grid gap-2.5 pb-4"
+						style={{
+							gridTemplateColumns: `repeat(auto-fill, minmax(${PRESET_THUMB_MIN_PX}px, 1fr))`,
+						}}
+					>
+						{filteredPresets.map((preset) => (
+							<PresetCard key={preset.id} preset={preset} />
+						))}
+					</div>
+				)}
+			</div>
 		</PanelView>
 	);
 }

@@ -20,6 +20,12 @@ import {
 } from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import {
+	CatalogEmptyState,
+	CatalogSearch,
+	filterCatalogItems,
+} from "@/components/editor/panels/assets/views/components/catalog-search";
+import { useI18n } from "@/lib/i18n";
 
 const TEXT_CATEGORIES: { key: TextPresetCategory; label: string }[] = [
 	{ key: "basic", label: "Basic" },
@@ -37,17 +43,27 @@ const TEXT_LABELS = TEXT_CATEGORIES.map((c) => c.label);
 const TEXT_KEY_TO_LABEL = new Map(TEXT_CATEGORIES.map((c) => [c.key, c.label]));
 
 export function TextView() {
+	const { t } = useI18n();
 	const [category, setCategory] = useState(ALL_CATEGORY);
+	const [query, setQuery] = useState("");
 
-	const filtered = useMemo(
-		() =>
-			filterByCategory({
-				items: textPresets,
-				category,
-				getCategory: (p) => TEXT_KEY_TO_LABEL.get(p.category),
-			}),
-		[category],
-	);
+	const filtered = useMemo(() => {
+		const categoryFiltered = filterByCategory({
+			items: textPresets,
+			category,
+			getCategory: (p) => TEXT_KEY_TO_LABEL.get(p.category),
+		});
+		return filterCatalogItems({
+			items: categoryFiltered,
+			query,
+			getText: (preset) => [
+				preset.name,
+				preset.id,
+				TEXT_KEY_TO_LABEL.get(preset.category),
+				preset.build().content,
+			],
+		});
+	}, [category, query]);
 
 	return (
 		<PanelView title="Text">
@@ -57,11 +73,23 @@ export function TextView() {
 					value={category}
 					onChange={setCategory}
 				/>
-				<AssetGrid gap="gap-2">
-					{filtered.map((preset) => (
-						<TextPresetItem key={preset.id} preset={preset} />
-					))}
-				</AssetGrid>
+				<CatalogSearch
+					value={query}
+					onChange={setQuery}
+					placeholder={t("catalog.searchText")}
+				/>
+				{filtered.length > 0 ? (
+					<AssetGrid gap="gap-2">
+						{filtered.map((preset) => (
+							<TextPresetItem key={preset.id} preset={preset} />
+						))}
+					</AssetGrid>
+				) : (
+					<CatalogEmptyState
+						query={query}
+						label={t("catalog.noResults", { query: query.trim() })}
+					/>
+				)}
 			</div>
 		</PanelView>
 	);

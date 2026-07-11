@@ -64,20 +64,42 @@ export const AuroraOverlay = memo(function AuroraOverlay() {
 			}}
 			style={{ cursor: coEditMode ? "default" : "not-allowed" }}
 		>
-			{/* Aurora overlay — a thick, firefly-pulsing border glow.
-			    No traveling orbs or sweeps; instead the whole frame pulses
-			    and the corners/edges flare independently like a swarm of
-			    fireflies (kunang-kunang). The center stays transparent so
-			    the editor content remains readable. */}
-			<div className="ai-aurora-frame" />
-			<div className="ai-aurora-edge ai-aurora-edge-top" />
-			<div className="ai-aurora-edge ai-aurora-edge-bottom" />
-			<div className="ai-aurora-edge ai-aurora-edge-left" />
-			<div className="ai-aurora-edge ai-aurora-edge-right" />
-			<div className="ai-aurora-corner ai-aurora-corner-tl" />
-			<div className="ai-aurora-corner ai-aurora-corner-tr" />
-			<div className="ai-aurora-corner ai-aurora-corner-br" />
-			<div className="ai-aurora-corner ai-aurora-corner-bl" />
+			{/* Aurora overlay — animated traveling neon border.
+			    A subtle background frame plus bright "snakes" that
+			    travel around the perimeter of the editor window. */}
+			<div className="absolute inset-0 pointer-events-none overflow-hidden border border-white/5">
+				<div
+					className="absolute top-0 h-[2px] w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-top_3s_linear_infinite]"
+				/>
+				<div
+					className="absolute bottom-0 h-[2px] w-1/3 bg-linear-to-r from-transparent via-cyan-400 to-transparent blur-[1px] animate-[aurora-sweep-bottom_3s_linear_infinite]"
+				/>
+				<div
+					className="absolute left-0 w-[2px] h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-left_3s_linear_infinite]"
+				/>
+				<div
+					className="absolute right-0 w-[2px] h-1/3 bg-linear-to-b from-transparent via-indigo-400 to-transparent blur-[1px] animate-[aurora-sweep-right_3s_linear_infinite]"
+				/>
+				<div className="absolute inset-0 shadow-[inset_0_0_80px_rgba(34,211,238,0.03)]" />
+			</div>
+			<style>{`
+				@keyframes aurora-sweep-top {
+					0% { left: -33%; }
+					100% { left: 100%; }
+				}
+				@keyframes aurora-sweep-bottom {
+					0% { right: -33%; }
+					100% { right: 100%; }
+				}
+				@keyframes aurora-sweep-left {
+					0% { top: 100%; }
+					100% { top: -33%; }
+				}
+				@keyframes aurora-sweep-right {
+					0% { bottom: -33%; }
+					100% { bottom: 100%; }
+				}
+			`}</style>
 
 			{/* Status badge — top center, shows what the AI is doing */}
 			<div className="absolute top-3 left-1/2 -translate-x-1/2">

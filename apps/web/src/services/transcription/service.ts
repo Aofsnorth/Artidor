@@ -13,6 +13,19 @@ import type { TranscriptionBackend } from "./backend";
 
 type ProgressCallback = (progress: TranscriptionProgress) => void;
 
+export function createModelLoadGate() {
+	const inflight = new Map<string, Promise<unknown>>();
+	return {
+		run<T>(key: string, load: () => Promise<T>): Promise<T> {
+			const existing = inflight.get(key) as Promise<T> | undefined;
+			if (existing) return existing;
+			const promise = load().finally(() => inflight.delete(key));
+			inflight.set(key, promise);
+			return promise;
+		},
+	};
+}
+
 class TranscriptionService {
 	private worker: Worker | null = null;
 	private currentModelId: TranscriptionModelId | null = null;

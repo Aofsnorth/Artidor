@@ -25,6 +25,7 @@ import type {
 } from "./types";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
 import { getTransformPerspectiveScale } from "@/lib/rendering";
+import { orderMediaGraphicStyleLayers } from "./media-graphic-style";
 
 export type TextureUploadDescriptor = {
 	id: string;
@@ -327,14 +328,14 @@ async function collectVisualSourceNode({
 		sourceWidth,
 		sourceHeight,
 	});
-	const { mask, strokeLayer } = buildMaskArtifacts({
+	const { mask, strokeLayer: maskStrokeLayer } = buildMaskArtifacts({
 		node,
 		renderer,
 		path,
 		transform,
 		textures,
 	});
-	const mediaStyleLayer = buildMediaGraphicStyleLayer({
+	const styleLayers = buildMediaGraphicStyleLayers({
 		node,
 		path,
 		sourceWidth,
@@ -342,9 +343,8 @@ async function collectVisualSourceNode({
 		transform,
 		textures,
 	});
-	if (mediaStyleLayer) {
-		items.push(mediaStyleLayer);
-	}
+	const [beforeMediaLayers, afterMediaLayers] = orderMediaGraphicStyleLayers(styleLayers);
+	items.push(...beforeMediaLayers);
 
 	items.push({
 		type: "layer",
@@ -355,12 +355,13 @@ async function collectVisualSourceNode({
 		effectPassGroups: node.resolved.effectPasses,
 		mask,
 	});
-	if (strokeLayer) {
-		items.push(strokeLayer);
+	items.push(...afterMediaLayers);
+	if (maskStrokeLayer) {
+		items.push(maskStrokeLayer);
 	}
 }
 
-function buildMediaGraphicStyleLayer({
+function buildMediaGraphicStyleLayers({
 	node,
 	path,
 	sourceWidth,
@@ -374,77 +375,110 @@ function buildMediaGraphicStyleLayer({
 	sourceHeight: number;
 	transform: QuadTransformDescriptor;
 	textures: Map<string, TextureUploadDescriptor>;
-}): FrameItemDescriptor | null {
-	if (node instanceof GraphicNode || node instanceof StickerNode) return null;
+}): {
+	fillLayer: FrameItemDescriptor | null;
+	shadowLayer: FrameItemDescriptor | null;
+	strokeLayer: FrameItemDescriptor | null;
+} {
+	const empty = { fillLayer: null, shadowLayer: null, strokeLayer: null };
+	if (node instanceof GraphicNode || node instanceof StickerNode) return empty;
 	const style = node.params.graphicStyle;
-	if (!style) return null;
+	if (!style) return empty;
 	const hasFill = (style.fillOpacity ?? 0) > 0;
 	const hasStroke = Boolean(style.stroke?.enabled && style.stroke.width > 0);
 	const hasShadow = Boolean(style.shadow?.enabled);
-	if (!hasFill && !hasStroke && !hasShadow) return null;
+	if (!hasFill && !hasStroke && !hasShadow) return empty;
 
-	const padding = Math.ceil(
+	const maxPadding = Math.ceil(
 		Math.max(style.stroke?.width ?? 0, style.shadow?.blur ?? 0) * 2 +
 			Math.abs(style.shadow?.offsetX ?? 0) +
 			Math.abs(style.shadow?.offsetY ?? 0),
 	);
-	const width = sourceWidth + padding * 2;
-	const height = sourceHeight + padding * 2;
-	const canvas = createOffscreenCanvas({ width, height });
-	const ctx = canvas.getContext("2d") as
-		| CanvasRenderingContext2D
-		| OffscreenCanvasRenderingContext2D
-		| null;
-	if (!ctx) return null;
-
-	if (hasShadow && style.shadow) {
-		ctx.save();
-		ctx.shadowColor = style.shadow.color;
-		ctx.shadowBlur = style.shadow.blur;
-		ctx.shadowOffsetX = style.shadow.offsetX;
-		ctx.shadowOffsetY = style.shadow.offsetY;
-		ctx.fillStyle = "rgba(0,0,0,1)";
-		ctx.fillRect(padding, padding, sourceWidth, sourceHeight);
-		ctx.restore();
-	}
-	if (hasFill) {
-		ctx.save();
-		ctx.globalAlpha = Math.max(0, Math.min(1, style.fillOpacity ?? 0));
-		ctx.fillStyle = style.fillColor ?? "#ffffff";
-		ctx.fillRect(padding, padding, sourceWidth, sourceHeight);
-		ctx.restore();
-	}
-	if (hasStroke && style.stroke) {
-		ctx.strokeStyle = style.stroke.color;
-		ctx.lineWidth = style.stroke.width;
-		ctx.strokeRect(
-			padding + style.stroke.width / 2,
-			padding + style.stroke.width / 2,
-			Math.max(1, sourceWidth - style.stroke.width),
-			Math.max(1, sourceHeight - style.stroke.width),
-		);
-	}
-
-	const textureId = `${path}:media-graphic-style`;
-	textures.set(textureId, { id: textureId, source: canvas, width, height });
-	const scaleX = transform.width / Math.max(1, sourceWidth);
-	const scaleY = transform.height / Math.max(1, sourceHeight);
-	const paddedTransform: QuadTransformDescriptor = {
-		...transform,
-		centerX: transform.centerX - padding * scaleX,
-		centerY: transform.centerY - padding * scaleY,
-		width: width * scaleX,
-		height: height * scaleY,
+	const makeCanvasLayer = ({
+		id,
+		padding,
+		draw,
+	}: {
+		id: string;
+		padding: number;
+		draw: (
+			ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+		) => void;
+	}): FrameItemDescriptor | null => {
+		const width = sourceWidth + padding * 2;
+		const height = sourceHeight + padding * 2;
+		const canvas = createOffscreenCanvas({ width, height });
+		const ctx = canvas.getContext("2d") as
+			| CanvasRenderingContext2D
+			| OffscreenCanvasRenderingContext2D
+			| null;
+		if (!ctx) return null;
+		draw(ctx);
+		const textureId = `${path}:${id}`;
+		textures.set(textureId, { id: textureId, source: canvas, width, height });
+		const scaleX = transform.width / Math.max(1, sourceWidth);
+		const scaleY = transform.height / Math.max(1, sourceHeight);
+		return {
+			type: "layer",
+			textureId,
+			transform: {
+				...transform,
+				centerX: transform.centerX - padding * scaleX,
+				centerY: transform.centerY - padding * scaleY,
+				width: width * scaleX,
+				height: height * scaleY,
+			},
+			opacity: 1,
+			blendMode: "normal",
+			effectPassGroups: [],
+			mask: null,
+		};
 	};
-	return {
-		type: "layer",
-		textureId,
-		transform: paddedTransform,
-		opacity: 1,
-		blendMode: "normal",
-		effectPassGroups: [],
-		mask: null,
-	};
+
+	const shadowLayer = hasShadow && style.shadow
+		? makeCanvasLayer({
+				id: "media-shadow-style",
+				padding: maxPadding,
+				draw: (ctx) => {
+					ctx.shadowColor = style.shadow?.color ?? "#000000";
+					ctx.shadowBlur = style.shadow?.blur ?? 0;
+					ctx.shadowOffsetX = style.shadow?.offsetX ?? 0;
+					ctx.shadowOffsetY = style.shadow?.offsetY ?? 0;
+					ctx.fillStyle = "rgba(0,0,0,1)";
+					ctx.fillRect(maxPadding, maxPadding, sourceWidth, sourceHeight);
+				},
+			})
+		: null;
+	const fillLayer = hasFill
+		? makeCanvasLayer({
+				id: "media-fill-style",
+				padding: 0,
+				draw: (ctx) => {
+					ctx.globalAlpha = Math.max(0, Math.min(1, style.fillOpacity ?? 0));
+					ctx.fillStyle = style.fillColor ?? "#ffffff";
+					ctx.fillRect(0, 0, sourceWidth, sourceHeight);
+				},
+			})
+		: null;
+	const strokeLayer = hasStroke && style.stroke
+		? makeCanvasLayer({
+				id: "media-stroke-style",
+				padding: maxPadding,
+				draw: (ctx) => {
+					const stroke = style.stroke;
+					if (!stroke) return;
+					ctx.strokeStyle = stroke.color;
+					ctx.lineWidth = stroke.width;
+					ctx.strokeRect(
+						maxPadding + stroke.width / 2,
+						maxPadding + stroke.width / 2,
+						Math.max(1, sourceWidth - stroke.width),
+						Math.max(1, sourceHeight - stroke.width),
+					);
+				},
+			})
+		: null;
+	return { fillLayer, shadowLayer, strokeLayer };
 }
 
 /**
