@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the export/timeline/storage performance improvement", () => {
+	test("the newest entry is the asset license cleanup", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-17-export-timeline-storage-performance",
+			"2026-07-17-asset-license-cleanup",
 		);
 	});
 });

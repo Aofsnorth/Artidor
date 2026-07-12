@@ -134,12 +134,11 @@ export function useTimelinePlayhead({
 
 				const tracks = editor.scenes.getActiveScene().tracks;
 				const bookmarks = editor.scenes.getActiveScene()?.bookmarks ?? [];
-				const snapPoints =
-					staticScrubSnapPointsRef.current ??
-					(staticScrubSnapPointsRef.current = buildStaticSnapPoints({
-						tracks,
-						bookmarks,
-					}));
+				let snapPoints = staticScrubSnapPointsRef.current;
+				if (!snapPoints) {
+					snapPoints = buildStaticSnapPoints({ tracks, bookmarks });
+					staticScrubSnapPointsRef.current = snapPoints;
+				}
 				const snapResult = snapToNearestPoint({
 					targetTime: frameTime,
 					snapPoints,
