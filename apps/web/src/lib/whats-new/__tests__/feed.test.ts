@@ -59,6 +59,6 @@ describe("WHATS_NEW feed (real entries)", () => {
 	test("the newest entry is the web performance optimization", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-07-18-web-performance-optimization");
+		expect(getLatestWhatsNewId()).toBe("2026-07-19-beat-detection-worker-fix");
 	});
 });

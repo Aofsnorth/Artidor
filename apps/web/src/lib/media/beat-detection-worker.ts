@@ -89,7 +89,7 @@ function handleDetect({
 		const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
 		const hopSize = Math.max(64, Math.floor(windowSize / 2));
 		const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
-		const energies: number[] = new Array(totalHops);
+		const energies = new Float32Array(totalHops);
 
 		// Phase 1: Energy computation (the expensive part)
 		for (
@@ -100,7 +100,7 @@ function handleDetect({
 			if (cancelled) return;
 			let sum = 0;
 			for (let j = 0; j < windowSize; j++) {
-				const sample = samples[i + j] ?? 0;
+				const sample = samples[i + j];
 				sum += sample * sample;
 			}
 			energies[hop] = Math.sqrt(sum / windowSize);
@@ -150,9 +150,11 @@ function handleDetect({
 	}
 }
 
-function average(values: number[]): number {
+function average(values: ArrayLike<number>): number {
 	if (values.length === 0) return 0;
 	let sum = 0;
-	for (const v of values) sum += v;
+	for (let i = 0; i < values.length; i++) {
+		sum += values[i];
+	}
 	return sum / values.length;
 }
