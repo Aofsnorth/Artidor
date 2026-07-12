@@ -928,7 +928,7 @@ const _ADD_TRACK_OPTIONS: Array<{
 	{ label: "Effect track", type: "effect" },
 ];
 
-function TrackLabelsPanel({
+function TrackLabelsPanelInner({
 	trackLabelsRef,
 	trackLabelsScrollRef,
 	timelineHeaderHeight,
@@ -1437,6 +1437,21 @@ function TrackLabelsPanel({
 	);
 }
 
+function trackLabelsPanelAreEqual(
+	prev: React.ComponentProps<typeof TrackLabelsPanelInner>,
+	next: React.ComponentProps<typeof TrackLabelsPanelInner>,
+): boolean {
+	if (prev.trackLabelsRef !== next.trackLabelsRef) return false;
+	if (prev.trackLabelsScrollRef !== next.trackLabelsScrollRef) return false;
+	if (prev.timelineHeaderHeight !== next.timelineHeaderHeight) return false;
+	if (prev.hasHorizontalScrollbar !== next.hasHorizontalScrollbar) return false;
+	if (prev.getTrackExpansionHeight !== next.getTrackExpansionHeight)
+		return false;
+	return true;
+}
+
+const TrackLabelsPanel = memo(TrackLabelsPanelInner, trackLabelsPanelAreEqual);
+
 function TimelineTrackRowsInner({
 	mainTrackId,
 	zoomLevel,
@@ -1790,7 +1805,7 @@ const TimelineTrackRows = memo(
 	timelineTrackRowsAreEqual,
 );
 
-function TimelineGutter({
+const TimelineGutter = memo(function TimelineGutter({
 	onMouseDown,
 	onClick,
 }: {
@@ -1800,7 +1815,7 @@ function TimelineGutter({
 	// biome-ignore lint/a11y/noStaticElementInteractions: canvas seek surface; keyboard seeking is handled by the global keybindings system
 	// biome-ignore lint/a11y/useKeyWithClickEvents: canvas seek surface; keyboard seeking is handled by the global keybindings system
 	return <div className="flex-1" onMouseDown={onMouseDown} onClick={onClick} />;
-}
+});
 
 /**
  * Drag-to-resize handle for the track labels column.
@@ -2102,7 +2117,7 @@ function TrackHeightHandle({
 	);
 }
 
-function DragGhost({
+function DragGhostInner({
 	tracks,
 	dragState,
 	zoomLevel,
@@ -2173,3 +2188,5 @@ function DragGhost({
 
 	return <>{ghosts}</>;
 }
+
+const DragGhost = memo(DragGhostInner);

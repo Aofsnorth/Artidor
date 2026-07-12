@@ -1115,7 +1115,45 @@ function TimelineElement({
 	);
 }
 
-export const MemoizedTimelineElement = memo(TimelineElement);
+function timelineElementAreEqual(
+	prev: TimelineElementProps,
+	next: TimelineElementProps,
+): boolean {
+	if (prev.element !== next.element) return false;
+	if (prev.track !== next.track) return false;
+	if (prev.zoomLevel !== next.zoomLevel) return false;
+	if (prev.isSelected !== next.isSelected) return false;
+	if (prev.isDropTarget !== next.isDropTarget) return false;
+	if (prev.onSnapPointChange !== next.onSnapPointChange) return false;
+	if (prev.onResizeStateChange !== next.onResizeStateChange) return false;
+	if (prev.onElementMouseDown !== next.onElementMouseDown) return false;
+	if (prev.onElementClick !== next.onElementClick) return false;
+
+	const prevDrag = prev.dragState;
+	const nextDrag = next.dragState;
+	const prevIsDragged = prevDrag.dragElementIds.includes(prev.element.id);
+	const nextIsDragged = nextDrag.dragElementIds.includes(next.element.id);
+	if (prevIsDragged !== nextIsDragged) return false;
+	// When this element is not part of the drag, mousemove-level dragState
+	// mutations don't affect its rendering, so we can skip re-renders that
+	// would otherwise ripple through every visible clip.
+	if (!prevIsDragged) return true;
+
+	// For the dragged element(s), only compare the fields that actually
+	// drive the live transform and time offset.
+	if (prevDrag.currentMouseY !== nextDrag.currentMouseY) return false;
+	if (prevDrag.startMouseY !== nextDrag.startMouseY) return false;
+	if (prevDrag.currentTime !== nextDrag.currentTime) return false;
+	const prevOffset = prevDrag.dragTimeOffsets[prev.element.id] ?? 0;
+	const nextOffset = nextDrag.dragTimeOffsets[next.element.id] ?? 0;
+	if (prevOffset !== nextOffset) return false;
+	return true;
+}
+
+export const MemoizedTimelineElement = memo(
+	TimelineElement,
+	timelineElementAreEqual,
+);
 
 function ElementInner({
 	element,

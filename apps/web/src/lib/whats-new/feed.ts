@@ -4,7 +4,12 @@
  * bottom-left of the editor. Add a new entry at the TOP of WHATS_NEW for every
  * shipped change — the newest entry's id drives the unseen indicator.
  */
-export type WhatsNewTag = "feature" | "improvement" | "fix" | "performance" | "security";
+export type WhatsNewTag =
+	| "feature"
+	| "improvement"
+	| "fix"
+	| "performance"
+	| "security";
 
 export interface WhatsNewEntry {
 	/** Stable unique id (also the seen-tracking key). Newest entry first. */
@@ -17,6 +22,36 @@ export interface WhatsNewEntry {
 }
 
 export const WHATS_NEW: WhatsNewEntry[] = [
+	{
+		id: "2026-07-18-web-performance-optimization",
+		date: "2026-07-18",
+		tag: "performance",
+		title: "Editor and export performance tuning",
+		items: [
+			"Timeline clip cards now skip re-renders during drag mousemove events unless the clip itself is being dragged, keeping scrubbing and drag interactions smoother on dense timelines.",
+			"The track labels panel and drag ghost are now memoized so parent timeline updates that don't affect them (snap indicators, ruler redraws) no longer re-render the entire labels column.",
+			"Next.js now serves images in AVIF/WebP when supported and keeps client-router cache entries warm longer, reducing round trips while navigating the app.",
+			"Parallel export no longer emits verbose internal timing logs, trimming per-segment overhead while preserving all success/cancellation/fallback behavior.",
+		],
+	},
+	{
+		id: "2026-07-17-audio-drag-alignment-fix",
+		date: "2026-07-17",
+		tag: "fix",
+		title: "Audio clips no longer snap back to the left when dragged",
+		items: [
+			"Dragging an audio clip over a visual track (overlay or main) used to silently fail — the clip would snap back to its original left position instead of moving. The drop-target wall now checks track compatibility before snapping, so audio clips correctly create a new audio track when dropped over visual tracks.",
+		],
+	},
+	{
+		id: "2026-07-17-export-reliability-and-adaptive",
+		date: "2026-07-17",
+		tag: "performance",
+		title: "Long-video export stability",
+		items: [
+			"Exporting hour-long videos is now rock solid. We've switched to adaptive memory queuing and direct-to-disk streaming (on supported browsers) so massive exports no longer crash from running out of RAM.",
+		],
+	},
 	{
 		id: "2026-07-17-asset-license-cleanup",
 		date: "2026-07-17",
@@ -77,7 +112,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-16-editor-performance-phase-1",
 		date: "2026-07-16",
 		tag: "performance",
-		title: "Editor performance: faster load, smoother timeline, and leaner preview loop",
+		title:
+			"Editor performance: faster load, smoother timeline, and leaner preview loop",
 		items: [
 			"Asset panel views, property panel tabs, CommandPalette, and EnvWarningModal are now lazy-loaded, so only the UI you open is fetched.",
 			"Page transitions and guide popovers now use CSS animations instead of `motion/react`, removing a large runtime dependency from the editor bundle.",
@@ -90,7 +126,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-16-ai-chat-controls-and-previews",
 		date: "2026-07-16",
 		tag: "improvement",
-		title: "AI chat: token/context controls, editable message re-prompt, faster image previews",
+		title:
+			"AI chat: token/context controls, editable message re-prompt, faster image previews",
 		items: [
 			"Added Max output tokens and Context window sliders in Advanced AI settings so you can cap model replies and how much conversation history is sent per request.",
 			"Editing a user message now automatically drops the follow-up messages and re-prompts the AI from that point.",
@@ -134,7 +171,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-13-timeline-toolbar-layout",
 		date: "2026-07-13",
 		tag: "improvement",
-		title: "Timeline toolbar is now balanced, compact, and safer on small screens",
+		title:
+			"Timeline toolbar is now balanced, compact, and safer on small screens",
 		items: [
 			"The toolbar is visually balanced: Clipboard and Grouping controls moved to the right side, while Select/Split collapsed into a single dropdown to save space.",
 			"Responsive compact mode hides 'Add scene' and scene-name text labels on narrow viewports, and gaps/padding were reduced so the toolbar no longer collides at 125% UI scale.",
@@ -177,7 +215,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-11-export-and-preview-performance",
 		date: "2026-07-11",
 		tag: "performance",
-		title: "Export no longer stalls at 5% and preview rendering is significantly smoother",
+		title:
+			"Export no longer stalls at 5% and preview rendering is significantly smoother",
 		items: [
 			"Export stall at 5% fixed. The progress bar now shows granular progress during worker initialization (Loading render engine → Initializing GPU → Compositor ready → Loading media assets → Preparing encoder) instead of freezing silently. The WASM GPU module is also preloaded during editor idle time, so the first export's module fetch+compile is cached before you even click export.",
 			"Subsequent exports are now near-instant to start. The export worker is kept warm between exports instead of being terminated and re-spawned, eliminating the 5-30 second GPU re-initialization cost on every export after the first. The worker is automatically disposed when the editor unmounts to release memory.",
@@ -189,10 +228,11 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-10-mkv-dubbing-track-switching",
 		date: "2026-07-10",
 		tag: "feature",
-		title: "Switch between dubbing tracks in MKV videos with multiple audio tracks",
+		title:
+			"Switch between dubbing tracks in MKV videos with multiple audio tracks",
 		items: [
-			"MKV videos often contain multiple audio tracks — different language dubs, director's commentary, etc. Previously the editor always used the primary track and there was no way to pick another. When a video has more than one audio track, a \"Dubbing Track\" selector now appears in the Audio tab of the properties panel. Pick any track and both preview playback and export switch to it.",
-			"Track names show the language code (when the container provides one) and the track's custom name, so you can tell \"ENG — Director's Commentary\" from \"JPN\" at a glance. Videos with a single audio track are unaffected — the selector only appears when there's a choice to make.",
+			'MKV videos often contain multiple audio tracks — different language dubs, director\'s commentary, etc. Previously the editor always used the primary track and there was no way to pick another. When a video has more than one audio track, a "Dubbing Track" selector now appears in the Audio tab of the properties panel. Pick any track and both preview playback and export switch to it.',
+			'Track names show the language code (when the container provides one) and the track\'s custom name, so you can tell "ENG — Director\'s Commentary" from "JPN" at a glance. Videos with a single audio track are unaffected — the selector only appears when there\'s a choice to make.',
 		],
 	},
 	{
@@ -209,11 +249,12 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-10-font-picker-tabs-fix",
 		date: "2026-07-10",
 		tag: "fix",
-		title: "Font picker tabs now work — My fonts and Favorites filter correctly",
+		title:
+			"Font picker tabs now work — My fonts and Favorites filter correctly",
 		items: [
-			"The font picker's \"My fonts\" and \"Favorites\" tabs were visually present but did nothing — clicking them changed the highlighted tab but the list still showed all fonts. The tab state was set but never used to filter. The list now filters by the active tab: \"My fonts\" shows only your imported custom fonts, \"Favorites\" shows only fonts you've starred.",
+			'The font picker\'s "My fonts" and "Favorites" tabs were visually present but did nothing — clicking them changed the highlighted tab but the list still showed all fonts. The tab state was set but never used to filter. The list now filters by the active tab: "My fonts" shows only your imported custom fonts, "Favorites" shows only fonts you\'ve starred.',
 			"Added a star button on each font row so you can pin fonts to the Favorites tab. Favorites persist to localStorage and survive page refreshes. Custom fonts are not persisted (the FontFace is gone on reload), but your starred Google/system fonts will still be there when you come back.",
-			"Empty states now guide you when a tab has no fonts: \"My fonts\" prompts you to import a font file, \"Favorites\" prompts you to star a font. Previously both tabs showed the generic \"No fonts found\" message even when the issue was an empty tab, not a failed search.",
+			'Empty states now guide you when a tab has no fonts: "My fonts" prompts you to import a font file, "Favorites" prompts you to star a font. Previously both tabs showed the generic "No fonts found" message even when the issue was an empty tab, not a failed search.',
 		],
 	},
 	{
@@ -237,7 +278,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "security",
 		title: "Editor security hardened — XSS, SSRF, and abuse protections",
 		items: [
-			"AI-generated chat content is now sanitized with rehype-sanitize before rendering. Previously, markdown was only filtered by tag name — malicious attributes like `onmouseover` or `href=\"javascript:...\"` could pass through. The new schema strips event handlers and blocks dangerous URL protocols while keeping the formatting the AI produces.",
+			'AI-generated chat content is now sanitized with rehype-sanitize before rendering. Previously, markdown was only filtered by tag name — malicious attributes like `onmouseover` or `href="javascript:..."` could pass through. The new schema strips event handlers and blocks dangerous URL protocols while keeping the formatting the AI produces.',
 			"The AI provider test, model-listing, and web-fetch routes now defend against DNS rebinding: the hostname is resolved and verified to not point at a private or link-local address before the server fetches it. This closes a gap where a domain could pass the sync private-IP check but resolve to an internal address (e.g. cloud metadata) by the time the request connects.",
 			"Collaboration room and share-link creation now have a stricter per-IP cap (10 creates per hour) on top of the existing rate limit, preventing resource-exhaustion abuse without requiring an account — preserving the local-first, no-sign-in design.",
 			"The editor route now serves a nonce-based Content-Security-Policy that drops `'unsafe-inline'` for scripts, so injected inline scripts without the per-request nonce are blocked. Other routes keep the broader CSP so landing, docs, and changelog stay statically renderable.",
@@ -270,7 +311,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "fix",
 		title: "Beat detection 5-10x faster — moved to Web Worker",
 		items: [
-			"The \"Add Beat Markers\" button was running the entire beat detection on the main thread — audio decode, peak scanning, and beat detection all blocked the UI for 5-10 seconds on long audio files. The UI would completely freeze with a loading spinner and no progress indication.",
+			'The "Add Beat Markers" button was running the entire beat detection on the main thread — audio decode, peak scanning, and beat detection all blocked the UI for 5-10 seconds on long audio files. The UI would completely freeze with a loading spinner and no progress indication.',
 			"Fixed by switching to the same Web Worker path that the AI copilot uses: extractClipAudio (mediabunny with yielding) → decodeAudioToFloat32 at 8kHz mono (minimal data, ~22x less than the old 44.1kHz stereo path) → detectBeatsAsync (runs entirely in a Web Worker with zero UI freeze). The beat detection algorithm now runs off the main thread with progress updates.",
 			"Also added yielding to mediabunny buffers() loops in audio.ts and audio-manager.ts — these were iterating video audio chunks without yielding, causing additional UI freezes during video audio extraction.",
 			"Result: beat detection that took 5-10 seconds with a frozen UI now takes 1-2 seconds with a responsive UI and live progress percentage. The Web Worker sends progress updates (0-100%) that are shown in the toast notification.",
@@ -313,7 +354,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-08-firefox-timeline-export-fix",
 		date: "2026-07-08",
 		tag: "performance",
-		title: "Editor performance: 60fps timeline scrolling and 87 fewer re-renders per frame",
+		title:
+			"Editor performance: 60fps timeline scrolling and 87 fewer re-renders per frame",
 		items: [
 			"Editor-wide re-render storm eliminated. Every useEditor() subscription in the editor was listening to the playback subsystem, which fires 60 times per second during playback. ~87 components that don't need per-frame updates (timeline clip cards, properties panel, assets panel, etc.) were each running getSnapshot() 60 times/second for nothing. Playback is now opt-in: only the ~13 components that actually need per-frame state (timecode, playhead, audio meters) subscribe to it. This is the single biggest editor performance win.",
 			"Timeline clip thumbnails no longer stutter when scrolling. The filmstrip canvas was being fully resized (cleared + GPU memory reallocated) on every scroll tick even when the visible width hadn't changed. The canvas is now only resized when its dimensions actually change, and the scroll parent's viewport rect is cached instead of re-read via getBoundingClientRect() on every scroll tick (which forces a layout invalidation in Firefox).",
@@ -323,7 +365,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Video export no longer fails in Firefox. Firefox's VideoEncoder.isConfigSupported() reports hardware encoding as supported even though Firefox has no hardware VideoEncoder backend. The export now detects this and automatically retries with software encoding.",
 			"Export progress bar no longer jumps backwards. In Firefox, the export pipeline can fall back and retry multiple times (parallel → single-worker → software encoding), each restarting progress from 0. The progress bar now only moves forward — it tracks the maximum progress reported and never decreases, so the bar stays smooth even when the pipeline retries internally.",
 			"Composited frame cache for instant backward scrubbing. The preview now caches up to 30 rendered frames as GPU-backed ImageBitmaps. When you scrub backward or re-seek to a recently-visited frame, the cached bitmap is blitted to the canvas in ~0.5ms instead of re-running the full render pipeline (5-80ms). This makes backward scrubbing feel instant.",
-			"Ultra-low preview quality tier for potato PCs. A new \"Ultra Low\" quality option (0.25x scale) has been added for machines with 2 or fewer CPU cores or ≤2GB RAM. At this tier, a 1080p project renders at 270p — a 16x reduction in GPU work — making the editor usable on Chromebooks, old laptops, and low-end machines that previously stuttered at the \"Low\" tier.",
+			'Ultra-low preview quality tier for potato PCs. A new "Ultra Low" quality option (0.25x scale) has been added for machines with 2 or fewer CPU cores or ≤2GB RAM. At this tier, a 1080p project renders at 270p — a 16x reduction in GPU work — making the editor usable on Chromebooks, old laptops, and low-end machines that previously stuttered at the "Low" tier.',
 			"Export render pipeline deepened. The render-to-encode pipeline depth has been doubled from 8 to 16 frames, keeping the GPU compositor continuously fed while the encoder processes the queue. This is especially beneficial with hardware encoders (NVENC/QuickSync) where the encoder is faster than the compositor.",
 			"Parallel export worker launch 6x faster. The stagger delay between launching parallel export workers has been reduced from 3 seconds to 500ms — modern GPU drivers handle concurrent adapter requests within ~200ms, so the conservative 3s delay was wasting 9-21 seconds on 4-8 worker launches.",
 			"Codec fallback chain hardened. The export codec negotiation now uses a proper ordered fallback chain: preferred codec (hardware) → preferred codec (software) → AVC software → VP9 software in WebM. Each candidate is probed with the correct hardwareAcceleration setting, so browsers that lie about hardware support (Firefox for AVC, Chrome for AV1 at 6K) automatically fall through to a working configuration. VP9 in WebM is the ultimate fallback that handles any resolution on any browser.",
@@ -345,11 +387,12 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-07-background-removal-three-ways",
 		date: "2026-07-07",
 		tag: "feature",
-		title: "Remove backgrounds three ways — shader keyer, person segmentation, and AI cutout",
+		title:
+			"Remove backgrounds three ways — shader keyer, person segmentation, and AI cutout",
 		items: [
-			"Three complementary background removal tools now available. \"Remove Background\" is a real-time GPU shader that auto-detects the backdrop colour from frame borders and keys it out — zero configuration, works on uniform/contrasting backgrounds (white wall, grey wall, sky, solid sheet), and runs at full frame rate with no ML overhead.",
-			"\"Cutout Person\" uses MediaPipe person segmentation (ML) to isolate people in images with high-quality edges — perfect for portraits and talking-head content. Runs fully in-browser, no server, no telemetry. The AI copilot can invoke it with \"cut out the person from this image\".",
-			"\"AI Cutout\" uses transformers.js with the RMBG/MODNet model for general-subject background removal — works on ANY subject (people, products, objects). Heavier than person segmentation but handles non-human subjects. The AI copilot can invoke it with \"remove the background from this image\".",
+			'Three complementary background removal tools now available. "Remove Background" is a real-time GPU shader that auto-detects the backdrop colour from frame borders and keys it out — zero configuration, works on uniform/contrasting backgrounds (white wall, grey wall, sky, solid sheet), and runs at full frame rate with no ML overhead.',
+			'"Cutout Person" uses MediaPipe person segmentation (ML) to isolate people in images with high-quality edges — perfect for portraits and talking-head content. Runs fully in-browser, no server, no telemetry. The AI copilot can invoke it with "cut out the person from this image".',
+			'"AI Cutout" uses transformers.js with the RMBG/MODNet model for general-subject background removal — works on ANY subject (people, products, objects). Heavier than person segmentation but handles non-human subjects. The AI copilot can invoke it with "remove the background from this image".',
 			"All three are AI-usable: the copilot knows when to use each one based on the user's request. For video clips, the AI applies the real-time shader effect (no per-frame ML overhead). For images, it runs the appropriate ML model and produces a transparent PNG.",
 		],
 	},
@@ -357,7 +400,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-07-projects-page-elegant-gray",
 		date: "2026-07-07",
 		tag: "improvement",
-		title: "Projects page background refined to elegant gray with diamond pattern",
+		title:
+			"Projects page background refined to elegant gray with diamond pattern",
 		items: [
 			"The projects page background has been redesigned from pure black to an elegant layered gray gradient (#1a1a1d → #232328) with a subtle diamond grid pattern, soft animated wave lines tuned for a light-on-gray aesthetic, and a cool blue-gray radial glow. The design adds depth and sophistication without drawing attention from the project cards.",
 		],
@@ -366,7 +410,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-07-07-smooth-ai-status-optimization",
 		date: "2026-07-07",
 		tag: "feature",
-		title: "Smoother AI status animation and major chat panel performance optimization",
+		title:
+			"Smoother AI status animation and major chat panel performance optimization",
 		items: [
 			"The AI status banner word cycle (Thinking, Orchestrating, Harmonizing, etc.) is now driven by a continuous CSS animation instead of a JS interval + setTimeout. This eliminates frame scheduling jitter, makes the fade/slide buttery smooth, and removes all React re-renders during the animation. The word stack also gets a soft top/bottom mask so each word fades in and out organically.",
 			"Optimized the AI chat panel to prevent unnecessary re-renders. The panel previously subscribed to the entire AI store with `useAIStore()`, re-rendering on every message, status tick, and pending-media change. It now uses granular zustand selectors with shallow equality, so only the specific data each UI region needs triggers updates. `AuroraOverlay` and `TakeoverActiveBanner` are also memoized with `React.memo`.",
@@ -378,19 +423,20 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "feature",
 		title: "AI can now read timeline markers and 18 new low-level tools",
 		items: [
-			"New tool: list_bookmarks lets the AI read every timeline marker/bookmark you placed manually (scene-level). Each marker returns its time (in ticks), note, color, and duration. The AI can then call split_element at each marker time to cut the video exactly where you marked it — \"potong video sesuai mark\" now works end-to-end.",
+			'New tool: list_bookmarks lets the AI read every timeline marker/bookmark you placed manually (scene-level). Each marker returns its time (in ticks), note, color, and duration. The AI can then call split_element at each marker time to cut the video exactly where you marked it — "potong video sesuai mark" now works end-to-end.',
 			"list_elements now includes element-level bookmarks (beat markers) in its result. Previously the AI could not see markers placed on individual clips; now each element's bookmarks array is returned so the AI can cut on those marks too.",
 			"New bookmark tools: update_bookmark (change note/color/duration) and move_bookmark (reposition a marker to a new time). Combined with the existing add_bookmark and remove_bookmark, the AI now has full CRUD over timeline markers.",
 			"New playback tools: toggle_playback, mute_playback, unmute_playback, save_snapshot (download current frame as PNG), copy_snapshot (copy frame to system clipboard).",
 			"New read-only info tools: get_playhead (current cursor position), is_playing, get_volume, get_selection (which clips are highlighted), get_project_info (name/fps/canvas/duration), list_scenes, get_timeline_duration, list_tracks (all tracks with ids/types/element counts/mute/hidden state), has_clipboard, is_dirty (unsaved changes check).",
-			"System prompt updated with a dedicated \"Markers & bookmarks\" section teaching the AI the list_bookmarks → split_element workflow, and an \"Info & state tools\" section listing all read-only tools the AI can call freely without side effects.",
+			'System prompt updated with a dedicated "Markers & bookmarks" section teaching the AI the list_bookmarks → split_element workflow, and an "Info & state tools" section listing all read-only tools the AI can call freely without side effects.',
 		],
 	},
 	{
 		id: "2026-07-06-persisted-ai-revert",
 		date: "2026-07-06",
 		tag: "fix",
-		title: "AI revert now works across reloads and deletes stale snapshots safely",
+		title:
+			"AI revert now works across reloads and deletes stale snapshots safely",
 		items: [
 			"AI revert snapshots are now persisted in the AI chat store (localStorage) alongside the chat messages. Previously, revert snapshots lived only in memory — after reloading the page, old messages could no longer be reverted because the undo-history snapshots were gone. Now reverts work even after closing and reopening the app.",
 			"Fixed the revert cleanup logic: when reverting a message, the snapshot for that message AND all later messages is now deleted, instead of only the single snapshot. This prevents stale snapshots from referencing a trimmed conversation.",
@@ -404,7 +450,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		title: "Beat detection no longer freezes the editor",
 		items: [
 			"Beat detection now runs entirely in a Web Worker, off the main thread. Previously, the algorithm used setTimeout-based yielding which still blocked the UI for long audio files — the editor would freeze for several seconds during analysis. Now the entire computation (energy windowing + peak picking) happens in a separate thread, so the timeline stays fully interactive while beats are being detected.",
-			"The beat detection UI now shows a live progress percentage (\"Detecting beats… 45%\") instead of a static loading spinner, and supports cancellation via AbortSignal.",
+			'The beat detection UI now shows a live progress percentage ("Detecting beats… 45%") instead of a static loading spinner, and supports cancellation via AbortSignal.',
 		],
 	},
 	{
@@ -514,8 +560,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "fix",
 		title: "AI can now chain edits and find clips on its own",
 		items: [
-			"Adding media to the timeline now returns the clip's elementId and trackId to the AI, so it can immediately trim, split, move, or update that same clip without stopping to ask you for an ID. Multi-step requests like \"add my video then cut the climax\" now execute end-to-end.",
-			"New list_elements tool lets the AI enumerate every clip on the timeline (with IDs, type, timing, and trim) when it needs to reference a clip you added manually or lost track of — no more \"please click the clip and paste the ID\" dead-ends.",
+			'Adding media to the timeline now returns the clip\'s elementId and trackId to the AI, so it can immediately trim, split, move, or update that same clip without stopping to ask you for an ID. Multi-step requests like "add my video then cut the climax" now execute end-to-end.',
+			'New list_elements tool lets the AI enumerate every clip on the timeline (with IDs, type, timing, and trim) when it needs to reference a clip you added manually or lost track of — no more "please click the clip and paste the ID" dead-ends.',
 			"split_element now reports the right half's elementId and trackId, and the system prompt teaches the AI to chain insert → trim/split using returned IDs instead of giving up after one tool.",
 			"Empty/blank assistant bubbles left over after streaming (e.g. when only thinking tags were emitted) are now removed so the chat no longer shows mysterious empty cards.",
 		],
@@ -535,7 +581,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "improvement",
 		title: "Small screen / high-DPI overflow handling",
 		items: [
-			"AI panel toolbar items that don't fit on small screens or high display scaling now collapse into a \"More\" dropdown instead of getting cut off. On PCs with adequate screen space, the layout stays exactly as before.",
+			'AI panel toolbar items that don\'t fit on small screens or high display scaling now collapse into a "More" dropdown instead of getting cut off. On PCs with adequate screen space, the layout stays exactly as before.',
 			"Added min-w-0 and truncate to the AI panel header so long assistant names shrink gracefully instead of pushing buttons off-screen.",
 		],
 	},
@@ -592,7 +638,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-28-puter-toolcall-errorcard-media",
 		date: "2026-06-28",
 		tag: "fix",
-		title: "Puter.js tool call parsing, dismissible errors, media model dropdown",
+		title:
+			"Puter.js tool call parsing, dismissible errors, media model dropdown",
 		items: [
 			"Fixed Puter.js models (like minimax) that emit XML-based tool calls (<tool_call>/<invoke> tags) instead of using native function calling — these are now parsed and executed properly instead of showing as raw text in the chat.",
 			"Error cards in the chat can now be dismissed with the X button — previously the icon was decorative and couldn't be clicked.",
@@ -647,7 +694,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-28-chat-steer-queue",
 		date: "2026-06-28",
 		tag: "feature",
-		title: "Steer the AI mid-generation, smarter queue handling, tool-call fixes",
+		title:
+			"Steer the AI mid-generation, smarter queue handling, tool-call fixes",
 		items: [
 			"New 'Steer' button: when the AI is busy, type a message and click Steer to interrupt the current generation and send your message next — no need to wait or cancel.",
 			"Stop button now only stops the current generation — queued messages continue automatically. The X button on the queue indicator clears only the queue without stopping the current task.",
@@ -660,7 +708,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-28-ai-chat-polish",
 		date: "2026-06-28",
 		tag: "improvement",
-		title: "Colorful tool calls, dynamic Puter media models, security hardening",
+		title:
+			"Colorful tool calls, dynamic Puter media models, security hardening",
 		items: [
 			"Tool calls in the AI chat now show colorful category-based icons with glow effects and smooth spring animations — each tool type (scene, element, effect, generate, etc.) has its own color and icon.",
 			"Puter.js media generation models (video, image, audio) are now fetched dynamically from your account instead of requiring manual entry — just pick from the dropdown when adding a Puter provider.",
@@ -691,7 +740,8 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		id: "2026-06-27-takeover-banner-key-fix-and-google-verification",
 		date: "2026-06-27",
 		tag: "fix",
-		title: "Internal polish: AI takeover banner key warnings and Google Search Console verification",
+		title:
+			"Internal polish: AI takeover banner key warnings and Google Search Console verification",
 		items: [
 			"Fixed React duplicate-key warnings in the AI takeover status banner's word-cycle animation. The first action word is duplicated at the end of the loop for a seamless CSS cycle; words now carry stable composite keys so React no longer warns when that word appears twice.",
 			"Added a Google Search Console verification meta tag alongside the existing HTML-file verification method, so the site can be verified through either path on Google's next crawl.",

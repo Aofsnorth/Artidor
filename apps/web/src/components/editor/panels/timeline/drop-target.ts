@@ -1,6 +1,9 @@
 import type { TimelineTrack, TimelineElement } from "@/lib/timeline";
 import type { ComputeDropTargetParams, DropTarget } from "@/lib/timeline";
-import { resolveTrackPlacement } from "@/lib/timeline/placement";
+import {
+	canElementGoOnTrack,
+	resolveTrackPlacement,
+} from "@/lib/timeline/placement";
 import { TIMELINE_TRACK_GAP_PX } from "./layout";
 import { getTrackHeight } from "./track-layout";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -191,11 +194,25 @@ export function computeDropTarget({
 
 	// Track type wall: video/visual elements can't drop on audio tracks,
 	// and audio elements can't drop on visual tracks.
+	//
+	// The wall snaps to the main track as a shortcut — but only when the
+	// element is actually compatible with the main track (a video track).
+	// Audio elements and non-video visual elements (text, graphic, effect,
+	// camera) cannot go on the main track, so they must fall through to
+	// resolveTrackPlacement which will create a new compatible track.
+	// Without this compatibility check, audio dragged over an overlay track
+	// would snap to the main video track, MoveElementCommand would throw
+	// (audio ≠ video), and the element would silently stay at its original
+	// position — appearing to "always align left" regardless of drag position.
 	const mainTrackIndex = tracks.overlay.length;
 	const isTargetAudio = trackIndex > mainTrackIndex;
 	const isElementAudio = elementType === "audio";
-	if (isTargetAudio && !isElementAudio) {
-		// Video/visual dragged onto audio track — wall: snap to main track
+	const canGoOnMainTrack = elementType
+		? canElementGoOnTrack({ elementType, trackType: "video" })
+		: false;
+	if (isTargetAudio && !isElementAudio && canGoOnMainTrack) {
+		// Visual element (video/image) dragged onto audio track — snap to
+		// main track, which is a video track that accepts video/image.
 		return {
 			trackIndex: mainTrackIndex,
 			isNewTrack: false,
@@ -204,16 +221,9 @@ export function computeDropTarget({
 			targetElement: EMPTY_TARGET_ELEMENT,
 		};
 	}
-	if (!isTargetAudio && isElementAudio && trackIndex !== mainTrackIndex) {
-		// Audio dragged onto overlay track — wall: snap to main track
-		return {
-			trackIndex: mainTrackIndex,
-			isNewTrack: false,
-			insertPosition: null,
-			xPosition,
-			targetElement: EMPTY_TARGET_ELEMENT,
-		};
-	}
+	// Audio over overlay, or non-video visual over audio: fall through to
+	// resolveTrackPlacement, which detects the incompatibility and creates
+	// a new compatible track at the correct position.
 
 	if (targetElementTypes && targetElementTypes.length > 0) {
 		const targetElement = findElementAtPosition({
