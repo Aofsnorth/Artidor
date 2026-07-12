@@ -9,12 +9,13 @@
 
 ## Automated Checks
 
+- [x] Lint: `bun run lint:web`
 - [x] Typecheck: `cd apps/web && bunx tsc --noEmit`
-- [ ] Lint: pending
-- [x] Targeted unit tests: export policy, snap points, segment plan, warm worker
-- [ ] Full unit tests: pending
-- [ ] Build: pending
+- [x] Unit tests: `bun run test` — 311 pass, 0 fail
+- [x] Targeted regression tests: export policy, snap points, segment plan, warm worker, What's New
+- [ ] Integration tests: covered by existing renderer unit suite; no real Brave GPU fixture
 - [ ] E2E: not run; no browser harness/project fixture for GPU export
+- [x] Build: `bun run build:web`
 - [ ] Security scan: not run; no security-sensitive path changed
 
 ## Manual Test Steps
