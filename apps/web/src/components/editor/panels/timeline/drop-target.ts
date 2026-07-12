@@ -4,7 +4,7 @@ import {
 	canElementGoOnTrack,
 	resolveTrackPlacement,
 } from "@/lib/timeline/placement";
-import { TIMELINE_TRACK_GAP_PX } from "./layout";
+import { TIMELINE_TRACK_GAP_PX, TIMELINE_CONTENT_TOP_PADDING_PX } from "./layout";
 import { getTrackHeight } from "./track-layout";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 
@@ -43,15 +43,24 @@ function getTrackAtY({
 	mouseY,
 	tracks,
 	verticalDragDirection,
+	overrideHeights,
+	extraHeights,
 }: {
 	mouseY: number;
 	tracks: TimelineTrack[];
 	verticalDragDirection?: "up" | "down" | null;
+	overrideHeights?: Record<string, number>;
+	extraHeights?: readonly number[];
 }): { trackIndex: number; relativeY: number } | null {
 	let cumulativeHeight = 0;
 
 	for (let i = 0; i < tracks.length; i++) {
-		const trackHeight = getTrackHeight({ type: tracks[i].type });
+		const track = tracks[i];
+		const trackHeight =
+			getTrackHeight({
+				type: track.type,
+				overrideHeight: overrideHeights?.[track.id],
+			}) + (extraHeights?.[i] ?? 0);
 		const trackTop = cumulativeHeight;
 		const trackBottom = trackTop + trackHeight;
 
@@ -110,9 +119,11 @@ export function computeDropTarget({
 	startTimeOverride,
 	excludeElementId,
 	targetElementTypes,
+	overrideHeights,
+	extraHeights,
 }: ComputeDropTargetParams): DropTarget {
 	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
-	const _mainTrackIndex = tracks.overlay.length;
+	const mainTrackIndex = tracks.overlay.length;
 	const xPosition =
 		typeof startTimeOverride === "number"
 			? startTimeOverride
@@ -122,6 +133,11 @@ export function computeDropTarget({
 						Math.max(0, mouseX / (pixelsPerSecond * zoomLevel)) *
 							TICKS_PER_SECOND,
 					);
+
+	// Track rows are rendered with a small top padding inside the scroll
+	// container, so the Y used for hit-testing must be shifted to align
+	// with the actual row tops.
+	const hitTestY = mouseY - TIMELINE_CONTENT_TOP_PADDING_PX;
 
 	if (orderedTracks.length === 0) {
 		const placementResult = resolveTrackPlacement({
@@ -153,13 +169,15 @@ export function computeDropTarget({
 	}
 
 	const trackAtMouse = getTrackAtY({
-		mouseY,
+		mouseY: hitTestY,
 		tracks: orderedTracks,
 		verticalDragDirection,
+		overrideHeights,
+		extraHeights,
 	});
 
 	if (!trackAtMouse) {
-		const isAboveAllTracks = mouseY < 0;
+		const isAboveAllTracks = hitTestY < 0;
 
 		const placementResult = resolveTrackPlacement({
 			tracks,
@@ -194,17 +212,6 @@ export function computeDropTarget({
 
 	// Track type wall: video/visual elements can't drop on audio tracks,
 	// and audio elements can't drop on visual tracks.
-	//
-	// The wall snaps to the main track as a shortcut — but only when the
-	// element is actually compatible with the main track (a video track).
-	// Audio elements and non-video visual elements (text, graphic, effect,
-	// camera) cannot go on the main track, so they must fall through to
-	// resolveTrackPlacement which will create a new compatible track.
-	// Without this compatibility check, audio dragged over an overlay track
-	// would snap to the main video track, MoveElementCommand would throw
-	// (audio ≠ video), and the element would silently stay at its original
-	// position — appearing to "always align left" regardless of drag position.
-	const mainTrackIndex = tracks.overlay.length;
 	const isTargetAudio = trackIndex > mainTrackIndex;
 	const isElementAudio = elementType === "audio";
 	const canGoOnMainTrack = elementType
@@ -245,7 +252,11 @@ export function computeDropTarget({
 		}
 	}
 
-	const trackHeight = getTrackHeight({ type: track.type });
+	const trackHeight =
+		getTrackHeight({
+			type: track.type,
+			overrideHeight: overrideHeights?.[track.id],
+		}) + (extraHeights?.[trackIndex] ?? 0);
 	const placementResult = resolveTrackPlacement({
 		tracks,
 		elementType,
@@ -287,9 +298,13 @@ export function computeDropTarget({
 export function getDropLineY({
 	dropTarget,
 	tracks,
+	overrideHeights,
+	extraHeights,
 }: {
 	dropTarget: DropTarget;
 	tracks: TimelineTrack[];
+	overrideHeights?: Record<string, number>;
+	extraHeights?: readonly number[];
 }): number {
 	const safeTrackIndex = Math.min(
 		Math.max(dropTarget.trackIndex, 0),
@@ -298,7 +313,14 @@ export function getDropLineY({
 	let y = 0;
 
 	for (let i = 0; i < safeTrackIndex; i++) {
-		y += getTrackHeight({ type: tracks[i].type }) + TIMELINE_TRACK_GAP_PX;
+		const track = tracks[i];
+		y +=
+			getTrackHeight({
+				type: track.type,
+				overrideHeight: overrideHeights?.[track.id],
+			}) +
+			(extraHeights?.[i] ?? 0) +
+			TIMELINE_TRACK_GAP_PX;
 	}
 
 	return y;

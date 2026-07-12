@@ -8,6 +8,8 @@ interface DragLineProps {
 	isVisible: boolean;
 	headerHeight?: number;
 	dragElementType?: string | null;
+	getTrackExpansionHeight?: (trackIndex: number) => number;
+	overrideHeights?: Record<string, number>;
 }
 
 export function DragLine({
@@ -16,10 +18,20 @@ export function DragLine({
 	isVisible,
 	headerHeight = 0,
 	dragElementType,
+	getTrackExpansionHeight,
+	overrideHeights,
 }: DragLineProps) {
 	if (!isVisible || !dropTarget) return null;
 
-	const y = getDropLineY({ dropTarget, tracks });
+	const extraHeights = tracks.map((_, index) =>
+		getTrackExpansionHeight?.(index) ?? 0,
+	);
+	const y = getDropLineY({
+		dropTarget,
+		tracks,
+		overrideHeights,
+		extraHeights,
+	});
 	const lineTop = y + headerHeight;
 
 	const previewLabel = dragElementType === "text" ? "Text" : "Drop media";

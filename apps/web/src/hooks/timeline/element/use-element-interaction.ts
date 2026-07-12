@@ -20,6 +20,8 @@ import { getMouseTimeFromClientX } from "@/lib/timeline/drag-utils";
 import { generateUUID } from "@/utils/id";
 import { snapElementEdge, type SnapPoint } from "@/lib/timeline/snap-utils";
 import { registerCanceller } from "@/lib/cancel-interaction";
+import { useTimelineStore } from "@/stores/timeline-store";
+import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
 import type {
 	DropTarget,
 	ElementDragState,
@@ -101,6 +103,8 @@ function getDragDropTarget({
 	zoomLevel,
 	snappedTime,
 	verticalDragDirection,
+	overrideHeights,
+	extraHeights,
 }: {
 	clientX: number;
 	clientY: number;
@@ -113,6 +117,8 @@ function getDragDropTarget({
 	zoomLevel: number;
 	snappedTime: number;
 	verticalDragDirection?: "up" | "down" | null;
+	overrideHeights?: Record<string, number>;
+	extraHeights?: readonly number[];
 }): DropTarget | null {
 	const containerRect = tracksContainerRef.current?.getBoundingClientRect();
 	const scrollContainer = tracksScrollRef.current;
@@ -147,6 +153,8 @@ function getDragDropTarget({
 		startTimeOverride: snappedTime,
 		excludeElementId: movingElement.id,
 		verticalDragDirection,
+		overrideHeights,
+		extraHeights,
 	});
 }
 
@@ -185,6 +193,15 @@ export function useElementInteraction({
 	const tracks = useMemo(
 		() => [...sceneTracks.overlay, sceneTracks.main, ...sceneTracks.audio],
 		[sceneTracks],
+	);
+	const trackHeights = useTimelineStore((s) => s.trackHeights);
+	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
+	const extraHeights = useMemo(
+		() =>
+			tracks.map((track) =>
+				computeTrackExpansionHeight({ track, expandedElementIds }),
+			),
+		[tracks, expandedElementIds],
 	);
 	const {
 		selectedElements,
@@ -412,6 +429,8 @@ export function useElementInteraction({
 					zoomLevel,
 					snappedTime,
 					verticalDragDirection,
+					overrideHeights: trackHeights,
+					extraHeights,
 				});
 				setDragDropTarget(dropTarget ?? null);
 			}
@@ -439,6 +458,8 @@ export function useElementInteraction({
 		getDragSnapResult,
 		onSnapPointChange,
 		sceneTracks,
+		trackHeights,
+		extraHeights,
 	]);
 
 	useEffect(() => {
@@ -476,6 +497,8 @@ export function useElementInteraction({
 					startMouseY: dragState.startMouseY,
 					currentMouseY: clientY,
 				}),
+				overrideHeights: trackHeights,
+				extraHeights,
 			});
 			if (!dropTarget) {
 				endDrag();
@@ -504,58 +527,67 @@ export function useElementInteraction({
 				return;
 			}
 
-			if (dropTarget.isNewTrack) {
-				const newTrackId = generateUUID();
+			try {
+				if (dropTarget.isNewTrack) {
+					const newTrackId = generateUUID();
 
-				editor.timeline.moveElement({
-					sourceTrackId: dragState.trackId,
-					targetTrackId: newTrackId,
-					elementId: dragState.elementId,
-					newStartTime: snappedTime,
-					createTrack: { type: sourceTrack.type, index: dropTarget.trackIndex },
-				});
-				selectElement({ trackId: newTrackId, elementId: dragState.elementId });
-			} else {
-				const targetTrack = tracks[dropTarget.trackIndex];
-				if (targetTrack) {
-					// Move the dragged element. If it has grouped siblings in the
-					// selection, shift each of them by the SAME time delta so the
-					// whole group moves together, preserving relative offsets.
-					const timeDelta = movingElement
-						? snappedTime - movingElement.startTime
-						: 0;
 					editor.timeline.moveElement({
 						sourceTrackId: dragState.trackId,
-						targetTrackId: targetTrack.id,
+						targetTrackId: newTrackId,
 						elementId: dragState.elementId,
 						newStartTime: snappedTime,
+						createTrack: { type: sourceTrack.type, index: dropTarget.trackIndex },
 					});
-					if (timeDelta !== 0 && targetTrack.id === dragState.trackId) {
-						for (const ref of selectedElements) {
-							if (
-								ref.elementId === dragState.elementId &&
-								ref.trackId === dragState.trackId
-							) {
-								continue;
+					selectElement({ trackId: newTrackId, elementId: dragState.elementId });
+				} else {
+					const targetTrack = tracks[dropTarget.trackIndex];
+					if (targetTrack) {
+						// Move the dragged element. If it has grouped siblings in the
+						// selection, shift each of them by the SAME time delta so the
+						// whole group moves together, preserving relative offsets.
+						const timeDelta = movingElement
+							? snappedTime - movingElement.startTime
+							: 0;
+						editor.timeline.moveElement({
+							sourceTrackId: dragState.trackId,
+							targetTrackId: targetTrack.id,
+							elementId: dragState.elementId,
+							newStartTime: snappedTime,
+						});
+						if (timeDelta !== 0 && targetTrack.id === dragState.trackId) {
+							for (const ref of selectedElements) {
+								if (
+									ref.elementId === dragState.elementId &&
+									ref.trackId === dragState.trackId
+								) {
+									continue;
+								}
+								const sib = editor.timeline
+									.getTrackById({ trackId: ref.trackId })
+									?.elements.find((e) => e.id === ref.elementId);
+								if (!sib) continue;
+								editor.timeline.moveElement({
+									sourceTrackId: ref.trackId,
+									targetTrackId: ref.trackId,
+									elementId: ref.elementId,
+									newStartTime: Math.max(0, sib.startTime + timeDelta),
+								});
 							}
-							const sib = editor.timeline
-								.getTrackById({ trackId: ref.trackId })
-								?.elements.find((e) => e.id === ref.elementId);
-							if (!sib) continue;
-							editor.timeline.moveElement({
-								sourceTrackId: ref.trackId,
-								targetTrackId: ref.trackId,
-								elementId: ref.elementId,
-								newStartTime: Math.max(0, sib.startTime + timeDelta),
+						}
+						if (targetTrack.id !== dragState.trackId) {
+							selectElement({
+								trackId: targetTrack.id,
+								elementId: dragState.elementId,
 							});
 						}
 					}
-					if (targetTrack.id !== dragState.trackId) {
-						selectElement({
-							trackId: targetTrack.id,
-							elementId: dragState.elementId,
-						});
-					}
+				}
+			} catch (error) {
+				// Any move error (e.g. incompatible track, placement not found)
+				// should end the drag cleanly instead of leaving the interaction
+				// in a broken state.
+				if (process.env.NODE_ENV !== "production") {
+					console.error("[useElementInteraction] drag move failed:", error);
 				}
 			}
 
@@ -582,6 +614,8 @@ export function useElementInteraction({
 		selectElement,
 		sceneTracks,
 		selectedElements,
+		trackHeights,
+		extraHeights,
 	]);
 
 	useEffect(() => {

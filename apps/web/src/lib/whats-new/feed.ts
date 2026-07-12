@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-timeline-drag-overlap-fix",
+		date: "2026-07-19",
+		tag: "fix",
+		title: "Timeline drag and overlap fixes",
+		items: [
+			"Clips on overlay and audio tracks now drag horizontally and vertically as expected. The drop-target hit test now uses the actual rendered track height, so it no longer misidentifies the track and silently fails the move.",
+			"Dragging media onto the main video track no longer allows overlapping clips. Overlap is rejected during both drag previews and explicit insertions.",
+			"Drag errors now end the interaction cleanly instead of leaving the timeline in a stuck drag state.",
+		],
+	},
+	{
 		id: "2026-07-19-beat-detection-worker-fix",
 		date: "2026-07-19",
 		tag: "performance",
