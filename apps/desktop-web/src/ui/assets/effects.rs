@@ -27,6 +27,7 @@ pub enum EffectCategory {
     Stylize,
     Color,
     Edge,
+    Opacity,
 }
 
 impl EffectCategory {
@@ -38,6 +39,7 @@ impl EffectCategory {
             Self::Stylize => "Stylize",
             Self::Color => "Color",
             Self::Edge => "Edge",
+            Self::Opacity => "Opacity / Visibility",
         }
     }
 }
@@ -75,10 +77,36 @@ const EFFECTS: &[EffectDef] = &[
         name: "Temperature",
         category: EffectCategory::Basic,
     },
+    // Opacity / Visibility
     EffectDef {
         shader: "fade",
         name: "Fade",
-        category: EffectCategory::Basic,
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "blink",
+        name: "Blink",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "block-dissolve",
+        name: "Block Dissolve",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "feather",
+        name: "Feather",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "dissolve",
+        name: "Dissolve",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "opacity-pressure",
+        name: "Opacity Pressure",
+        category: EffectCategory::Opacity,
     },
     // Color
     EffectDef {
@@ -274,6 +302,7 @@ pub fn build_effects_library(_app: &ArtidorApp, _entity: Entity<ArtidorApp>) -> 
     // Group effects by category.
     let categories = [
         EffectCategory::Basic,
+        EffectCategory::Opacity,
         EffectCategory::Color,
         EffectCategory::Blur,
         EffectCategory::Distortion,
