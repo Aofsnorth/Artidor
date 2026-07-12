@@ -14,6 +14,7 @@ import { findTrackInSceneTracks } from "@/lib/timeline/track-element-update";
 import {
 	canElementBeHidden,
 	canElementHaveAudio,
+	buildTextElement,
 } from "@/lib/timeline/element-utils";
 import type {
 	AnimationPath,
@@ -29,7 +30,7 @@ import {
 	buildKeyframeEasingPatchesForElement,
 	type KeyframeEasingMode,
 } from "@/lib/animation";
-import { lastFrameTime } from "artidor-wasm";
+import { lastFrameTime, roundToFrame } from "artidor-wasm";
 import { BatchCommand } from "@/lib/commands";
 import {
 	AddTrackCommand,
@@ -80,6 +81,43 @@ export class TimelineManager {
 		const command = new AddTrackCommand(type, index);
 		this.editor.command.execute({ command });
 		return command.getTrackId();
+	}
+
+	/**
+	 * Creates a new text track and immediately inserts a default text element
+	 * at the playhead position. Batched into a single undo step so one Ctrl+Z
+	 * removes both the element and the track.
+	 */
+	addTextTrackWithDefaultText(): {
+		elementId: string;
+		trackId: string;
+	} | null {
+		const playhead = this.editor.playback.getCurrentTime();
+		const fps = this.editor.project.getActive()?.settings.fps;
+		const startTime =
+			(fps ? roundToFrame({ time: playhead, rate: fps }) : undefined) ??
+			playhead;
+
+		const addTrackCommand = new AddTrackCommand("text");
+		const trackId = addTrackCommand.getTrackId();
+
+		const element = buildTextElement({
+			raw: { content: "New Text" },
+			startTime,
+		});
+
+		const insertCommand = new InsertElementCommand({
+			element,
+			placement: { mode: "explicit", trackId },
+		});
+
+		const batch = new BatchCommand([addTrackCommand, insertCommand]);
+		this.editor.command.execute({ command: batch });
+
+		const elementId = insertCommand.getElementId();
+		const resolvedTrackId = insertCommand.getTrackId();
+		if (!resolvedTrackId) return null;
+		return { elementId, trackId: resolvedTrackId };
 	}
 
 	removeTrack({ trackId }: { trackId: string }): void {
