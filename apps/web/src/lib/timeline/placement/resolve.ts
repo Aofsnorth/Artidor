@@ -40,22 +40,22 @@ function buildExistingTrackResult({
 		excludeElementId: firstSpan?.excludeElementId,
 	});
 
-	// Always re-check overlap with the final start time. This is the
-	// only overlap check for the explicit strategy, and it catches the
-	// case where enforceMainTrackStart adjusted the time (e.g. snapped
-	// to 0 on the main track) so the placement would overlap a different
-	// clip. If the final position overlaps, return null so the caller
-	// falls through to new-track creation instead of placing an
-	// overlapping clip.
-	const finalTimeSpans: PlacementTimeSpan[] = [
-		{
-			startTime: adjustedStartTime,
-			duration: firstSpan?.duration ?? 0,
-			excludeElementId: firstSpan?.excludeElementId,
-		},
-	];
-	if (!canPlaceTimeSpansOnTrack({ track, timeSpans: finalTimeSpans })) {
-		return null;
+	// Re-check overlap with the final start time only when it changed.
+	// Callers like preferIndex and firstAvailable already verified the
+	// original time spans, so a redundant scan on every mousemove caused
+	// noticeable drag lag. The explicit strategy does not pre-check, so
+	// we handle that in resolveTrackPlacement below.
+	if (adjustedStartTime !== requestedStartTime) {
+		const finalTimeSpans: PlacementTimeSpan[] = [
+			{
+				startTime: adjustedStartTime,
+				duration: firstSpan?.duration ?? 0,
+				excludeElementId: firstSpan?.excludeElementId,
+			},
+		];
+		if (!canPlaceTimeSpansOnTrack({ track, timeSpans: finalTimeSpans })) {
+			return null;
+		}
 	}
 
 	return {
@@ -164,6 +164,10 @@ export function resolveTrackPlacement({
 			? canElementGoOnTrack({ elementType, trackType: track.type })
 			: track.type === trackType;
 		if (!isCompatible) {
+			return null;
+		}
+
+		if (!canPlaceTimeSpansOnTrack({ track, timeSpans })) {
 			return null;
 		}
 
