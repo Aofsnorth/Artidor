@@ -102,7 +102,8 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 			// Web Worker with no DOM/fetch/network access. All editor mutations
 			// go through artidor.run(), which is validated against the tool
 			// registry on the main thread. See the security comment above.
-			const runner = new Function( // nosemgrep: no-eval, detect-eval-with-expression, eval-detected — intentional sandbox
+			// nosemgrep: no-eval, detect-eval-with-expression, eval-detected — intentional sandbox
+			const runner = new Function(
 				"artidor",
 				"console",
 				`"use strict"; return (async () => {\n${message.code}\n})();`,
