@@ -8,6 +8,7 @@ import {
 import { useEditor } from "@/hooks/use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
 import { TIMELINE_DRAG_THRESHOLD_PX } from "@/components/editor/panels/timeline/interaction";
+import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { roundToFrame } from "artidor-wasm";
 import { getMouseTimeFromClientX } from "@/lib/timeline/drag-utils";
 import {
@@ -154,6 +155,7 @@ export function useBookmarkDrag({
 					containerRect: scrollContainer.getBoundingClientRect(),
 					zoomLevel,
 					scrollLeft,
+					contentInset: TIMELINE_CONTENT_LEFT_INSET_PX,
 				});
 				const frameSnappedTime =
 					roundToFrame({
@@ -185,6 +187,7 @@ export function useBookmarkDrag({
 				containerRect: scrollContainer.getBoundingClientRect(),
 				zoomLevel,
 				scrollLeft,
+				contentInset: TIMELINE_CONTENT_LEFT_INSET_PX,
 			});
 			const clampedTime = Math.max(0, Math.min(mouseTime, duration));
 			const frameSnappedTime =
