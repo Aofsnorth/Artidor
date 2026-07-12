@@ -47,7 +47,7 @@ import type {
 	VisualNodeParams,
 } from "./nodes/visual-node";
 
-type ResolveContext = {
+export type ResolveContext = {
 	renderer: CanvasRenderer;
 	time: number;
 };
@@ -469,7 +469,7 @@ async function resolveBackdropSource({
 	};
 }
 
-function resolveEffectLayerNode({
+export function resolveEffectLayerNode({
 	node,
 	context,
 }: {
@@ -478,8 +478,8 @@ function resolveEffectLayerNode({
 }): ResolvedEffectLayerNodeState | null {
 	const time = context.time;
 	if (
-		time < node.params.timeOffset - 1e-6 ||
-		time >= node.params.timeOffset + node.params.duration + 1e-6
+		time < node.params.timeOffset - 1e-3 ||
+		time >= node.params.timeOffset + node.params.duration + 1e-3
 	) {
 		return null;
 	}
