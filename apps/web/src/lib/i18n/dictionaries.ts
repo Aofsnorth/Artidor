@@ -224,6 +224,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"timeline.toolbar.track.text": "Text track",
 		"timeline.toolbar.track.image": "Image track",
 		"timeline.toolbar.track.effect": "Effect track",
+		"timeline.error.invalidEffectTrack":
+			"Effects can only be placed on effect tracks",
 		"timeline.toolbar.dragMode.auto": "Auto",
 		"timeline.toolbar.dragMode.autoOn": "On — play while dragging",
 		"timeline.toolbar.dragMode.autoOff": "Off — press to enable",
@@ -1405,6 +1407,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"timeline.toolbar.track.text": "Track teks",
 		"timeline.toolbar.track.image": "Track gambar",
 		"timeline.toolbar.track.effect": "Track efek",
+		"timeline.error.invalidEffectTrack":
+			"Efek hanya dapat ditempatkan di track efek",
 		"timeline.toolbar.dragMode.auto": "Otomatis",
 		"timeline.toolbar.dragMode.autoOn": "Aktif — putar saat menyeret",
 		"timeline.toolbar.dragMode.autoOff": "Mati — tekan untuk mengaktifkan",

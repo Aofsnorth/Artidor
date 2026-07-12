@@ -55,6 +55,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Clips on overlay and audio tracks now drag horizontally and vertically as expected. The drop-target hit test now uses the actual rendered track height, so it no longer misidentifies the track and silently fails the move.",
 			"Dragging media onto the main video track no longer allows overlapping clips. Overlap is rejected during both drag previews and explicit insertions.",
 			"Drag errors now end the interaction cleanly instead of leaving the timeline in a stuck drag state.",
+			"Dropping an effect on a non-effect track now shows a clear error toast instead of silently ignoring the drop.",
 		],
 	},
 	{
