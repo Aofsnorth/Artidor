@@ -274,11 +274,43 @@ export function useEditorActions() {
 
 			if (elementsToSplit.length === 0) return;
 
+			// Capture each element's original start time before the split
+			// replaces it with the right-side piece. After the split we move
+			// each right-side element back to the original start position so
+			// the remaining clip "aligns to the left" — standard ripple
+			// behavior expected when trimming the head off a clip.
+			const originalStartByTrack = new Map<string, number>();
+			for (const ref of elementsToSplit) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const el = track?.elements.find((e) => e.id === ref.elementId);
+				if (el) {
+					const existing = originalStartByTrack.get(ref.trackId);
+					if (existing === undefined || el.startTime < existing) {
+						originalStartByTrack.set(ref.trackId, el.startTime);
+					}
+				}
+			}
+
 			const rightSideElements = editor.timeline.splitElements({
 				elements: elementsToSplit,
 				splitTime: currentTime,
 				retainSide: "right",
 			});
+
+			// Ripple align: move each right-side element to the original
+			// element's start position so the clip snaps to where the
+			// original began instead of staying at the split point.
+			for (const rightRef of rightSideElements) {
+				const originalStart = originalStartByTrack.get(rightRef.trackId);
+				if (originalStart !== undefined && originalStart < currentTime) {
+					editor.timeline.moveElement({
+						sourceTrackId: rightRef.trackId,
+						targetTrackId: rightRef.trackId,
+						elementId: rightRef.elementId,
+						newStartTime: originalStart,
+					});
+				}
+			}
 
 			if (rippleEditingEnabled && rightSideElements.length > 0) {
 				const firstRightElement = editor.timeline.getElementsWithTracks({
