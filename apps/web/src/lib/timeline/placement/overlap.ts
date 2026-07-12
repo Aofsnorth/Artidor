@@ -12,13 +12,16 @@ function wouldElementOverlap({
 	endTime: number;
 	excludeElementId?: string;
 }): boolean {
+	const EPSILON = 1e-6;
 	return elements.some((element) => {
 		if (excludeElementId && element.id === excludeElementId) {
 			return false;
 		}
 
 		const elementEnd = element.startTime + element.duration;
-		return startTime < elementEnd && endTime > element.startTime;
+		return (
+			startTime < elementEnd - EPSILON && endTime > element.startTime + EPSILON
+		);
 	});
 }
 
