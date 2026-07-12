@@ -433,7 +433,6 @@ export function useElementInteraction({
 		tracksScrollRef,
 		tracksContainerRef,
 		headerRef,
-		// biome-ignore lint/correctness/useExhaustiveDependencies: tracks is a stable reference for this interaction scope
 		tracks,
 		isPendingDrag,
 		startDrag,
@@ -573,7 +572,6 @@ export function useElementInteraction({
 		dragState.trackId,
 		dragState.currentTime,
 		zoomLevel,
-		// biome-ignore lint/correctness/useExhaustiveDependencies: tracks reference is stable for this hook
 		tracks,
 		endDrag,
 		onSnapPointChange,
