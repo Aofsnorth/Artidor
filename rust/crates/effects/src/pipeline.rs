@@ -149,6 +149,16 @@ const TEXT_SHADOW_SHADER_ID: &str = "text-shadow";
 const TEXT_SHADOW_SHADER_SOURCE: &str = include_str!("shaders/text-shadow.wgsl");
 const TEXT_3D_SHADER_ID: &str = "text-3d";
 const TEXT_3D_SHADER_SOURCE: &str = include_str!("shaders/text-3d.wgsl");
+const BLINK_SHADER_ID: &str = "blink";
+const BLINK_SHADER_SOURCE: &str = include_str!("shaders/blink.wgsl");
+const BLOCK_DISSOLVE_SHADER_ID: &str = "block-dissolve";
+const BLOCK_DISSOLVE_SHADER_SOURCE: &str = include_str!("shaders/block-dissolve.wgsl");
+const FEATHER_SHADER_ID: &str = "feather";
+const FEATHER_SHADER_SOURCE: &str = include_str!("shaders/feather.wgsl");
+const DISSOLVE_SHADER_ID: &str = "dissolve";
+const DISSOLVE_SHADER_SOURCE: &str = include_str!("shaders/dissolve.wgsl");
+const OPACITY_PRESSURE_SHADER_ID: &str = "opacity-pressure";
+const OPACITY_PRESSURE_SHADER_SOURCE: &str = include_str!("shaders/opacity-pressure.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -512,6 +522,31 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
         label: "effects-text-3d-shader",
         source: TEXT_3D_SHADER_SOURCE,
     },
+    ShaderEntry {
+        id: BLINK_SHADER_ID,
+        label: "effects-blink-shader",
+        source: BLINK_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: BLOCK_DISSOLVE_SHADER_ID,
+        label: "effects-block-dissolve-shader",
+        source: BLOCK_DISSOLVE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: FEATHER_SHADER_ID,
+        label: "effects-feather-shader",
+        source: FEATHER_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: DISSOLVE_SHADER_ID,
+        label: "effects-dissolve-shader",
+        source: DISSOLVE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: OPACITY_PRESSURE_SHADER_ID,
+        label: "effects-opacity-pressure-shader",
+        source: OPACITY_PRESSURE_SHADER_SOURCE,
+    },
 ];
 pub struct ApplyEffectsOptions<'a> {
     pub source: &'a wgpu::Texture,
@@ -818,7 +853,8 @@ fn pack_effect_uniforms(
         | CLARITY_SHADER_ID
         | FADE_SHADER_ID
         | WHITES_SHADER_ID
-        | BLACKS_SHADER_ID => {
+        | BLACKS_SHADER_ID
+        | FEATHER_SHADER_ID => {
             let amount = read_number_uniform(pass, "u_amount")?;
             scalars[0] = amount;
 
@@ -1158,6 +1194,39 @@ fn pack_effect_uniforms(
                 });
             }
         }
+        BLINK_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let time = read_number_uniform(pass, "u_time")?;
+            let speed = read_number_uniform(pass, "u_speed")?;
+            scalars[0] = amount;
+            scalars[1] = time;
+            scalars[2] = speed;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_time", "u_speed"])?;
+        }
+        BLOCK_DISSOLVE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let block_size = read_number_uniform(pass, "u_block_size")?;
+            let seed = read_number_uniform(pass, "u_seed")?;
+            scalars[0] = amount;
+            scalars[1] = block_size;
+            scalars[2] = seed;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_block_size", "u_seed"])?;
+        }
+        DISSOLVE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let seed = read_number_uniform(pass, "u_seed")?;
+            scalars[0] = amount;
+            scalars[1] = seed;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_seed"])?;
+        }
+        OPACITY_PRESSURE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let pressure = read_number_uniform(pass, "u_pressure")?;
+            direction = read_vec2_uniform(pass, "u_direction")?;
+            scalars[0] = amount;
+            scalars[1] = pressure;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_pressure", "u_direction"])?;
+        }
         _ => {
             return Err(EffectsError::UnknownEffectShader {
                 shader: shader.to_string(),
@@ -1210,6 +1279,23 @@ fn read_vec2_uniform(pass: &EffectPass, uniform: &str) -> Result<[f32; 2], Effec
         });
     }
     Ok([values[0], values[1]])
+}
+
+fn check_allowed_uniforms(
+    pass: &EffectPass,
+    shader: &str,
+    allowed: &[&str],
+) -> Result<(), EffectsError> {
+    for uniform in pass.uniforms.keys() {
+        if allowed.contains(&uniform.as_str()) {
+            continue;
+        }
+        return Err(EffectsError::UnsupportedUniform {
+            shader: shader.to_string(),
+            uniform: uniform.clone(),
+        });
+    }
+    Ok(())
 }
 
 fn read_vec3_uniform(pass: &EffectPass, uniform: &str) -> Result<[f32; 3], EffectsError> {
