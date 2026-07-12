@@ -30,6 +30,7 @@ pub enum EffectCategory {
     Stylize,
     Color,
     Edge,
+    Opacity,
 }
 
 impl EffectCategory {
@@ -41,6 +42,7 @@ impl EffectCategory {
             Self::Stylize => "Stylize",
             Self::Color => "Color",
             Self::Edge => "Edge",
+            Self::Opacity => "Opacity / Visibility",
         }
     }
 
@@ -52,6 +54,7 @@ impl EffectCategory {
             Self::Stylize => 0xF76707,
             Self::Color => 0x0CA678,
             Self::Edge => 0x1098AD,
+            Self::Opacity => 0xFF922B,
         }
     }
 }
@@ -89,10 +92,36 @@ pub const EFFECTS: &[EffectDef] = &[
         name: "Temperature",
         category: EffectCategory::Basic,
     },
+    // Opacity / Visibility
     EffectDef {
         shader: "fade",
         name: "Fade",
-        category: EffectCategory::Basic,
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "blink",
+        name: "Blink",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "block-dissolve",
+        name: "Block Dissolve",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "feather",
+        name: "Feather",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "dissolve",
+        name: "Dissolve",
+        category: EffectCategory::Opacity,
+    },
+    EffectDef {
+        shader: "opacity-pressure",
+        name: "Opacity Pressure",
+        category: EffectCategory::Opacity,
     },
     // Color
     EffectDef {
@@ -302,6 +331,7 @@ pub unsafe fn draw_effects_library(hdc: HDC, panel: &RECT) {
 
         let categories = [
             EffectCategory::Basic,
+            EffectCategory::Opacity,
             EffectCategory::Color,
             EffectCategory::Blur,
             EffectCategory::Distortion,
@@ -379,6 +409,7 @@ mod tests {
     fn all_categories_represented() {
         for &cat in &[
             EffectCategory::Basic,
+            EffectCategory::Opacity,
             EffectCategory::Color,
             EffectCategory::Blur,
             EffectCategory::Distortion,
