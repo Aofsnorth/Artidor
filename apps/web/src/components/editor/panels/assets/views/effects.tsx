@@ -6,6 +6,7 @@ import { PopOutAction } from "@/components/editor/floating-window";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
 import { effects as presetEffects } from "@/lib/presets/effects";
 import { effectsRegistry, EFFECT_TARGET_ELEMENT_TYPES } from "@/lib/effects";
+import { createPresetEffectDefinition } from "@/lib/effects/preset-mappings";
 import { effectPreviewService } from "@/services/renderer/effect-preview";
 import { useEditor } from "@/hooks/use-editor";
 import { buildEffectElement } from "@/lib/timeline/element-utils";
@@ -29,20 +30,9 @@ const PRESET_EFFECT_CATEGORY_BY_TYPE = new Map(
 	presetEffects.map((effect) => [effect.type, effect.category]),
 );
 
-const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map((effect) => ({
-	type: effect.type,
-	name: effect.name,
-	keywords: [effect.category.toLowerCase()],
-	params: [],
-	renderer: {
-		passes: [
-			{
-				shader: "contrast",
-				uniforms: () => ({ amount: 1 }),
-			},
-		],
-	},
-}));
+const PRESET_EFFECTS: EffectDefinition[] = presetEffects.map(
+	createPresetEffectDefinition,
+);
 
 /**
  * Categories shown in the Effects panel filter chips. EFFECT_CATEGORIES
@@ -99,10 +89,7 @@ export function EffectsView() {
 	const categoryToLabel = useMemo(
 		() =>
 			new Map<string, string>(
-				EFFECT_PANEL_CATEGORIES.map((c) => [
-					c,
-					t(EFFECT_CATEGORY_TO_KEY[c]),
-				]),
+				EFFECT_PANEL_CATEGORIES.map((c) => [c, t(EFFECT_CATEGORY_TO_KEY[c])]),
 			),
 		[t],
 	);

@@ -120,7 +120,9 @@ function withRenderTimeout(
 ): Promise<AudioBuffer> {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(() => {
-			reject(new Error(`OfflineAudioContext render timed out after ${timeoutMs}ms`));
+			reject(
+				new Error(`OfflineAudioContext render timed out after ${timeoutMs}ms`),
+			);
 		}, timeoutMs);
 
 		ctx.startRendering().then(

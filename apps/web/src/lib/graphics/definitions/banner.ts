@@ -26,7 +26,8 @@ export const bannerGraphicDefinition: GraphicDefinition = {
 	keywords: ["banner", "ribbon", "flag"],
 	params: BANNER_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
 		const drawWidth = Math.max(1, width - inset * 2);
 		const drawHeight = Math.max(1, height - inset * 2);
 		const notch = Math.min(50, Math.max(0, Number(params.notch ?? 18))) / 100;

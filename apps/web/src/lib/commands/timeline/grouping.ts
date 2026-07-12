@@ -4,7 +4,11 @@
  */
 import { Command, type CommandResult } from "@/lib/commands/base-command";
 import { EditorCore } from "@/core";
-import type { TimelineElement, ElementRef } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type TimelineElement,
+	type ElementRef,
+} from "@/lib/timeline";
 import { isValidParentChain } from "@/lib/timeline/parenting";
 import { generateUUID } from "@/utils/id";
 
@@ -32,9 +36,7 @@ export class GroupElementsCommand extends Command {
 
 		const beforeByRef = new Map<string, string | undefined>();
 		for (const ref of this.elementRefs) {
-			const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
-				(t) => t.id === ref.trackId,
-			);
+			const track = getOrderedTracks(tracks).find((t) => t.id === ref.trackId);
 			const element = track?.elements.find((el) => el.id === ref.elementId);
 			if (element) {
 				beforeByRef.set(
@@ -102,7 +104,7 @@ export class UngroupElementsCommand extends Command {
 		const tracks = scene.tracks;
 
 		const members: ElementRef[] = [];
-		for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+		for (const track of getOrderedTracks(tracks)) {
 			for (const el of track.elements) {
 				if ((el as { groupId?: string }).groupId === this.groupId) {
 					members.push({ trackId: track.id, elementId: el.id });
@@ -111,9 +113,7 @@ export class UngroupElementsCommand extends Command {
 		}
 
 		for (const ref of members) {
-			const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
-				(t) => t.id === ref.trackId,
-			);
+			const track = getOrderedTracks(tracks).find((t) => t.id === ref.trackId);
 			const element = track?.elements.find((el) => el.id === ref.elementId);
 			if (element) {
 				this.previousAssignments.push({
@@ -179,7 +179,7 @@ export class CombineElementsCommand extends Command {
 		const editor = EditorCore.getInstance();
 		const scene = editor.scenes.getActiveScene();
 		const tracks = scene.tracks;
-		const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+		const orderedTracks = getOrderedTracks(tracks);
 
 		// Save previous state
 		for (const ref of this.elementRefs) {
@@ -215,14 +215,12 @@ export class CombineElementsCommand extends Command {
 			startTime: Math.min(
 				...this.previousElements.map((p) => p.element.startTime),
 			),
-			duration: Math.max(
-				...this.previousElements.map(
-					(p) => p.element.startTime + p.element.duration,
-				),
-			) -
-				Math.min(
-					...this.previousElements.map((p) => p.element.startTime),
-				),
+			duration:
+				Math.max(
+					...this.previousElements.map(
+						(p) => p.element.startTime + p.element.duration,
+					),
+				) - Math.min(...this.previousElements.map((p) => p.element.startTime)),
 			trimStart: 0,
 			trimEnd: 0,
 			opacity: 1,
@@ -248,22 +246,19 @@ export class CombineElementsCommand extends Command {
 		const editor = EditorCore.getInstance();
 
 		// Remove combined element
+		const combinedTrackId =
+			getOrderedTracks(editor.scenes.getActiveScene().tracks).find((track) =>
+				track.elements.some((element) => element.id === this.combinedId),
+			)?.id ?? "";
 		editor.timeline.deleteElements({
-			elements: [
-				{
-					trackId: editor.scenes
-						.getActiveScene()
-						.tracks.overlay[0]?.id ?? "",
-					elementId: this.combinedId,
-				},
-			],
+			elements: [{ trackId: combinedTrackId, elementId: this.combinedId }],
 		});
 
 		// Restore original elements
 		for (const prev of this.previousElements) {
 			editor.timeline.insertElement({
 				// biome-ignore lint/suspicious/noExplicitAny: combined elements preserve heterogeneous payloads
-			element: prev.element as any,
+				element: prev.element as any,
 				placement: { mode: "explicit", trackId: prev.ref.trackId },
 			});
 		}
@@ -303,7 +298,7 @@ export class SetParentCommand extends Command {
 		const tracks = scene.tracks;
 
 		// Find the element
-		const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+		const track = getOrderedTracks(tracks).find(
 			(t) => t.id === this.ref.trackId,
 		);
 		const element = track?.elements.find((el) => el.id === this.ref.elementId);
@@ -375,7 +370,7 @@ export class UnlinkParentCommand extends Command {
 		const editor = EditorCore.getInstance();
 		const scene = editor.scenes.getActiveScene();
 		const tracks = scene.tracks;
-		const track = [...tracks.overlay, tracks.main, ...tracks.audio].find(
+		const track = getOrderedTracks(tracks).find(
 			(t) => t.id === this.ref.trackId,
 		);
 		const element = track?.elements.find((el) => el.id === this.ref.elementId);

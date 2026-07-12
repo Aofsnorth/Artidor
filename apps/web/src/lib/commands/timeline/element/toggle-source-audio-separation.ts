@@ -7,6 +7,7 @@ import {
 } from "@/lib/timeline/audio-separation";
 import { buildEmptyTrack } from "@/lib/timeline/placement";
 import { updateElementInSceneTracks } from "@/lib/timeline/track-element-update";
+import { getOrderedTracks } from "@/lib/timeline";
 import type {
 	AudioTrack,
 	SceneTracks,
@@ -31,11 +32,9 @@ export class ToggleSourceAudioSeparationCommand extends Command {
 		const editor = EditorCore.getInstance();
 		this.savedState = editor.scenes.getActiveScene().tracks;
 
-		const sourceTrack = [
-			...this.savedState.overlay,
-			this.savedState.main,
-			...this.savedState.audio,
-		].find((track) => track.id === this.params.trackId);
+		const sourceTrack = getOrderedTracks(this.savedState).find(
+			(track) => track.id === this.params.trackId,
+		);
 		if (!sourceTrack) {
 			return;
 		}

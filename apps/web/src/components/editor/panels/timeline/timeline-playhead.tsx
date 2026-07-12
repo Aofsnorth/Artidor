@@ -13,7 +13,10 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
 import { useEditor } from "@/hooks/use-editor";
 import { useRafLoop } from "@/hooks/use-raf-loop";
-import { TIMELINE_SCROLLBAR_SIZE_PX, TIMELINE_CONTENT_LEFT_INSET_PX } from "./layout";
+import {
+	TIMELINE_SCROLLBAR_SIZE_PX,
+	TIMELINE_CONTENT_LEFT_INSET_PX,
+} from "./layout";
 import { TIMELINE_LAYERS } from "./layers";
 
 // Movement (px) under which a pointer down→up on the handle counts as a click
@@ -208,10 +211,7 @@ export function TimelinePlayhead({
 	// rAF loop to update playhead position directly on the DOM element.
 	// Only runs during playback (enabled flag) — when paused, position
 	// updates happen via the scroll listener and the initial render.
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	useRafLoop(updatePlayheadPosition, isPlaying);
 
 	// Update position on scroll (when paused, the rAF loop isn't running).
@@ -307,7 +307,6 @@ export function TimelinePlayhead({
 					aria-label="Drag playhead (click to show time)"
 					className={`pointer-events-auto absolute top-1 left-1/2 h-4 w-2.5 -translate-x-1/2 cursor-col-resize rounded-[6px] border shadow-sm transition-colors ${isSnappingToPlayhead ? "border-gray-300 bg-white" : "border-gray-300 bg-white"}`}
 					onMouseDown={handleHandleMouseDown}
-
 				/>
 
 				{showTimeBubble && (

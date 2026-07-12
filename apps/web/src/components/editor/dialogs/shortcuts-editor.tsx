@@ -209,7 +209,10 @@ function ShortcutRow({
 	onReset: () => void;
 }) {
 	const displayKeys = shortcut.keys.filter((key) => {
-		if (key.includes("Cmd") && shortcut.keys.includes(key.replace("Cmd", "Ctrl")))
+		if (
+			key.includes("Cmd") &&
+			shortcut.keys.includes(key.replace("Cmd", "Ctrl"))
+		)
 			return false;
 		return true;
 	});

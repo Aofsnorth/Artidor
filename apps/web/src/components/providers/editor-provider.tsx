@@ -212,9 +212,11 @@ function EditorRuntimeBindings() {
 	// dynamic import hits the browser's module cache on first export.
 	// Progressive enhancement — silently no-ops if WASM is unavailable.
 	useEffect(() => {
-		void import("@/services/renderer/wasm-preload").then(({ preloadWasmModule }) => {
-			preloadWasmModule();
-		});
+		void import("@/services/renderer/wasm-preload").then(
+			({ preloadWasmModule }) => {
+				preloadWasmModule();
+			},
+		);
 	}, []);
 
 	// Dispose the warm export worker when the editor unmounts to release

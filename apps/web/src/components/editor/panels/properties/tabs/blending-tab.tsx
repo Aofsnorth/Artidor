@@ -146,7 +146,7 @@ export function BlendingTab({
 	});
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:blending`}>
+		<Section card collapsible sectionKey={`${element.id}:blending`}>
 			<SectionHeader
 				trailing={
 					<CopyPasteButtons

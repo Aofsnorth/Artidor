@@ -83,7 +83,9 @@ export default function SharePage({
 		// The full read-only viewer is wired off the resolved payload. For now we
 		// route to the editor in viewer mode keyed by the share id; the editor
 		// reads the payload's Drive info to load the project read-only.
-		router.push(`/editor/${state.payload.projectId}?share=${encodeURIComponent(id)}`);
+		router.push(
+			`/editor/${state.payload.projectId}?share=${encodeURIComponent(id)}`,
+		);
 	};
 
 	return (

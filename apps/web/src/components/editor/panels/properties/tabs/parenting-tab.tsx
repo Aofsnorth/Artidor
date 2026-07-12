@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
-import { getElementDisplayName } from "@/lib/timeline";
+import { getElementDisplayName, getOrderedTracks } from "@/lib/timeline";
 import type {
 	TimelineElement,
 	TimelineTrack,
@@ -36,7 +36,7 @@ export function ParentingTab({
 		});
 	const tracks = useMemo<TimelineTrack[]>(() => {
 		if (!scene) return [];
-		return [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio];
+		return getOrderedTracks(scene.tracks);
 	}, [scene]);
 	const elements = useMemo<TimelineElement[]>(() => {
 		const result: TimelineElement[] = [];

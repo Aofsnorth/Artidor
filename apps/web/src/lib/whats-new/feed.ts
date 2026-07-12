@@ -23,6 +23,20 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-editor-ui-polish",
+		date: "2026-07-19",
+		tag: "improvement",
+		title: "Inspector UI polish and snappier preview playback",
+		items: [
+			"Color picker saturation ring is draggable across the panel using pointer events and capture.",
+			"Text tracks are inserted on the overlay track by default so added text is visible above the main video.",
+			"The Audible/Muted toggle in the inspector updates immediately when clicked.",
+			"The primary inspector tab (Element, Video, Audio, etc.) stays highlighted when switching into nested sub-tabs such as Audio → Speed.",
+			"Inspector second-level tabs now share a consistent collapsible card design with spacing and padding, matching the Audio tab.",
+			"Preview video playback is snappier: the video prefetch buffer is smaller, the render-perf tracker reacts faster, and adaptive quality drops a tier sooner when the GPU is struggling.",
+		],
+	},
+	{
 		id: "2026-07-19-timeline-drag-overlap-fix",
 		date: "2026-07-19",
 		tag: "fix",
@@ -39,7 +53,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		tag: "performance",
 		title: "Faster, more reliable beat detection",
 		items: [
-			"Beat detection now decodes audio inside the worker using OfflineAudioContext, the spec-correct worker API, so it no longer fails with \"AudioContext not available in worker\" on browsers that only expose AudioContext on the main thread.",
+			'Beat detection now decodes audio inside the worker using OfflineAudioContext, the spec-correct worker API, so it no longer fails with "AudioContext not available in worker" on browsers that only expose AudioContext on the main thread.',
 			"The mono mixdown and energy-analysis loops are optimized with pre-cached channel buffers, Float32Array energy storage, and fewer property lookups, cutting per-analysis CPU time.",
 		],
 	},

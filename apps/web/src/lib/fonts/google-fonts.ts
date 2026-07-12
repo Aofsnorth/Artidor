@@ -72,7 +72,9 @@ export async function loadFullFont({
 	});
 	await Promise.all(
 		weights.map((weight) =>
-			document.fonts.load(`${weight} 16px "${family.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`),
+			document.fonts.load(
+				`${weight} 16px "${family.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`,
+			),
 		),
 	);
 	fullLoaded.add(family);

@@ -60,7 +60,10 @@ function applyStroke({
 	strokeTaper?: GraphicStrokeTaper;
 }) {
 	ctx.strokeStyle = strokeColor;
-	ctx.lineWidth = strokeTaper && strokeTaper !== "none" ? Math.max(1, strokeWidth * 0.55) : strokeWidth;
+	ctx.lineWidth =
+		strokeTaper && strokeTaper !== "none"
+			? Math.max(1, strokeWidth * 0.55)
+			: strokeWidth;
 	ctx.lineCap = strokeTaper && strokeTaper !== "none" ? "round" : ctx.lineCap;
 	ctx.setLineDash(getStrokeDash({ strokeDash, strokeWidth }));
 

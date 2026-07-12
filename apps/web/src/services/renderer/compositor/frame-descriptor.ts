@@ -396,7 +396,9 @@ function buildMediaGraphicStyleLayers({
 	const hasStroke = Boolean(style.stroke?.enabled && style.stroke.width > 0);
 	const hasShadow = Boolean(style.shadow?.enabled);
 	const hasBorder = Boolean(
-		style.border?.enabled && style.border.width > 0 && (style.border.opacity ?? 0) > 0,
+		style.border?.enabled &&
+			style.border.width > 0 &&
+			(style.border.opacity ?? 0) > 0,
 	);
 	if (!hasFill && !hasStroke && !hasShadow && !hasBorder) return empty;
 
@@ -405,7 +407,8 @@ function buildMediaGraphicStyleLayers({
 			style.stroke?.width ?? 0,
 			style.border?.width ?? 0,
 			style.shadow?.blur ?? 0,
-		) * 2 +
+		) *
+			2 +
 			Math.abs(style.shadow?.offsetX ?? 0) +
 			Math.abs(style.shadow?.offsetY ?? 0),
 	);

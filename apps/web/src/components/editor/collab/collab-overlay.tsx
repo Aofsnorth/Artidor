@@ -34,7 +34,14 @@ function RemoteCursor({
 				transform: "translate(-2px, -2px)",
 			}}
 		>
-			<svg width="20" height="20" viewBox="0 0 20 20" fill="none" role="img" aria-label={`${nickname} cursor`}>
+			<svg
+				width="20"
+				height="20"
+				viewBox="0 0 20 20"
+				fill="none"
+				role="img"
+				aria-label={`${nickname} cursor`}
+			>
 				<path
 					d="M3 2L17 8L10 11L7 17L3 2Z"
 					fill={color}
@@ -58,8 +65,7 @@ export function CollabPresenceBar() {
 	const collab = useCollabStore();
 
 	const collaborators = useMemo(
-		() =>
-			collab.collaborators.filter((c) => c.id !== collab.sessionId),
+		() => collab.collaborators.filter((c) => c.id !== collab.sessionId),
 		[collab.collaborators, collab.sessionId],
 	);
 
@@ -94,8 +100,7 @@ export function CollabCursorOverlay() {
 	const collab = useCollabStore();
 
 	const remoteCursors = useMemo(
-		() =>
-			collab.cursors.filter((c) => c.collaboratorId !== collab.sessionId),
+		() => collab.cursors.filter((c) => c.collaboratorId !== collab.sessionId),
 		[collab.cursors, collab.sessionId],
 	);
 

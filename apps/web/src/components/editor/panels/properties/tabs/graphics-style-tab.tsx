@@ -24,7 +24,7 @@ export function GraphicsStyleTab({
 	trackId: string;
 }) {
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<ColorFillSection element={element} trackId={trackId} />
 			<StrokeSection element={element} trackId={trackId} />
 			<BorderSection element={element} trackId={trackId} />
@@ -69,7 +69,12 @@ function ColorFillSection({
 	};
 
 	return (
-		<Section collapsible defaultOpen sectionKey={`${element.id}:graphics-fill`}>
+		<Section
+			card
+			collapsible
+			defaultOpen
+			sectionKey={`${element.id}:graphics-fill`}
+		>
 			<SectionHeader>
 				<SectionTitle>{t("properties.graphics.colorFill")}</SectionTitle>
 			</SectionHeader>
@@ -183,6 +188,7 @@ function StrokeSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={stroke.enabled}
 			sectionKey={`${element.id}:graphics-stroke`}
@@ -269,6 +275,7 @@ function BorderSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={border.enabled}
 			sectionKey={`${element.id}:graphics-border`}
@@ -395,6 +402,7 @@ function ShadowSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={shadow.enabled}
 			sectionKey={`${element.id}:graphics-shadow`}

@@ -22,12 +22,13 @@ import { snapElementEdge, type SnapPoint } from "@/lib/timeline/snap-utils";
 import { registerCanceller } from "@/lib/cancel-interaction";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
-import type {
-	DropTarget,
-	ElementDragState,
-	SceneTracks,
-	TimelineElement,
-	TimelineTrack,
+import {
+	getOrderedTracks,
+	type DropTarget,
+	type ElementDragState,
+	type SceneTracks,
+	type TimelineElement,
+	type TimelineTrack,
 } from "@/lib/timeline";
 
 interface UseElementInteractionProps {
@@ -124,9 +125,7 @@ function getDragDropTarget({
 	const scrollContainer = tracksScrollRef.current;
 	if (!containerRect || !scrollContainer) return null;
 
-	const sourceTrack = [...tracks.overlay, tracks.main, ...tracks.audio].find(
-		({ id }) => id === trackId,
-	);
+	const sourceTrack = getOrderedTracks(tracks).find(({ id }) => id === trackId);
 	const movingElement = sourceTrack?.elements.find(
 		({ id }) => id === elementId,
 	);
@@ -137,7 +136,11 @@ function getDragDropTarget({
 	const scrollTop = scrollContainer.scrollTop;
 	const scrollContainerRect = scrollContainer.getBoundingClientRect();
 	const headerHeight = headerRef?.current?.getBoundingClientRect().height ?? 0;
-	const mouseX = clientX - scrollContainerRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
+	const mouseX =
+		clientX -
+		scrollContainerRect.left +
+		scrollLeft -
+		TIMELINE_CONTENT_LEFT_INSET_PX;
 	const mouseY = clientY - scrollContainerRect.top + scrollTop - headerHeight;
 
 	return computeDropTarget({
@@ -190,10 +193,7 @@ export function useElementInteraction({
 	// every mousemove), making drag interactions unreliable — especially
 	// on non-main tracks where the effect re-subscription race causes
 	// mouseup to be missed.
-	const tracks = useMemo(
-		() => [...sceneTracks.overlay, sceneTracks.main, ...sceneTracks.audio],
-		[sceneTracks],
-	);
+	const tracks = useMemo(() => getOrderedTracks(sceneTracks), [sceneTracks]);
 	const trackHeights = useTimelineStore((s) => s.trackHeights);
 	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
 	const extraHeights = useMemo(
@@ -536,9 +536,15 @@ export function useElementInteraction({
 						targetTrackId: newTrackId,
 						elementId: dragState.elementId,
 						newStartTime: snappedTime,
-						createTrack: { type: sourceTrack.type, index: dropTarget.trackIndex },
+						createTrack: {
+							type: sourceTrack.type,
+							index: dropTarget.trackIndex,
+						},
 					});
-					selectElement({ trackId: newTrackId, elementId: dragState.elementId });
+					selectElement({
+						trackId: newTrackId,
+						elementId: dragState.elementId,
+					});
 				} else {
 					const targetTrack = tracks[dropTarget.trackIndex];
 					if (targetTrack) {

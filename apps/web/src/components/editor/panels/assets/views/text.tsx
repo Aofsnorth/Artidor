@@ -140,8 +140,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				toast.success(t("textTrack.added", { name: preset.name }));
 			} catch (error) {
 				toast.error(t("catalog.couldNotAddText"), {
-					description:
-						error instanceof Error ? error.message : "Unknown error",
+					description: error instanceof Error ? error.message : "Unknown error",
 				});
 			} finally {
 				setBusy(false);

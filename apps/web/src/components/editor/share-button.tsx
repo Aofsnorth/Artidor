@@ -147,7 +147,9 @@ export function ShareButton() {
 					: "Save your revoke token to disable the link later.",
 			});
 		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "Could not create share");
+			toast.error(
+				err instanceof Error ? err.message : "Could not create share",
+			);
 		} finally {
 			setCreating(false);
 		}
@@ -294,8 +296,8 @@ export function ShareButton() {
 									{manageToken}
 								</code>
 								<p className="text-[0.66rem] leading-relaxed text-amber-100/55">
-									This is shown once. Keep it to disable the link later; we don't
-									store it in a recoverable form.
+									This is shown once. Keep it to disable the link later; we
+									don't store it in a recoverable form.
 								</p>
 							</div>
 						</div>

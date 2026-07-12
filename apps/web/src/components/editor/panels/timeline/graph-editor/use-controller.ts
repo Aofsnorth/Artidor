@@ -44,7 +44,13 @@ export function useGraphEditorController() {
 				playheadTime,
 				preferredComponentKey: activeComponentKey,
 			}),
-		[activeComponentKey, playheadTime, renderTracks, selectedElements, selectedKeyframes],
+		[
+			activeComponentKey,
+			playheadTime,
+			renderTracks,
+			selectedElements,
+			selectedKeyframes,
+		],
 	);
 
 	const stateKey =
@@ -179,7 +185,10 @@ export function useGraphEditorController() {
 		open,
 		onOpenChange: handleOpenChange,
 		canOpen: state.status === "ready",
-		tooltip: state.status === "ready" ? t("timeline.toolbar.graphEditor") : state.message,
+		tooltip:
+			state.status === "ready"
+				? t("timeline.toolbar.graphEditor")
+				: state.message,
 		state,
 		onActiveComponentKeyChange: handleActiveComponentKeyChange,
 		onPreviewValue: handlePreviewValue,

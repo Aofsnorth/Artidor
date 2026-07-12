@@ -150,7 +150,8 @@ export function StartCollabDialog({
 			return;
 		}
 		const project = editor.project.getActiveOrNull();
-		const projectName = project?.metadata.name ?? t("collaboration.defaultProjectName");
+		const projectName =
+			project?.metadata.name ?? t("collaboration.defaultProjectName");
 		setCreating(true);
 		try {
 			await editor.collab.host({ projectName, mode, nickname: name });
@@ -201,7 +202,10 @@ export function StartCollabDialog({
 				<DialogHeader className="relative">
 					<div className="flex items-center gap-3">
 						<span className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.05] shadow-inner shadow-white/[0.03]">
-							<HugeiconsIcon icon={UserAddIcon} className="size-4 text-white/85" />
+							<HugeiconsIcon
+								icon={UserAddIcon}
+								className="size-4 text-white/85"
+							/>
 						</span>
 						<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
 							{isActive
@@ -226,7 +230,9 @@ export function StartCollabDialog({
 								<Input
 									value={nickname}
 									onChange={(e) => setNickname(e.target.value)}
-									placeholder={t("collaboration.startDialog.nicknamePlaceholder")}
+									placeholder={t(
+										"collaboration.startDialog.nicknamePlaceholder",
+									)}
 									maxLength={50}
 									className="h-9 border-white/[0.1] bg-white/[0.04] text-[0.8rem] text-white/90 placeholder:text-white/30"
 								/>
@@ -335,9 +341,7 @@ export function JoinCollabDialog({
 			onOpenChange(false);
 		} catch (err) {
 			toast.error(
-				err instanceof Error
-					? err.message
-					: t("collaboration.toast.joinError"),
+				err instanceof Error ? err.message : t("collaboration.toast.joinError"),
 			);
 		} finally {
 			setJoining(false);
@@ -358,7 +362,10 @@ export function JoinCollabDialog({
 				<DialogHeader className="relative">
 					<div className="flex items-center gap-3">
 						<span className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/[0.08] bg-white/[0.05] shadow-inner shadow-white/[0.03]">
-							<HugeiconsIcon icon={UserAddIcon} className="size-4 text-white/85" />
+							<HugeiconsIcon
+								icon={UserAddIcon}
+								className="size-4 text-white/85"
+							/>
 						</span>
 						<DialogTitle className="text-[0.95rem] font-semibold tracking-tight">
 							{t("collaboration.joinDialog.title")}

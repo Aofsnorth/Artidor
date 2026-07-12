@@ -563,10 +563,7 @@ function StickerItem({
 
 	const preview = (
 		<div className="relative flex size-full items-center justify-center p-3">
-			<div
-				aria-hidden
-				className="absolute inset-0 rounded-sm bg-black"
-			/>
+			<div aria-hidden className="absolute inset-0 rounded-sm bg-black" />
 			{hasImageError ? (
 				<span className="relative z-10 text-white text-center text-xs break-all">
 					{displayName}

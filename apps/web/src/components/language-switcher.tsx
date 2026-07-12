@@ -17,11 +17,7 @@ import {
  * is shown as a button; picking a different option updates the global
  * locale and persists it to localStorage via the I18n provider.
  */
-export function LanguageSwitcher({
-	className,
-}: {
-	className?: string;
-}) {
+export function LanguageSwitcher({ className }: { className?: string }) {
 	const { locale, setLocale, t } = useI18n();
 
 	return (

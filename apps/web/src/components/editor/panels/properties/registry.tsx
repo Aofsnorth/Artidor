@@ -444,7 +444,7 @@ function getTextConfig({
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "text",
-			tabs: [
+		tabs: [
 			// Text elements have their own dedicated tab. The generic
 			// "Element" tab (identity, source, relationships) is skipped
 			// because Text already carries its own identity (the content
@@ -498,7 +498,7 @@ function getVideoConfig({
 	const hideAudioTab = mediaAsset?.hasAudio === false;
 	return {
 		defaultTab: "transform",
-			tabs: [
+		tabs: [
 			buildElementTab({ element, mediaAssets }),
 			buildTransformTab({ element }),
 			buildGraphicsStyleTab({ element }),
@@ -587,7 +587,7 @@ function getImageConfig({
 }): ElementPropertiesConfig {
 	return {
 		defaultTab: "transform",
-			tabs: [
+		tabs: [
 			buildElementTab({ element, mediaAssets }),
 			buildImageTab({ element }),
 			buildGraphicsStyleTab({ element }),

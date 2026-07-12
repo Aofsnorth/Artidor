@@ -241,7 +241,9 @@ function SoundEffectsView() {
 
 	useEffect(() => {
 		return () => {
-			if (useAssetPreviewStore.getState().audioPreviewId?.startsWith("sound-")) {
+			if (
+				useAssetPreviewStore.getState().audioPreviewId?.startsWith("sound-")
+			) {
 				useAssetPreviewStore.getState().stopAudioPreview();
 			}
 		};
@@ -372,8 +374,6 @@ function SavedSoundsView() {
 		clearSavedSounds,
 	} = useSoundsStore();
 
-
-
 	const [showClearDialog, setShowClearDialog] = useState(false);
 
 	useEffect(() => {
@@ -385,7 +385,9 @@ function SavedSoundsView() {
 
 	useEffect(() => {
 		return () => {
-			if (useAssetPreviewStore.getState().audioPreviewId?.startsWith("saved-")) {
+			if (
+				useAssetPreviewStore.getState().audioPreviewId?.startsWith("saved-")
+			) {
 				useAssetPreviewStore.getState().stopAudioPreview();
 			}
 		};
@@ -457,9 +459,7 @@ function SavedSoundsView() {
 					className="text-muted-foreground size-10"
 				/>
 				<div className="flex flex-col gap-2 text-center">
-					<p className="text-lg font-medium">
-						{t("sounds.saved.empty.title")}
-					</p>
+					<p className="text-lg font-medium">{t("sounds.saved.empty.title")}</p>
 					<p className="text-muted-foreground text-sm text-balance">
 						{t("sounds.saved.empty.hint")}
 					</p>

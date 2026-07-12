@@ -265,10 +265,10 @@ export function AudioTab({
 			)}
 			{dubbingTracks && dubbingTracks.length > 1 && !isSeparated && (
 				<Section
+					card
 					collapsible
 					defaultOpen
 					sectionKey={`${element.id}:dubbing`}
-					className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
 				>
 					<SectionHeader className="h-10 px-3">
 						<SectionTitle className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white/80">
@@ -338,10 +338,10 @@ export function AudioTab({
 				</div>
 			)}
 			<Section
+				card
 				collapsible
 				defaultOpen
 				sectionKey={`${element.id}:audio:${variant}`}
-				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
 			>
 				<SectionHeader
 					className="h-10 px-3"
@@ -368,7 +368,10 @@ export function AudioTab({
 								if ("fadeInDuration" in el && el.fadeInDuration !== undefined) {
 									style.fadeInDuration = el.fadeInDuration;
 								}
-								if ("fadeOutDuration" in el && el.fadeOutDuration !== undefined) {
+								if (
+									"fadeOutDuration" in el &&
+									el.fadeOutDuration !== undefined
+								) {
 									style.fadeOutDuration = el.fadeOutDuration;
 								}
 								return style;

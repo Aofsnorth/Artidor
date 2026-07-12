@@ -74,7 +74,11 @@ function dbGet(db: IDBDatabase, key: string): Promise<ArrayBuffer | undefined> {
 	});
 }
 
-function dbPut(db: IDBDatabase, key: string, value: ArrayBuffer): Promise<void> {
+function dbPut(
+	db: IDBDatabase,
+	key: string,
+	value: ArrayBuffer,
+): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const tx = db.transaction(STORE_NAME, "readwrite");
 		tx.objectStore(STORE_NAME).put(value, key);

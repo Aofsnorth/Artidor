@@ -49,7 +49,9 @@ export async function POST(
 
 	const response: JoinRoomResult = {
 		sessionId: result.sessionId,
-		color: result.room.collaborators.find((c) => c.id === result.sessionId)?.color ?? "#ef4444",
+		color:
+			result.room.collaborators.find((c) => c.id === result.sessionId)?.color ??
+			"#ef4444",
 		isHost: false,
 		room: {
 			roomId: result.room.roomId,

@@ -44,7 +44,7 @@ export function ColorGradingTab({
 	trackId: string;
 }) {
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<MasterSection element={element} trackId={trackId} />
 			<PerBandHslSection element={element} trackId={trackId} />
 			<CurvesSection element={element} trackId={trackId} />
@@ -119,6 +119,7 @@ export function MasterSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			sectionKey={`${element.id}:advanced:master`}
 			defaultOpen
@@ -138,9 +139,7 @@ export function MasterSection({
 								// Copy only color-related effects (hsl, curves, lut)
 								const colorEffects = el.effects.filter(
 									(e) =>
-										e.type === "hsl" ||
-										e.type === "curves" ||
-										e.type === "lut",
+										e.type === "hsl" || e.type === "curves" || e.type === "lut",
 								);
 								return colorEffects.length > 0
 									? { effects: colorEffects.map((e) => ({ ...e })) }
@@ -259,6 +258,7 @@ export function PerBandHslSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			sectionKey={`${element.id}:advanced:bands`}
 			defaultOpen
@@ -414,6 +414,7 @@ function CurvesSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			sectionKey={`${element.id}:advanced:curves`}
 			defaultOpen={!!curvesEffect}
@@ -754,6 +755,7 @@ export function LutSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			sectionKey={`${element.id}:advanced:lut`}
 			defaultOpen={!!lutEffect}

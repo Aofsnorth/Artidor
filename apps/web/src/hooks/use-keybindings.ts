@@ -4,7 +4,6 @@ import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { isTypableDOMElement } from "@/utils/browser";
 
-
 /**
  * a composable that hooks to the caller component's
  * lifecycle and hooks to the keyboard events to fire

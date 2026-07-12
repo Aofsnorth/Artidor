@@ -48,7 +48,9 @@ export function ExportVideoDialog({
 }: ExportVideoDialogProps) {
 	const router = useRouter();
 	const [format, setFormat] = useState<ExportFormat>("mp4");
-	const [quality, setQuality] = useState<"low" | "medium" | "high" | "very_high">("medium");
+	const [quality, setQuality] = useState<
+		"low" | "medium" | "high" | "very_high"
+	>("medium");
 	const [includeAudio, setIncludeAudio] = useState(true);
 	const [saveToDrive, setSaveToDrive] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -59,7 +61,8 @@ export function ExportVideoDialog({
 		if (saveToDrive) {
 			if (!getGoogleClientId()) {
 				toast.error("Google Drive isn't set up yet", {
-					description: "Add your Google Client ID via the Drive import dialog first.",
+					description:
+						"Add your Google Client ID via the Drive import dialog first.",
 				});
 				setBusy(false);
 				return;
@@ -279,10 +282,7 @@ export function ExportVideoDialog({
 							{busy ? (
 								<div className="size-3.5 animate-spin rounded-full border-2 border-black/30 border-t-black" />
 							) : saveToDrive ? (
-								<HugeiconsIcon
-									icon={CloudUploadIcon}
-									className="size-3.5"
-								/>
+								<HugeiconsIcon icon={CloudUploadIcon} className="size-3.5" />
 							) : (
 								<HugeiconsIcon icon={Video01Icon} className="size-3.5" />
 							)}

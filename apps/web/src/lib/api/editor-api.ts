@@ -62,6 +62,11 @@ declare global {
 						name: string;
 						elementCount: number;
 					}>;
+					overlayAfter: Array<{
+						id: string;
+						name: string;
+						elementCount: number;
+					}>;
 					audio: Array<{
 						id: string;
 						name: string;

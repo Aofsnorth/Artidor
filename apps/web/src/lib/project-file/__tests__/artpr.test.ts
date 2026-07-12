@@ -9,7 +9,12 @@ describe(".artpr project files", () => {
 	test("round-trips project JSON without storing plaintext", async () => {
 		const project = {
 			metadata: { id: "p1", name: "Secret Project" },
-			scenes: [{ id: "s1", tracks: { overlay: [], main: [], audio: [] } }],
+			scenes: [
+				{
+					id: "s1",
+					tracks: { overlay: [], main: [], overlayAfter: [], audio: [] },
+				},
+			],
 		};
 		const encoded = await encodeArtprProject(project);
 		expect(encoded).toContain("artidor-project");

@@ -12,26 +12,20 @@ describe("view_asset tool registration", () => {
 	});
 
 	test("view_asset is in the asset category", () => {
-		const tool = ALL_TOOLS.find(
-			(t) => t.def.function.name === "view_asset",
-		);
+		const tool = ALL_TOOLS.find((t) => t.def.function.name === "view_asset");
 		expect(tool).toBeDefined();
 		expect(tool?.category).toBe("asset");
 	});
 
 	test("view_asset requires assetId", () => {
-		const tool = ALL_TOOLS.find(
-			(t) => t.def.function.name === "view_asset",
-		);
+		const tool = ALL_TOOLS.find((t) => t.def.function.name === "view_asset");
 		const params = tool?.def.function.parameters;
 		expect(params?.required).toContain("assetId");
 		expect(params?.properties).toHaveProperty("assetId");
 	});
 
 	test("view_asset has an optional sampleFrames parameter (1-8)", () => {
-		const tool = ALL_TOOLS.find(
-			(t) => t.def.function.name === "view_asset",
-		);
+		const tool = ALL_TOOLS.find((t) => t.def.function.name === "view_asset");
 		const params = tool?.def.function.parameters;
 		const sf = params?.properties?.sampleFrames as
 			| { type: string; minimum?: number; maximum?: number }

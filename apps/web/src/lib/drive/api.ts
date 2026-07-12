@@ -62,7 +62,10 @@ export function setGoogleAccessToken(
 		// localStorage (persisted across sessions, more XSS-exposed).
 		sessionStorage.setItem("google_drive_access_token_enc", token);
 		const expiresAt = Date.now() + expiresInSeconds * 1000;
-		sessionStorage.setItem("google_drive_token_expires_at", expiresAt.toString());
+		sessionStorage.setItem(
+			"google_drive_token_expires_at",
+			expiresAt.toString(),
+		);
 		emitAuthChanged();
 	}
 }
@@ -471,7 +474,9 @@ export async function uploadMediaToDrive(
 		},
 	);
 	if (!res.ok) {
-		throw new Error(`Failed to upload "${file.name}" to Drive: HTTP ${res.status}`);
+		throw new Error(
+			`Failed to upload "${file.name}" to Drive: HTTP ${res.status}`,
+		);
 	}
 	const data = await res.json();
 	return data.id as string;

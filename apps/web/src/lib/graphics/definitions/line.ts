@@ -31,8 +31,15 @@ export const lineGraphicDefinition: GraphicDefinition = {
 	keywords: ["line", "bar", "divider", "rule", "stroke"],
 	params: LINE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, strokeDash, strokeTaper, inset } =
-			readShapeBaseStyle(params);
+		const {
+			fill,
+			stroke,
+			strokeWidth,
+			strokeAlign,
+			strokeDash,
+			strokeTaper,
+			inset,
+		} = readShapeBaseStyle(params);
 		const thickness = Math.max(
 			1,
 			Math.min(height - inset * 2, Number(params.thickness ?? 48)),

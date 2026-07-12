@@ -64,10 +64,7 @@ export function FiltersView() {
 	const idToLabel = useMemo(
 		() =>
 			new Map(
-				FILTER_CATEGORIES.map((c) => [
-					c.id,
-					t(FILTER_CATEGORY_TO_KEY[c.id]),
-				]),
+				FILTER_CATEGORIES.map((c) => [c.id, t(FILTER_CATEGORY_TO_KEY[c.id])]),
 			),
 		[t],
 	);

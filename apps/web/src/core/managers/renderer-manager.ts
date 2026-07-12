@@ -225,9 +225,7 @@ export class RendererManager {
 			// audio, we must deliver audio. A timeout that silently drops audio is
 			// worse than a slow export. If audio mixing genuinely hangs, the user
 			// can cancel the export.
-			const audioBuffer = audioBufferPromise
-				? await audioBufferPromise
-				: null;
+			const audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
 
 			if (includeAudio) {
 				console.info(
@@ -414,11 +412,7 @@ export class RendererManager {
 						new Promise<never>((_, reject) =>
 							setTimeout(() => {
 								exporter.cancel();
-								reject(
-									new Error(
-										"Main-thread export timed out after 120s",
-									),
-								);
+								reject(new Error("Main-thread export timed out after 120s"));
 							}, 120_000),
 						),
 					]);
@@ -453,7 +447,8 @@ export class RendererManager {
 				console.error("Export failed:", error);
 				return {
 					success: false,
-					error: error instanceof Error ? error.message : "Unknown export error",
+					error:
+						error instanceof Error ? error.message : "Unknown export error",
 				};
 			}
 		} catch (error) {

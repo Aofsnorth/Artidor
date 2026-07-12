@@ -14,6 +14,7 @@ function buildSceneTracks(overlay: TimelineTrack[] = []): SceneTracks {
 			muted: false,
 			hidden: false,
 		},
+		overlayAfter: [],
 		audio: [],
 	};
 }
@@ -27,7 +28,7 @@ function buildMockEditor({
 }): EditorCore {
 	return {
 		scenes: {
-			getActiveScene: () => ({ tracks } as { tracks: SceneTracks }),
+			getActiveScene: () => ({ tracks }) as { tracks: SceneTracks },
 		},
 		timeline: {
 			addTrack,

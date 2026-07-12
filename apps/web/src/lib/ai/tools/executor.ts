@@ -14,7 +14,11 @@
  */
 
 import type { EditorCore } from "@/core";
-import type { TextElement, TimelineElement } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type TextElement,
+	type TimelineElement,
+} from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { captureFrameFromVideo } from "@/lib/media/frame-capture";
 import { hasMediaId } from "@/lib/timeline/element-utils";
@@ -469,9 +473,7 @@ const HANDLERS: Record<string, Handler> = {
 		// works (apps/web/src/components/editor/panels/assets/views/text.tsx).
 		const requestedTrackId = asString(args.trackId, "");
 		const targetTrack = requestedTrackId
-			? [tracks.main, ...tracks.overlay, ...tracks.audio].find(
-					(track) => track.id === requestedTrackId,
-				)
+			? getOrderedTracks(tracks).find((track) => track.id === requestedTrackId)
 			: undefined;
 		const isCompatible = targetTrack?.type === "text";
 		const placed = editor.timeline.insertElement({
@@ -1178,9 +1180,10 @@ const HANDLERS: Record<string, Handler> = {
 		// can silently fail validation without throwing).
 		const sceneBefore = editor.scenes.getActiveSceneOrNull();
 		const countBefore = sceneBefore
-			? sceneBefore.tracks.main.elements.length +
-				sceneBefore.tracks.overlay.reduce((n, t) => n + t.elements.length, 0) +
-				sceneBefore.tracks.audio.reduce((n, t) => n + t.elements.length, 0)
+			? getOrderedTracks(sceneBefore.tracks).reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				)
 			: 0;
 
 		const trackId = asString(args.trackId);
@@ -1201,9 +1204,10 @@ const HANDLERS: Record<string, Handler> = {
 		// can return undefined (silent validation failure) without throwing.
 		const sceneAfter = editor.scenes.getActiveSceneOrNull();
 		const countAfter = sceneAfter
-			? sceneAfter.tracks.main.elements.length +
-				sceneAfter.tracks.overlay.reduce((n, t) => n + t.elements.length, 0) +
-				sceneAfter.tracks.audio.reduce((n, t) => n + t.elements.length, 0)
+			? getOrderedTracks(sceneAfter.tracks).reduce(
+					(n, t) => n + t.elements.length,
+					0,
+				)
 			: 0;
 
 		if (countAfter <= countBefore || !placed) {
@@ -2156,9 +2160,7 @@ const HANDLERS: Record<string, Handler> = {
 				hidden: track.hidden ?? false,
 			});
 		};
-		collect(scene.tracks.main);
-		for (const t of scene.tracks.overlay) collect(t);
-		for (const t of scene.tracks.audio) collect(t);
+		for (const t of getOrderedTracks(scene.tracks)) collect(t);
 		const summary = out
 			.map(
 				(t) =>

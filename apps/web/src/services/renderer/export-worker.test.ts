@@ -9,7 +9,10 @@ const workerSource = readFileSync(
 test("warm export resets cancellation state before each run", () => {
 	const handlerStart = workerSource.indexOf("async function handleExport");
 	const destructureStart = workerSource.indexOf("const {", handlerStart);
-	const resetPosition = workerSource.indexOf("isCancelled = false", handlerStart);
+	const resetPosition = workerSource.indexOf(
+		"isCancelled = false",
+		handlerStart,
+	);
 
 	expect(handlerStart).toBeGreaterThan(-1);
 	expect(resetPosition).toBeGreaterThan(handlerStart);

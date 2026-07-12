@@ -4,9 +4,13 @@ import { useEffect, useCallback, useRef } from "react";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useEditor } from "../use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
-import { buildStaticSnapPoints, snapToNearestPoint } from "@/lib/timeline/snap-utils";
+import {
+	buildStaticSnapPoints,
+	snapToNearestPoint,
+} from "@/lib/timeline/snap-utils";
 import {
 	getCenteredLineLeft,
+	getOrderedTracks,
 	timelineTimeToPixels,
 	timelineTimeToSnappedPixels,
 } from "@/lib/timeline";
@@ -45,15 +49,14 @@ export function useTimelinePlayhead({
 		(e) => e.playback.getIsScrubbing(),
 		["playback"],
 	);
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	const activeProject = editor.project.getActive();
 	const duration = editor.timeline.getTotalDuration();
 	const isShiftHeldRef = useShiftKey();
 	const autoScrollEnabled = useTimelineStore((s) => s.autoScrollEnabled);
-	const autoPlayWhileScrubbing = useTimelineStore((s) => s.autoPlayWhileScrubbing);
+	const autoPlayWhileScrubbing = useTimelineStore(
+		(s) => s.autoPlayWhileScrubbing,
+	);
 	const scrubDragMode = useTimelineStore((s) => s.scrubDragMode);
 	// The "Magnet" toolbar toggle. When off, the playhead must not snap to
 	// nearby keyframes/clip edges/bookmarks while scrubbing. Held in a ref
@@ -78,7 +81,16 @@ export function useTimelinePlayhead({
 		autoPlayWhileScrubbingRef.current = autoPlayWhileScrubbing;
 		scrubDragModeRef.current = scrubDragMode;
 		magnetEnabledRef.current = magnetEnabled;
-	}, [zoomLevel, duration, isScrubbing, isPlaying, autoScrollEnabled, autoPlayWhileScrubbing, scrubDragMode, magnetEnabled]);
+	}, [
+		zoomLevel,
+		duration,
+		isScrubbing,
+		isPlaying,
+		autoScrollEnabled,
+		autoPlayWhileScrubbing,
+		scrubDragMode,
+		magnetEnabled,
+	]);
 
 	const seek = useCallback(
 		({ time }: { time: number }) => editor.playback.seek({ time }),
@@ -86,7 +98,9 @@ export function useTimelinePlayhead({
 	);
 
 	const scrubTimeRef = useRef<number | null>(null);
-	const staticScrubSnapPointsRef = useRef<ReturnType<typeof buildStaticSnapPoints> | null>(null);
+	const staticScrubSnapPointsRef = useRef<ReturnType<
+		typeof buildStaticSnapPoints
+	> | null>(null);
 	const isDraggingRulerRef = useRef(false);
 	const hasDraggedRulerRef = useRef(false);
 	const lastMouseXRef = useRef<number>(0);
@@ -188,7 +202,7 @@ export function useTimelinePlayhead({
 		const selectedKeyframes = editor.selection.getSelectedKeyframes();
 		if (selectedKeyframes.length === 0) return [];
 		const tracks = editor.scenes.getActiveScene().tracks;
-		const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+		const orderedTracks = getOrderedTracks(tracks);
 		return selectedKeyframes.flatMap((selectedKeyframe) => {
 			const track = orderedTracks.find(
 				(track) => track.id === selectedKeyframe.trackId,
@@ -196,7 +210,9 @@ export function useTimelinePlayhead({
 			const element = track?.elements.find(
 				(element) => element.id === selectedKeyframe.elementId,
 			);
-			const keyframe = getElementKeyframes({ animations: element?.animations }).find(
+			const keyframe = getElementKeyframes({
+				animations: element?.animations,
+			}).find(
 				(keyframe) =>
 					keyframe.id === selectedKeyframe.keyframeId &&
 					keyframe.propertyPath === selectedKeyframe.propertyPath,

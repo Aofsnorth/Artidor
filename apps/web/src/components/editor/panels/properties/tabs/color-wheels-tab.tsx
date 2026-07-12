@@ -81,8 +81,9 @@ export function ColorWheelsTab({
 	};
 
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<Section
+				card
 				collapsible
 				defaultOpen
 				sectionKey={`${element.id}:color-wheels`}

@@ -166,15 +166,18 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		// consistent across the main-thread, single-worker, and parallel-worker
 		// paths. The negotiator can change the output container format (e.g.
 		// MP4→WebM when falling back to VP9), so we build the container after.
-		const { codec: videoCodec, hardwareAcceleration, outputFormat: negotiatedFormat } =
-			await negotiateVideoCodec({
-				format: this.format,
-				quality: this.quality,
-				width: this.renderer.width,
-				height: this.renderer.height,
-				fpsFloat,
-				forceSoftware: this.forceSoftwareEncoding,
-			});
+		const {
+			codec: videoCodec,
+			hardwareAcceleration,
+			outputFormat: negotiatedFormat,
+		} = await negotiateVideoCodec({
+			format: this.format,
+			quality: this.quality,
+			width: this.renderer.width,
+			height: this.renderer.height,
+			fpsFloat,
+			forceSoftware: this.forceSoftwareEncoding,
+		});
 
 		const outputFormatInstance =
 			negotiatedFormat === "webm"

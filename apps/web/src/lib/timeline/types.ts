@@ -127,7 +127,17 @@ export type OverlayTrack =
 export interface SceneTracks {
 	overlay: OverlayTrack[];
 	main: VideoTrack;
+	overlayAfter: OverlayTrack[];
 	audio: AudioTrack[];
+}
+
+export function getOrderedTracks(tracks: SceneTracks): TimelineTrack[] {
+	return [
+		...tracks.overlay,
+		tracks.main,
+		...tracks.overlayAfter,
+		...tracks.audio,
+	];
 }
 
 export interface RetimeCurveKeyframe {

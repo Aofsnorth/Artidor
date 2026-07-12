@@ -389,7 +389,8 @@ class EffectPreviewService {
 
 		switch (pattern) {
 			case "gradient":
-				if (!useImageForBase) this.drawGradientSource({ ctx, width, height, effectType });
+				if (!useImageForBase)
+					this.drawGradientSource({ ctx, width, height, effectType });
 				break;
 			case "checkerboard":
 				this.drawCheckerboardSource({ ctx, width, height, effectType });
@@ -497,14 +498,62 @@ class EffectPreviewService {
 			accent: string;
 			light: string;
 		}[] = [
-			{ bg: "#0f172a", primary: "#f97316", secondary: "#ec4899", accent: "#fbbf24", light: "#fff7ed" },
-			{ bg: "#082f49", primary: "#0ea5e9", secondary: "#06b6d4", accent: "#38bdf8", light: "#f0f9ff" },
-			{ bg: "#052e16", primary: "#22c55e", secondary: "#84cc16", accent: "#4ade80", light: "#f0fdf4" },
-			{ bg: "#3b0764", primary: "#a855f7", secondary: "#ec4899", accent: "#e879f9", light: "#faf5ff" },
-			{ bg: "#451a03", primary: "#d97706", secondary: "#f59e0b", accent: "#fbbf24", light: "#fffbeb" },
-			{ bg: "#1e1b4b", primary: "#6366f1", secondary: "#a855f7", accent: "#c084fc", light: "#eef2ff" },
-			{ bg: "#4c0519", primary: "#e11d48", secondary: "#fb7185", accent: "#fecdd3", light: "#fff1f2" },
-			{ bg: "#111827", primary: "#22d3ee", secondary: "#f472b6", accent: "#facc15", light: "#f8fafc" },
+			{
+				bg: "#0f172a",
+				primary: "#f97316",
+				secondary: "#ec4899",
+				accent: "#fbbf24",
+				light: "#fff7ed",
+			},
+			{
+				bg: "#082f49",
+				primary: "#0ea5e9",
+				secondary: "#06b6d4",
+				accent: "#38bdf8",
+				light: "#f0f9ff",
+			},
+			{
+				bg: "#052e16",
+				primary: "#22c55e",
+				secondary: "#84cc16",
+				accent: "#4ade80",
+				light: "#f0fdf4",
+			},
+			{
+				bg: "#3b0764",
+				primary: "#a855f7",
+				secondary: "#ec4899",
+				accent: "#e879f9",
+				light: "#faf5ff",
+			},
+			{
+				bg: "#451a03",
+				primary: "#d97706",
+				secondary: "#f59e0b",
+				accent: "#fbbf24",
+				light: "#fffbeb",
+			},
+			{
+				bg: "#1e1b4b",
+				primary: "#6366f1",
+				secondary: "#a855f7",
+				accent: "#c084fc",
+				light: "#eef2ff",
+			},
+			{
+				bg: "#4c0519",
+				primary: "#e11d48",
+				secondary: "#fb7185",
+				accent: "#fecdd3",
+				light: "#fff1f2",
+			},
+			{
+				bg: "#111827",
+				primary: "#22d3ee",
+				secondary: "#f472b6",
+				accent: "#facc15",
+				light: "#f8fafc",
+			},
 		];
 		let hash = 5381;
 		for (let i = 0; i < effectType.length; i++) {
@@ -710,7 +759,8 @@ class EffectPreviewService {
 		ctx.rotate(Math.PI / 6);
 		ctx.translate(-width, -height / 2);
 		for (let x = 0; x < width * 2; x += stripeWidth * 2) {
-			ctx.fillStyle = x % (stripeWidth * 4) === 0 ? colors.primary : colors.secondary;
+			ctx.fillStyle =
+				x % (stripeWidth * 4) === 0 ? colors.primary : colors.secondary;
 			ctx.fillRect(x, 0, stripeWidth, height * 2);
 		}
 		ctx.restore();
@@ -822,7 +872,8 @@ class EffectPreviewService {
 		for (let i = 0; i < 80; i++) {
 			const x = Math.floor(next() * width);
 			const y = Math.floor(next() * height);
-			ctx.fillStyle = next() > 0.5 ? `${colors.primary}B3` : `${colors.secondary}B3`;
+			ctx.fillStyle =
+				next() > 0.5 ? `${colors.primary}B3` : `${colors.secondary}B3`;
 			ctx.fillRect(x, y, 2, 2);
 		}
 	}
@@ -862,7 +913,12 @@ class EffectPreviewService {
 		ctx.beginPath();
 		ctx.moveTo(0, height);
 		ctx.lineTo(0, height * 0.62);
-		ctx.quadraticCurveTo(width * 0.35, height * 0.45, width * 0.6, height * 0.58);
+		ctx.quadraticCurveTo(
+			width * 0.35,
+			height * 0.45,
+			width * 0.6,
+			height * 0.58,
+		);
 		ctx.lineTo(width, height * 0.52);
 		ctx.lineTo(width, height);
 		ctx.closePath();
@@ -979,7 +1035,10 @@ class EffectPreviewService {
 				const dx = x - width / 2;
 				const dy = y - height / 2;
 				const dist = Math.sqrt(dx * dx + dy * dy);
-				const r = Math.max(2, (1 - dist / Math.max(width, height)) * spacing * 0.5);
+				const r = Math.max(
+					2,
+					(1 - dist / Math.max(width, height)) * spacing * 0.5,
+				);
 				ctx.beginPath();
 				ctx.arc(x, y, r, 0, Math.PI * 2);
 				ctx.fill();
@@ -1008,7 +1067,13 @@ class EffectPreviewService {
 			hash = (hash << 5) - hash + effectType.charCodeAt(i);
 			hash |= 0;
 		}
-		const palette = [colors.bg, colors.primary, colors.secondary, colors.accent, colors.light];
+		const palette = [
+			colors.bg,
+			colors.primary,
+			colors.secondary,
+			colors.accent,
+			colors.light,
+		];
 		for (let y = 0; y < height; y += tile) {
 			for (let x = 0; x < width; x += tile) {
 				const idx = Math.abs(hash + x + y * 7) % palette.length;

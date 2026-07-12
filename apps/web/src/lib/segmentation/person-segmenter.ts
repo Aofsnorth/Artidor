@@ -116,13 +116,7 @@ export async function segmentPerson({
 	if (!ctx) throw new Error("Failed to get 2d context for segmentation output");
 
 	// Draw the source image.
-	ctx.drawImage(
-		source as CanvasImageSource,
-		0,
-		0,
-		srcWidth,
-		srcHeight,
-	);
+	ctx.drawImage(source as CanvasImageSource, 0, 0, srcWidth, srcHeight);
 
 	// Read the image data and apply the mask.
 	const imageData = ctx.getImageData(0, 0, srcWidth, srcHeight);

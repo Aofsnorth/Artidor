@@ -1,12 +1,13 @@
 import type { EditorCore } from "@/core";
 import type { ParamValues } from "@/lib/params";
-import type {
-	SceneTracks,
-	TrackType,
-	TimelineTrack,
-	TimelineElement,
-	RetimeConfig,
-	ElementRef,
+import {
+	getOrderedTracks,
+	type SceneTracks,
+	type TrackType,
+	type TimelineTrack,
+	type TimelineElement,
+	type RetimeConfig,
+	type ElementRef,
 } from "@/lib/timeline";
 import { calculateTotalDuration } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
@@ -303,7 +304,11 @@ export class TimelineManager {
 		this.editor.command.execute({ command });
 	}
 
-	combineElements({ elementRefs }: { elementRefs: ElementRef[] }): string | null {
+	combineElements({
+		elementRefs,
+	}: {
+		elementRefs: ElementRef[];
+	}): string | null {
 		if (elementRefs.length < 2) return null;
 		const command = new CombineElementsCommand({ elementRefs });
 		this.editor.command.execute({ command });
@@ -331,8 +336,12 @@ export class TimelineManager {
 			require("@/lib/camera") as typeof import("@/lib/camera");
 		const playhead = this.editor.playback.getCurrentTime();
 		const tracks = this.editor.scenes.getActiveScene().tracks;
-		const cameraTrack = tracks.overlay.find((t) => t.type === "camera");
-		const trackId = cameraTrack ? cameraTrack.id : this.addTrack({ type: "camera" });
+		const cameraTrack = getOrderedTracks(tracks).find(
+			(t) => t.type === "camera",
+		);
+		const trackId = cameraTrack
+			? cameraTrack.id
+			: this.addTrack({ type: "camera" });
 		const camera = buildCameraElement({
 			trackId,
 			startTime: playhead,
@@ -433,9 +442,8 @@ export class TimelineManager {
 	getGroupMembers({ groupId }: { groupId: string }): ElementRef[] {
 		const activeScene = this.editor.scenes.getActiveSceneOrNull();
 		if (!activeScene) return [];
-		const { overlay, main, audio } = activeScene.tracks;
 		const members: ElementRef[] = [];
-		for (const track of [...overlay, main, ...audio]) {
+		for (const track of getOrderedTracks(activeScene.tracks)) {
 			for (const element of track.elements) {
 				if ((element as { groupId?: string }).groupId === groupId) {
 					members.push({ trackId: track.id, elementId: element.id });
@@ -1049,6 +1057,9 @@ export class TimelineManager {
 		return {
 			overlay: tracks.overlay.map((track) => applyTrackOverlay(track)),
 			main: applyTrackOverlay(tracks.main),
+			overlayAfter: tracks.overlayAfter.map((track) =>
+				applyTrackOverlay(track),
+			),
 			audio: tracks.audio.map((track) => applyTrackOverlay(track)),
 		};
 	}
@@ -1160,27 +1171,11 @@ export class TimelineManager {
 			return null;
 		}
 
-		if (
-			activeScene.tracks.main.elements.some(
-				(element) => element.id === elementId,
-			)
-		) {
-			return activeScene.tracks.main.id;
-		}
-
-		for (const track of activeScene.tracks.overlay) {
-			if (track.elements.some((element) => element.id === elementId)) {
-				return track.id;
-			}
-		}
-
-		for (const track of activeScene.tracks.audio) {
-			if (track.elements.some((element) => element.id === elementId)) {
-				return track.id;
-			}
-		}
-
-		return null;
+		return (
+			getOrderedTracks(activeScene.tracks).find((track) =>
+				track.elements.some((element) => element.id === elementId),
+			)?.id ?? null
+		);
 	}
 
 	updateTracks(newTracks: SceneTracks): void {

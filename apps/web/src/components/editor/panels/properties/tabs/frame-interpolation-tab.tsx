@@ -177,7 +177,7 @@ export function FrameInterpolationSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:frame-interpolation`}>
+		<Section card collapsible sectionKey={`${element.id}:frame-interpolation`}>
 			<SectionHeader>
 				<SectionTitle>
 					<span className="inline-flex items-center gap-1.5">

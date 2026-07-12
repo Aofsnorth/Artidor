@@ -808,6 +808,7 @@ export function applyTemplateToProject({
 		tracks: {
 			main: tracksByType.main as never,
 			overlay: tracksByType.overlay as never,
+			overlayAfter: [],
 			audio: tracksByType.audio as never,
 		},
 		bookmarks: [],

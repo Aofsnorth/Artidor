@@ -1,3 +1,4 @@
+import { getOrderedTracks } from "./types";
 import type { SceneTracks } from "./types";
 
 /**
@@ -11,7 +12,7 @@ export function calculateTotalDuration({
 }: {
 	tracks: SceneTracks;
 }): number {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 	if (orderedTracks.length === 0) return 0;
 
 	const trackEndTimes = orderedTracks.map((track) =>

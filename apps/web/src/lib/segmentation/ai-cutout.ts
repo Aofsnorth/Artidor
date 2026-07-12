@@ -15,7 +15,10 @@
  *  - All processing is non-blocking (WASM yields to the event loop).
  */
 
-import type { SegmentationResult, SegmentationSource } from "./person-segmenter";
+import type {
+	SegmentationResult,
+	SegmentationSource,
+} from "./person-segmenter";
 
 const MAX_LONG_EDGE = 1024;
 
@@ -91,8 +94,15 @@ export async function removeBackground({
 	inputCanvas.width = targetWidth;
 	inputCanvas.height = targetHeight;
 	const inputCtx = inputCanvas.getContext("2d");
-	if (!inputCtx) throw new Error("Failed to get 2d context for AI cutout input");
-	inputCtx.drawImage(source as CanvasImageSource, 0, 0, targetWidth, targetHeight);
+	if (!inputCtx)
+		throw new Error("Failed to get 2d context for AI cutout input");
+	inputCtx.drawImage(
+		source as CanvasImageSource,
+		0,
+		0,
+		targetWidth,
+		targetHeight,
+	);
 
 	// Run the model.
 	const result = await pipeline(inputCanvas);
@@ -106,7 +116,8 @@ export async function removeBackground({
 			fullCanvas.width = srcWidth;
 			fullCanvas.height = srcHeight;
 			const ctx = fullCanvas.getContext("2d");
-			if (!ctx) throw new Error("Failed to get 2d context for AI cutout output");
+			if (!ctx)
+				throw new Error("Failed to get 2d context for AI cutout output");
 			ctx.drawImage(outputCanvas, 0, 0, srcWidth, srcHeight);
 			return { canvas: fullCanvas, width: srcWidth, height: srcHeight };
 		}
@@ -123,7 +134,8 @@ export async function removeBackground({
 		canvas.width = result.width;
 		canvas.height = result.height;
 		const ctx = canvas.getContext("2d");
-		if (!ctx) throw new Error("Failed to get 2d context for AI cutout fallback");
+		if (!ctx)
+			throw new Error("Failed to get 2d context for AI cutout fallback");
 		const imageData = new ImageData(
 			new Uint8ClampedArray(result.data),
 			result.width,

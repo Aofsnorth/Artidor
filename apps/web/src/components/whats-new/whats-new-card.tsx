@@ -125,7 +125,7 @@ function Card({ onClose }: { onClose: () => void }) {
 			</div>
 
 			{/* Entries */}
-				<div className="flex max-h-[52vh] flex-col gap-4 overflow-x-hidden overflow-y-auto scrollbar-hidden px-4 py-4">
+			<div className="flex max-h-[52vh] flex-col gap-4 overflow-x-hidden overflow-y-auto scrollbar-hidden px-4 py-4">
 				{WHATS_NEW.map((entry) => {
 					const tag = TAG_STYLES[entry.tag];
 					return (

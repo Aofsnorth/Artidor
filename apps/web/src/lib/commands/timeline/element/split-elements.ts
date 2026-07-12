@@ -156,8 +156,12 @@ export class SplitElementsCommand extends Command {
 		};
 
 		const updatedTracks: SceneTracks = {
+			...this.savedState,
 			overlay: this.savedState.overlay.map((track) => splitTrack(track)),
 			main: splitTrack(this.savedState.main),
+			overlayAfter: this.savedState.overlayAfter.map((track) =>
+				splitTrack(track),
+			),
 			audio: this.savedState.audio.map((track) => splitTrack(track)),
 		};
 

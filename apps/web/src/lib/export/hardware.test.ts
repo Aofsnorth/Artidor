@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-	recommendExportWorkerCount,
-	type HardwareInfo,
-} from "./hardware";
+import { recommendExportWorkerCount, type HardwareInfo } from "./hardware";
 
 const hardware = (overrides: Partial<HardwareInfo> = {}): HardwareInfo => ({
 	cpuCores: 16,

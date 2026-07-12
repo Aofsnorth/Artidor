@@ -120,12 +120,9 @@ export function AdjustmentsTab({
 					hasAvailable={availableAdjustments.length > 0}
 				/>
 			) : (
-				<ul className="flex flex-col">
+				<ul className="flex flex-col gap-3 px-3.5 py-3">
 					{adjustments.map((effect) => (
-						<li
-							key={effect.id}
-							className="list-none border-b border-border/50 last:border-b-0"
-						>
+						<li key={effect.id} className="list-none">
 							<AdjustmentSection
 								effect={effect}
 								renderParams={getRenderParams({ effectId: effect.id })}
@@ -196,7 +193,12 @@ function AdjustmentSection({
 	const definition = effectsRegistry.get(effect.type);
 
 	return (
-		<Section sectionKey={`clip-adjustment:${effect.id}`} showTopBorder={false}>
+		<Section
+			card
+			collapsible
+			sectionKey={`clip-adjustment:${effect.id}`}
+			showTopBorder={false}
+		>
 			<SectionHeader
 				trailing={
 					<div className="flex items-center gap-1">

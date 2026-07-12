@@ -22,7 +22,10 @@
 import { z } from "zod";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeProviderBaseUrl, assertSafeProviderUrlDns } from "@/lib/ai/provider-url";
+import {
+	normalizeProviderBaseUrl,
+	assertSafeProviderUrlDns,
+} from "@/lib/ai/provider-url";
 import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
@@ -138,7 +141,12 @@ export async function POST(request: Request): Promise<Response> {
 			);
 		}
 
-		const providerLabel = body.kind === "ollama" ? "ollama" : body.kind === "anthropic-compatible" ? "anthropic" : "openai";
+		const providerLabel =
+			body.kind === "ollama"
+				? "ollama"
+				: body.kind === "anthropic-compatible"
+					? "anthropic"
+					: "openai";
 
 		try {
 			const models = await fetchModelsFromProvider({
@@ -149,12 +157,10 @@ export async function POST(request: Request): Promise<Response> {
 			});
 			return Response.json({ models } satisfies ModelsResult);
 		} catch (err) {
-			return Response.json(
-				{
-					models: [],
-					error: err instanceof Error ? err.message : "Failed to fetch models.",
-				} satisfies ModelsResult,
-			);
+			return Response.json({
+				models: [],
+				error: err instanceof Error ? err.message : "Failed to fetch models.",
+			} satisfies ModelsResult);
 		}
 	} catch (err) {
 		return Response.json(
@@ -247,7 +253,9 @@ async function fetchModelsFromProvider({
 			}
 		}
 	} else {
-		const openaiData = data as { data?: Array<{ id?: string; owned_by?: string }> };
+		const openaiData = data as {
+			data?: Array<{ id?: string; owned_by?: string }>;
+		};
 		for (const m of openaiData.data ?? []) {
 			if (m.id) {
 				models.push({

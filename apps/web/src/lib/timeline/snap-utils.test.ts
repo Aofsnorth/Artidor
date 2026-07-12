@@ -16,6 +16,7 @@ const tracks = {
 			},
 		],
 	},
+	overlayAfter: [],
 	audio: [],
 };
 

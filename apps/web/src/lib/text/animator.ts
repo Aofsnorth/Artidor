@@ -167,7 +167,11 @@ export function computeTextUnitAnimation({
 		case "repeat": {
 			const cycle = localTimeSeconds / Math.max(0.0001, duration);
 			const pulse = Math.sin(cycle * Math.PI * 2);
-			return { ...IDENTITY, scale: 0.9 + pulse * 0.1, opacity: 0.8 + pulse * 0.2 };
+			return {
+				...IDENTITY,
+				scale: 0.9 + pulse * 0.1,
+				opacity: 0.8 + pulse * 0.2,
+			};
 		}
 		case "text-progress": {
 			const start = unitIndex * Math.max(0, stagger);
@@ -177,7 +181,9 @@ export function computeTextUnitAnimation({
 			if (localTimeSeconds >= start + duration) {
 				return IDENTITY;
 			}
-			const progress = clamp01((localTimeSeconds - start) / Math.max(0.0001, duration));
+			const progress = clamp01(
+				(localTimeSeconds - start) / Math.max(0.0001, duration),
+			);
 			return { ...IDENTITY, opacity: progress, offsetX: (1 - progress) * -0.3 };
 		}
 		default:

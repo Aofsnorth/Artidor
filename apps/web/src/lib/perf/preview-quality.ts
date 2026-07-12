@@ -158,7 +158,7 @@ const ADAPTIVE_TIER_ORDER: Exclude<PreviewQuality, "auto">[] = [
  * `RECOVER_FACTOR × frameBudget` fast before recovering. The wide band
  * between the two prevents the tier from oscillating near the boundary.
  */
-const STRUGGLE_FACTOR = 1.5;
+const STRUGGLE_FACTOR = 1.2;
 const RECOVER_FACTOR = 0.7;
 
 /**

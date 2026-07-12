@@ -14,7 +14,12 @@ import type {
 	ScalarGraphKeyframeContext,
 	SelectedKeyframeRef,
 } from "@/lib/animation/types";
-import type { ElementRef, SceneTracks, TimelineElement } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type ElementRef,
+	type SceneTracks,
+	type TimelineElement,
+} from "@/lib/timeline";
 
 const GRAPH_LINEAR_CURVE: NormalizedCubicBezier = [0, 0, 1, 1];
 const FLAT_VALUE_EPSILON = 1e-6;
@@ -114,7 +119,7 @@ function findElementByKeyframe({
 	tracks: SceneTracks;
 	keyframe: SelectedKeyframeRef;
 }): { element: TimelineElement; trackId: string; elementId: string } | null {
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	for (const track of getOrderedTracks(tracks)) {
 		if (track.id !== keyframe.trackId) {
 			continue;
 		}
@@ -143,7 +148,7 @@ function findElementByRef({
 	tracks: SceneTracks;
 	elementRef: ElementRef;
 }): { element: TimelineElement; trackId: string; elementId: string } | null {
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	for (const track of getOrderedTracks(tracks)) {
 		if (track.id !== elementRef.trackId) continue;
 		const element = track.elements.find(
 			(trackElement) => trackElement.id === elementRef.elementId,
@@ -169,9 +174,10 @@ export function findGraphEditorKeyframesAtPlayhead({
 	if (elementTime < 0 || elementTime > element.duration) return [];
 
 	const keyframes: SelectedKeyframeRef[] = [];
-	for (const [propertyPath, binding] of Object.entries(
-		animations.bindings,
-	) as [AnimationPath, NonNullable<ElementAnimations["bindings"][AnimationPath]>][]) {
+	for (const [propertyPath, binding] of Object.entries(animations.bindings) as [
+		AnimationPath,
+		NonNullable<ElementAnimations["bindings"][AnimationPath]>,
+	][]) {
 		const scalarChannels = binding.components
 			.map((component) => animations.channels[component.channelId])
 			.filter((channel) => channel?.kind === "scalar");
@@ -527,7 +533,8 @@ export function resolveGraphEditorSelectionState({
 		if (selectedElements.length === 0) {
 			return createUnavailableState({
 				reason: "no-keyframe-selected",
-				message: "Select a keyframe or move the playhead between two keyframes.",
+				message:
+					"Select a keyframe or move the playhead between two keyframes.",
 			});
 		}
 		if (selectedElements.length > 1) {

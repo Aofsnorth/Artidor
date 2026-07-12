@@ -244,6 +244,7 @@ function buildSceneTracks({
 				id: "video-main",
 				type: "video",
 			}),
+		overlayAfter: [],
 		audio,
 	};
 }
@@ -405,7 +406,7 @@ describe("resolveTrackPlacement", () => {
 		});
 	});
 
-	test("preferIndex creates a new overlay track above the main track", () => {
+	test("preferIndex creates a new overlay track below the main track", () => {
 		const tracks = buildSceneTracks({
 			main: buildTrack({ id: "video-main", type: "video" }),
 			audio: [buildTrack({ id: "audio-1", type: "audio" })],
@@ -425,8 +426,8 @@ describe("resolveTrackPlacement", () => {
 		).toEqual({
 			kind: "newTrack",
 			trackType: "graphic",
-			insertIndex: 0,
-			insertPosition: "above",
+			insertIndex: 1,
+			insertPosition: "below",
 		});
 	});
 
@@ -605,8 +606,8 @@ describe("resolveTrackPlacement", () => {
 		).toEqual({
 			kind: "newTrack",
 			trackType: "video",
-			insertIndex: 0,
-			insertPosition: "above",
+			insertIndex: 1,
+			insertPosition: "below",
 		});
 
 		expect(

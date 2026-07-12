@@ -38,5 +38,7 @@ export async function createExportTempFile(): Promise<{
 }
 
 export function isDiskBackedExportSupported(): boolean {
-	return typeof navigator !== "undefined" && "getDirectory" in navigator.storage;
+	return (
+		typeof navigator !== "undefined" && "getDirectory" in navigator.storage
+	);
 }

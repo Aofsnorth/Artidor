@@ -192,7 +192,8 @@ export function createPluginSandbox({
 		// Plugins are user-installed (the user runs their own code in their own
 		// browser); the install UI surfaces a prominent trust warning. See the
 		// SECURITY comment above.
-		const wrapper = new Function( // nosemgrep: no-eval — intentional plugin sandbox
+		const wrapper = new Function(
+			// nosemgrep: no-eval — intentional plugin sandbox
 			"artidor",
 			"window",
 			"document",

@@ -17,6 +17,7 @@ export function findTrackInSceneTracks({
 
 	return (
 		tracks.overlay.find((track) => track.id === trackId) ??
+		tracks.overlayAfter.find((track) => track.id === trackId) ??
 		tracks.audio.find((track) => track.id === trackId) ??
 		null
 	);
@@ -46,6 +47,18 @@ export function updateTrackInSceneTracks({
 			...tracks,
 			overlay: tracks.overlay.map((track, index) =>
 				index === overlayTrackIndex ? update(track) : track,
+			),
+		};
+	}
+
+	const overlayAfterTrackIndex = tracks.overlayAfter.findIndex(
+		(track) => track.id === trackId,
+	);
+	if (overlayAfterTrackIndex >= 0) {
+		return {
+			...tracks,
+			overlayAfter: tracks.overlayAfter.map((track, index) =>
+				index === overlayAfterTrackIndex ? update(track) : track,
 			),
 		};
 	}
@@ -125,6 +138,25 @@ export function updateElementInSceneTracks({
 			...tracks,
 			overlay: tracks.overlay.map((track, index) =>
 				index === overlayTrackIndex
+					? updateElementInTrack({
+							track,
+							elementId,
+							update,
+							elementPredicate,
+						})
+					: track,
+			),
+		};
+	}
+
+	const overlayAfterTrackIndex = tracks.overlayAfter.findIndex(
+		(track) => track.id === trackId,
+	);
+	if (overlayAfterTrackIndex >= 0) {
+		return {
+			...tracks,
+			overlayAfter: tracks.overlayAfter.map((track, index) =>
+				index === overlayAfterTrackIndex
 					? updateElementInTrack({
 							track,
 							elementId,

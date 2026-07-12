@@ -271,7 +271,7 @@ export function MediaView() {
 		if (!deleteFolderId) return;
 		const folderId = deleteFolderId;
 		setDeleteFolderId(null);
-		
+
 		if (currentFolderId === folderId) setCurrentFolderId(null);
 		await editor.media.deleteFolder({ id: folderId });
 	};
@@ -441,10 +441,15 @@ export function MediaView() {
 						)}
 					</div>
 				)}
-				<AlertDialog open={!!deleteFolderId} onOpenChange={(open) => !open && setDeleteFolderId(null)}>
+				<AlertDialog
+					open={!!deleteFolderId}
+					onOpenChange={(open) => !open && setDeleteFolderId(null)}
+				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>{t("assets.deleteFolderTitle")}</AlertDialogTitle>
+							<AlertDialogTitle>
+								{t("assets.deleteFolderTitle")}
+							</AlertDialogTitle>
 							<AlertDialogDescription>
 								{t("assets.deleteFolderDescription")}
 							</AlertDialogDescription>
@@ -682,34 +687,39 @@ function StockVideoSearch() {
 	const [searched, setSearched] = useState(false);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const search = useCallback(async (q: string) => {
-		if (!q.trim()) {
-			setResults([]);
-			setSearched(false);
-			return;
-		}
-		setLoading(true);
-		setError(null);
-		try {
-			const res = await fetch(
-				`/api/stock/videos?q=${encodeURIComponent(q)}&per_page=12`,
-			);
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(data.error ?? `HTTP ${res.status}`);
+	const search = useCallback(
+		async (q: string) => {
+			if (!q.trim()) {
+				setResults([]);
+				setSearched(false);
+				return;
 			}
-			const data = (await res.json()) as {
-				results: StockVideoResult[];
-			};
-			setResults(data.results);
-			setSearched(true);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : t("assets.stock.searchFailed"));
-			setResults([]);
-		} finally {
-			setLoading(false);
-		}
-	}, [t]);
+			setLoading(true);
+			setError(null);
+			try {
+				const res = await fetch(
+					`/api/stock/videos?q=${encodeURIComponent(q)}&per_page=12`,
+				);
+				if (!res.ok) {
+					const data = await res.json().catch(() => ({}));
+					throw new Error(data.error ?? `HTTP ${res.status}`);
+				}
+				const data = (await res.json()) as {
+					results: StockVideoResult[];
+				};
+				setResults(data.results);
+				setSearched(true);
+			} catch (err) {
+				setError(
+					err instanceof Error ? err.message : t("assets.stock.searchFailed"),
+				);
+				setResults([]);
+			} finally {
+				setLoading(false);
+			}
+		},
+		[t],
+	);
 
 	const handleQueryChange = (value: string) => {
 		setQuery(value);
@@ -734,9 +744,7 @@ function StockVideoSearch() {
 				)}
 			</div>
 
-			{error && (
-				<p className="text-xs text-red-400/80">{error}</p>
-			)}
+			{error && <p className="text-xs text-red-400/80">{error}</p>}
 
 			{!loading && !error && searched && results.length === 0 && (
 				<p className="py-8 text-center text-xs text-white/40">
@@ -924,7 +932,8 @@ function MediaItemWithContextMenu({
 			{
 				loading: t("assets.extractAudio.loading"),
 				success: t("assets.extractAudio.success"),
-				error: (err: Error) => err.message || t("assets.extractAudio.errorFallback"),
+				error: (err: Error) =>
+					err.message || t("assets.extractAudio.errorFallback"),
 			},
 		);
 	};

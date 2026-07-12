@@ -102,12 +102,18 @@ export function MediaAssetPreview() {
 			const video = videoRef.current;
 			video.src = asset.url;
 			video.volume = previewVolumeRef.current;
-			video.play().then(() => setIsPlaying(true)).catch(() => {});
+			video
+				.play()
+				.then(() => setIsPlaying(true))
+				.catch(() => {});
 		} else if (asset.type === "audio" && audioRef.current) {
 			const audio = audioRef.current;
 			audio.src = asset.url;
 			audio.volume = previewVolumeRef.current;
-			audio.play().then(() => setIsPlaying(true)).catch(() => {});
+			audio
+				.play()
+				.then(() => setIsPlaying(true))
+				.catch(() => {});
 		}
 	}, [asset?.type, asset?.url]);
 
@@ -121,8 +127,7 @@ export function MediaAssetPreview() {
 		if (!asset || asset.type === "image") return;
 		let rafId: number;
 		const tick = () => {
-			const el =
-				asset.type === "video" ? videoRef.current : audioRef.current;
+			const el = asset.type === "video" ? videoRef.current : audioRef.current;
 			if (el && !isSeeking) {
 				setCurrentTime(el.currentTime);
 				if (el.duration && Number.isFinite(el.duration)) {

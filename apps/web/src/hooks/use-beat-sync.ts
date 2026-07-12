@@ -4,6 +4,7 @@ import { analyzeBeats } from "@/lib/media/beat-analysis";
 import { toast } from "sonner";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { hasMediaId } from "@/lib/timeline/element-utils";
+import { getOrderedTracks } from "@/lib/timeline";
 import type { DetectedBeat } from "@/lib/media/beat-detection-types";
 
 export interface BeatSyncState {
@@ -107,7 +108,7 @@ export function useBeatSync(): {
 			return false;
 		}
 		const tracks = editor.scenes.getActiveScene().tracks;
-		const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+		const orderedTracks = getOrderedTracks(tracks);
 
 		const updates: Array<{
 			trackId: string;

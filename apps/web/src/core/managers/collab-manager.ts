@@ -159,7 +159,8 @@ export class CollabManager {
 	/** Broadcast the local cursor position (throttled). */
 	broadcastCursor(x: number, y: number, elementId?: string): void {
 		const store = useCollabStore.getState();
-		if (!store.roomId || !store.sessionId || store.status !== "connected") return;
+		if (!store.roomId || !store.sessionId || store.status !== "connected")
+			return;
 
 		this.pendingCursor = { x, y, elementId };
 
@@ -262,7 +263,9 @@ export class CollabManager {
 		// Serialize the command's public fields as args. Commands store their
 		// constructor params as public readonly fields by convention.
 		const args: Record<string, unknown> = {};
-		for (const key of Object.keys(command as unknown as Record<string, unknown>)) {
+		for (const key of Object.keys(
+			command as unknown as Record<string, unknown>,
+		)) {
 			const value = (command as unknown as Record<string, unknown>)[key];
 			// Skip functions and undefined values.
 			if (typeof value === "function" || value === undefined) continue;
@@ -299,7 +302,8 @@ export class CollabManager {
 
 	private async poll(): Promise<void> {
 		const store = useCollabStore.getState();
-		if (!store.roomId || !store.sessionId || store.status !== "connected") return;
+		if (!store.roomId || !store.sessionId || store.status !== "connected")
+			return;
 
 		try {
 			const state = await pollRoomState({
@@ -312,11 +316,15 @@ export class CollabManager {
 			// Apply any new commands from other collaborators.
 			const newCommands = state.commands.filter(
 				(c) =>
-					c.collaboratorId !== store.sessionId && c.timestamp > this.lastCommandTimestamp,
+					c.collaboratorId !== store.sessionId &&
+					c.timestamp > this.lastCommandTimestamp,
 			);
 			for (const cmd of newCommands) {
 				this.applyRemoteCommand(cmd.commandName, cmd.args);
-				this.lastCommandTimestamp = Math.max(this.lastCommandTimestamp, cmd.timestamp);
+				this.lastCommandTimestamp = Math.max(
+					this.lastCommandTimestamp,
+					cmd.timestamp,
+				);
 			}
 
 			this.lastSeq = state.seq;

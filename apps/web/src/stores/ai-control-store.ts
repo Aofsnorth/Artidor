@@ -38,7 +38,14 @@ export interface ActiveToolCall {
 	/** Track IDs the tool touches, used for highlight/animation. */
 	trackIds: string[];
 	/** High-level action verb for animation styling. */
-	action: "move" | "split" | "delete" | "insert" | "update" | "effect" | "other";
+	action:
+		| "move"
+		| "split"
+		| "delete"
+		| "insert"
+		| "update"
+		| "effect"
+		| "other";
 	/** ISO timestamp when the tool call started. */
 	startedAt: number;
 }

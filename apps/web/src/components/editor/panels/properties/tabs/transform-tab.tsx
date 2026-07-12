@@ -457,11 +457,11 @@ export function TransformTab({
 	return (
 		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<Section
+				card
 				collapsible
 				defaultOpen
 				sectionKey={`${element.id}:transform`}
 				showBottomBorder={false}
-				className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]"
 			>
 				<SectionHeader
 					className="h-10 px-3"
@@ -812,9 +812,7 @@ export function TransformTab({
 					</SectionFields>
 				</SectionContent>
 			</Section>
-			<div className="overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025]">
-				<BlendingTab element={element} trackId={trackId} />
-			</div>
+			<BlendingTab element={element} trackId={trackId} />
 		</div>
 	);
 }

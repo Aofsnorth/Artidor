@@ -30,10 +30,7 @@ export function VerticalAudioMeter({
 	onResize?: (nextWidth: number) => void;
 } = {}) {
 	const editor = useEditor();
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	// Whether the timeline currently has any audible candidate. When
 	// false (e.g. a video with no audio track, or all elements/tracks
 	// muted), the meter must stay flat instead of reading the analyser
@@ -69,11 +66,9 @@ export function VerticalAudioMeter({
 			),
 		);
 	};
-	const width =
-		controlledWidth === undefined ? internalWidth : controlledWidth;
-	const setWidth = controlledWidth === undefined
-		? setInternalWidth
-		: (onResize ?? (() => {}));
+	const width = controlledWidth === undefined ? internalWidth : controlledWidth;
+	const setWidth =
+		controlledWidth === undefined ? setInternalWidth : (onResize ?? (() => {}));
 
 	// Direct DOM refs. Each channel is one <div> with height set via
 	// inline style. We update the style imperatively inside the rAF
@@ -471,8 +466,7 @@ function ChannelBar({
 			<div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-between py-px text-[0.42rem] font-semibold text-white/25">
 				{labels}
 			</div>
-
-			</div>
+		</div>
 	);
 }
 

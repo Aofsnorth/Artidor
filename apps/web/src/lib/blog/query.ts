@@ -49,11 +49,9 @@ const EMPTY_AUTHORS: MarbleAuthorList = {
 function isMarbleConfigured() {
 	return (
 		!!key &&
-		![
-			"placeholder",
-			"build-placeholder",
-			"your_workspace_key_here",
-		].includes(key)
+		!["placeholder", "build-placeholder", "your_workspace_key_here"].includes(
+			key,
+		)
 	);
 }
 

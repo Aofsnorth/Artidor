@@ -1,5 +1,36 @@
 import type { SceneTracks, TrackType } from "@/lib/timeline";
 
+const MAIN_TRACK_COUNT = 1;
+
+function getMainTrackIndex(tracks: SceneTracks): number {
+	return tracks.overlay.length;
+}
+
+function getOverlayAfterStartIndex(tracks: SceneTracks): number {
+	return getMainTrackIndex(tracks) + MAIN_TRACK_COUNT;
+}
+
+function getAudioStartIndex(tracks: SceneTracks): number {
+	return getOverlayAfterStartIndex(tracks) + tracks.overlayAfter.length;
+}
+
+function getTrackCount(tracks: SceneTracks): number {
+	return (
+		tracks.overlay.length +
+		MAIN_TRACK_COUNT +
+		tracks.overlayAfter.length +
+		tracks.audio.length
+	);
+}
+
+/**
+ * Returns the ordered-track index where a new track of the given type should
+ * be inserted when the caller has no explicit preference.
+ *
+ * Text and effects are placed at the top of the overlay stack so they are
+ * visible above the main video. Audio goes below the visual tracks, and other
+ * visual track types default to the overlay-after section.
+ */
 export function getDefaultInsertIndexForTrack({
 	tracks,
 	trackType,
@@ -8,14 +39,14 @@ export function getDefaultInsertIndexForTrack({
 	trackType: TrackType;
 }): number {
 	if (trackType === "audio") {
-		return tracks.overlay.length + 1 + tracks.audio.length;
+		return getAudioStartIndex(tracks) + tracks.audio.length;
 	}
 
-	if (trackType === "effect") {
+	if (trackType === "text" || trackType === "effect") {
 		return 0;
 	}
 
-	return tracks.overlay.length;
+	return getOverlayAfterStartIndex(tracks) + tracks.overlayAfter.length;
 }
 
 export function getHighestInsertIndexForTrack({
@@ -26,7 +57,7 @@ export function getHighestInsertIndexForTrack({
 	trackType: TrackType;
 }): number {
 	if (trackType === "audio") {
-		return tracks.overlay.length + 1;
+		return getOverlayAfterStartIndex(tracks);
 	}
 
 	return 0;
@@ -43,7 +74,7 @@ export function resolvePreferredNewTrackPlacement({
 	preferredIndex: number;
 	direction: "above" | "below";
 }): { insertIndex: number; insertPosition: "above" | "below" | null } {
-	const trackCount = tracks.overlay.length + 1 + tracks.audio.length;
+	const trackCount = getTrackCount(tracks);
 	if (trackCount === 0) {
 		return {
 			insertIndex: 0,
@@ -55,12 +86,12 @@ export function resolvePreferredNewTrackPlacement({
 		Math.max(preferredIndex, 0),
 		trackCount - 1,
 	);
-	const mainTrackIndex = tracks.overlay.length;
 
 	if (trackType === "audio") {
-		if (safePreferredIndex <= mainTrackIndex) {
+		const audioStartIndex = getAudioStartIndex(tracks);
+		if (safePreferredIndex < audioStartIndex) {
 			return {
-				insertIndex: mainTrackIndex + 1,
+				insertIndex: audioStartIndex,
 				insertPosition: "below",
 			};
 		}
@@ -74,15 +105,10 @@ export function resolvePreferredNewTrackPlacement({
 
 	const insertIndex =
 		direction === "above" ? safePreferredIndex : safePreferredIndex + 1;
-	if (mainTrackIndex >= 0 && insertIndex > mainTrackIndex) {
-		return {
-			insertIndex: mainTrackIndex,
-			insertPosition: "above",
-		};
-	}
+	const audioStartIndex = getAudioStartIndex(tracks);
 
 	return {
-		insertIndex,
+		insertIndex: Math.min(insertIndex, audioStartIndex),
 		insertPosition: direction,
 	};
 }

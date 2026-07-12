@@ -1,4 +1,8 @@
-import type { Bookmark, SceneTracks } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type Bookmark,
+	type SceneTracks,
+} from "@/lib/timeline";
 import type { AnimationPath } from "@/lib/animation/types";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { getElementKeyframes } from "@/lib/animation";
@@ -43,7 +47,7 @@ export function findSnapPoints({
 	enableKeyframeSnapping?: boolean;
 }): SnapPoint[] {
 	const snapPoints: SnapPoint[] = [];
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 
 	for (const track of orderedTracks) {
 		for (const element of track.elements) {
@@ -186,7 +190,7 @@ export function findNearestClipEdge({
 }): SnapResult {
 	const pixelsPerSecond = BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel;
 	const thresholdInTicks = (snapThreshold / pixelsPerSecond) * TICKS_PER_SECOND;
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 
 	let bestEdge: {
 		time: number;

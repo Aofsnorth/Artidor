@@ -60,8 +60,8 @@ export function GraphicTab({
 	const hasStrokeParams = definition.params.some((p) => p.group === "stroke");
 
 	return (
-		<div className="flex flex-col">
-			<Section collapsible sectionKey={`${element.id}:graphic`}>
+		<div className="flex flex-col gap-3 px-3.5 py-3">
+			<Section card collapsible sectionKey={`${element.id}:graphic`}>
 				<SectionHeader>
 					<SectionTitle>{definition.name}</SectionTitle>
 				</SectionHeader>
@@ -151,6 +151,7 @@ function StrokeSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={isStrokeEnabled}
 			sectionKey={`${element.id}:stroke`}
@@ -367,6 +368,7 @@ function ShadowSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={shadowEnabled}
 			sectionKey={`${element.id}:shadow`}

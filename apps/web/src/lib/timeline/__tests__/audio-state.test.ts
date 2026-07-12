@@ -140,9 +140,10 @@ describe("resolveEffectiveAudioGain", () => {
 			fadeInDuration: 1,
 		});
 		// localTime = 0, fadeIn = 1: gain = baseGain * (0 / 1) = 0
-		expect(
-			resolveEffectiveAudioGain({ element, localTime: 0 }),
-		).toBeCloseTo(0, 5);
+		expect(resolveEffectiveAudioGain({ element, localTime: 0 })).toBeCloseTo(
+			0,
+			5,
+		);
 	});
 
 	test("returns full base gain past fadeInDuration", () => {
@@ -151,9 +152,10 @@ describe("resolveEffectiveAudioGain", () => {
 			fadeInDuration: 1,
 		});
 		// localTime = 2, fadeIn = 1: gain = baseGain * 1 = 1
-		expect(
-			resolveEffectiveAudioGain({ element, localTime: 2 }),
-		).toBeCloseTo(1, 5);
+		expect(resolveEffectiveAudioGain({ element, localTime: 2 })).toBeCloseTo(
+			1,
+			5,
+		);
 	});
 
 	test("ignoreFades skips fade-in/out multiplication", () => {

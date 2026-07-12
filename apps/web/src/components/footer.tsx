@@ -35,7 +35,10 @@ const links: CategoryLinks = {
 		{ labelKey: "home.footer.link.contributors", href: "/contributors" },
 		{ labelKey: "home.footer.link.sponsors", href: "/sponsors" },
 		{ labelKey: "home.footer.link.brand", href: "/brand" },
-		{ labelKey: "home.footer.link.about", href: `${SOCIAL_LINKS.github}/blob/main/README.md` },
+		{
+			labelKey: "home.footer.link.about",
+			href: `${SOCIAL_LINKS.github}/blob/main/README.md`,
+		},
 	],
 };
 

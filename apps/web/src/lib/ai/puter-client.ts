@@ -142,10 +142,15 @@ export function loadPuterSDK(): Promise<PuterSDK> {
 			}
 			existing.addEventListener("load", () => {
 				if (window.puter) resolve(window.puter);
-				else reject(new Error("Puter.js script loaded but window.puter is undefined"));
+				else
+					reject(
+						new Error("Puter.js script loaded but window.puter is undefined"),
+					);
 			});
 			existing.addEventListener("error", () =>
-				reject(new Error("Failed to load Puter.js SDK from existing script tag")),
+				reject(
+					new Error("Failed to load Puter.js SDK from existing script tag"),
+				),
 			);
 			return;
 		}
@@ -230,9 +235,7 @@ export async function ensurePuterSignedIn(): Promise<void> {
 	// Double-check that signIn actually resulted in a signed-in state,
 	// since some edge cases resolve the promise without completing auth.
 	if (!puter.auth.isSignedIn()) {
-		throw new Error(
-			"Puter sign-in did not complete. Please try again.",
-		);
+		throw new Error("Puter sign-in did not complete. Please try again.");
 	}
 }
 
@@ -273,8 +276,16 @@ export async function fetchPuterModels(): Promise<PuterModel[]> {
  * and fetchPuterModelsAndMedia() to classify models by generation type.
  */
 const VIDEO_PATTERNS = [
-	"sora", "seedance", "kling", "minimax", "luma",
-	"runway", "pika", "hunyuan", "vidu", "wan",
+	"sora",
+	"seedance",
+	"kling",
+	"minimax",
+	"luma",
+	"runway",
+	"pika",
+	"hunyuan",
+	"vidu",
+	"wan",
 ];
 /**
  * Known Puter.js image generation models.
@@ -294,39 +305,139 @@ export const PUTER_IMAGE_MODELS: PuterModel[] = [
 	{ id: "gpt-image-2", provider: "openai", name: "GPT Image 2" },
 	{ id: "openai/dall-e-3", provider: "openai", name: "DALL-E 3" },
 	{ id: "openai/dall-e-2", provider: "openai", name: "DALL-E 2" },
-	{ id: "gemini-2.5-flash-image-preview", provider: "gemini", name: "Gemini 2.5 Flash Image (Nano Banana)" },
-	{ id: "gemini-3-pro-image-preview", provider: "gemini", name: "Gemini 3 Pro Image" },
-	{ id: "gemini-3.1-flash-image-preview", provider: "gemini", name: "Gemini 3.1 Flash Image" },
-	{ id: "google/flash-image-2.5", provider: "google", name: "Google Flash Image 2.5" },
-	{ id: "google/imagen-4.0-fast", provider: "google", name: "Google Imagen 4.0 Fast" },
-	{ id: "google/imagen-4.0-preview", provider: "google", name: "Google Imagen 4.0 Preview" },
-	{ id: "google/imagen-4.0-ultra", provider: "google", name: "Google Imagen 4.0 Ultra" },
-	{ id: "black-forest-labs/flux-schnell", provider: "black-forest-labs", name: "FLUX.1 Schnell" },
-	{ id: "black-forest-labs/flux-1.1-pro", provider: "black-forest-labs", name: "FLUX 1.1 Pro" },
-	{ id: "black-forest-labs/FLUX.1-kontext-pro", provider: "black-forest-labs", name: "FLUX.1 Kontext Pro" },
-	{ id: "black-forest-labs/FLUX.1-kontext-max", provider: "black-forest-labs", name: "FLUX.1 Kontext Max" },
-	{ id: "black-forest-labs/FLUX.1-krea-dev", provider: "black-forest-labs", name: "FLUX.1 Krea Dev" },
-	{ id: "black-forest-labs/FLUX.1-Canny-pro", provider: "black-forest-labs", name: "FLUX.1 Canny Pro" },
-	{ id: "stabilityai/stable-diffusion-3-medium", provider: "stabilityai", name: "Stable Diffusion 3 Medium" },
-	{ id: "stabilityai/stable-diffusion-xl-base-1.0", provider: "stabilityai", name: "Stable Diffusion XL Base 1.0" },
+	{
+		id: "gemini-2.5-flash-image-preview",
+		provider: "gemini",
+		name: "Gemini 2.5 Flash Image (Nano Banana)",
+	},
+	{
+		id: "gemini-3-pro-image-preview",
+		provider: "gemini",
+		name: "Gemini 3 Pro Image",
+	},
+	{
+		id: "gemini-3.1-flash-image-preview",
+		provider: "gemini",
+		name: "Gemini 3.1 Flash Image",
+	},
+	{
+		id: "google/flash-image-2.5",
+		provider: "google",
+		name: "Google Flash Image 2.5",
+	},
+	{
+		id: "google/imagen-4.0-fast",
+		provider: "google",
+		name: "Google Imagen 4.0 Fast",
+	},
+	{
+		id: "google/imagen-4.0-preview",
+		provider: "google",
+		name: "Google Imagen 4.0 Preview",
+	},
+	{
+		id: "google/imagen-4.0-ultra",
+		provider: "google",
+		name: "Google Imagen 4.0 Ultra",
+	},
+	{
+		id: "black-forest-labs/flux-schnell",
+		provider: "black-forest-labs",
+		name: "FLUX.1 Schnell",
+	},
+	{
+		id: "black-forest-labs/flux-1.1-pro",
+		provider: "black-forest-labs",
+		name: "FLUX 1.1 Pro",
+	},
+	{
+		id: "black-forest-labs/FLUX.1-kontext-pro",
+		provider: "black-forest-labs",
+		name: "FLUX.1 Kontext Pro",
+	},
+	{
+		id: "black-forest-labs/FLUX.1-kontext-max",
+		provider: "black-forest-labs",
+		name: "FLUX.1 Kontext Max",
+	},
+	{
+		id: "black-forest-labs/FLUX.1-krea-dev",
+		provider: "black-forest-labs",
+		name: "FLUX.1 Krea Dev",
+	},
+	{
+		id: "black-forest-labs/FLUX.1-Canny-pro",
+		provider: "black-forest-labs",
+		name: "FLUX.1 Canny Pro",
+	},
+	{
+		id: "stabilityai/stable-diffusion-3-medium",
+		provider: "stabilityai",
+		name: "Stable Diffusion 3 Medium",
+	},
+	{
+		id: "stabilityai/stable-diffusion-xl-base-1.0",
+		provider: "stabilityai",
+		name: "Stable Diffusion XL Base 1.0",
+	},
 	{ id: "ideogram/ideogram-3.0", provider: "ideogram", name: "Ideogram 3.0" },
-	{ id: "ByteDance-Seed/Seedream-3.0", provider: "bytedance", name: "Seedream 3.0" },
-	{ id: "ByteDance-Seed/Seedream-4.0", provider: "bytedance", name: "Seedream 4.0" },
-	{ id: "HiDream-ai/HiDream-I1-Dev", provider: "hidream", name: "HiDream I1 Dev" },
-	{ id: "HiDream-ai/HiDream-I1-Fast", provider: "hidream", name: "HiDream I1 Fast" },
-	{ id: "HiDream-ai/HiDream-I1-Full", provider: "hidream", name: "HiDream I1 Full" },
+	{
+		id: "ByteDance-Seed/Seedream-3.0",
+		provider: "bytedance",
+		name: "Seedream 3.0",
+	},
+	{
+		id: "ByteDance-Seed/Seedream-4.0",
+		provider: "bytedance",
+		name: "Seedream 4.0",
+	},
+	{
+		id: "HiDream-ai/HiDream-I1-Dev",
+		provider: "hidream",
+		name: "HiDream I1 Dev",
+	},
+	{
+		id: "HiDream-ai/HiDream-I1-Fast",
+		provider: "hidream",
+		name: "HiDream I1 Fast",
+	},
+	{
+		id: "HiDream-ai/HiDream-I1-Full",
+		provider: "hidream",
+		name: "HiDream I1 Full",
+	},
 	{ id: "Qwen/Qwen-Image", provider: "qwen", name: "Qwen Image" },
 	{ id: "Lykon/DreamShaper", provider: "lykon", name: "DreamShaper" },
-	{ id: "RunDiffusion/Juggernaut-pro-flux", provider: "rundiffusion", name: "Juggernaut Pro Flux" },
-	{ id: "Rundiffusion/Juggernaut-Lightning-Flux", provider: "rundiffusion", name: "Juggernaut Lightning Flux" },
+	{
+		id: "RunDiffusion/Juggernaut-pro-flux",
+		provider: "rundiffusion",
+		name: "Juggernaut Pro Flux",
+	},
+	{
+		id: "Rundiffusion/Juggernaut-Lightning-Flux",
+		provider: "rundiffusion",
+		name: "Juggernaut Lightning Flux",
+	},
 ];
 const AUDIO_PATTERNS = [
-	"tts", "speech", "polly", "bark", "elevenlabs",
-	"whisper", "audio", "suno", "udio",
+	"tts",
+	"speech",
+	"polly",
+	"bark",
+	"elevenlabs",
+	"whisper",
+	"audio",
+	"suno",
+	"udio",
 ];
 const MEDIA_PATTERNS = [
-	"music", "suno", "udio", "stable-audio",
-	"media", "generate", "gen",
+	"music",
+	"suno",
+	"udio",
+	"stable-audio",
+	"media",
+	"generate",
+	"gen",
 ];
 
 function matchAny(id: string, patterns: string[]): boolean {
@@ -534,7 +645,7 @@ function rewriteSystemPromptForTextTools(content: string): string {
 		)
 		.replace(
 			/- Do NOT wrap tool calls in markdown code blocks or <tool> tags\. Use the native function-calling mechanism\.\n/,
-			"- Wrap every tool call in XML tags.\n- Example: <tool_call><invoke name=\"tool_name\"><parameter name=\"arg_name\">value</parameter></invoke></tool_call>\n",
+			'- Wrap every tool call in XML tags.\n- Example: <tool_call><invoke name="tool_name"><parameter name="arg_name">value</parameter></invoke></tool_call>\n',
 		);
 
 	const xmlInstruction = `
@@ -593,7 +704,11 @@ function parseTextToolCalls(text: string): Array<{
 	name: string;
 	arguments: Record<string, unknown>;
 }> {
-	const calls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = [];
+	const calls: Array<{
+		id: string;
+		name: string;
+		arguments: Record<string, unknown>;
+	}> = [];
 
 	// Match any <tool_call> block, including nested provider wrappers
 	// like <minimax>. Use a lazy match for the inner content.
@@ -604,7 +719,9 @@ function parseTextToolCalls(text: string): Array<{
 		const block = match[1];
 
 		// Find the inner <invoke name="..."> block.
-		const invokeMatch = /<invoke\s+name="([^"]+)">([\s\S]*?)<\/invoke>/g.exec(block);
+		const invokeMatch = /<invoke\s+name="([^"]+)">([\s\S]*?)<\/invoke>/g.exec(
+			block,
+		);
 		if (invokeMatch) {
 			const name = invokeMatch[1];
 			const body = invokeMatch[2];
@@ -632,7 +749,8 @@ function parseTextToolCalls(text: string): Array<{
 
 		// Fallback: look for any inner tag with name="..." (handles
 		// provider wrappers like <minimax name="list_assets">).
-		const namedTagMatch = /<([a-zA-Z0-9_]+)\s+name="([^"]+)">([\s\S]*?)<\/\1>/g.exec(block);
+		const namedTagMatch =
+			/<([a-zA-Z0-9_]+)\s+name="([^"]+)">([\s\S]*?)<\/\1>/g.exec(block);
 		if (namedTagMatch) {
 			const name = namedTagMatch[2];
 			const body = namedTagMatch[3];
@@ -659,7 +777,8 @@ function parseTextToolCalls(text: string): Array<{
 		}
 
 		// Fallback: simpler <tool_call name="...">{json}</tool_call>
-		const simpleNameMatch = /<tool_call\s+name="([^"]+)">([\s\S]*?)<\/tool_call>/.exec(match[0]);
+		const simpleNameMatch =
+			/<tool_call\s+name="([^"]+)">([\s\S]*?)<\/tool_call>/.exec(match[0]);
 		if (simpleNameMatch) {
 			let args: Record<string, unknown> = {};
 			try {
@@ -711,7 +830,10 @@ class TextToolCallParser {
 	private yieldedLength = 0;
 
 	/** Feed a new text chunk. Returns text to yield and/or tool calls. */
-	feed(text: string): { delta?: string; toolCalls?: PuterStreamChunk["toolCalls"] } {
+	feed(text: string): {
+		delta?: string;
+		toolCalls?: PuterStreamChunk["toolCalls"];
+	} {
 		this.buffer += text;
 
 		// Check if we have complete tool_call blocks. We look for the
@@ -783,7 +905,10 @@ class TextToolCallParser {
 export async function* streamPuterChat(
 	messages: unknown[],
 	model: string,
-	tools?: Array<{ type: "function"; function: { name: string; description: string; parameters: unknown } }>,
+	tools?: Array<{
+		type: "function";
+		function: { name: string; description: string; parameters: unknown };
+	}>,
 	signal?: AbortSignal,
 ): AsyncGenerator<PuterStreamChunk> {
 	const puter = await loadPuterSDK();
@@ -804,7 +929,13 @@ export async function* streamPuterChat(
 	}
 
 	const textBased = isTextBasedToolModel(model);
-	console.log("[puter] chat start", { model, textBased, messageCount: messages.length, hasTools: Boolean(tools && tools.length > 0), toolCount: tools?.length ?? 0 });
+	console.log("[puter] chat start", {
+		model,
+		textBased,
+		messageCount: messages.length,
+		hasTools: Boolean(tools && tools.length > 0),
+		toolCount: tools?.length ?? 0,
+	});
 
 	const options: Record<string, unknown> = {
 		model,
@@ -823,8 +954,15 @@ export async function* streamPuterChat(
 
 	const puterMessages = toPuterMessages(messages, model);
 	console.log("[puter] messages sent", JSON.stringify(puterMessages, null, 2));
-	console.log("[puter] options sent", JSON.stringify(options, (key, value) =>
-		key === "tools" ? `[${(value as unknown[]).length} tools]` : value, 2));
+	console.log(
+		"[puter] options sent",
+		JSON.stringify(
+			options,
+			(key, value) =>
+				key === "tools" ? `[${(value as unknown[]).length} tools]` : value,
+			2,
+		),
+	);
 
 	let response: AsyncIterable<PuterChatChunk>;
 	try {
@@ -857,14 +995,22 @@ export async function* streamPuterChat(
 		// send tool calls in unexpected formats. Truncate text for
 		// readability.
 		const partForLog: Record<string, unknown> = { type: part.type };
-		if (part.text) partForLog.text = part.text.length > 100 ? `${part.text.slice(0, 100)}…` : part.text;
+		if (part.text)
+			partForLog.text =
+				part.text.length > 100 ? `${part.text.slice(0, 100)}…` : part.text;
 		if (part.name) partForLog.name = part.name;
 		if (part.id) partForLog.id = part.id;
 		if (part.input !== undefined) partForLog.input = part.input;
 		if (part.message) partForLog.message = part.message;
 		// Also capture any other fields that might indicate tool calls
 		const partRecord = part as Record<string, unknown>;
-		for (const key of ["arguments", "function", "tool_calls", "function_call", "delta"]) {
+		for (const key of [
+			"arguments",
+			"function",
+			"tool_calls",
+			"function_call",
+			"delta",
+		]) {
 			if (partRecord[key] !== undefined) partForLog[key] = partRecord[key];
 		}
 		console.log("[puter] chunk", JSON.stringify(partForLog));
@@ -885,7 +1031,10 @@ export async function* streamPuterChat(
 				try {
 					args = JSON.parse(part.input) as Record<string, unknown>;
 				} catch {
-					console.warn("[puter] failed to parse tool arguments:", String(part.input).slice(0, 200));
+					console.warn(
+						"[puter] failed to parse tool arguments:",
+						String(part.input).slice(0, 200),
+					);
 					args = {};
 				}
 			} else if (part.input === null || part.input === undefined) {

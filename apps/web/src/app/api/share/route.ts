@@ -39,10 +39,14 @@ export async function POST(request: Request) {
 
 	// Stricter cap on share creation — 10/hour per IP. Prevents resource
 	// exhaustion abuse while staying anonymous (local-first design).
-	const { limited: createLimited } = await checkCreateResourceRateLimit({ request });
+	const { limited: createLimited } = await checkCreateResourceRateLimit({
+		request,
+	});
 	if (createLimited) {
 		return NextResponse.json(
-			{ error: "Too many shares created. Please wait before creating another." },
+			{
+				error: "Too many shares created. Please wait before creating another.",
+			},
 			{ status: 429 },
 		);
 	}

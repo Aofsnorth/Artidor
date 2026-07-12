@@ -29,9 +29,7 @@ export type ExportAudioCodec = "aac" | "opus";
  * needs sample-aligned coded sizes). AVC (H.264) and HEVC (H.265) both
  * fall in this bucket; VP9 and AV1 are fine with odd dimensions.
  */
-export function codecRequiresEvenDimensions(
-	codec: ExportVideoCodec,
-): boolean {
+export function codecRequiresEvenDimensions(codec: ExportVideoCodec): boolean {
 	return codec === "avc" || codec === "hevc";
 }
 
@@ -173,7 +171,11 @@ interface CodecCandidate {
  * codec. AVC needs a level-appropriate string (High Profile Level 4.1/5.1/
  * 6.0 depending on resolution); the others use a fixed profile string.
  */
-function codecStringFor(codec: ExportVideoCodec, width: number, height: number): string {
+function codecStringFor(
+	codec: ExportVideoCodec,
+	width: number,
+	height: number,
+): string {
 	switch (codec) {
 		case "avc":
 			return avcCodecStringForDimensions(width, height);
@@ -289,12 +291,17 @@ export async function negotiateVideoCodec({
 				hardwareAcceleration: candidate.hardwareAcceleration,
 			});
 			if (supported) {
-				if (candidate.codec !== preferredVideoCodec(format) ||
+				if (
+					candidate.codec !== preferredVideoCodec(format) ||
 					candidate.format !== format ||
-					candidate.hardwareAcceleration !== (forceSoftware ? "prefer-software" : "prefer-hardware")) {
+					candidate.hardwareAcceleration !==
+						(forceSoftware ? "prefer-software" : "prefer-hardware")
+				) {
 					console.info(
 						`[export] negotiated codec: ${candidate.codec} (${candidate.hardwareAcceleration}) in ${candidate.format}` +
-						(candidate.codec !== preferredVideoCodec(format) ? ` (fallback from ${preferredVideoCodec(format)})` : ""),
+							(candidate.codec !== preferredVideoCodec(format)
+								? ` (fallback from ${preferredVideoCodec(format)})`
+								: ""),
 					);
 				}
 				return {

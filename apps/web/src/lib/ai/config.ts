@@ -16,5 +16,4 @@
  * Controlled by the AI_FEATURE_ENABLED env var. Defaults to true for
  * backwards compatibility. Set AI_FEATURE_ENABLED=false to disable.
  */
-export const AI_FEATURE_ENABLED =
-	process.env.AI_FEATURE_ENABLED !== "false";
+export const AI_FEATURE_ENABLED = process.env.AI_FEATURE_ENABLED !== "false";

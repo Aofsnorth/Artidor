@@ -28,15 +28,14 @@ export async function POST(request: Request) {
 
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
-		return Response.json(
-			{ error: "Too many requests" },
-			{ status: 429 },
-		);
+		return Response.json({ error: "Too many requests" }, { status: 429 });
 	}
 
 	// Stricter cap on room creation — 10/hour per IP. Prevents resource
 	// exhaustion abuse while staying anonymous (local-first design).
-	const { limited: createLimited } = await checkCreateResourceRateLimit({ request });
+	const { limited: createLimited } = await checkCreateResourceRateLimit({
+		request,
+	});
 	if (createLimited) {
 		return Response.json(
 			{ error: "Too many rooms created. Please wait before creating another." },

@@ -110,8 +110,8 @@ export function SpeedTab({
 	});
 
 	return (
-		<div className="flex flex-col">
-			<Section collapsible sectionKey={`${element.id}:speed`}>
+		<div className="flex flex-col gap-3 px-3.5 py-3">
+			<Section card collapsible sectionKey={`${element.id}:speed`}>
 				<SectionHeader>
 					<SectionTitle>Speed</SectionTitle>
 				</SectionHeader>

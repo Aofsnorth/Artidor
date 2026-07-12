@@ -71,7 +71,10 @@ export function FontPicker({
 	// Merge custom fonts with atlas fonts (custom fonts appear at the top).
 	const allFontNames = useMemo(() => {
 		const customNames = customFonts.map((f) => f.family);
-		return [...customNames, ...fontNames.filter((n) => !customNames.includes(n))];
+		return [
+			...customNames,
+			...fontNames.filter((n) => !customNames.includes(n)),
+		];
 	}, [customFonts, fontNames]);
 
 	const handleImportFont = useCallback(async () => {

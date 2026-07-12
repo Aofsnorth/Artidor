@@ -21,7 +21,8 @@ export function AiDisclaimerBanner() {
 			<div className="mx-auto flex max-w-6xl items-center justify-center gap-3 px-4 py-2.5 text-sm text-amber-100">
 				<AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
 				<p>
-					<strong>{t("home.aiDisclaimer.title")}</strong> — {t("home.aiDisclaimer.body")}
+					<strong>{t("home.aiDisclaimer.title")}</strong> —{" "}
+					{t("home.aiDisclaimer.body")}
 				</p>
 			</div>
 			<button

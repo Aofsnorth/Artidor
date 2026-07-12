@@ -3,6 +3,7 @@ import type { UserPreset } from "@/lib/presets/types";
 import { getProjectDurationFromScenes } from "@/lib/scenes";
 import { generateUUID } from "@/utils/id";
 import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
+import { getOrderedTracks } from "@/lib/timeline";
 
 export type ArtidorFileKind = "artidor-project" | "artidor-preset";
 
@@ -161,11 +162,7 @@ export function collectMediaRefs(project: TProject): ImportedMediaRef[] {
 	const refs: ImportedMediaRef[] = [];
 
 	for (const scene of project.scenes) {
-		const allTracks = [
-			scene.tracks.main,
-			...scene.tracks.overlay,
-			...scene.tracks.audio,
-		];
+		const allTracks = getOrderedTracks(scene.tracks);
 		for (const track of allTracks) {
 			for (const element of track.elements) {
 				if (!("mediaId" in element) || !element.mediaId) continue;
