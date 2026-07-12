@@ -49,6 +49,38 @@ export type BeatAnalysisResponse =
 
 let cancelled = false;
 
+/**
+ * Create a lightweight decoding context that works inside a Web Worker.
+ * OfflineAudioContext is the spec-compliant worker API; we fall back to
+ * AudioContext only in environments that still expose it in workers.
+ */
+function createDecoderContext(sampleRate: number): {
+	decodeAudioData(buffer: ArrayBuffer): Promise<AudioBuffer>;
+	close?(): Promise<void>;
+} {
+	// Cast because lib.webworker.d.ts does not declare AudioContext on
+	// DedicatedWorkerGlobalScope, but OfflineAudioContext is the spec-correct
+	// worker API and AudioContext is also exposed in some browsers.
+	const global = self as unknown as typeof globalThis;
+
+	if (typeof global.OfflineAudioContext !== "undefined") {
+		const Ctx = global.OfflineAudioContext;
+		const ctx = new Ctx(1, 1, sampleRate);
+		return { decodeAudioData: ctx.decodeAudioData.bind(ctx) };
+	}
+	if (typeof global.AudioContext !== "undefined") {
+		const Ctx = global.AudioContext;
+		const ctx = new Ctx({ sampleRate });
+		return {
+			decodeAudioData: ctx.decodeAudioData.bind(ctx),
+			close: () => ctx.close(),
+		};
+	}
+	throw new Error(
+		"Audio decoding is not available in this worker. Try Chrome/Edge.",
+	);
+}
+
 self.onmessage = async (event: MessageEvent<BeatAnalysisRequest>) => {
 	const msg = event.data;
 	if (msg.type !== "analyze") return;
@@ -87,17 +119,17 @@ async function runFullPipeline(
 	const arrayBuffer = await file.arrayBuffer();
 	postProgress(0.05);
 
-	// AudioContext is available in Web Workers in modern browsers.
-	// We use a low sample rate to minimize data volume.
-	const AudioCtx = self.AudioContext;
-	if (!AudioCtx) throw new Error("AudioContext not available in worker");
-	const ctx = new AudioCtx({ sampleRate: targetSampleRate });
+	// AudioContext is NOT reliably available in workers across browsers,
+	// but OfflineAudioContext IS part of the Web Audio spec for workers.
+	// We prefer OfflineAudioContext and fall back to AudioContext where it
+	// exists, using a low sample rate to minimize data volume.
+	const ctx = createDecoderContext(targetSampleRate);
 
 	let audioBuffer: AudioBuffer;
 	try {
 		audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 	} finally {
-		ctx.close().catch(() => {});
+		await ctx.close?.().catch(() => {});
 	}
 	postProgress(0.1);
 
@@ -116,11 +148,17 @@ async function runFullPipeline(
 	// what we got — beat detection is robust to sample rate differences.
 	const samples = new Float32Array(trimmedLength);
 
+	// Cache channel buffers to avoid repeated method calls in the hot loop.
+	const channels = new Array<Float32Array>(numChannels);
+	for (let ch = 0; ch < numChannels; ch++) {
+		channels[ch] = audioBuffer.getChannelData(ch);
+	}
+
 	for (let i = 0; i < trimmedLength; i++) {
 		if (cancelled) return [];
 		let sum = 0;
 		for (let ch = 0; ch < numChannels; ch++) {
-			sum += audioBuffer.getChannelData(ch)[startSample + i] ?? 0;
+			sum += channels[ch][startSample + i];
 		}
 		samples[i] = sum / numChannels;
 		if (i % 65536 === 0 && i > 0) postProgress(0.1 + 0.2 * (i / trimmedLength));
@@ -141,7 +179,7 @@ function detectBeats(
 	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
 	const hopSize = Math.max(64, Math.floor(windowSize / 2));
 	const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
-	const energies: number[] = new Array(totalHops);
+	const energies = new Float32Array(totalHops);
 
 	// Phase 3a: Energy computation (30% → 80%)
 	for (
@@ -152,7 +190,7 @@ function detectBeats(
 		if (cancelled) return [];
 		let sum = 0;
 		for (let j = 0; j < windowSize; j++) {
-			const s = samples[i + j] ?? 0;
+			const s = samples[i + j];
 			sum += s * s;
 		}
 		energies[hop] = Math.sqrt(sum / windowSize);
@@ -202,10 +240,12 @@ function postProgress(progress: number): void {
 	} satisfies BeatAnalysisResponse);
 }
 
-function average(values: number[]): number {
+function average(values: ArrayLike<number>): number {
 	if (values.length === 0) return 0;
 	let sum = 0;
-	for (const v of values) sum += v;
+	for (let i = 0; i < values.length; i++) {
+		sum += values[i];
+	}
 	return sum / values.length;
 }
 

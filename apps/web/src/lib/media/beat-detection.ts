@@ -46,15 +46,16 @@ export function detectBeats({
 
 	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
 	const hopSize = Math.max(64, Math.floor(windowSize / 2));
-	const energies: number[] = [];
+	const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
+	const energies = new Float32Array(totalHops);
 
-	for (let i = 0; i < samples.length - windowSize; i += hopSize) {
+	for (let i = 0, hop = 0; i < samples.length - windowSize; i += hopSize, hop++) {
 		let sum = 0;
 		for (let j = 0; j < windowSize; j++) {
-			const sample = samples[i + j] ?? 0;
+			const sample = samples[i + j];
 			sum += sample * sample;
 		}
-		energies.push(Math.sqrt(sum / windowSize));
+		energies[hop] = Math.sqrt(sum / windowSize);
 	}
 
 	if (energies.length === 0) return [];
@@ -204,9 +205,11 @@ export async function detectBeatsAsync({
 	});
 }
 
-function average(values: number[]): number {
+function average(values: ArrayLike<number>): number {
 	if (values.length === 0) return 0;
 	let sum = 0;
-	for (const v of values) sum += v;
+	for (let i = 0; i < values.length; i++) {
+		sum += values[i];
+	}
 	return sum / values.length;
 }

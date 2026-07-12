@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-beat-detection-worker-fix",
+		date: "2026-07-19",
+		tag: "performance",
+		title: "Faster, more reliable beat detection",
+		items: [
+			"Beat detection now decodes audio inside the worker using OfflineAudioContext, the spec-correct worker API, so it no longer fails with \"AudioContext not available in worker\" on browsers that only expose AudioContext on the main thread.",
+			"The mono mixdown and energy-analysis loops are optimized with pre-cached channel buffers, Float32Array energy storage, and fewer property lookups, cutting per-analysis CPU time.",
+		],
+	},
+	{
 		id: "2026-07-18-web-performance-optimization",
 		date: "2026-07-18",
 		tag: "performance",
