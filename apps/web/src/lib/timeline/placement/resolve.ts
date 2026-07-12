@@ -30,7 +30,7 @@ function buildExistingTrackResult({
 	trackIndex: number;
 	tracks: SceneTracks;
 	timeSpans: PlacementTimeSpan[];
-}): PlacementResult {
+}): PlacementResult | null {
 	const firstSpan = timeSpans[0];
 	const requestedStartTime = firstSpan?.startTime ?? 0;
 	const adjustedStartTime = enforceMainTrackStart({
@@ -39,29 +39,32 @@ function buildExistingTrackResult({
 		requestedStartTime,
 		excludeElementId: firstSpan?.excludeElementId,
 	});
+
+	// Re-check overlap with the adjusted start time. enforceMainTrackStart
+	// may have snapped the time to 0 (e.g. on the main track), which can
+	// cause the element to overlap a different clip that the original
+	// overlap check (run before this function) did not catch. If the
+	// adjusted position overlaps, return null so the caller falls through
+	// to new-track creation instead of placing an overlapping clip.
+	if (adjustedStartTime !== requestedStartTime) {
+		const adjustedTimeSpans: PlacementTimeSpan[] = [
+			{
+				startTime: adjustedStartTime,
+				duration: firstSpan?.duration ?? 0,
+				excludeElementId: firstSpan?.excludeElementId,
+			},
+		];
+		if (!canPlaceTimeSpansOnTrack({ track, timeSpans: adjustedTimeSpans })) {
+			return null;
+		}
+	}
+
 	return {
 		kind: "existingTrack",
 		trackId: track.id,
 		trackIndex,
 		trackType: track.type,
 		...(adjustedStartTime !== requestedStartTime ? { adjustedStartTime } : {}),
-	};
-}
-
-function buildNewTrackResult({
-	trackType,
-	insertIndex,
-	insertPosition,
-}: {
-	trackType: TrackType;
-	insertIndex: number;
-	insertPosition: "above" | "below" | null;
-}): PlacementResult {
-	return {
-		kind: "newTrack",
-		trackType,
-		insertIndex,
-		insertPosition,
 	};
 }
 
@@ -181,12 +184,13 @@ export function resolveTrackPlacement({
 			timeSpans,
 		});
 		if (existingTrackIndex >= 0) {
-			return buildExistingTrackResult({
+			const result = buildExistingTrackResult({
 				track: orderedTracks[existingTrackIndex],
 				trackIndex: existingTrackIndex,
 				tracks,
 				timeSpans,
 			});
+			if (result) return result;
 		}
 
 		return resolveAlwaysNewTrack({
@@ -214,12 +218,13 @@ export function resolveTrackPlacement({
 				timeSpans,
 			});
 		if (canUseExistingTrack) {
-			return buildExistingTrackResult({
+			const result = buildExistingTrackResult({
 				track: preferredTrack,
 				trackIndex: strategy.trackIndex,
 				tracks,
 				timeSpans,
 			});
+			if (result) return result;
 		}
 
 		const { insertIndex, insertPosition } = resolvePreferredNewTrackPlacement({
@@ -258,12 +263,13 @@ export function resolveTrackPlacement({
 				timeSpans,
 			})
 		) {
-			return buildExistingTrackResult({
+			const result = buildExistingTrackResult({
 				track: aboveTrack,
 				trackIndex: aboveTrackIndex,
 				tracks,
 				timeSpans,
 			});
+			if (result) return result;
 		}
 
 		const firstAvailableTrackIndex = findFirstAvailableTrackIndex({
@@ -273,12 +279,13 @@ export function resolveTrackPlacement({
 			timeSpans,
 		});
 		if (firstAvailableTrackIndex >= 0) {
-			return buildExistingTrackResult({
+			const result = buildExistingTrackResult({
 				track: orderedTracks[firstAvailableTrackIndex],
 				trackIndex: firstAvailableTrackIndex,
 				tracks,
 				timeSpans,
 			});
+			if (result) return result;
 		}
 
 		const insertIndex = getHighestInsertIndexForTrack({
@@ -298,4 +305,21 @@ export function resolveTrackPlacement({
 		trackType,
 		position: strategy.position,
 	});
+}
+
+function buildNewTrackResult({
+	trackType,
+	insertIndex,
+	insertPosition,
+}: {
+	trackType: TrackType;
+	insertIndex: number;
+	insertPosition: "above" | "below" | null;
+}): PlacementResult {
+	return {
+		kind: "newTrack",
+		trackType,
+		insertIndex,
+		insertPosition,
+	};
 }

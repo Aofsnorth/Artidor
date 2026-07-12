@@ -11,6 +11,8 @@ import {
 	validateElementTrackCompatibility,
 	enforceMainTrackStart,
 } from "@/lib/timeline/placement";
+import { canPlaceTimeSpansOnTrack } from "@/lib/timeline/placement/overlap";
+import type { PlacementTimeSpan } from "@/lib/timeline/placement/types";
 import {
 	findTrackInSceneTracks,
 	updateTrackInSceneTracks,
@@ -91,12 +93,56 @@ export class MoveElementCommand extends Command {
 			throw new Error(validation.errorMessage);
 		}
 
-		const adjustedStartTime = enforceMainTrackStart({
+		let adjustedStartTime = enforceMainTrackStart({
 			tracks: tracksToUpdate,
 			targetTrackId: this.targetTrackId,
 			requestedStartTime: this.newStartTime,
 			excludeElementId: this.elementId,
 		});
+
+		// Overlap guard: after enforceMainTrackStart may have adjusted the
+		// start time (e.g. snapped to 0 on the main track), re-check whether
+		// the element would overlap another element on the target track.
+		// Without this, the main track can end up with overlapping clips
+		// because the overlap check in resolveTrackPlacement ran BEFORE
+		// enforceMainTrackStart adjusted the time.
+		const overlapTimeSpans: PlacementTimeSpan[] = [
+			{
+				startTime: adjustedStartTime,
+				duration: element.duration,
+				excludeElementId: this.elementId,
+			},
+		];
+		if (!canPlaceTimeSpansOnTrack({ track: targetTrack, timeSpans: overlapTimeSpans })) {
+			const overlappingNeighbor = targetTrack.elements
+				.filter((el) => el.id !== this.elementId)
+				.find((el) => {
+					const elEnd = el.startTime + el.duration;
+					return (
+						adjustedStartTime < elEnd &&
+						adjustedStartTime + element.duration > el.startTime
+					);
+				});
+			if (overlappingNeighbor) {
+				const pushedStart =
+					overlappingNeighbor.startTime + overlappingNeighbor.duration;
+				const pushedTimeSpans: PlacementTimeSpan[] = [
+					{
+						startTime: pushedStart,
+						duration: element.duration,
+						excludeElementId: this.elementId,
+					},
+				];
+				if (
+					canPlaceTimeSpansOnTrack({
+						track: targetTrack,
+						timeSpans: pushedTimeSpans,
+					})
+				) {
+					adjustedStartTime = pushedStart;
+				}
+			}
+		}
 
 		// keyframe times remain clip-local, so moving only changes element startTime.
 		const movedElement: TimelineElement = {

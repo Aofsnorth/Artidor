@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useEffect,
 	useRef,
+	useMemo,
 	type MouseEvent as ReactMouseEvent,
 	type RefObject,
 } from "react";
@@ -174,11 +175,17 @@ export function useElementInteraction({
 	const editor = useEditor();
 	const isShiftHeldRef = useShiftKey();
 	const sceneTracks = editor.scenes.getActiveScene().tracks;
-	const tracks = [
-		...sceneTracks.overlay,
-		sceneTracks.main,
-		...sceneTracks.audio,
-	];
+	// Memoize the ordered tracks array so it stays stable across re-renders
+	// that don't change the scene's tracks. Without this, the spread creates
+	// a new array reference every render, causing the mousemove/mouseup
+	// effects to re-subscribe on every dragState update (which fires on
+	// every mousemove), making drag interactions unreliable — especially
+	// on non-main tracks where the effect re-subscription race causes
+	// mouseup to be missed.
+	const tracks = useMemo(
+		() => [...sceneTracks.overlay, sceneTracks.main, ...sceneTracks.audio],
+		[sceneTracks],
+	);
 	const {
 		selectedElements,
 		isElementSelected,
