@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the editor performance phase 1 improvement", () => {
+	test("the newest entry is the timeline layout readability improvement", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-16-editor-performance-phase-1",
+			"2026-07-17-timeline-layout-readability",
 		);
 	});
 });

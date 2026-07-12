@@ -17,8 +17,6 @@ export interface LayoutPreset {
 	id: string;
 	name: string;
 	sizes: PanelSizes;
-	/** Whether this preset is free for everyone or reserved for Pro users. */
-	scope?: "free" | "pro";
 }
 
 export const LAYOUT_PRESETS: LayoutPreset[] = [
@@ -34,14 +32,12 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
 	},
 	{
 		id: "color-grading",
-				name: "Color Grading",
-				scope: "pro",
+		name: "Color Grading",
 		sizes: { tools: 15, preview: 50, properties: 35, mainContent: 60, timeline: 40 },
 	},
 	{
 		id: "effects-focus",
-				name: "Effects Focus",
-				scope: "pro",
+		name: "Effects Focus",
 		sizes: { tools: 35, preview: 40, properties: 25, mainContent: 64, timeline: 36 },
 	},
 	{

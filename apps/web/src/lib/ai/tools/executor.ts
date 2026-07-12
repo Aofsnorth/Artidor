@@ -1193,7 +1193,7 @@ const HANDLERS: Record<string, Handler> = {
 					element,
 					placement: {
 						mode: "auto",
-						trackType: asset.type === "audio" ? "audio" : "video",
+						trackType: asset.type,
 					},
 				});
 
@@ -1289,7 +1289,7 @@ const HANDLERS: Record<string, Handler> = {
 						element,
 						placement: {
 							mode: "auto",
-							trackType: asset.type === "audio" ? "audio" : "video",
+							trackType: asset.type,
 						},
 					});
 			if (!placed) {

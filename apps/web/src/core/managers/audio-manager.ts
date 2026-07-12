@@ -754,7 +754,15 @@ export class AudioManager {
 		// mediabunny's WebCodecs-based streaming sink can decode to silence in
 		// browsers whose AudioDecoder does not support FLAC. Force the prepared
 		// path so FLAC clips always use decodeClipBuffer.
-		const needsNativeDecode = isFlacFile(clip.file);
+		//
+		// The original file name is preserved on the timeline element, while the
+		// underlying File object loaded from OPFS has a UUID key as its name.
+		// Passing the timeline element name ensures FLAC detection still works
+		// after reload.
+		const needsNativeDecode = isFlacFile({
+			file: clip.file,
+			name: clip.timelineElement.name,
+		});
 		return hasCurve || hasKeyframedVolume || maintainPitch || hasFade || needsNativeDecode;
 	}
 
@@ -1086,11 +1094,20 @@ export class AudioManager {
 /**
  * Detects FLAC files by MIME type or extension. Browsers do not always report
  * `audio/flac` for `.flac` files (especially when the OS/file picker does not
- * know the type), so we fall back to the file extension. This matches the
- * detection used by the waveform component and the Tauri media bridge.
+ * know the type), so we fall back to the file extension.
+ *
+ * The `name` fallback is needed because the file stored in OPFS is keyed by a
+ * UUID, so `file.name` may not retain the original `.flac` extension.
  */
-function isFlacFile(file: File): boolean {
+function isFlacFile({
+	file,
+	name,
+}: {
+	file: File;
+	name?: string;
+}): boolean {
 	const type = file.type.toLowerCase();
 	if (type === "audio/flac" || type === "audio/x-flac") return true;
-	return /\.flac$/i.test(file.name);
+	const candidate = (name ?? file.name).toLowerCase();
+	return /\.flac$/i.test(candidate);
 }

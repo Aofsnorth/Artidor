@@ -337,7 +337,6 @@ function ElementEnvelope({
 
 const KEYFRAME_INDICATOR_MIN_WIDTH_PX = 40;
 const ELEMENT_RING_WIDTH_PX = 1.5;
-const SELECTED_ELEMENT_RING_WIDTH_PX = 3;
 const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 
 interface KeyframeIndicator {
@@ -734,7 +733,9 @@ function TimelineElement({
 									? TIMELINE_LAYERS.dragLine + 2
 									: isAIActiveOnElement
 										? TIMELINE_LAYERS.dragLine + 1
-										: undefined,
+										: isSelected
+											? 2
+											: undefined,
 							pointerEvents:
 								isBeingDragged && dragState.dragElementIds.length > 0
 									? "none"
@@ -1208,18 +1209,16 @@ function ElementInner({
 			<div
 				className="absolute inset-0 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_22px_rgba(0,0,0,0.22)]"
 				style={{
-					...(isSelected
-						? {
-								boxShadow: `0 0 0 ${SELECTED_ELEMENT_RING_WIDTH_PX}px var(--primary)`,
-							}
-						: undefined),
 					borderRadius,
 				}}
 			>
 				<div
 					className={cn(
-						"absolute inset-0 overflow-hidden border border-white/4",
+						"absolute inset-0 overflow-hidden",
 						isExpanded && "bg-background",
+						isSelected
+							? "border-4 border-primary"
+							: "border border-white/4",
 					)}
 					style={{ borderRadius }}
 				>
