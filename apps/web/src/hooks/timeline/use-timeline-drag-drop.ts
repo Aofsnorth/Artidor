@@ -486,23 +486,6 @@ export function useTimelineDragDrop({
 			const track = orderedTracks[target.trackIndex];
 			if (!track) return;
 
-			const dropOnMainVideoTrack =
-				track.id === sceneTracks.main.id && dragData.mediaType === "image";
-			if (dropOnMainVideoTrack) {
-				target.isNewTrack = true;
-				target.trackIndex = sceneTracks.overlay.length;
-				const overlayIndex = sceneTracks.overlay.length;
-				const addTrackCmd = new AddTrackCommand(trackType, overlayIndex);
-				const insertCmd = new InsertElementCommand({
-					element,
-					placement: { mode: "explicit", trackId: addTrackCmd.getTrackId() },
-				});
-				editor.command.execute({
-					command: new BatchCommand([addTrackCmd, insertCmd]),
-				});
-				return;
-			}
-
 			editor.timeline.insertElement({
 				placement: { mode: "explicit", trackId: track.id },
 				element,

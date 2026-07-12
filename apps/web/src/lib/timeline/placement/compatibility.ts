@@ -26,6 +26,9 @@ export function canElementGoOnTrack({
 	elementType: ElementType;
 	trackType: TrackType;
 }): boolean {
+	if (elementType === "image") {
+		return trackType === "image" || trackType === "video";
+	}
 	return getTrackTypeForElementType({ elementType }) === trackType;
 }
 

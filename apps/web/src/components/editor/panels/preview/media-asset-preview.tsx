@@ -49,6 +49,10 @@ export function MediaAssetPreview() {
 	const [isSeeking, setIsSeeking] = useState(false);
 	const [isClosing, setIsClosing] = useState(false);
 	const [previewVolume, setPreviewVolume] = useState(1);
+	const previewVolumeRef = useRef(previewVolume);
+	useEffect(() => {
+		previewVolumeRef.current = previewVolume;
+	}, [previewVolume]);
 
 	// Pause timeline playback while asset preview is active.
 	useEffect(() => {
@@ -87,18 +91,25 @@ export function MediaAssetPreview() {
 		setDuration(0);
 		setIsPlaying(false);
 
+		// Stop any previous audio or video before switching. The same <audio>
+		// and <video> elements are reused, but switching from audio to video
+		// (or vice versa) would leave the other element playing in the
+		// background and produce doubled sound.
+		audioRef.current?.pause();
+		videoRef.current?.pause();
+
 		if (asset.type === "video" && videoRef.current) {
 			const video = videoRef.current;
 			video.src = asset.url;
-			video.volume = previewVolume;
+			video.volume = previewVolumeRef.current;
 			video.play().then(() => setIsPlaying(true)).catch(() => {});
 		} else if (asset.type === "audio" && audioRef.current) {
 			const audio = audioRef.current;
 			audio.src = asset.url;
-			audio.volume = previewVolume;
+			audio.volume = previewVolumeRef.current;
 			audio.play().then(() => setIsPlaying(true)).catch(() => {});
 		}
-	}, [asset?.type, asset?.url, previewVolume]);
+	}, [asset?.type, asset?.url]);
 
 	useEffect(() => {
 		if (videoRef.current) videoRef.current.volume = previewVolume;

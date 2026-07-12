@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSoundSearch } from "@/hooks/use-sound-search";
 import { useSoundsStore } from "@/stores/sounds-store";
+import { useAssetPreviewStore } from "@/stores/asset-preview-store";
 import type { SavedSound, SoundEffect } from "@/lib/sounds/types";
 import {
 	ALL_CATEGORY,
@@ -135,11 +136,6 @@ function SoundEffectsView() {
 		commercialOnly: showCommercialOnly,
 	});
 
-	const [playingId, setPlayingId] = useState<number | null>(null);
-	const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
-		null,
-	);
-
 	const { scrollAreaRef, handleScroll } = useInfiniteScroll({
 		onLoadMore: loadMore,
 		hasMore: hasNextPage,
@@ -240,30 +236,25 @@ function SoundEffectsView() {
 
 	const displayedSounds = searchQuery ? searchResults : topSoundEffects;
 
+	const audioPreviewId = useAssetPreviewStore((s) => s.audioPreviewId);
+	const playAudioPreview = useAssetPreviewStore((s) => s.playAudioPreview);
+
+	useEffect(() => {
+		return () => {
+			if (useAssetPreviewStore.getState().audioPreviewId?.startsWith("sound-")) {
+				useAssetPreviewStore.getState().stopAudioPreview();
+			}
+		};
+	}, []);
+
 	const playSound = ({ sound }: { sound: SoundEffect }) => {
-		if (playingId === sound.id) {
-			audioElement?.pause();
-			setPlayingId(null);
+		const key = `sound-${sound.id}`;
+		if (audioPreviewId === key) {
+			useAssetPreviewStore.getState().stopAudioPreview();
 			return;
 		}
-
-		audioElement?.pause();
-
 		if (sound.previewUrl) {
-			const audio = new Audio(sound.previewUrl);
-			audio.addEventListener("ended", () => {
-				setPlayingId(null);
-			});
-			audio.addEventListener("error", () => {
-				setPlayingId(null);
-			});
-			audio.play().catch((error) => {
-				console.error("Failed to play sound preview:", error);
-				setPlayingId(null);
-			});
-
-			setAudioElement(audio);
-			setPlayingId(sound.id);
+			playAudioPreview({ id: key, url: sound.previewUrl });
 		}
 	};
 
@@ -348,7 +339,7 @@ function SoundEffectsView() {
 							<AudioItem
 								key={sound.id}
 								sound={sound}
-								isPlaying={playingId === sound.id}
+								isPlaying={audioPreviewId === `sound-${sound.id}`}
 								onPlay={playSound}
 							/>
 						))}
@@ -381,10 +372,7 @@ function SavedSoundsView() {
 		clearSavedSounds,
 	} = useSoundsStore();
 
-	const [playingId, setPlayingId] = useState<number | null>(null);
-	const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
-		null,
-	);
+
 
 	const [showClearDialog, setShowClearDialog] = useState(false);
 
@@ -392,30 +380,25 @@ function SavedSoundsView() {
 		loadSavedSounds();
 	}, [loadSavedSounds]);
 
+	const audioPreviewId = useAssetPreviewStore((s) => s.audioPreviewId);
+	const playAudioPreview = useAssetPreviewStore((s) => s.playAudioPreview);
+
+	useEffect(() => {
+		return () => {
+			if (useAssetPreviewStore.getState().audioPreviewId?.startsWith("saved-")) {
+				useAssetPreviewStore.getState().stopAudioPreview();
+			}
+		};
+	}, []);
+
 	const playSound = ({ sound }: { sound: SoundEffect }) => {
-		if (playingId === sound.id) {
-			audioElement?.pause();
-			setPlayingId(null);
+		const key = `saved-${sound.id}`;
+		if (audioPreviewId === key) {
+			useAssetPreviewStore.getState().stopAudioPreview();
 			return;
 		}
-
-		audioElement?.pause();
-
 		if (sound.previewUrl) {
-			const audio = new Audio(sound.previewUrl);
-			audio.addEventListener("ended", () => {
-				setPlayingId(null);
-			});
-			audio.addEventListener("error", () => {
-				setPlayingId(null);
-			});
-			audio.play().catch((error) => {
-				console.error("Failed to play sound preview:", error);
-				setPlayingId(null);
-			});
-
-			setAudioElement(audio);
-			setPlayingId(sound.id);
+			playAudioPreview({ id: key, url: sound.previewUrl });
 		}
 	};
 
@@ -540,7 +523,7 @@ function SavedSoundsView() {
 							<AudioItem
 								key={sound.id}
 								sound={convertToSoundEffect({ savedSound: sound })}
-								isPlaying={playingId === sound.id}
+								isPlaying={audioPreviewId === `saved-${sound.id}`}
 								onPlay={playSound}
 							/>
 						))}

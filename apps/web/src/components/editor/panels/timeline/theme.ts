@@ -42,12 +42,12 @@ export const DEFAULT_TIMELINE_BOOKMARK_COLOR = "#ffffff";
 
 /**
  * Custom cursor for the timeline split tool (shortcut B). The icon is a
- * 32x32 scissor: two blades crossing at the hotspot (16,16) with finger
- * handles below. A black outline is drawn behind the white strokes so the
- * cursor stays visible on both dark and light clip backgrounds.
+ * 24x24 single blade: the hotspot is the blade tip at (12, 2) so the cut
+ * point lands exactly where the user points. A black outline sits behind
+ * the white blade so it stays visible on both dark and light clip backgrounds.
  */
-const splitCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g stroke="black" stroke-width="5" stroke-linecap="round" fill="none"><path d="M8 4L16 16L24 28"/><path d="M24 4L16 16L8 28"/></g><g stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"><path d="M8 4L16 16L24 28"/><path d="M24 4L16 16L8 28"/></g><circle cx="8" cy="26" r="4.5" fill="black"/><circle cx="24" cy="26" r="4.5" fill="black"/><circle cx="8" cy="26" r="3" fill="white"/><circle cx="24" cy="26" r="3" fill="white"/></svg>`;
-export const SPLIT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(splitCursorSvg)}") 16 16, crosshair`;
+const splitCursorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2L8 14L12 22L16 14Z" stroke="black" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" fill="white"/><path d="M12 2L8 14L12 22L16 14Z" stroke="white" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" fill="none"/></svg>`;
+export const SPLIT_CURSOR = `url("data:image/svg+xml,${encodeURIComponent(splitCursorSvg)}") 12 2, crosshair`;
 
 /**
  * Curated color presets for custom track colors. The user picks from these
