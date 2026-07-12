@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import type {
 	EffectElement,
 	GraphicElement,
@@ -28,22 +28,74 @@ import {
 	InformationCircleIcon,
 	Image01Icon,
 } from "@hugeicons/core-free-icons";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TransformTab } from "./tabs/transform-tab";
 import { AudioTab } from "./tabs/audio-tab";
-import { AudioEffectsTab } from "./tabs/audio-effects-tab";
 import { TextTab } from "./tabs/text-tab";
-import { ClipEffectsTab, StandaloneEffectTab } from "./tabs/effects-tab";
-import { MasksTab } from "./tabs/masks-tab";
 import { SpeedTab } from "./tabs/speed-tab";
-import { SpeedRampTab } from "./tabs/speed-ramp-tab";
 import { GraphicTab } from "./tabs/graphic-tab";
-import { AnimationsTab } from "./tabs/animations-tab";
-import { ParentingTab } from "./tabs/parenting-tab";
-import { CameraTab, CameraInspectTab } from "./tabs/camera-tab";
-import { ElementTab } from "./tabs/element-tab";
-import { ImageTab } from "./tabs/image-tab";
-import { GraphicsStyleTab } from "./tabs/graphics-style-tab";
 import { OcShapesIcon } from "@/components/icons";
+
+// Default / frequently-used tabs are eager-loaded so the selected element
+// inspector is immediately usable. Heavy tabs are lazy-loaded per-tab to keep
+// the editor's initial bundle small.
+const LazyImageTab = lazy(() =>
+	import("./tabs/image-tab").then((m) => ({ default: m.ImageTab })),
+);
+const LazyGraphicsStyleTab = lazy(() =>
+	import("./tabs/graphics-style-tab").then((m) => ({
+		default: m.GraphicsStyleTab,
+	})),
+);
+const LazyElementTab = lazy(() =>
+	import("./tabs/element-tab").then((m) => ({ default: m.ElementTab })),
+);
+const LazyClipEffectsTab = lazy(() =>
+	import("./tabs/effects-tab").then((m) => ({ default: m.ClipEffectsTab })),
+);
+const LazyStandaloneEffectTab = lazy(() =>
+	import("./tabs/effects-tab").then((m) => ({
+		default: m.StandaloneEffectTab,
+	})),
+);
+const LazyMasksTab = lazy(() =>
+	import("./tabs/masks-tab").then((m) => ({ default: m.MasksTab })),
+);
+const LazyAudioEffectsTab = lazy(() =>
+	import("./tabs/audio-effects-tab").then((m) => ({
+		default: m.AudioEffectsTab,
+	})),
+);
+const LazySpeedRampTab = lazy(() =>
+	import("./tabs/speed-ramp-tab").then((m) => ({
+		default: m.SpeedRampTab,
+	})),
+);
+const LazyParentingTab = lazy(() =>
+	import("./tabs/parenting-tab").then((m) => ({ default: m.ParentingTab })),
+);
+const LazyCameraTab = lazy(() =>
+	import("./tabs/camera-tab").then((m) => ({ default: m.CameraTab })),
+);
+const LazyCameraInspectTab = lazy(() =>
+	import("./tabs/camera-tab").then((m) => ({
+		default: m.CameraInspectTab,
+	})),
+);
+const LazyAnimationsTab = lazy(() =>
+	import("./tabs/animations-tab").then((m) => ({ default: m.AnimationsTab })),
+);
+
+/** Skeleton shown while a lazy property tab chunk loads. */
+function TabSkeleton() {
+	return (
+		<div className="flex flex-col gap-3 p-4">
+			<Skeleton className="h-4 w-3/4" />
+			<Skeleton className="h-20 w-full" />
+			<Skeleton className="h-4 w-1/2" />
+		</div>
+	);
+}
 
 export type TabContentProps = {
 	trackId: string;
@@ -148,7 +200,9 @@ function buildSpeedRampTab({
 		label: "Speed Ramp",
 		icon: <HugeiconsIcon icon={DashboardSpeed02Icon} size={16} />,
 		content: ({ trackId }) => (
-			<SpeedRampTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazySpeedRampTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -163,7 +217,9 @@ function buildAudioEffectsTab({
 		label: "Effects",
 		icon: <HugeiconsIcon icon={SparklesIcon} size={16} />,
 		content: ({ trackId }) => (
-			<AudioEffectsTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyAudioEffectsTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -177,7 +233,11 @@ function buildMasksTab({
 		id: "masks",
 		label: "Masks",
 		icon: <OcShapesIcon size={16} />,
-		content: ({ trackId }) => <MasksTab element={element} trackId={trackId} />,
+		content: ({ trackId }) => (
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyMasksTab element={element} trackId={trackId} />
+			</Suspense>
+		),
 	};
 }
 
@@ -191,7 +251,9 @@ function buildClipEffectsTab({
 		label: "Effects",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
 		content: ({ trackId }) => (
-			<ClipEffectsTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyClipEffectsTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -212,7 +274,13 @@ function buildImageTab({
 		label: "Image",
 		icon: <HugeiconsIcon icon={Image01Icon} size={16} />,
 		content: ({ trackId, mediaAsset }) => (
-			<ImageTab element={element} trackId={trackId} mediaAsset={mediaAsset} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyImageTab
+					element={element}
+					trackId={trackId}
+					mediaAsset={mediaAsset}
+				/>
+			</Suspense>
 		),
 	};
 }
@@ -251,7 +319,9 @@ function buildGraphicsStyleTab({
 		label: "Graphics",
 		icon: <OcShapesIcon size={16} />,
 		content: ({ trackId }) => (
-			<GraphicsStyleTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyGraphicsStyleTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -266,7 +336,9 @@ function buildStandaloneEffectTab({
 		label: "Effects",
 		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
 		content: ({ trackId }) => (
-			<StandaloneEffectTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyStandaloneEffectTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -276,7 +348,11 @@ function buildAnimationsTab(): PropertiesTabDef {
 		id: "animations",
 		label: "Animation",
 		icon: <HugeiconsIcon icon={PlayIcon} size={16} />,
-		content: () => <AnimationsTab />,
+		content: () => (
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyAnimationsTab />
+			</Suspense>
+		),
 	};
 }
 
@@ -290,7 +366,9 @@ function buildParentingTab({
 		label: "Link",
 		icon: <HugeiconsIcon icon={Link01Icon} size={16} />,
 		content: ({ trackId }) => (
-			<ParentingTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyParentingTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -300,7 +378,11 @@ function buildCameraTab(): PropertiesTabDef {
 		id: "camera",
 		label: "Camera",
 		icon: <HugeiconsIcon icon={Camera01Icon} size={16} />,
-		content: () => <CameraTab />,
+		content: () => (
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyCameraTab />
+			</Suspense>
+		),
 	};
 }
 
@@ -314,7 +396,9 @@ function buildCameraInspectTab({
 		label: "Camera Properties",
 		icon: <HugeiconsIcon icon={Camera01Icon} size={16} />,
 		content: ({ trackId }) => (
-			<CameraInspectTab element={element} trackId={trackId} />
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyCameraInspectTab element={element} trackId={trackId} />
+			</Suspense>
 		),
 	};
 }
@@ -339,12 +423,14 @@ function buildElementTab({
 		label: "Info",
 		icon: <HugeiconsIcon icon={InformationCircleIcon} size={16} />,
 		content: ({ trackId, trackName }) => (
-			<ElementTab
-				element={element}
-				trackId={trackId}
-				trackName={trackName}
-				mediaAssets={mediaAssets}
-			/>
+			<Suspense fallback={<TabSkeleton />}>
+				<LazyElementTab
+					element={element}
+					trackId={trackId}
+					trackName={trackName}
+					mediaAssets={mediaAssets}
+				/>
+			</Suspense>
 		),
 	};
 }

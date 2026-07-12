@@ -77,7 +77,7 @@ export function usePasteMedia() {
 								asset.duration != null
 									? Math.round(asset.duration * TICKS_PER_SECOND)
 									: DEFAULT_NEW_ELEMENT_DURATION;
-							const trackType = asset.type === "audio" ? "audio" : "video";
+							const trackType = asset.type;
 
 							const element = buildElementFromMedia({
 								mediaId: assetId,

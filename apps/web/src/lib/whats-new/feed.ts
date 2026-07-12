@@ -18,6 +18,51 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-17-timeline-layout-readability",
+		date: "2026-07-17",
+		tag: "improvement",
+		title: "Timeline, layout, and meter polish",
+		items: [
+			"Dragging assets and clicking the timeline now aligns with the visible content area, removing the small left-inset gap.",
+			"Layout presets are no longer gated behind Pro and a new Components menu lets you pop any panel out to a floating window.",
+			"Audio meter dB labels now switch to a dark color when the spectrum fill covers them, keeping the scale readable.",
+			"Selected timeline clips now show a thick primary border and pop above unselected clips so the active selection is easier to see.",
+		],
+	},
+	{
+		id: "2026-07-17-image-dedicated-track",
+		date: "2026-07-17",
+		tag: "improvement",
+		title: "Image drops now land on a dedicated image track",
+		items: [
+			"Dragging an image to the timeline now creates a dedicated image track instead of placing it on a video track.",
+			"Images dropped onto the main video track or an audio track spawn a new image track above the video lane.",
+		],
+	},
+	{
+		id: "2026-07-17-flac-reload-fix",
+		date: "2026-07-17",
+		tag: "fix",
+		title: "FLAC audio no longer lost after reload",
+		items: [
+			"FLAC detection in the timeline preview now uses the original clip name, so FLAC clips keep using the native Web Audio decoder after the project is reloaded.",
+			"Fixes silent FLAC playback when the file stored in the browser has a UUID key instead of the original .flac extension.",
+		],
+	},
+	{
+		id: "2026-07-16-editor-performance-phase-1",
+		date: "2026-07-16",
+		tag: "performance",
+		title: "Editor performance: faster load, smoother timeline, and leaner preview loop",
+		items: [
+			"Asset panel views, property panel tabs, CommandPalette, and EnvWarningModal are now lazy-loaded, so only the UI you open is fetched.",
+			"Page transitions and guide popovers now use CSS animations instead of `motion/react`, removing a large runtime dependency from the editor bundle.",
+			"Preview rAF loop stops when paused and idle; the render tree controller uses a shallow `useEffect` instead of `useDeepCompareEffect`.",
+			"Timeline track rows and content are now memoized, and per-track scroll/edge-scroll listeners are merged into a single shared listener per timeline.",
+			"Next.js barrel imports are optimized for `motion` and `react-icons` to reduce the chance of oversized chunks.",
+		],
+	},
+	{
 		id: "2026-07-16-ai-chat-controls-and-previews",
 		date: "2026-07-16",
 		tag: "improvement",

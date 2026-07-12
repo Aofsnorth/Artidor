@@ -7,7 +7,7 @@ const ELEMENT_TRACK_MAP: Record<ElementType, TrackType> = {
 	graphic: "graphic",
 	effect: "effect",
 	video: "video",
-	image: "video",
+	image: "image",
 	camera: "camera",
 };
 

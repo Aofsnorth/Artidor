@@ -14,6 +14,7 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { TIMELINE_DRAG_THRESHOLD_PX } from "@/components/editor/panels/timeline/interaction";
 import { roundToFrame } from "artidor-wasm";
 import { computeDropTarget } from "@/components/editor/panels/timeline/drop-target";
+import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { getMouseTimeFromClientX } from "@/lib/timeline/drag-utils";
 import { generateUUID } from "@/utils/id";
 import { snapElementEdge, type SnapPoint } from "@/lib/timeline/snap-utils";
@@ -129,7 +130,7 @@ function getDragDropTarget({
 	const scrollTop = scrollContainer.scrollTop;
 	const scrollContainerRect = scrollContainer.getBoundingClientRect();
 	const headerHeight = headerRef?.current?.getBoundingClientRect().height ?? 0;
-	const mouseX = clientX - scrollContainerRect.left + scrollLeft;
+	const mouseX = clientX - scrollContainerRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
 	const mouseY = clientY - scrollContainerRect.top + scrollTop - headerHeight;
 
 	return computeDropTarget({
@@ -315,6 +316,7 @@ export function useElementInteraction({
 						containerRect: scrollContainer.getBoundingClientRect(),
 						zoomLevel,
 						scrollLeft,
+						contentInset: TIMELINE_CONTENT_LEFT_INSET_PX,
 					});
 					const adjustedTime = Math.max(
 						0,
@@ -364,6 +366,7 @@ export function useElementInteraction({
 				containerRect: scrollContainer.getBoundingClientRect(),
 				zoomLevel,
 				scrollLeft,
+				contentInset: TIMELINE_CONTENT_LEFT_INSET_PX,
 			});
 			const adjustedTime = Math.max(0, mouseTime - dragState.clickOffsetTime);
 			const fps = activeProject.settings.fps;

@@ -11,35 +11,6 @@ import {
 } from "artidor-wasm";
 import type { FrameDescriptor } from "./types";
 
-function ensureOffscreenCanvas({
-	source,
-	width,
-	height,
-	label,
-}: {
-	source: CanvasImageSource;
-	width: number;
-	height: number;
-	label: string;
-}): OffscreenCanvas {
-	if (source instanceof OffscreenCanvas) {
-		return source;
-	}
-
-	if (typeof OffscreenCanvas === "undefined") {
-		throw new Error(`OffscreenCanvas is required for ${label}`);
-	}
-
-	const canvas = new OffscreenCanvas(width, height);
-	const context = canvas.getContext("2d");
-	if (!context) {
-		throw new Error(`Failed to get 2d context for ${label}`);
-	}
-	context.clearRect(0, 0, width, height);
-	context.drawImage(source, 0, 0, width, height);
-	return canvas;
-}
-
 export type TextureUploadDescriptor = {
 	id: string;
 	source: CanvasImageSource;
@@ -149,15 +120,9 @@ class WasmCompositor {
 				continue;
 			}
 
-			const sourceCanvas = ensureOffscreenCanvas({
-				source: texture.source,
-				width: texture.width,
-				height: texture.height,
-				label: `texture upload ${texture.id}`,
-			});
 			uploadTexture({
 				id: texture.id,
-				source: sourceCanvas,
+				source: texture.source,
 				width: texture.width,
 				height: texture.height,
 			});

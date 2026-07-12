@@ -1,6 +1,5 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
 import { GUIDE_REGISTRY, getGuideById } from "@/lib/guides";
 import { usePreviewStore } from "@/stores/preview-store";
 import {
@@ -36,23 +35,17 @@ export function GridPopover({ children }: { children: React.ReactNode }) {
 						))}
 					</div>
 				</div>
-				<AnimatePresence>
-					{options && (
-						<motion.div
-							initial={{ height: 0, opacity: 0 }}
-							animate={{ height: "auto", opacity: 1 }}
-							exit={{ height: 0, opacity: 0 }}
-							transition={{
-								height: { type: "spring", duration: 0.2, bounce: 0 },
-								opacity: { duration: 0.2 },
-							}}
-							className="overflow-hidden"
-						>
-							<Separator className="my-3" />
-							<div className="px-4">{options}</div>
-						</motion.div>
+				<div
+					className={cn(
+						"grid transition-all duration-200 ease-out overflow-hidden",
+						options ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 					)}
-				</AnimatePresence>
+				>
+					<div className="min-h-0">
+						<Separator className="my-3" />
+						<div className="px-4">{options}</div>
+					</div>
+				</div>
 			</PopoverContent>
 		</Popover>
 	);
