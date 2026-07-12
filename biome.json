@@ -44,5 +44,16 @@
 				"organizeImports": "off"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": [
+				"apps/web/src/lib/plugins/sandbox.ts",
+				"apps/web/src/services/scripting/worker.ts"
+			],
+			"formatter": {
+				"enabled": false
+			}
+		}
+	]
 }
