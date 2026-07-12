@@ -34,7 +34,25 @@ jobs:
       image: semgrep/semgrep
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - run: semgrep scan --config auto --error
+      - run: |
+          semgrep scan --config auto --json --output=semgrep.json
+          python3 - <<'PY'
+          import json, os
+          with open('semgrep.json') as f:
+              data = json.load(f)
+          summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+          if not data['results']:
+              if summary_path:
+                  with open(summary_path, 'w') as s:
+                      s.write('No Semgrep findings\n')
+              exit(0)
+          lines = [f"- `{r['check_id']}` in `{r['path']}` line {r['start']['line']}" for r in data['results']]
+          if summary_path:
+              with open(summary_path, 'w') as s:
+                  s.write('# Semgrep findings\n\n' + '\n'.join(lines) + '\n')
+          print('\n'.join(lines))
+          exit(1)
+          PY
 
   dependency-audit:
     name: Dependency audit
