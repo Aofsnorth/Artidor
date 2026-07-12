@@ -148,10 +148,11 @@ export function snapToNearestPoint({
 
 	let closestSnapPoint: SnapPoint | null = null;
 	let closestDistance = Infinity;
+	const EPSILON = 1e-6;
 
 	for (const snapPoint of snapPoints) {
 		const distance = Math.abs(targetTime - snapPoint.time);
-		if (distance < thresholdInTicks && distance < closestDistance) {
+		if (distance < thresholdInTicks + EPSILON && distance < closestDistance) {
 			closestDistance = distance;
 			closestSnapPoint = snapPoint;
 		}
