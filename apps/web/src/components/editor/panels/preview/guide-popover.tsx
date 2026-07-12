@@ -38,7 +38,9 @@ export function GridPopover({ children }: { children: React.ReactNode }) {
 				<div
 					className={cn(
 						"grid transition-all duration-200 ease-out overflow-hidden",
-						options ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+						options
+							? "grid-rows-[1fr] opacity-100"
+							: "grid-rows-[0fr] opacity-0",
 					)}
 				>
 					<div className="min-h-0">

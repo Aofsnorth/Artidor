@@ -4,14 +4,14 @@
 // from it. The tracker is in-memory only — never persisted, never sent
 // over the network.
 
-const DEFAULT_BUFFER_SIZE = 30;
+const DEFAULT_BUFFER_SIZE = 15;
 
 /**
  * Bounded ring buffer of recent render durations (ms). Older samples are
  * overwritten once the buffer is full, so the metrics reflect recent
- * history rather than the whole session. At 60 fps and size 30, the
- * window is ~0.5 s — enough to smooth out single-frame spikes while
- * still reacting to sustained slowdowns within half a second.
+ * history rather than the whole session. At 60 fps and size 15, the
+ * window is ~0.25 s — enough to smooth out single-frame spikes while
+ * reacting to sustained slowdowns faster than the previous 0.5 s window.
  */
 export class RenderPerfTracker {
 	private buffer: number[];
@@ -56,10 +56,7 @@ export class RenderPerfTracker {
 	 * least `minSamples` samples have been collected. Used by the
 	 * adaptive quality system to decide when to drop a tier.
 	 */
-	isStruggling(
-		frameBudgetMs: number,
-		minSamples = 8,
-	): boolean {
+	isStruggling(frameBudgetMs: number, minSamples = 8): boolean {
 		if (this.count < minSamples) return false;
 		return this.getAverageRenderMs() > frameBudgetMs;
 	}

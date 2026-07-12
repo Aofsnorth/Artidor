@@ -30,10 +30,7 @@ interface Particle {
 
 export function AudioMetersCard() {
 	const editor = useEditor();
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	// Whether the timeline currently has any audible candidate. When
 	// false (e.g. a video with no audio track, or all elements/tracks
 	// muted), the meter must stay flat instead of reading the analyser
@@ -169,7 +166,11 @@ export function AudioMetersCard() {
 
 			// Spawn particles — only when audible content is playing,
 			// so the starfield does not animate for silent videos.
-			if (state.isPlaying && state.hasAudio && Math.random() < 0.35 + maxVal * 0.3) {
+			if (
+				state.isPlaying &&
+				state.hasAudio &&
+				Math.random() < 0.35 + maxVal * 0.3
+			) {
 				particles.push({
 					x: w * 0.8,
 					y: h * (0.4 + Math.random() * 0.5),

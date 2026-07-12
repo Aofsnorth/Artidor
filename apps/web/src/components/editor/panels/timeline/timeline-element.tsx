@@ -1254,9 +1254,7 @@ function ElementInner({
 					className={cn(
 						"absolute inset-0 overflow-hidden",
 						isExpanded && "bg-background",
-						isSelected
-							? "border-4 border-primary"
-							: "border border-white/4",
+						isSelected ? "border-4 border-primary" : "border border-white/4",
 					)}
 					style={{ borderRadius }}
 				>

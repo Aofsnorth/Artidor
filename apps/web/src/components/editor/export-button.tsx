@@ -109,10 +109,7 @@ export function ExportButton() {
 				saveToDrive?: boolean;
 			};
 			// Store settings for the popover to read
-			localStorage.setItem(
-				"artidor-export-prefs",
-				JSON.stringify(settings),
-			);
+			localStorage.setItem("artidor-export-prefs", JSON.stringify(settings));
 			setIsExportPopoverOpen(true);
 		} catch {
 			// ignore invalid stored data
@@ -142,7 +139,9 @@ export function ExportButton() {
 
 	const handleDownloadFromOverlay = () => {
 		if (!exportResult?.buffer || !activeProject) return;
-		const ext = getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format });
+		const ext = getExportFileExtension({
+			format: DEFAULT_EXPORT_OPTIONS.format,
+		});
 		const mime = getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format });
 		downloadBuffer({
 			buffer: exportResult.buffer,
@@ -246,18 +245,23 @@ export function ExportButton() {
 				/>
 			)}
 			{/* CapCut-style completion overlay */}
-			{showCompletionOverlay && exportResult?.success && exportResult.buffer && activeProject && (
-				<ExportCompletionOverlay
-					result={exportResult}
-					filename={`${activeProject.metadata.name}${getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format })}`}
-					mimeType={getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format })}
-					onClose={() => {
-						setShowCompletionOverlay(false);
-						editor.project.clearExportState();
-					}}
-					onDownload={handleDownloadFromOverlay}
-				/>
-			)}
+			{showCompletionOverlay &&
+				exportResult?.success &&
+				exportResult.buffer &&
+				activeProject && (
+					<ExportCompletionOverlay
+						result={exportResult}
+						filename={`${activeProject.metadata.name}${getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format })}`}
+						mimeType={getExportMimeType({
+							format: DEFAULT_EXPORT_OPTIONS.format,
+						})}
+						onClose={() => {
+							setShowCompletionOverlay(false);
+							editor.project.clearExportState();
+						}}
+						onDownload={handleDownloadFromOverlay}
+					/>
+				)}
 		</>
 	);
 }
@@ -888,10 +892,7 @@ function ExportProjectFileButton({ onDone }: { onDone: () => void }) {
 				"font-sans text-[11px] uppercase tracking-wider",
 			)}
 		>
-			<HugeiconsIcon
-				icon={FileExportIcon}
-				className="size-3.5"
-			/>
+			<HugeiconsIcon icon={FileExportIcon} className="size-3.5" />
 			{busy ? "Exporting…" : "Export Project File"}
 		</Button>
 	);

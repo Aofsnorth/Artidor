@@ -12,7 +12,8 @@ export const pillGraphicDefinition: GraphicDefinition = {
 	keywords: ["pill", "capsule"],
 	params: PILL_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
 		const drawWidth = Math.max(1, width - inset * 2);
 		const drawHeight = Math.max(1, height - inset * 2);
 		const radius = Math.min(drawWidth, drawHeight) / 2;

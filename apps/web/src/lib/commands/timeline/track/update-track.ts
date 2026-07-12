@@ -46,6 +46,9 @@ export class UpdateTrackCommand extends Command {
 				tracks.main.id === this.params.trackId
 					? this.applyUpdatesToTrack(tracks.main)
 					: tracks.main,
+			overlayAfter: tracks.overlayAfter.map((t) =>
+				t.id === this.params.trackId ? this.applyUpdatesToTrack(t) : t,
+			),
 			audio: tracks.audio.map((t) =>
 				t.id === this.params.trackId ? this.applyUpdatesToTrack(t) : t,
 			),

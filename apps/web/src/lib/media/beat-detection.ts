@@ -15,10 +15,16 @@
  */
 
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
+import type {
+	BeatDetectionOptions,
+	DetectedBeat,
+} from "./beat-detection-types";
 import type { WorkerRequest, WorkerResponse } from "./beat-detection-worker";
 
-export type { BeatDetectionOptions, DetectedBeat } from "./beat-detection-types";
+export type {
+	BeatDetectionOptions,
+	DetectedBeat,
+} from "./beat-detection-types";
 
 const DEFAULT_OPTIONS: Required<BeatDetectionOptions> = {
 	minBpm: 60,
@@ -49,7 +55,11 @@ export function detectBeats({
 	const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
 	const energies = new Float32Array(totalHops);
 
-	for (let i = 0, hop = 0; i < samples.length - windowSize; i += hopSize, hop++) {
+	for (
+		let i = 0, hop = 0;
+		i < samples.length - windowSize;
+		i += hopSize, hop++
+	) {
 		let sum = 0;
 		for (let j = 0; j < windowSize; j++) {
 			const sample = samples[i + j];

@@ -118,7 +118,9 @@ export async function encodeArtprProject(project: unknown): Promise<string> {
 	return JSON.stringify(envelope);
 }
 
-export async function decodeArtprProject<T = unknown>(content: string): Promise<T> {
+export async function decodeArtprProject<T = unknown>(
+	content: string,
+): Promise<T> {
 	const envelope = assertEnvelope(JSON.parse(content));
 	const salt = base64ToBytes(envelope.salt);
 	const iv = base64ToBytes(envelope.iv);

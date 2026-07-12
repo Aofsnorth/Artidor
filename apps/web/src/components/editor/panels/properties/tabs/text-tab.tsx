@@ -63,7 +63,7 @@ export function TextTab({
 	trackId: string;
 }) {
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<ContentSection element={element} trackId={trackId} />
 			<StyleSection element={element} trackId={trackId} />
 			<AnimateSection element={element} trackId={trackId} />
@@ -115,7 +115,7 @@ function StyleSection({
 	const isItalic = element.fontStyle === "italic";
 
 	return (
-		<Section collapsible defaultOpen sectionKey={`${element.id}:style`}>
+		<Section card collapsible defaultOpen sectionKey={`${element.id}:style`}>
 			<SectionHeader
 				trailing={
 					<CopyPasteButtons
@@ -290,7 +290,7 @@ function AnimateSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:animate`}>
+		<Section card collapsible sectionKey={`${element.id}:animate`}>
 			<SectionHeader>
 				<SectionTitle>Animate</SectionTitle>
 			</SectionHeader>
@@ -407,7 +407,7 @@ function ContentSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:content`}>
+		<Section card collapsible sectionKey={`${element.id}:content`}>
 			<SectionHeader>
 				<SectionTitle>Content</SectionTitle>
 			</SectionHeader>
@@ -480,7 +480,7 @@ function TypographySection({
 	});
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:typography`}>
+		<Section card collapsible sectionKey={`${element.id}:typography`}>
 			<SectionHeader>
 				<SectionTitle>Typography</SectionTitle>
 			</SectionHeader>
@@ -601,7 +601,7 @@ function SpacingSection({
 	});
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:spacing`}>
+		<Section card collapsible sectionKey={`${element.id}:spacing`}>
 			<SectionHeader>
 				<SectionTitle>Spacing</SectionTitle>
 			</SectionHeader>
@@ -856,6 +856,7 @@ function BackgroundSection({
 
 	return (
 		<Section
+			card
 			collapsible
 			defaultOpen={element.background.enabled}
 			sectionKey={`${element.id}:background`}
@@ -1116,7 +1117,7 @@ function EffectsSection({
 	};
 
 	return (
-		<Section collapsible sectionKey={`${element.id}:effects`}>
+		<Section card collapsible sectionKey={`${element.id}:effects`}>
 			<SectionHeader
 				trailing={
 					<CopyPasteButtons

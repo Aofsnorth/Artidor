@@ -711,22 +711,102 @@ const EXTRA_SHAPE_PRESETS: ShapeGraphicPreset[] = [
 ];
 
 const DOC_SHAPE_PRESETS: ShapeGraphicPreset[] = [
-	{ shapeKey: "ellipse-oval", name: "Ellipse / Oval", definitionId: "ellipse", params: { fill: "#a78bfa" } },
-	{ shapeKey: "superellipse-squircle", name: "Superellipse / Squircle", definitionId: "squircle", params: { fill: "#f8fafc" } },
-	{ shapeKey: "right-triangle-doc", name: "Right Triangle", definitionId: "right-triangle", params: { fill: "#38bdf8" } },
-	{ shapeKey: "isosceles-triangle", name: "Isosceles Triangle", definitionId: "triangle", params: { fill: "#60a5fa" } },
-	{ shapeKey: "equilateral-triangle", name: "Equilateral Triangle", definitionId: "polygon", params: { sides: 3, fill: "#22d3ee" } },
-	{ shapeKey: "star-4-point", name: "Star 4-Point", definitionId: "star", params: { points: 4, depth: 34, fill: "#ffffff" } },
-	{ shapeKey: "star-5-point", name: "Star 5-Point", definitionId: "star", params: { points: 5, depth: 46, fill: "#facc15" } },
-	{ shapeKey: "star-6-point", name: "Star 6-Point", definitionId: "star", params: { points: 6, depth: 44, fill: "#f59e0b" } },
-	{ shapeKey: "star-8-point", name: "Star 8-Point", definitionId: "star", params: { points: 8, depth: 38, fill: "#fde68a" } },
-	{ shapeKey: "multi-point-star", name: "Multi-Point Star", definitionId: "star", params: { points: 12, depth: 52, fill: "#fb7185" } },
-	{ shapeKey: "ring-donut-doc", name: "Ring / Donut", definitionId: "ring", params: { fill: "#22d3ee" } },
-	{ shapeKey: "arrow-right", name: "Arrow Right", definitionId: "arrow", params: { fill: "#38bdf8" } },
-	{ shapeKey: "arrow-left", name: "Arrow Left", definitionId: "arrow", params: { fill: "#60a5fa" } },
-	{ shapeKey: "arrow-up", name: "Arrow Up", definitionId: "arrow", params: { fill: "#818cf8" } },
-	{ shapeKey: "arrow-down", name: "Arrow Down", definitionId: "arrow", params: { fill: "#a78bfa" } },
-	{ shapeKey: "rounded-banner", name: "Rounded Banner", definitionId: "banner", params: { fill: "#14b8a6" } },
+	{
+		shapeKey: "ellipse-oval",
+		name: "Ellipse / Oval",
+		definitionId: "ellipse",
+		params: { fill: "#a78bfa" },
+	},
+	{
+		shapeKey: "superellipse-squircle",
+		name: "Superellipse / Squircle",
+		definitionId: "squircle",
+		params: { fill: "#f8fafc" },
+	},
+	{
+		shapeKey: "right-triangle-doc",
+		name: "Right Triangle",
+		definitionId: "right-triangle",
+		params: { fill: "#38bdf8" },
+	},
+	{
+		shapeKey: "isosceles-triangle",
+		name: "Isosceles Triangle",
+		definitionId: "triangle",
+		params: { fill: "#60a5fa" },
+	},
+	{
+		shapeKey: "equilateral-triangle",
+		name: "Equilateral Triangle",
+		definitionId: "polygon",
+		params: { sides: 3, fill: "#22d3ee" },
+	},
+	{
+		shapeKey: "star-4-point",
+		name: "Star 4-Point",
+		definitionId: "star",
+		params: { points: 4, depth: 34, fill: "#ffffff" },
+	},
+	{
+		shapeKey: "star-5-point",
+		name: "Star 5-Point",
+		definitionId: "star",
+		params: { points: 5, depth: 46, fill: "#facc15" },
+	},
+	{
+		shapeKey: "star-6-point",
+		name: "Star 6-Point",
+		definitionId: "star",
+		params: { points: 6, depth: 44, fill: "#f59e0b" },
+	},
+	{
+		shapeKey: "star-8-point",
+		name: "Star 8-Point",
+		definitionId: "star",
+		params: { points: 8, depth: 38, fill: "#fde68a" },
+	},
+	{
+		shapeKey: "multi-point-star",
+		name: "Multi-Point Star",
+		definitionId: "star",
+		params: { points: 12, depth: 52, fill: "#fb7185" },
+	},
+	{
+		shapeKey: "ring-donut-doc",
+		name: "Ring / Donut",
+		definitionId: "ring",
+		params: { fill: "#22d3ee" },
+	},
+	{
+		shapeKey: "arrow-right",
+		name: "Arrow Right",
+		definitionId: "arrow",
+		params: { fill: "#38bdf8" },
+	},
+	{
+		shapeKey: "arrow-left",
+		name: "Arrow Left",
+		definitionId: "arrow",
+		params: { fill: "#60a5fa" },
+	},
+	{
+		shapeKey: "arrow-up",
+		name: "Arrow Up",
+		definitionId: "arrow",
+		params: { fill: "#818cf8" },
+	},
+	{
+		shapeKey: "arrow-down",
+		name: "Arrow Down",
+		definitionId: "arrow",
+		params: { fill: "#a78bfa" },
+	},
+	{
+		shapeKey: "rounded-banner",
+		name: "Rounded Banner",
+		definitionId: "banner",
+		params: { fill: "#14b8a6" },
+	},
 ];
 
 function getShapePresets(): ShapeGraphicPreset[] {

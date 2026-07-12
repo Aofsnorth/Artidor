@@ -69,9 +69,7 @@ function isAllowedUrl(url: string): boolean {
 
 function isIpv4Literal(host: string): boolean {
 	const parts = host.split(".");
-	return (
-		parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p))
-	);
+	return parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p));
 }
 
 function isIpv6Literal(host: string): boolean {
@@ -93,7 +91,7 @@ function isPrivateIpv4(host: string): boolean {
 		(a === 192 && b === 168) || // 192.168.0.0/16 — private
 		(a === 169 && b === 254) || // 169.254.0.0/16 — link-local + cloud metadata
 		a === 127 || // 127.0.0.0/8 — loopback
-		a === 100 && b >= 64 && b <= 127 || // 100.64.0.0/10 — CGNAT
+		(a === 100 && b >= 64 && b <= 127) || // 100.64.0.0/10 — CGNAT
 		a >= 224 // 224.0.0.0/4+ — multicast & reserved
 	);
 }
@@ -107,7 +105,12 @@ function isPrivateIpv6(host: string): boolean {
 	if (v4mapped) return isPrivateIpv4(v4mapped[1]);
 	// ULA fc00::/7 (fc* and fd*) and link-local fe80::/10.
 	if (h.startsWith("fc") || h.startsWith("fd")) return true;
-	if (h.startsWith("fe8") || h.startsWith("fe9") || h.startsWith("fea") || h.startsWith("feb")) {
+	if (
+		h.startsWith("fe8") ||
+		h.startsWith("fe9") ||
+		h.startsWith("fea") ||
+		h.startsWith("feb")
+	) {
 		return true;
 	}
 	return false;
@@ -218,9 +221,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 	} catch (err) {
 		clearTimeout(timeout);
 		const message = err instanceof Error ? err.message : "Fetch failed";
-		return NextResponse.json(
-			{ ok: false, error: message },
-			{ status: 502 },
-		);
+		return NextResponse.json({ ok: false, error: message }, { status: 502 });
 	}
 }

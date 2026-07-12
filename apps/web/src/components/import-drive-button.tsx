@@ -669,8 +669,8 @@ function DriveOAuthGuide() {
 					</li>
 					<li>
 						Configure the OAuth consent screen (External). Add your Google
-						account under <span className="text-white/70">Test users</span> while
-						it's unpublished.
+						account under <span className="text-white/70">Test users</span>{" "}
+						while it's unpublished.
 					</li>
 					<li>
 						Create credentials →{" "}
@@ -678,21 +678,24 @@ function DriveOAuthGuide() {
 						<span className="text-white/70">Web application</span>.
 					</li>
 					<li>
-						Under <span className="text-white/70">Authorized JavaScript origins</span>{" "}
-						add <code className="bg-white/10 px-1 rounded">{
-							typeof window !== "undefined"
+						Under{" "}
+						<span className="text-white/70">Authorized JavaScript origins</span>{" "}
+						add{" "}
+						<code className="bg-white/10 px-1 rounded">
+							{typeof window !== "undefined"
 								? window.location.origin
-								: "https://your-domain"
-						}</code>.
+								: "https://your-domain"}
+						</code>
+						.
 					</li>
 					<li>
-						Under <span className="text-white/70">Authorized redirect URIs</span>{" "}
-						add the URI above, then Save.
+						Under{" "}
+						<span className="text-white/70">Authorized redirect URIs</span> add
+						the URI above, then Save.
 					</li>
 					<li>
-						Copy the generated{" "}
-						<span className="text-white/70">Client ID</span> and paste it in the
-						field above.
+						Copy the generated <span className="text-white/70">Client ID</span>{" "}
+						and paste it in the field above.
 					</li>
 				</ol>
 			)}

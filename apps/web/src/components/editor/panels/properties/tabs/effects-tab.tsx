@@ -61,12 +61,14 @@ export function StandaloneEffectTab({
 			<div className="border-b px-3.5 h-11 shrink-0 flex items-center">
 				<SectionTitle>Effect</SectionTitle>
 			</div>
-			<EffectSection
-				effect={effect}
-				renderParams={(renderElement as EffectElement).params}
-				previewParam={previewParam}
-				onCommit={commit}
-			/>
+			<div className="flex flex-col gap-3 px-3.5 py-3">
+				<EffectSection
+					effect={effect}
+					renderParams={(renderElement as EffectElement).params}
+					previewParam={previewParam}
+					onCommit={commit}
+				/>
+			</div>
 		</div>
 	);
 }
@@ -187,7 +189,7 @@ export function ClipEffectsTab({
 			{effects.length === 0 ? (
 				<EmptyView />
 			) : (
-				<ul className="flex flex-col">
+				<ul className="flex flex-col gap-3 px-3.5 py-3">
 					{effects.map((effect, index) => {
 						const resolvedDragIndex = dragIndex ?? -1;
 						const isDragging = dragIndex === index;
@@ -291,6 +293,8 @@ function EffectSection({
 
 	return (
 		<Section
+			card
+			collapsible
 			sectionKey={onToggle ? `clip-effect:${effect.id}` : undefined}
 			showTopBorder={false}
 		>

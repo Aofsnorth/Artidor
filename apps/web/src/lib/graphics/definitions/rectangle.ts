@@ -25,8 +25,15 @@ export const rectangleGraphicDefinition: GraphicDefinition = {
 	keywords: ["rectangle", "square", "box"],
 	params: RECTANGLE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, strokeDash, strokeTaper, inset } =
-			readShapeBaseStyle(params);
+		const {
+			fill,
+			stroke,
+			strokeWidth,
+			strokeAlign,
+			strokeDash,
+			strokeTaper,
+			inset,
+		} = readShapeBaseStyle(params);
 		const drawWidth = Math.max(1, width - inset * 2);
 		const drawHeight = Math.max(1, height - inset * 2);
 		const radiusPercent = Math.max(0, Number(params.cornerRadius ?? 0));

@@ -30,7 +30,10 @@ import {
 	ComponentIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { useEditorUIStore, type FloatablePanelId } from "@/stores/editor-ui-store";
+import {
+	useEditorUIStore,
+	type FloatablePanelId,
+} from "@/stores/editor-ui-store";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
 import { SavePresetDialog } from "./dialogs/save-preset-dialog";
 import Image from "next/image";
@@ -447,7 +450,13 @@ function LayoutPresetPreview({ preset }: { preset: LayoutPreset }) {
 			aria-hidden="true"
 		>
 			<title>{preset.name}</title>
-			<rect x="0" y="0" width={toolsW} height={mainContent} fill="rgba(255,255,255,0.12)" />
+			<rect
+				x="0"
+				y="0"
+				width={toolsW}
+				height={mainContent}
+				fill="rgba(255,255,255,0.12)"
+			/>
 			<rect
 				x={toolsW}
 				y="0"
@@ -462,7 +471,13 @@ function LayoutPresetPreview({ preset }: { preset: LayoutPreset }) {
 				height={mainContent}
 				fill="rgba(255,255,255,0.12)"
 			/>
-			<rect x="0" y={mainContent} width="100" height={100 - mainContent} fill="rgba(255,255,255,0.08)" />
+			<rect
+				x="0"
+				y={mainContent}
+				width="100"
+				height={100 - mainContent}
+				fill="rgba(255,255,255,0.08)"
+			/>
 		</svg>
 	);
 }

@@ -7,7 +7,12 @@
  * of field, and fog. We use a pinhole projection in our 2D renderer as a
  * simplification — the user sees a perspective-transformed 2D canvas.
  */
-import type { ElementRef, BaseTimelineElement } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type ElementRef,
+	type BaseTimelineElement,
+	type SceneTracks,
+} from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 import type { Transform } from "@/lib/rendering";
 import type { ElementAnimations } from "@/lib/animation/types";
@@ -275,10 +280,10 @@ export function findActiveCamera({
 export function getSceneCameras({
 	tracks,
 }: {
-	tracks: { overlay: Array<{ elements: Array<{ type: string; hidden?: boolean }> }> };
+	tracks: SceneTracks;
 }): CameraElement[] {
 	const cameras: CameraElement[] = [];
-	for (const track of tracks.overlay) {
+	for (const track of getOrderedTracks(tracks)) {
 		for (const element of track.elements) {
 			if (element.type === "camera") {
 				cameras.push(element as unknown as CameraElement);

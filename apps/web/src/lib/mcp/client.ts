@@ -138,7 +138,11 @@ export class McpClientConnection {
 
 	private handleMessage(raw: string): void {
 		try {
-			const msg = JSON.parse(raw) as { id?: number; result?: unknown; error?: { message: string } };
+			const msg = JSON.parse(raw) as {
+				id?: number;
+				result?: unknown;
+				error?: { message: string };
+			};
 			if (msg.id !== undefined) {
 				const pending = this.pending.get(msg.id);
 				if (pending) {
@@ -227,8 +231,14 @@ export class McpClientConnection {
 		return this.tools;
 	}
 
-	async callTool(name: string, args: Record<string, unknown>): Promise<unknown> {
-		const result = await this.sendRequest("tools/call", { name, arguments: args });
+	async callTool(
+		name: string,
+		args: Record<string, unknown>,
+	): Promise<unknown> {
+		const result = await this.sendRequest("tools/call", {
+			name,
+			arguments: args,
+		});
 		return result;
 	}
 

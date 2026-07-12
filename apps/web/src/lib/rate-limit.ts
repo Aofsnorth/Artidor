@@ -43,7 +43,10 @@ const LOCAL_LIMIT = 100; // 100 requests per minute (matches Redis)
 const LOCAL_WINDOW_MS = 60_000;
 const localStore = new Map<string, { count: number; resetAt: number }>();
 
-function checkLocalRateLimit(ip: string): { success: boolean; limited: boolean } {
+function checkLocalRateLimit(ip: string): {
+	success: boolean;
+	limited: boolean;
+} {
 	const now = Date.now();
 	const entry = localStore.get(ip);
 	if (!entry || now > entry.resetAt) {
@@ -92,7 +95,10 @@ const LOCAL_CREATE_LIMIT = 10; // 10 creates per hour (matches Redis)
 const LOCAL_CREATE_WINDOW_MS = 60 * 60_000;
 const localCreateStore = new Map<string, { count: number; resetAt: number }>();
 
-function checkLocalCreateRateLimit(ip: string): { success: boolean; limited: boolean } {
+function checkLocalCreateRateLimit(ip: string): {
+	success: boolean;
+	limited: boolean;
+} {
 	const now = Date.now();
 	const entry = localCreateStore.get(ip);
 	if (!entry || now > entry.resetAt) {
@@ -100,7 +106,10 @@ function checkLocalCreateRateLimit(ip: string): { success: boolean; limited: boo
 			const oldestKey = localCreateStore.keys().next().value;
 			if (oldestKey) localCreateStore.delete(oldestKey);
 		}
-		localCreateStore.set(ip, { count: 1, resetAt: now + LOCAL_CREATE_WINDOW_MS });
+		localCreateStore.set(ip, {
+			count: 1,
+			resetAt: now + LOCAL_CREATE_WINDOW_MS,
+		});
 		return { success: true, limited: false };
 	}
 	entry.count++;
@@ -115,13 +124,20 @@ function checkLocalCreateRateLimit(ip: string): { success: boolean; limited: boo
  * to an in-memory hourly limiter if Redis is unreachable (fail-closed,
  * same pattern as the base limiter).
  */
-export async function checkCreateResourceRateLimit({ request }: { request: Request }) {
+export async function checkCreateResourceRateLimit({
+	request,
+}: {
+	request: Request;
+}) {
 	const ip = clientIpOf(request);
 	try {
 		const { success } = await createResourceRateLimit.limit(ip);
 		return { success, limited: !success };
 	} catch (err) {
-		console.warn("[rate-limit] Redis unreachable (create), using local fallback:", err);
+		console.warn(
+			"[rate-limit] Redis unreachable (create), using local fallback:",
+			err,
+		);
 		return checkLocalCreateRateLimit(ip);
 	}
 }

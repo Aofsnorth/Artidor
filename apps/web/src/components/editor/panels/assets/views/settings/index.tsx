@@ -263,7 +263,9 @@ export function SettingsView() {
 								}}
 							>
 								<SelectTrigger className="bg-transparent border-none p-1 h-auto">
-									<SelectValue placeholder={t("editor.settings.frameRatePlaceholder")} />
+									<SelectValue
+										placeholder={t("editor.settings.frameRatePlaceholder")}
+									/>
 								</SelectTrigger>
 								<SelectContent>
 									{FPS_PRESETS.map((preset) => (

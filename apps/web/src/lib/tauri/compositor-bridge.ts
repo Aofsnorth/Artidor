@@ -32,7 +32,13 @@ export class NativeCompositor {
 	 * Creates a native GPU context and compositor instance on the Rust
 	 * side. Called once when the renderer starts.
 	 */
-	async ensureInitialized({ width, height }: { width: number; height: number }): Promise<void> {
+	async ensureInitialized({
+		width,
+		height,
+	}: {
+		width: number;
+		height: number;
+	}): Promise<void> {
 		if (this.initialized) return;
 		await invoke("init_compositor", { width, height });
 		this.initialized = true;
@@ -50,7 +56,9 @@ export class NativeCompositor {
 	 */
 	async renderFrame(frame: FrameDescriptor): Promise<Uint8Array> {
 		if (!this.initialized) {
-			throw new Error("NativeCompositor not initialized — call ensureInitialized first");
+			throw new Error(
+				"NativeCompositor not initialized — call ensureInitialized first",
+			);
 		}
 		const bytes = await invoke<number[]>("render_frame", { frame });
 		return new Uint8Array(bytes);

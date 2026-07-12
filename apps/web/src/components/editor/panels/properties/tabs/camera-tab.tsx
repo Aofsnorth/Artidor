@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useEditor } from "@/hooks/use-editor";
 import type { CameraElement } from "@/lib/camera";
 import { findActiveCamera } from "@/lib/camera";
+import { getOrderedTracks } from "@/lib/timeline";
 import {
 	Section,
 	SectionContent,
@@ -23,9 +24,7 @@ import { Switch } from "@/components/ui/switch";
 export function CameraTab() {
 	const editor = useEditor();
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
-	const tracks = scene
-		? [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio]
-		: [];
+	const tracks = scene ? getOrderedTracks(scene.tracks) : [];
 	const cameraLayers = tracks.flatMap((track) =>
 		track.elements.filter(
 			(element) => (element as { type?: string }).type === "camera",
@@ -45,8 +44,8 @@ export function CameraTab() {
 					<h3 className="text-sm font-medium">3D Camera</h3>
 				</header>
 				<p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-					Add a camera layer for 3D motion, depth of field, and fog effects.
-					All properties are keyframeable.
+					Add a camera layer for 3D motion, depth of field, and fog effects. All
+					properties are keyframeable.
 				</p>
 				<Button
 					className="mt-3 w-full"
@@ -249,8 +248,13 @@ export function CameraInspectTab({
 	};
 
 	return (
-		<div className="flex flex-col gap-1">
-			<Section sectionKey="camera-position" showTopBorder={false}>
+		<div className="flex flex-col gap-3 px-3.5 py-3">
+			<Section
+				card
+				collapsible
+				sectionKey="camera-position"
+				showTopBorder={false}
+			>
 				<SectionHeader>
 					<SectionTitle>Position</SectionTitle>
 				</SectionHeader>
@@ -290,7 +294,7 @@ export function CameraInspectTab({
 				</SectionContent>
 			</Section>
 
-			<Section sectionKey="camera-target">
+			<Section card collapsible sectionKey="camera-target">
 				<SectionHeader>
 					<SectionTitle>Target</SectionTitle>
 				</SectionHeader>
@@ -330,7 +334,7 @@ export function CameraInspectTab({
 				</SectionContent>
 			</Section>
 
-			<Section sectionKey="camera-lens">
+			<Section card collapsible sectionKey="camera-lens">
 				<SectionHeader>
 					<SectionTitle>Lens</SectionTitle>
 				</SectionHeader>
@@ -376,7 +380,7 @@ export function CameraInspectTab({
 				</SectionContent>
 			</Section>
 
-			<Section sectionKey="camera-dof">
+			<Section card collapsible sectionKey="camera-dof">
 				<SectionHeader>
 					<SectionTitle>Focus Blur</SectionTitle>
 				</SectionHeader>
@@ -424,7 +428,7 @@ export function CameraInspectTab({
 				</SectionContent>
 			</Section>
 
-			<Section sectionKey="camera-fog">
+			<Section card collapsible sectionKey="camera-fog">
 				<SectionHeader>
 					<SectionTitle>Fog</SectionTitle>
 				</SectionHeader>

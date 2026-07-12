@@ -269,18 +269,20 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 			{masks.length === 0 ? (
 				<EmptyView onAddMask={() => setIsDropdownOpen(true)} />
 			) : (
-				masks.map((mask, index) => (
-					<MaskItem
-						key={mask.id}
-						trackId={trackId}
-						elementId={element.id}
-						mask={renderMasks[index] ?? mask}
-						previewParam={(paramKey) =>
-							previewMaskParam({ index, key: paramKey })
-						}
-						onCommit={commit}
-					/>
-				))
+				<div className="flex flex-col gap-3 px-3.5 py-3">
+					{masks.map((mask, index) => (
+						<MaskItem
+							key={mask.id}
+							trackId={trackId}
+							elementId={element.id}
+							mask={renderMasks[index] ?? mask}
+							previewParam={(paramKey) =>
+								previewMaskParam({ index, key: paramKey })
+							}
+							onCommit={commit}
+						/>
+					))}
+				</div>
 			)}
 		</div>
 	);
@@ -297,7 +299,12 @@ function MaskItem({
 	const definition = masksRegistry.get(mask.type);
 
 	return (
-		<Section sectionKey={`mask-item:${mask.id}`} showTopBorder={false}>
+		<Section
+			card
+			collapsible
+			sectionKey={`mask-item:${mask.id}`}
+			showTopBorder={false}
+		>
 			<SectionHeader
 				trailing={
 					<div className="flex items-center gap-1">

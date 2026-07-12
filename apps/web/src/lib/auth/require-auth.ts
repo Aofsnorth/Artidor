@@ -11,9 +11,7 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth/server";
 
-export async function requireAuth(
-	_request: Request,
-): Promise<Response> {
+export async function requireAuth(_request: Request): Promise<Response> {
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});

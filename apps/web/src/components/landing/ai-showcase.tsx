@@ -70,12 +70,8 @@ export function AIShowcaseSection() {
 									<f.icon className="size-3.5" />
 								</span>
 								<div>
-									<div className="font-medium text-white">
-										{t(f.titleKey)}
-									</div>
-									<div className="mt-0.5 text-white/55">
-										{t(f.bodyKey)}
-									</div>
+									<div className="font-medium text-white">{t(f.titleKey)}</div>
+									<div className="mt-0.5 text-white/55">{t(f.bodyKey)}</div>
 								</div>
 							</li>
 						))}

@@ -39,6 +39,7 @@ export class DeleteElementsCommand extends Command {
 		this.savedState = editor.scenes.getActiveScene().tracks;
 
 		const updatedTracks: SceneTracks = {
+			...this.savedState,
 			overlay: this.savedState.overlay.map((track) =>
 				removeTrackElements({ track, elements: this.elements }),
 			),
@@ -46,6 +47,9 @@ export class DeleteElementsCommand extends Command {
 				track: this.savedState.main,
 				elements: this.elements,
 			}),
+			overlayAfter: this.savedState.overlayAfter.map((track) =>
+				removeTrackElements({ track, elements: this.elements }),
+			),
 			audio: this.savedState.audio.map((track) =>
 				removeTrackElements({ track, elements: this.elements }),
 			),

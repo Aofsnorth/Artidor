@@ -211,21 +211,24 @@ interface AIState {
 	 * current chat state is saved here keyed by project ID, and the
 	 * target project's state (if any) is restored.
 	 */
-	projectChats: Record<string, {
-		messages: ChatMessage[];
-		conversations: Conversation[];
-		compactedSummary: CompactedSummary | null;
-		plan: Plan | null;
-		styleProfile: StyleProfile | null;
-		referenceVideoName: string | null;
-		/**
-		 * Maps user message id → command history length at the moment just
-		 * before the AI started processing that message. Used to revert
-		 * AI edits for a message even after reload. Stored as a plain
-		 * object because zustand persist serializes Maps to `{}`.
-		 */
-		revertSnapshots: Record<string, number>;
-	}>;
+	projectChats: Record<
+		string,
+		{
+			messages: ChatMessage[];
+			conversations: Conversation[];
+			compactedSummary: CompactedSummary | null;
+			plan: Plan | null;
+			styleProfile: StyleProfile | null;
+			referenceVideoName: string | null;
+			/**
+			 * Maps user message id → command history length at the moment just
+			 * before the AI started processing that message. Used to revert
+			 * AI edits for a message even after reload. Stored as a plain
+			 * object because zustand persist serializes Maps to `{}`.
+			 */
+			revertSnapshots: Record<string, number>;
+		}
+	>;
 	/**
 	 * Maps user message id → command history length at the moment just
 	 * before the AI started processing that message. Used to revert AI
@@ -316,7 +319,10 @@ interface AIState {
 	 */
 	cleanOrphanedRevertSnapshots: () => void;
 	/** Create a new plan, replacing any existing one. */
-	createPlan: (title: string, steps: Array<{ title: string; description: string }>) => void;
+	createPlan: (
+		title: string,
+		steps: Array<{ title: string; description: string }>,
+	) => void;
 	/** Update the status of a plan step by its 0-based index. */
 	updatePlanStep: (stepIndex: number, status: PlanStepStatus) => void;
 	/** Clear the current plan (e.g. when starting a new chat). */
@@ -534,8 +540,7 @@ export const useAIStore = create<AIState>()(
 			addPendingVideo: (dataUrl) =>
 				set({ pendingVideos: [...get().pendingVideos, dataUrl] }),
 			clearPendingVideos: () => set({ pendingVideos: [] }),
-			clearPendingMedia: () =>
-				set({ pendingImages: [], pendingVideos: [] }),
+			clearPendingMedia: () => set({ pendingImages: [], pendingVideos: [] }),
 
 			enqueue: (text) => set({ queue: [...get().queue, text] }),
 			enqueueSteer: (text) => set({ queue: [text, ...get().queue] }),
@@ -619,9 +624,7 @@ export const useAIStore = create<AIState>()(
 				const idx = messages.findIndex((m) => m.id === messageId);
 				if (idx === -1) return;
 
-				const idsToKeep = new Set(
-					messages.slice(0, idx).map((m) => m.id),
-				);
+				const idsToKeep = new Set(messages.slice(0, idx).map((m) => m.id));
 				const pruned: Record<string, number> = {};
 				for (const [id, snapshot] of Object.entries(get().revertSnapshots)) {
 					if (idsToKeep.has(id)) pruned[id] = snapshot;

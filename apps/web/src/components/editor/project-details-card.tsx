@@ -15,7 +15,10 @@ export function ProjectDetailsCard() {
 	}
 
 	const trackCount = scene
-		? scene.tracks.overlay.length + scene.tracks.audio.length + 1
+		? scene.tracks.overlay.length +
+			scene.tracks.overlayAfter.length +
+			scene.tracks.audio.length +
+			1
 		: 0;
 	const details = summarizeProjectDetails({
 		name: project.metadata.name,
@@ -36,8 +39,14 @@ export function ProjectDetailsCard() {
 			</div>
 			<dl className="mt-2 grid gap-1">
 				<ProjectDetail label={t("editor.duration")} value={details.duration} />
-				<ProjectDetail label={t("editor.frameRate")} value={details.frameRate} />
-				<ProjectDetail label={t("editor.resolution")} value={details.resolution} />
+				<ProjectDetail
+					label={t("editor.frameRate")}
+					value={details.frameRate}
+				/>
+				<ProjectDetail
+					label={t("editor.resolution")}
+					value={details.resolution}
+				/>
 				<ProjectDetail label={t("editor.tracks")} value={details.tracks} />
 				<ProjectDetail label={t("editor.media")} value={details.media} />
 			</dl>

@@ -12,7 +12,8 @@ export const octagonGraphicDefinition: GraphicDefinition = {
 	keywords: ["octagon", "polygon"],
 	params: OCTAGON_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
 		const cx = width / 2;
 		const cy = height / 2;
 		const rx = Math.max(1, width / 2 - inset);

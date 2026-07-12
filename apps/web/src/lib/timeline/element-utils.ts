@@ -3,6 +3,7 @@ import {
 	MASKABLE_ELEMENT_TYPES,
 	RETIMABLE_ELEMENT_TYPES,
 	VISUAL_ELEMENT_TYPES,
+	getOrderedTracks,
 	type CreateEffectElement,
 	type CreateGraphicElement,
 	type CreateTimelineElement,
@@ -178,7 +179,9 @@ export function buildTextElement({
  */
 export function findOrCreateTextTrack(editor: EditorCore): string {
 	const tracks = editor.scenes.getActiveScene().tracks;
-	const existingTextTrack = tracks.overlay.find((track) => track.type === "text");
+	const existingTextTrack = tracks.overlay.find(
+		(track) => track.type === "text",
+	);
 	return existingTextTrack?.id ?? editor.timeline.addTrack({ type: "text" });
 }
 
@@ -433,7 +436,7 @@ export function getElementsAtTime({
 	time: number;
 }): { trackId: string; elementId: string }[] {
 	const result: { trackId: string; elementId: string }[] = [];
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 
 	for (const track of orderedTracks) {
 		for (const element of track.elements) {
@@ -455,7 +458,7 @@ export function getElementFontFamilies({
 	tracks: SceneTracks;
 }): string[] {
 	const families = new Set<string>();
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	for (const track of getOrderedTracks(tracks)) {
 		for (const element of track.elements) {
 			if (element.type === "text" && element.fontFamily) {
 				families.add(element.fontFamily);

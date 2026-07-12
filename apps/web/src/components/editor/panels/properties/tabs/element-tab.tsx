@@ -161,7 +161,7 @@ export function ElementTab({
 
 	return (
 		<div className="flex flex-col gap-4 p-3.5">
-			<section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
+			<section className="rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02] p-3">
 				<header className="mb-2 flex items-center gap-2">
 					<HugeiconsIcon
 						icon={InformationCircleIcon}
@@ -183,7 +183,7 @@ export function ElementTab({
 			</section>
 
 			{media && (
-				<section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
+				<section className="rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02] p-3">
 					<header className="mb-2 flex items-center gap-2">
 						<HugeiconsIcon
 							icon={InformationCircleIcon}
@@ -265,7 +265,7 @@ export function ElementTab({
 				</section>
 			)}
 
-			<section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
+			<section className="rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02] p-3">
 				<header className="mb-2 flex items-center gap-2">
 					<HugeiconsIcon
 						icon={Layers01Icon}
@@ -290,7 +290,7 @@ export function ElementTab({
 			</section>
 
 			{toggleItems.length > 0 && (
-				<section className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
+				<section className="rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02] p-3">
 					<header className="mb-2 flex items-center gap-2">
 						<HugeiconsIcon
 							icon={ViewIcon}

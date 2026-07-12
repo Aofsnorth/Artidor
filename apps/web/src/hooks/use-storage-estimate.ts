@@ -8,7 +8,9 @@ interface StorageEstimate {
 	freeBytes: number;
 }
 
-export function useStorageEstimate(): StorageEstimate & { refresh: () => void } {
+export function useStorageEstimate(): StorageEstimate & {
+	refresh: () => void;
+} {
 	const [estimate, setEstimate] = useState<StorageEstimate>({
 		usedBytes: 0,
 		totalBytes: 0,

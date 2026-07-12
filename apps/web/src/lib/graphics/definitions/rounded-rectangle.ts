@@ -25,10 +25,14 @@ export const roundedRectangleGraphicDefinition: GraphicDefinition = {
 	keywords: ["rounded", "rectangle"],
 	params: ROUNDED_RECTANGLE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
 		const drawWidth = Math.max(1, width - inset * 2);
 		const drawHeight = Math.max(1, height - inset * 2);
-		const radiusPercent = Math.max(0, Math.min(50, Number(params.cornerRadius ?? 8)));
+		const radiusPercent = Math.max(
+			0,
+			Math.min(50, Number(params.cornerRadius ?? 8)),
+		);
 		const radius = (Math.min(drawWidth, drawHeight) / 2) * (radiusPercent / 50);
 
 		ctx.clearRect(0, 0, width, height);

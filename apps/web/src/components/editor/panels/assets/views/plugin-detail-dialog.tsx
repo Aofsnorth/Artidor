@@ -121,11 +121,15 @@ export function PluginDetailDialog({
 							<dd className="flex flex-col gap-0.5">
 								<span className="inline-flex w-fit items-center rounded-md border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5 text-[10.5px] font-medium text-white/85">
 									{t("plugins.detail.pluginSuffix", {
-										category: t(`plugins.category.${manifest.category}` as `plugins.category.${PluginCategory}`),
+										category: t(
+											`plugins.category.${manifest.category}` as `plugins.category.${PluginCategory}`,
+										),
 									})}
 								</span>
 								<span className="text-[10.5px] leading-snug text-white/45">
-									{t(`plugins.categoryDescription.${manifest.category}` as `plugins.categoryDescription.${PluginCategory}`)}
+									{t(
+										`plugins.categoryDescription.${manifest.category}` as `plugins.categoryDescription.${PluginCategory}`,
+									)}
 								</span>
 							</dd>
 						</div>
@@ -158,7 +162,9 @@ export function PluginDetailDialog({
 					<section>
 						<header className="mb-1.5 flex items-center justify-between">
 							<h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-								{t("plugins.detail.permissionsCount", { count: permissions.length })}
+								{t("plugins.detail.permissionsCount", {
+									count: permissions.length,
+								})}
 							</h3>
 							{hasDangerous && (
 								<span
@@ -199,7 +205,9 @@ export function PluginDetailDialog({
 													{perm}
 												</span>
 												<span className="text-[10.5px] leading-snug text-white/55">
-													{t(`plugins.permission.${perm}` as `plugins.permission.${PluginPermission}`)}
+													{t(
+														`plugins.permission.${perm}` as `plugins.permission.${PluginPermission}`,
+													)}
 												</span>
 											</div>
 										</li>
@@ -213,7 +221,9 @@ export function PluginDetailDialog({
 					<section>
 						<header className="mb-1.5 flex items-center justify-between">
 							<h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-white/40">
-								{t("plugins.detail.extensionsCount", { count: manifest.extensions.length })}
+								{t("plugins.detail.extensionsCount", {
+									count: manifest.extensions.length,
+								})}
 							</h3>
 						</header>
 						<ul className="flex flex-col gap-1">
@@ -231,7 +241,9 @@ export function PluginDetailDialog({
 										)}
 									</div>
 									<span className="shrink-0 rounded border border-white/[0.1] bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-white/55">
-										{t(`plugins.extension.${ext.type}` as `plugins.extension.${PluginExtensionType}`)}
+										{t(
+											`plugins.extension.${ext.type}` as `plugins.extension.${PluginExtensionType}`,
+										)}
 									</span>
 								</li>
 							))}

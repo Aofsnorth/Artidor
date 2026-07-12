@@ -12,7 +12,13 @@ interface AssetPreviewState {
 	/** Clear the current preview. */
 	clearPreview: () => void;
 	/** Start an inline audio preview, killing any other active preview first. */
-	playAudioPreview: ({ id, url }: { id: string; url: string | undefined | null }) => void;
+	playAudioPreview: ({
+		id,
+		url,
+	}: {
+		id: string;
+		url: string | undefined | null;
+	}) => void;
 	/** Stop the inline audio preview. */
 	stopAudioPreview: () => void;
 }

@@ -60,6 +60,20 @@ export class AddTrackCommand extends Command {
 	}
 }
 
+const MAIN_TRACK_COUNT = 1;
+
+function getMainTrackIndex(tracks: SceneTracks): number {
+	return tracks.overlay.length;
+}
+
+function getOverlayAfterStartIndex(tracks: SceneTracks): number {
+	return getMainTrackIndex(tracks) + MAIN_TRACK_COUNT;
+}
+
+function getAudioStartIndex(tracks: SceneTracks): number {
+	return getOverlayAfterStartIndex(tracks) + tracks.overlayAfter.length;
+}
+
 function buildAudioTrackState({
 	tracks,
 	insertIndex,
@@ -69,7 +83,10 @@ function buildAudioTrackState({
 	insertIndex: number;
 	trackId: string;
 }): SceneTracks {
-	const audioInsertIndex = Math.max(0, insertIndex - tracks.overlay.length - 1);
+	const audioInsertIndex = Math.max(
+		0,
+		Math.min(insertIndex - getAudioStartIndex(tracks), tracks.audio.length),
+	);
 	const newTrack = buildEmptyTrack({
 		id: trackId,
 		type: "audio",
@@ -95,7 +112,6 @@ function buildOverlayTrackState({
 	trackId: string;
 	trackType: Exclude<TrackType, "audio">;
 }): SceneTracks {
-	const overlayInsertIndex = Math.min(insertIndex, tracks.overlay.length);
 	const newTrack =
 		trackType === "video"
 			? buildEmptyTrack({ id: trackId, type: "video" })
@@ -108,12 +124,36 @@ function buildOverlayTrackState({
 						: trackType === "camera"
 							? buildEmptyTrack({ id: trackId, type: "camera" })
 							: buildEmptyTrack({ id: trackId, type: "effect" });
+
+	const mainTrackIndex = getMainTrackIndex(tracks);
+	if (insertIndex <= mainTrackIndex) {
+		const overlayInsertIndex = Math.max(
+			0,
+			Math.min(insertIndex, tracks.overlay.length),
+		);
+		return {
+			...tracks,
+			overlay: [
+				...tracks.overlay.slice(0, overlayInsertIndex),
+				newTrack,
+				...tracks.overlay.slice(overlayInsertIndex),
+			],
+		};
+	}
+
+	const overlayAfterInsertIndex = Math.max(
+		0,
+		Math.min(
+			insertIndex - getOverlayAfterStartIndex(tracks),
+			tracks.overlayAfter.length,
+		),
+	);
 	return {
 		...tracks,
-		overlay: [
-			...tracks.overlay.slice(0, overlayInsertIndex),
+		overlayAfter: [
+			...tracks.overlayAfter.slice(0, overlayAfterInsertIndex),
 			newTrack,
-			...tracks.overlay.slice(overlayInsertIndex),
+			...tracks.overlayAfter.slice(overlayAfterInsertIndex),
 		],
 	};
 }

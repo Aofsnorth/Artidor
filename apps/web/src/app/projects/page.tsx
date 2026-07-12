@@ -23,6 +23,7 @@ import { ImportDriveButton } from "@/components/import-drive-button";
 import { DriveAccountButton } from "@/components/drive-account-button";
 import { useProjectsStore } from "./store";
 import { GeneratedThumbnail } from "./generated-thumbnail";
+import { getOrderedTracks } from "@/lib/timeline";
 import { ShortcutHint } from "./shortcut-hint";
 import { StatsOverview } from "./stats-overview";
 import { TemplatesRow, type ProjectTemplate } from "./templates-row";
@@ -252,7 +253,7 @@ export default function ProjectsPage() {
 			   hex pattern, animated wash, vignette) sits behind
 			   everything via <ProjectsBackground />. */}
 				<div className="relative z-20 flex h-screen flex-col overflow-hidden">
-									<ProjectsBackground />
+					<ProjectsBackground />
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
 						<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md">
@@ -673,17 +674,16 @@ function buildProjectPreset({
 	description?: string;
 }): UserPreset {
 	const items = project.scenes.flatMap((scene) =>
-		[scene.tracks.main, ...scene.tracks.overlay, ...scene.tracks.audio].flatMap(
-			(track) =>
-				track.elements.map((element) => {
-					const { id: _id, ...elementWithoutId } = element;
-					return {
-						trackType: track.type,
-						sourceTrackKey: track.id,
-						relativeStartTime: element.startTime,
-						element: elementWithoutId,
-					};
-				}),
+		getOrderedTracks(scene.tracks).flatMap((track) =>
+			track.elements.map((element) => {
+				const { id: _id, ...elementWithoutId } = element;
+				return {
+					trackType: track.type,
+					sourceTrackKey: track.id,
+					relativeStartTime: element.startTime,
+					element: elementWithoutId,
+				};
+			}),
 		),
 	);
 	return {

@@ -9,14 +9,15 @@ const TRIANGLE_PARAMS: ParamDefinition[] = [FILL_PARAM, ...STROKE_PARAMS];
 export const triangleGraphicDefinition: GraphicDefinition = {
 	id: "triangle",
 	name: "Triangle",
-	keywords: ['triangle'],
+	keywords: ["triangle"],
 	params: TRIANGLE_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
-		
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
+
 		ctx.clearRect(0, 0, width, height);
 		const path = new Path2D();
-		
+
 		const cx = width / 2;
 		const top = inset;
 		const bottom = height - inset;
@@ -24,7 +25,7 @@ export const triangleGraphicDefinition: GraphicDefinition = {
 		path.lineTo(inset, bottom);
 		path.lineTo(width - inset, bottom);
 		path.closePath();
-		
+
 		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {

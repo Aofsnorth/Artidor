@@ -23,6 +23,7 @@ test("image media dropped onto the main track lands on the main track", () => {
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [],
 		},
 		playheadTime: 0,
@@ -73,6 +74,7 @@ test("audio dragged over an overlay track creates a new audio track, not snap to
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [],
 		},
 		playheadTime: 0,
@@ -111,6 +113,7 @@ test("audio dragged over the main track creates a new audio track below main", (
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [],
 		},
 		playheadTime: 0,
@@ -158,6 +161,7 @@ test("audio dragged over an existing audio track lands on that track", () => {
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [
 				{
 					id: "audio-1",
@@ -204,6 +208,7 @@ test("video dragged over an audio track snaps to main track", () => {
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [
 				{
 					id: "audio-1",

@@ -86,7 +86,7 @@ export function AudioEffectsTab({
 				</Button>
 			</div>
 
-			<div className="flex flex-col gap-4 p-4 overflow-y-auto">
+			<div className="flex flex-col gap-3 px-3.5 py-3 overflow-y-auto">
 				<NoiseReductionSection
 					enabled={chain.noiseReduction.enabled}
 					strength={chain.noiseReduction.strength ?? 0.5}
@@ -140,7 +140,7 @@ function NoiseReductionSection({
 	onChange: (p: { enabled?: boolean; strength?: number }) => void;
 }) {
 	return (
-		<Section collapsible sectionKey="audio:nr" defaultOpen={enabled}>
+		<Section card collapsible sectionKey="audio:nr" defaultOpen={enabled}>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -204,7 +204,7 @@ function EqSection({
 	onPreset: (presetId: string) => void;
 }) {
 	return (
-		<Section collapsible sectionKey="audio:eq" defaultOpen={enabled}>
+		<Section card collapsible sectionKey="audio:eq" defaultOpen={enabled}>
 			<SectionHeader
 				trailing={
 					<div className="flex items-center gap-2">
@@ -305,7 +305,12 @@ function CompressorSection({
 	}) => void;
 }) {
 	return (
-		<Section collapsible sectionKey="audio:comp" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:comp"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -416,7 +421,12 @@ function ReverbSection({
 	presets: { id: string; name: string }[];
 }) {
 	return (
-		<Section collapsible sectionKey="audio:reverb" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:reverb"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -489,7 +499,12 @@ function DelaySection({
 	}[];
 }) {
 	return (
-		<Section collapsible sectionKey="audio:delay" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:delay"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -591,7 +606,12 @@ function ModulationSection({
 	presets: { id: string; name: string }[];
 }) {
 	return (
-		<Section collapsible sectionKey="audio:mod" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:mod"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -681,7 +701,12 @@ function DistortionSection({
 	presets: { id: string; name: string }[];
 }) {
 	return (
-		<Section collapsible sectionKey="audio:dist" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:dist"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch
@@ -757,7 +782,12 @@ function VoiceChangerSection({
 	presets: { id: string; name: string; pitchShift: number }[];
 }) {
 	return (
-		<Section collapsible sectionKey="audio:voice" defaultOpen={params.enabled}>
+		<Section
+			card
+			collapsible
+			sectionKey="audio:voice"
+			defaultOpen={params.enabled}
+		>
 			<SectionHeader
 				trailing={
 					<Switch

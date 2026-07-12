@@ -28,6 +28,9 @@ interface SectionProps {
 	className?: string;
 	showTopBorder?: boolean;
 	showBottomBorder?: boolean;
+	/** Render the section as a rounded inspector card, matching the
+	 *  Audio/Speed tab style. */
+	card?: boolean;
 }
 
 export function Section({
@@ -38,6 +41,7 @@ export function Section({
 	className,
 	showTopBorder = false,
 	showBottomBorder = true,
+	card = false,
 }: SectionProps) {
 	const cached = sectionKey ? sectionExpandedCache.get(sectionKey) : undefined;
 	const [isOpen, setIsOpen] = useState(cached ?? defaultOpen);
@@ -71,6 +75,8 @@ export function Section({
 					"flex flex-col",
 					showTopBorder && "border-t first:border-t-0",
 					showBottomBorder && "border-b",
+					card &&
+						"overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.035] shadow-inner shadow-white/[0.02]",
 					className,
 				)}
 			>

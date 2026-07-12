@@ -33,7 +33,9 @@ export function MobileGate({ children }: MobileGateProps) {
 
 		// Detect actual mobile/tablet devices — not small desktop windows.
 		const isMobile = /iphone|ipod/i.test(ua);
-		const isTablet = /ipad/i.test(ua) || (navigator.maxTouchPoints > 1 && /macintosh/i.test(ua));
+		const isTablet =
+			/ipad/i.test(ua) ||
+			(navigator.maxTouchPoints > 1 && /macintosh/i.test(ua));
 		const acknowledged = localStorage.getItem(STORAGE_KEY) === "true";
 		setGate((isMobile || isTablet) && !acknowledged ? "soft" : "open");
 	}, []);

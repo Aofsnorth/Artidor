@@ -166,7 +166,10 @@ export class CanvasRenderer {
 				msg.includes("GPUDevice") ||
 				msg.includes("panicked")
 			) {
-				console.warn("[renderer] GPU device lost, preview frozen until reload:", msg);
+				console.warn(
+					"[renderer] GPU device lost, preview frozen until reload:",
+					msg,
+				);
 				return;
 			}
 			throw error;

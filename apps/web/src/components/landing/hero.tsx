@@ -52,7 +52,9 @@ export function Hero() {
 					</span>
 					{t("home.hero.eyebrow.primary")}
 					<span className="text-white/30">·</span>
-					<span className="text-white/55">{t("home.hero.eyebrow.secondary")}</span>
+					<span className="text-white/55">
+						{t("home.hero.eyebrow.secondary")}
+					</span>
 				</div>
 
 				{/* leading-[1.15] + pb give the italic serif descenders (y, p, g)

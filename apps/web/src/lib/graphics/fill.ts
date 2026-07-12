@@ -1,11 +1,8 @@
 import { drawCssBackground } from "@/lib/gradients";
 
-type AnyCtx =
-	| CanvasRenderingContext2D
-	| OffscreenCanvasRenderingContext2D;
+type AnyCtx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-const GRADIENT_RE =
-	/(^|\s)(repeating-)?(linear|radial)-gradient\s*\(/i;
+const GRADIENT_RE = /(^|\s)(repeating-)?(linear|radial)-gradient\s*\(/i;
 
 /** True when `fill` is a CSS gradient string rather than a solid color. */
 export function isGradientFill(fill: string): boolean {

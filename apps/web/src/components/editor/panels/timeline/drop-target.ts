@@ -1,10 +1,18 @@
-import type { TimelineTrack, TimelineElement } from "@/lib/timeline";
-import type { ComputeDropTargetParams, DropTarget } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type TimelineTrack,
+	type TimelineElement,
+	type ComputeDropTargetParams,
+	type DropTarget,
+} from "@/lib/timeline";
 import {
 	canElementGoOnTrack,
 	resolveTrackPlacement,
 } from "@/lib/timeline/placement";
-import { TIMELINE_TRACK_GAP_PX, TIMELINE_CONTENT_TOP_PADDING_PX } from "./layout";
+import {
+	TIMELINE_TRACK_GAP_PX,
+	TIMELINE_CONTENT_TOP_PADDING_PX,
+} from "./layout";
 import { getTrackHeight } from "./track-layout";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 
@@ -122,8 +130,9 @@ export function computeDropTarget({
 	overrideHeights,
 	extraHeights,
 }: ComputeDropTargetParams): DropTarget {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 	const mainTrackIndex = tracks.overlay.length;
+	const audioStartIndex = mainTrackIndex + 1 + tracks.overlayAfter.length;
 	const xPosition =
 		typeof startTimeOverride === "number"
 			? startTimeOverride
@@ -212,7 +221,7 @@ export function computeDropTarget({
 
 	// Track type wall: video/visual elements can't drop on audio tracks,
 	// and audio elements can't drop on visual tracks.
-	const isTargetAudio = trackIndex > mainTrackIndex;
+	const isTargetAudio = trackIndex >= audioStartIndex;
 	const isElementAudio = elementType === "audio";
 	const canGoOnMainTrack = elementType
 		? canElementGoOnTrack({ elementType, trackType: "video" })

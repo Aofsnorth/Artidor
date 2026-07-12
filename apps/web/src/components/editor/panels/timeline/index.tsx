@@ -44,6 +44,7 @@ import { useBoxSelect } from "@/lib/selection/hooks/use-box-select";
 import { SnapIndicator } from "./snap-indicator";
 import type { SnapPoint } from "@/lib/timeline/snap-utils";
 import type { TimelineTrack } from "@/lib/timeline";
+import { getOrderedTracks } from "@/lib/timeline";
 import {
 	TIMELINE_SCROLLBAR_SIZE_PX,
 	TIMELINE_CONTENT_TOP_PADDING_PX,
@@ -334,10 +335,7 @@ export function Timeline() {
 		currentEditor.scenes.getActiveSceneOrNull(),
 	);
 	const tracks = useMemo<TimelineTrack[]>(
-		() =>
-			scene
-				? [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio]
-				: [],
+		() => (scene ? getOrderedTracks(scene.tracks) : []),
 		[scene],
 	);
 	const mainTrackId = scene?.tracks.main.id ?? null;
@@ -956,10 +954,7 @@ function TrackLabelsPanelInner({
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
 	const mainTrackId = scene?.tracks.main.id ?? null;
 	const tracks = useMemo<TimelineTrack[]>(
-		() =>
-			scene
-				? [...scene.tracks.overlay, scene.tracks.main, ...scene.tracks.audio]
-				: [],
+		() => (scene ? getOrderedTracks(scene.tracks) : []),
 		[scene],
 	);
 	const { selectedElements } = useElementSelection();
@@ -994,7 +989,10 @@ function TrackLabelsPanelInner({
 		if (!scene) return new Map<string, string>();
 		const prefixes = new Map<string, string>();
 
-		const overlayTracks = scene.tracks.overlay;
+		const overlayTracks = [
+			...scene.tracks.overlay,
+			...scene.tracks.overlayAfter,
+		];
 		const mainTrack = scene.tracks.main;
 
 		let textCount = 0;

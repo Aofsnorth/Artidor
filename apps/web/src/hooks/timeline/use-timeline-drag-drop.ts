@@ -26,6 +26,7 @@ import { BatchCommand } from "@/lib/commands";
 import { computeDropTarget } from "@/components/editor/panels/timeline/drop-target";
 import { getDragData, hasDragData } from "@/lib/drag-data";
 import type { TrackType, DropTarget, ElementType } from "@/lib/timeline";
+import { getOrderedTracks } from "@/lib/timeline";
 import type {
 	MediaDragData,
 	GraphicDragData,
@@ -183,7 +184,11 @@ export function useTimelineDragDrop({
 				mediaId: dragData?.type === "media" ? dragData.id : undefined,
 			});
 
-			const mouseX = e.clientX - referenceRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
+			const mouseX =
+				e.clientX -
+				referenceRect.left +
+				scrollLeft -
+				TIMELINE_CONTENT_LEFT_INSET_PX;
 			const mouseY = e.clientY - referenceRect.top + scrollTop - headerHeight;
 
 			const targetElementTypes =
@@ -195,11 +200,7 @@ export function useTimelineDragDrop({
 
 			const sceneTracks = editor.scenes.getActiveScene().tracks;
 			const currentTime = editor.playback.getCurrentTime();
-			const orderedTracks = [
-				...sceneTracks.overlay,
-				sceneTracks.main,
-				...sceneTracks.audio,
-			];
+			const orderedTracks = getOrderedTracks(sceneTracks);
 			const extraHeights = orderedTracks.map((track) =>
 				computeTrackExpansionHeight({ track, expandedElementIds }),
 			);
@@ -341,11 +342,7 @@ export function useTimelineDragDrop({
 				return;
 			}
 
-			const tracks = [
-				...editor.scenes.getActiveScene().tracks.overlay,
-				editor.scenes.getActiveScene().tracks.main,
-				...editor.scenes.getActiveScene().tracks.audio,
-			];
+			const tracks = getOrderedTracks(editor.scenes.getActiveScene().tracks);
 			const track = tracks[target.trackIndex];
 			if (!track) return;
 			editor.timeline.insertElement({
@@ -382,11 +379,7 @@ export function useTimelineDragDrop({
 				return;
 			}
 
-			const tracks = [
-				...editor.scenes.getActiveScene().tracks.overlay,
-				editor.scenes.getActiveScene().tracks.main,
-				...editor.scenes.getActiveScene().tracks.audio,
-			];
+			const tracks = getOrderedTracks(editor.scenes.getActiveScene().tracks);
 			const track = tracks[target.trackIndex];
 			if (!track) return;
 			editor.timeline.insertElement({
@@ -424,11 +417,7 @@ export function useTimelineDragDrop({
 				return;
 			}
 
-			const tracks = [
-				...editor.scenes.getActiveScene().tracks.overlay,
-				editor.scenes.getActiveScene().tracks.main,
-				...editor.scenes.getActiveScene().tracks.audio,
-			];
+			const tracks = getOrderedTracks(editor.scenes.getActiveScene().tracks);
 			const track = tracks[target.trackIndex];
 			if (!track) return;
 			editor.timeline.insertElement({
@@ -493,11 +482,7 @@ export function useTimelineDragDrop({
 			}
 
 			const sceneTracks = editor.scenes.getActiveScene().tracks;
-			const orderedTracks = [
-				...sceneTracks.overlay,
-				sceneTracks.main,
-				...sceneTracks.audio,
-			];
+			const orderedTracks = getOrderedTracks(sceneTracks);
 			const track = orderedTracks[target.trackIndex];
 			if (!track) return;
 
@@ -526,11 +511,7 @@ export function useTimelineDragDrop({
 				return;
 			}
 
-			const tracks = [
-				...editor.scenes.getActiveScene().tracks.overlay,
-				editor.scenes.getActiveScene().tracks.main,
-				...editor.scenes.getActiveScene().tracks.audio,
-			];
+			const tracks = getOrderedTracks(editor.scenes.getActiveScene().tracks);
 			const effectTrack = tracks.find((t) => t.type === "effect");
 			let trackId: string;
 
@@ -631,14 +612,11 @@ export function useTimelineDragDrop({
 								: DEFAULT_NEW_ELEMENT_DURATION;
 						const sceneTracks = editor.scenes.getActiveScene().tracks;
 						const currentTime = editor.playback.getCurrentTime();
-						const orderedTracks = [
-							...sceneTracks.overlay,
-							sceneTracks.main,
-							...sceneTracks.audio,
-						];
+						const orderedTracks = getOrderedTracks(sceneTracks);
 						const reuseMainTrackId =
 							createdAsset.type === "video" &&
 							sceneTracks.overlay.length === 0 &&
+							sceneTracks.overlayAfter.length === 0 &&
 							sceneTracks.audio.length === 0 &&
 							sceneTracks.main.elements.length === 0
 								? sceneTracks.main.id
@@ -707,11 +685,8 @@ export function useTimelineDragDrop({
 								trackId = addTrackCmd.getTrackId();
 								editor.command.execute({ command: addTrackCmd });
 							} else {
-								const track = [
-									...sceneTracks.overlay,
-									sceneTracks.main,
-									...sceneTracks.audio,
-								][dropTarget.trackIndex];
+								const track =
+									getOrderedTracks(sceneTracks)[dropTarget.trackIndex];
 								const needsImageTrack =
 									createdAsset.type === "image" &&
 									track?.id === sceneTracks.main.id;
@@ -809,7 +784,11 @@ export function useTimelineDragDrop({
 					if (!referenceRect) return;
 					const scrollLeft = scrollContainer?.scrollLeft ?? 0;
 					const scrollTop = scrollContainer?.scrollTop ?? 0;
-					const mouseX = e.clientX - referenceRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
+					const mouseX =
+						e.clientX -
+						referenceRect.left +
+						scrollLeft -
+						TIMELINE_CONTENT_LEFT_INSET_PX;
 					const headerHeight =
 						headerRef?.current?.getBoundingClientRect().height ?? 0;
 					const mouseY =

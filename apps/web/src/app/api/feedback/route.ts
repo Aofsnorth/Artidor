@@ -34,9 +34,7 @@ const feedbackRateLimit = new Ratelimit({
 const bodySchema = z.object({
 	message: z.string().min(1, "Message is required").max(5000),
 	rating: z.number().int().min(1).max(5).optional(),
-	category: z
-		.enum(["bug", "feature", "praise", "other"])
-		.optional(),
+	category: z.enum(["bug", "feature", "praise", "other"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -50,7 +48,10 @@ export async function POST(request: Request) {
 	const { success } = await feedbackRateLimit.limit(clientIpOf(request));
 	if (!success) {
 		return NextResponse.json(
-			{ error: "rate_limited", message: "Too many feedback submissions. Try again later." },
+			{
+				error: "rate_limited",
+				message: "Too many feedback submissions. Try again later.",
+			},
 			{ status: 429 },
 		);
 	}
@@ -61,7 +62,10 @@ export async function POST(request: Request) {
 		body = bodySchema.parse(json);
 	} catch (err) {
 		return NextResponse.json(
-			{ error: "invalid_body", message: err instanceof Error ? err.message : "Invalid JSON" },
+			{
+				error: "invalid_body",
+				message: err instanceof Error ? err.message : "Invalid JSON",
+			},
 			{ status: 400 },
 		);
 	}

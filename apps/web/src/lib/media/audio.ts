@@ -1,9 +1,10 @@
-import type {
-	AudioElement,
-	VideoElement,
-	LibraryAudioElement,
-	RetimeConfig,
-	SceneTracks,
+import {
+	getOrderedTracks,
+	type AudioElement,
+	type VideoElement,
+	type LibraryAudioElement,
+	type RetimeConfig,
+	type SceneTracks,
 } from "@/lib/timeline";
 import { shouldMaintainPitch } from "@/lib/retime/rate";
 import type { MediaAsset } from "@/lib/media/types";
@@ -126,7 +127,7 @@ export function collectAudibleCandidates({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): AudibleElementCandidate[] {
-	const allTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const allTracks = getOrderedTracks(tracks);
 	const mediaMap = new Map(mediaAssets.map((a) => [a.id, a]));
 	const candidates: AudibleElementCandidate[] = [];
 
@@ -183,7 +184,8 @@ export async function collectAudioElements({
 	const mediaMap = new Map<string, MediaAsset>(
 		mediaAssets.map((media) => [media.id, media]),
 	);
-	const pendingElements: Array<() => Promise<CollectedAudioElement | null>> = [];
+	const pendingElements: Array<() => Promise<CollectedAudioElement | null>> =
+		[];
 	let resolvedCount = 0;
 	const totalCandidates = candidates.length;
 	const trackProgress = () => {
@@ -633,7 +635,7 @@ export async function collectAudioMixSources({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): Promise<AudioMixSource[]> {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 	const audioMixSources: AudioMixSource[] = [];
 	const mediaMap = new Map<string, MediaAsset>(
 		mediaAssets.map((asset) => [asset.id, asset]),
@@ -696,7 +698,7 @@ export async function collectAudioClips({
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 }): Promise<AudioClipSource[]> {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 	const clips: AudioClipSource[] = [];
 	const mediaMap = new Map<string, MediaAsset>(
 		mediaAssets.map((asset) => [asset.id, asset]),

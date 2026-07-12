@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
 import {
 	ThemeProvider as NextThemesProvider,
 	type ThemeProviderProps,
-} from 'next-themes';
-import { useSyncExternalStore } from 'react';
+} from "next-themes";
+import { useSyncExternalStore } from "react";
 
 /**
  * `next-themes` injects an inline `<script>` that sets the initial theme
@@ -33,7 +33,7 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
 	return (
 		<NextThemesProvider
 			{...props}
-			scriptProps={hydrated ? { type: 'application/json' } : undefined}
+			scriptProps={hydrated ? { type: "application/json" } : undefined}
 		>
 			{children}
 		</NextThemesProvider>

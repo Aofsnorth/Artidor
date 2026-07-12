@@ -145,7 +145,8 @@ export const skewEffectDefinition: EffectDefinition = {
 				shader: "skew",
 				uniforms: ({ effectParams }) => ({
 					u_amount: asAmount01(effectParams.amount),
-					u_direction: String(effectParams.axis).toLowerCase() === "y" ? [0, 1] : [1, 0],
+					u_direction:
+						String(effectParams.axis).toLowerCase() === "y" ? [0, 1] : [1, 0],
 				}),
 			},
 		],

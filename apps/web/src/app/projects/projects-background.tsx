@@ -81,7 +81,10 @@ function rotate(p: Vec3, r: Vec3): Vec3 {
 	return { x: x2, y: y2, z: z2 };
 }
 
-function buildPrimitiveVertices(kind: Primitive["kind"], scale: number): Vec3[] {
+function buildPrimitiveVertices(
+	kind: Primitive["kind"],
+	scale: number,
+): Vec3[] {
 	switch (kind) {
 		case "cube": {
 			const s = scale;
@@ -183,28 +186,66 @@ function edgesForKind(kind: Primitive["kind"]): [number, number][] {
 	switch (kind) {
 		case "cube":
 			return [
-				[0, 1], [1, 2], [2, 3], [3, 0],
-				[4, 5], [5, 6], [6, 7], [7, 4],
-				[0, 4], [1, 5], [2, 6], [3, 7],
+				[0, 1],
+				[1, 2],
+				[2, 3],
+				[3, 0],
+				[4, 5],
+				[5, 6],
+				[6, 7],
+				[7, 4],
+				[0, 4],
+				[1, 5],
+				[2, 6],
+				[3, 7],
 			];
 		case "octa":
 			return [
-				[0, 1], [1, 2], [2, 3], [3, 0],
-				[4, 0], [4, 1], [4, 2], [4, 3],
-				[5, 0], [5, 1], [5, 2], [5, 3],
+				[0, 1],
+				[1, 2],
+				[2, 3],
+				[3, 0],
+				[4, 0],
+				[4, 1],
+				[4, 2],
+				[4, 3],
+				[5, 0],
+				[5, 1],
+				[5, 2],
+				[5, 3],
 			];
 		case "icosa": {
 			// 30 edges of an icosahedron, indexed by pairs of the 12 vertices.
 			// This is the canonical icosahedron edge list.
 			const e: [number, number][] = [
-				[0, 1], [0, 5], [0, 7], [0, 10], [0, 11],
-				[1, 5], [1, 7], [1, 8], [1, 9],
-				[2, 3], [2, 4], [2, 6], [2, 10], [2, 11],
-				[3, 4], [3, 6], [3, 8], [3, 9],
-				[4, 5], [4, 9], [4, 11],
-				[5, 9], [5, 11],
-				[6, 7], [6, 8], [6, 10],
-				[7, 8], [7, 10],
+				[0, 1],
+				[0, 5],
+				[0, 7],
+				[0, 10],
+				[0, 11],
+				[1, 5],
+				[1, 7],
+				[1, 8],
+				[1, 9],
+				[2, 3],
+				[2, 4],
+				[2, 6],
+				[2, 10],
+				[2, 11],
+				[3, 4],
+				[3, 6],
+				[3, 8],
+				[3, 9],
+				[4, 5],
+				[4, 9],
+				[4, 11],
+				[5, 9],
+				[5, 11],
+				[6, 7],
+				[6, 8],
+				[6, 10],
+				[7, 8],
+				[7, 10],
 				[8, 9],
 				[10, 11],
 			];
@@ -244,7 +285,18 @@ function edgesForKind(kind: Primitive["kind"]): [number, number][] {
 }
 
 const KINDS: Primitive["kind"][] = [
-	"cube", "torus", "octa", "icosa", "cylinder", "icosa", "octa", "cube", "torus", "cylinder", "icosa", "octa",
+	"cube",
+	"torus",
+	"octa",
+	"icosa",
+	"cylinder",
+	"icosa",
+	"octa",
+	"cube",
+	"torus",
+	"cylinder",
+	"icosa",
+	"octa",
 ];
 
 function rand(min: number, max: number) {
@@ -274,7 +326,12 @@ function buildPrimitives(): Primitive[] {
 	return out;
 }
 
-function buildParticles(): { position: Vec3; speed: Vec3; size: number; hue: number }[] {
+function buildParticles(): {
+	position: Vec3;
+	speed: Vec3;
+	size: number;
+	hue: number;
+}[] {
 	const out = [];
 	for (let i = 0; i < PARTICLE_COUNT; i++) {
 		out.push({
@@ -342,8 +399,12 @@ export function ProjectsBackground() {
 			// Gradient clear — deep slate base with subtle hue shift so glow
 			// reads against a richer backdrop than flat black.
 			const grad = ctx.createRadialGradient(
-				cssWidth * 0.5, cssHeight * 0.35, 0,
-				cssWidth * 0.5, cssHeight * 0.5, Math.max(cssWidth, cssHeight) * 0.8,
+				cssWidth * 0.5,
+				cssHeight * 0.35,
+				0,
+				cssWidth * 0.5,
+				cssHeight * 0.5,
+				Math.max(cssWidth, cssHeight) * 0.8,
 			);
 			grad.addColorStop(0, "#12141c");
 			grad.addColorStop(0.6, "#0c0d14");
@@ -408,8 +469,10 @@ export function ProjectsBackground() {
 				primitive.rotation.y += primitive.rotSpeed.y * dt;
 				primitive.rotation.z += primitive.rotSpeed.z * dt;
 				// Gentle parallax drift
-				primitive.position.x += Math.sin(timeSeconds * 0.15 + primitive.hue) * 0.2;
-				primitive.position.y += Math.cos(timeSeconds * 0.12 + primitive.hue * 0.5) * 0.15;
+				primitive.position.x +=
+					Math.sin(timeSeconds * 0.15 + primitive.hue) * 0.2;
+				primitive.position.y +=
+					Math.cos(timeSeconds * 0.12 + primitive.hue * 0.5) * 0.15;
 
 				const local = buildPrimitiveVertices(primitive.kind, primitive.scale);
 				const transformed = local.map((p) => rotate(p, primitive.rotation));
@@ -418,7 +481,9 @@ export function ProjectsBackground() {
 					y: p.y + primitive.position.y,
 					z: p.z + primitive.position.z,
 				}));
-				const projected = translated.map((p) => project(p, cssWidth, cssHeight));
+				const projected = translated.map((p) =>
+					project(p, cssWidth, cssHeight),
+				);
 				const depth =
 					projected.reduce((sum, p) => sum + p.depth, 0) / projected.length;
 				drawList.push({ primitive, projected, depth });
@@ -477,15 +542,9 @@ export function ProjectsBackground() {
 	}, []);
 
 	return (
-		<div
-			aria-hidden
-			className="pointer-events-none absolute inset-0 z-0"
-		>
+		<div aria-hidden className="pointer-events-none absolute inset-0 z-0">
 			{/* 3D wireframe primitives + particle field */}
-			<canvas
-				ref={canvasRef}
-				className="absolute inset-0 size-full"
-			/>
+			<canvas ref={canvasRef} className="absolute inset-0 size-full" />
 
 			{/* Soft cyan + violet radial wash for atmospheric depth */}
 			<div

@@ -28,10 +28,16 @@ export function shouldMountTimelineElement(params: {
 	if (params.isSelected) return true;
 
 	const elLeft =
-		timelineTimeToPixels({ time: params.startTime, zoomLevel: params.zoomLevel }) +
-		TIMELINE_CONTENT_LEFT_INSET_PX;
+		timelineTimeToPixels({
+			time: params.startTime,
+			zoomLevel: params.zoomLevel,
+		}) + TIMELINE_CONTENT_LEFT_INSET_PX;
 	const elRight =
-		elLeft + timelineTimeToPixels({ time: params.duration, zoomLevel: params.zoomLevel });
+		elLeft +
+		timelineTimeToPixels({
+			time: params.duration,
+			zoomLevel: params.zoomLevel,
+		});
 
 	// Standard AABB overlap test against the (overscanned) visible window.
 	return elRight >= params.windowLeft && elLeft <= params.windowRight;

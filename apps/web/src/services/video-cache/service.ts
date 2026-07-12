@@ -20,20 +20,20 @@ const MAX_CACHED_FRAMES_PER_MEDIA = 64;
 /**
  * Number of frames to prefetch ahead of the playhead during forward
  * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps.
- * 6 frames gave ~100 ms. 12 frames gives ~200 ms of buffer — enough to
- * absorb multi-frame decode spikes on long/high-GOP clips and keep
- * playback smooth even on slower machines. The prefetch runs async in
- * the background, so a larger buffer doesn't slow down the current frame.
+ * 6 frames gives ~100 ms of buffer — enough to absorb decode spikes on
+ * long/high-GOP clips while keeping the prefetch batch small. A smaller
+ * batch completes sooner, so `iterateToTime` waits less for the prefetch
+ * promise and the playhead reaches the next frame faster.
  */
-const PREFETCH_BUFFER_SIZE = 12;
+const PREFETCH_BUFFER_SIZE = 6;
 
 /**
  * CanvasSink pool size. Must comfortably exceed the prefetch buffer plus the
  * current frame plus any frame the compositor is still holding a reference to.
- * With a prefetch buffer of 12 + current + compositor hold, 18 gives
+ * With a prefetch buffer of 6 + current + compositor hold, 12 gives
  * headroom for the next batch to decode without churn.
  */
-const SINK_POOL_SIZE = 18;
+const SINK_POOL_SIZE = 12;
 
 interface VideoSinkData {
 	input: Input;

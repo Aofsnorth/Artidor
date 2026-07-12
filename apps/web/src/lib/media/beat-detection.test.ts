@@ -25,9 +25,9 @@ function generateImpulseTrain(
 
 describe("detectBeats", () => {
 	test("returns empty array for empty samples", () => {
-		expect(detectBeats({ samples: new Float32Array(0), sampleRate: 8000 })).toEqual(
-			[],
-		);
+		expect(
+			detectBeats({ samples: new Float32Array(0), sampleRate: 8000 }),
+		).toEqual([]);
 	});
 
 	test("returns empty array for non-positive sample rate", () => {

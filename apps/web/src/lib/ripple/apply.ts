@@ -26,6 +26,7 @@ export function applyRippleAdjustments({
 	}
 
 	return {
+		...tracks,
 		overlay: tracks.overlay.map((track) =>
 			applyTrackRippleAdjustments({
 				track,
@@ -36,6 +37,12 @@ export function applyRippleAdjustments({
 			track: tracks.main,
 			adjustments: adjustmentsByTrack.get(tracks.main.id) ?? [],
 		}),
+		overlayAfter: tracks.overlayAfter.map((track) =>
+			applyTrackRippleAdjustments({
+				track,
+				adjustments: adjustmentsByTrack.get(track.id) ?? [],
+			}),
+		),
 		audio: tracks.audio.map((track) =>
 			applyTrackRippleAdjustments({
 				track,

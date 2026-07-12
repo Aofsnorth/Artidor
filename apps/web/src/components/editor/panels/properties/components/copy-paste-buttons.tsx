@@ -23,10 +23,7 @@
 
 import { useCallback } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-	Copy01Icon,
-	ClipboardPasteIcon,
-} from "@hugeicons/core-free-icons";
+import { Copy01Icon, ClipboardPasteIcon } from "@hugeicons/core-free-icons";
 import { toast } from "sonner";
 import { useEditor } from "@/hooks/use-editor";
 import type { TimelineElement } from "@/lib/timeline";

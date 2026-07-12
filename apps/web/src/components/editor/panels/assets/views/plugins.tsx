@@ -85,7 +85,9 @@ export function PluginsView() {
 				const installed = packageToInstalled({ pkg });
 				await installPlugin(installed);
 			} catch (err) {
-				toast.error(t("plugins.failedToInstall", { error: (err as Error).message }));
+				toast.error(
+					t("plugins.failedToInstall", { error: (err as Error).message }),
+				);
 			}
 		},
 		[installPlugin, t],
@@ -104,7 +106,9 @@ export function PluginsView() {
 			URL.revokeObjectURL(url);
 			toast.success(t("plugins.downloadedSample"));
 		} catch (err) {
-			toast.error(t("plugins.failedToDownload", { error: (err as Error).message }));
+			toast.error(
+				t("plugins.failedToDownload", { error: (err as Error).message }),
+			);
 		}
 	}, [t]);
 
@@ -125,7 +129,9 @@ export function PluginsView() {
 				plugin.manifest.name,
 				plugin.manifest.id,
 				plugin.manifest.description,
-				t(`plugins.category.${plugin.manifest.category}` as `plugins.category.${PluginCategory}`),
+				t(
+					`plugins.category.${plugin.manifest.category}` as `plugins.category.${PluginCategory}`,
+				),
 				...(plugin.manifest.permissions ?? []),
 			],
 		});
@@ -187,9 +193,13 @@ export function PluginsView() {
 								active={filter === cat}
 								onClick={() => setFilter(cat)}
 								count={count}
-								tooltip={t(`plugins.categoryDescription.${cat}` as `plugins.categoryDescription.${PluginCategory}`)}
+								tooltip={t(
+									`plugins.categoryDescription.${cat}` as `plugins.categoryDescription.${PluginCategory}`,
+								)}
 							>
-								{t(`plugins.category.${cat}` as `plugins.category.${PluginCategory}`)}
+								{t(
+									`plugins.category.${cat}` as `plugins.category.${PluginCategory}`,
+								)}
 							</CategoryChip>
 						);
 					})}
@@ -298,7 +308,9 @@ function PluginCard({
 	const extensionSummary =
 		extensions.length === 1
 			? t("plugins.extension", {
-					type: t(`plugins.extension.${extensions[0].type}` as `plugins.extension.${PluginExtensionType}`),
+					type: t(
+						`plugins.extension.${extensions[0].type}` as `plugins.extension.${PluginExtensionType}`,
+					),
 				})
 			: t("plugins.extensions", { count: extensions.length });
 	const permissions = manifest.permissions ?? [];
@@ -356,9 +368,13 @@ function PluginCard({
 					)}
 					<div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-white/50">
 						<span className="rounded border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 uppercase tracking-[0.1em]">
-							{t(`plugins.category.${manifest.category}` as `plugins.category.${PluginCategory}`)}
+							{t(
+								`plugins.category.${manifest.category}` as `plugins.category.${PluginCategory}`,
+							)}
 						</span>
-						{manifest.author && <span>{t("plugins.byAuthor", { author: manifest.author })}</span>}
+						{manifest.author && (
+							<span>{t("plugins.byAuthor", { author: manifest.author })}</span>
+						)}
 						<span>·</span>
 						<span>{extensionSummary}</span>
 						{visiblePermissions.length > 0 && (
@@ -421,7 +437,9 @@ function PluginCard({
 							e.stopPropagation();
 							onToggle();
 						}}
-						title={enabled ? t("plugins.disablePlugin") : t("plugins.enablePlugin")}
+						title={
+							enabled ? t("plugins.disablePlugin") : t("plugins.enablePlugin")
+						}
 					>
 						<HugeiconsIcon
 							icon={enabled ? ToggleOnIcon : ToggleOffIcon}

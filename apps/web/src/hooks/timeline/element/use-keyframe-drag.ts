@@ -92,11 +92,16 @@ export function useKeyframeDrag({
 			);
 			if (!isOwnerSelected) {
 				editor.selection.setSelectedElements({
-					elements: [{ trackId: keyframe.trackId, elementId: keyframe.elementId }],
+					elements: [
+						{ trackId: keyframe.trackId, elementId: keyframe.elementId },
+					],
 					preserveKeyframes: true,
 				});
 			}
-			setActiveTab(element.type, getPropertiesTabForKeyframe(keyframe.propertyPath));
+			setActiveTab(
+				element.type,
+				getPropertiesTabForKeyframe(keyframe.propertyPath),
+			);
 			setFocusedKeyframePropertyPath(keyframe.propertyPath);
 		},
 		[
@@ -282,7 +287,12 @@ export function useKeyframeDrag({
 			};
 			setIsPendingDrag(true);
 		},
-		[focusKeyframeOwner, isKeyframeSelected, selectedKeyframes, setKeyframeSelection],
+		[
+			focusKeyframeOwner,
+			isKeyframeSelected,
+			selectedKeyframes,
+			setKeyframeSelection,
+		],
 	);
 
 	const handleKeyframeClick = useCallback(

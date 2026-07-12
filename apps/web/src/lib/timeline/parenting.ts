@@ -6,7 +6,11 @@
  * walks up the parent chain to compute the final transform.
  */
 import type { Transform } from "@/lib/rendering";
-import type { TimelineElement, SceneTracks } from "@/lib/timeline";
+import {
+	getOrderedTracks,
+	type TimelineElement,
+	type SceneTracks,
+} from "@/lib/timeline";
 
 const DEFAULT_TRANSFORM: Transform = {
 	scaleX: 1,
@@ -119,7 +123,7 @@ function collectAllElements({
 	tracks: SceneTracks;
 }): Map<string, { element: TimelineElement; trackId: string }> {
 	const map = new Map<string, { element: TimelineElement; trackId: string }>();
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	for (const track of getOrderedTracks(tracks)) {
 		for (const el of track.elements) {
 			map.set(el.id, { element: el, trackId: track.id });
 		}

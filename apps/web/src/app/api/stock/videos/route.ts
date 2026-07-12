@@ -60,7 +60,10 @@ export async function GET(request: Request) {
 	const { searchParams } = new URL(request.url);
 	const query = searchParams.get("q") ?? "";
 	const page = Math.max(1, Number(searchParams.get("page") ?? 1));
-	const perPage = Math.min(30, Math.max(1, Number(searchParams.get("per_page") ?? 15)));
+	const perPage = Math.min(
+		30,
+		Math.max(1, Number(searchParams.get("per_page") ?? 15)),
+	);
 
 	if (!query.trim()) {
 		return NextResponse.json({ results: [], total: 0, page, perPage });
@@ -88,7 +91,9 @@ export async function GET(request: Request) {
 		const data = (await res.json()) as PexelsResponse;
 
 		const results = data.videos.map((v) => {
-			const hd = v.video_files.find((f) => f.quality === "hd" && f.width >= 1280);
+			const hd = v.video_files.find(
+				(f) => f.quality === "hd" && f.width >= 1280,
+			);
 			const sd = v.video_files.find((f) => f.quality === "sd");
 			const thumb = v.video_pictures[0]?.picture;
 			return {

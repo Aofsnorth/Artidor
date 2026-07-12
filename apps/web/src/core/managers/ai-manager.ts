@@ -42,7 +42,10 @@ import { buildSystemPrompt } from "@/lib/ai/system-prompt";
 import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
-import { useAIControlStore, type ActiveToolCall } from "@/stores/ai-control-store";
+import {
+	useAIControlStore,
+	type ActiveToolCall,
+} from "@/stores/ai-control-store";
 import type { FrameRate } from "artidor-wasm";
 
 /**
@@ -68,9 +71,7 @@ interface ToolCallRound {
  * the context window is actually full.
  */
 function estimateTokens(messages: { content: string }[]): number {
-	return Math.ceil(
-		messages.reduce((sum, m) => sum + m.content.length, 0) / 4,
-	);
+	return Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);
 }
 
 export interface SendOptions {
@@ -307,8 +308,16 @@ export class AIManager {
 		const id = model.toLowerCase();
 		// Known text-only families that reject image_url parts.
 		const textOnly = [
-			"gpt-3.5", "deepseek-r1", "deepseek-v3", "o1-mini", "o1-preview",
-			"llama-3", "llama3", "mistral-7b", "qwen-2", "qwen2",
+			"gpt-3.5",
+			"deepseek-r1",
+			"deepseek-v3",
+			"o1-mini",
+			"o1-preview",
+			"llama-3",
+			"llama3",
+			"mistral-7b",
+			"qwen-2",
+			"qwen2",
 		];
 		return !textOnly.some((p) => id.includes(p));
 	}
@@ -337,7 +346,9 @@ export class AIManager {
 					? [v]
 					: [];
 		const elementIds = ids(args.elementId ?? args.elementIds);
-		const trackIds = ids(args.trackId ?? args.targetTrackId ?? args.sourceTrackId);
+		const trackIds = ids(
+			args.trackId ?? args.targetTrackId ?? args.sourceTrackId,
+		);
 		const labelMap: Record<string, string> = {
 			move_element: "Moving clip",
 			split_element: "Splitting clip",
@@ -456,6 +467,10 @@ export class AIManager {
 						elementCount: t.elements.length,
 					})),
 					{ type: "main_video", elementCount: tracks.main.elements.length },
+					...tracks.overlayAfter.map((t) => ({
+						type: t.type,
+						elementCount: t.elements.length,
+					})),
 					...tracks.audio.map((t) => ({
 						type: "audio",
 						elementCount: t.elements.length,
@@ -522,220 +537,226 @@ export class AIManager {
 		const myCycle = ++this.processCycle;
 		this.isProcessing = true;
 		try {
-		const ai = useAIStore.getState();
+			const ai = useAIStore.getState();
 
-		// Create a fresh AbortController for this message cycle. The
-		// user can cancel via `cancel()` which aborts the fetch and
-		// breaks the tool-call loop.
-		this.abortController = new AbortController();
-		const { signal } = this.abortController;
+			// Create a fresh AbortController for this message cycle. The
+			// user can cancel via `cancel()` which aborts the fetch and
+			// breaks the tool-call loop.
+			this.abortController = new AbortController();
+			const { signal } = this.abortController;
 
-		// Append the user message locally (only on first attempt —
-		// retries reuse the existing message).
-		const retryCount = useAIStore.getState().retryCount;
-		let userMessageId: string | null = null;
-		if (retryCount === 0) {
-			userMessageId = ai.appendMessage({ role: "user", content: text });
-			// Snapshot the undo-history length so we can revert all AI
-			// edits for this message later if the user asks. Persisted in
-			// the AI store so reverts still work after reload.
-			if (userMessageId) {
-				ai.setRevertSnapshot(
-					userMessageId,
-					this.editor.command.getHistoryLength(),
-				);
-			}
-		}
-		ai.setError(null);
-		ai.setStatus("streaming");
-		this.notify();
-
-		// Auto-compaction: if the conversation has grown too long, summarize
-		// the older messages into a compact system note so the LLM's context
-		// window stays manageable. This runs before building the wire-format
-		// messages so the request itself stays small.
-		await this.maybeAutoCompact();
-
-		// Tool-call loop: keep sending requests until the LLM stops
-		// requesting tool calls (or we hit the round limit, or the user
-		// aborts). The round limit is user-tunable via advanced settings.
-		const maxRounds = useAIStore.getState().advancedSettings.maxToolRounds;
-		// Keep the telemetry store's currentProjectId in sync so that
-		// user edits are tagged with the right project for scoped learning.
-		const projectId = this.editor.project.getActive()?.metadata.id ?? null;
-		useTelemetryStore.getState().setCurrentProjectId(projectId);
-		// Fetch recent edit events according to the user's learning scope
-		// preference: "project" → only this project's events, "global" →
-		// all events, "off" → empty (no style learning).
-		const learningScope = useAIStore.getState().advancedSettings.learningScope;
-		const recentEvents =
-			learningScope === "off"
-				? []
-				: learningScope === "project" && projectId
-					? useTelemetryStore.getState().recentForProject(20, projectId)
-					: useTelemetryStore.getState().recent(20);
-		// Maximum in-round retry attempts for transient network errors.
-		// Higher than before (3 → 4) so mid-task connection drops have
-		// more chances to recover without losing tool-call progress.
-		const MAX_IN_ROUND_RETRIES = 4;
-		// Delay between in-round retries (exponential: 1s, 2s, 4s).
-		const RETRY_DELAY_BASE_MS = 1000;
-
-		for (let round = 0; round < maxRounds; round++) {
-			if (signal.aborted) return;
-			// Retry transient network errors within a round. This handles
-			// mid-task connection drops without losing the tool-call
-			// progress from previous rounds.
-			let result:
-				| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-				| { kind: "error"; message: string }
-				| null = null;
-			let lastError = "Connection error";
-			for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
-				if (signal.aborted) return;
-				result = await this.streamLLMResponse(
-					text,
-					recentEvents,
-					signal,
-					learningScope,
-				);
-				if (result.kind === "ok") break;
-				lastError = result.message;
-				// If aborted, don't retry.
-				if (signal.aborted) return;
-				// On the first attempt's error, streamLLMResponse may
-				// have scheduled a retry timer. Cancel it — we handle
-				// the retry here instead.
-				this.clearRetryTimer();
-				useAIStore.getState().clearRetry();
-				// Show a transient retry status to the user.
-				if (attempt < MAX_IN_ROUND_RETRIES - 1) {
-					const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
-					// Populate the countdown so the retry UI shows the real
-					// remaining seconds instead of "0s". The retry block in
-					// the chat panel renders `{retryIn}s` whenever the status
-					// is "retrying"; without setting retryIn the in-round
-					// backoff wait displayed a misleading "0s" countdown.
-					const delaySeconds = Math.max(1, Math.round(delay / 1000));
-					useAIStore.getState().setStatus("retrying");
-					useAIStore.getState().setRetry(attempt + 1, delaySeconds);
-					useAIStore.getState().setError(
-						`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${delaySeconds}s…`,
+			// Append the user message locally (only on first attempt —
+			// retries reuse the existing message).
+			const retryCount = useAIStore.getState().retryCount;
+			let userMessageId: string | null = null;
+			if (retryCount === 0) {
+				userMessageId = ai.appendMessage({ role: "user", content: text });
+				// Snapshot the undo-history length so we can revert all AI
+				// edits for this message later if the user asks. Persisted in
+				// the AI store so reverts still work after reload.
+				if (userMessageId) {
+					ai.setRevertSnapshot(
+						userMessageId,
+						this.editor.command.getHistoryLength(),
 					);
-					this.notify();
-					// Tick the per-second countdown during the backoff wait so
-					// the UI counts down live (mirrors scheduleRetry's timer).
-					this.clearRetryTimer();
-					this.retryTimer = setInterval(() => {
-						const current = useAIStore.getState();
-						current.tickRetry();
-						if (current.retryIn > 0) {
-							current.setError(
-								`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${current.retryIn}s…`,
-							);
-						}
-						this.notify();
-					}, 1000);
-					// Wait before retrying (exponential backoff).
-					await new Promise((resolve) => setTimeout(resolve, delay));
-					this.clearRetryTimer();
-					if (signal.aborted) return;
-					// Transition back to streaming so the "Thinking…" indicator
-					// shows while the next attempt's request is in flight,
-					// rather than leaving the stale retry countdown visible.
-					useAIStore.getState().setStatus("streaming");
-					this.notify();
 				}
 			}
-			if (!result || result.kind === "error") {
-				// If we already executed tool calls in a previous round,
-				// don't retry the whole message — that would re-execute
-				// the tools and likely cause duplicate edits. Instead,
-				// show the error and let the user decide.
-				if (round > 0) {
+			ai.setError(null);
+			ai.setStatus("streaming");
+			this.notify();
+
+			// Auto-compaction: if the conversation has grown too long, summarize
+			// the older messages into a compact system note so the LLM's context
+			// window stays manageable. This runs before building the wire-format
+			// messages so the request itself stays small.
+			await this.maybeAutoCompact();
+
+			// Tool-call loop: keep sending requests until the LLM stops
+			// requesting tool calls (or we hit the round limit, or the user
+			// aborts). The round limit is user-tunable via advanced settings.
+			const maxRounds = useAIStore.getState().advancedSettings.maxToolRounds;
+			// Keep the telemetry store's currentProjectId in sync so that
+			// user edits are tagged with the right project for scoped learning.
+			const projectId = this.editor.project.getActive()?.metadata.id ?? null;
+			useTelemetryStore.getState().setCurrentProjectId(projectId);
+			// Fetch recent edit events according to the user's learning scope
+			// preference: "project" → only this project's events, "global" →
+			// all events, "off" → empty (no style learning).
+			const learningScope =
+				useAIStore.getState().advancedSettings.learningScope;
+			const recentEvents =
+				learningScope === "off"
+					? []
+					: learningScope === "project" && projectId
+						? useTelemetryStore.getState().recentForProject(20, projectId)
+						: useTelemetryStore.getState().recent(20);
+			// Maximum in-round retry attempts for transient network errors.
+			// Higher than before (3 → 4) so mid-task connection drops have
+			// more chances to recover without losing tool-call progress.
+			const MAX_IN_ROUND_RETRIES = 4;
+			// Delay between in-round retries (exponential: 1s, 2s, 4s).
+			const RETRY_DELAY_BASE_MS = 1000;
+
+			for (let round = 0; round < maxRounds; round++) {
+				if (signal.aborted) return;
+				// Retry transient network errors within a round. This handles
+				// mid-task connection drops without losing the tool-call
+				// progress from previous rounds.
+				let result:
+					| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
+					| { kind: "error"; message: string }
+					| null = null;
+				let lastError = "Connection error";
+				for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
+					if (signal.aborted) return;
+					result = await this.streamLLMResponse(
+						text,
+						recentEvents,
+						signal,
+						learningScope,
+					);
+					if (result.kind === "ok") break;
+					lastError = result.message;
+					// If aborted, don't retry.
+					if (signal.aborted) return;
+					// On the first attempt's error, streamLLMResponse may
+					// have scheduled a retry timer. Cancel it — we handle
+					// the retry here instead.
 					this.clearRetryTimer();
 					useAIStore.getState().clearRetry();
-					useAIStore.getState().setStatus("error");
-					useAIControlStore.getState().endTakeover();
-					// Build a clear, actionable error message. Distinguish a real
-					// network problem from a model/provider error so the user isn't
-					// told "connection failed" when the underlying issue is the LLM
-					// itself (e.g. Puter.js model error).
-					const isConnectionError =
-						/connection|network|fetch|abort|timeout|unreachable/i.test(
-							lastError,
-						);
-					const projectProviderId =
-						this.editor.project.getActive()?.metadata.aiProviderId ?? null;
-					const provider = getDefaultProvider(projectProviderId);
-					const providerName = provider?.kind === "puter" ? "Puter.js" : "AI provider";
-					const summary = isConnectionError
-						? `The connection to ${providerName} could not be recovered after ${MAX_IN_ROUND_RETRIES} attempts. Check your network and try again.`
-						: `The active provider (${providerName}) returned an error after ${MAX_IN_ROUND_RETRIES} attempts: ${lastError}`;
-					useAIStore.getState().setError(
-						`AI stopped after completing ${round} round${round > 1 ? "s" : ""} of actions. ${summary} Send a new message to continue.`,
-					);
-					this.notify();
+					// Show a transient retry status to the user.
+					if (attempt < MAX_IN_ROUND_RETRIES - 1) {
+						const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
+						// Populate the countdown so the retry UI shows the real
+						// remaining seconds instead of "0s". The retry block in
+						// the chat panel renders `{retryIn}s` whenever the status
+						// is "retrying"; without setting retryIn the in-round
+						// backoff wait displayed a misleading "0s" countdown.
+						const delaySeconds = Math.max(1, Math.round(delay / 1000));
+						useAIStore.getState().setStatus("retrying");
+						useAIStore.getState().setRetry(attempt + 1, delaySeconds);
+						useAIStore
+							.getState()
+							.setError(
+								`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${delaySeconds}s…`,
+							);
+						this.notify();
+						// Tick the per-second countdown during the backoff wait so
+						// the UI counts down live (mirrors scheduleRetry's timer).
+						this.clearRetryTimer();
+						this.retryTimer = setInterval(() => {
+							const current = useAIStore.getState();
+							current.tickRetry();
+							if (current.retryIn > 0) {
+								current.setError(
+									`${lastError} — retrying (${attempt + 1}/${MAX_IN_ROUND_RETRIES}) in ${current.retryIn}s…`,
+								);
+							}
+							this.notify();
+						}, 1000);
+						// Wait before retrying (exponential backoff).
+						await new Promise((resolve) => setTimeout(resolve, delay));
+						this.clearRetryTimer();
+						if (signal.aborted) return;
+						// Transition back to streaming so the "Thinking…" indicator
+						// shows while the next attempt's request is in flight,
+						// rather than leaving the stale retry countdown visible.
+						useAIStore.getState().setStatus("streaming");
+						this.notify();
+					}
+				}
+				if (!result || result.kind === "error") {
+					// If we already executed tool calls in a previous round,
+					// don't retry the whole message — that would re-execute
+					// the tools and likely cause duplicate edits. Instead,
+					// show the error and let the user decide.
+					if (round > 0) {
+						this.clearRetryTimer();
+						useAIStore.getState().clearRetry();
+						useAIStore.getState().setStatus("error");
+						useAIControlStore.getState().endTakeover();
+						// Build a clear, actionable error message. Distinguish a real
+						// network problem from a model/provider error so the user isn't
+						// told "connection failed" when the underlying issue is the LLM
+						// itself (e.g. Puter.js model error).
+						const isConnectionError =
+							/connection|network|fetch|abort|timeout|unreachable/i.test(
+								lastError,
+							);
+						const projectProviderId =
+							this.editor.project.getActive()?.metadata.aiProviderId ?? null;
+						const provider = getDefaultProvider(projectProviderId);
+						const providerName =
+							provider?.kind === "puter" ? "Puter.js" : "AI provider";
+						const summary = isConnectionError
+							? `The connection to ${providerName} could not be recovered after ${MAX_IN_ROUND_RETRIES} attempts. Check your network and try again.`
+							: `The active provider (${providerName}) returned an error after ${MAX_IN_ROUND_RETRIES} attempts: ${lastError}`;
+						useAIStore
+							.getState()
+							.setError(
+								`AI stopped after completing ${round} round${round > 1 ? "s" : ""} of actions. ${summary} Send a new message to continue.`,
+							);
+						this.notify();
+						return;
+					}
+					// Round 0 error: schedule a full retry cycle.
+					this.scheduleRetry(text, lastError);
 					return;
 				}
-				// Round 0 error: schedule a full retry cycle.
-				this.scheduleRetry(text, lastError);
-				return;
-			}
-			if (signal.aborted) return;
-			if (result.toolCalls.length === 0) {
-				// No tool calls — the LLM produced a final text answer.
-				// If the model returned an empty/whitespace-only message
-				// (e.g. only thinking tags that got stripped, or a bare
-				// end-of-turn token), drop it so the chat doesn't show a
-				// blank "card box" bubble and the empty assistant turn
-				// doesn't confuse the next LLM request.
-				const store = useAIStore.getState();
-				const last = store.messages.at(-1);
-				if (
-					last &&
-					last.id === result.assistantId &&
-					last.role === "assistant" &&
-					!last.content?.trim() &&
-					!last.toolCalls?.length
-				) {
-					store.removeMessage(result.assistantId);
-					this.notify();
+				if (signal.aborted) return;
+				if (result.toolCalls.length === 0) {
+					// No tool calls — the LLM produced a final text answer.
+					// If the model returned an empty/whitespace-only message
+					// (e.g. only thinking tags that got stripped, or a bare
+					// end-of-turn token), drop it so the chat doesn't show a
+					// blank "card box" bubble and the empty assistant turn
+					// doesn't confuse the next LLM request.
+					const store = useAIStore.getState();
+					const last = store.messages.at(-1);
+					if (
+						last &&
+						last.id === result.assistantId &&
+						last.role === "assistant" &&
+						!last.content?.trim() &&
+						!last.toolCalls?.length
+					) {
+						store.removeMessage(result.assistantId);
+						this.notify();
+					}
+					break;
 				}
-				break;
+
+				// Execute the tool calls and append tool-role messages with
+				// the results so the next LLM round can see them.
+				await this.executeAndRecordToolCalls(
+					result.assistantId,
+					result.toolCalls,
+					signal,
+				);
+
+				if (signal.aborted) return;
+
+				// If this was the last round, append a note so the LLM knows
+				// it hit the limit.
+				if (round === maxRounds - 1) {
+					useAIStore.getState().appendMessage({
+						role: "assistant",
+						content:
+							"(Reached the maximum number of tool-call rounds. Please continue with a new message if you need more steps.)",
+					});
+				}
 			}
 
-			// Execute the tool calls and append tool-role messages with
-			// the results so the next LLM round can see them.
-			await this.executeAndRecordToolCalls(
-				result.assistantId,
-				result.toolCalls,
-				signal,
-			);
+			// Success — reset retry state and drain the queue.
+			this.clearRetryTimer();
+			useAIStore.getState().clearRetry();
+			useAIStore.getState().setStatus("idle");
+			// End the AI takeover — the editor is interactive again.
+			useAIControlStore.getState().endTakeover();
+			this.notify();
 
-			if (signal.aborted) return;
-
-			// If this was the last round, append a note so the LLM knows
-			// it hit the limit.
-			if (round === maxRounds - 1) {
-				useAIStore.getState().appendMessage({
-					role: "assistant",
-					content:
-						"(Reached the maximum number of tool-call rounds. Please continue with a new message if you need more steps.)",
-				});
-			}
-		}
-
-		// Success — reset retry state and drain the queue.
-		this.clearRetryTimer();
-		useAIStore.getState().clearRetry();
-		useAIStore.getState().setStatus("idle");
-		// End the AI takeover — the editor is interactive again.
-		useAIControlStore.getState().endTakeover();
-		this.notify();
-
-		// If there are queued messages, send the next one.
-		this.drainQueue();
+			// If there are queued messages, send the next one.
+			this.drainQueue();
 		} finally {
 			// Only clean up if we're still the latest cycle. If a newer
 			// processMessage has started (cancel+resend, steer), it has
@@ -814,7 +835,10 @@ export class AIManager {
 		// Respect the user's context-window limit. Keep any system/compacted
 		// summary messages and drop the oldest non-system messages first so
 		// long conversations don't exceed the model's context.
-		const maxContext = Math.max(1, storeState.advancedSettings.maxContextMessages);
+		const maxContext = Math.max(
+			1,
+			storeState.advancedSettings.maxContextMessages,
+		);
 		if (messages.length > maxContext) {
 			const systemCount = messages.filter((m) => m.role === "system").length;
 			const keepRecent = Math.max(0, maxContext - systemCount);
@@ -838,8 +862,7 @@ export class AIManager {
 		const pendingVideos = storeState.pendingVideos;
 		const activeModel = providerConfig?.model;
 		const attachVideo =
-			pendingVideos.length > 0 &&
-			AIManager.modelSupportsVideo(activeModel);
+			pendingVideos.length > 0 && AIManager.modelSupportsVideo(activeModel);
 		// Skip attaching image parts when the active model is known to be
 		// text-only — sending image_url parts to such models causes provider
 		// errors. The pending media is still cleared so we don't retry
@@ -870,9 +893,8 @@ export class AIManager {
 					// only a fallback for non-video-capable models.
 					// `attachImages` already accounts for vision capability,
 					// so we never send image parts to a text-only model.
-					const imageParts = (attachImages && !attachVideo
-						? pendingImages
-						: []
+					const imageParts = (
+						attachImages && !attachVideo ? pendingImages : []
 					).map((url) => ({
 						type: "image_url" as const,
 						image_url: { url },
@@ -1137,9 +1159,7 @@ export class AIManager {
 					throw new Error(
 						"No video model configured. Set a video model in the provider settings.",
 					);
-				const seconds = args.seconds
-					? Number(args.seconds)
-					: undefined;
+				const seconds = args.seconds ? Number(args.seconds) : undefined;
 				return puterTxt2Vid(prompt, provider.videoModel, seconds);
 			}
 			case "generate_image": {
@@ -1155,11 +1175,7 @@ export class AIManager {
 						"No audio model configured. Set an audio model in the provider settings.",
 					);
 				const voice = args.voice ? String(args.voice) : undefined;
-				return puterTxt2Speech(
-					prompt,
-					provider.audioModel,
-					voice,
-				);
+				return puterTxt2Speech(prompt, provider.audioModel, voice);
 			}
 			case "generate_media": {
 				if (!provider.mediaModel?.trim())
@@ -1169,11 +1185,7 @@ export class AIManager {
 				// Reuse TTS for media generation until a dedicated
 				// Puter.js media API is available.
 				const voice = args.voice ? String(args.voice) : undefined;
-				return puterTxt2Speech(
-					prompt,
-					provider.mediaModel,
-					voice,
-				);
+				return puterTxt2Speech(prompt, provider.mediaModel, voice);
 			}
 			default:
 				throw new Error(`Unknown generation tool: ${toolName}`);
@@ -1243,7 +1255,8 @@ export class AIManager {
 				return { kind: "error", message: "Aborted" };
 			}
 			useAIStore.getState().removeMessage(assistantId);
-			const baseMessage = err instanceof Error ? err.message : "Puter.js stream error";
+			const baseMessage =
+				err instanceof Error ? err.message : "Puter.js stream error";
 			const message = `Puter.js (${model}): ${baseMessage}`;
 			this.scheduleRetry("", message);
 			return { kind: "error", message };
@@ -1317,7 +1330,12 @@ export class AIManager {
 			if (tc.name === "create_plan") {
 				const title = String(tc.arguments.title ?? "Plan");
 				const steps = Array.isArray(tc.arguments.steps)
-					? (tc.arguments.steps as Array<{ title?: unknown; description?: unknown }>)
+					? (
+							tc.arguments.steps as Array<{
+								title?: unknown;
+								description?: unknown;
+							}>
+						)
 							.filter((s) => s && typeof s === "object")
 							.map((s) => ({
 								title: String(s.title ?? "Step"),
@@ -1418,8 +1436,7 @@ export class AIManager {
 					results.push({
 						name: tc.name,
 						ok: false,
-						message:
-							err instanceof Error ? err.message : "MCP tool failed",
+						message: err instanceof Error ? err.message : "MCP tool failed",
 					});
 				}
 			} else if (
@@ -1476,10 +1493,7 @@ export class AIManager {
 					results.push({
 						name: tc.name,
 						ok: false,
-						message:
-							err instanceof Error
-								? err.message
-								: "Generation failed",
+						message: err instanceof Error ? err.message : "Generation failed",
 					});
 				}
 			} else {
@@ -1489,9 +1503,9 @@ export class AIManager {
 				// (list_*, capture_frame, web_fetch) skip it.
 				const isModifying = AIManager.EDITOR_MODIFYING_TOOLS.has(tc.name);
 				if (isModifying) {
-					useAIControlStore.getState().setActiveToolCall(
-						this.describeToolCall(tc.name, tc.arguments),
-					);
+					useAIControlStore
+						.getState()
+						.setActiveToolCall(this.describeToolCall(tc.name, tc.arguments));
 					this.notify();
 				}
 				const r = await executeTool({
@@ -1700,7 +1714,9 @@ export class AIManager {
 			this.abortController.abort();
 			this.abortController = null;
 		}
-		console.debug("[AIManager] dispose() — retry timer and abort controller cleaned up");
+		console.debug(
+			"[AIManager] dispose() — retry timer and abort controller cleaned up",
+		);
 	}
 
 	/**
@@ -1740,9 +1756,7 @@ export class AIManager {
 	 * mechanical local summary if the LLM call fails — compaction should
 	 * never be blocked by a network issue.
 	 */
-	private async summarizeMessages(
-		messages: UiChatMessage[],
-	): Promise<string> {
+	private async summarizeMessages(messages: UiChatMessage[]): Promise<string> {
 		const conversationText = messages
 			.map((m) => {
 				const role = m.role.toUpperCase();
@@ -2027,15 +2041,17 @@ export class AIManager {
  * so the user never sees internal monologue.
  */
 function sanitizeAssistantText(text: string): string {
-	return text
-		// Closed <think> ... </think> blocks (DeepSeek-R1 / QwQ style, no angle brackets).
-		.replace(/<think>[\s\S]*?<\/think>/g, "")
-		// Closed <thinking> ... </thinking> blocks (MiniMax / generic).
-		.replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
-		// Unclosed opening tags during streaming — hide from the opening
-		// tag to the end of the buffer; the content reappears once the
-		// closing tag arrives and the closed-tag regex removes the block.
-		.replace(/<(?:think|thinking)>[\s\S]*$/g, "")
-		.replace(/<think>[\s\S]*$/g, "")
-		.trim();
+	return (
+		text
+			// Closed <think> ... </think> blocks (DeepSeek-R1 / QwQ style, no angle brackets).
+			.replace(/<think>[\s\S]*?<\/think>/g, "")
+			// Closed <thinking> ... </thinking> blocks (MiniMax / generic).
+			.replace(/<thinking>[\s\S]*?<\/thinking>/g, "")
+			// Unclosed opening tags during streaming — hide from the opening
+			// tag to the end of the buffer; the content reappears once the
+			// closing tag arrives and the closed-tag regex removes the block.
+			.replace(/<(?:think|thinking)>[\s\S]*$/g, "")
+			.replace(/<think>[\s\S]*$/g, "")
+			.trim()
+	);
 }

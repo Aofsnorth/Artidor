@@ -34,7 +34,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.hero.headline.highlight": "respects",
 		"home.hero.headline.line3": "your machine.",
 		"home.hero.description":
-			"Artidor is a free, open-source video editor that runs entirely in your browser or on your desktop. No uploads, no paywalls, no \"Pro\" tier. Now with Arth, an AI co-pilot that learns how you edit.",
+			'Artidor is a free, open-source video editor that runs entirely in your browser or on your desktop. No uploads, no paywalls, no "Pro" tier. Now with Arth, an AI co-pilot that learns how you edit.',
 		"home.hero.cta.openEditor": "Open the editor",
 		"home.hero.cta.starGitHub": "Star on GitHub",
 		"home.hero.stat.stars": "GitHub stars",
@@ -122,7 +122,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.features.card.gpu.title": "GPU-accelerated everywhere",
 		"home.features.card.gpu.body":
 			"WebGPU compositor, wgpu-powered effects pipeline, and Rust-side feather for masks. The same primitives run on Apple Silicon, NVIDIA, and AMD.",
-		"home.features.card.compositing.title": "Compositing that doesn't fight you",
+		"home.features.card.compositing.title":
+			"Compositing that doesn't fight you",
 		"home.features.card.compositing.body":
 			"Layered scenes, blend modes, masks with feather, real keyframes, audio waveforms with beat detection. The toolkit CapCut hides behind a paywall — yours for free.",
 		"home.features.card.autosave.title": "Real undo, real autosave",
@@ -144,7 +145,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.howItWorks.steps.export.body":
 			"Render to MP4, WebM, or GIF. The Rust-side scene builder keeps export quality identical to the live preview, with the option to keep your audio mix.",
 		"home.pledge.eyebrow": "MIT-licensed. Always.",
-		"home.pledge.headline.line1": "No \"Pro\" tier.",
+		"home.pledge.headline.line1": 'No "Pro" tier.',
 		"home.pledge.headline.line2": " No watermark. No expiry.",
 		"home.pledge.body":
 			"Artidor is built in public. Every release ships with the full feature set unlocked. If we ever charge for anything, we build a paid product that doesn't touch the editor.",
@@ -498,7 +499,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"docs.sections.gettingStarted": "Getting Started",
 		"docs.sections.aiCopilot": "AI Copilot (Arth)",
 		"docs.sections.mcpServer": "MCP Server — External AI Integration",
-		"docs.sections.mcpClient": "MCP Client — Connect External MCP Servers to Arth",
+		"docs.sections.mcpClient":
+			"MCP Client — Connect External MCP Servers to Arth",
 		"docs.sections.keyboardShortcuts": "Keyboard Shortcuts",
 		"docs.sections.projectManagement": "Project Management",
 		"docs.sections.collaboration": "Real-time Collaboration",
@@ -532,7 +534,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"sounds.tab.saved": "Saved",
 		"sounds.searchPlaceholder": "Search sound effects",
 		"sounds.filter.commercialOnly": "Show only commercially licensed",
-		"sounds.filter.commercialOnlyHint": "Only showing sounds licensed for commercial use",
+		"sounds.filter.commercialOnlyHint":
+			"Only showing sounds licensed for commercial use",
 		"sounds.filter.allSoundsHint": "Showing all sounds regardless of license",
 		"sounds.loading.sounds": "Loading sounds...",
 		"sounds.loading.searching": "Searching...",
@@ -543,7 +546,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"sounds.saved.loading": "Loading saved sounds...",
 		"sounds.saved.error": "Error: {error}",
 		"sounds.saved.empty.title": "No saved sounds",
-		"sounds.saved.empty.hint": "Click the heart icon on any sound to save it here",
+		"sounds.saved.empty.hint":
+			"Click the heart icon on any sound to save it here",
 		"sounds.saved.countSingular": "{count} saved sound",
 		"sounds.saved.countPlural": "{count} saved sounds",
 		"sounds.saved.clearAll": "Clear all",
@@ -568,7 +572,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"stickers.searchPlaceholder": "Search...",
 		"stickers.categoriesAria": "Sticker categories",
 		"stickers.empty.title": "No stickers found",
-		"stickers.empty.search": "No stickers found for \"{query}\"",
+		"stickers.empty.search": 'No stickers found for "{query}"',
 		"stickers.empty.noCategory": "No stickers available in {category} yet.",
 		"stickers.empty.noStickers": "No stickers available yet.",
 		"stickers.resultsCount": "{count} results",
@@ -593,14 +597,18 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"captions.error.noAudioInTimeline": "No audio found in timeline",
 		"captions.error.noAudioInClip": "No audio found in selected clip",
 		"captions.error.noCaptionsGenerated": "No captions were generated",
-		"captions.error.noValidCues": "No valid subtitle cues were found in the subtitle file",
+		"captions.error.noValidCues":
+			"No valid subtitle cues were found in the subtitle file",
 		"captions.error.noCaptionsToExport": "No captions to export",
 		"captions.error.unexpected": "An unexpected error occurred",
-		"captions.toast.selectSingleClip": "Select a single audio or video clip first",
-		"captions.toast.selectedNotAudioVideo": "Selected element is not an audio or video clip",
+		"captions.toast.selectSingleClip":
+			"Select a single audio or video clip first",
+		"captions.toast.selectedNotAudioVideo":
+			"Selected element is not an audio or video clip",
 		"captions.toast.clipCaptionsAdded": "Captions added for selected clip",
 		"captions.toast.exported": "Exported captions.{format}",
-		"captions.warning.importedWithSkipped": "Imported {count} subtitle cue(s) and skipped {skipped} malformed cue(s).",
+		"captions.warning.importedWithSkipped":
+			"Imported {count} subtitle cue(s) and skipped {skipped} malformed cue(s).",
 		"captions.cancelled": "Transcription cancelled",
 		"captions.generateTranscript": "Generate transcript (full timeline)",
 		"captions.transcribeSelectedClip": "Transcribe selected clip",
@@ -648,7 +656,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.title": "Assets",
 		"assets.noActiveProject": "No active project",
 		"assets.deleteFolderTitle": "Delete folder?",
-		"assets.deleteFolderDescription": "Assets inside this folder will be moved back to the library root. This action cannot be undone.",
+		"assets.deleteFolderDescription":
+			"Assets inside this folder will be moved back to the library root. This action cannot be undone.",
 		"assets.cancel": "Cancel",
 		"assets.delete": "Delete",
 		"assets.source.library.label": "Library",
@@ -664,9 +673,11 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.empty.description": "Import media or drag and drop to get started.",
 		"assets.empty.importButton": "Import media",
 		"assets.remote.stock.title": "Stock library is coming soon",
-		"assets.remote.stock.description": "The UI is ready for stock footage, audio, and templates. Use local imports while backend search is wired up.",
+		"assets.remote.stock.description":
+			"The UI is ready for stock footage, audio, and templates. Use local imports while backend search is wired up.",
 		"assets.remote.cloud.title": "Cloud media is coming soon",
-		"assets.remote.cloud.description": "This slot is prepared for synced files, shared team folders, and remote project assets.",
+		"assets.remote.cloud.description":
+			"This slot is prepared for synced files, shared team folders, and remote project assets.",
 		"assets.remote.localImportsHint": "Local imports stay in the header action",
 		"assets.stock.searchFailed": "Search failed",
 		"assets.stock.placeholder": "Search stock videos...",
@@ -674,7 +685,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.stock.durationAndResolution": "{duration}s · {width}×{height}",
 		"assets.stock.byAuthor": "by {author}",
 		"assets.stock.initialTitle": "Search Pexels stock videos",
-		"assets.stock.initialDescription": "Free, licensed stock footage. Search for nature, city, abstract, or any topic.",
+		"assets.stock.initialDescription":
+			"Free, licensed stock footage. Search for nature, city, abstract, or any topic.",
 		"assets.extractAudio.onlyVideo": "Only video assets can extract audio",
 		"assets.extractAudio.noAudioTrack": "No audio track found",
 		"assets.extractAudio.processFailed": "Could not process audio",
@@ -715,7 +727,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.provider.setDefault": "Set default",
 		"aiProviders.provider.setDefaultTooltip": "Use this provider for Arth",
 		"aiProviders.provider.test": "Test",
-		"aiProviders.provider.testTooltip": "Send a tiny test request to verify the connection",
+		"aiProviders.provider.testTooltip":
+			"Send a tiny test request to verify the connection",
 		"aiProviders.provider.edit": "Edit",
 		"aiProviders.provider.enabled": "Enabled",
 		"aiProviders.provider.enable": "Enable",
@@ -745,7 +758,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.form.baseUrlLabel": "Base URL",
 		"aiProviders.form.baseUrlPlaceholder": "https://api.openai.com/v1",
 		"aiProviders.form.baseUrlRequired": "Base URL is required.",
-		"aiProviders.form.baseUrlInvalid": "Base URL must start with http:// or https://",
+		"aiProviders.form.baseUrlInvalid":
+			"Base URL must start with http:// or https://",
 		"aiProviders.form.apiKeyLabel": "API Key",
 		"aiProviders.form.apiKeyNotRequired": "— not required for Ollama",
 		"aiProviders.form.apiKeyPlaceholderBlank": "(leave blank)",
@@ -763,7 +777,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.form.fetchTitleBlank": "Enter a base URL first",
 		"aiProviders.form.fetchTitle": "Fetch available models from this provider",
 		"aiProviders.form.fetch": "Fetch",
-		"aiProviders.form.fetchedModelError": "{error} — you can still type a model id manually.",
+		"aiProviders.form.fetchedModelError":
+			"{error} — you can still type a model id manually.",
 		"aiProviders.form.modelHint":
 			"Type a model id or click Fetch to load available models.",
 		"aiProviders.form.mediaModelsTitle": "Media generation models",
@@ -800,11 +815,13 @@ const dictionaries: Record<Locale, Dictionary> = {
 			"This warning cannot be dismissed for {count} more seconds.",
 		"aiProviders.modelSelect.placeholder": "— Select —",
 		"aiProviders.modelSelect.searchPlaceholder": "Search models…",
-		"aiProviders.modelSelect.noMatch": "No models match \"{query}\"",
+		"aiProviders.modelSelect.noMatch": 'No models match "{query}"',
 		"aiProviders.modelSelect.none": "— None —",
 		"aiProviders.test.unknownError": "Unknown error",
-		"aiProviders.test.serverErrorWithText": "Server returned HTTP {status}: {text}",
-		"aiProviders.test.serverError": "Server returned HTTP {status}. Please try again.",
+		"aiProviders.test.serverErrorWithText":
+			"Server returned HTTP {status}: {text}",
+		"aiProviders.test.serverError":
+			"Server returned HTTP {status}. Please try again.",
 		"aiProviders.test.parseError": "Could not read server response: {error}",
 		"aiProviders.test.httpError": "HTTP {status}",
 		"aiProviders.test.fetchModelsFailed": "Failed to fetch models.",
@@ -837,7 +854,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.retry.cancel": "Cancel retry",
 		"aiEdit.queue.singular": "{count} message queued",
 		"aiEdit.queue.plural": "{count} messages queued",
-		"aiEdit.queue.clearTooltip": "Clear queued messages (keeps current task running)",
+		"aiEdit.queue.clearTooltip":
+			"Clear queued messages (keeps current task running)",
 		"aiEdit.error.dismiss": "Dismiss error",
 		"aiEdit.scroll.top": "Scroll to top",
 		"aiEdit.scroll.bottom": "Scroll to bottom",
@@ -847,15 +865,18 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.reference.clearVideo": "Clear reference video",
 		"aiEdit.reference.ref": "ref",
 		"aiEdit.reference.refSet": "ref set",
-		"aiEdit.composer.placeholder": "Ask {name} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset",
+		"aiEdit.composer.placeholder":
+			"Ask {name} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset",
 		"aiEdit.composer.hint.send": "Enter to send · Shift+Enter for newline",
 		"aiEdit.composer.hint.queue": "Enter to queue · Shift+Enter for newline",
 		"aiEdit.composer.send": "Send",
 		"aiEdit.composer.queue": "Queue",
 		"aiEdit.composer.stop": "Stop",
-		"aiEdit.composer.stopTitle": "Stop current generation (queued messages continue)",
+		"aiEdit.composer.stopTitle":
+			"Stop current generation (queued messages continue)",
 		"aiEdit.composer.steer": "Steer",
-		"aiEdit.composer.steerTitle": "Interrupt the current generation and send this message next",
+		"aiEdit.composer.steerTitle":
+			"Interrupt the current generation and send this message next",
 		"aiEdit.quickAction.motionGraphic": "Motion graphic",
 		"aiEdit.quickAction.60sReel": "60s reel",
 		"aiEdit.quickAction.cinematicGrade": "Cinematic grade",
@@ -875,19 +896,26 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.history.empty": "No saved conversations yet.",
 		"aiEdit.history.rename": "Rename",
 		"aiEdit.history.delete": "Delete",
-		"aiEdit.autoLearn.onTitle": "Auto-learning is ON — the AI learns from your edits. Click to disable.",
-		"aiEdit.autoLearn.offTitle": "Auto-learning is OFF. Click to enable — the AI will learn from your edits.",
+		"aiEdit.autoLearn.onTitle":
+			"Auto-learning is ON — the AI learns from your edits. Click to disable.",
+		"aiEdit.autoLearn.offTitle":
+			"Auto-learning is OFF. Click to enable — the AI will learn from your edits.",
 		"aiEdit.autoLearn.editsLearned": "{count} edits learned",
 		"aiEdit.autoLearn.off": "Auto-learn off",
-		"aiEdit.compaction.title": "Compacted {count} older messages to save context space",
+		"aiEdit.compaction.title":
+			"Compacted {count} older messages to save context space",
 		"aiEdit.compaction.count": "{count} compacted",
 		"aiEdit.mcp.title": "MCP servers — external tools (click to manage)",
-		"aiEdit.mcp.connectedSingular": "{count} MCP server connected — click to manage",
-		"aiEdit.mcp.connectedPlural": "{count} MCP servers connected — click to manage",
+		"aiEdit.mcp.connectedSingular":
+			"{count} MCP server connected — click to manage",
+		"aiEdit.mcp.connectedPlural":
+			"{count} MCP servers connected — click to manage",
 		"aiEdit.mcp.manage.title": "MCP Servers",
-		"aiEdit.mcp.manage.description": "External tool servers that extend Arth's capabilities — filesystem, web search, databases, custom integrations.",
+		"aiEdit.mcp.manage.description":
+			"External tool servers that extend Arth's capabilities — filesystem, web search, databases, custom integrations.",
 		"aiEdit.mcp.manage.emptyTitle": "No MCP servers configured",
-		"aiEdit.mcp.manage.emptyHint": "Add a server to let Arth use external tools.",
+		"aiEdit.mcp.manage.emptyHint":
+			"Add a server to let Arth use external tools.",
 		"aiEdit.mcp.manage.add": "Add MCP Server",
 		"aiEdit.mcp.manage.addAnother": "Add Server",
 		"aiEdit.mcp.manage.done": "Done",
@@ -909,7 +937,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.mcp.deleteServer": "Delete server",
 		"aiEdit.mcp.tryReconnect": "Try reconnect",
 		"aiEdit.mcp.add.title": "Add MCP Server",
-		"aiEdit.mcp.add.description": "Connect to an MCP-compatible server to give Arth access to external tools.",
+		"aiEdit.mcp.add.description":
+			"Connect to an MCP-compatible server to give Arth access to external tools.",
 		"aiEdit.mcp.add.nameLabel": "Server name",
 		"aiEdit.mcp.add.namePlaceholder": "My MCP Server",
 		"aiEdit.mcp.add.urlLabel": "SSE URL",
@@ -920,40 +949,52 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.mcp.add.tokenPlaceholder": "For authenticated MCP servers",
 		"aiEdit.mcp.add.error.nameRequired": "Server name is required.",
 		"aiEdit.mcp.add.error.urlRequired": "SSE URL is required.",
-		"aiEdit.mcp.add.error.urlInvalid": "URL must start with http:// or https://",
+		"aiEdit.mcp.add.error.urlInvalid":
+			"URL must start with http:// or https://",
 		"aiEdit.mcp.add.cancel": "Cancel",
 		"aiEdit.mcp.add.addServer": "Add Server",
 		"aiEdit.mention.header": "Assets · click to mention",
 		"aiEdit.empty.welcome": "Welcome to Artidor",
-		"aiEdit.empty.descriptionNoEdits": "Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media.",
-		"aiEdit.empty.descriptionWithEdits": "Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media — it has learned from {count} of your edits.",
+		"aiEdit.empty.descriptionNoEdits":
+			"Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media.",
+		"aiEdit.empty.descriptionWithEdits":
+			"Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media — it has learned from {count} of your edits.",
 		"aiEdit.plan.steps": "{done}/{total} steps",
 		"aiEdit.plan.skipped": " · {count} skipped",
 		"aiEdit.plan.progressAria": "Plan progress: {progress}%",
-		"aiEdit.advanced.title": "Advanced AI settings — tune tool rounds, retries, compaction",
+		"aiEdit.advanced.title":
+			"Advanced AI settings — tune tool rounds, retries, compaction",
 		"aiEdit.advanced.header": "Advanced AI Settings",
 		"aiEdit.advanced.maxToolRounds": "Max tool rounds",
 		"aiEdit.advanced.maxToolRoundsDesc": "Max LLM tool-call cycles per message",
 		"aiEdit.advanced.maxRetryAttempts": "Max retry attempts",
-		"aiEdit.advanced.maxRetryAttemptsDesc": "Auto-retries on error before giving up",
+		"aiEdit.advanced.maxRetryAttemptsDesc":
+			"Auto-retries on error before giving up",
 		"aiEdit.advanced.retryCooldown": "Retry cooldown (s)",
 		"aiEdit.advanced.retryCooldownDesc": "Base seconds per retry attempt",
 		"aiEdit.advanced.compactionThreshold": "Compaction threshold",
-		"aiEdit.advanced.compactionThresholdDesc": "Message count before auto-compacting",
+		"aiEdit.advanced.compactionThresholdDesc":
+			"Message count before auto-compacting",
 		"aiEdit.advanced.keepLast": "Keep last (compaction)",
 		"aiEdit.advanced.keepLastDesc": "Recent messages kept during compaction",
 		"aiEdit.advanced.maxOutputTokens": "Max output tokens",
-		"aiEdit.advanced.maxOutputTokensDesc": "Maximum tokens the model can return",
+		"aiEdit.advanced.maxOutputTokensDesc":
+			"Maximum tokens the model can return",
 		"aiEdit.advanced.maxContextMessages": "Context window",
-		"aiEdit.advanced.maxContextMessagesDesc": "Max messages sent with each request",
+		"aiEdit.advanced.maxContextMessagesDesc":
+			"Max messages sent with each request",
 		"aiEdit.advanced.styleLearning": "Style learning",
-		"aiEdit.advanced.styleLearningDesc": "How the AI learns your editing style.",
+		"aiEdit.advanced.styleLearningDesc":
+			"How the AI learns your editing style.",
 		"aiEdit.advanced.scope.project": "Project",
 		"aiEdit.advanced.scope.global": "Global",
 		"aiEdit.advanced.scope.off": "Off",
-		"aiEdit.advanced.scope.projectHint": "Learns from edits in this project only.",
-		"aiEdit.advanced.scope.globalHint": "Learns from edits across all projects.",
-		"aiEdit.advanced.scope.offHint": "No style learning — AI won't reference edit history.",
+		"aiEdit.advanced.scope.projectHint":
+			"Learns from edits in this project only.",
+		"aiEdit.advanced.scope.globalHint":
+			"Learns from edits across all projects.",
+		"aiEdit.advanced.scope.offHint":
+			"No style learning — AI won't reference edit history.",
 		"aiEdit.advanced.reset": "Reset to defaults",
 		"aiEdit.message.copyTitle": "Copy message",
 		"aiEdit.message.copiedTitle": "Copied!",
@@ -983,7 +1024,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"templates.category.lyric": "Lyric",
 		"templates.category.tutorial": "Tutorial",
 		"templates.comingSoon.badge": "Coming Soon",
-		"templates.comingSoon.message": "Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
+		"templates.comingSoon.message":
+			"Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
 
 		"filters.category.cinematic": "Cinematic",
 		"filters.category.vintage": "Vintage",
@@ -1056,7 +1098,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"qualifier.highlights": "Highlights",
 		"qualifier.matte.color": "Color",
 		"qualifier.matte.blackWhite": "B/W",
-		"qualifier.description": "Toggle each channel to include it in the key, then adjust Range / Softness to widen or tighten the selection. Highlight matte switches the viewer to a black/white overlay so you can see exactly which pixels the grade applies to.",
+		"qualifier.description":
+			"Toggle each channel to include it in the key, then adjust Range / Softness to widen or tighten the selection. Highlight matte switches the viewer to a black/white overlay so you can see exactly which pixels the grade applies to.",
 		"qualifier.handle.low": "Low handle",
 		"qualifier.handle.mid": "Mid handle",
 		"qualifier.handle.high": "High handle",
@@ -1078,50 +1121,66 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"hslCurves.axis.hueOut": "Hue (out)",
 		"hslCurves.reset": "Reset",
 		"hslCurves.aria.curveEditor": "{label} curve editor",
-		"hslCurves.description": "HSL curves let you re-shape one component (saturation, luminance, or hue) as a function of another. Click on the curve to add a point, drag to reshape, double-click a point to remove. Defaults are linear (no change).",
+		"hslCurves.description":
+			"HSL curves let you re-shape one component (saturation, luminance, or hue) as a function of another. Click on the curve to add a point, drag to reshape, double-click a point to remove. Defaults are linear (no change).",
 		"collaboration.defaultProjectName": "Shared project",
 		"collaboration.mode.view": "View",
-		"collaboration.mode.viewDescription": "Collaborators can watch but not edit.",
+		"collaboration.mode.viewDescription":
+			"Collaborators can watch but not edit.",
 		"collaboration.mode.comment": "Comment",
-		"collaboration.mode.commentDescription": "Collaborators can view and leave comments on the timeline.",
+		"collaboration.mode.commentDescription":
+			"Collaborators can view and leave comments on the timeline.",
 		"collaboration.mode.edit": "Edit",
-		"collaboration.mode.editDescription": "Collaborators can fully edit the timeline. Element locking prevents conflicts.",
+		"collaboration.mode.editDescription":
+			"Collaborators can fully edit the timeline. Element locking prevents conflicts.",
 		"collaboration.mode.suggest": "Suggest",
-		"collaboration.mode.suggestDescription": "Collaborators propose edits; the host approves or rejects each one.",
+		"collaboration.mode.suggestDescription":
+			"Collaborators propose edits; the host approves or rejects each one.",
 		"collaboration.startDialog.title": "Start collaborating",
 		"collaboration.startDialog.activeTitle": "Session active",
-		"collaboration.startDialog.description": "Invite your team to edit together in real time. Each person gets a colored cursor on the timeline.",
-		"collaboration.startDialog.activeDescription": "Share the link below to invite collaborators.",
+		"collaboration.startDialog.description":
+			"Invite your team to edit together in real time. Each person gets a colored cursor on the timeline.",
+		"collaboration.startDialog.activeDescription":
+			"Share the link below to invite collaborators.",
 		"collaboration.startDialog.nicknameLabel": "Your nickname",
 		"collaboration.startDialog.nicknamePlaceholder": "e.g. Alex",
 		"collaboration.startDialog.nicknameRequiredTitle": "Enter a nickname",
-		"collaboration.startDialog.nicknameRequiredDescription": "Collaborators will see this name on your cursor.",
+		"collaboration.startDialog.nicknameRequiredDescription":
+			"Collaborators will see this name on your cursor.",
 		"collaboration.startDialog.permissionModeLabel": "Permission mode",
 		"collaboration.startDialog.startButton": "Start session",
 		"collaboration.startDialog.startingButton": "Starting…",
 		"collaboration.startDialog.shareLinkLabel": "Share link",
 		"collaboration.startDialog.copyButton": "Copy",
 		"collaboration.startDialog.copiedButton": "Copied",
-		"collaboration.startDialog.statusSingular": "1 collaborator connected · Mode: {mode}",
-		"collaboration.startDialog.statusPlural": "{count} collaborators connected · Mode: {mode}",
+		"collaboration.startDialog.statusSingular":
+			"1 collaborator connected · Mode: {mode}",
+		"collaboration.startDialog.statusPlural":
+			"{count} collaborators connected · Mode: {mode}",
 		"collaboration.startDialog.endSessionButton": "End session",
 		"collaboration.joinDialog.title": "Join collaboration",
-		"collaboration.joinDialog.description": "Enter your name to join the editing session. You'll get a colored cursor on the timeline.",
+		"collaboration.joinDialog.description":
+			"Enter your name to join the editing session. You'll get a colored cursor on the timeline.",
 		"collaboration.joinDialog.nicknameLabel": "Your nickname",
 		"collaboration.joinDialog.nicknamePlaceholder": "e.g. Sam",
 		"collaboration.joinDialog.nicknameRequiredTitle": "Enter a nickname",
-		"collaboration.joinDialog.nicknameRequiredDescription": "Others will see this name on your cursor.",
+		"collaboration.joinDialog.nicknameRequiredDescription":
+			"Others will see this name on your cursor.",
 		"collaboration.joinDialog.joinButton": "Join session",
 		"collaboration.joinDialog.joiningButton": "Joining…",
 		"collaboration.toast.sessionStarted.title": "Collaboration session started",
-		"collaboration.toast.sessionStarted.description": "Share this link with your team: {joinUrl}",
-		"collaboration.toast.sessionStarted.descriptionNoLink": "Share the link with your team.",
+		"collaboration.toast.sessionStarted.description":
+			"Share this link with your team: {joinUrl}",
+		"collaboration.toast.sessionStarted.descriptionNoLink":
+			"Share the link with your team.",
 		"collaboration.toast.startError": "Could not start collaboration.",
 		"collaboration.toast.linkCopied.title": "Link copied",
-		"collaboration.toast.linkCopied.description": "Send this to your collaborators.",
+		"collaboration.toast.linkCopied.description":
+			"Send this to your collaborators.",
 		"collaboration.toast.copyError": "Could not copy link",
 		"collaboration.toast.joined.title": "Joined collaboration",
-		"collaboration.toast.joined.description": "You're now editing with the team.",
+		"collaboration.toast.joined.description":
+			"You're now editing with the team.",
 		"collaboration.toast.joinError": "Could not join collaboration.",
 	},
 	id: {
@@ -1154,7 +1213,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.hero.headline.highlight": "menghormati",
 		"home.hero.headline.line3": "mesin Anda.",
 		"home.hero.description":
-			"Artidor adalah editor video gratis dan sumber terbuka yang berjalan sepenuhnya di browser atau desktop Anda. Tanpa unggahan, tanpa paywall, tanpa tier \"Pro\". Kini dengan Arth, kopilot AI yang belajar cara Anda mengedit.",
+			'Artidor adalah editor video gratis dan sumber terbuka yang berjalan sepenuhnya di browser atau desktop Anda. Tanpa unggahan, tanpa paywall, tanpa tier "Pro". Kini dengan Arth, kopilot AI yang belajar cara Anda mengedit.',
 		"home.hero.cta.openEditor": "Buka editor",
 		"home.hero.cta.starGitHub": "Beri bintang di GitHub",
 		"home.hero.stat.stars": "Bintang GitHub",
@@ -1163,7 +1222,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.hero.stat.license": "Lisensi",
 		"home.hero.chrome.preview": "artidor — pratinjau langsung",
 		"home.hero.chrome.ai": "Edit dengan AI",
-		"home.hero.imageAlt": "Artidor editor — tangkapan layar aplikasi yang berjalan",
+		"home.hero.imageAlt":
+			"Artidor editor — tangkapan layar aplikasi yang berjalan",
 		"home.footer.tagline":
 			"Editor video yang mengutamakan privasi dan menghormati mesin Anda. Gratis, sumber terbuka, berjalan di browser atau desktop Anda.",
 		"home.footer.category.resources": "Sumber daya",
@@ -1181,7 +1241,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.footer.social.github": "GitHub",
 		"home.footer.social.x": "X (Twitter)",
 		"home.footer.social.discord": "Discord",
-		"home.footer.copyright": "© {year} Artidor. Berlisensi MIT. Dibangun secara terbuka.",
+		"home.footer.copyright":
+			"© {year} Artidor. Berlisensi MIT. Dibangun secara terbuka.",
 		"home.footer.status": "Semua sistem normal",
 		"home.aiDisclaimer.title": "Basis Kode Dibuat AI",
 		"home.aiDisclaimer.body":
@@ -1212,7 +1273,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.aiShowcase.chat.toolName.transcribe": "transcribe",
 		"home.aiShowcase.chat.toolDetail.transcribe": "Track audio · 47 segmen",
 		"home.aiShowcase.chat.toolName.keyframe": "upsert_keyframe",
-		"home.aiShowcase.chat.toolDetail.keyframe": "scale 1 → 1.08 di setiap potongan",
+		"home.aiShowcase.chat.toolDetail.keyframe":
+			"scale 1 → 1.08 di setiap potongan",
 		"home.aiShowcase.chat.toolName.update": "update_element",
 		"home.aiShowcase.chat.toolDetail.update": "Keterangan di 4 track overlay",
 		"home.aiShowcase.chat.toolStatus": "ok",
@@ -1242,7 +1304,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.features.card.gpu.title": "Akselerasi GPU di mana saja",
 		"home.features.card.gpu.body":
 			"Kompositor WebGPU, pipa efek bertenaga wgpu, dan feather Rust untuk mask. Primitif yang sama berjalan di Apple Silicon, NVIDIA, dan AMD.",
-		"home.features.card.compositing.title": "Komppositing yang tidak merepotkan",
+		"home.features.card.compositing.title":
+			"Komppositing yang tidak merepotkan",
 		"home.features.card.compositing.body":
 			"Scene berlapis, blend mode, mask dengan feather, keyframe nyata, gelombang audio dengan deteksi ketukan. Toolkit yang CapCut sembunyikan di balik paywall — gratis untuk Anda.",
 		"home.features.card.autosave.title": "Undo nyata, autosave nyata",
@@ -1264,7 +1327,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"home.howItWorks.steps.export.body":
 			"Render ke MP4, WebM, atau GIF. Scene builder Rust menjaga kualitas ekspor identik dengan pratinjau langsung, dengan opsi mempertahankan mix audio Anda.",
 		"home.pledge.eyebrow": "Berlisensi MIT. Selalu.",
-		"home.pledge.headline.line1": "Tanpa tier \"Pro\".",
+		"home.pledge.headline.line1": 'Tanpa tier "Pro".',
 		"home.pledge.headline.line2": " Tanpa watermark. Tanpa kedaluwarsa.",
 		"home.pledge.body":
 			"Artidor dibangun secara terbuka. Setiap rilis menyertakan fitur lengkap yang tidak terkunci. Jika kami mengenakan biaya untuk apa pun, kami membangun produk berbayar yang tidak menyentuh editor.",
@@ -1620,7 +1683,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"docs.sections.gettingStarted": "Memulai",
 		"docs.sections.aiCopilot": "Kopilot AI (Arth)",
 		"docs.sections.mcpServer": "Server MCP — Integrasi AI Eksternal",
-		"docs.sections.mcpClient": "Klien MCP — Hubungkan Server MCP Eksternal ke Arth",
+		"docs.sections.mcpClient":
+			"Klien MCP — Hubungkan Server MCP Eksternal ke Arth",
 		"docs.sections.keyboardShortcuts": "Pintasan Keyboard",
 		"docs.sections.projectManagement": "Manajemen Proyek",
 		"docs.sections.collaboration": "Kolaborasi Real-time",
@@ -1654,7 +1718,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"sounds.tab.saved": "Saved",
 		"sounds.searchPlaceholder": "Search sound effects",
 		"sounds.filter.commercialOnly": "Show only commercially licensed",
-		"sounds.filter.commercialOnlyHint": "Only showing sounds licensed for commercial use",
+		"sounds.filter.commercialOnlyHint":
+			"Only showing sounds licensed for commercial use",
 		"sounds.filter.allSoundsHint": "Showing all sounds regardless of license",
 		"sounds.loading.sounds": "Loading sounds...",
 		"sounds.loading.searching": "Searching...",
@@ -1665,7 +1730,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"sounds.saved.loading": "Loading saved sounds...",
 		"sounds.saved.error": "Error: {error}",
 		"sounds.saved.empty.title": "No saved sounds",
-		"sounds.saved.empty.hint": "Click the heart icon on any sound to save it here",
+		"sounds.saved.empty.hint":
+			"Click the heart icon on any sound to save it here",
 		"sounds.saved.countSingular": "{count} saved sound",
 		"sounds.saved.countPlural": "{count} saved sounds",
 		"sounds.saved.clearAll": "Clear all",
@@ -1690,7 +1756,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"stickers.searchPlaceholder": "Search...",
 		"stickers.categoriesAria": "Sticker categories",
 		"stickers.empty.title": "No stickers found",
-		"stickers.empty.search": "No stickers found for \"{query}\"",
+		"stickers.empty.search": 'No stickers found for "{query}"',
 		"stickers.empty.noCategory": "No stickers available in {category} yet.",
 		"stickers.empty.noStickers": "No stickers available yet.",
 		"stickers.resultsCount": "{count} results",
@@ -1715,18 +1781,24 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"captions.error.noAudioInTimeline": "Tidak ada audio di timeline",
 		"captions.error.noAudioInClip": "Tidak ada audio di klip yang dipilih",
 		"captions.error.noCaptionsGenerated": "Tidak ada keterangan yang dibuat",
-		"captions.error.noValidCues": "Tidak ada subtitle cue yang valid ditemukan di file subtitle",
+		"captions.error.noValidCues":
+			"Tidak ada subtitle cue yang valid ditemukan di file subtitle",
 		"captions.error.noCaptionsToExport": "Tidak ada keterangan untuk diekspor",
 		"captions.error.unexpected": "Terjadi kesalahan tak terduga",
-		"captions.toast.selectSingleClip": "Pilih satu klip audio atau video terlebih dahulu",
-		"captions.toast.selectedNotAudioVideo": "Elemen yang dipilih bukan klip audio atau video",
-		"captions.toast.clipCaptionsAdded": "Keterangan ditambahkan untuk klip yang dipilih",
+		"captions.toast.selectSingleClip":
+			"Pilih satu klip audio atau video terlebih dahulu",
+		"captions.toast.selectedNotAudioVideo":
+			"Elemen yang dipilih bukan klip audio atau video",
+		"captions.toast.clipCaptionsAdded":
+			"Keterangan ditambahkan untuk klip yang dipilih",
 		"captions.toast.exported": "Diekspor captions.{format}",
-		"captions.warning.importedWithSkipped": "Diimpor {count} subtitle cue(s) dan dilewati {skipped} cue yang tidak valid.",
+		"captions.warning.importedWithSkipped":
+			"Diimpor {count} subtitle cue(s) dan dilewati {skipped} cue yang tidak valid.",
 		"captions.cancelled": "Transkripsi dibatalkan",
 		"captions.generateTranscript": "Hasilkan transkrip (timeline penuh)",
 		"captions.transcribeSelectedClip": "Transkripsikan klip yang dipilih",
-		"captions.selectClipTooltip": "Pilih satu klip video atau audio terlebih dahulu",
+		"captions.selectClipTooltip":
+			"Pilih satu klip video atau audio terlebih dahulu",
 		"captions.cancel": "Batal",
 		"captions.runningInference": "Menjalankan inferensi · {seconds}",
 		"captions.downloadProgress": "{progress}% diunduh · {seconds}",
@@ -1770,7 +1842,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.title": "Assets",
 		"assets.noActiveProject": "No active project",
 		"assets.deleteFolderTitle": "Delete folder?",
-		"assets.deleteFolderDescription": "Assets inside this folder will be moved back to the library root. This action cannot be undone.",
+		"assets.deleteFolderDescription":
+			"Assets inside this folder will be moved back to the library root. This action cannot be undone.",
 		"assets.cancel": "Cancel",
 		"assets.delete": "Delete",
 		"assets.source.library.label": "Library",
@@ -1786,9 +1859,11 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.empty.description": "Import media or drag and drop to get started.",
 		"assets.empty.importButton": "Import media",
 		"assets.remote.stock.title": "Stock library is coming soon",
-		"assets.remote.stock.description": "The UI is ready for stock footage, audio, and templates. Use local imports while backend search is wired up.",
+		"assets.remote.stock.description":
+			"The UI is ready for stock footage, audio, and templates. Use local imports while backend search is wired up.",
 		"assets.remote.cloud.title": "Cloud media is coming soon",
-		"assets.remote.cloud.description": "This slot is prepared for synced files, shared team folders, and remote project assets.",
+		"assets.remote.cloud.description":
+			"This slot is prepared for synced files, shared team folders, and remote project assets.",
 		"assets.remote.localImportsHint": "Local imports stay in the header action",
 		"assets.stock.searchFailed": "Search failed",
 		"assets.stock.placeholder": "Search stock videos...",
@@ -1796,7 +1871,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"assets.stock.durationAndResolution": "{duration}s · {width}×{height}",
 		"assets.stock.byAuthor": "by {author}",
 		"assets.stock.initialTitle": "Search Pexels stock videos",
-		"assets.stock.initialDescription": "Free, licensed stock footage. Search for nature, city, abstract, or any topic.",
+		"assets.stock.initialDescription":
+			"Free, licensed stock footage. Search for nature, city, abstract, or any topic.",
 		"assets.extractAudio.onlyVideo": "Only video assets can extract audio",
 		"assets.extractAudio.noAudioTrack": "No audio track found",
 		"assets.extractAudio.processFailed": "Could not process audio",
@@ -1837,7 +1913,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.provider.setDefault": "Set default",
 		"aiProviders.provider.setDefaultTooltip": "Use this provider for Arth",
 		"aiProviders.provider.test": "Test",
-		"aiProviders.provider.testTooltip": "Send a tiny test request to verify the connection",
+		"aiProviders.provider.testTooltip":
+			"Send a tiny test request to verify the connection",
 		"aiProviders.provider.edit": "Edit",
 		"aiProviders.provider.enabled": "Enabled",
 		"aiProviders.provider.enable": "Enable",
@@ -1867,7 +1944,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.form.baseUrlLabel": "Base URL",
 		"aiProviders.form.baseUrlPlaceholder": "https://api.openai.com/v1",
 		"aiProviders.form.baseUrlRequired": "Base URL is required.",
-		"aiProviders.form.baseUrlInvalid": "Base URL must start with http:// or https://",
+		"aiProviders.form.baseUrlInvalid":
+			"Base URL must start with http:// or https://",
 		"aiProviders.form.apiKeyLabel": "API Key",
 		"aiProviders.form.apiKeyNotRequired": "— not required for Ollama",
 		"aiProviders.form.apiKeyPlaceholderBlank": "(leave blank)",
@@ -1885,7 +1963,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiProviders.form.fetchTitleBlank": "Enter a base URL first",
 		"aiProviders.form.fetchTitle": "Fetch available models from this provider",
 		"aiProviders.form.fetch": "Fetch",
-		"aiProviders.form.fetchedModelError": "{error} — you can still type a model id manually.",
+		"aiProviders.form.fetchedModelError":
+			"{error} — you can still type a model id manually.",
 		"aiProviders.form.modelHint":
 			"Type a model id or click Fetch to load available models.",
 		"aiProviders.form.mediaModelsTitle": "Media generation models",
@@ -1922,11 +2001,13 @@ const dictionaries: Record<Locale, Dictionary> = {
 			"This warning cannot be dismissed for {count} more seconds.",
 		"aiProviders.modelSelect.placeholder": "— Select —",
 		"aiProviders.modelSelect.searchPlaceholder": "Search models…",
-		"aiProviders.modelSelect.noMatch": "No models match \"{query}\"",
+		"aiProviders.modelSelect.noMatch": 'No models match "{query}"',
 		"aiProviders.modelSelect.none": "— None —",
 		"aiProviders.test.unknownError": "Unknown error",
-		"aiProviders.test.serverErrorWithText": "Server returned HTTP {status}: {text}",
-		"aiProviders.test.serverError": "Server returned HTTP {status}. Please try again.",
+		"aiProviders.test.serverErrorWithText":
+			"Server returned HTTP {status}: {text}",
+		"aiProviders.test.serverError":
+			"Server returned HTTP {status}. Please try again.",
 		"aiProviders.test.parseError": "Could not read server response: {error}",
 		"aiProviders.test.httpError": "HTTP {status}",
 		"aiProviders.test.fetchModelsFailed": "Failed to fetch models.",
@@ -1959,7 +2040,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.retry.cancel": "Cancel retry",
 		"aiEdit.queue.singular": "{count} message queued",
 		"aiEdit.queue.plural": "{count} messages queued",
-		"aiEdit.queue.clearTooltip": "Clear queued messages (keeps current task running)",
+		"aiEdit.queue.clearTooltip":
+			"Clear queued messages (keeps current task running)",
 		"aiEdit.error.dismiss": "Dismiss error",
 		"aiEdit.scroll.top": "Scroll to top",
 		"aiEdit.scroll.bottom": "Scroll to bottom",
@@ -1969,15 +2051,18 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.reference.clearVideo": "Clear reference video",
 		"aiEdit.reference.ref": "ref",
 		"aiEdit.reference.refSet": "ref set",
-		"aiEdit.composer.placeholder": "Ask {name} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset",
+		"aiEdit.composer.placeholder":
+			"Ask {name} to edit, plan a motion graphic, or describe what you want…  Use @ to mention an asset",
 		"aiEdit.composer.hint.send": "Enter to send · Shift+Enter for newline",
 		"aiEdit.composer.hint.queue": "Enter to queue · Shift+Enter for newline",
 		"aiEdit.composer.send": "Send",
 		"aiEdit.composer.queue": "Queue",
 		"aiEdit.composer.stop": "Stop",
-		"aiEdit.composer.stopTitle": "Stop current generation (queued messages continue)",
+		"aiEdit.composer.stopTitle":
+			"Stop current generation (queued messages continue)",
 		"aiEdit.composer.steer": "Steer",
-		"aiEdit.composer.steerTitle": "Interrupt the current generation and send this message next",
+		"aiEdit.composer.steerTitle":
+			"Interrupt the current generation and send this message next",
 		"aiEdit.quickAction.motionGraphic": "Motion graphic",
 		"aiEdit.quickAction.60sReel": "60s reel",
 		"aiEdit.quickAction.cinematicGrade": "Cinematic grade",
@@ -1997,19 +2082,26 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.history.empty": "No saved conversations yet.",
 		"aiEdit.history.rename": "Rename",
 		"aiEdit.history.delete": "Delete",
-		"aiEdit.autoLearn.onTitle": "Auto-learning is ON — the AI learns from your edits. Click to disable.",
-		"aiEdit.autoLearn.offTitle": "Auto-learning is OFF. Click to enable — the AI will learn from your edits.",
+		"aiEdit.autoLearn.onTitle":
+			"Auto-learning is ON — the AI learns from your edits. Click to disable.",
+		"aiEdit.autoLearn.offTitle":
+			"Auto-learning is OFF. Click to enable — the AI will learn from your edits.",
 		"aiEdit.autoLearn.editsLearned": "{count} edits learned",
 		"aiEdit.autoLearn.off": "Auto-learn off",
-		"aiEdit.compaction.title": "Compacted {count} older messages to save context space",
+		"aiEdit.compaction.title":
+			"Compacted {count} older messages to save context space",
 		"aiEdit.compaction.count": "{count} compacted",
 		"aiEdit.mcp.title": "MCP servers — external tools (click to manage)",
-		"aiEdit.mcp.connectedSingular": "{count} MCP server connected — click to manage",
-		"aiEdit.mcp.connectedPlural": "{count} MCP servers connected — click to manage",
+		"aiEdit.mcp.connectedSingular":
+			"{count} MCP server connected — click to manage",
+		"aiEdit.mcp.connectedPlural":
+			"{count} MCP servers connected — click to manage",
 		"aiEdit.mcp.manage.title": "MCP Servers",
-		"aiEdit.mcp.manage.description": "External tool servers that extend Arth's capabilities — filesystem, web search, databases, custom integrations.",
+		"aiEdit.mcp.manage.description":
+			"External tool servers that extend Arth's capabilities — filesystem, web search, databases, custom integrations.",
 		"aiEdit.mcp.manage.emptyTitle": "No MCP servers configured",
-		"aiEdit.mcp.manage.emptyHint": "Add a server to let Arth use external tools.",
+		"aiEdit.mcp.manage.emptyHint":
+			"Add a server to let Arth use external tools.",
 		"aiEdit.mcp.manage.add": "Add MCP Server",
 		"aiEdit.mcp.manage.addAnother": "Add Server",
 		"aiEdit.mcp.manage.done": "Done",
@@ -2031,7 +2123,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.mcp.deleteServer": "Delete server",
 		"aiEdit.mcp.tryReconnect": "Try reconnect",
 		"aiEdit.mcp.add.title": "Add MCP Server",
-		"aiEdit.mcp.add.description": "Connect to an MCP-compatible server to give Arth access to external tools.",
+		"aiEdit.mcp.add.description":
+			"Connect to an MCP-compatible server to give Arth access to external tools.",
 		"aiEdit.mcp.add.nameLabel": "Server name",
 		"aiEdit.mcp.add.namePlaceholder": "My MCP Server",
 		"aiEdit.mcp.add.urlLabel": "SSE URL",
@@ -2042,40 +2135,52 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"aiEdit.mcp.add.tokenPlaceholder": "For authenticated MCP servers",
 		"aiEdit.mcp.add.error.nameRequired": "Server name is required.",
 		"aiEdit.mcp.add.error.urlRequired": "SSE URL is required.",
-		"aiEdit.mcp.add.error.urlInvalid": "URL must start with http:// or https://",
+		"aiEdit.mcp.add.error.urlInvalid":
+			"URL must start with http:// or https://",
 		"aiEdit.mcp.add.cancel": "Cancel",
 		"aiEdit.mcp.add.addServer": "Add Server",
 		"aiEdit.mention.header": "Assets · click to mention",
 		"aiEdit.empty.welcome": "Welcome to Artidor",
-		"aiEdit.empty.descriptionNoEdits": "Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media.",
-		"aiEdit.empty.descriptionWithEdits": "Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media — it has learned from {count} of your edits.",
+		"aiEdit.empty.descriptionNoEdits":
+			"Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media.",
+		"aiEdit.empty.descriptionWithEdits":
+			"Describe what you want in plain English. Arth can edit clips, add effects, build motion graphics, and import media — it has learned from {count} of your edits.",
 		"aiEdit.plan.steps": "{done}/{total} steps",
 		"aiEdit.plan.skipped": " · {count} skipped",
 		"aiEdit.plan.progressAria": "Plan progress: {progress}%",
-		"aiEdit.advanced.title": "Advanced AI settings — tune tool rounds, retries, compaction",
+		"aiEdit.advanced.title":
+			"Advanced AI settings — tune tool rounds, retries, compaction",
 		"aiEdit.advanced.header": "Advanced AI Settings",
 		"aiEdit.advanced.maxToolRounds": "Max tool rounds",
 		"aiEdit.advanced.maxToolRoundsDesc": "Max LLM tool-call cycles per message",
 		"aiEdit.advanced.maxRetryAttempts": "Max retry attempts",
-		"aiEdit.advanced.maxRetryAttemptsDesc": "Auto-retries on error before giving up",
+		"aiEdit.advanced.maxRetryAttemptsDesc":
+			"Auto-retries on error before giving up",
 		"aiEdit.advanced.retryCooldown": "Retry cooldown (s)",
 		"aiEdit.advanced.retryCooldownDesc": "Base seconds per retry attempt",
 		"aiEdit.advanced.compactionThreshold": "Compaction threshold",
-		"aiEdit.advanced.compactionThresholdDesc": "Message count before auto-compacting",
+		"aiEdit.advanced.compactionThresholdDesc":
+			"Message count before auto-compacting",
 		"aiEdit.advanced.keepLast": "Keep last (compaction)",
 		"aiEdit.advanced.keepLastDesc": "Recent messages kept during compaction",
 		"aiEdit.advanced.maxOutputTokens": "Max output tokens",
-		"aiEdit.advanced.maxOutputTokensDesc": "Maximum tokens the model can return",
+		"aiEdit.advanced.maxOutputTokensDesc":
+			"Maximum tokens the model can return",
 		"aiEdit.advanced.maxContextMessages": "Context window",
-		"aiEdit.advanced.maxContextMessagesDesc": "Max messages sent with each request",
+		"aiEdit.advanced.maxContextMessagesDesc":
+			"Max messages sent with each request",
 		"aiEdit.advanced.styleLearning": "Style learning",
-		"aiEdit.advanced.styleLearningDesc": "How the AI learns your editing style.",
+		"aiEdit.advanced.styleLearningDesc":
+			"How the AI learns your editing style.",
 		"aiEdit.advanced.scope.project": "Project",
 		"aiEdit.advanced.scope.global": "Global",
 		"aiEdit.advanced.scope.off": "Off",
-		"aiEdit.advanced.scope.projectHint": "Learns from edits in this project only.",
-		"aiEdit.advanced.scope.globalHint": "Learns from edits across all projects.",
-		"aiEdit.advanced.scope.offHint": "No style learning — AI won't reference edit history.",
+		"aiEdit.advanced.scope.projectHint":
+			"Learns from edits in this project only.",
+		"aiEdit.advanced.scope.globalHint":
+			"Learns from edits across all projects.",
+		"aiEdit.advanced.scope.offHint":
+			"No style learning — AI won't reference edit history.",
 		"aiEdit.advanced.reset": "Reset to defaults",
 		"aiEdit.message.copyTitle": "Copy message",
 		"aiEdit.message.copiedTitle": "Copied!",
@@ -2105,7 +2210,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"templates.category.lyric": "Lyric",
 		"templates.category.tutorial": "Tutorial",
 		"templates.comingSoon.badge": "Coming Soon",
-		"templates.comingSoon.message": "Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
+		"templates.comingSoon.message":
+			"Template presets are being rebuilt. They’ll return with fully editable project templates in the next release.",
 
 		"filters.category.cinematic": "Cinematic",
 		"filters.category.vintage": "Vintage",
@@ -2178,7 +2284,8 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"qualifier.highlights": "Highlights",
 		"qualifier.matte.color": "Color",
 		"qualifier.matte.blackWhite": "B/W",
-		"qualifier.description": "Toggle each channel to include it in the key, then adjust Range / Softness to widen or tighten the selection. Highlight matte switches the viewer to a black/white overlay so you can see exactly which pixels the grade applies to.",
+		"qualifier.description":
+			"Toggle each channel to include it in the key, then adjust Range / Softness to widen or tighten the selection. Highlight matte switches the viewer to a black/white overlay so you can see exactly which pixels the grade applies to.",
 		"qualifier.handle.low": "Low handle",
 		"qualifier.handle.mid": "Mid handle",
 		"qualifier.handle.high": "High handle",
@@ -2200,50 +2307,66 @@ const dictionaries: Record<Locale, Dictionary> = {
 		"hslCurves.axis.hueOut": "Hue (out)",
 		"hslCurves.reset": "Reset",
 		"hslCurves.aria.curveEditor": "{label} curve editor",
-		"hslCurves.description": "HSL curves let you re-shape one component (saturation, luminance, or hue) as a function of another. Click on the curve to add a point, drag to reshape, double-click a point to remove. Defaults are linear (no change).",
+		"hslCurves.description":
+			"HSL curves let you re-shape one component (saturation, luminance, or hue) as a function of another. Click on the curve to add a point, drag to reshape, double-click a point to remove. Defaults are linear (no change).",
 		"collaboration.defaultProjectName": "Shared project",
 		"collaboration.mode.view": "View",
-		"collaboration.mode.viewDescription": "Collaborators can watch but not edit.",
+		"collaboration.mode.viewDescription":
+			"Collaborators can watch but not edit.",
 		"collaboration.mode.comment": "Comment",
-		"collaboration.mode.commentDescription": "Collaborators can view and leave comments on the timeline.",
+		"collaboration.mode.commentDescription":
+			"Collaborators can view and leave comments on the timeline.",
 		"collaboration.mode.edit": "Edit",
-		"collaboration.mode.editDescription": "Collaborators can fully edit the timeline. Element locking prevents conflicts.",
+		"collaboration.mode.editDescription":
+			"Collaborators can fully edit the timeline. Element locking prevents conflicts.",
 		"collaboration.mode.suggest": "Suggest",
-		"collaboration.mode.suggestDescription": "Collaborators propose edits; the host approves or rejects each one.",
+		"collaboration.mode.suggestDescription":
+			"Collaborators propose edits; the host approves or rejects each one.",
 		"collaboration.startDialog.title": "Start collaborating",
 		"collaboration.startDialog.activeTitle": "Session active",
-		"collaboration.startDialog.description": "Invite your team to edit together in real time. Each person gets a colored cursor on the timeline.",
-		"collaboration.startDialog.activeDescription": "Share the link below to invite collaborators.",
+		"collaboration.startDialog.description":
+			"Invite your team to edit together in real time. Each person gets a colored cursor on the timeline.",
+		"collaboration.startDialog.activeDescription":
+			"Share the link below to invite collaborators.",
 		"collaboration.startDialog.nicknameLabel": "Your nickname",
 		"collaboration.startDialog.nicknamePlaceholder": "e.g. Alex",
 		"collaboration.startDialog.nicknameRequiredTitle": "Enter a nickname",
-		"collaboration.startDialog.nicknameRequiredDescription": "Collaborators will see this name on your cursor.",
+		"collaboration.startDialog.nicknameRequiredDescription":
+			"Collaborators will see this name on your cursor.",
 		"collaboration.startDialog.permissionModeLabel": "Permission mode",
 		"collaboration.startDialog.startButton": "Start session",
 		"collaboration.startDialog.startingButton": "Starting…",
 		"collaboration.startDialog.shareLinkLabel": "Share link",
 		"collaboration.startDialog.copyButton": "Copy",
 		"collaboration.startDialog.copiedButton": "Copied",
-		"collaboration.startDialog.statusSingular": "1 collaborator connected · Mode: {mode}",
-		"collaboration.startDialog.statusPlural": "{count} collaborators connected · Mode: {mode}",
+		"collaboration.startDialog.statusSingular":
+			"1 collaborator connected · Mode: {mode}",
+		"collaboration.startDialog.statusPlural":
+			"{count} collaborators connected · Mode: {mode}",
 		"collaboration.startDialog.endSessionButton": "End session",
 		"collaboration.joinDialog.title": "Join collaboration",
-		"collaboration.joinDialog.description": "Enter your name to join the editing session. You'll get a colored cursor on the timeline.",
+		"collaboration.joinDialog.description":
+			"Enter your name to join the editing session. You'll get a colored cursor on the timeline.",
 		"collaboration.joinDialog.nicknameLabel": "Your nickname",
 		"collaboration.joinDialog.nicknamePlaceholder": "e.g. Sam",
 		"collaboration.joinDialog.nicknameRequiredTitle": "Enter a nickname",
-		"collaboration.joinDialog.nicknameRequiredDescription": "Others will see this name on your cursor.",
+		"collaboration.joinDialog.nicknameRequiredDescription":
+			"Others will see this name on your cursor.",
 		"collaboration.joinDialog.joinButton": "Join session",
 		"collaboration.joinDialog.joiningButton": "Joining…",
 		"collaboration.toast.sessionStarted.title": "Collaboration session started",
-		"collaboration.toast.sessionStarted.description": "Share this link with your team: {joinUrl}",
-		"collaboration.toast.sessionStarted.descriptionNoLink": "Share the link with your team.",
+		"collaboration.toast.sessionStarted.description":
+			"Share this link with your team: {joinUrl}",
+		"collaboration.toast.sessionStarted.descriptionNoLink":
+			"Share the link with your team.",
 		"collaboration.toast.startError": "Could not start collaboration.",
 		"collaboration.toast.linkCopied.title": "Link copied",
-		"collaboration.toast.linkCopied.description": "Send this to your collaborators.",
+		"collaboration.toast.linkCopied.description":
+			"Send this to your collaborators.",
 		"collaboration.toast.copyError": "Could not copy link",
 		"collaboration.toast.joined.title": "Joined collaboration",
-		"collaboration.toast.joined.description": "You're now editing with the team.",
+		"collaboration.toast.joined.description":
+			"You're now editing with the team.",
 		"collaboration.toast.joinError": "Could not join collaboration.",
 	},
 };

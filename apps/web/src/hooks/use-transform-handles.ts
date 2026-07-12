@@ -545,9 +545,7 @@ export function useTransformHandles({
 						? xSnap.snappedScale
 						: initialTransform.scaleX;
 				let finalScaleY =
-					edge === "bottom"
-						? ySnap.snappedScale
-						: initialTransform.scaleY;
+					edge === "bottom" ? ySnap.snappedScale : initialTransform.scaleY;
 
 				if (isScaleLocked) {
 					if (edge === "right" || edge === "left") {
@@ -555,17 +553,13 @@ export function useTransformHandles({
 							initialTransform.scaleY > 0
 								? finalScaleX / initialTransform.scaleX
 								: 1;
-						finalScaleY = clampScaleNonZero(
-							initialTransform.scaleY * ratio,
-						);
+						finalScaleY = clampScaleNonZero(initialTransform.scaleY * ratio);
 					} else {
 						const ratio =
 							initialTransform.scaleX > 0
 								? finalScaleY / initialTransform.scaleY
 								: 1;
-						finalScaleX = clampScaleNonZero(
-							initialTransform.scaleX * ratio,
-						);
+						finalScaleX = clampScaleNonZero(initialTransform.scaleX * ratio);
 					}
 				}
 

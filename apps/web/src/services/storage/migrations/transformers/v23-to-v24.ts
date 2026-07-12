@@ -66,6 +66,7 @@ function migrateScene({ scene }: { scene: unknown }): unknown {
 						isRecord(track) && track.type !== "audio",
 				),
 			main: migrateTrack({ track: mainTrack }),
+			overlayAfter: [],
 			audio: scene.tracks
 				.map((track) => migrateTrack({ track }))
 				.filter(

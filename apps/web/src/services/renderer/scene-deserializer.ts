@@ -83,9 +83,7 @@ export function deserializeSceneTree(
 				);
 				break;
 			case "effect-layer":
-				node = new EffectLayerNode(
-					params as unknown as EffectLayerNodeParams,
-				);
+				node = new EffectLayerNode(params as unknown as EffectLayerNodeParams);
 				break;
 			case "color":
 				node = new ColorNode(params as unknown as ColorNodeParams);

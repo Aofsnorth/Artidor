@@ -37,6 +37,7 @@ export function buildDefaultScene({
 				muted: false,
 				hidden: false,
 			},
+			overlayAfter: [],
 			audio: [],
 		},
 		bookmarks: [],

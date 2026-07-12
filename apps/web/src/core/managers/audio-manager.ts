@@ -23,6 +23,7 @@ import {
 	type WrappedAudioBuffer,
 } from "mediabunny";
 import { resolveAudioTrackByIndex } from "@/lib/media/mediabunny";
+import { getOrderedTracks } from "@/lib/timeline";
 import { yieldToEventLoop } from "@/lib/media/yield";
 
 import { useTimelineStore } from "@/stores/timeline-store";
@@ -200,7 +201,7 @@ export class AudioManager {
 			string,
 			{ element: AudioCapableElement; trackId: string }
 		>();
-		for (const track of [tracks.main, ...tracks.overlay, ...tracks.audio]) {
+		for (const track of getOrderedTracks(tracks)) {
 			for (const element of track.elements) {
 				if (element.type === "audio" || element.type === "video") {
 					currentElements.set(element.id, { element, trackId: track.id });
@@ -594,12 +595,16 @@ export class AudioManager {
 				}
 
 				this.queuedSources.add(node);
-				node.addEventListener("ended", () => {
-					node.disconnect();
-					clipGain.disconnect();
-					this.queuedSources.delete(node);
-					this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
-				}, { once: true });
+				node.addEventListener(
+					"ended",
+					() => {
+						node.disconnect();
+						clipGain.disconnect();
+						this.queuedSources.delete(node);
+						this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
+					},
+					{ once: true },
+				);
 
 				const aheadTime = timelineTime - this.getPlaybackTime();
 				if (aheadTime >= 1) {
@@ -691,11 +696,15 @@ export class AudioManager {
 		});
 
 		this.queuedSources.add(node);
-		node.addEventListener("ended", () => {
-			node.disconnect();
-			clipGain.disconnect();
-			this.queuedSources.delete(node);
-		}, { once: true });
+		node.addEventListener(
+			"ended",
+			() => {
+				node.disconnect();
+				clipGain.disconnect();
+				this.queuedSources.delete(node);
+			},
+			{ once: true },
+		);
 	}
 
 	private waitUntilCaughtUp({
@@ -742,7 +751,9 @@ export class AudioManager {
 		clip: AudioClipSource;
 	}): boolean {
 		const hasCurve = this.hasCurveRetime({ clip });
-		const hasKeyframedVolume = hasAnimatedVolume({ element: clip.timelineElement });
+		const hasKeyframedVolume = hasAnimatedVolume({
+			element: clip.timelineElement,
+		});
 		const maintainPitch = shouldMaintainPitch({
 			rate: clip.retime?.rate ?? 1,
 			maintainPitch: clip.retime?.maintainPitch,
@@ -763,7 +774,13 @@ export class AudioManager {
 			file: clip.file,
 			name: clip.timelineElement.name,
 		});
-		return hasCurve || hasKeyframedVolume || maintainPitch || hasFade || needsNativeDecode;
+		return (
+			hasCurve ||
+			hasKeyframedVolume ||
+			maintainPitch ||
+			hasFade ||
+			needsNativeDecode
+		);
 	}
 
 	private hasCurveRetime({ clip }: { clip: AudioClipSource }): boolean {
@@ -795,13 +812,18 @@ export class AudioManager {
 			useTimelineStore.getState().trackSliders[clip.trackId] ?? 100;
 		const trackSliderMul = trackSliderPercent / 100;
 
-		const hasKeyframedVolume = hasAnimatedVolume({ element: clip.timelineElement });
+		const hasKeyframedVolume = hasAnimatedVolume({
+			element: clip.timelineElement,
+		});
 		const fadeIn = clip.timelineElement.fadeInDuration ?? 0;
 		const fadeOut = clip.timelineElement.fadeOutDuration ?? 0;
 		const hasFade = fadeIn > 0 || fadeOut > 0;
 
 		if (!hasKeyframedVolume && !hasFade) {
-			clipGain.gain.setValueAtTime(clip.volume * trackSliderMul, startTimestamp);
+			clipGain.gain.setValueAtTime(
+				clip.volume * trackSliderMul,
+				startTimestamp,
+			);
 			return;
 		}
 
@@ -815,7 +837,7 @@ export class AudioManager {
 			const schedulePoint = (localTime: number, gainValue: number) => {
 				const pointTime = startTimestamp + (localTime - startLocalTime);
 				if (pointTime < audioContext.currentTime) return;
-				
+
 				// Set initial value if this is the very first scheduled point
 				if (localTime === startLocalTime) {
 					clipGain.gain.setValueAtTime(gainValue, pointTime);
@@ -832,17 +854,20 @@ export class AudioManager {
 				const timeFromEnd = clipDuration - startLocalTime;
 				startGain = baseGain * Math.max(0, timeFromEnd / fadeOut);
 			}
-			clipGain.gain.setValueAtTime(startGain, Math.max(startTimestamp, audioContext.currentTime));
+			clipGain.gain.setValueAtTime(
+				startGain,
+				Math.max(startTimestamp, audioContext.currentTime),
+			);
 
 			if (startLocalTime < fadeIn) {
 				schedulePoint(fadeIn, baseGain);
 			}
-			
+
 			const fadeOutStart = clipDuration - fadeOut;
 			if (startLocalTime < fadeOutStart) {
 				schedulePoint(fadeOutStart, baseGain);
 			}
-			
+
 			schedulePoint(clipDuration, 0);
 			return;
 		}
@@ -854,11 +879,17 @@ export class AudioManager {
 		});
 
 		if (points.length === 0) {
-			clipGain.gain.setValueAtTime(clip.volume * trackSliderMul, startTimestamp);
+			clipGain.gain.setValueAtTime(
+				clip.volume * trackSliderMul,
+				startTimestamp,
+			);
 			return;
 		}
 
-		clipGain.gain.setValueAtTime(points[0].gain * trackSliderMul, startTimestamp);
+		clipGain.gain.setValueAtTime(
+			points[0].gain * trackSliderMul,
+			startTimestamp,
+		);
 		for (let index = 1; index < points.length; index++) {
 			const point = points[index];
 			const pointTimestamp =
@@ -867,7 +898,10 @@ export class AudioManager {
 				continue;
 			}
 
-			clipGain.gain.linearRampToValueAtTime(point.gain * trackSliderMul, pointTimestamp);
+			clipGain.gain.linearRampToValueAtTime(
+				point.gain * trackSliderMul,
+				pointTimestamp,
+			);
 		}
 	}
 
@@ -904,31 +938,31 @@ export class AudioManager {
 				return null;
 			}
 
-			    const decodedBuffer = await this.getDecodedBuffer({ clip });
-			    if (!decodedBuffer) {
-			      this.preparedClipBuffers.delete(cacheKey);
-			      return null;
-			    }
+			const decodedBuffer = await this.getDecodedBuffer({ clip });
+			if (!decodedBuffer) {
+				this.preparedClipBuffers.delete(cacheKey);
+				return null;
+			}
 
-			    // Some containers (notably FLAC in several browsers) report an invalid
-			    // timeline duration — `NaN`, `Infinity`, or `0` — from media element
-			    // metadata even though the file imports and decodes fine. The
-			    // prepared-path resampler sizes its output from `clip.duration`; a
-			    // non-finite value makes the `createBuffer` call throw and the clip
-			    // silently never plays. Fall back to the decoded buffer's real
-			    // duration so the preview carries audio instead of being dropped.
-			    const effectiveDuration =
-			      Number.isFinite(clip.duration) && clip.duration > 0
-			        ? clip.duration
-			        : decodedBuffer.duration;
+			// Some containers (notably FLAC in several browsers) report an invalid
+			// timeline duration — `NaN`, `Infinity`, or `0` — from media element
+			// metadata even though the file imports and decodes fine. The
+			// prepared-path resampler sizes its output from `clip.duration`; a
+			// non-finite value makes the `createBuffer` call throw and the clip
+			// silently never plays. Fall back to the decoded buffer's real
+			// duration so the preview carries audio instead of being dropped.
+			const effectiveDuration =
+				Number.isFinite(clip.duration) && clip.duration > 0
+					? clip.duration
+					: decodedBuffer.duration;
 
-			    return await renderRetimedBuffer({
-			      audioContext,
-			      sourceBuffer: decodedBuffer,
-			      trimStart: clip.trimStart,
-			      clipDuration: effectiveDuration,
-			      retime: clip.retime,
-			    });
+			return await renderRetimedBuffer({
+				audioContext,
+				sourceBuffer: decodedBuffer,
+				trimStart: clip.trimStart,
+				clipDuration: effectiveDuration,
+				retime: clip.retime,
+			});
 		})();
 
 		this.preparedClipBuffers.set(cacheKey, promise);
@@ -1099,13 +1133,7 @@ export class AudioManager {
  * The `name` fallback is needed because the file stored in OPFS is keyed by a
  * UUID, so `file.name` may not retain the original `.flac` extension.
  */
-function isFlacFile({
-	file,
-	name,
-}: {
-	file: File;
-	name?: string;
-}): boolean {
+function isFlacFile({ file, name }: { file: File; name?: string }): boolean {
 	const type = file.type.toLowerCase();
 	if (type === "audio/flac" || type === "audio/x-flac") return true;
 	const candidate = (name ?? file.name).toLowerCase();

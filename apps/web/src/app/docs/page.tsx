@@ -229,10 +229,22 @@ const SECTIONS: DocSection[] = [
 					["Project", "4", "Set FPS, canvas size, background, save project"],
 					["Scene", "4", "Create/rename scenes, add/remove bookmarks"],
 					["Track", "4", "Add/remove tracks, mute/solo, visibility"],
-					["Element", "15+", "Insert/move/split/trim/delete elements, transforms, opacity, blend modes, speed"],
-					["Effect", "6", "Add/remove effects, set parameters, enable/disable, reorder, copy"],
+					[
+						"Element",
+						"15+",
+						"Insert/move/split/trim/delete elements, transforms, opacity, blend modes, speed",
+					],
+					[
+						"Effect",
+						"6",
+						"Add/remove effects, set parameters, enable/disable, reorder, copy",
+					],
 					["Mask", "3", "Add/remove masks, set mask parameters"],
-					["Keyframe", "6", "Add/remove keyframes, set values, easing, copy/paste"],
+					[
+						"Keyframe",
+						"6",
+						"Add/remove keyframes, set values, easing, copy/paste",
+					],
 					["Transition", "2", "Add/remove transitions between elements"],
 					["Playback", "4", "Play, pause, seek, set playback speed"],
 					["Asset", "6", "List assets, add media to timeline, manage folders"],
@@ -243,7 +255,11 @@ const SECTIONS: DocSection[] = [
 					["Selection", "3", "Select/deselect elements, get current selection"],
 					["Clipboard", "4", "Copy, paste, cut, clear clipboard"],
 					["Planning", "2", "Create plans, update todo items"],
-					["Generate", "6+", "Generate video, images, audio, thumbnails, voiceovers, music (requires configured media models)"],
+					[
+						"Generate",
+						"6+",
+						"Generate video, images, audio, thumbnails, voiceovers, music (requires configured media models)",
+					],
 				],
 			},
 			{
@@ -550,12 +566,7 @@ export default async function DocsPage() {
 													: block.type === "ul"
 														? `ul-${block.items[0]?.slice(0, 30)}`
 														: `table-${block.headers.join("-")}`;
-								return (
-									<DocBlockRenderer
-										key={blockKey}
-										block={block}
-									/>
-								);
+								return <DocBlockRenderer key={blockKey} block={block} />;
 							})}
 						</div>
 					</section>
@@ -569,7 +580,9 @@ function DocBlockRenderer({ block }: { block: DocBlock }) {
 	switch (block.type) {
 		case "p":
 			return (
-				<p className="text-[15px] leading-relaxed text-white/65">{block.text}</p>
+				<p className="text-[15px] leading-relaxed text-white/65">
+					{block.text}
+				</p>
 			);
 		case "h3":
 			return (

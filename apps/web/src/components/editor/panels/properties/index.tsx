@@ -89,6 +89,7 @@ function InspectorView() {
 		(s) => s.setPrimaryTabsHidden,
 	);
 	const toolMode = useToolModeStore((s) => s.toolMode);
+	const timeline = useEditor((e) => e.timeline, ["timeline"]);
 
 	if (toolMode === "draw" || toolMode === "vector") {
 		return (
@@ -123,8 +124,7 @@ function InspectorView() {
 	}
 
 	const mediaAssets = editor.media.getAssets();
-
-	const elementsWithTracks = editor.timeline.getElementsWithTracks({
+	const elementsWithTracks = timeline.getElementsWithTracks({
 		elements: selectedElements,
 	});
 	const elementWithTrack = elementsWithTracks[0];
@@ -357,11 +357,28 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 const PRIMARY_INSPECTOR_TABS = [
 	{
 		label: "Element",
-		ids: ["graphic"],
+		ids: [
+			"graphic",
+			"element-info",
+			"transform",
+			"parenting",
+			"camera",
+			"masks",
+			"effects",
+			"camera-inspect",
+		],
+		ownedBy: ["graphic", "sticker", "effect", "camera"] as const,
 	},
 	{
 		label: "Text",
-		ids: ["text", "graphics-style"],
+		ids: [
+			"text",
+			"graphics-style",
+			"transform",
+			"parenting",
+			"camera",
+			"animations",
+		],
 		ownedBy: ["text"] as const,
 	},
 	{
@@ -372,12 +389,12 @@ const PRIMARY_INSPECTOR_TABS = [
 			"audio",
 			"speed",
 			"speed-ramp",
-			"blending",
 			"parenting",
 			"camera",
-			"effects",
 			"masks",
+			"effects",
 			"animations",
+			"element-info",
 		],
 		/** Element type this primary "owns" the secondary tab ids for.
 		   Shared ids (transform, effects, masks, animations, …) only
@@ -396,15 +413,23 @@ const PRIMARY_INSPECTOR_TABS = [
 			"transform",
 			"parenting",
 			"camera",
-			"effects",
-			"masks",
 			"animations",
+			"masks",
+			"effects",
+			"element-info",
 		],
 		ownedBy: ["image"] as const,
 	},
 	{
 		label: "Audio",
-		ids: ["audio-element", "audio-effects"],
+		ids: [
+			"audio-element",
+			"audio-effects",
+			"speed",
+			"speed-ramp",
+			"element-info",
+		],
+		ownedBy: ["audio"] as const,
 	},
 ] as const;
 
@@ -423,7 +448,6 @@ function buildPrimaryInspectorTabs({
 	if (elementType === "image") fallbackPrimaryLabel = "Image";
 	if (elementType === "text") fallbackPrimaryLabel = "Text";
 	if (elementType === "audio") fallbackPrimaryLabel = "Audio";
-	if (elementType === "effect") fallbackPrimaryLabel = "Video";
 
 	// Context-aware hiding: when the user is inside one of the
 	// "focus" categories (Effects, Animation, Adjust*), we only

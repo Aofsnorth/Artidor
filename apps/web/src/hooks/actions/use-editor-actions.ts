@@ -11,6 +11,7 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { useKeyframeSelection } from "../timeline/element/use-keyframe-selection";
 import {
 	getElementsAtTime,
+	getOrderedTracks,
 	hasMediaId,
 	type TimelineElement,
 	type TimelineTrack,
@@ -408,11 +409,7 @@ export function useEditorActions() {
 		"select-all",
 		() => {
 			const scene = editor.scenes.getActiveScene();
-			const allElements = [
-				...scene.tracks.overlay,
-				scene.tracks.main,
-				...scene.tracks.audio,
-			].flatMap((track) =>
+			const allElements = getOrderedTracks(scene.tracks).flatMap((track) =>
 				track.elements.map((element) => ({
 					trackId: track.id,
 					elementId: element.id,

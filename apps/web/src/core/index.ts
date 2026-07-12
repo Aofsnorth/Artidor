@@ -83,7 +83,11 @@ export class EditorCore {
 			}
 
 			const tracks = activeScene.tracks;
-			for (const track of [...tracks.overlay, ...tracks.audio]) {
+			for (const track of [
+				...tracks.overlay,
+				...tracks.overlayAfter,
+				...tracks.audio,
+			]) {
 				if (track.elements.length > 0) {
 					tracksThatHeldElements.add(track.id);
 				}
@@ -95,10 +99,12 @@ export class EditorCore {
 			const prunedTracks = {
 				...tracks,
 				overlay: tracks.overlay.filter((track) => !isDeadLane(track)),
+				overlayAfter: tracks.overlayAfter.filter((track) => !isDeadLane(track)),
 				audio: tracks.audio.filter((track) => !isDeadLane(track)),
 			};
 			if (
 				prunedTracks.overlay.length !== tracks.overlay.length ||
+				prunedTracks.overlayAfter.length !== tracks.overlayAfter.length ||
 				prunedTracks.audio.length !== tracks.audio.length
 			) {
 				this.timeline.updateTracks(prunedTracks);
@@ -158,6 +164,11 @@ export class EditorCore {
 						tracks: {
 							main: { id: string; name: string; elementCount: number };
 							overlay: { id: string; name: string; elementCount: number }[];
+							overlayAfter: {
+								id: string;
+								name: string;
+								elementCount: number;
+							}[];
 							audio: { id: string; name: string; elementCount: number }[];
 						} | null;
 						elements: Array<{
@@ -196,6 +207,7 @@ export class EditorCore {
 						};
 						collect(scene.tracks.main);
 						scene.tracks.overlay.forEach(collect);
+						scene.tracks.overlayAfter.forEach(collect);
 						scene.tracks.audio.forEach(collect);
 						return {
 							activeSceneId: scene.id,
@@ -206,6 +218,11 @@ export class EditorCore {
 									elementCount: scene.tracks.main.elements.length,
 								},
 								overlay: scene.tracks.overlay.map((t) => ({
+									id: t.id,
+									name: t.name,
+									elementCount: t.elements.length,
+								})),
+								overlayAfter: scene.tracks.overlayAfter.map((t) => ({
 									id: t.id,
 									name: t.name,
 									elementCount: t.elements.length,

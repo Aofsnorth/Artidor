@@ -46,7 +46,8 @@ export async function joinRoom({
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify({ nickname }),
 	});
-	if (res.status === 404) throw new Error("This collaboration link is no longer active.");
+	if (res.status === 404)
+		throw new Error("This collaboration link is no longer active.");
 	if (!res.ok) {
 		const detail = await res.json().catch(() => null);
 		throw new Error(detail?.error ?? "Could not join the collaboration room.");

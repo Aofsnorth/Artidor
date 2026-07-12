@@ -44,7 +44,10 @@ export async function POST(
 		mode: body.mode,
 	});
 	if (!ok) {
-		return Response.json({ error: "Only the host can change the mode" }, { status: 403 });
+		return Response.json(
+			{ error: "Only the host can change the mode" },
+			{ status: 403 },
+		);
 	}
 	return Response.json({ ok: true });
 }

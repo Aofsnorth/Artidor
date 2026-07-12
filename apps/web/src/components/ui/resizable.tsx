@@ -15,7 +15,9 @@ const ResizablePanelGroup = ({
 	className,
 	direction,
 	...props
-}: React.ComponentProps<typeof ResizablePrimitive.Group> & { direction?: "horizontal" | "vertical" }) => (
+}: React.ComponentProps<typeof ResizablePrimitive.Group> & {
+	direction?: "horizontal" | "vertical";
+}) => (
 	<ResizablePrimitive.Group
 		orientation={direction}
 		className={cn(

@@ -74,7 +74,7 @@ export function Header() {
 				<nav
 					className="hidden flex-1 items-center justify-center gap-1 md:flex"
 					aria-label={t("home.nav.primaryAria")}
-					>
+				>
 					{NAV_LINKS.map((link) => (
 						<Link key={link.href} href={link.href}>
 							<Button

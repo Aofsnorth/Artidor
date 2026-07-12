@@ -95,7 +95,9 @@ export const useTimelineStore = create<TimelineStore>()(
 			toggleFocusedKeyframePropertyPath: (propertyPath) => {
 				set((state) => {
 					const next = state.focusedKeyframePropertyPaths.includes(propertyPath)
-						? state.focusedKeyframePropertyPaths.filter((path) => path !== propertyPath)
+						? state.focusedKeyframePropertyPaths.filter(
+								(path) => path !== propertyPath,
+							)
 						: [...state.focusedKeyframePropertyPaths, propertyPath];
 					return {
 						focusedKeyframePropertyPaths: next,

@@ -140,7 +140,7 @@ async function parseTestResponse(
 				? t("aiProviders.test.serverErrorWithText", {
 						status: response.status,
 						text,
-				  })
+					})
 				: t("aiProviders.test.serverError", { status: response.status }),
 		};
 	}
@@ -215,7 +215,11 @@ export function AIProvidersManager({
 				}
 			} catch (err) {
 				markTestResult(provider.id, false);
-				console.warn("[AI Provider] test errored for provider:", provider.name, err);
+				console.warn(
+					"[AI Provider] test errored for provider:",
+					provider.name,
+					err,
+				);
 			} finally {
 				setTestingId(null);
 			}
@@ -224,9 +228,7 @@ export function AIProvidersManager({
 	);
 
 	const containerClass =
-		variant === "panel"
-			? "flex h-full flex-col gap-2"
-			: "flex flex-col gap-2";
+		variant === "panel" ? "flex h-full flex-col gap-2" : "flex flex-col gap-2";
 
 	return (
 		<div className={containerClass}>
@@ -297,7 +299,9 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 				<HugeiconsIcon icon={PlugIcon} className="size-5 text-white/40" />
 			</div>
 			<div className="space-y-1.5">
-				<p className="text-[0.8125rem] font-medium text-white/80">{t("aiProviders.empty.title")}</p>
+				<p className="text-[0.8125rem] font-medium text-white/80">
+					{t("aiProviders.empty.title")}
+				</p>
 				<p className="max-w-[300px] text-[0.6875rem] leading-relaxed text-white/40">
 					{t("aiProviders.empty.description")}
 				</p>
@@ -341,10 +345,10 @@ function ProviderCard({
 			: provider.lastTestOk === true
 				? t("aiProviders.provider.okAt", {
 						time: formatRelativeTime(provider.lastTestedAt, t),
-				  })
+					})
 				: t("aiProviders.provider.failedAt", {
 						time: formatRelativeTime(provider.lastTestedAt, t),
-			  });
+					});
 
 	return (
 		<div
@@ -374,10 +378,7 @@ function ProviderCard({
 						!provider.enabled && "opacity-50",
 					)}
 				>
-					<HugeiconsIcon
-						icon={Icon}
-						className={cn("size-4", accent.icon)}
-					/>
+					<HugeiconsIcon icon={Icon} className={cn("size-4", accent.icon)} />
 				</div>
 				<div className="min-w-0 flex-1">
 					<div className="flex items-center gap-1.5">
@@ -628,9 +629,7 @@ function ProviderFormDialog({
 		Array<{ id: string; provider: string; name?: string }>
 	>([]);
 	const [puterModelsLoading, setPuterModelsLoading] = useState(false);
-	const [puterModelsError, setPuterModelsError] = useState<string | null>(
-		null,
-	);
+	const [puterModelsError, setPuterModelsError] = useState<string | null>(null);
 	// Fetched models for non-Puter providers (OpenAI-compatible, Ollama,
 	// Anthropic). Populated when the user clicks "Fetch models" — calls
 	// the server-side /api/ai/models route which proxies the request to
@@ -743,7 +742,9 @@ function ProviderFormDialog({
 			}
 		} catch (err) {
 			setFetchedModelsError(
-				err instanceof Error ? err.message : t("aiProviders.test.fetchModelsFailed"),
+				err instanceof Error
+					? err.message
+					: t("aiProviders.test.fetchModelsFailed"),
 			);
 		} finally {
 			setFetchedModelsLoading(false);
@@ -798,10 +799,7 @@ function ProviderFormDialog({
 		const trimmed = {
 			name: name.trim(),
 			kind,
-			baseUrl:
-				kind === "puter"
-					? ""
-					: baseUrl.trim().replace(/\/+$/, ""),
+			baseUrl: kind === "puter" ? "" : baseUrl.trim().replace(/\/+$/, ""),
 			apiKey: kind === "puter" ? "" : apiKey.trim(),
 			model: model.trim(),
 			videoModel: videoModel.trim() || undefined,
@@ -863,7 +861,19 @@ function ProviderFormDialog({
 			onSaved({ id, ...trimmed, isDefault: false });
 		}
 		onOpenChange(false);
-	}, [name, model, videoModel, imageModel, audioModel, mediaModel, provider, addProvider, updateProvider, onSaved, onOpenChange]);
+	}, [
+		name,
+		model,
+		videoModel,
+		imageModel,
+		audioModel,
+		mediaModel,
+		provider,
+		addProvider,
+		updateProvider,
+		onSaved,
+		onOpenChange,
+	]);
 
 	const handlePuterCancel = useCallback(() => {
 		setShowPuterWarning(false);
@@ -915,7 +925,10 @@ function ProviderFormDialog({
 				<DialogBody className="max-h-[70vh] gap-4 overflow-y-auto px-6 py-4">
 					{/* Name */}
 					<div className="space-y-1.5">
-						<Label htmlFor="provider-name" className="text-[0.6875rem] text-white/70">
+						<Label
+							htmlFor="provider-name"
+							className="text-[0.6875rem] text-white/70"
+						>
 							{t("aiProviders.form.nameLabel")}
 						</Label>
 						<Input
@@ -984,60 +997,70 @@ function ProviderFormDialog({
 							</div>
 						</div>
 					) : (
-					<>
-						{/* Base URL */}
-						<div className="space-y-1.5">
-							<Label
-								htmlFor="provider-base-url"
-								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
-							>
-								<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
-								{t("aiProviders.form.baseUrlLabel")}
-							</Label>
-							<Input
-								id="provider-base-url"
-								value={baseUrl}
-								placeholder={t("aiProviders.form.baseUrlPlaceholder")}
-								onChange={(e) => setBaseUrl(e.target.value)}
-								className={cn("font-mono", errors.baseUrl && "border-red-400/40")}
-							/>
-							{errors.baseUrl && (
-								<p className="text-[0.65625rem] text-red-300/90">{errors.baseUrl}</p>
-							)}
-						</div>
-
-						{/* API Key */}
-						<div className="space-y-1.5">
-							<Label
-								htmlFor="provider-api-key"
-								className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
-							>
-								<HugeiconsIcon icon={Key01Icon} className="size-3" />
-								{t("aiProviders.form.apiKeyLabel")}
-								{kind === "ollama" && (
-									<span className="text-[0.625rem] font-normal text-white/40">
-										{t("aiProviders.form.apiKeyNotRequired")}
-									</span>
+						<>
+							{/* Base URL */}
+							<div className="space-y-1.5">
+								<Label
+									htmlFor="provider-base-url"
+									className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
+								>
+									<HugeiconsIcon icon={LinkSquareIcon} className="size-3" />
+									{t("aiProviders.form.baseUrlLabel")}
+								</Label>
+								<Input
+									id="provider-base-url"
+									value={baseUrl}
+									placeholder={t("aiProviders.form.baseUrlPlaceholder")}
+									onChange={(e) => setBaseUrl(e.target.value)}
+									className={cn(
+										"font-mono",
+										errors.baseUrl && "border-red-400/40",
+									)}
+								/>
+								{errors.baseUrl && (
+									<p className="text-[0.65625rem] text-red-300/90">
+										{errors.baseUrl}
+									</p>
 								)}
-							</Label>
-							<Input
-								id="provider-api-key"
-								type="password"
-								value={apiKey}
-								placeholder={
-									kind === "ollama"
-										? t("aiProviders.form.apiKeyPlaceholderBlank")
-										: t("aiProviders.form.apiKeyPlaceholder")
-								}
-								onChange={(e) => setApiKey(e.target.value)}
-								className={cn("font-mono", errors.apiKey && "border-red-400/40")}
-								disabled={kind === "ollama"}
-							/>
-							{errors.apiKey && (
-								<p className="text-[0.65625rem] text-red-300/90">{errors.apiKey}</p>
-							)}
-						</div>
-					</>
+							</div>
+
+							{/* API Key */}
+							<div className="space-y-1.5">
+								<Label
+									htmlFor="provider-api-key"
+									className="flex items-center gap-1.5 text-[0.6875rem] text-white/70"
+								>
+									<HugeiconsIcon icon={Key01Icon} className="size-3" />
+									{t("aiProviders.form.apiKeyLabel")}
+									{kind === "ollama" && (
+										<span className="text-[0.625rem] font-normal text-white/40">
+											{t("aiProviders.form.apiKeyNotRequired")}
+										</span>
+									)}
+								</Label>
+								<Input
+									id="provider-api-key"
+									type="password"
+									value={apiKey}
+									placeholder={
+										kind === "ollama"
+											? t("aiProviders.form.apiKeyPlaceholderBlank")
+											: t("aiProviders.form.apiKeyPlaceholder")
+									}
+									onChange={(e) => setApiKey(e.target.value)}
+									className={cn(
+										"font-mono",
+										errors.apiKey && "border-red-400/40",
+									)}
+									disabled={kind === "ollama"}
+								/>
+								{errors.apiKey && (
+									<p className="text-[0.65625rem] text-red-300/90">
+										{errors.apiKey}
+									</p>
+								)}
+							</div>
+						</>
 					)}
 
 					{/* Model */}
@@ -1076,7 +1099,9 @@ function ProviderFormDialog({
 										)}
 									/>
 									<p className="text-[0.625rem] text-amber-300/80">
-										{t("aiProviders.form.puterModelError", { error: puterModelsError })}
+										{t("aiProviders.form.puterModelError", {
+											error: puterModelsError,
+										})}
 									</p>
 								</div>
 							) : puterModels.length > 0 ? (
@@ -1086,9 +1111,7 @@ function ProviderFormDialog({
 									onChange={setModel}
 									options={puterModels}
 									placeholder={t("aiProviders.form.modelPlaceholderSelect")}
-									className={cn(
-										errors.model && "border-red-400/40",
-									)}
+									className={cn(errors.model && "border-red-400/40")}
 								/>
 							) : fetchedModels.length > 0 ? (
 								<div className="flex flex-col gap-1.5">
@@ -1098,9 +1121,7 @@ function ProviderFormDialog({
 										onChange={setModel}
 										options={fetchedModels}
 										placeholder={t("aiProviders.form.modelPlaceholderSelect")}
-										className={cn(
-											errors.model && "border-red-400/40",
-										)}
+										className={cn(errors.model && "border-red-400/40")}
 									/>
 									<button
 										type="button"
@@ -1129,9 +1150,7 @@ function ProviderFormDialog({
 										<button
 											type="button"
 											onClick={handleFetchModels}
-											disabled={
-												fetchedModelsLoading || !baseUrl.trim()
-											}
+											disabled={fetchedModelsLoading || !baseUrl.trim()}
 											title={
 												!baseUrl.trim()
 													? t("aiProviders.form.fetchTitleBlank")
@@ -1145,7 +1164,9 @@ function ProviderFormDialog({
 											)}
 										>
 											<HugeiconsIcon
-												icon={fetchedModelsLoading ? Loading02Icon : Search01Icon}
+												icon={
+													fetchedModelsLoading ? Loading02Icon : Search01Icon
+												}
 												className={cn(
 													"size-3",
 													fetchedModelsLoading && "animate-spin",
@@ -1156,7 +1177,9 @@ function ProviderFormDialog({
 									</div>
 									{fetchedModelsError && (
 										<p className="text-[0.625rem] text-amber-300/80">
-											{t("aiProviders.form.fetchedModelError", { error: fetchedModelsError })}
+											{t("aiProviders.form.fetchedModelError", {
+												error: fetchedModelsError,
+											})}
 										</p>
 									)}
 									{!fetchedModelsError && (
@@ -1176,14 +1199,19 @@ function ProviderFormDialog({
 							/>
 						)}
 						{errors.model && (
-							<p className="text-[0.65625rem] text-red-300/90">{errors.model}</p>
+							<p className="text-[0.65625rem] text-red-300/90">
+								{errors.model}
+							</p>
 						)}
 					</div>
 
 					{/* Media generation models (optional) */}
 					<div className="flex flex-col gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.015] p-3">
 						<div className="flex items-center gap-1.5">
-							<HugeiconsIcon icon={SparklesIcon} className="size-3 text-white/40" />
+							<HugeiconsIcon
+								icon={SparklesIcon}
+								className="size-3 text-white/40"
+							/>
 							<span className="text-[0.6875rem] font-medium text-white/60">
 								{t("aiProviders.form.mediaModelsTitle")}
 							</span>
@@ -1249,73 +1277,75 @@ function ProviderFormDialog({
 						)
 					)}
 					<FormKeyBridge key={key} />
-				{showPuterWarning && (
-					<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-						<div className="mx-4 w-full max-w-md rounded-2xl border-2 border-amber-400/40 bg-[#1a1510] p-6 shadow-2xl">
-							<div className="mb-4 flex items-center justify-center">
-								<div className="grid size-12 place-items-center rounded-full border-2 border-amber-400/30 bg-amber-400/10">
-									<HugeiconsIcon
-										icon={AlertCircleIcon}
-										className="size-6 text-amber-300"
-									/>
+					{showPuterWarning && (
+						<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+							<div className="mx-4 w-full max-w-md rounded-2xl border-2 border-amber-400/40 bg-[#1a1510] p-6 shadow-2xl">
+								<div className="mb-4 flex items-center justify-center">
+									<div className="grid size-12 place-items-center rounded-full border-2 border-amber-400/30 bg-amber-400/10">
+										<HugeiconsIcon
+											icon={AlertCircleIcon}
+											className="size-6 text-amber-300"
+										/>
+									</div>
 								</div>
-							</div>
-							<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
-								{t("aiProviders.puterWarning.title")}
-							</h3>
-							<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
-								{t("aiProviders.puterWarning.bodyPrefix")}{" "}
-								<strong>{t("aiProviders.puterWarning.bodyStrong")}</strong>{" "}
-								{t("aiProviders.puterWarning.bodySuffix")}
-							</p>
-							<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
-								{t("aiProviders.puterWarning.acknowledge")}
-							</p>
-							<div className="flex flex-col gap-2">
-								<button
-									type="button"
-									onClick={handlePuterConfirm}
-									disabled={puterCountdown > 0}
-									className={cn(
-										"w-full rounded-lg border px-4 py-2.5 text-[0.75rem] font-semibold transition-all",
-										puterCountdown > 0
-											? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
-											: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
-									)}
-								>
-									{puterCountdown > 0
-										? t("aiProviders.puterWarning.wait", { count: puterCountdown })
-										: t("aiProviders.puterWarning.accept")}
-								</button>
-								<button
-									type="button"
-									onClick={handlePuterCancel}
-									disabled={puterCountdown > 0}
-									className={cn(
-										"w-full rounded-lg border px-4 py-2 text-[0.6875rem] transition-all",
-										puterCountdown > 0
-											? "cursor-not-allowed border-white/5 text-white/20"
-											: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
-									)}
-								>
-									{t("aiProviders.puterWarning.cancel")}
-								</button>
-							</div>
-							{puterCountdown > 0 && (
-								<p className="mt-3 text-center text-[0.5625rem] text-white/30">
-									{puterCountdown > 1
-										? t("aiProviders.puterWarning.cannotDismissPlural", {
-												count: puterCountdown,
-										  })
-										: t("aiProviders.puterWarning.cannotDismissSingular", {
-												count: puterCountdown,
-										  })}
+								<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
+									{t("aiProviders.puterWarning.title")}
+								</h3>
+								<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
+									{t("aiProviders.puterWarning.bodyPrefix")}{" "}
+									<strong>{t("aiProviders.puterWarning.bodyStrong")}</strong>{" "}
+									{t("aiProviders.puterWarning.bodySuffix")}
 								</p>
-							)}
+								<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
+									{t("aiProviders.puterWarning.acknowledge")}
+								</p>
+								<div className="flex flex-col gap-2">
+									<button
+										type="button"
+										onClick={handlePuterConfirm}
+										disabled={puterCountdown > 0}
+										className={cn(
+											"w-full rounded-lg border px-4 py-2.5 text-[0.75rem] font-semibold transition-all",
+											puterCountdown > 0
+												? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
+												: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
+										)}
+									>
+										{puterCountdown > 0
+											? t("aiProviders.puterWarning.wait", {
+													count: puterCountdown,
+												})
+											: t("aiProviders.puterWarning.accept")}
+									</button>
+									<button
+										type="button"
+										onClick={handlePuterCancel}
+										disabled={puterCountdown > 0}
+										className={cn(
+											"w-full rounded-lg border px-4 py-2 text-[0.6875rem] transition-all",
+											puterCountdown > 0
+												? "cursor-not-allowed border-white/5 text-white/20"
+												: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
+										)}
+									>
+										{t("aiProviders.puterWarning.cancel")}
+									</button>
+								</div>
+								{puterCountdown > 0 && (
+									<p className="mt-3 text-center text-[0.5625rem] text-white/30">
+										{puterCountdown > 1
+											? t("aiProviders.puterWarning.cannotDismissPlural", {
+													count: puterCountdown,
+												})
+											: t("aiProviders.puterWarning.cannotDismissSingular", {
+													count: puterCountdown,
+												})}
+									</p>
+								)}
+							</div>
 						</div>
-					</div>
-			)}
-			</DialogBody>
+					)}
+				</DialogBody>
 
 				<DialogFooter>
 					<Button
@@ -1342,9 +1372,7 @@ function ProviderFormDialog({
 							icon={isEditing ? Edit01Icon : Add01Icon}
 							className="size-3.5"
 						/>
-						{isEditing
-							? t("aiProviders.form.save")
-							: t("aiProviders.form.add")}
+						{isEditing ? t("aiProviders.form.save") : t("aiProviders.form.add")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -1460,9 +1488,8 @@ function SearchableModelSelect({
 	// when the user types a query that shrinks the result set). An
 	// out-of-bounds index makes Enter silently select nothing, leaving the
 	// dropdown "stuck" open with no visible feedback.
-	const safeIndex = filtered.length > 0
-		? Math.min(highlightedIndex, filtered.length - 1)
-		: 0;
+	const safeIndex =
+		filtered.length > 0 ? Math.min(highlightedIndex, filtered.length - 1) : 0;
 
 	const handleQueryChange = (next: string) => {
 		setQuery(next);
@@ -1605,9 +1632,7 @@ function SearchableModelSelect({
 										m.id === value && "text-white",
 									)}
 								>
-									<span className="truncate">
-										{m.name ?? m.id}
-									</span>
+									<span className="truncate">{m.name ?? m.id}</span>
 									<span className="ml-2 shrink-0 text-[0.5625rem] text-white/35">
 										{m.provider}
 									</span>

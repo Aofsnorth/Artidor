@@ -1,12 +1,21 @@
-import type { ElementType, SceneTracks, TrackType, TimelineTrack } from "@/lib/timeline";
 import {
 	getDefaultInsertIndexForTrack,
 	getHighestInsertIndexForTrack,
 	resolvePreferredNewTrackPlacement,
 } from "./insert-index";
-import { canElementGoOnTrack, getTrackTypeForElementType } from "./compatibility";
+import {
+	canElementGoOnTrack,
+	getTrackTypeForElementType,
+} from "./compatibility";
 import { enforceMainTrackStart } from "./main-track";
 import { canPlaceTimeSpansOnTrack } from "./overlap";
+import {
+	getOrderedTracks,
+	type ElementType,
+	type SceneTracks,
+	type TimelineTrack,
+	type TrackType,
+} from "@/lib/timeline";
 import type {
 	PlacementResult,
 	PlacementStrategy,
@@ -141,7 +150,7 @@ export function resolveTrackPlacement({
 	tracks,
 	...placement
 }: ResolveTrackPlacementParams): PlacementResult | null {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const orderedTracks = getOrderedTracks(tracks);
 	const elementType = placement.elementType;
 	const trackType =
 		placement.trackType ??

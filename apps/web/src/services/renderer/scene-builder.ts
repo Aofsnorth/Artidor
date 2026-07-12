@@ -1,8 +1,9 @@
-import type {
-	SceneTracks,
-	TimelineElement,
-	TimelineTrack,
-	VisualElement,
+import {
+	getOrderedTracks,
+	type SceneTracks,
+	type TimelineElement,
+	type TimelineTrack,
+	type VisualElement,
 } from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
 import type { ParentChainEntry } from "./parenting-resolve";
@@ -34,7 +35,7 @@ function buildElementsById({
 	tracks: SceneTracks;
 }): Map<string, TimelineElement> {
 	const map = new Map<string, TimelineElement>();
-	for (const track of [...tracks.overlay, tracks.main, ...tracks.audio]) {
+	for (const track of getOrderedTracks(tracks)) {
 		for (const element of track.elements) {
 			map.set(element.id, element);
 		}
@@ -217,13 +218,13 @@ function buildTrackNodes({
 						timeOffset: element.startTime,
 						trimStart: element.trimStart,
 						trimEnd: element.trimEnd,
-							transform: element.transform,
-							animations: element.animations,
-							opacity: element.opacity,
-							blendMode: element.blendMode,
-							effects: element.effects ?? [],
-							masks: element.masks ?? [],
-							parentChain,
+						transform: element.transform,
+						animations: element.animations,
+						opacity: element.opacity,
+						blendMode: element.blendMode,
+						effects: element.effects ?? [],
+						masks: element.masks ?? [],
+						parentChain,
 					}),
 				);
 			}
@@ -306,6 +307,9 @@ export function buildScene({
 	const visibleTracks = [
 		...tracks.overlay.filter((track) => !("hidden" in track && track.hidden)),
 		...(!tracks.main.hidden ? [tracks.main] : []),
+		...tracks.overlayAfter.filter(
+			(track) => !("hidden" in track && track.hidden),
+		),
 	];
 	const orderedTracksBottomToTop = visibleTracks.slice().reverse();
 	const mainTrack = tracks.main.hidden ? undefined : tracks.main;

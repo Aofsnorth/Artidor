@@ -73,16 +73,64 @@ export const COLOR_PALETTES: ColorPalette[] = [
 
 /** Gradient presets (uigradients.com favourites), as CSS linear-gradients. */
 export const GRADIENT_PRESETS: GradientPreset[] = [
-	{ id: "purple-bliss", name: "Purple Bliss", css: "linear-gradient(135deg, #360033, #0b8793)" },
-	{ id: "cosmic-fusion", name: "Cosmic Fusion", css: "linear-gradient(135deg, #ff00cc, #333399)" },
-	{ id: "sunset-uig", name: "Sunset", css: "linear-gradient(135deg, #0b486b, #f56217)" },
-	{ id: "instagram", name: "Instagram", css: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" },
-	{ id: "mojito", name: "Mojito", css: "linear-gradient(135deg, #1d976c, #93f9b9)" },
-	{ id: "bloody-mary", name: "Bloody Mary", css: "linear-gradient(135deg, #ff512f, #dd2476)" },
-	{ id: "aqua-marine", name: "Aqua Marine", css: "linear-gradient(135deg, #1a2980, #26d0ce)" },
-	{ id: "citrus-peel", name: "Citrus Peel", css: "linear-gradient(135deg, #fdc830, #f37335)" },
-	{ id: "royal", name: "Royal", css: "linear-gradient(135deg, #141e30, #243b55)" },
-	{ id: "peach", name: "Peach", css: "linear-gradient(135deg, #ed4264, #ffedbc)" },
-	{ id: "moonlit", name: "Moonlit Asteroid", css: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
-	{ id: "sunrise", name: "Sunrise", css: "linear-gradient(135deg, #ff512f, #f09819)" },
+	{
+		id: "purple-bliss",
+		name: "Purple Bliss",
+		css: "linear-gradient(135deg, #360033, #0b8793)",
+	},
+	{
+		id: "cosmic-fusion",
+		name: "Cosmic Fusion",
+		css: "linear-gradient(135deg, #ff00cc, #333399)",
+	},
+	{
+		id: "sunset-uig",
+		name: "Sunset",
+		css: "linear-gradient(135deg, #0b486b, #f56217)",
+	},
+	{
+		id: "instagram",
+		name: "Instagram",
+		css: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)",
+	},
+	{
+		id: "mojito",
+		name: "Mojito",
+		css: "linear-gradient(135deg, #1d976c, #93f9b9)",
+	},
+	{
+		id: "bloody-mary",
+		name: "Bloody Mary",
+		css: "linear-gradient(135deg, #ff512f, #dd2476)",
+	},
+	{
+		id: "aqua-marine",
+		name: "Aqua Marine",
+		css: "linear-gradient(135deg, #1a2980, #26d0ce)",
+	},
+	{
+		id: "citrus-peel",
+		name: "Citrus Peel",
+		css: "linear-gradient(135deg, #fdc830, #f37335)",
+	},
+	{
+		id: "royal",
+		name: "Royal",
+		css: "linear-gradient(135deg, #141e30, #243b55)",
+	},
+	{
+		id: "peach",
+		name: "Peach",
+		css: "linear-gradient(135deg, #ed4264, #ffedbc)",
+	},
+	{
+		id: "moonlit",
+		name: "Moonlit Asteroid",
+		css: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
+	},
+	{
+		id: "sunrise",
+		name: "Sunrise",
+		css: "linear-gradient(135deg, #ff512f, #f09819)",
+	},
 ];

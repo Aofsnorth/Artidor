@@ -200,12 +200,8 @@ async function handleExport(msg: WorkerInMessage) {
 	// (avc1 / hev1) would otherwise reject the configuration.
 	const requiresEvenDimensions =
 		format === "mp4" || format === "hevc" || format === "av1";
-	const safeWidth = requiresEvenDimensions
-		? width + (width % 2)
-		: width;
-	const safeHeight = requiresEvenDimensions
-		? height + (height % 2)
-		: height;
+	const safeWidth = requiresEvenDimensions ? width + (width % 2) : width;
+	const safeHeight = requiresEvenDimensions ? height + (height % 2) : height;
 	if (safeWidth !== width || safeHeight !== height) {
 		console.info(
 			`[export-worker] rounded canvas from ${width}x${height} to ${safeWidth}x${safeHeight} for codec compatibility`,
@@ -269,7 +265,7 @@ async function handleExport(msg: WorkerInMessage) {
 	self.postMessage({
 		type: "init-progress",
 		phase: "Preparing encoder",
-		progress: 0.10,
+		progress: 0.1,
 	} satisfies WorkerOutMessage);
 
 	// ── 3. Create renderer ──

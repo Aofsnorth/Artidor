@@ -187,7 +187,9 @@ export function DraggableItem({
 								isDraggable && "[&::-webkit-drag-ghost]:opacity-0",
 							)}
 							draggable={!onClick && isDraggable}
-							onDragStart={!onClick && isDraggable ? handleDragStart : undefined}
+							onDragStart={
+								!onClick && isDraggable ? handleDragStart : undefined
+							}
 							onDragEnd={!onClick && isDraggable ? handleDragEnd : undefined}
 						>
 							{preview}

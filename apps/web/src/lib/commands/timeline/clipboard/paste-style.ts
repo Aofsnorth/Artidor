@@ -212,9 +212,7 @@ function applyStyleToElement({
 	return patched;
 }
 
-function isVisualElement(
-	element: TimelineElement,
-): element is VisualElement {
+function isVisualElement(element: TimelineElement): element is VisualElement {
 	return (
 		element.type === "video" ||
 		element.type === "image" ||

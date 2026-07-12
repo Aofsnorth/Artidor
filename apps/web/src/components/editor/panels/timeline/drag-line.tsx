@@ -23,8 +23,8 @@ export function DragLine({
 }: DragLineProps) {
 	if (!isVisible || !dropTarget) return null;
 
-	const extraHeights = tracks.map((_, index) =>
-		getTrackExpansionHeight?.(index) ?? 0,
+	const extraHeights = tracks.map(
+		(_, index) => getTrackExpansionHeight?.(index) ?? 0,
 	);
 	const y = getDropLineY({
 		dropTarget,

@@ -23,10 +23,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import {
-	encryptApiKey,
-	decryptApiKey,
-} from "@/lib/ai/key-crypto";
+import { encryptApiKey, decryptApiKey } from "@/lib/ai/key-crypto";
 
 export type ProviderKind =
 	| "openai-compatible"

@@ -172,7 +172,9 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 		setIsDragging(false);
 	};
 
-	const kindLabel = t(`catalog.presetKind.${preset.kind}` as `catalog.presetKind.${UserPreset["kind"]}`);
+	const kindLabel = t(
+		`catalog.presetKind.${preset.kind}` as `catalog.presetKind.${UserPreset["kind"]}`,
+	);
 
 	return (
 		<ContextMenu>
@@ -234,7 +236,10 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 									insertPreset();
 								}}
 							>
-								<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-cyan-400" />
+								<HugeiconsIcon
+									icon={PlusSignIcon}
+									className="size-3 text-cyan-400"
+								/>
 							</Button>
 						</div>
 					</div>

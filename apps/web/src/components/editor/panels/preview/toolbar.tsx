@@ -268,10 +268,7 @@ function LoopButton() {
 const JUMP_WINDOW_TICKS = 5 * TICKS_PER_SECOND;
 
 function TransportControls() {
-	const isPlaying = useEditor(
-		(e) => e.playback.getIsPlaying(),
-		["playback"],
-	);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	const editor = useEditor();
 	const currentTime = useEditor(
 		(e) => e.playback.getCurrentTime(),
@@ -279,7 +276,9 @@ function TransportControls() {
 	);
 	const scene = useEditor((e) => e.scenes.getActiveSceneOrNull());
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
-	const selectedKeyframes = useEditor((e) => e.selection.getSelectedKeyframes());
+	const selectedKeyframes = useEditor((e) =>
+		e.selection.getSelectedKeyframes(),
+	);
 	const bookmarks = scene?.bookmarks ?? [];
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: getSelectedNavigationTimes is a closure that reads scene/selectedElements/selectedKeyframes; listing it as a dep would re-create the memo every render.
@@ -291,12 +290,16 @@ function TransportControls() {
 		if (!scene) return [];
 		const tracks = Object.values(scene.tracks).flat();
 		const selectedElementIds = new Set(
-			selectedElements.map((element) => `${element.trackId}:${element.elementId}`),
+			selectedElements.map(
+				(element) => `${element.trackId}:${element.elementId}`,
+			),
 		);
 		const times = new Set<number>();
 		for (const track of tracks) {
 			for (const element of track.elements) {
-				const isSelectedElement = selectedElementIds.has(`${track.id}:${element.id}`);
+				const isSelectedElement = selectedElementIds.has(
+					`${track.id}:${element.id}`,
+				);
 				for (const keyframe of getElementKeyframes({
 					animations: element.animations,
 				})) {
@@ -314,7 +317,7 @@ function TransportControls() {
 			}
 		}
 		return [...times].sort((a, b) => a - b);
-	};
+	}
 
 	const handleJumpBackward = () => {
 		const keyframeTime = navigationTimes
@@ -338,9 +341,7 @@ function TransportControls() {
 	};
 
 	const handleJumpForward = () => {
-		const keyframeTime = navigationTimes.find(
-			(time) => time > currentTime,
-		);
+		const keyframeTime = navigationTimes.find((time) => time > currentTime);
 		if (keyframeTime != null) {
 			editor.playback.seek({ time: keyframeTime });
 			return;

@@ -171,7 +171,11 @@ export function AdvancedView({
 		</>
 	);
 
-	return embedded ? content : <PanelView title={t("advanced.title")}>{content}</PanelView>;
+	return embedded ? (
+		content
+	) : (
+		<PanelView title={t("advanced.title")}>{content}</PanelView>
+	);
 }
 
 /**
@@ -197,7 +201,11 @@ function wrapEmpty({
 			body={body}
 		/>
 	);
-	return embedded ? inner : <PanelView title={t("advanced.title")}>{inner}</PanelView>;
+	return embedded ? (
+		inner
+	) : (
+		<PanelView title={t("advanced.title")}>{inner}</PanelView>
+	);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -265,13 +273,21 @@ function CurvesSubTab({
 			label: t("advanced.masterRgb"),
 			color: "rgba(255,255,255,0.95)",
 		},
-		{ key: "red_curve", label: t("advanced.red"), color: "rgba(239,68,68,0.95)" },
+		{
+			key: "red_curve",
+			label: t("advanced.red"),
+			color: "rgba(239,68,68,0.95)",
+		},
 		{
 			key: "green_curve",
 			label: t("advanced.green"),
 			color: "rgba(34,197,94,0.95)",
 		},
-		{ key: "blue_curve", label: t("advanced.blue"), color: "rgba(59,130,246,0.95)" },
+		{
+			key: "blue_curve",
+			label: t("advanced.blue"),
+			color: "rgba(59,130,246,0.95)",
+		},
 	] as const;
 
 	return (

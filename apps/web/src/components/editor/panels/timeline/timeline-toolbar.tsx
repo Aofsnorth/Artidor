@@ -158,7 +158,9 @@ function TimelineToolToggle() {
 	const { t } = useI18n();
 
 	const isSelect = tool === "select";
-	const label = isSelect ? t("timeline.toolbar.select") : t("timeline.toolbar.split");
+	const label = isSelect
+		? t("timeline.toolbar.select")
+		: t("timeline.toolbar.split");
 	const shortcut = isSelect ? "A" : "B";
 
 	return (
@@ -874,7 +876,9 @@ function ToolbarRightSection({
 								</Button>
 							</DropdownMenuTrigger>
 						</TooltipTrigger>
-						<TooltipContent>{t("timeline.toolbar.playheadDragMode")}</TooltipContent>
+						<TooltipContent>
+							{t("timeline.toolbar.playheadDragMode")}
+						</TooltipContent>
 					</Tooltip>
 					<DropdownMenuContent align="start" className="z-100 w-44">
 						<DropdownMenuItem
@@ -895,7 +899,9 @@ function ToolbarRightSection({
 							}}
 						>
 							<div className="flex flex-col gap-0.5">
-								<span className="text-xs font-medium">{t("timeline.toolbar.dragMode.auto")}</span>
+								<span className="text-xs font-medium">
+									{t("timeline.toolbar.dragMode.auto")}
+								</span>
 								<span className="text-[0.65rem] text-white/40">
 									{scrubDragMode === "auto" && autoPlayWhileScrubbing
 										? t("timeline.toolbar.dragMode.autoOn")
@@ -910,7 +916,9 @@ function ToolbarRightSection({
 							onClick={() => setScrubDragMode("smart")}
 						>
 							<div className="flex flex-col gap-0.5">
-								<span className="text-xs font-medium">{t("timeline.toolbar.dragMode.smart")}</span>
+								<span className="text-xs font-medium">
+									{t("timeline.toolbar.dragMode.smart")}
+								</span>
 								<span className="text-[0.65rem] text-white/40">
 									{t("timeline.toolbar.dragMode.smartDescription")}
 								</span>

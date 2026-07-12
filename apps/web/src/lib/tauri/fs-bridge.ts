@@ -62,7 +62,9 @@ export async function readFileText(path: string): Promise<string> {
 }
 
 /** Get file metadata (name, size, path) without reading the full file. */
-export async function getFileMetadata(path: string): Promise<NativeFileMetadata> {
+export async function getFileMetadata(
+	path: string,
+): Promise<NativeFileMetadata> {
 	return invoke<NativeFileMetadata>("get_file_metadata", { path });
 }
 

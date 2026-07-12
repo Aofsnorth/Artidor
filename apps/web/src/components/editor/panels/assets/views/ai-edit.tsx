@@ -138,15 +138,8 @@ import {
 import { AIProvidersManager } from "./ai-providers-manager";
 import Markdown from "react-markdown";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import {
-	getMcpConnectionManager,
-	useMcpStore,
-} from "@/stores/mcp-store";
-import type {
-	McpServerConfig,
-	McpConnection,
-	McpTool,
-} from "@/lib/mcp/client";
+import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
+import type { McpServerConfig, McpConnection, McpTool } from "@/lib/mcp/client";
 import {
 	tabs as ASSETS_TABS,
 	useAssetsPanelStore,
@@ -299,7 +292,10 @@ export function AIEditView() {
 	const deleteConversation = useAIStore((s) => s.deleteConversation);
 	const setError = useAIStore((s) => s.setError);
 	const { messages, conversations } = useAIStore(
-		useShallow((s) => ({ messages: s.messages, conversations: s.conversations })),
+		useShallow((s) => ({
+			messages: s.messages,
+			conversations: s.conversations,
+		})),
 	);
 	const defaultProvider = useAIProvidersStore((s) => s.getDefault());
 	const allProviders = useAIProvidersStore((s) => s.providers);
@@ -475,7 +471,9 @@ export function AIEditView() {
 	const handleSelectAsset = (assetName: string) => {
 		if (!mentionQuery) return;
 		const before = draft.slice(0, mentionQuery.start);
-		const after = draft.slice(mentionQuery.start + 1 + mentionQuery.text.length);
+		const after = draft.slice(
+			mentionQuery.start + 1 + mentionQuery.text.length,
+		);
 		const insertion = `@${assetName} `;
 		const next = `${before}${insertion}${after}`;
 		setDraft(next);
@@ -500,19 +498,23 @@ export function AIEditView() {
 				// extractStyle returned duration=0 — the file was read
 				// but no usable video frames were found (e.g. audio-only
 				// file, corrupt video, or unsupported codec).
-				useAIStore.getState().setError(
-					"Could not extract a style profile from this file. Make sure it's a valid video file with visible frames (not audio-only).",
-				);
+				useAIStore
+					.getState()
+					.setError(
+						"Could not extract a style profile from this file. Make sure it's a valid video file with visible frames (not audio-only).",
+					);
 				useAIStore.getState().setStatus("error");
 			}
 		} catch (err) {
 			// extractStyle threw — the file couldn't be decoded at all
 			// (unsupported format, corrupt file, browser can't play it).
-			useAIStore.getState().setError(
-				err instanceof Error
-					? `Could not read the reference file: ${err.message}`
-					: "Could not read the reference file. It may be corrupted or in an unsupported format.",
-			);
+			useAIStore
+				.getState()
+				.setError(
+					err instanceof Error
+						? `Could not read the reference file: ${err.message}`
+						: "Could not read the reference file. It may be corrupted or in an unsupported format.",
+				);
 			useAIStore.getState().setStatus("error");
 		} finally {
 			setIsExtracting(false);
@@ -738,7 +740,9 @@ export function AIEditView() {
 							)}
 						>
 							<HugeiconsIcon icon={Upload01Icon} className="size-3" />
-							{isExtracting ? t("aiEdit.reference.analysing") : t("aiEdit.reference.label")}
+							{isExtracting
+								? t("aiEdit.reference.analysing")
+								: t("aiEdit.reference.label")}
 						</button>
 						<input
 							ref={fileInputRef}
@@ -753,7 +757,10 @@ export function AIEditView() {
 						/>
 						{referenceVideoName && (
 							<span className="flex items-center gap-1 truncate text-[10px] text-white/40">
-								<HugeiconsIcon icon={Video01Icon} className="size-2.5 shrink-0" />
+								<HugeiconsIcon
+									icon={Video01Icon}
+									className="size-2.5 shrink-0"
+								/>
 								<span className="truncate">{referenceVideoName}</span>
 								<button
 									type="button"
@@ -826,7 +833,10 @@ export function AIEditView() {
 											className="flex items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-400/[0.06] px-2.5 py-1 text-[10.5px] font-medium text-amber-200/90 transition-colors hover:bg-amber-400/10 hover:border-amber-400/30"
 											title={t("aiEdit.composer.steerTitle")}
 										>
-											<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3" />
+											<HugeiconsIcon
+												icon={ArrowTurnBackwardIcon}
+												className="size-3"
+											/>
 											{t("aiEdit.composer.steer")}
 										</button>
 										<button
@@ -1270,9 +1280,7 @@ function McpManageDialog({
 					) : (
 						<div className="flex flex-col gap-2.5">
 							{servers.map((server) => {
-								const conn = connections.find(
-									(c) => c.config.id === server.id,
-								);
+								const conn = connections.find((c) => c.config.id === server.id);
 								const status = conn?.status ?? "disconnected";
 								const tools = conn?.tools ?? [];
 								const error = conn?.error;
@@ -1294,20 +1302,12 @@ function McpManageDialog({
 				</DialogBody>
 				<DialogFooter className="border-t border-white/[0.06] bg-black/20">
 					{servers.length > 0 && (
-						<Button
-							size="sm"
-							onClick={onAddClick}
-							className="mr-auto"
-						>
+						<Button size="sm" onClick={onAddClick} className="mr-auto">
 							<HugeiconsIcon icon={ChatAdd01Icon} className="size-3.5" />
 							{t("aiEdit.mcp.manage.addAnother")}
 						</Button>
 					)}
-					<Button
-						size="sm"
-						variant="ghost"
-						onClick={() => onOpenChange(false)}
-					>
+					<Button size="sm" variant="ghost" onClick={() => onOpenChange(false)}>
 						{t("aiEdit.mcp.manage.done")}
 					</Button>
 				</DialogFooter>
@@ -1422,7 +1422,11 @@ function McpServerCard({
 						type="button"
 						onClick={() => setExpanded((e) => !e)}
 						className="grid size-5 shrink-0 place-items-center rounded text-white/30 transition hover:bg-white/[0.06] hover:text-white/70"
-						aria-label={expanded ? t("aiEdit.mcp.collapseTools") : t("aiEdit.mcp.expandTools")}
+						aria-label={
+							expanded
+								? t("aiEdit.mcp.collapseTools")
+								: t("aiEdit.mcp.expandTools")
+						}
 					>
 						<HugeiconsIcon
 							icon={ArrowDown03Icon}
@@ -1438,9 +1442,7 @@ function McpServerCard({
 			{/* Error message */}
 			{status === "error" && error && (
 				<div className="border-t border-red-400/10 px-3 py-2">
-					<p className="text-[10px] leading-relaxed text-red-300/70">
-						{error}
-					</p>
+					<p className="text-[10px] leading-relaxed text-red-300/70">{error}</p>
 					<button
 						type="button"
 						onClick={onReconnect}
@@ -1491,7 +1493,11 @@ function McpServerCard({
 						"relative h-4 w-7 rounded-full transition-colors",
 						server.enabled ? "bg-green-400/30" : "bg-white/[0.08]",
 					)}
-					aria-label={server.enabled ? t("aiEdit.mcp.disableServer") : t("aiEdit.mcp.enableServer")}
+					aria-label={
+						server.enabled
+							? t("aiEdit.mcp.disableServer")
+							: t("aiEdit.mcp.enableServer")
+					}
 				>
 					<span
 						className={cn(
@@ -1654,7 +1660,9 @@ function McpAddDialog({
 								className="text-[11px] font-medium text-white/60"
 							>
 								{t("aiEdit.mcp.add.tokenLabel")}{" "}
-								<span className="text-white/30">{t("aiEdit.mcp.add.tokenOptional")}</span>
+								<span className="text-white/30">
+									{t("aiEdit.mcp.add.tokenOptional")}
+								</span>
 							</label>
 							<Input
 								id="mcp-token"
@@ -1729,9 +1737,7 @@ function ModelIdText({ model }: { model: string }) {
 					overflows && "animate-[marquee_8s_linear_infinite]",
 				)}
 				style={
-					overflows
-						? { animation: "marquee 8s linear infinite" }
-						: undefined
+					overflows ? { animation: "marquee 8s linear infinite" } : undefined
 				}
 			>
 				{overflows ? `${model}  ·  ${model}  ·  ` : model}
@@ -1782,7 +1788,12 @@ function StatusBar({
 	retryIn: number;
 	retryCount: number;
 	defaultProvider: { name: string; model: string; kind: string } | undefined;
-	allProviders: Array<{ id: string; name: string; model: string; enabled: boolean }>;
+	allProviders: Array<{
+		id: string;
+		name: string;
+		model: string;
+		enabled: boolean;
+	}>;
 	projectProviderId: string | null;
 	onSelectProvider: (id: string | null) => void;
 	aiName: string;
@@ -1834,7 +1845,9 @@ function StatusBar({
 							)}
 						>
 							<HugeiconsIcon
-								icon={isStreaming || isRetrying ? SparklesIcon : MagicWand05Icon}
+								icon={
+									isStreaming || isRetrying ? SparklesIcon : MagicWand05Icon
+								}
 								className={cn(
 									"size-4",
 									isRetrying
@@ -1934,7 +1947,9 @@ function StatusBar({
 							{defaultProvider ? (
 								<>
 									<span className="min-w-0 shrink text-[11px] text-white/80">
-										<span className="truncate block">{defaultProvider.name}</span>
+										<span className="truncate block">
+											{defaultProvider.name}
+										</span>
 									</span>
 									<ModelIdText model={defaultProvider.model} />
 								</>
@@ -1953,9 +1968,7 @@ function StatusBar({
 						<div className="relative shrink-0">
 							<select
 								value={projectProviderId ?? ""}
-								onChange={(e) =>
-									onSelectProvider(e.target.value || null)
-								}
+								onChange={(e) => onSelectProvider(e.target.value || null)}
 								title={t("aiEdit.providers.selectTitle")}
 								className="h-7 appearance-none rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 pr-6 text-[10px] text-white/70 outline-none transition-colors hover:border-white/15 hover:bg-white/[0.05] focus:border-white/25"
 							>
@@ -1965,11 +1978,7 @@ function StatusBar({
 								{allProviders
 									.filter((p) => p.enabled)
 									.map((p) => (
-										<option
-											key={p.id}
-											value={p.id}
-											className="bg-[#1a1a1e]"
-										>
+										<option key={p.id} value={p.id} className="bg-[#1a1a1e]">
 											{p.name}
 										</option>
 									))}
@@ -2019,7 +2028,9 @@ function StatusBar({
 								})}
 							>
 								<HugeiconsIcon icon={ArrowDown03Icon} className="size-2.5" />
-								{t("aiEdit.compaction.count", { count: compactedSummary.compactedCount })}
+								{t("aiEdit.compaction.count", {
+									count: compactedSummary.compactedCount,
+								})}
 							</span>
 						)}
 					</div>
@@ -2084,12 +2095,16 @@ function QuickActionsBar({
 	const buttonClass = cn(
 		"flex h-6 items-center gap-1 rounded-lg border px-2 text-[10px] font-medium transition-all",
 		"border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80",
-		isBusy && "border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
+		isBusy &&
+			"border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
 	);
 
 	if (!overflow) {
 		return (
-			<div ref={containerRef} className="flex flex-nowrap gap-1 overflow-hidden">
+			<div
+				ref={containerRef}
+				className="flex flex-nowrap gap-1 overflow-hidden"
+			>
 				<div ref={innerRef} className="flex flex-nowrap gap-1">
 					{actions.map((qa) => (
 						<button
@@ -2109,7 +2124,10 @@ function QuickActionsBar({
 
 	// Overflow mode: show first action + a "More" dropdown
 	return (
-		<div ref={containerRef} className="relative flex flex-nowrap gap-1 overflow-hidden">
+		<div
+			ref={containerRef}
+			className="relative flex flex-nowrap gap-1 overflow-hidden"
+		>
 			<div ref={innerRef} className="flex flex-nowrap gap-1">
 				{actions.slice(0, 1).map((qa) => (
 					<button
@@ -2132,7 +2150,10 @@ function QuickActionsBar({
 				{t("aiEdit.common.more")}
 				<HugeiconsIcon
 					icon={ArrowDown03Icon}
-					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
+					className={cn(
+						"size-2.5 transition-transform",
+						dropdownOpen && "rotate-180",
+					)}
 				/>
 			</button>
 			{dropdownOpen && (
@@ -2203,7 +2224,13 @@ function OverflowRow({
 
 	if (!overflow) {
 		return (
-			<div ref={containerRef} className={cn("flex flex-nowrap items-center gap-1.5 overflow-hidden", className)}>
+			<div
+				ref={containerRef}
+				className={cn(
+					"flex flex-nowrap items-center gap-1.5 overflow-hidden",
+					className,
+				)}
+			>
 				<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
 					{children}
 				</div>
@@ -2213,7 +2240,13 @@ function OverflowRow({
 
 	// Overflow mode: show first child + a "More" dropdown with the rest.
 	return (
-		<div ref={containerRef} className={cn("relative flex flex-nowrap items-center gap-1.5 overflow-hidden", className)}>
+		<div
+			ref={containerRef}
+			className={cn(
+				"relative flex flex-nowrap items-center gap-1.5 overflow-hidden",
+				className,
+			)}
+		>
 			<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
 				{children[0]}
 			</div>
@@ -2225,7 +2258,10 @@ function OverflowRow({
 				{label}
 				<HugeiconsIcon
 					icon={ArrowDown03Icon}
-					className={cn("size-2.5 transition-transform", dropdownOpen && "rotate-180")}
+					className={cn(
+						"size-2.5 transition-transform",
+						dropdownOpen && "rotate-180",
+					)}
 				/>
 			</button>
 			{dropdownOpen && (
@@ -2238,8 +2274,12 @@ function OverflowRow({
 					/>
 					<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
 						{children.slice(1).map((child, i) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position
-							<button type="button" key={i} onClick={() => setDropdownOpen(false)} className="text-left">
+							<button
+								type="button"
+								key={/* biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position */ i}
+								onClick={() => setDropdownOpen(false)}
+								className="text-left"
+							>
 								{child}
 							</button>
 						))}
@@ -2257,13 +2297,36 @@ function OverflowRow({
  */
 function iconForSuggestion(label: string): typeof SparklesIcon {
 	const l = label.toLowerCase();
-	if (l.includes("text") || l.includes("caption") || l.includes("title") || l.includes("typography"))
+	if (
+		l.includes("text") ||
+		l.includes("caption") ||
+		l.includes("title") ||
+		l.includes("typography")
+	)
 		return SparklesIcon;
-	if (l.includes("cut") || l.includes("pace") || l.includes("montage") || l.includes("trailer") || l.includes("reel"))
+	if (
+		l.includes("cut") ||
+		l.includes("pace") ||
+		l.includes("montage") ||
+		l.includes("trailer") ||
+		l.includes("reel")
+	)
 		return Video01Icon;
-	if (l.includes("color") || l.includes("grade") || l.includes("look") || l.includes("tone") || l.includes("mood"))
+	if (
+		l.includes("color") ||
+		l.includes("grade") ||
+		l.includes("look") ||
+		l.includes("tone") ||
+		l.includes("mood")
+	)
 		return PaintBrushIcon;
-	if (l.includes("audio") || l.includes("music") || l.includes("sound") || l.includes("beat") || l.includes("voice"))
+	if (
+		l.includes("audio") ||
+		l.includes("music") ||
+		l.includes("sound") ||
+		l.includes("beat") ||
+		l.includes("voice")
+	)
 		return MusicNote03Icon;
 	return MagicWand05Icon;
 }
@@ -2302,10 +2365,7 @@ function EmptyState({
 					}}
 				/>
 				<div className="relative grid size-14 place-items-center rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.08] to-white/[0.02]">
-					<HugeiconsIcon
-						icon={SparklesIcon}
-						className="size-6 text-white/80"
-					/>
+					<HugeiconsIcon icon={SparklesIcon} className="size-6 text-white/80" />
 				</div>
 			</div>
 
@@ -2360,9 +2420,7 @@ function EmptyState({
 function PlanCard({ plan }: { plan: Plan }) {
 	const { t } = useI18n();
 	const doneCount = plan.steps.filter((s) => s.status === "done").length;
-	const skippedCount = plan.steps.filter(
-		(s) => s.status === "skipped",
-	).length;
+	const skippedCount = plan.steps.filter((s) => s.status === "skipped").length;
 	const activeCount = plan.steps.length - skippedCount;
 	const progress =
 		activeCount > 0 ? Math.round((doneCount / activeCount) * 100) : 0;
@@ -2394,9 +2452,7 @@ function PlanCard({ plan }: { plan: Plan }) {
 						icon={allDone ? CheckmarkCircle02Icon : MagicWand05Icon}
 						className={cn(
 							"size-3.5",
-							allDone
-								? "text-emerald-300"
-								: "text-white/60",
+							allDone ? "text-emerald-300" : "text-white/60",
 						)}
 					/>
 				</div>
@@ -2549,7 +2605,6 @@ function PlanCard({ plan }: { plan: Plan }) {
 		</motion.div>
 	);
 }
-
 
 /**
  * Advanced AI settings popover — lets the user tune the tool-call loop
@@ -2759,9 +2814,7 @@ function SettingRow({
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex items-center justify-between">
-				<span className="text-[10.5px] font-medium text-white/70">
-					{label}
-				</span>
+				<span className="text-[10.5px] font-medium text-white/70">{label}</span>
 				<span className="font-mono text-[10px] text-white/50">{value}</span>
 			</div>
 			<p className="text-[9px] text-white/35">{description}</p>
@@ -2871,10 +2924,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 			>
 				<HugeiconsIcon
 					icon={isUser ? Edit01Icon : SparklesIcon}
-					className={cn(
-						"size-3.5",
-						isUser ? "text-white/60" : "text-white/80",
-					)}
+					className={cn("size-3.5", isUser ? "text-white/60" : "text-white/80")}
 				/>
 			</div>
 
@@ -2929,9 +2979,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								/>
 							</div>
 							<div className="prose prose-invert prose-sm max-w-none text-[12px] leading-relaxed text-cyan-100">
-								<Markdown
-									rehypePlugins={[[rehypeSanitize, aiMarkdownSchema]]}
-								>
+								<Markdown rehypePlugins={[[rehypeSanitize, aiMarkdownSchema]]}>
 									{linkifyHashtags(message.content)}
 								</Markdown>
 							</div>
@@ -2981,7 +3029,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 						<button
 							type="button"
 							onClick={handleCopy}
-							title={copied ? t("aiEdit.message.copiedTitle") : t("aiEdit.message.copyTitle")}
+							title={
+								copied
+									? t("aiEdit.message.copiedTitle")
+									: t("aiEdit.message.copyTitle")
+							}
 							className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/80"
 						>
 							<HugeiconsIcon
@@ -3032,7 +3084,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 								)}
 							>
 								<HugeiconsIcon
-									icon={successCount === toolCallCount ? CheckmarkCircle02Icon : MagicWand05Icon}
+									icon={
+										successCount === toolCallCount
+											? CheckmarkCircle02Icon
+											: MagicWand05Icon
+									}
 									className={cn(
 										"size-2.5",
 										successCount === toolCallCount
@@ -3041,16 +3097,25 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 									)}
 								/>
 							</motion.div>
-							<span className={cn(
-								successCount === toolCallCount
-									? "text-emerald-300/60"
-									: "text-white/35",
-							)}>
+							<span
+								className={cn(
+									successCount === toolCallCount
+										? "text-emerald-300/60"
+										: "text-white/35",
+								)}
+							>
 								{successCount === toolCallCount
 									? toolCallCount === 1
-										? t("aiEdit.toolCalls.completedSingular", { count: toolCallCount })
-										: t("aiEdit.toolCalls.completedPlural", { count: toolCallCount })
-									: t("aiEdit.toolCalls.done", { done: successCount, total: toolCallCount })}
+										? t("aiEdit.toolCalls.completedSingular", {
+												count: toolCallCount,
+											})
+										: t("aiEdit.toolCalls.completedPlural", {
+												count: toolCallCount,
+											})
+									: t("aiEdit.toolCalls.done", {
+											done: successCount,
+											total: toolCallCount,
+										})}
 							</span>
 						</div>
 						{message.toolCalls?.map((tc, i) => (
@@ -3195,7 +3260,10 @@ function getToolVisual(toolName: string): ToolVisual {
 
 	// Category-based color mapping (icon is overridden per-tool above).
 	const prefix = toolName.split("_")[0] ?? "misc";
-	const categoryColors: Record<string, { color: string; bg: string; border: string; glow: string }> = {
+	const categoryColors: Record<
+		string,
+		{ color: string; bg: string; border: string; glow: string }
+	> = {
 		project: {
 			color: "text-blue-300",
 			bg: "bg-blue-500/10",
@@ -3323,13 +3391,7 @@ function getToolVisual(toolName: string): ToolVisual {
  * Render the structured data portion of a tool result. For view_asset
  * results, show actual image/video thumbnails instead of raw base64 JSON.
  */
-function ToolResultData({
-	name,
-	data,
-}: {
-	name: string;
-	data: unknown;
-}) {
+function ToolResultData({ name, data }: { name: string; data: unknown }) {
 	if (name === "view_asset" && data && typeof data === "object") {
 		const asset = data as {
 			kind?: string;
@@ -3425,7 +3487,12 @@ function ToolCallRow({
 		<motion.div
 			initial={{ opacity: 0, x: -8, scale: 0.95 }}
 			animate={{ opacity: 1, x: 0, scale: 1 }}
-			transition={{ delay: idx * 0.06, type: "spring", stiffness: 300, damping: 24 }}
+			transition={{
+				delay: idx * 0.06,
+				type: "spring",
+				stiffness: 300,
+				damping: 24,
+			}}
 			className={cn(
 				"overflow-hidden rounded-lg border transition-all",
 				visual.border,
@@ -3457,10 +3524,12 @@ function ToolCallRow({
 					/>
 				</div>
 				{/* Tool name */}
-				<span className={cn(
-					"shrink-0 font-mono text-[10px] font-medium",
-					visual.color,
-				)}>
+				<span
+					className={cn(
+						"shrink-0 font-mono text-[10px] font-medium",
+						visual.color,
+					)}
+				>
 					{prettyName}
 				</span>
 				{/* Status indicator */}
@@ -3542,10 +3611,12 @@ function ToolCallRow({
 							<div className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-white/30">
 								{t("aiEdit.toolCalls.result")}
 							</div>
-							<p className={cn(
-								"text-[10px] leading-relaxed",
-								tc.result.ok ? "text-emerald-300/70" : "text-red-300/70",
-							)}>
+							<p
+								className={cn(
+									"text-[10px] leading-relaxed",
+									tc.result.ok ? "text-emerald-300/70" : "text-red-300/70",
+								)}
+							>
 								{tc.result.message}
 							</p>
 						</div>

@@ -28,10 +28,7 @@ import {
 	parseHexAlpha,
 } from "@/utils/color";
 import { useColorPaletteStore } from "@/stores/color-palette-store";
-import {
-	COLOR_PALETTES,
-	GRADIENT_PRESETS,
-} from "@/lib/presets/color-palettes";
+import { COLOR_PALETTES, GRADIENT_PRESETS } from "@/lib/presets/color-palettes";
 
 interface ColorPickerProps {
 	value?: string;
@@ -121,135 +118,94 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 			setInputValue(formatColorValue({ hex: value, format: colorFormat }));
 		}, [value, colorFormat]);
 
-		useEffect(() => {
-			const handleMouseMove = (e: MouseEvent) => {
-				if (!isDragging) return;
+		const handlePointerMove = (
+			e: React.PointerEvent<HTMLButtonElement>,
+			type: "saturation" | "hue" | "opacity" | null = isDragging,
+		) => {
+			if (!type) return;
 
-				if (isDragging === "saturation" && saturationRef.current) {
-					const rect = saturationRef.current.getBoundingClientRect();
-					const x = Math.max(
-						0,
-						Math.min(1, (e.clientX - rect.left) / rect.width),
-					);
-					const y = Math.max(
-						0,
-						Math.min(1, (e.clientY - rect.top) / rect.height),
-					);
-					setSatDrag({ s: x, v: 1 - y });
-					const newHex = appendAlpha({
-						rgbHex: hsvToHex({ h: displayHue, s: x, v: 1 - y }),
-						alpha,
-					});
-					latestDragColorRef.current = newHex;
-					onChange?.(newHex);
-				}
-
-				if (isDragging === "hue" && hueRef.current) {
-					const rect = hueRef.current.getBoundingClientRect();
-					const x = Math.max(
-						0,
-						Math.min(1, (e.clientX - rect.left) / rect.width),
-					);
-					const newH = x * 360;
-					setInternalHue(newH);
-					if (s > 0) {
-						const newHex = appendAlpha({
-							rgbHex: hsvToHex({ h: newH, s, v }),
-							alpha,
-						});
-						latestDragColorRef.current = newHex;
-						onChange?.(newHex);
-					}
-				}
-
-				if (isDragging === "opacity" && opacityRef.current) {
-					const rect = opacityRef.current.getBoundingClientRect();
-					const x = Math.max(
-						0,
-						Math.min(1, (e.clientX - rect.left) / rect.width),
-					);
-					const newHex = appendAlpha({ rgbHex: rgbValue, alpha: x });
-					latestDragColorRef.current = newHex;
-					onChange?.(newHex);
-				}
-			};
-
-			const handleMouseUp = () => {
-				if (latestDragColorRef.current !== null) {
-					addRecentColor(latestDragColorRef.current);
-					onChangeEnd?.(latestDragColorRef.current);
-					latestDragColorRef.current = null;
-				}
-				setIsDragging(null);
-				setSatDrag(null);
-			};
-
-			if (isDragging) {
-				document.addEventListener("mousemove", handleMouseMove);
-				document.addEventListener("mouseup", handleMouseUp);
-				return () => {
-					document.removeEventListener("mousemove", handleMouseMove);
-					document.removeEventListener("mouseup", handleMouseUp);
-				};
-			}
-		}, [
-			isDragging,
-			displayHue,
-			s,
-			v,
-			alpha,
-			rgbValue,
-			onChange,
-			onChangeEnd,
-			addRecentColor,
-		]);
-
-		const handleSaturationMouseDown = (e: React.MouseEvent) => {
-			e.preventDefault();
-			const saturationElement = saturationRef.current;
-			if (!saturationElement) return;
-			setIsDragging("saturation");
-			const rect = saturationElement.getBoundingClientRect();
+			const target = e.currentTarget as HTMLButtonElement;
+			const rect = target.getBoundingClientRect();
 			const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 			const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-			setSatDrag({ s: x, v: 1 - y });
-			const newHex = appendAlpha({
-				rgbHex: hsvToHex({ h: displayHue, s: x, v: 1 - y }),
-				alpha,
-			});
-			latestDragColorRef.current = newHex;
-			onChange?.(newHex);
-		};
 
-		const handleHueMouseDown = (e: React.MouseEvent) => {
-			e.preventDefault();
-			const hueElement = hueRef.current;
-			if (!hueElement) return;
-			setIsDragging("hue");
-			const rect = hueElement.getBoundingClientRect();
-			const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-			const newH = x * 360;
-			setInternalHue(newH);
-			if (s > 0) {
+			if (type === "saturation") {
+				setSatDrag({ s: x, v: 1 - y });
 				const newHex = appendAlpha({
-					rgbHex: hsvToHex({ h: newH, s, v }),
+					rgbHex: hsvToHex({ h: displayHue, s: x, v: 1 - y }),
 					alpha,
 				});
 				latestDragColorRef.current = newHex;
 				onChange?.(newHex);
 			}
+
+			if (type === "hue") {
+				const newH = x * 360;
+				setInternalHue(newH);
+				if (s > 0) {
+					const newHex = appendAlpha({
+						rgbHex: hsvToHex({ h: newH, s, v }),
+						alpha,
+					});
+					latestDragColorRef.current = newHex;
+					onChange?.(newHex);
+				}
+			}
+
+			if (type === "opacity") {
+				const newHex = appendAlpha({ rgbHex: rgbValue, alpha: x });
+				latestDragColorRef.current = newHex;
+				onChange?.(newHex);
+			}
 		};
 
-		const handleOpacityMouseDown = (e: React.MouseEvent) => {
+		const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+			const target = e.currentTarget as HTMLButtonElement;
+			if (target.hasPointerCapture?.(e.pointerId)) {
+				target.releasePointerCapture(e.pointerId);
+			}
+
+			if (latestDragColorRef.current !== null) {
+				addRecentColor(latestDragColorRef.current);
+				onChangeEnd?.(latestDragColorRef.current);
+				latestDragColorRef.current = null;
+			}
+			setIsDragging(null);
+			setSatDrag(null);
+		};
+
+		const handleSaturationPointerDown = (
+			e: React.PointerEvent<HTMLButtonElement>,
+		) => {
 			e.preventDefault();
-			const opacityElement = opacityRef.current;
-			if (!opacityElement) return;
+			const target = e.currentTarget as HTMLButtonElement;
+			if (e.pointerId !== undefined && "setPointerCapture" in target) {
+				target.setPointerCapture(e.pointerId);
+			}
+			setIsDragging("saturation");
+			handlePointerMove(e, "saturation");
+		};
+
+		const handleHuePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+			e.preventDefault();
+			const target = e.currentTarget as HTMLButtonElement;
+			if (e.pointerId !== undefined && "setPointerCapture" in target) {
+				target.setPointerCapture(e.pointerId);
+			}
+			setIsDragging("hue");
+			handlePointerMove(e, "hue");
+		};
+
+		const handleOpacityPointerDown = (
+			e: React.PointerEvent<HTMLButtonElement>,
+		) => {
+			e.preventDefault();
+			const target = e.currentTarget as HTMLButtonElement;
+			if (e.pointerId !== undefined && "setPointerCapture" in target) {
+				target.setPointerCapture(e.pointerId);
+			}
 			setIsDragging("opacity");
-			const rect = opacityElement.getBoundingClientRect();
-			const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-			const newHex = appendAlpha({ rgbHex: rgbValue, alpha: x });
-			latestDragColorRef.current = newHex;
-			onChange?.(newHex);
+			handlePointerMove(e, "opacity");
 		};
 
 		const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,16 +375,15 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							</PopoverClose>
 						</div>
 					</header>
-					<div
-						className="px-2 flex flex-col gap-3"
-						hidden={mode !== "custom"}
-					>
+					<div className="px-2 flex flex-col gap-3" hidden={mode !== "custom"}>
 						<button
 							ref={saturationRef}
 							className="relative h-44 aspect-square w-full appearance-none border-0 bg-transparent p-0"
 							style={saturationStyle}
 							type="button"
-							onMouseDown={handleSaturationMouseDown}
+							onPointerDown={handleSaturationPointerDown}
+							onPointerMove={handlePointerMove}
+							onPointerUp={handlePointerUp}
 						>
 							<ColorCircle
 								size="sm"
@@ -445,7 +400,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							className="relative h-4 w-full rounded-lg appearance-none border-0 bg-transparent p-0"
 							style={hueStyle}
 							type="button"
-							onMouseDown={handleHueMouseDown}
+							onPointerDown={handleHuePointerDown}
+							onPointerMove={handlePointerMove}
+							onPointerUp={handlePointerUp}
 						>
 							<ColorCircle
 								size="md"
@@ -460,7 +417,9 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 							ref={opacityRef}
 							className="relative h-4 w-full overflow-hidden rounded-lg appearance-none border-0 p-0"
 							type="button"
-							onMouseDown={handleOpacityMouseDown}
+							onPointerDown={handleOpacityPointerDown}
+							onPointerMove={handlePointerMove}
+							onPointerUp={handlePointerUp}
 						>
 							<div
 								className="absolute inset-0 dark:invert"
@@ -529,10 +488,7 @@ const ColorPicker = forwardRef<HTMLDivElement, ColorPickerProps>(
 									onSelect={selectSwatch}
 								/>
 							))}
-							<div
-								className="flex flex-col gap-1.5"
-								hidden={!allowGradient}
-							>
+							<div className="flex flex-col gap-1.5" hidden={!allowGradient}>
 								<span className="text-muted-foreground text-[0.7rem] font-medium">
 									Gradients
 								</span>

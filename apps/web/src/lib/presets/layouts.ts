@@ -182,7 +182,9 @@ export function resolveLayoutSlots(
 			}
 		}
 	} else {
-		throw new Error(`resolveLayoutSlots: unknown mode ${preset.mode as string}`);
+		throw new Error(
+			`resolveLayoutSlots: unknown mode ${preset.mode as string}`,
+		);
 	}
 
 	// Apply inner padding: shrink each slot by `padding` on all sides.
@@ -378,6 +380,10 @@ export const BUILTIN_LAYOUT_PRESETS: LayoutPreset[] = [
 	},
 ];
 
-export function getBuiltinLayoutPreset({ id }: { id: string }): LayoutPreset | null {
+export function getBuiltinLayoutPreset({
+	id,
+}: {
+	id: string;
+}): LayoutPreset | null {
 	return BUILTIN_LAYOUT_PRESETS.find((preset) => preset.id === id) ?? null;
 }

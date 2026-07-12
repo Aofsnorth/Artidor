@@ -66,8 +66,8 @@ export function TakeoverPermissionCard() {
 					{/* Body */}
 					<div className="mt-3 space-y-1.5">
 						<p className="text-[0.78rem] leading-relaxed text-white/55">
-							Arth will perform editing actions on your timeline,
-							preview, and properties.
+							Arth will perform editing actions on your timeline, preview, and
+							properties.
 						</p>
 						<ul className="space-y-1 text-[0.72rem] text-white/45">
 							<li className="flex items-start gap-1.5">

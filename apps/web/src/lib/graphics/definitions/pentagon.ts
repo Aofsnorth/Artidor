@@ -9,14 +9,15 @@ const PENTAGON_PARAMS: ParamDefinition[] = [FILL_PARAM, ...STROKE_PARAMS];
 export const pentagonGraphicDefinition: GraphicDefinition = {
 	id: "pentagon",
 	name: "Pentagon",
-	keywords: ['pentagon'],
+	keywords: ["pentagon"],
 	params: PENTAGON_PARAMS,
 	render({ ctx, params, width, height }) {
-		const { fill, stroke, strokeWidth, strokeAlign, inset } = readShapeBaseStyle(params);
-		
+		const { fill, stroke, strokeWidth, strokeAlign, inset } =
+			readShapeBaseStyle(params);
+
 		ctx.clearRect(0, 0, width, height);
 		const path = new Path2D();
-		
+
 		const cx = width / 2;
 		const cy = height / 2;
 		const rx = Math.max(1, width / 2 - inset);
@@ -29,7 +30,7 @@ export const pentagonGraphicDefinition: GraphicDefinition = {
 			else path.lineTo(x, y);
 		}
 		path.closePath();
-		
+
 		fillShapePath({ ctx, path, fill, width, height });
 
 		if (strokeWidth > 0) {

@@ -51,7 +51,10 @@ export async function POST(
 		args: body.args,
 	});
 	if (!command) {
-		return Response.json({ error: "Room or collaborator not found" }, { status: 404 });
+		return Response.json(
+			{ error: "Room or collaborator not found" },
+			{ status: 404 },
+		);
 	}
 	return Response.json({ ok: true });
 }

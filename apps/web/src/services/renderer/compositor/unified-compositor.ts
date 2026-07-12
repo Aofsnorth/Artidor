@@ -82,7 +82,10 @@ class UnifiedCompositor {
 		try {
 			await this.renderNative(frame);
 		} catch (err) {
-			console.warn("[compositor] native render failed, falling back to WASM:", err);
+			console.warn(
+				"[compositor] native render failed, falling back to WASM:",
+				err,
+			);
 			wasmCompositor.render(frame);
 		}
 	}

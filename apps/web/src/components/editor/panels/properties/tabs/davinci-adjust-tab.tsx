@@ -179,7 +179,7 @@ export function DavinciAdjustTab({
 	);
 
 	return (
-		<div className="flex flex-col">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
 			<PrimaryWheelsSection element={element} get={get} setParams={setParams} />
 			<PrimaryBarsSection element={element} get={get} setNum={setNum} />
 			<CurvesSection element={element} get={get} setParams={setParams} />
@@ -213,7 +213,12 @@ function PrimaryWheelsSection({
 		{ id: "offset", label: "Offset" },
 	] as const;
 	return (
-		<Section collapsible defaultOpen sectionKey={`${element.id}:dv:wheels`}>
+		<Section
+			card
+			collapsible
+			defaultOpen
+			sectionKey={`${element.id}:dv:wheels`}
+		>
 			<SectionHeader
 				trailing={
 					<button
@@ -621,7 +626,7 @@ function PrimaryBarsSection({
 		},
 	];
 	return (
-		<Section collapsible defaultOpen sectionKey={`${element.id}:dv:bars`}>
+		<Section card collapsible defaultOpen sectionKey={`${element.id}:dv:bars`}>
 			<SectionHeader>
 				<SectionTitle>Primary Bars</SectionTitle>
 			</SectionHeader>
@@ -668,7 +673,7 @@ function CurvesSection({
 		{ key: "curve_b", label: "Blue", color: "rgba(59,130,246,0.9)" },
 	] as const;
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:curves`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:curves`}>
 			<SectionHeader>
 				<SectionTitle>Curves</SectionTitle>
 			</SectionHeader>
@@ -860,7 +865,7 @@ function HslSecondarySection({
 		{ key: "qual_high", label: "High" },
 	];
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:hsl`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:hsl`}>
 			<SectionHeader>
 				<SectionTitle>HSL Secondary</SectionTitle>
 			</SectionHeader>
@@ -938,7 +943,7 @@ function QualifierSection({
 		{ key: "qual_low_softness", label: "Low Softness" },
 	];
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:qualifier`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:qualifier`}>
 			<SectionHeader>
 				<SectionTitle>Qualifier</SectionTitle>
 			</SectionHeader>
@@ -1005,7 +1010,7 @@ function VignetteSection({
 		{ key: "vig_shadow", label: "Shadow", min: -1, max: 1 },
 	];
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:vignette`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:vignette`}>
 			<SectionHeader>
 				<SectionTitle>Vignette</SectionTitle>
 			</SectionHeader>
@@ -1052,7 +1057,7 @@ function SharpenBlurSection({
 		{ key: "defog", label: "Defog", min: 0, max: 1 },
 	];
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:sharpen-blur`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:sharpen-blur`}>
 			<SectionHeader>
 				<SectionTitle>Sharpening & Blur</SectionTitle>
 			</SectionHeader>
@@ -1100,7 +1105,7 @@ function GlowGrainSection({
 		{ key: "grain_amount", label: "Grain Amount", min: 0, max: 1 },
 	];
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:glow-grain`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:glow-grain`}>
 			<SectionHeader>
 				<SectionTitle>Glow / Halation / Grain</SectionTitle>
 			</SectionHeader>
@@ -1139,7 +1144,7 @@ function LutSection({
 	const lut = String(get("lut") ?? "none");
 	const intensity = num(get("lut_intensity"), 100);
 	return (
-		<Section collapsible sectionKey={`${element.id}:dv:lut`}>
+		<Section card collapsible sectionKey={`${element.id}:dv:lut`}>
 			<SectionHeader>
 				<SectionTitle>LUTs</SectionTitle>
 			</SectionHeader>

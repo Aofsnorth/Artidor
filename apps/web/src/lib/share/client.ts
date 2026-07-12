@@ -70,7 +70,9 @@ export async function createShare({
 	return (await res.json()) as CreateShareResult;
 }
 
-export async function fetchShareMeta(shareId: string): Promise<ShareMeta | null> {
+export async function fetchShareMeta(
+	shareId: string,
+): Promise<ShareMeta | null> {
 	const res = await fetch(`/api/share/${encodeURIComponent(shareId)}`, {
 		method: "GET",
 	});
@@ -86,14 +88,11 @@ export async function unlockShare({
 	shareId: string;
 	password?: string;
 }): Promise<SharePayload> {
-	const res = await fetch(
-		`/api/share/${encodeURIComponent(shareId)}/unlock`,
-		{
-			method: "POST",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({ password: password || undefined }),
-		},
-	);
+	const res = await fetch(`/api/share/${encodeURIComponent(shareId)}/unlock`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ password: password || undefined }),
+	});
 	if (res.status === 401) {
 		throw new Error("invalid_password");
 	}

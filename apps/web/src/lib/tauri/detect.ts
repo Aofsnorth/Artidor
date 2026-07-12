@@ -38,8 +38,7 @@ export function isTauri(): boolean {
 		| typeof globalThis
 		| (Window & typeof globalThis)
 		| (WorkerGlobalScope & typeof globalThis);
-	cachedIsTauri =
-		"__TAURI_INTERNALS__" in g || "__TAURI__" in g;
+	cachedIsTauri = "__TAURI_INTERNALS__" in g || "__TAURI__" in g;
 
 	return cachedIsTauri;
 }

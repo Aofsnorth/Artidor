@@ -170,7 +170,9 @@ export class AnthropicProvider implements LLMProvider {
 		}
 		// Convert content parts to Anthropic's format. Image_url parts
 		// (data URLs) are converted to Anthropic's base64 image blocks.
-		const parts = Array.isArray(m.content) ? m.content : [{ type: "text" as const, text: m.content }];
+		const parts = Array.isArray(m.content)
+			? m.content
+			: [{ type: "text" as const, text: m.content }];
 		const content = parts.map((p) => {
 			if (p.type === "text") {
 				return { type: "text", text: p.text };
@@ -180,7 +182,10 @@ export class AnthropicProvider implements LLMProvider {
 				// manager only sends video_url parts to video-capable
 				// models (Gemini), so this branch is a defensive fallback
 				// — it should not normally be reached for Claude models.
-				return { type: "text", text: `[video attached — Anthropic models cannot view video. Use a Gemini model for video analysis.]` };
+				return {
+					type: "text",
+					text: `[video attached — Anthropic models cannot view video. Use a Gemini model for video analysis.]`,
+				};
 			}
 			// image_url → Anthropic base64 image block.
 			const url = p.image_url.url;

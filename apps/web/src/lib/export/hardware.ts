@@ -34,7 +34,9 @@ export async function detectHardware(): Promise<HardwareInfo> {
 			? navigator.hardwareConcurrency
 			: 4;
 
-	const navigatorDeviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+	const navigatorDeviceMemory = (
+		navigator as Navigator & { deviceMemory?: number }
+	).deviceMemory;
 	const deviceMemoryGb =
 		typeof navigator !== "undefined" && navigatorDeviceMemory
 			? navigatorDeviceMemory
@@ -47,25 +49,31 @@ export async function detectHardware(): Promise<HardwareInfo> {
 			if (adapter) {
 				// requestAdapterInfo() is the older API; adapter.info is the
 				// newer property. Try both for cross-browser compatibility.
-				const info = await (adapter as GPUAdapter & {
-					requestAdapterInfo?: () => Promise<{
-						description?: string;
-						vendor?: string;
-						architecture?: string;
-					}>;
-					info?: {
-						description?: string;
-						vendor?: string;
-						architecture?: string;
-					};
-				}).requestAdapterInfo?.();
-				const adapterInfo = info ?? (adapter as GPUAdapter & {
-					info?: {
-						description?: string;
-						vendor?: string;
-						architecture?: string;
-					};
-				}).info;
+				const info = await (
+					adapter as GPUAdapter & {
+						requestAdapterInfo?: () => Promise<{
+							description?: string;
+							vendor?: string;
+							architecture?: string;
+						}>;
+						info?: {
+							description?: string;
+							vendor?: string;
+							architecture?: string;
+						};
+					}
+				).requestAdapterInfo?.();
+				const adapterInfo =
+					info ??
+					(
+						adapter as GPUAdapter & {
+							info?: {
+								description?: string;
+								vendor?: string;
+								architecture?: string;
+							};
+						}
+					).info;
 				if (adapterInfo) {
 					gpuAdapter = {
 						description: adapterInfo.description || "Unknown GPU",

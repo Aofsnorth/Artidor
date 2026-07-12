@@ -211,9 +211,7 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 		numericRange: { min: -360, max: 360, step: 1 },
 		supportsElement: ({ element }) => isVisualElement(element),
 		getValue: ({ element }) =>
-			isVisualElement(element)
-				? (element.transform3d?.rotateX ?? 0)
-				: null,
+			isVisualElement(element) ? (element.transform3d?.rotateX ?? 0) : null,
 		setValue: ({ element, value }) =>
 			isVisualElement(element)
 				? {
@@ -231,9 +229,7 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 		numericRange: { min: -360, max: 360, step: 1 },
 		supportsElement: ({ element }) => isVisualElement(element),
 		getValue: ({ element }) =>
-			isVisualElement(element)
-				? (element.transform3d?.rotateY ?? 0)
-				: null,
+			isVisualElement(element) ? (element.transform3d?.rotateY ?? 0) : null,
 		setValue: ({ element, value }) =>
 			isVisualElement(element)
 				? {
@@ -424,7 +420,10 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 			supportsMediaGraphicStyle(element)
 				? {
 						...element,
-						graphicStyle: { ...element.graphicStyle, fillColor: value as string },
+						graphicStyle: {
+							...element.graphicStyle,
+							fillColor: value as string,
+						},
 					}
 				: element,
 	},
@@ -439,7 +438,10 @@ const ANIMATION_PROPERTY_REGISTRY: Record<
 			supportsMediaGraphicStyle(element)
 				? {
 						...element,
-						graphicStyle: { ...element.graphicStyle, fillOpacity: value as number },
+						graphicStyle: {
+							...element.graphicStyle,
+							fillOpacity: value as number,
+						},
 					}
 				: element,
 	}),

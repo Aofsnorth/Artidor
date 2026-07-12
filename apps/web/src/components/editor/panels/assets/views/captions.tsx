@@ -23,6 +23,7 @@ import type {
 	TranscriptionProgress,
 } from "@/lib/transcription/types";
 import { transcriptionService } from "@/services/transcription/service";
+import { getOrderedTracks } from "@/lib/timeline";
 import {
 	DEFAULT_TRANSCRIPTION_MODEL,
 	TRANSCRIPTION_MODELS,
@@ -184,7 +185,9 @@ export function Captions() {
 				onProgress: (progress) =>
 					dispatch({
 						type: "update_step",
-						step: t("captions.step.extractAudioProgress", { progress: Math.round(progress) }),
+						step: t("captions.step.extractAudioProgress", {
+							progress: Math.round(progress),
+						}),
 					}),
 			});
 
@@ -195,7 +198,10 @@ export function Captions() {
 			});
 
 			if (samples.length === 0) {
-				dispatch({ type: "fail", error: t("captions.error.noAudioInTimeline") });
+				dispatch({
+					type: "fail",
+					error: t("captions.error.noAudioInTimeline"),
+				});
 				return;
 			}
 
@@ -206,11 +212,17 @@ export function Captions() {
 				onProgress: handleProgress,
 			});
 
-			dispatch({ type: "update_step", step: t("captions.step.generateCaptions") });
+			dispatch({
+				type: "update_step",
+				step: t("captions.step.generateCaptions"),
+			});
 			const captionChunks = buildCaptionChunks({ segments: result.segments });
 
 			if (!insertCaptions({ captions: captionChunks })) {
-				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
+				dispatch({
+					type: "fail",
+					error: t("captions.error.noCaptionsGenerated"),
+				});
 				return;
 			}
 
@@ -272,7 +284,10 @@ export function Captions() {
 				onProgress: handleProgress,
 			});
 
-			dispatch({ type: "update_step", step: t("captions.step.generateCaptions") });
+			dispatch({
+				type: "update_step",
+				step: t("captions.step.generateCaptions"),
+			});
 			const rawChunks = buildCaptionChunks({ segments: result.segments });
 			const offsetSeconds = selectedElement.startTime / TICKS_PER_SECOND;
 			const captionChunks = rawChunks.map((chunk) => ({
@@ -281,7 +296,10 @@ export function Captions() {
 			}));
 
 			if (!insertCaptions({ captions: captionChunks })) {
-				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
+				dispatch({
+					type: "fail",
+					error: t("captions.error.noCaptionsGenerated"),
+				});
 				return;
 			}
 
@@ -321,17 +339,26 @@ export function Captions() {
 				return;
 			}
 
-			dispatch({ type: "update_step", step: t("captions.step.importSubtitles") });
+			dispatch({
+				type: "update_step",
+				step: t("captions.step.importSubtitles"),
+			});
 
 			if (!insertCaptions({ captions: result.captions })) {
-				dispatch({ type: "fail", error: t("captions.error.noCaptionsGenerated") });
+				dispatch({
+					type: "fail",
+					error: t("captions.error.noCaptionsGenerated"),
+				});
 				return;
 			}
 
 			const nextWarnings = [...result.warnings];
 			if (result.skippedCueCount > 0) {
 				nextWarnings.unshift(
-					t("captions.warning.importedWithSkipped", { count: result.captions.length, skipped: result.skippedCueCount }),
+					t("captions.warning.importedWithSkipped", {
+						count: result.captions.length,
+						skipped: result.skippedCueCount,
+					}),
 				);
 			}
 
@@ -382,15 +409,16 @@ export function Captions() {
 
 	// Subscribe to the stable track reference. Deriving cue objects inside the
 	// selector would produce a fresh snapshot on every store read.
-	const captionTrack = useEditor(
-		(e) =>
-			e.scenes
-				.getActiveSceneOrNull()
-				?.tracks.overlay.find(
-					(track): track is TextTrack =>
-						track.type === "text" && track.name === CAPTION_TRACK_NAME,
-				) ?? null,
-	);
+	const captionTrack = useEditor((e) => {
+		const scene = e.scenes.getActiveSceneOrNull();
+		if (!scene) return null;
+		return (
+			getOrderedTracks(scene.tracks).find(
+				(track): track is TextTrack =>
+					track.type === "text" && track.name === CAPTION_TRACK_NAME,
+			) ?? null
+		);
+	});
 	const captionCues = useMemo(
 		() =>
 			captionTrack
@@ -516,10 +544,14 @@ export function Captions() {
 								onValueChange={(value) => handleLanguageChange({ value })}
 							>
 								<SelectTrigger>
-									<SelectValue placeholder={t("captions.languagePlaceholder")} />
+									<SelectValue
+										placeholder={t("captions.languagePlaceholder")}
+									/>
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="auto">{t("captions.autoDetect")}</SelectItem>
+									<SelectItem value="auto">
+										{t("captions.autoDetect")}
+									</SelectItem>
 									{TRANSCRIPTION_LANGUAGES.map((language) => (
 										<SelectItem key={language.code} value={language.code}>
 											{language.name}
@@ -573,8 +605,10 @@ export function Captions() {
 								<>
 									<Progress value={processing.progress} />
 									<p className="text-muted-foreground text-xs">
-										{t("captions.downloadProgress", { progress: Math.round(processing.progress), seconds: elapsedLabel })}
-										
+										{t("captions.downloadProgress", {
+											progress: Math.round(processing.progress),
+											seconds: elapsedLabel,
+										})}
 									</p>
 								</>
 							)}

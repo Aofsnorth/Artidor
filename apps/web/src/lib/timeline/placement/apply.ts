@@ -13,7 +13,24 @@ import type {
 import { generateUUID } from "@/utils/id";
 import { buildEmptyTrack } from "./track-factory";
 import type { PlacementResult } from "./types";
-import { updateTrackInSceneTracks } from "@/lib/timeline/track-element-update";
+import {
+	findTrackInSceneTracks,
+	updateTrackInSceneTracks,
+} from "@/lib/timeline/track-element-update";
+
+const MAIN_TRACK_COUNT = 1;
+
+function getMainTrackIndex(tracks: SceneTracks): number {
+	return tracks.overlay.length;
+}
+
+function getOverlayAfterStartIndex(tracks: SceneTracks): number {
+	return getMainTrackIndex(tracks) + MAIN_TRACK_COUNT;
+}
+
+function getAudioStartIndex(tracks: SceneTracks): number {
+	return getOverlayAfterStartIndex(tracks) + tracks.overlayAfter.length;
+}
 
 export function applyPlacement({
 	tracks,
@@ -26,9 +43,11 @@ export function applyPlacement({
 	elements: TimelineElement[];
 	newTrackInsertIndexOverride?: number;
 }): { updatedTracks: SceneTracks; targetTrackId: string } | null {
-	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
 	if (placementResult.kind === "existingTrack") {
-		const targetTrack = orderedTracks[placementResult.trackIndex];
+		const targetTrack = findTrackInSceneTracks({
+			tracks,
+			trackId: placementResult.trackId,
+		});
 		if (!targetTrack) {
 			return null;
 		}
@@ -61,22 +80,19 @@ export function applyPlacement({
 						}),
 					}),
 				}
-			: {
-					...tracks,
-					overlay: insertIntoOverlayTracks({
-						tracks,
-						insertIndex,
-						track: buildPlacedOverlayTrack({
-							id: newTrackId,
-							type: placementResult.trackType,
-							elements,
-						}),
+			: insertIntoOverlayOrOverlayAfter({
+					tracks,
+					insertIndex,
+					track: buildPlacedOverlayTrack({
+						id: newTrackId,
+						type: placementResult.trackType,
+						elements,
 					}),
-				};
+				});
 	return { updatedTracks, targetTrackId: newTrackId };
 }
 
-function insertIntoOverlayTracks({
+function insertIntoOverlayOrOverlayAfter({
 	tracks,
 	insertIndex,
 	track,
@@ -84,14 +100,39 @@ function insertIntoOverlayTracks({
 	tracks: SceneTracks;
 	insertIndex: number;
 	track: OverlayTrack;
-}): OverlayTrack[] {
-	const normalizedInsertIndex = Math.max(
+}): SceneTracks {
+	const mainTrackIndex = getMainTrackIndex(tracks);
+
+	if (insertIndex <= mainTrackIndex) {
+		const overlayInsertIndex = Math.max(
+			0,
+			Math.min(insertIndex, tracks.overlay.length),
+		);
+		return {
+			...tracks,
+			overlay: [
+				...tracks.overlay.slice(0, overlayInsertIndex),
+				track,
+				...tracks.overlay.slice(overlayInsertIndex),
+			],
+		};
+	}
+
+	const overlayAfterInsertIndex = Math.max(
 		0,
-		Math.min(insertIndex, tracks.overlay.length),
+		Math.min(
+			insertIndex - getOverlayAfterStartIndex(tracks),
+			tracks.overlayAfter.length,
+		),
 	);
-	const nextTracks = [...tracks.overlay];
-	nextTracks.splice(normalizedInsertIndex, 0, track);
-	return nextTracks;
+	return {
+		...tracks,
+		overlayAfter: [
+			...tracks.overlayAfter.slice(0, overlayAfterInsertIndex),
+			track,
+			...tracks.overlayAfter.slice(overlayAfterInsertIndex),
+		],
+	};
 }
 
 function insertIntoAudioTracks({
@@ -105,7 +146,7 @@ function insertIntoAudioTracks({
 }): AudioTrack[] {
 	const audioInsertIndex = Math.max(
 		0,
-		Math.min(insertIndex - tracks.overlay.length - 1, tracks.audio.length),
+		Math.min(insertIndex - getAudioStartIndex(tracks), tracks.audio.length),
 	);
 	const nextTracks = [...tracks.audio];
 	nextTracks.splice(audioInsertIndex, 0, track);

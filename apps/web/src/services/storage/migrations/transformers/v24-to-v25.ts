@@ -61,6 +61,16 @@ function migrateScene({ scene }: { scene: unknown }): unknown {
 		nextTracks.overlay = tracks.overlay.map((track) => migrateTrack({ track }));
 	}
 
+	if (Array.isArray(tracks.overlay) && !Array.isArray(tracks.overlayAfter)) {
+		nextTracks.overlayAfter = [];
+	}
+
+	if (Array.isArray(tracks.overlayAfter)) {
+		nextTracks.overlayAfter = tracks.overlayAfter.map((track) =>
+			migrateTrack({ track }),
+		);
+	}
+
 	if (Array.isArray(tracks.audio)) {
 		nextTracks.audio = tracks.audio.map((track) => migrateTrack({ track }));
 	}

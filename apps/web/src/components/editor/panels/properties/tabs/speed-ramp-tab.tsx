@@ -177,143 +177,153 @@ export function SpeedRampTab({
 	};
 
 	return (
-		<Section
-			collapsible
-			sectionKey={`${element.id}:speed-ramp`}
-			defaultOpen={enabled}
-		>
-			<SectionHeader
-				trailing={
-					<div className="flex items-center gap-2">
+		<div className="flex flex-col gap-3 px-3.5 py-3">
+			<Section
+				card
+				collapsible
+				sectionKey={`${element.id}:speed-ramp`}
+				defaultOpen={enabled}
+			>
+				<SectionHeader
+					trailing={
+						<div className="flex items-center gap-2">
+							<Button
+								size="sm"
+								variant="ghost"
+								className="h-7 px-2 text-xs"
+								disabled={!enabled}
+								onClick={commit}
+							>
+								Done
+							</Button>
+							<Switch checked={enabled} onCheckedChange={onToggleEnabled} />
+						</div>
+					}
+				>
+					<SectionTitle>Speed Ramp</SectionTitle>
+				</SectionHeader>
+				<SectionContent
+					className={cn(!enabled && "pointer-events-none opacity-50")}
+				>
+					<SectionFields>
+						<SectionField label="Preset">
+							<Select onValueChange={applyPreset}>
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Choose preset" />
+								</SelectTrigger>
+								<SelectContent>
+									{SPEED_RAMP_PRESETS.map((p) => (
+										<SelectItem key={p.id} value={p.id}>
+											{p.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</SectionField>
+
+						<CurvePreview
+							curve={localCurve}
+							onPointMove={(index, time, speed) => {
+								updatePoint(index, { time, speed });
+							}}
+							onPointAdd={(time, speed) => {
+								const nextCurve = normalizeCurve([
+									...localCurve,
+									{ time, speed },
+								]);
+								setLocalCurve(nextCurve);
+								updateRetime(nextCurve, true);
+							}}
+							onPointRemove={(index) => removePoint(index)}
+						/>
+
+						<div className="space-y-2">
+							{localCurve.map((point, i) => (
+								<div
+									key={`${point.time}-${point.speed}`}
+									className="rounded-lg border border-white/10 bg-white/[0.03] p-2"
+								>
+									<div className="mb-2 flex items-center justify-between gap-2">
+										<span className="text-xs font-medium">Point {i + 1}</span>
+										<div className="flex items-center gap-2 text-xs text-muted-foreground">
+											<span className="tabular-nums">
+												{Math.round(point.time * 100)}%
+											</span>
+											<span className="tabular-nums text-foreground">
+												{point.speed.toFixed(2)}x
+											</span>
+											<Button
+												variant="ghost"
+												size="icon"
+												className="size-6"
+												onClick={() => removePoint(i)}
+												disabled={localCurve.length <= 2}
+											>
+												<HugeiconsIcon
+													icon={Delete02Icon}
+													className="size-3.5"
+												/>
+											</Button>
+										</div>
+									</div>
+									<label
+										className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
+										htmlFor={`speed-point-${i}-position`}
+									>
+										Position
+									</label>
+									<input
+										id={`speed-point-${i}-position`}
+										type="range"
+										min={0}
+										max={1}
+										step={0.01}
+										value={point.time}
+										disabled={i === 0 || i === localCurve.length - 1}
+										onChange={(e) =>
+											updatePoint(i, {
+												time: Number.parseFloat(e.target.value),
+											})
+										}
+										className="mb-2 w-full"
+									/>
+									<label
+										className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
+										htmlFor={`speed-point-${i}-speed`}
+									>
+										Speed
+									</label>
+									<input
+										id={`speed-point-${i}-speed`}
+										type="range"
+										min={0.05}
+										max={5}
+										step={0.05}
+										value={point.speed}
+										onChange={(e) =>
+											updatePoint(i, {
+												speed: Number.parseFloat(e.target.value),
+											})
+										}
+										className="w-full"
+									/>
+								</div>
+							))}
+						</div>
+
 						<Button
 							size="sm"
-							variant="ghost"
-							className="h-7 px-2 text-xs"
-							disabled={!enabled}
-							onClick={commit}
+							variant="secondary"
+							onClick={addPoint}
+							className="w-full"
 						>
-							Done
+							<HugeiconsIcon icon={PlusSignIcon} className="size-3.5 mr-1.5" />
+							Add Keyframe
 						</Button>
-						<Switch checked={enabled} onCheckedChange={onToggleEnabled} />
-					</div>
-				}
-			>
-				<SectionTitle>Speed Ramp</SectionTitle>
-			</SectionHeader>
-			<SectionContent
-				className={cn(!enabled && "pointer-events-none opacity-50")}
-			>
-				<SectionFields>
-					<SectionField label="Preset">
-						<Select onValueChange={applyPreset}>
-							<SelectTrigger className="w-full">
-								<SelectValue placeholder="Choose preset" />
-							</SelectTrigger>
-							<SelectContent>
-								{SPEED_RAMP_PRESETS.map((p) => (
-									<SelectItem key={p.id} value={p.id}>
-										{p.name}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</SectionField>
-
-					<CurvePreview
-						curve={localCurve}
-						onPointMove={(index, time, speed) => {
-							updatePoint(index, { time, speed });
-						}}
-						onPointAdd={(time, speed) => {
-							const nextCurve = normalizeCurve([
-								...localCurve,
-								{ time, speed },
-							]);
-							setLocalCurve(nextCurve);
-							updateRetime(nextCurve, true);
-						}}
-						onPointRemove={(index) => removePoint(index)}
-					/>
-
-					<div className="space-y-2">
-						{localCurve.map((point, i) => (
-							<div
-								key={`${point.time}-${point.speed}`}
-								className="rounded-lg border border-white/10 bg-white/[0.03] p-2"
-							>
-								<div className="mb-2 flex items-center justify-between gap-2">
-									<span className="text-xs font-medium">Point {i + 1}</span>
-									<div className="flex items-center gap-2 text-xs text-muted-foreground">
-										<span className="tabular-nums">
-											{Math.round(point.time * 100)}%
-										</span>
-										<span className="tabular-nums text-foreground">
-											{point.speed.toFixed(2)}x
-										</span>
-										<Button
-											variant="ghost"
-											size="icon"
-											className="size-6"
-											onClick={() => removePoint(i)}
-											disabled={localCurve.length <= 2}
-										>
-											<HugeiconsIcon icon={Delete02Icon} className="size-3.5" />
-										</Button>
-									</div>
-								</div>
-								<label
-									className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
-									htmlFor={`speed-point-${i}-position`}
-								>
-									Position
-								</label>
-								<input
-									id={`speed-point-${i}-position`}
-									type="range"
-									min={0}
-									max={1}
-									step={0.01}
-									value={point.time}
-									disabled={i === 0 || i === localCurve.length - 1}
-									onChange={(e) =>
-										updatePoint(i, { time: Number.parseFloat(e.target.value) })
-									}
-									className="mb-2 w-full"
-								/>
-								<label
-									className="mb-1 block text-[0.65rem] uppercase tracking-[0.16em] text-muted-foreground"
-									htmlFor={`speed-point-${i}-speed`}
-								>
-									Speed
-								</label>
-								<input
-									id={`speed-point-${i}-speed`}
-									type="range"
-									min={0.05}
-									max={5}
-									step={0.05}
-									value={point.speed}
-									onChange={(e) =>
-										updatePoint(i, { speed: Number.parseFloat(e.target.value) })
-									}
-									className="w-full"
-								/>
-							</div>
-						))}
-					</div>
-
-					<Button
-						size="sm"
-						variant="secondary"
-						onClick={addPoint}
-						className="w-full"
-					>
-						<HugeiconsIcon icon={PlusSignIcon} className="size-3.5 mr-1.5" />
-						Add Keyframe
-					</Button>
-				</SectionFields>
-			</SectionContent>
-		</Section>
+					</SectionFields>
+				</SectionContent>
+			</Section>
+		</div>
 	);
 }
 

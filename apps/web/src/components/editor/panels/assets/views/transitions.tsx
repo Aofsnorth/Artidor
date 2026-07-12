@@ -94,7 +94,9 @@ export function TransitionsView() {
 	return (
 		<PanelView
 			title={t("catalog.titleTransitions")}
-			actions={<PopOutAction id="transitions" title={t("catalog.titleTransitions")} />}
+			actions={
+				<PopOutAction id="transitions" title={t("catalog.titleTransitions")} />
+			}
 		>
 			<div className="flex flex-col gap-3 pb-3">
 				<p className="text-muted-foreground text-xs">

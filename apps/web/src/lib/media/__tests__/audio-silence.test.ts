@@ -123,7 +123,7 @@ function tracksWithMain(
 	main: VideoTrack,
 	audio: AudioTrack[] = [],
 ): SceneTracks {
-	return { overlay: [], main, audio };
+	return { overlay: [], main, overlayAfter: [], audio };
 }
 
 describe("timelineHasAudio", () => {

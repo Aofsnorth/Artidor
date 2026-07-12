@@ -69,8 +69,9 @@ export async function buildGOPIndex({
 		const keyframeTimes: number[] = [];
 
 		// Get the first keyframe (metadata only — fast).
-		let keyPacket: EncodedPacket | null =
-			await packetSink.getFirstKeyPacket({ metadataOnly: true });
+		let keyPacket: EncodedPacket | null = await packetSink.getFirstKeyPacket({
+			metadataOnly: true,
+		});
 
 		while (keyPacket) {
 			// EncodedPacket.timestamp is in seconds.

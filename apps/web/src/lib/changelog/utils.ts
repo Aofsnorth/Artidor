@@ -78,5 +78,7 @@ export function getSortedReleases() {
 }
 
 export function getReleaseByVersion({ version }: { version: string }) {
-	return getSortedReleases().find((release: Release) => release.version === version);
+	return getSortedReleases().find(
+		(release: Release) => release.version === version,
+	);
 }

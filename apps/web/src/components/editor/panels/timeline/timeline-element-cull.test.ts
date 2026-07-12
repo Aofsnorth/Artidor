@@ -28,7 +28,7 @@ test("mounts a clip that intersects the visible window", () => {
 
 test("mounts a clip partially overlapping the left edge", () => {
 	// Place the clip so its left edge sits ~5px before the window start.
-	const startTimeSec = (-(5 + 8)) / pps; // elementLeft = 8 + startTimeSec*pps ≈ -5
+	const startTimeSec = -(5 + 8) / pps; // elementLeft = 8 + startTimeSec*pps ≈ -5
 	expect(
 		shouldMountTimelineElement({
 			elementId: "a",

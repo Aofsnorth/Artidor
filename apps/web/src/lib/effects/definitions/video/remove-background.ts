@@ -63,8 +63,7 @@ export const removeBackgroundEffectDefinition: EffectDefinition = {
 				shader: "remove-background",
 				uniforms: ({ effectParams }) => {
 					const asNumber = (v: unknown, fallback: number): number => {
-						const n =
-							typeof v === "number" ? v : Number.parseFloat(String(v));
+						const n = typeof v === "number" ? v : Number.parseFloat(String(v));
 						return Number.isFinite(n) ? n : fallback;
 					};
 

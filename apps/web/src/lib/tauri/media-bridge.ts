@@ -85,6 +85,7 @@ function inferMediaType(name: string): MediaAsset["type"] {
 	const ext = name.split(".").pop()?.toLowerCase() ?? "";
 	if (["mp4", "mov", "avi", "mkv", "webm", "m4v"].includes(ext)) return "video";
 	if (["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(ext)) return "audio";
-	if (["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) return "image";
+	if (["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext))
+		return "image";
 	return "image";
 }

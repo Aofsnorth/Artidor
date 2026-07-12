@@ -88,7 +88,10 @@ export function QualifierSubTab({
 
 	return (
 		<div className="flex flex-col gap-3">
-			<QualifierSection title={t("qualifier.section.channelToggles")} sectionKey="channel-toggles">
+			<QualifierSection
+				title={t("qualifier.section.channelToggles")}
+				sectionKey="channel-toggles"
+			>
 				<div className="grid grid-cols-3 gap-1.5">
 					<ChannelToggle
 						label={t("qualifier.channel.hue")}
@@ -157,7 +160,10 @@ export function QualifierSubTab({
 				</SectionFields>
 			</QualifierSection>
 
-			<QualifierSection title={t("qualifier.section.lumaRange")} sectionKey="luma-range">
+			<QualifierSection
+				title={t("qualifier.section.lumaRange")}
+				sectionKey="luma-range"
+			>
 				<div className="flex flex-col gap-2">
 					<RangeBar
 						low={params.qual_low ?? 0}
@@ -185,7 +191,9 @@ export function QualifierSubTab({
 								: "border-white/10 bg-white/5 text-white/45",
 						)}
 					>
-						{showMatte ? t("qualifier.matte.blackWhite") : t("qualifier.matte.color")}
+						{showMatte
+							? t("qualifier.matte.blackWhite")
+							: t("qualifier.matte.color")}
 					</span>
 				}
 			>
@@ -209,11 +217,7 @@ function QualifierSection({
 	children: React.ReactNode;
 }) {
 	return (
-		<Section
-			collapsible
-			defaultOpen
-			sectionKey={`qualifier-${sectionKey}`}
-		>
+		<Section collapsible defaultOpen sectionKey={`qualifier-${sectionKey}`}>
 			<SectionHeader trailing={trailing}>
 				<SectionTitle>{title}</SectionTitle>
 			</SectionHeader>
