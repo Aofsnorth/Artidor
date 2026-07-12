@@ -34,12 +34,7 @@ jobs:
       image: semgrep/semgrep
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - run: |
-          semgrep scan --config auto --json --output=semgrep.json
-          if [ "$(jq -r '.results | length' semgrep.json)" -gt 0 ]; then
-            jq -r '.results[] | "::error file=\(.path),line=\(.start.line)::Semgrep rule: \(.check_id)"' semgrep.json
-            exit 1
-          fi
+      - run: semgrep scan --config auto --error
 
   dependency-audit:
     name: Dependency audit
