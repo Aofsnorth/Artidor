@@ -71,6 +71,11 @@ export function useTimelineZoom({
 		[tracksScrollRef],
 	);
 
+	const pendingZoomDeltaRef = useRef(0);
+	const zoomRafIdRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(
+		null,
+	);
+
 	const handleWheel = useCallback(
 		(event: ReactWheelEvent) => {
 			const isZoomGesture = event.ctrlKey || event.metaKey;
@@ -85,21 +90,40 @@ export function useTimelineZoom({
 			if (isZoomGesture) {
 				const normalizedDelta =
 					event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
-				const cappedDelta =
+				pendingZoomDeltaRef.current +=
 					Math.sign(normalizedDelta) * Math.min(Math.abs(normalizedDelta), 30);
-				const zoomFactor = Math.exp(-cappedDelta / 300);
-				setZoomLevel((prev) => {
-					const nextZoom = Math.max(
-						minZoom,
-						Math.min(TIMELINE_ZOOM_MAX, prev * zoomFactor),
-					);
-					return nextZoom;
-				});
+
+				if (zoomRafIdRef.current === null) {
+					zoomRafIdRef.current = requestAnimationFrame(() => {
+						zoomRafIdRef.current = null;
+						const cappedDelta =
+							Math.sign(pendingZoomDeltaRef.current) *
+							Math.min(Math.abs(pendingZoomDeltaRef.current), 30);
+						pendingZoomDeltaRef.current = 0;
+						const zoomFactor = Math.exp(-cappedDelta / 300);
+						setZoomLevel((prev) => {
+							const nextZoom = Math.max(
+								minZoom,
+								Math.min(TIMELINE_ZOOM_MAX, prev * zoomFactor),
+							);
+							return nextZoom;
+						});
+					});
+				}
 				return;
 			}
 		},
 		[minZoom, setZoomLevel],
 	);
+
+	useEffect(() => {
+		return () => {
+			if (zoomRafIdRef.current !== null) {
+				cancelAnimationFrame(zoomRafIdRef.current);
+				zoomRafIdRef.current = null;
+			}
+		};
+	}, []);
 
 	useEffect(() => {
 		if (initialZoom !== undefined && !hasInitializedRef.current) {

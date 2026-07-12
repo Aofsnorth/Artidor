@@ -18,25 +18,28 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
-		id: "2026-07-17-timeline-layout-readability",
+		id: "2026-07-17-editor-qa-polish",
 		date: "2026-07-17",
 		tag: "improvement",
-		title: "Timeline, layout, and meter polish",
+		title: "Editor QA polish",
 		items: [
-			"Dragging assets and clicking the timeline now aligns with the visible content area, removing the small left-inset gap.",
-			"Layout presets are no longer gated behind Pro and a new Components menu lets you pop any panel out to a floating window.",
-			"Audio meter dB labels now switch to a dark color when the spectrum fill covers them, keeping the scale readable.",
-			"Selected timeline clips now show a thick primary border and pop above unselected clips so the active selection is easier to see.",
+			"Audio meter dB labels are back to a single color instead of inverted.",
+			"Asset preview now stops the previous preview before starting a new one, so overlapping audio/video previews no longer stack.",
+			"The 'No presets yet' empty state is centered in its panel.",
+			"The split tool cursor is a smaller, sharper blade with the hotspot at the tip.",
+			"Timeline zoom is now batched to one update per animation frame so playback stays smooth while zooming.",
 		],
 	},
 	{
-		id: "2026-07-17-image-dedicated-track",
+		id: "2026-07-17-timeline-layout-readability",
 		date: "2026-07-17",
 		tag: "improvement",
-		title: "Image drops now land on a dedicated image track",
+		title: "Timeline and layout polish",
 		items: [
-			"Dragging an image to the timeline now creates a dedicated image track instead of placing it on a video track.",
-			"Images dropped onto the main video track or an audio track spawn a new image track above the video lane.",
+			"Dragging assets and clicking the timeline now aligns with the visible content area, removing the small left-inset gap.",
+			"Layout presets are no longer gated behind Pro and a new Components menu lets you pop any panel out to a floating window.",
+			"Selected timeline clips now show a thick primary border and pop above unselected clips so the active selection is easier to see.",
+			"Image assets now drop onto the main video track by default; drag above the video lane to create a dedicated image track.",
 		],
 	},
 	{

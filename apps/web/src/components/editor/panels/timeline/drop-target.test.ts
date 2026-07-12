@@ -3,7 +3,7 @@ import { computeDropTarget } from "./drop-target";
 
 const ONE_SECOND_TICKS = 120_000;
 
-test("image media dropped onto the main track creates a new image track above it", () => {
+test("image media dropped onto the main track lands on the main track", () => {
 	const target = computeDropTarget({
 		elementType: "image",
 		mouseX: 120,
@@ -27,6 +27,6 @@ test("image media dropped onto the main track creates a new image track above it
 		zoomLevel: 1,
 	});
 
-	expect(target.isNewTrack).toBe(true);
+	expect(target.isNewTrack).toBe(false);
 	expect(target.trackIndex).toBe(0);
 });

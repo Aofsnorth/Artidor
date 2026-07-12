@@ -55,7 +55,7 @@ export function PresetsView() {
 
 	return (
 		<PanelView title={t("catalog.titlePresets")}>
-			<div className="flex flex-col gap-3 pb-3">
+			<div className="flex flex-1 flex-col gap-3 pb-3 min-h-0">
 				<CatalogSearch
 					value={query}
 					onChange={setQuery}
@@ -80,7 +80,7 @@ export function PresetsView() {
 function EmptyState() {
 	const { t } = useI18n();
 	return (
-		<div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+		<div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3 px-6 text-center">
 			<HugeiconsIcon
 				icon={BookmarkAdd02Icon}
 				className="size-9 text-white/30"

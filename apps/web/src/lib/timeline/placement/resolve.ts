@@ -1,10 +1,10 @@
-import type { SceneTracks, TrackType, TimelineTrack } from "@/lib/timeline";
+import type { ElementType, SceneTracks, TrackType, TimelineTrack } from "@/lib/timeline";
 import {
 	getDefaultInsertIndexForTrack,
 	getHighestInsertIndexForTrack,
 	resolvePreferredNewTrackPlacement,
 } from "./insert-index";
-import { getTrackTypeForElementType } from "./compatibility";
+import { canElementGoOnTrack, getTrackTypeForElementType } from "./compatibility";
 import { enforceMainTrackStart } from "./main-track";
 import { canPlaceTimeSpansOnTrack } from "./overlap";
 import type {
@@ -68,15 +68,20 @@ function buildNewTrackResult({
 function findFirstAvailableTrackIndex({
 	tracks,
 	trackType,
+	elementType,
 	timeSpans,
 }: {
 	tracks: TimelineTrack[];
 	trackType: TrackType;
+	elementType: ElementType | undefined;
 	timeSpans: PlacementTimeSpan[];
 }): number {
 	return tracks.findIndex((track) => {
+		const isCompatible = elementType
+			? canElementGoOnTrack({ elementType, trackType: track.type })
+			: track.type === trackType;
 		return (
-			track.type === trackType &&
+			isCompatible &&
 			canPlaceTimeSpansOnTrack({
 				track,
 				timeSpans,
@@ -135,12 +140,13 @@ export function resolveTrackPlacement({
 	...placement
 }: ResolveTrackPlacementParams): PlacementResult | null {
 	const orderedTracks = [...tracks.overlay, tracks.main, ...tracks.audio];
+	const elementType = placement.elementType;
 	const trackType =
-		"trackType" in placement
-			? placement.trackType
-			: getTrackTypeForElementType({
-					elementType: placement.elementType,
-				});
+		placement.trackType ??
+		(elementType ? getTrackTypeForElementType({ elementType }) : undefined);
+	if (!trackType) {
+		return null;
+	}
 	const { timeSpans, strategy } = placement;
 
 	if (strategy.type === "explicit") {
@@ -152,7 +158,10 @@ export function resolveTrackPlacement({
 		}
 
 		const track = orderedTracks[trackIndex];
-		if (track.type !== trackType) {
+		const isCompatible = elementType
+			? canElementGoOnTrack({ elementType, trackType: track.type })
+			: track.type === trackType;
+		if (!isCompatible) {
 			return null;
 		}
 
@@ -168,6 +177,7 @@ export function resolveTrackPlacement({
 		const existingTrackIndex = findFirstAvailableTrackIndex({
 			tracks: orderedTracks,
 			trackType,
+			elementType,
 			timeSpans,
 		});
 		if (existingTrackIndex >= 0) {
@@ -189,7 +199,13 @@ export function resolveTrackPlacement({
 	if (strategy.type === "preferIndex") {
 		const preferredTrack = orderedTracks[strategy.trackIndex];
 		const isPreferredTrackCompatible =
-			!!preferredTrack && preferredTrack.type === trackType;
+			!!preferredTrack &&
+			(elementType
+				? canElementGoOnTrack({
+						elementType,
+						trackType: preferredTrack.type,
+					})
+				: preferredTrack.type === trackType);
 		const canUseExistingTrack =
 			!strategy.createNewTrackOnly &&
 			isPreferredTrackCompatible &&
@@ -227,9 +243,16 @@ export function resolveTrackPlacement({
 	if (strategy.type === "aboveSource") {
 		const aboveTrackIndex = strategy.sourceTrackIndex - 1;
 		const aboveTrack = orderedTracks[aboveTrackIndex];
+		const aboveIsCompatible = aboveTrack
+			? elementType
+				? canElementGoOnTrack({
+						elementType,
+						trackType: aboveTrack.type,
+					})
+				: aboveTrack.type === trackType
+			: false;
 		if (
-			aboveTrack &&
-			aboveTrack.type === trackType &&
+			aboveIsCompatible &&
 			canPlaceTimeSpansOnTrack({
 				track: aboveTrack,
 				timeSpans,
@@ -246,6 +269,7 @@ export function resolveTrackPlacement({
 		const firstAvailableTrackIndex = findFirstAvailableTrackIndex({
 			tracks: orderedTracks,
 			trackType,
+			elementType,
 			timeSpans,
 		});
 		if (firstAvailableTrackIndex >= 0) {
