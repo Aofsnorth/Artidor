@@ -56,9 +56,9 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the timeline drag overlap fix", () => {
+	test("the newest entry is the effects catalog mapping", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-07-19-timeline-drag-overlap-fix");
+		expect(getLatestWhatsNewId()).toBe("2026-07-19-effects-catalog-mapping");
 	});
 });

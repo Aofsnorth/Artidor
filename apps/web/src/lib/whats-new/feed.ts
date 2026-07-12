@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-effects-catalog-mapping",
+		date: "2026-07-19",
+		tag: "feature",
+		title: "Effects catalog now maps presets to real GPU definitions",
+		items: [
+			"Every fx-* preset in the Effects catalog is now backed by a real EffectDefinition, so the preview tile and exported result match.",
+			"Presets carry the correct default parameters for their shader uniforms instead of placeholder values.",
+		],
+	},
+	{
 		id: "2026-07-19-editor-ui-polish",
 		date: "2026-07-19",
 		tag: "improvement",
