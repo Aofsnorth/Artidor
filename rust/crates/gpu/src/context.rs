@@ -429,19 +429,27 @@ impl GpuContext {
     }
 
     #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
-    pub fn import_offscreen_canvas_texture(
+    pub fn import_external_image(
         &self,
-        canvas: &wgpu::web_sys::OffscreenCanvas,
+        source: &wgpu::ExternalImageSource,
         width: u32,
         height: u32,
         label: &'static str,
     ) -> wgpu::Texture {
         let texture = self.create_render_texture(width, height, label);
 
-        if self.supports_external_texture_copies {
+        // copy_external_image_to_texture can use the source directly for every
+        // CanvasImageSource type except OffscreenCanvas, which needs the
+        // UNRESTRICTED_EXTERNAL_TEXTURE_COPIES downlevel flag. For unsupported
+        // OffscreenCanvas, fall back to reading the 2D context and writing the
+        // pixels. For every other source, this is a zero-copy GPU upload.
+        let can_copy_directly = self.supports_external_texture_copies
+            || !matches!(source, wgpu::ExternalImageSource::OffscreenCanvas(_));
+
+        if can_copy_directly {
             self.queue.copy_external_image_to_texture(
                 &wgpu::CopyExternalImageSourceInfo {
-                    source: wgpu::ExternalImageSource::OffscreenCanvas(canvas.clone()),
+                    source: source.clone(),
                     origin: wgpu::Origin2d::ZERO,
                     flip_y: false,
                 },
@@ -460,25 +468,16 @@ impl GpuContext {
                 },
             );
         } else {
-            let ctx: web_sys::OffscreenCanvasRenderingContext2d = canvas
-                .get_context("2d")
-                .ok()
-                .flatten()
-                .expect("Failed to get 2d context for texture import")
-                .unchecked_into();
-            let image_data = ctx
-                .get_image_data(0.0, 0.0, width as f64, height as f64)
-                .expect("Failed to read pixel data from canvas");
-            let rgba_bytes = image_data.data();
+            let rgba_bytes = Self::read_external_image_pixels(source, width, height);
 
             let pixel_bytes = if self.texture_format == wgpu::TextureFormat::Bgra8Unorm {
-                let mut bytes = rgba_bytes.to_vec();
+                let mut bytes = rgba_bytes;
                 for pixel in bytes.chunks_exact_mut(4) {
                     pixel.swap(0, 2);
                 }
                 bytes
             } else {
-                rgba_bytes.to_vec()
+                rgba_bytes
             };
 
             self.queue.write_texture(
@@ -503,6 +502,50 @@ impl GpuContext {
         }
 
         texture
+    }
+
+    #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+    fn read_external_image_pixels(
+        source: &wgpu::ExternalImageSource,
+        width: u32,
+        height: u32,
+    ) -> Vec<u8> {
+        if let wgpu::ExternalImageSource::ImageData(image_data) = source {
+            return image_data.data().to_vec();
+        }
+
+        let canvas = web_sys::OffscreenCanvas::new(width, height)
+            .expect("Failed to create fallback texture canvas");
+        let ctx: web_sys::OffscreenCanvasRenderingContext2d = canvas
+            .get_context("2d")
+            .ok()
+            .flatten()
+            .expect("Failed to get 2d context for texture import")
+            .unchecked_into();
+
+        match source {
+            wgpu::ExternalImageSource::ImageBitmap(bitmap) => ctx
+                .draw_image_with_image_bitmap(bitmap, 0.0, 0.0)
+                .expect("Failed to draw ImageBitmap"),
+            wgpu::ExternalImageSource::HTMLImageElement(image) => ctx
+                .draw_image_with_html_image_element(image, 0.0, 0.0)
+                .expect("Failed to draw HTMLImageElement"),
+            wgpu::ExternalImageSource::HTMLVideoElement(video) => ctx
+                .draw_image_with_html_video_element(video, 0.0, 0.0)
+                .expect("Failed to draw HTMLVideoElement"),
+            wgpu::ExternalImageSource::HTMLCanvasElement(canvas) => ctx
+                .draw_image_with_html_canvas_element(canvas, 0.0, 0.0)
+                .expect("Failed to draw HTMLCanvasElement"),
+            wgpu::ExternalImageSource::OffscreenCanvas(canvas) => ctx
+                .draw_image_with_offscreen_canvas(canvas, 0.0, 0.0)
+                .expect("Failed to draw OffscreenCanvas"),
+            wgpu::ExternalImageSource::ImageData(_) => unreachable!(),
+        };
+
+        ctx.get_image_data(0.0, 0.0, width as f64, height as f64)
+            .expect("Failed to read pixel data from fallback canvas")
+            .data()
+            .to_vec()
     }
 
     #[cfg(all(feature = "wasm", target_arch = "wasm32"))]

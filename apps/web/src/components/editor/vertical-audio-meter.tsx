@@ -86,6 +86,8 @@ export function VerticalAudioMeter({
 	const rightClipRef = useRef<HTMLDivElement>(null);
 	const leftContainerRef = useRef<HTMLDivElement>(null);
 	const rightContainerRef = useRef<HTMLDivElement>(null);
+	const leftFillRef = useRef<HTMLDivElement>(null);
+	const rightFillRef = useRef<HTMLDivElement>(null);
 
 	// Visualizer card refs (only updated when isVisualizerOpen is true).
 	const visBarRefs = useRef<Array<HTMLDivElement | null>>([]);
@@ -210,6 +212,12 @@ export function VerticalAudioMeter({
 			if (rightBarRef.current) {
 				rightBarRef.current.style.height = `${100 - state.right}%`;
 			}
+			if (leftFillRef.current) {
+				leftFillRef.current.style.height = `${state.left}%`;
+			}
+			if (rightFillRef.current) {
+				rightFillRef.current.style.height = `${state.right}%`;
+			}
 			if (leftContainerRef.current) {
 				const grad = leftContainerRef.current
 					.firstElementChild as HTMLDivElement | null;
@@ -276,6 +284,8 @@ export function VerticalAudioMeter({
 					rightClipRef={rightClipRef}
 					leftContainerRef={leftContainerRef}
 					rightContainerRef={rightContainerRef}
+					leftFillRef={leftFillRef}
+					rightFillRef={rightFillRef}
 					dimmed={dimmed}
 					onToggleDim={() => setDimmed((value) => !value)}
 				/>
@@ -297,6 +307,8 @@ function MeterView({
 	rightClipRef,
 	leftContainerRef,
 	rightContainerRef,
+	leftFillRef,
+	rightFillRef,
 	dimmed,
 	onToggleDim,
 }: {
@@ -308,6 +320,8 @@ function MeterView({
 	rightClipRef: React.RefObject<HTMLDivElement | null>;
 	leftContainerRef: React.RefObject<HTMLDivElement | null>;
 	rightContainerRef: React.RefObject<HTMLDivElement | null>;
+	leftFillRef: React.RefObject<HTMLDivElement | null>;
+	rightFillRef: React.RefObject<HTMLDivElement | null>;
 	dimmed: boolean;
 	onToggleDim: () => void;
 }) {
@@ -322,6 +336,7 @@ function MeterView({
 					peakRef={leftPeakRef}
 					clipRef={leftClipRef}
 					containerRef={leftContainerRef}
+					fillRef={leftFillRef}
 					label="L"
 				/>
 				<ChannelBar
@@ -329,6 +344,7 @@ function MeterView({
 					peakRef={rightPeakRef}
 					clipRef={rightClipRef}
 					containerRef={rightContainerRef}
+					fillRef={rightFillRef}
 					label="R"
 				/>
 			</div>
@@ -421,14 +437,22 @@ function ChannelBar({
 	peakRef,
 	clipRef,
 	containerRef,
+	fillRef,
 	label: _label,
 }: {
 	barRef: React.RefObject<HTMLDivElement | null>;
 	peakRef: React.RefObject<HTMLDivElement | null>;
 	clipRef: React.RefObject<HTMLDivElement | null>;
 	containerRef: React.RefObject<HTMLDivElement | null>;
+	fillRef: React.RefObject<HTMLDivElement | null>;
 	label: string;
 }) {
+	const labels = DB_LABELS.map((label) => (
+		<span key={label} className="px-0.5 text-right tabular-nums">
+			{label}
+		</span>
+	)).reverse();
+
 	return (
 		<div
 			ref={containerRef}
@@ -463,11 +487,16 @@ function ChannelBar({
 
 			{/* dB scale ticks. */}
 			<div className="pointer-events-none absolute inset-0 z-30 flex flex-col justify-between py-px text-[0.42rem] font-semibold text-white/25">
-				{DB_LABELS.map((label) => (
-					<span key={label} className="px-0.5 text-right tabular-nums">
-						{label}
-					</span>
-				)).reverse()}
+				{labels}
+			</div>
+
+			{/* Inverted dB scale ticks clipped to the filled spectrum area. */}
+			<div
+				ref={fillRef}
+				className="pointer-events-none absolute inset-x-0 bottom-0 z-30 overflow-hidden flex flex-col justify-between py-px text-[0.42rem] font-semibold text-black transition-[height] duration-75 ease-out"
+				style={{ height: "0%" }}
+			>
+				{labels}
 			</div>
 		</div>
 	);

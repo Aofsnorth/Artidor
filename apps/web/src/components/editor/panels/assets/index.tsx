@@ -2,37 +2,86 @@
 
 import { lazy, Suspense, type ReactNode } from "react";
 import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
-import { Captions } from "./views/captions";
 import { MediaView } from "./views/assets";
-import { SettingsView } from "./views/settings";
-import { SoundsView } from "./views/sounds";
-import { StickersView } from "./views/stickers";
-import { TextView } from "./views/text";
-import { EffectsView } from "./views/effects";
-import { TransitionsView } from "./views/transitions";
-import { AdjustmentsView } from "./views/adjustments";
-import { AnimationsView } from "./views/animations";
-import { TemplatesView } from "./views/templates-coming-soon";
-import { QuickToolsView } from "./views/quick-tools";
-import { FiltersView } from "./views/filters";
-import { OverlaysView } from "./views/overlays";
-import { ScriptingView } from "./views/scripting";
-import { PresetsView } from "./views/presets";
-import { PluginsView } from "./views/plugins";
-import { AdvancedView } from "./views/advanced";
 import { DockPlaceholder } from "@/components/editor/floating-window";
 import { useEditorUIStore } from "@/stores/editor-ui-store";
 import type { FloatablePanelId } from "@/stores/editor-ui-store";
 
-// The AI Edit view pulls in `motion/react` (~80KB) plus the heavy
-// chat UI tree. Lazy-load it so the editor's initial mount doesn't
-// pay the cost unless the user actually opens the AI tab.
+// Lazy-load every asset sub-view except the default `MediaView`. These panels
+// are only needed when the user clicks the corresponding tab or pops a panel
+// out, so keeping them out of the editor's initial bundle removes a meaningful
+// chunk of JS from first paint.
 const AIEditView = lazy(() =>
 	import("./views/ai-edit").then((m) => ({ default: m.AIEditView })),
 );
+const TextView = lazy(() =>
+	import("./views/text").then((m) => ({ default: m.TextView })),
+);
+const StickersView = lazy(() =>
+	import("./views/stickers").then((m) => ({ default: m.StickersView })),
+);
+const SoundsView = lazy(() =>
+	import("./views/sounds").then((m) => ({ default: m.SoundsView })),
+);
+const EffectsView = lazy(() =>
+	import("./views/effects").then((m) => ({ default: m.EffectsView })),
+);
+const TransitionsView = lazy(() =>
+	import("./views/transitions").then((m) => ({ default: m.TransitionsView })),
+);
+const AdjustmentsView = lazy(() =>
+	import("./views/adjustments").then((m) => ({ default: m.AdjustmentsView })),
+);
+const PluginsView = lazy(() =>
+	import("./views/plugins").then((m) => ({ default: m.PluginsView })),
+);
+const FiltersView = lazy(() =>
+	import("./views/filters").then((m) => ({ default: m.FiltersView })),
+);
+const OverlaysView = lazy(() =>
+	import("./views/overlays").then((m) => ({ default: m.OverlaysView })),
+);
+const AnimationsView = lazy(() =>
+	import("./views/animations").then((m) => ({ default: m.AnimationsView })),
+);
+const TemplatesView = lazy(() =>
+	import("./views/templates-coming-soon").then((m) => ({
+		default: m.TemplatesView,
+	})),
+);
+const PresetsView = lazy(() =>
+	import("./views/presets").then((m) => ({ default: m.PresetsView })),
+);
+const QuickToolsView = lazy(() =>
+	import("./views/quick-tools").then((m) => ({ default: m.QuickToolsView })),
+);
+const ScriptingView = lazy(() =>
+	import("./views/scripting").then((m) => ({ default: m.ScriptingView })),
+);
+const SettingsView = lazy(() =>
+	import("./views/settings").then((m) => ({ default: m.SettingsView })),
+);
+const AdvancedView = lazy(() =>
+	import("./views/advanced").then((m) => ({ default: m.AdvancedView })),
+);
+const Captions = lazy(() =>
+	import("./views/captions").then((m) => ({ default: m.Captions })),
+);
 
-/** Tiny inline placeholder so the panel doesn't flash an empty
-   rectangle while the AI chunk is fetched. */
+/** Generic placeholder used while a lazy asset tab chunk is loading. */
+function LoadingView() {
+	return (
+		<div className="flex h-full items-center justify-center text-[11.5px] text-white/45">
+			<div className="flex flex-col items-center gap-2">
+				<div className="size-5 animate-spin rounded-full border-2 border-white/15 border-t-white/70" />
+				<span>Loading…</span>
+			</div>
+		</div>
+	);
+}
+
+/** Tiny inline placeholder so the AI panel doesn't flash an empty rectangle
+    while its chunk is fetched. */
 function AIEditFallback() {
 	return (
 		<div className="flex h-full items-center justify-center text-[11.5px] text-white/45">
@@ -67,30 +116,114 @@ export function AssetsPanel() {
 		),
 		assets: <MediaView />,
 		media: <MediaView />,
-		sounds: <SoundsView />,
-		text: <TextView />,
-		elements: <StickersView />,
-		stickers: <StickersView />,
-		effects: maybePlaceholder("effects", "Effects", <EffectsView />),
+		sounds: (
+			<Suspense fallback={<LoadingView />}>
+				<SoundsView />
+			</Suspense>
+		),
+		text: (
+			<Suspense fallback={<LoadingView />}>
+				<TextView />
+			</Suspense>
+		),
+		elements: (
+			<Suspense fallback={<LoadingView />}>
+				<StickersView />
+			</Suspense>
+		),
+		stickers: (
+			<Suspense fallback={<LoadingView />}>
+				<StickersView />
+			</Suspense>
+		),
+		effects: maybePlaceholder(
+			"effects",
+			"Effects",
+			<Suspense fallback={<LoadingView />}>
+				<EffectsView />
+			</Suspense>,
+		),
 		transitions: maybePlaceholder(
 			"transitions",
 			"Transitions",
-			<TransitionsView />,
+			<Suspense fallback={<LoadingView />}>
+				<TransitionsView />
+			</Suspense>,
 		),
-		overlays: <OverlaysView />,
-		animations: <AnimationsView />,
-		templates: <TemplatesView />,
-		presets: <PresetsView />,
-		quicktools: <QuickToolsView />,
-		audio: <SoundsView />,
-		motion: <AnimationsView />,
-		plugins: maybePlaceholder("plugins", "Plugins", <PluginsView />),
-		filters: <FiltersView />,
-		captions: <Captions />,
-		adjustment: maybePlaceholder("adjust", "Adjustments", <AdjustmentsView />),
-		scripting: <ScriptingView />,
-		settings: <SettingsView />,
-		advanced: <AdvancedView />,
+		overlays: (
+			<Suspense fallback={<LoadingView />}>
+				<OverlaysView />
+			</Suspense>
+		),
+		animations: (
+			<Suspense fallback={<LoadingView />}>
+				<AnimationsView />
+			</Suspense>
+		),
+		templates: (
+			<Suspense fallback={<LoadingView />}>
+				<TemplatesView />
+			</Suspense>
+		),
+		presets: (
+			<Suspense fallback={<LoadingView />}>
+				<PresetsView />
+			</Suspense>
+		),
+		quicktools: (
+			<Suspense fallback={<LoadingView />}>
+				<QuickToolsView />
+			</Suspense>
+		),
+		audio: (
+			<Suspense fallback={<LoadingView />}>
+				<SoundsView />
+			</Suspense>
+		),
+		motion: (
+			<Suspense fallback={<LoadingView />}>
+				<AnimationsView />
+			</Suspense>
+		),
+		plugins: maybePlaceholder(
+			"plugins",
+			"Plugins",
+			<Suspense fallback={<LoadingView />}>
+				<PluginsView />
+			</Suspense>,
+		),
+		filters: (
+			<Suspense fallback={<LoadingView />}>
+				<FiltersView />
+			</Suspense>
+		),
+		captions: (
+			<Suspense fallback={<LoadingView />}>
+				<Captions />
+			</Suspense>
+		),
+		adjustment: maybePlaceholder(
+			"adjust",
+			"Adjustments",
+			<Suspense fallback={<LoadingView />}>
+				<AdjustmentsView />
+			</Suspense>,
+		),
+		scripting: (
+			<Suspense fallback={<LoadingView />}>
+				<ScriptingView />
+			</Suspense>
+		),
+		settings: (
+			<Suspense fallback={<LoadingView />}>
+				<SettingsView />
+			</Suspense>
+		),
+		advanced: (
+			<Suspense fallback={<LoadingView />}>
+				<AdvancedView />
+			</Suspense>
+		),
 	};
 
 	return (

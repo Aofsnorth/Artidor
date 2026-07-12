@@ -5,6 +5,7 @@ import { showMediaUploadToast } from "@/lib/media/upload-toast";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { roundToFrame } from "artidor-wasm";
 import { snapElementEdge } from "@/lib/timeline/snap-utils";
 import { useTimelineStore } from "@/stores/timeline-store";
@@ -179,7 +180,7 @@ export function useTimelineDragDrop({
 				mediaId: dragData?.type === "media" ? dragData.id : undefined,
 			});
 
-			const mouseX = e.clientX - referenceRect.left + scrollLeft;
+			const mouseX = e.clientX - referenceRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
 			const mouseY = e.clientY - referenceRect.top + scrollTop - headerHeight;
 
 			const targetElementTypes =
@@ -450,8 +451,7 @@ export function useTimelineDragDrop({
 			const mediaAsset = mediaAssets.find((m) => m.id === dragData.id);
 			if (!mediaAsset) return;
 
-			const trackType: TrackType =
-				dragData.mediaType === "audio" ? "audio" : "video";
+			const trackType: TrackType = dragData.mediaType;
 
 			const duration =
 				mediaAsset.duration != null
@@ -486,19 +486,13 @@ export function useTimelineDragDrop({
 			const track = orderedTracks[target.trackIndex];
 			if (!track) return;
 
-			const elementTypeForTrack =
-				dragData.mediaType === "audio"
-					? "audio"
-					: dragData.mediaType === "image"
-						? "image"
-						: "video";
 			const dropOnMainVideoTrack =
-				track.id === sceneTracks.main.id && elementTypeForTrack === "image";
+				track.id === sceneTracks.main.id && dragData.mediaType === "image";
 			if (dropOnMainVideoTrack) {
 				target.isNewTrack = true;
 				target.trackIndex = sceneTracks.overlay.length;
 				const overlayIndex = sceneTracks.overlay.length;
-				const addTrackCmd = new AddTrackCommand("video", overlayIndex);
+				const addTrackCmd = new AddTrackCommand(trackType, overlayIndex);
 				const insertCmd = new InsertElementCommand({
 					element,
 					placement: { mode: "explicit", trackId: addTrackCmd.getTrackId() },
@@ -640,7 +634,7 @@ export function useTimelineDragDrop({
 						const sceneTracks = editor.scenes.getActiveScene().tracks;
 						const currentTime = editor.playback.getCurrentTime();
 						const reuseMainTrackId =
-							createdAsset.type !== "audio" &&
+							createdAsset.type === "video" &&
 							sceneTracks.overlay.length === 0 &&
 							sceneTracks.audio.length === 0 &&
 							sceneTracks.main.elements.length === 0
@@ -691,8 +685,7 @@ export function useTimelineDragDrop({
 							}
 						}
 
-						const trackType: TrackType =
-							createdAsset.type === "audio" ? "audio" : "video";
+						const trackType: TrackType = createdAsset.type;
 
 						let trackId: string | undefined;
 						if (reuseMainTrackId) {
@@ -707,11 +700,24 @@ export function useTimelineDragDrop({
 								trackId = addTrackCmd.getTrackId();
 								editor.command.execute({ command: addTrackCmd });
 							} else {
-								trackId = [
+								const track = [
 									...sceneTracks.overlay,
 									sceneTracks.main,
 									...sceneTracks.audio,
-								][dropTarget.trackIndex]?.id;
+								][dropTarget.trackIndex];
+								const needsImageTrack =
+									createdAsset.type === "image" &&
+									track?.id === sceneTracks.main.id;
+								if (needsImageTrack) {
+									const addTrackCmd = new AddTrackCommand(
+										trackType,
+										dropTarget.trackIndex,
+									);
+									trackId = addTrackCmd.getTrackId();
+									editor.command.execute({ command: addTrackCmd });
+								} else {
+									trackId = track?.id;
+								}
 							}
 						}
 
@@ -796,7 +802,7 @@ export function useTimelineDragDrop({
 					if (!referenceRect) return;
 					const scrollLeft = scrollContainer?.scrollLeft ?? 0;
 					const scrollTop = scrollContainer?.scrollTop ?? 0;
-					const mouseX = e.clientX - referenceRect.left + scrollLeft;
+					const mouseX = e.clientX - referenceRect.left + scrollLeft - TIMELINE_CONTENT_LEFT_INSET_PX;
 					const headerHeight =
 						headerRef?.current?.getBoundingClientRect().height ?? 0;
 					const mouseY =
