@@ -102,6 +102,32 @@ export function findSnapPoints({
 	return snapPoints;
 }
 
+/**
+ * Build snap points whose values stay constant during a pointer gesture.
+ * Callers can retain this result for one drag and avoid rebuilding the entire
+ * clip/keyframe index on every animation frame.
+ */
+export function buildStaticSnapPoints({
+	tracks,
+	bookmarks = [],
+	excludeElementId,
+	excludeBookmarkTime,
+}: {
+	tracks: SceneTracks;
+	bookmarks?: Array<Bookmark>;
+	excludeElementId?: string;
+	excludeBookmarkTime?: number;
+}): SnapPoint[] {
+	return findSnapPoints({
+		tracks,
+		playheadTime: 0,
+		excludeElementId,
+		bookmarks,
+		excludeBookmarkTime,
+		enablePlayheadSnapping: false,
+	});
+}
+
 export function snapToNearestPoint({
 	targetTime,
 	snapPoints,

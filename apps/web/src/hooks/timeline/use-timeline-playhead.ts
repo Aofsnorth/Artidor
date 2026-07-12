@@ -4,7 +4,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useEditor } from "../use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
-import { findSnapPoints, snapToNearestPoint } from "@/lib/timeline/snap-utils";
+import { buildStaticSnapPoints, snapToNearestPoint } from "@/lib/timeline/snap-utils";
 import {
 	getCenteredLineLeft,
 	timelineTimeToPixels,
@@ -86,6 +86,7 @@ export function useTimelinePlayhead({
 	);
 
 	const scrubTimeRef = useRef<number | null>(null);
+	const staticScrubSnapPointsRef = useRef<ReturnType<typeof buildStaticSnapPoints> | null>(null);
 	const isDraggingRulerRef = useRef(false);
 	const hasDraggedRulerRef = useRef(false);
 	const lastMouseXRef = useRef<number>(0);
@@ -133,13 +134,12 @@ export function useTimelinePlayhead({
 
 				const tracks = editor.scenes.getActiveScene().tracks;
 				const bookmarks = editor.scenes.getActiveScene()?.bookmarks ?? [];
-
-				const snapPoints = findSnapPoints({
-					tracks,
-					playheadTime: frameTime,
-					bookmarks,
-					enablePlayheadSnapping: false,
-				});
+				const snapPoints =
+					staticScrubSnapPointsRef.current ??
+					(staticScrubSnapPointsRef.current = buildStaticSnapPoints({
+						tracks,
+						bookmarks,
+					}));
 				const snapResult = snapToNearestPoint({
 					targetTime: frameTime,
 					snapPoints,
@@ -269,6 +269,7 @@ export function useTimelinePlayhead({
 			}
 
 			editor.playback.setScrubbing({ isScrubbing: true });
+			staticScrubSnapPointsRef.current = null;
 			handleScrub({ event });
 		},
 		[handleScrub, editor.playback],
@@ -292,6 +293,7 @@ export function useTimelinePlayhead({
 			}
 
 			editor.playback.setScrubbing({ isScrubbing: true });
+			staticScrubSnapPointsRef.current = null;
 			handleScrub({ event, snappingEnabled: false });
 		},
 		[handleScrub, playheadRef, editor.playback],
@@ -342,6 +344,7 @@ export function useTimelinePlayhead({
 				});
 			}
 			scrubTimeRef.current = null;
+			staticScrubSnapPointsRef.current = null;
 
 			if (isDraggingRulerRef.current) {
 				isDraggingRulerRef.current = false;

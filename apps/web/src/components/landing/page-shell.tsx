@@ -3,14 +3,13 @@
  * long-form content pages. Sets the dark luxury atmosphere on top
  * of the global theme.
  *
- * Backdrop: a hand-picked fantasy artwork (a veiled figure
- * holding a sword on a crystalline base against a cosmic sky).
+ * Backdrop: a dark cosmic nebula from Unsplash
+ * (see public/wallpaper/README.md for attribution and license).
  * We use a plain CSS `background-image` here — not Next.js Image —
- * so the original JPEG renders at its native quality without
- * Next's re-optimisation pipeline re-compressing it (which was
- * showing visible artefacts when the image was scaled up to fill
- * the viewport). `min-h-screen` keeps the image covering at
- * least the viewport even if the page content is short.
+ * so the source image renders at its native quality without
+ * Next's re-optimisation pipeline re-compressing it. `min-h-screen`
+ * keeps the image covering at least the viewport even if the page
+ * content is short.
  *
  * Note: this wrapper does NOT have `overflow-hidden` because
  * that would break `position: sticky` on the header.
@@ -49,7 +48,7 @@ export function PageShell({
 					backgroundImage: "url(/wallpaper/hero-fantasy-2x.webp)",
 					backgroundRepeat: "no-repeat",
 					backgroundSize: "cover",
-					backgroundPosition: "center 30%",
+					backgroundPosition: "center",
 				}}
 			/>
 

@@ -58,6 +58,8 @@ export interface DriveSyncState {
 	message: string | null;
 }
 
+const MAX_EXPORT_HISTORY_ENTRIES = 1;
+
 export class ProjectManager {
 	private active: TProject | null = null;
 	private savedProjects: TProjectMetadata[] = [];
@@ -346,6 +348,11 @@ export class ProjectManager {
 
 		if (cacheKey && result.success && result.buffer) {
 			this.exportHistory.set(cacheKey, result);
+			while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
+				const oldestKey = this.exportHistory.keys().next().value;
+				if (!oldestKey) break;
+				this.exportHistory.delete(oldestKey);
+			}
 		}
 
 		this.exportState = {

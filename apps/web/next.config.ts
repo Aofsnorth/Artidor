@@ -110,6 +110,16 @@ const nextConfig: NextConfig = {
 		removeConsole: process.env.NODE_ENV === "production",
 	},
 	reactStrictMode: true,
+	// React Compiler (full automatic memoization). Enabled app-wide because
+	// this is an editor where render cost scales with timeline/element count
+	// and every avoidable re-render hurts scrubbing smoothness. Next 16 ships
+	// the babel plugin at build time; React 19 consumes its output via the
+	// `react-compiler-runtime` shim (added to dependencies). No source edits
+	// (export type React = React) are required. Components that intentionally
+	// mutate shared mutation refs are already written defensively; the
+	// compiler only memoizes pure derivations, so mutation-only code paths
+	// are unaffected.
+	reactCompiler: true,
 	devIndicators: false,
 	// Source maps for the (large) client bundle are shipped weight with no
 	// end-user benefit; keep them off in production builds.

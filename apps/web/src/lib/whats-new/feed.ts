@@ -18,6 +18,27 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-17-asset-license-cleanup",
+		date: "2026-07-17",
+		tag: "fix",
+		title: "Asset license cleanup",
+		items: [
+			"Replaced the landing page wallpaper with a properly licensed Unsplash dark nebula image and added public/wallpaper/README.md with attribution.",
+			"Replaced the effect preview base image with a procedurally generated gradient and added public/effects/README.md.",
+		],
+	},
+	{
+		id: "2026-07-17-export-timeline-storage-performance",
+		date: "2026-07-17",
+		tag: "performance",
+		title: "Faster large exports, timeline scrubbing, and project storage",
+		items: [
+			"Parallel export now caps WebGPU compositor workers by output resolution, avoiding GPU memory contention that can make high-resolution exports slower despite spare CPU cores.",
+			"Timeline snap points are indexed once per scrub gesture instead of rebuilding the clip/keyframe list every animation frame.",
+			"Project storage now reuses its IndexedDB connection, and export-result caching retains only the latest result to avoid accumulating large video buffers in memory.",
+		],
+	},
+	{
 		id: "2026-07-17-editor-qa-polish",
 		date: "2026-07-17",
 		tag: "improvement",
