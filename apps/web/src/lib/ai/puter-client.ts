@@ -70,8 +70,20 @@ interface PuterGenResult {
 	toString(): string;
 }
 
+interface PuterAuth {
+	/** Opens the Puter sign-in popup. Must be called from a user gesture. */
+	signIn: () => Promise<unknown>;
+	/** Returns true synchronously if the user is already signed in. */
+	isSignedIn: () => boolean;
+	/** Signs the current user out. */
+	signOut: () => void;
+	/** Resolves to the signed-in user's profile (username, etc.). */
+	getUser: () => Promise<{ username: string; [key: string]: unknown }>;
+}
+
 interface PuterSDK {
 	ai: PuterAI;
+	auth: PuterAuth;
 }
 
 declare global {
@@ -171,6 +183,60 @@ export function loadPuterSDK(): Promise<PuterSDK> {
 }
 
 /**
+ * Ensure the user is signed in to Puter before making an AI call.
+ *
+ * Puter.js auto-opens a sign-in popup when `puter.ai.chat()` is called
+ * without an active session, but if the user **closes the popup without
+ * completing sign-in**, the SDK rejects with `auth_window_closed` and
+ * subsequent `chat()` calls may fail silently or with a confusing error.
+ *
+ * This helper proactively checks `puter.auth.isSignedIn()` and, when not
+ * signed in, calls `puter.auth.signIn()` to re-open the login popup. It
+ * throws a clear, user-actionable error if the popup is closed again.
+ *
+ * @throws Error with a descriptive message if the user closes the sign-in
+ *   popup or if the auth API is unavailable.
+ */
+export async function ensurePuterSignedIn(): Promise<void> {
+	const puter = await loadPuterSDK();
+	if (!puter.auth) {
+		throw new Error(
+			"Puter.js SDK loaded but auth API is not available — cannot sign in.",
+		);
+	}
+
+	// Fast path: already signed in from a previous session.
+	if (puter.auth.isSignedIn()) return;
+
+	try {
+		await puter.auth.signIn();
+	} catch (err) {
+		const raw = err instanceof Error ? err.message : String(err);
+		// Puter rejects with { error: "auth_window_closed" } or
+		// { error: "popup_blocked" } when the popup is closed/blocked.
+		if (/auth_window_closed|popup_closed|cancelled/i.test(raw)) {
+			throw new Error(
+				"Puter sign-in was cancelled. Click send again to retry.",
+			);
+		}
+		if (/popup_blocked/i.test(raw)) {
+			throw new Error(
+				"Puter sign-in popup was blocked by the browser. Allow popups for this site and try again.",
+			);
+		}
+		throw new Error(`Puter sign-in failed: ${raw}`);
+	}
+
+	// Double-check that signIn actually resulted in a signed-in state,
+	// since some edge cases resolve the promise without completing auth.
+	if (!puter.auth.isSignedIn()) {
+		throw new Error(
+			"Puter sign-in did not complete. Please try again.",
+		);
+	}
+}
+
+/**
  * In-memory cache for the Puter model list. The model list rarely
  * changes within a session, so we cache it to avoid re-fetching
  * every time the provider dialog reopens. The cache expires after
@@ -194,6 +260,8 @@ export async function fetchPuterModels(): Promise<PuterModel[]> {
 	if (!puter.ai?.listModels) {
 		throw new Error("Puter.js SDK loaded but listModels() is not available");
 	}
+	// listModels() also requires authentication — ensure signed in first.
+	await ensurePuterSignedIn();
 	const models = await puter.ai.listModels();
 	cachedModels = models;
 	cachedModelsAt = now;
@@ -723,6 +791,18 @@ export async function* streamPuterChat(
 		throw new Error("Puter.js SDK loaded but chat() is not available");
 	}
 
+	// Ensure the user is signed in before calling puter.ai.chat().
+	// If the user closed the sign-in popup without completing login,
+	// this throws a clear error so the next chat attempt re-triggers
+	// the popup instead of failing silently.
+	try {
+		await ensurePuterSignedIn();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : "Puter sign-in required.";
+		yield { error: msg };
+		return;
+	}
+
 	const textBased = isTextBasedToolModel(model);
 	console.log("[puter] chat start", { model, textBased, messageCount: messages.length, hasTools: Boolean(tools && tools.length > 0), toolCount: tools?.length ?? 0 });
 
@@ -925,6 +1005,7 @@ export async function puterTxt2Vid(
 	if (!puter.ai?.txt2vid) {
 		throw new Error("Puter.js SDK loaded but txt2vid() is not available");
 	}
+	await ensurePuterSignedIn();
 	const options: Record<string, unknown> = { model };
 	if (seconds) options.seconds = seconds;
 	const result = await puter.ai.txt2vid(prompt, options);
@@ -947,6 +1028,7 @@ export async function puterTxt2Img(
 	if (!puter.ai?.txt2img) {
 		throw new Error("Puter.js SDK loaded but txt2img() is not available");
 	}
+	await ensurePuterSignedIn();
 	const result = await puter.ai.txt2img(prompt, { model });
 	return extractGenUrl(result);
 }
@@ -969,6 +1051,7 @@ export async function puterTxt2Speech(
 	if (!puter.ai?.txt2speech) {
 		throw new Error("Puter.js SDK loaded but txt2speech() is not available");
 	}
+	await ensurePuterSignedIn();
 	const options: Record<string, unknown> = { model };
 	if (voice) options.voice = voice;
 	const result = await puter.ai.txt2speech(text, options);
