@@ -64,7 +64,7 @@ export function PageShell({
 				className="pointer-events-none absolute inset-0 -z-10 min-h-screen"
 				style={{
 					background:
-						"linear-gradient(180deg, rgba(8,8,10,0.55) 0%, rgba(8,8,10,0.20) 18%, rgba(8,8,10,0.10) 50%, rgba(8,8,10,0.35) 80%, rgba(8,8,10,0.65) 100%)",
+						"linear-gradient(180deg, rgba(8,8,10,0.72) 0%, rgba(8,8,10,0.52) 18%, rgba(8,8,10,0.46) 50%, rgba(8,8,10,0.62) 80%, rgba(8,8,10,0.78) 100%)",
 				}}
 			/>
 
