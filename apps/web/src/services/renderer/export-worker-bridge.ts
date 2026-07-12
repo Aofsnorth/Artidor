@@ -26,6 +26,21 @@ export type ExportWorkerResult =
 	| { success: true; buffer: ArrayBuffer }
 	| { success: false; cancelled: true }
 	| { success: false; error: string };
+
+/**
+ * Selects the worker inactivity deadline. Module-load failures must surface
+ * quickly, while an active export keeps its caller-configured allowance.
+ */
+export function getExportWorkerActivityTimeout({
+	timeoutMs,
+	hasReceivedMessage,
+}: {
+	timeoutMs: number;
+	hasReceivedMessage: boolean;
+}): number {
+	if (timeoutMs <= 0) return 0;
+	return hasReceivedMessage ? timeoutMs : Math.min(timeoutMs, 10_000);
+}
 // ── Warm worker pool ─────────────────────────────────────────────────
 // A single warm worker kept alive between exports to avoid re-paying
 // WASM import + GPU init on every export. Only the single-worker path
@@ -259,7 +274,10 @@ export async function runExportInWorker({
 			// sent anything at all, it's likely broken (e.g. dev server serving
 			// HTML instead of the worker module). Once we know the worker is
 			// alive, use the full timeout.
-			const effectiveTimeout = hasReceivedMessage ? timeoutMs : Math.min(timeoutMs, 10_000);
+			const effectiveTimeout = getExportWorkerActivityTimeout({
+				timeoutMs,
+				hasReceivedMessage,
+			});
 			timeout = setTimeout(() => {
 				const elapsed = Date.now() - lastActivity;
 				if (elapsed < effectiveTimeout) {
@@ -274,7 +292,7 @@ export async function runExportInWorker({
 						? `Export worker timed out (no activity for ${timeoutMs}ms)`
 						: `Export worker sent no messages within ${effectiveTimeout / 1000}s (worker may have failed to load)`,
 				});
-			}, timeoutMs);
+			}, effectiveTimeout);
 		};
 
 		const cleanup = () => {

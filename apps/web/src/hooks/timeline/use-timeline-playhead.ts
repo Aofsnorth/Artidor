@@ -479,52 +479,6 @@ export function useTimelinePlayhead({
 		getSelectedKeyframeTimes,
 	]);
 
-	// rAF-driven autoscroll follower. `handlePlaybackUpdate` only fires
-	// on `playback-update` / `playback-seek` events, which can be
-	// throttled or arrive in irregular bursts depending on the playback
-	// source. To guarantee the playhead always stays centred while
-	// autoscroll is on, this effect kicks in a rAF loop that re-centres
-	// the viewport every frame. The Math.abs(>0.5) guard stops the loop
-	// from fighting the user's own scroll wheel input.
-	useEffect(() => {
-		if (!autoScrollEnabled || !isPlaying || isScrubbing) return;
-		const rulerViewport = rulerScrollRef.current;
-		const tracksViewport = tracksScrollRef.current;
-		if (!rulerViewport || !tracksViewport) return;
-
-		let rafId: number;
-		const tick = () => {
-			const time = editor.playback.getCurrentTime();
-			const playheadPixels = timelineTimeToPixels({
-				time,
-				zoomLevel: zoomLevelRef.current,
-			});
-			const viewportWidth = rulerViewport.clientWidth;
-			const scrollMax = Math.max(0, rulerViewport.scrollWidth - viewportWidth);
-			const desiredScroll = Math.max(
-				0,
-				Math.min(
-					scrollMax,
-					playheadPixels - viewportWidth * PLAYHEAD_VIEWPORT_ANCHOR,
-				),
-			);
-			if (Math.abs(rulerViewport.scrollLeft - desiredScroll) > 0.5) {
-				rulerViewport.scrollLeft = desiredScroll;
-				tracksViewport.scrollLeft = desiredScroll;
-			}
-			rafId = requestAnimationFrame(tick);
-		};
-		rafId = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(rafId);
-	}, [
-		autoScrollEnabled,
-		isPlaying,
-		isScrubbing,
-		editor.playback,
-		rulerScrollRef,
-		tracksScrollRef,
-	]);
-
 	return {
 		handlePlayheadMouseDown: handlePlayheadMouseDownEvent,
 		handleRulerMouseDown: handleRulerMouseDownEvent,

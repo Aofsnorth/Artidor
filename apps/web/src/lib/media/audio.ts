@@ -27,6 +27,30 @@ import { yieldToEventLoop } from "@/lib/media/yield";
 
 const MAX_AUDIO_CHANNELS = 2;
 const EXPORT_SAMPLE_RATE = 44100;
+const MAX_CONCURRENT_AUDIO_DECODES = 3;
+
+/** Runs async tasks through a fixed-size pool while preserving input order. */
+export async function runTasksWithConcurrency<T>({
+	tasks,
+	concurrency,
+}: {
+	tasks: Array<() => Promise<T>>;
+	concurrency: number;
+}): Promise<T[]> {
+	if (concurrency < 1) throw new Error("concurrency must be at least 1");
+	const results = new Array<T>(tasks.length);
+	let nextIndex = 0;
+	const worker = async () => {
+		while (nextIndex < tasks.length) {
+			const index = nextIndex++;
+			results[index] = await tasks[index]();
+		}
+	};
+	await Promise.all(
+		Array.from({ length: Math.min(concurrency, tasks.length) }, worker),
+	);
+	return results;
+}
 
 export interface CollectedAudioElement {
 	timelineElement: AudioCapableElement;
@@ -159,7 +183,7 @@ export async function collectAudioElements({
 	const mediaMap = new Map<string, MediaAsset>(
 		mediaAssets.map((media) => [media.id, media]),
 	);
-	const pendingElements: Array<Promise<CollectedAudioElement | null>> = [];
+	const pendingElements: Array<() => Promise<CollectedAudioElement | null>> = [];
 	let resolvedCount = 0;
 	const totalCandidates = candidates.length;
 	const trackProgress = () => {
@@ -169,7 +193,7 @@ export async function collectAudioElements({
 
 	for (const { element, mediaAsset } of candidates) {
 		if (element.type === "audio") {
-			pendingElements.push(
+			pendingElements.push(() =>
 				resolveAudioBufferForElement({
 					element,
 					mediaMap,
@@ -204,7 +228,7 @@ export async function collectAudioElements({
 		if (element.type === "video") {
 			if (!mediaAsset || !mediaSupportsAudio({ media: mediaAsset })) continue;
 
-			pendingElements.push(
+			pendingElements.push(() =>
 				resolveAudioBufferForVideoElement({
 					mediaAsset,
 					audioContext,
@@ -238,7 +262,10 @@ export async function collectAudioElements({
 		}
 	}
 
-	const resolvedElements = await Promise.all(pendingElements);
+	const resolvedElements = await runTasksWithConcurrency({
+		tasks: pendingElements,
+		concurrency: MAX_CONCURRENT_AUDIO_DECODES,
+	});
 	const audioElements: CollectedAudioElement[] = [];
 	for (const element of resolvedElements) {
 		if (element) audioElements.push(element);

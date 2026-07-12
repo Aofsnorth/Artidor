@@ -163,6 +163,17 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		],
 	},
 	{
+		id: "2026-07-12-long-export-and-home-contrast",
+		date: "2026-07-12",
+		tag: "performance",
+		title: "More reliable long exports and clearer home-page text",
+		items: [
+			"Export audio decoding now uses bounded concurrency, reducing CPU and memory spikes on projects with many clips.",
+			"Timeline playback no longer runs a duplicate autoscroll animation loop.",
+			"The home-page artwork now has a stronger contrast layer so translucent text and cards stay readable.",
+		],
+	},
+	{
 		id: "2026-07-11-export-and-preview-performance",
 		date: "2026-07-11",
 		tag: "performance",
