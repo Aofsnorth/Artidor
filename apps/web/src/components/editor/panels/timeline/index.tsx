@@ -1982,7 +1982,11 @@ function AddTimelineTrackButton() {
 				{options.map((option) => (
 					<DropdownMenuItem
 						key={option.type}
-						onClick={() => editor.timeline.addTrack({ type: option.type })}
+						onClick={() =>
+							option.type === "text"
+								? editor.timeline.addTextTrackWithDefaultText()
+								: editor.timeline.addTrack({ type: option.type })
+						}
 					>
 						{option.label}
 					</DropdownMenuItem>
