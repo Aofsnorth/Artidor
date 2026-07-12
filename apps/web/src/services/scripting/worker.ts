@@ -102,8 +102,8 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 			// Web Worker with no DOM/fetch/network access. All editor mutations
 			// go through artidor.run(), which is validated against the tool
 			// registry on the main thread. See the security comment above.
-			// biome-ignore format: nosemgrep suppression
-			const runner = new Function( // nosemgrep: no-eval
+			// nosemgrep: no-eval
+			const runner = new Function(
 				"artidor",
 				"console",
 				`"use strict"; return (async () => {\n${message.code}\n})();`,
