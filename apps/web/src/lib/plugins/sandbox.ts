@@ -192,8 +192,8 @@ export function createPluginSandbox({
 		// Plugins are user-installed (the user runs their own code in their own
 		// browser); the install UI surfaces a prominent trust warning. See the
 		// SECURITY comment above.
-		// biome-ignore format: nosemgrep suppression
-		const wrapper = new Function( // nosemgrep: no-eval
+		// nosemgrep: no-eval
+		const wrapper = new Function(
 			"artidor",
 			"window",
 			"document",
