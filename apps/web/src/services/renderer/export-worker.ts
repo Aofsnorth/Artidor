@@ -30,6 +30,7 @@ import {
 import { CanvasRenderer } from "./canvas-renderer";
 import { deserializeSceneTree } from "./scene-deserializer";
 import type { SerializedNode } from "./scene-serializer";
+import { getExportRenderQueueDepth } from "./export-performance";
 import {
 	EXPORT_QUALITY_MAP,
 	audioBitrateFor,
@@ -453,12 +454,15 @@ async function handleExport(msg: WorkerInMessage) {
 	//   so the extra depth doesn't hurt — it just means more frames are
 	//   ready when the encoder finishes one. 16 frames ≈ 260ms at 60fps,
 	//   which is well within the VideoEncoder's internal queue limit.
-	const RENDER_QUEUE_DEPTH = 16;
+	const renderQueueDepth = getExportRenderQueueDepth({
+		width: safeWidth,
+		height: safeHeight,
+	});
 	const pendingEncodes: Promise<void>[] = [];
 	const frameDuration = 1 / fpsFloat;
 	const progressDenominator = Math.max(1, segmentFrameCount);
 
-	console.info(`[export-worker] render queue depth: ${RENDER_QUEUE_DEPTH}`);
+	console.info(`[export-worker] render queue depth: ${renderQueueDepth}`);
 
 	// ── Timing instrumentation ──
 	// Measures where time actually goes so we can identify the real
@@ -493,7 +497,7 @@ async function handleExport(msg: WorkerInMessage) {
 		// the renderer (which is the normal case, so the queue stays full
 		// and both GPU and CPU stay busy). Time spent here = encoder is the
 		// bottleneck.
-		if (pendingEncodes.length >= RENDER_QUEUE_DEPTH) {
+		if (pendingEncodes.length >= renderQueueDepth) {
 			const waitStart = performance.now();
 			const oldest = pendingEncodes.shift();
 			if (!oldest) throw new Error("Pending encode queue unexpectedly empty");

@@ -56,15 +56,15 @@ export function PageShell({
 			   but under the page content. Two layers:
 			   1. A top-to-bottom vignette so the sticky header
 			      stays legible even when it overlays the figure.
-			   2. A bottom-to-mid fade so content landing in the
-			      lower portion of the page has air underneath.
+			   2. A persistent black scrim so translucent cards and
+			      secondary text remain readable over bright artwork.
 			   All absolute so they scroll with the artwork. */}
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 -z-10 min-h-screen"
 				style={{
 					background:
-						"linear-gradient(180deg, rgba(8,8,10,0.72) 0%, rgba(8,8,10,0.52) 18%, rgba(8,8,10,0.46) 50%, rgba(8,8,10,0.62) 80%, rgba(8,8,10,0.78) 100%)",
+						"linear-gradient(180deg, rgba(4,4,6,0.86) 0%, rgba(4,4,6,0.76) 18%, rgba(4,4,6,0.72) 50%, rgba(4,4,6,0.80) 80%, rgba(4,4,6,0.90) 100%)",
 				}}
 			/>
 

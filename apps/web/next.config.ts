@@ -154,6 +154,12 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
+		// Keep client-router cache entries warm longer so panel/tab navigation
+		// and back/forward in the editor don't refetch JS/data unnecessarily.
+		staleTimes: {
+			dynamic: 30,
+			static: 180,
+		},
 		// Trim barrel imports to per-symbol so only the icons/utilities actually
 		// used get bundled. @hugeicons/* is imported across ~79 files and is the
 		// biggest win here (Next doesn't auto-optimize it like lucide-react).
@@ -180,6 +186,7 @@ const nextConfig: NextConfig = {
 		],
 	},
 	images: {
+		formats: ["image/avif", "image/webp"],
 		remotePatterns: [
 			{
 				protocol: "https",

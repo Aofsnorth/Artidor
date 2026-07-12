@@ -74,15 +74,10 @@ function acquireWarmWorker(): { worker: Worker; isWarm: boolean } {
 function releaseWarmWorker(worker: Worker, keepAlive: boolean): void {
 	warmWorkerBusy = false;
 	if (keepAlive && worker === warmWorker) {
-		// Keep the worker alive for reuse. It will re-send "ready" after
-		// the current export's completion message, signaling it's ready
-		// for the next "init".
 		return;
 	}
 	worker.terminate();
-	if (worker === warmWorker) {
-		warmWorker = null;
-	}
+	if (worker === warmWorker) warmWorker = null;
 }
 
 /**
