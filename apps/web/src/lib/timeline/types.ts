@@ -524,6 +524,10 @@ export interface ComputeDropTargetParams {
 	startTimeOverride?: number;
 	excludeElementId?: string;
 	targetElementTypes?: string[];
+	/** Per-track height overrides keyed by track id. */
+	overrideHeights?: Record<string, number>;
+	/** Per-track expansion heights (e.g. expanded keyframe lanes). */
+	extraHeights?: readonly number[];
 }
 
 export interface ClipboardItem {

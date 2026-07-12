@@ -284,6 +284,7 @@ const TRACK_ICONS: Record<TimelineTrack["type"], ReactNode> = {
 
 export function Timeline() {
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
+	const trackHeights = useTimelineStore((s) => s.trackHeights);
 	const activeTool = useTimelineToolStore((s) => s.tool);
 	const setTimelineTool = useTimelineToolStore((s) => s.setTool);
 	const {
@@ -830,12 +831,16 @@ export function Timeline() {
 									isVisible={isDragOver && !dropTarget?.targetElement}
 									headerHeight={0}
 									dragElementType={dragElementType}
+									getTrackExpansionHeight={getTrackExpansionHeight}
+									overrideHeights={trackHeights}
 								/>
 								<DragLine
 									dropTarget={dragDropTarget}
 									tracks={tracks}
 									isVisible={dragState.isDragging}
 									headerHeight={0}
+									getTrackExpansionHeight={getTrackExpansionHeight}
+									overrideHeights={trackHeights}
 								/>
 							</div>
 							<TimelineGutter

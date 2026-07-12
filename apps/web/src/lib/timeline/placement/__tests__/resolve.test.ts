@@ -269,6 +269,27 @@ describe("resolveTrackPlacement", () => {
 		});
 	});
 
+	test("explicit rejects overlapping placements on the main track", () => {
+		const tracks = buildSceneTracks({
+			main: buildTrack({
+				id: "video-main",
+				type: "video",
+				elements: [
+					buildElement({ id: "a", type: "video", startTime: 0, duration: 5 }),
+				],
+			}),
+		});
+
+		expect(
+			resolveTrackPlacement({
+				tracks,
+				elementType: "video",
+				timeSpans: [buildTimeSpan({ startTime: 3, duration: 5 })],
+				strategy: { type: "explicit", trackId: "video-main" },
+			}),
+		).toBeNull();
+	});
+
 	test("explicit rejects missing and incompatible tracks", () => {
 		const tracks = buildSceneTracks({
 			main: buildTrack({ id: "video-1", type: "video" }),

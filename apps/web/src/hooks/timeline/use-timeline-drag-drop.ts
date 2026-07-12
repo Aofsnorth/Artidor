@@ -9,6 +9,7 @@ import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timel
 import { roundToFrame } from "artidor-wasm";
 import { snapElementEdge } from "@/lib/timeline/snap-utils";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
 import {
 	buildTextElement,
 	buildGraphicElement,
@@ -79,6 +80,8 @@ export function useTimelineDragDrop({
 }: UseTimelineDragDropProps) {
 	const editor = useEditor();
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
+	const trackHeights = useTimelineStore((s) => s.trackHeights);
+	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
 	const [isDragOver, setIsDragOver] = useState(false);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 	const [dragElementType, setElementType] = useState<ElementType | null>(null);
@@ -192,6 +195,14 @@ export function useTimelineDragDrop({
 
 			const sceneTracks = editor.scenes.getActiveScene().tracks;
 			const currentTime = editor.playback.getCurrentTime();
+			const orderedTracks = [
+				...sceneTracks.overlay,
+				sceneTracks.main,
+				...sceneTracks.audio,
+			];
+			const extraHeights = orderedTracks.map((track) =>
+				computeTrackExpansionHeight({ track, expandedElementIds }),
+			);
 			const target = computeDropTarget({
 				elementType,
 				mouseX,
@@ -203,6 +214,8 @@ export function useTimelineDragDrop({
 				pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
 				zoomLevel,
 				targetElementTypes,
+				overrideHeights: trackHeights,
+				extraHeights,
 			});
 
 			// Magnet snap for external drops (file drops from OS, library
@@ -250,6 +263,8 @@ export function useTimelineDragDrop({
 			getSnappedTime,
 			editor,
 			snappingEnabled,
+			expandedElementIds,
+			trackHeights,
 		],
 	);
 
@@ -616,6 +631,11 @@ export function useTimelineDragDrop({
 								: DEFAULT_NEW_ELEMENT_DURATION;
 						const sceneTracks = editor.scenes.getActiveScene().tracks;
 						const currentTime = editor.playback.getCurrentTime();
+						const orderedTracks = [
+							...sceneTracks.overlay,
+							sceneTracks.main,
+							...sceneTracks.audio,
+						];
 						const reuseMainTrackId =
 							createdAsset.type === "video" &&
 							sceneTracks.overlay.length === 0 &&
@@ -635,6 +655,10 @@ export function useTimelineDragDrop({
 									elementDuration: duration,
 									pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
 									zoomLevel,
+									overrideHeights: trackHeights,
+									extraHeights: orderedTracks.map((track) =>
+										computeTrackExpansionHeight({ track, expandedElementIds }),
+									),
 								});
 
 						// Magnet snap for OS file drops: this path runs after
@@ -732,7 +756,7 @@ export function useTimelineDragDrop({
 				},
 			});
 		},
-		[editor, zoomLevel, snappingEnabled],
+		[editor, zoomLevel, snappingEnabled, expandedElementIds, trackHeights],
 	);
 
 	const handleDrop = useCallback(

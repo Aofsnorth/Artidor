@@ -40,23 +40,22 @@ function buildExistingTrackResult({
 		excludeElementId: firstSpan?.excludeElementId,
 	});
 
-	// Re-check overlap with the adjusted start time. enforceMainTrackStart
-	// may have snapped the time to 0 (e.g. on the main track), which can
-	// cause the element to overlap a different clip that the original
-	// overlap check (run before this function) did not catch. If the
-	// adjusted position overlaps, return null so the caller falls through
-	// to new-track creation instead of placing an overlapping clip.
-	if (adjustedStartTime !== requestedStartTime) {
-		const adjustedTimeSpans: PlacementTimeSpan[] = [
-			{
-				startTime: adjustedStartTime,
-				duration: firstSpan?.duration ?? 0,
-				excludeElementId: firstSpan?.excludeElementId,
-			},
-		];
-		if (!canPlaceTimeSpansOnTrack({ track, timeSpans: adjustedTimeSpans })) {
-			return null;
-		}
+	// Always re-check overlap with the final start time. This is the
+	// only overlap check for the explicit strategy, and it catches the
+	// case where enforceMainTrackStart adjusted the time (e.g. snapped
+	// to 0 on the main track) so the placement would overlap a different
+	// clip. If the final position overlaps, return null so the caller
+	// falls through to new-track creation instead of placing an
+	// overlapping clip.
+	const finalTimeSpans: PlacementTimeSpan[] = [
+		{
+			startTime: adjustedStartTime,
+			duration: firstSpan?.duration ?? 0,
+			excludeElementId: firstSpan?.excludeElementId,
+		},
+	];
+	if (!canPlaceTimeSpansOnTrack({ track, timeSpans: finalTimeSpans })) {
+		return null;
 	}
 
 	return {
