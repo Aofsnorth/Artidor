@@ -39,6 +39,7 @@ import {
 	Input,
 	Mp4OutputFormat,
 	Output,
+	StreamTarget,
 	WebMOutputFormat,
 } from "mediabunny";
 import type { FrameRate } from "artidor-wasm";
@@ -47,7 +48,6 @@ import { frameRateToFloat } from "@/lib/fps/utils";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
 import {
 	detectHardware,
-	hardwareSummary,
 	recommendExportWorkerCount,
 } from "@/lib/export/hardware";
 import type { SerializedNode } from "./scene-serializer";
@@ -61,6 +61,11 @@ import {
 	runExportInWorker,
 	type ExportWorkerResult,
 } from "./export-worker-bridge";
+import { waitForWorkerGpuReady } from "./export-performance";
+import {
+	createExportTempFile,
+	isDiskBackedExportSupported,
+} from "./export-output";
 import { buildSegmentPlans, MIN_FRAMES_PER_SEGMENT } from "./segment-plan";
 
 export type ParallelExportResult =
@@ -117,10 +122,6 @@ export async function runParallelExport({
 	} else {
 		const hardware = await detectHardware();
 		segmentCount = recommendExportWorkerCount({ hardware, width, height });
-		console.info(
-			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers ` +
-				`(GPU-aware auto policy, ${width}x${height})`,
-		);
 	}
 	// Still cap by timeline length — tiny timelines don't benefit from many workers.
 	segmentCount = Math.min(
@@ -128,13 +129,11 @@ export async function runParallelExport({
 		Math.floor(totalFrames / MIN_FRAMES_PER_SEGMENT),
 	);
 	if (segmentCount < 2) {
-		console.info("[parallel-export] skipping (segmentCount < 2), falling back to single worker");
 		return { success: false, fallback: true };
 	}
 
 	// Pin one codec for every segment up-front so the bitstreams are mutually
 	// compatible and can be stitched without a re-encode.
-	console.info("[parallel-export] negotiating video codec");
 	const { codec: videoCodec, outputFormat: negotiatedFormat } =
 		await negotiateVideoCodec({
 			format,
@@ -143,11 +142,6 @@ export async function runParallelExport({
 			height,
 			fpsFloat,
 		});
-	console.info(`[parallel-export] codec: ${videoCodec}, format: ${negotiatedFormat}`);
-
-	console.info(
-		`[parallel-export] starting ${segmentCount} segments, ${totalFrames} frames total`,
-	);
 
 	const plans = buildSegmentPlans({
 		totalFrames,
@@ -167,17 +161,19 @@ export async function runParallelExport({
 		onProgress({ progress: totalFrames > 0 ? done / totalFrames : 0 });
 	};
 
-	// Launch segment workers with a small delay between each launch to avoid
+	// Launch segment workers after the preceding worker finishes GPU setup to avoid
 	// GPU adapter request deadlocks on Windows. `navigator.gpu.requestAdapter()`
-	// can deadlock when called simultaneously from multiple workers — a 3s gap
-	// gives each worker time to acquire its adapter before the next one tries.
+	// can deadlock when called simultaneously from multiple workers. A timeout
+	// preserves compatibility if a browser never emits the GPU-ready signal.
 	// The render/encode phase still runs fully in parallel once all workers are
 	// past GPU init.
-	console.info(`[parallel-export] launching ${plans.length} segment workers (staggered launch)`);
-
 	const workerPromises: Promise<ExportWorkerResult>[] = [];
 	for (let i = 0; i < plans.length; i++) {
 		const plan = plans[i];
+		let signalGpuReady: (() => void) | undefined;
+		const gpuReady = new Promise<void>((resolve) => {
+			signalGpuReady = resolve;
+		});
 		workerPromises.push(
 			runExportInWorker({
 				sceneTree,
@@ -198,6 +194,7 @@ export async function runParallelExport({
 				// truly stuck.
 				timeoutMs: 60_000,
 				reuseWorker: false,
+				onReady: signalGpuReady,
 				onProgress: ({ progress }) => {
 					segmentProgress[plan.index] = progress;
 					reportProgress();
@@ -206,34 +203,21 @@ export async function runParallelExport({
 			}),
 		);
 
-		// Wait before launching the next worker to avoid GPU adapter request
-		// deadlocks on machines with multiple workers. The original 3s delay
-		// was extremely conservative — modern GPU drivers handle concurrent
-		// adapter requests within ~200ms. 500ms gives enough headroom for
-		// driver initialization while not wasting 9-21s on 4-8 worker launches.
-		const staggerDelay = 500;
+		// Continue immediately after GPU initialization. Fall back to the former
+		// conservative delay when an older/broken worker misses the signal.
 		if (i < plans.length - 1) {
-			await new Promise((r) => setTimeout(r, staggerDelay));
+			await waitForWorkerGpuReady(gpuReady, 500);
 		}
 	}
 
-	console.info("[parallel-export] all workers launched, waiting for completion");
-	const workersStart = performance.now();
 	const segmentResults = await Promise.all(workerPromises);
-	console.info(
-		`[parallel-export] all workers finished in ${((performance.now() - workersStart) / 1000).toFixed(1)}s`,
-	);
-	console.info(`[parallel-export] segment results:`, segmentResults.map(r => ({ success: r.success, hasBuffer: "buffer" in r, cancelled: "cancelled" in r, error: "error" in r })));
 
 	// Any cancellation → bubble up as cancelled.
-	console.info(`[parallel-export] checking cancellation...`);
 	if (segmentResults.some((r) => !r.success && "cancelled" in r)) {
-		console.info(`[parallel-export] cancelled detected, returning`);
 		return { success: false, cancelled: true };
 	}
 
 	// Any segment failure → throw so the caller falls back to single-worker.
-	console.info(`[parallel-export] collecting segment buffers...`);
 	const segmentBuffers: ArrayBuffer[] = [];
 	for (const result of segmentResults) {
 		if (!result.success || !("buffer" in result)) {
@@ -245,16 +229,11 @@ export async function runParallelExport({
 		}
 		segmentBuffers.push(result.buffer);
 	}
-	console.info(`[parallel-export] collected ${segmentBuffers.length} buffers, sizes: ${segmentBuffers.map(b => b.byteLength)}`);
 
-	console.info(`[parallel-export] checking cancelled flag...`);
 	if (getCancelled?.()) {
-		console.info(`[parallel-export] cancelled flag set, returning`);
 		return { success: false, cancelled: true };
 	}
 
-	console.info("[parallel-export] all segment workers completed, concatenating");
-	const concatStart = performance.now();
 	const buffer = await concatenateSegments({
 		segmentBuffers,
 		segmentStartSeconds: plans.map((p) => p.startSeconds),
@@ -263,9 +242,6 @@ export async function runParallelExport({
 		fpsFloat,
 		audioBuffer: shouldIncludeAudio ? audioBuffer : null,
 	});
-	console.info(
-		`[parallel-export] concatenation took ${((performance.now() - concatStart) / 1000).toFixed(1)}s`,
-	);
 
 	onProgress?.({ progress: 1 });
 	return { success: true, buffer };
@@ -293,10 +269,13 @@ async function concatenateSegments({
 }): Promise<ArrayBuffer> {
 	const outputFormat =
 		format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
-	const output = new Output({
-		format: outputFormat,
-		target: new BufferTarget(),
-	});
+	const tempOutput = isDiskBackedExportSupported()
+		? await createExportTempFile()
+		: null;
+	const target = tempOutput
+		? new StreamTarget(tempOutput.stream, { chunked: true })
+		: new BufferTarget();
+	const output = new Output({ format: outputFormat, target });
 
 	const videoSource = new EncodedVideoPacketSource(videoCodec);
 	output.addVideoTrack(videoSource, { frameRate: fpsFloat });
@@ -318,14 +297,10 @@ async function concatenateSegments({
 	await output.start();
 
 	// Encode the audio once, concurrently with the video packet copy.
-	const audioEncodeStart = performance.now();
 	const audioEncode =
 		audioSource && audioBuffer
 			? audioSource.add(audioBuffer).finally(() => {
 					audioSource?.close();
-					console.info(
-						`[parallel-export] audio encode took ${((performance.now() - audioEncodeStart) / 1000).toFixed(1)}s`,
-					);
 				})
 			: null;
 
@@ -333,12 +308,9 @@ async function concatenateSegments({
 	// share an identical encoder config); it must be supplied on the first
 	// `add()` so the muxer can write the track's codec metadata.
 	let isFirstPacket = true;
-	let totalPackets = 0;
-	const packetCopyStart = performance.now();
 
 	for (const [s, segmentBuffer] of segmentBuffers.entries()) {
 		const offset = segmentStartSeconds[s] ?? 0;
-		const segStart = performance.now();
 		const input = new Input({
 			source: new BlobSource(new Blob([segmentBuffer])),
 			formats: ALL_FORMATS,
@@ -366,32 +338,25 @@ async function concatenateSegments({
 						: undefined,
 				);
 				isFirstPacket = false;
-				totalPackets++;
 				packet = await sink.getNextPacket(packet);
 			}
-			console.info(
-				`[parallel-export] segment ${s}: ${((performance.now() - segStart) / 1000).toFixed(1)}s`,
-			);
 		} finally {
 			input.dispose();
 		}
 	}
 
-	console.info(
-		`[parallel-export] packet copy: ${totalPackets} packets in ${((performance.now() - packetCopyStart) / 1000).toFixed(1)}s`,
-	);
-
 	videoSource.close();
 	if (audioEncode) await audioEncode;
-	const finalizeStart = performance.now();
 	await output.finalize();
-	console.info(
-		`[parallel-export] finalize took ${((performance.now() - finalizeStart) / 1000).toFixed(1)}s`,
-	);
 
-	const buffer = output.target.buffer;
-	if (!buffer) {
-		throw new Error("Concatenation produced no buffer");
+	if (tempOutput) {
+		try {
+			return await (await tempOutput.handle.getFile()).arrayBuffer();
+		} finally {
+			await tempOutput.remove().catch(() => {});
+		}
 	}
+	const buffer = target instanceof BufferTarget ? target.buffer : null;
+	if (!buffer) throw new Error("Concatenation produced no buffer");
 	return buffer;
 }

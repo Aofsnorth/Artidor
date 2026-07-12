@@ -70,7 +70,8 @@ export function startEditorBridge(editor: EditorCore): () => void {
 
 	const onWindowMessage = (event: MessageEvent) => {
 		// Same-origin only — never accept commands from a cross-origin frame.
-		if (event.origin && event.origin !== window.location.origin) return;
+		// Require an exact origin match (empty/null origin is rejected).
+		if (event.origin !== window.location.origin) return;
 		if (!isBridgeRequest(event.data)) return;
 		const source = event.source as WindowProxy | null;
 		void handle(event.data, (msg) =>
