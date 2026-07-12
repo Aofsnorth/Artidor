@@ -45,7 +45,11 @@ import type { FrameRate } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
-import { detectHardware, hardwareSummary, recommendWorkerCount } from "@/lib/export/hardware";
+import {
+	detectHardware,
+	hardwareSummary,
+	recommendExportWorkerCount,
+} from "@/lib/export/hardware";
 import type { SerializedNode } from "./scene-serializer";
 import {
 	audioBitrateFor,
@@ -112,9 +116,10 @@ export async function runParallelExport({
 		segmentCount = workerCount;
 	} else {
 		const hardware = await detectHardware();
-		segmentCount = recommendWorkerCount(hardware);
+		segmentCount = recommendExportWorkerCount({ hardware, width, height });
 		console.info(
-			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers`,
+			`[parallel-export] hardware: ${hardwareSummary(hardware)} → ${segmentCount} workers ` +
+				`(GPU-aware auto policy, ${width}x${height})`,
 		);
 	}
 	// Still cap by timeline length — tiny timelines don't benefit from many workers.

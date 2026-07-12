@@ -122,6 +122,33 @@ export function recommendWorkerCount(hardware: HardwareInfo): number {
 }
 
 /**
+ * Recommend export workers after accounting for WebGPU compositor pressure.
+ *
+ * Each parallel segment owns a WebGPU device, decoder, encoder queue, and
+ * output canvas. CPU-based worker counts alone can over-subscribe one GPU:
+ * competing contexts reduce throughput and can force driver memory eviction.
+ * The cap is based on output pixels, which is known before work starts and is
+ * more reliable than privacy-reduced adapter strings.
+ */
+export function recommendExportWorkerCount({
+	hardware,
+	width,
+	height,
+}: {
+	hardware: HardwareInfo;
+	width: number;
+	height: number;
+}): number {
+	if (!hardware.gpuAdapter) return 1;
+
+	const pixels = Math.max(0, width) * Math.max(0, height);
+	const fourKPixels = 3840 * 2160;
+	const gpuWorkerCap = pixels > fourKPixels ? 1 : pixels >= fourKPixels ? 2 : 4;
+
+	return Math.min(recommendWorkerCount(hardware), gpuWorkerCap);
+}
+
+/**
  * Human-readable summary of detected hardware for display in the UI.
  */
 export function hardwareSummary(hardware: HardwareInfo): string {
