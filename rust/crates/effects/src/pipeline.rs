@@ -1372,4 +1372,46 @@ mod tests {
                 .unwrap_or_else(|err| panic!("WGSL parse error in shader '{}': {err}", entry.id));
         }
     }
+
+    #[test]
+    fn tile_uniforms_pack_into_scalars() {
+        use crate::UniformValue;
+
+        let mut uniforms = std::collections::HashMap::new();
+        uniforms.insert("u_amount".to_string(), UniformValue::Number(0.4));
+        uniforms.insert("u_shift".to_string(), UniformValue::Number(0.5));
+        uniforms.insert("u_single_line".to_string(), UniformValue::Number(1.0));
+        uniforms.insert("u_orientation".to_string(), UniformValue::Number(1.0));
+
+        let pass = EffectPass {
+            shader: "tile".to_string(),
+            uniforms,
+        };
+
+        let buffer = pack_effect_uniforms(&pass, 1920, 1080).unwrap();
+
+        assert_eq!(buffer.resolution, [1920.0, 1080.0]);
+        assert_eq!(buffer.direction, [0.0, 0.0]);
+        assert_eq!(buffer.scalars, [0.4, 0.5, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn tile_defaults_pack_correctly() {
+        use crate::UniformValue;
+
+        let mut uniforms = std::collections::HashMap::new();
+        uniforms.insert("u_amount".to_string(), UniformValue::Number(0.4));
+        uniforms.insert("u_shift".to_string(), UniformValue::Number(0.0));
+        uniforms.insert("u_single_line".to_string(), UniformValue::Number(0.0));
+        uniforms.insert("u_orientation".to_string(), UniformValue::Number(0.0));
+
+        let pass = EffectPass {
+            shader: "tile".to_string(),
+            uniforms,
+        };
+
+        let buffer = pack_effect_uniforms(&pass, 1920, 1080).unwrap();
+
+        assert_eq!(buffer.scalars, [0.4, 0.0, 0.0, 0.0]);
+    }
 }
