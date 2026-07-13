@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-export-performance-cache-tuning",
+		date: "2026-07-19",
+		tag: "performance",
+		title: "Faster exports and smoother scrubbing",
+		items: [
+			"Codec negotiation is now memoized per session, so the second and later exports start faster.",
+			"Export queue depth now scales with CPU cores and output resolution, keeping more frames in flight without bloating memory.",
+			"Preview and video frame caches are doubled to 60 and 128 frames, reducing re-render and re-decode churn while scrubbing.",
+		],
+	},
+	{
 		id: "2026-07-19-caption-style-selector",
 		date: "2026-07-19",
 		tag: "feature",
