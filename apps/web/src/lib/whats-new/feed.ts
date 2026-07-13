@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-tile-effect-track-fix",
+		date: "2026-07-19",
+		tag: "fix",
+		title: "Tile effect now renders correctly on effect tracks",
+		items: [
+			"Fixed a serialization mismatch that prevented scene effects placed on effect tracks from being applied.",
+			"Tile and other scene effects on tracks now modify the whole scene as expected.",
+		],
+	},
+	{
 		id: "2026-07-19-tile-effect-properties",
 		date: "2026-07-19",
 		tag: "feature",
