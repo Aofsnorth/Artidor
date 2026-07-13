@@ -34,6 +34,8 @@ import { getExportRenderQueueDepth } from "./export-performance";
 import {
 	EXPORT_QUALITY_MAP,
 	audioBitrateFor,
+	exportKeyFrameIntervalForQuality,
+	exportLatencyModeForQuality,
 	negotiateAudioCodec,
 	negotiateVideoCodec,
 	type ExportAudioCodec,
@@ -346,10 +348,15 @@ async function handleExport(msg: WorkerInMessage) {
 		// automatically when the hardware encoder rejects this configuration
 		// (e.g. AVC High Profile Level 6.0 at >4K on some GPUs).
 		hardwareAcceleration,
+		// Tune latency/keyframe settings based on quality. Low/medium exports
+		// use realtime latency mode and fewer keyframes to maximize encoder
+		// throughput; high/very_high keep quality-oriented defaults.
+		latencyMode: exportLatencyModeForQuality(quality),
+		keyFrameInterval: exportKeyFrameIntervalForQuality(quality),
 		// Log the actual encoder config so we can verify hardware accel.
 		onEncoderConfig: (config) => {
 			console.info(
-				`[export-worker] encoder config: hardwareAcceleration=${config.hardwareAcceleration}, codec=${config.codec}`,
+				`[export-worker] encoder config: hardwareAcceleration=${config.hardwareAcceleration}, codec=${config.codec}, latencyMode=${config.latencyMode}`,
 			);
 		},
 	});

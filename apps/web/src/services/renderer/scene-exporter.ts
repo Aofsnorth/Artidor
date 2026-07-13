@@ -7,10 +7,6 @@ import {
 	BufferTarget,
 	CanvasSource,
 	AudioBufferSource,
-	QUALITY_LOW,
-	QUALITY_MEDIUM,
-	QUALITY_HIGH,
-	QUALITY_VERY_HIGH,
 } from "mediabunny";
 import type { FrameRate } from "artidor-wasm";
 import { mediaTimeToSeconds } from "artidor-wasm";
@@ -19,7 +15,12 @@ import { frameRateToFloat } from "@/lib/fps/utils";
 import type { RootNode } from "./nodes/root-node";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
 import { CanvasRenderer } from "./canvas-renderer";
-import { negotiateVideoCodec } from "./export-codec";
+import {
+	EXPORT_QUALITY_MAP,
+	exportKeyFrameIntervalForQuality,
+	exportLatencyModeForQuality,
+	negotiateVideoCodec,
+} from "./export-codec";
 
 type ExportParams = {
 	width: number;
@@ -37,13 +38,6 @@ type ExportParams = {
 	 * reliable fallback is to force software encoding.
 	 */
 	forceSoftwareEncoding?: boolean;
-};
-
-const qualityMap = {
-	low: QUALITY_LOW,
-	medium: QUALITY_MEDIUM,
-	high: QUALITY_HIGH,
-	very_high: QUALITY_VERY_HIGH,
 };
 
 // How often (in frames) the export loop hands control back to the browser. The
@@ -191,11 +185,16 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		const videoSource = new CanvasSource(this.renderer.getOutputCanvas(), {
 			codec: videoCodec,
-			bitrate: qualityMap[this.quality],
+			bitrate: EXPORT_QUALITY_MAP[this.quality],
 			// Request hardware encoder (NVENC/QuickSync/VCE/VideoToolbox).
 			// 10-100x faster than software encoding. Automatically downgrades to
 			// software when the hardware encoder rejects the configuration.
 			hardwareAcceleration,
+			// Tune latency/keyframe settings based on quality. Low/medium exports
+			// use realtime latency mode and fewer keyframes to maximize encoder
+			// throughput; high/very_high keep quality-oriented defaults.
+			latencyMode: exportLatencyModeForQuality(this.quality),
+			keyFrameInterval: exportKeyFrameIntervalForQuality(this.quality),
 		});
 
 		output.addVideoTrack(videoSource, { frameRate: fpsFloat });

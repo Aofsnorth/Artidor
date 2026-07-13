@@ -19,8 +19,6 @@ export type CanvasRendererParams = {
 };
 
 export class CanvasRenderer {
-	canvas: OffscreenCanvas | HTMLCanvasElement;
-	context: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
 	/** Output buffer width (preview-quality scaled). Used for the WASM compositor canvas. */
 	width: number;
 	/** Output buffer height. */
@@ -43,34 +41,6 @@ export class CanvasRenderer {
 		this.canvasSize = canvasSize ?? { width, height };
 		this.fps = fps;
 		this.maxSourceDim = undefined;
-
-		// OffscreenCanvas is the only path that works in export workers
-		// (no `document` available). We don't fall back to
-		// `document.createElement` because:
-		// 1. Every browser the app targets (Chrome/Edge/Firefox/Safari ≥ TP)
-		//    supports OffscreenCanvas — the previous fallback only ever fired
-		//    inside the export Web Worker, where it would then throw
-		//    `ReferenceError: document is not defined` and stall the export
-		//    at 5% (worker fallback path used to time out and bail to main
-		//    thread, which then hit a second failure on AVC dimensions).
-		// 2. In the main thread, OffscreenCanvas works fine; constructing
-		//    one here lets the export path (which clones the same module
-		//    graph) and the preview path share the same shape.
-		if (typeof OffscreenCanvas === "undefined") {
-			throw new Error(
-				"CanvasRenderer requires OffscreenCanvas. Update to a browser with OffscreenCanvas support, or open the desktop app.",
-			);
-		}
-		this.canvas = new OffscreenCanvas(width, height);
-
-		const context = this.canvas.getContext("2d");
-		if (!context) {
-			throw new Error("Failed to get canvas context");
-		}
-
-		this.context = context as
-			| OffscreenCanvasRenderingContext2D
-			| CanvasRenderingContext2D;
 	}
 
 	getOutputCanvas(): HTMLCanvasElement | OffscreenCanvas {
@@ -91,8 +61,9 @@ export class CanvasRenderer {
 		canvasSize?: { width: number; height: number };
 	}) {
 		// No-op when unchanged: the preview calls this every frame to apply the
-		// current quality scale, and reallocating the backing canvas per frame
-		// would defeat the purpose.
+		// current quality scale. Reallocating the backing canvas per frame
+		// would defeat the purpose, but the actual output buffer is owned by the
+		// WASM compositor — this renderer just tracks the desired dimensions.
 		if (
 			this.width === width &&
 			this.height === height &&
@@ -105,21 +76,6 @@ export class CanvasRenderer {
 		this.width = width;
 		this.height = height;
 		if (canvasSize) this.canvasSize = canvasSize;
-
-		if (this.canvas instanceof OffscreenCanvas) {
-			this.canvas = new OffscreenCanvas(width, height);
-		} else {
-			this.canvas.width = width;
-			this.canvas.height = height;
-		}
-
-		const context = this.canvas.getContext("2d");
-		if (!context) {
-			throw new Error("Failed to get canvas context");
-		}
-		this.context = context as
-			| OffscreenCanvasRenderingContext2D
-			| CanvasRenderingContext2D;
 	}
 
 	async render({ node, time }: { node: AnyBaseNode; time: number }) {
