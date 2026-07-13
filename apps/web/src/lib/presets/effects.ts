@@ -565,14 +565,6 @@ export const effects: EffectPresetDefinition[] = [
 		"filter:contrast(1.2);",
 	),
 	ef(
-		"fx-style-tile",
-		"Tile",
-		"Stylize",
-		"Repeating tile mosaic",
-		{ amount: 40 },
-		"filter:contrast(1.2);",
-	),
-	ef(
 		"fx-style-checker",
 		"Checker",
 		"Stylize",

@@ -881,7 +881,6 @@ fn pack_effect_uniforms(
         | TWIST_SHADER_ID
         | THERMAL_SHADER_ID
         | KALEIDOSCOPE_SHADER_ID
-        | TILE_SHADER_ID
         | CHECKER_SHADER_ID
         | GRID_SHADER_ID
         | ZOOM_BLUR_SHADER_ID
@@ -904,6 +903,30 @@ fn pack_effect_uniforms(
 
             for uniform in pass.uniforms.keys() {
                 if uniform == "u_amount" {
+                    continue;
+                }
+                return Err(EffectsError::UnsupportedUniform {
+                    shader: shader.to_string(),
+                    uniform: uniform.clone(),
+                });
+            }
+        }
+        TILE_SHADER_ID => {
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let shift = read_number_uniform(pass, "u_shift")?;
+            let single_line = read_number_uniform(pass, "u_single_line")?;
+            let orientation = read_number_uniform(pass, "u_orientation")?;
+            scalars[0] = amount;
+            scalars[1] = shift;
+            scalars[2] = single_line;
+            scalars[3] = orientation;
+
+            for uniform in pass.uniforms.keys() {
+                if uniform == "u_amount"
+                    || uniform == "u_shift"
+                    || uniform == "u_single_line"
+                    || uniform == "u_orientation"
+                {
                     continue;
                 }
                 return Err(EffectsError::UnsupportedUniform {

@@ -68,6 +68,7 @@ import {
 } from "./video/stroke-shadow-glow";
 import {
 	checkerEffectDefinition,
+	fxStyleTileEffectDefinition,
 	gridEffectDefinition,
 	kaleidoscopeEffectDefinition,
 	tileEffectDefinition,
@@ -168,6 +169,7 @@ const defaultEffects = [
 	outerGlowEffectDefinition,
 	kaleidoscopeEffectDefinition,
 	tileEffectDefinition,
+	fxStyleTileEffectDefinition,
 	checkerEffectDefinition,
 	gridEffectDefinition,
 	zoomBlurEffectDefinition,

@@ -6,6 +6,18 @@ const asAmount01 = (v: unknown): number => {
 	return clamped / 100;
 };
 
+const asShift = (v: unknown): number => {
+	const n = typeof v === "number" ? v : Number.parseFloat(String(v));
+	const clamped = Number.isFinite(n) ? Math.min(100, Math.max(-100, n)) : 0;
+	return clamped / 100;
+};
+
+const asSingleLine = (v: unknown): number =>
+	v === true || v === 1 ? 1 : 0;
+
+const asOrientation = (v: unknown): number =>
+	v === "vertical" ? 1 : 0;
+
 function singleAmountEffect({
 	type,
 	name,
@@ -55,13 +67,69 @@ export const kaleidoscopeEffectDefinition = singleAmountEffect({
 	defaultValue: 50,
 });
 
-export const tileEffectDefinition = singleAmountEffect({
+export const tileEffectDefinition: EffectDefinition = {
 	type: "tile",
 	name: "Tile",
 	keywords: ["tile", "repeat", "mosaic", "grid", "geometric"],
-	label: "Tiles",
-	defaultValue: 40,
-});
+	params: [
+		{
+			key: "amount",
+			label: "Tiles",
+			type: "number",
+			default: 40,
+			min: 0,
+			max: 100,
+			step: 1,
+		},
+		{
+			key: "shift",
+			label: "Shift",
+			type: "number",
+			default: 0,
+			min: -100,
+			max: 100,
+			step: 1,
+		},
+		{
+			key: "singleLine",
+			label: "Single Line",
+			type: "boolean",
+			default: false,
+		},
+		{
+			key: "orientation",
+			label: "Orientation",
+			type: "select",
+			default: "horizontal",
+			options: [
+				{ value: "horizontal", label: "Horizontal" },
+				{ value: "vertical", label: "Vertical" },
+			],
+		},
+	],
+	renderer: {
+		passes: [
+			{
+				shader: "tile",
+				uniforms: ({ effectParams }) => ({
+					u_amount: asAmount01(effectParams.amount),
+					u_shift: asShift(effectParams.shift),
+					u_single_line: asSingleLine(effectParams.singleLine),
+					u_orientation: asOrientation(effectParams.orientation),
+				}),
+			},
+		],
+	},
+};
+
+/**
+ * Legacy alias for the fx-style-tile preset. Saved projects may still reference
+ * this type, so it is kept in the registry but is not shown in the effects catalog.
+ */
+export const fxStyleTileEffectDefinition: EffectDefinition = {
+	...tileEffectDefinition,
+	type: "fx-style-tile",
+};
 
 export const checkerEffectDefinition = singleAmountEffect({
 	type: "checker",
