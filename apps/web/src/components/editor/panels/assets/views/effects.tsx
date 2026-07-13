@@ -72,6 +72,11 @@ export function EffectsView() {
 			.getAll()
 			.filter(
 				(definition) => !isAdjustmentEffect({ effectType: definition.type }),
+			)
+			.filter(
+				// Hide the legacy fx-style-tile preset alias so the catalog only
+				// shows the single canonical Tile effect.
+				(definition) => definition.type !== "fx-style-tile",
 			);
 	}, []);
 	const [category, setCategory] = useState(ALL_CATEGORY);

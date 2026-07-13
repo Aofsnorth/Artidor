@@ -12,7 +12,21 @@ struct EffectUniforms {
 fn fragment_main(@builtin(position) frag_coord: vec4<f32>) -> @location(0) vec4<f32> {
     let uv = frag_coord.xy / uniforms.resolution;
     let amount = clamp(uniforms.scalars.x, 0.0, 1.0);
+    let shift = clamp(uniforms.scalars.y, -1.0, 1.0);
+    let single_line = uniforms.scalars.z;
+    let orientation = uniforms.scalars.w;
     let tiles = mix(1.0, 12.0, amount);
-    let tiled_uv = fract(uv * tiles);
+
+    var tile_count = vec2<f32>(tiles, tiles);
+    if (single_line > 0.5) {
+        if (orientation < 0.5) {
+            tile_count = vec2<f32>(tiles, 1.0);
+        } else {
+            tile_count = vec2<f32>(1.0, tiles);
+        }
+    }
+
+    let shifted_uv = uv + vec2<f32>(shift, 0.0);
+    let tiled_uv = fract(shifted_uv * tile_count);
     return textureSample(u_texture, u_sampler, clamp(tiled_uv, vec2<f32>(0.0), vec2<f32>(1.0)));
 }

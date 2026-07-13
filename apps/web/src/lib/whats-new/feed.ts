@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-tile-effect-properties",
+		date: "2026-07-19",
+		tag: "feature",
+		title: "Tile effect now supports shift, single line, and orientation",
+		items: [
+			"The Tile effect now has a Shift slider to slide the pattern left or right.",
+			"A new Single Line toggle turns the pattern into a single horizontal or vertical strip.",
+			"Orientation switches between horizontal and vertical tiling.",
+		],
+	},
+	{
 		id: "2026-07-19-header-advanced-viewers",
 		date: "2026-07-19",
 		tag: "improvement",
