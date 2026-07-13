@@ -15,7 +15,7 @@ import { buildGOPIndex, type GOPIndex } from "./gop-index";
  * (capped by `maxDim`), so the cost is dominated by the downscaled canvas
  * backing-store, not full-res JS heap.
  */
-const MAX_CACHED_FRAMES_PER_MEDIA = 64;
+const MAX_CACHED_FRAMES_PER_MEDIA = 128;
 
 /**
  * Number of frames to prefetch ahead of the playhead during forward

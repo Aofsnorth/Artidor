@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
-import { buildStaticSnapPoints } from "./snap-utils";
+import { expect, it, test } from "bun:test";
+import { buildStaticSnapPoints, snapToNearestPoint } from "./snap-utils";
 
 const tracks = {
 	overlay: [],
@@ -28,4 +28,18 @@ test("buildStaticSnapPoints excludes moving playhead state", () => {
 
 	expect(snapPoints.map((point) => point.time)).toEqual([100, 300, 400]);
 	expect(snapPoints.some((point) => point.type === "playhead")).toBe(false);
+});
+
+it("snaps when target is within epsilon of threshold boundary", () => {
+	const snapPoints = [{ time: 0, type: "playhead" as const }];
+	// At zoom 1, 10 px = (10 / 50) * 120_000 = 24_000 ticks. The target is exactly at
+	// that threshold, so the strict `<` boundary misses it without an epsilon guard.
+	const result = snapToNearestPoint({
+		targetTime: 24_000,
+		snapPoints,
+		zoomLevel: 1,
+		snapThreshold: 10,
+	});
+
+	expect(result.snapPoint).not.toBeNull();
 });

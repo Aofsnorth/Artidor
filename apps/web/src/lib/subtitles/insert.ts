@@ -33,9 +33,11 @@ export function findCaptionTrack({
 export function insertCaptionChunksAsTextTrack({
 	editor,
 	captions,
+	captionPresetId,
 }: {
 	editor: EditorCore;
 	captions: SubtitleCue[];
+	captionPresetId?: string;
 }): string | null {
 	if (captions.length === 0) {
 		return null;
@@ -56,6 +58,7 @@ export function insertCaptionChunksAsTextTrack({
 					index,
 					caption,
 					canvasSize,
+					captionPresetId,
 				}),
 			}),
 	);

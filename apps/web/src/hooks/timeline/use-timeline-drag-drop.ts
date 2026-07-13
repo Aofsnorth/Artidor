@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, type RefObject } from "react";
 import { useEditor } from "@/hooks/use-editor";
+import { useI18n } from "@/lib/i18n";
 import { processMediaAssets } from "@/lib/media/processing";
 import { showMediaUploadToast } from "@/lib/media/upload-toast";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
@@ -9,6 +10,7 @@ import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timel
 import { roundToFrame } from "artidor-wasm";
 import { snapElementEdge } from "@/lib/timeline/snap-utils";
 import { useTimelineStore } from "@/stores/timeline-store";
+import { toast } from "sonner";
 import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
 import {
 	buildTextElement,
@@ -80,6 +82,7 @@ export function useTimelineDragDrop({
 	zoomLevel,
 }: UseTimelineDragDropProps) {
 	const editor = useEditor();
+	const { t } = useI18n();
 	const snappingEnabled = useTimelineStore((s) => s.snappingEnabled);
 	const trackHeights = useTimelineStore((s) => s.trackHeights);
 	const expandedElementIds = useTimelineStore((s) => s.expandedElementIds);
@@ -532,7 +535,10 @@ export function useTimelineDragDrop({
 				return;
 			} else {
 				const track = tracks[target.trackIndex];
-				if (track?.type !== "effect") return;
+				if (track?.type !== "effect") {
+					toast.error(t("timeline.error.invalidEffectTrack"));
+					return;
+				}
 				trackId = track.id;
 			}
 
@@ -546,7 +552,7 @@ export function useTimelineDragDrop({
 				element,
 			});
 		},
-		[editor],
+		[editor, t],
 	);
 
 	/**

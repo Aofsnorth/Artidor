@@ -42,6 +42,7 @@ const TEXT_CATEGORIES: { key: TextPresetCategory; label: string }[] = [
 	{ key: "bold", label: "Bold" },
 	{ key: "handwritten", label: "Handwritten" },
 	{ key: "neon", label: "Neon" },
+	{ key: "caption", label: "Captions" },
 ];
 const TEXT_LABELS = TEXT_CATEGORIES.map((c) => c.label);
 const TEXT_KEY_TO_LABEL = new Map(TEXT_CATEGORIES.map((c) => [c.key, c.label]));

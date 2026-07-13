@@ -34,6 +34,7 @@ import {
 	CAPTION_TRACK_NAME,
 	insertCaptionChunksAsTextTrack,
 } from "@/lib/subtitles/insert";
+import { textPresets } from "@/lib/text/presets";
 import { getCaptionCues } from "@/lib/subtitles/caption-cues";
 import {
 	downloadSubtitleFile,
@@ -144,6 +145,8 @@ export function Captions() {
 	const [selectedModel, setSelectedModel] = useState<TranscriptionModelId>(
 		DEFAULT_TRANSCRIPTION_MODEL,
 	);
+	const [selectedCaptionPreset, setSelectedCaptionPreset] =
+		useState<string>("caption-pop");
 	const [processing, dispatch] = useReducer(processingReducer, IDLE_STATE);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -170,7 +173,11 @@ export function Captions() {
 	}: {
 		captions: CaptionChunk[];
 	}): boolean => {
-		const trackId = insertCaptionChunksAsTextTrack({ editor, captions });
+		const trackId = insertCaptionChunksAsTextTrack({
+			editor,
+			captions,
+			captionPresetId: selectedCaptionPreset,
+		});
 		return trackId !== null;
 	};
 
@@ -576,6 +583,25 @@ export function Captions() {
 											{model.name} — {model.description}
 										</SelectItem>
 									))}
+								</SelectContent>
+							</Select>
+						</SectionField>
+						<SectionField label={t("captions.styleLabel")}>
+							<Select
+								value={selectedCaptionPreset}
+								onValueChange={(value) => setSelectedCaptionPreset(value)}
+							>
+								<SelectTrigger>
+									<SelectValue placeholder={t("captions.stylePlaceholder")} />
+								</SelectTrigger>
+								<SelectContent>
+									{textPresets
+										.filter((preset) => preset.category === "caption")
+										.map((preset) => (
+											<SelectItem key={preset.id} value={preset.id}>
+												{preset.name}
+											</SelectItem>
+										))}
 								</SelectContent>
 							</Select>
 						</SectionField>
