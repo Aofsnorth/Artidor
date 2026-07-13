@@ -300,6 +300,7 @@ const EffectItem = memo(function EffectItem({
 		<DraggableItem
 			name={effect.name}
 			preview={preview}
+			contentVisibility="visible"
 			dragData={{
 				id: effect.type,
 				name: effect.name,
