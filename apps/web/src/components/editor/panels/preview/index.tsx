@@ -161,10 +161,10 @@ function PreviewCanvas({
 	//
 	// The cache is a simple Map with FIFO eviction (oldest inserted first).
 	// JS Maps preserve insertion order, so eviction is O(1). We cache up to
-	// 30 frames (~0.5s at 60fps) — enough for short-range scrubbing without
+	// 60 frames (~1s at 60fps) — enough for short-range scrubbing without
 	// significant memory use. Each entry is an ImageBitmap (GPU-backed, ~1MB
-	// at 1080p) so 30 entries ≈ 30MB — acceptable.
-	const FRAME_CACHE_SIZE = 30;
+	// at 1080p) so 60 entries ≈ 60MB — acceptable.
+	const FRAME_CACHE_SIZE = 60;
 	const frameCacheRef = useRef<
 		Map<string, { bitmap: ImageBitmap; frame: number; scale: number }>
 	>(new Map());
