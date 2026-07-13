@@ -23,6 +23,27 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-export-performance-cache-tuning",
+		date: "2026-07-19",
+		tag: "performance",
+		title: "Faster exports and smoother scrubbing",
+		items: [
+			"Codec negotiation is now memoized per session, so the second and later exports start faster.",
+			"Export queue depth now scales with CPU cores and output resolution, keeping more frames in flight without bloating memory.",
+			"Preview and video frame caches are doubled to 60 and 128 frames, reducing re-render and re-decode churn while scrubbing.",
+		],
+	},
+	{
+		id: "2026-07-19-caption-style-selector",
+		date: "2026-07-19",
+		tag: "feature",
+		title: "Caption style selector in the captions panel",
+		items: [
+			"The Captions panel now has a Style selector so you can choose the preset look for generated captions (Karaoke, Pop, Minimal, and more).",
+			"The selected preset is applied to every generated caption, so font, color, background, and style all match the chosen look.",
+		],
+	},
+	{
 		id: "2026-07-19-effects-catalog-mapping",
 		date: "2026-07-19",
 		tag: "feature",
@@ -55,6 +76,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Clips on overlay and audio tracks now drag horizontally and vertically as expected. The drop-target hit test now uses the actual rendered track height, so it no longer misidentifies the track and silently fails the move.",
 			"Dragging media onto the main video track no longer allows overlapping clips. Overlap is rejected during both drag previews and explicit insertions.",
 			"Drag errors now end the interaction cleanly instead of leaving the timeline in a stuck drag state.",
+			"Dropping an effect on a non-effect track now shows a clear error toast instead of silently ignoring the drop.",
 		],
 	},
 	{
@@ -234,6 +256,16 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"AGENTS.md is now a clean router: it points to RULES.md, PERMISSIONS.md, CHECKLIST.md, HARNESS.md, SECURITY.md, and the docs/harness/ policies instead of re-stating their contents, so rules can't drift out of date.",
 			"Each security doc now has a clear owner: SECURITY.md holds advisories and the audit log, while docs/harness/security-model.md and threat-model.md hold the required controls and enumerated threats.",
 			"The harness CI job now fails on any broken cross-reference in AGENTS.md and the companion docs, catching doc drift before it reaches an agent.",
+		],
+	},
+	{
+		id: "2026-07-13-caption-presets",
+		date: "2026-07-13",
+		tag: "feature",
+		title: "CapCut-style caption presets and word-highlight animator",
+		items: [
+			"The text preset catalog now has a dedicated Caption category with Karaoke, Pop, and Minimal styles, ready for auto-captions.",
+			"A new Word highlight animator preset fades unspoken words to half opacity and brightens the active word, matching CapCut-style karaoke captions.",
 		],
 	},
 	{

@@ -1,4 +1,5 @@
 import { FONT_SIZE_SCALE_REFERENCE } from "@/lib/text/typography";
+import { textPresets } from "@/lib/text/presets";
 import {
 	getTextVisualRect,
 	measureTextBlock,
@@ -133,26 +134,42 @@ function resolveSubtitleStyle({
 	background: CreateTextElement["background"];
 	placement: NonNullable<SubtitleStyleOverrides["placement"]>;
 } {
+	const preset = style?.presetId
+		? textPresets.find((p) => p.id === style.presetId)
+		: null;
+	const built = preset ? preset.build() : null;
+
 	const fontSize =
 		style?.fontSizeRatioOfPlayHeight != null
 			? style.fontSizeRatioOfPlayHeight * FONT_SIZE_SCALE_REFERENCE
-			: (style?.fontSize ?? SUBTITLE_FONT_SIZE);
+			: (style?.fontSize ?? built?.fontSize ?? SUBTITLE_FONT_SIZE);
 
 	return {
-		fontFamily: style?.fontFamily ?? DEFAULTS.text.element.fontFamily,
+		fontFamily:
+			style?.fontFamily ??
+			built?.fontFamily ??
+			DEFAULTS.text.element.fontFamily,
 		fontSize,
-		color: style?.color ?? DEFAULTS.text.element.color,
-		textAlign: style?.textAlign ?? "center",
-		fontWeight: style?.fontWeight ?? "bold",
-		fontStyle: style?.fontStyle ?? DEFAULTS.text.element.fontStyle,
+		color: style?.color ?? built?.color ?? DEFAULTS.text.element.color,
+		textAlign: style?.textAlign ?? built?.textAlign ?? "center",
+		fontWeight: style?.fontWeight ?? built?.fontWeight ?? "bold",
+		fontStyle:
+			style?.fontStyle ?? built?.fontStyle ?? DEFAULTS.text.element.fontStyle,
 		textDecoration:
-			style?.textDecoration ?? DEFAULTS.text.element.textDecoration,
-		letterSpacing: style?.letterSpacing ?? DEFAULTS.text.letterSpacing,
-		lineHeight: style?.lineHeight ?? DEFAULTS.text.lineHeight,
+			style?.textDecoration ??
+			built?.textDecoration ??
+			DEFAULTS.text.element.textDecoration,
+		letterSpacing:
+			style?.letterSpacing ??
+			built?.letterSpacing ??
+			DEFAULTS.text.letterSpacing,
+		lineHeight:
+			style?.lineHeight ?? built?.lineHeight ?? DEFAULTS.text.lineHeight,
 		background: {
 			...DEFAULTS.text.element.background,
 			enabled: false,
 			...(style?.background ?? {}),
+			...(built?.background ?? {}),
 		},
 		placement: {
 			verticalAlign: style?.placement?.verticalAlign ?? "bottom",
@@ -250,14 +267,19 @@ export function buildSubtitleTextElement({
 	index,
 	caption,
 	canvasSize,
+	captionPresetId,
 }: {
 	index: number;
 	caption: SubtitleCue;
 	canvasSize: { width: number; height: number };
+	captionPresetId?: string;
 }): CreateTextElement {
 	const ctx = createMeasurementContext();
 	const style = resolveSubtitleStyle({
-		style: caption.style,
+		style: {
+			...caption.style,
+			presetId: captionPresetId ?? caption.style?.presetId,
+		},
 	});
 	const fontFamily = quoteFontFamily({
 		fontFamily: style.fontFamily,

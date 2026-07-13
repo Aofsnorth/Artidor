@@ -56,9 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the effects catalog mapping", () => {
+	test("the newest entry is the export performance cache tuning", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-07-19-effects-catalog-mapping");
+		expect(getLatestWhatsNewId()).toBe(
+			"2026-07-19-export-performance-cache-tuning",
+		);
 	});
 });
