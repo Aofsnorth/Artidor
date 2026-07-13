@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
 	getExportRenderQueueDepth,
 	waitForWorkerGpuReady,
@@ -25,37 +25,31 @@ describe("waitForWorkerGpuReady", () => {
 });
 
 describe("getExportRenderQueueDepth", () => {
-	let originalHardwareConcurrency: number | undefined;
-
-	beforeEach(() => {
-		originalHardwareConcurrency =
-			typeof navigator !== "undefined"
-				? navigator.hardwareConcurrency
-				: undefined;
-		if (typeof navigator !== "undefined") {
-			navigator.hardwareConcurrency = 2;
-		}
-	});
-
-	afterEach(() => {
-		if (
-			typeof navigator !== "undefined" &&
-			originalHardwareConcurrency !== undefined
-		) {
-			navigator.hardwareConcurrency = originalHardwareConcurrency;
-		}
-	});
-
 	test("uses a deep queue at 1080p", () => {
-		expect(getExportRenderQueueDepth({ width: 1920, height: 1080 })).toBe(8);
+		expect(
+			getExportRenderQueueDepth({ width: 1920, height: 1080, cores: 2 }),
+		).toBe(8);
 	});
 
 	test("limits retained frames at 4K", () => {
-		expect(getExportRenderQueueDepth({ width: 3840, height: 2160 })).toBe(6);
+		expect(
+			getExportRenderQueueDepth({ width: 3840, height: 2160, cores: 2 }),
+		).toBe(6);
 	});
 
 	test("uses the minimum queue above 4K", () => {
-		expect(getExportRenderQueueDepth({ width: 7680, height: 4320 })).toBe(3);
+		expect(
+			getExportRenderQueueDepth({ width: 7680, height: 4320, cores: 2 }),
+		).toBe(3);
+	});
+
+	test("scales the queue up with more cores", () => {
+		expect(
+			getExportRenderQueueDepth({ width: 1920, height: 1080, cores: 12 }),
+		).toBe(12);
+		expect(
+			getExportRenderQueueDepth({ width: 7680, height: 4320, cores: 10 }),
+		).toBe(10);
 	});
 
 	test("returns a positive queue depth for 1080p", () => {
