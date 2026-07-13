@@ -33,6 +33,12 @@ export interface SubtitleStyleOverrides {
 	letterSpacing?: number;
 	lineHeight?: number;
 	placement?: SubtitlePlacementStyle;
+	/**
+	 * Optional caption preset id (e.g. "caption-pop") used by the captions
+	 * panel to style generated subtitle text elements. The builder consumes this
+	 * in the next step when merging preset styles.
+	 */
+	presetId?: string;
 }
 
 export interface SubtitleCue extends CaptionChunk {

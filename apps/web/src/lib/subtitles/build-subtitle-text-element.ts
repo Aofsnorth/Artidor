@@ -250,14 +250,16 @@ export function buildSubtitleTextElement({
 	index,
 	caption,
 	canvasSize,
+	captionPresetId,
 }: {
 	index: number;
 	caption: SubtitleCue;
 	canvasSize: { width: number; height: number };
+	captionPresetId?: string;
 }): CreateTextElement {
 	const ctx = createMeasurementContext();
 	const style = resolveSubtitleStyle({
-		style: caption.style,
+		style: { ...caption.style, presetId: captionPresetId },
 	});
 	const fontFamily = quoteFontFamily({
 		fontFamily: style.fontFamily,
