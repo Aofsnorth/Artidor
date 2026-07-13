@@ -74,6 +74,32 @@ export const EXPORT_QUALITY_MAP: Record<ExportQuality, Quality> = {
 	very_high: QUALITY_VERY_HIGH,
 };
 
+/**
+ * Choose the WebCodecs `latencyMode` for an export based on quality.
+ *
+ * Lower-quality exports are expected to finish quickly, so `realtime` trades a
+ * small amount of compression efficiency for lower encoder latency and higher
+ * throughput. High/very_high exports keep the default `quality` mode for the
+ * best possible output.
+ */
+export function exportLatencyModeForQuality(
+	quality: ExportQuality,
+): "quality" | "realtime" {
+	return quality === "low" || quality === "medium" ? "realtime" : "quality";
+}
+
+/**
+ * Choose the maximum keyframe interval for an export based on quality.
+ *
+ * Low/medium exports use a relaxed interval (fewer keyframes) to reduce the
+ * amount of expensive keyframe encoding and to keep file sizes down.
+ * High/very_high exports keep the default 2-second interval so the exported
+ * file remains scrubbing-friendly for further editing.
+ */
+export function exportKeyFrameIntervalForQuality(quality: ExportQuality): number {
+	return quality === "low" || quality === "medium" ? 4 : 2;
+}
+
 /** The preferred video codec for a given container/format before fallback. */
 export function preferredVideoCodec(format: ExportFormat): ExportVideoCodec {
 	if (format === "webm") return "vp9";

@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-export-encoder-tuning",
+		date: "2026-07-19",
+		tag: "performance",
+		title: "Faster video exports",
+		items: [
+			"Low and medium quality exports now use realtime encoder latency and fewer keyframes, cutting export time without visible quality loss.",
+			"High and very high quality exports keep the quality-oriented encoder profile for maximum fidelity.",
+			"Export workers no longer allocate a redundant internal canvas, reducing worker startup memory pressure.",
+		],
+	},
+	{
 		id: "2026-07-19-export-performance-cache-tuning",
 		date: "2026-07-19",
 		tag: "performance",
