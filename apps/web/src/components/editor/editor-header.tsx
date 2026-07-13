@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { PREVIEW_ZOOM_PRESETS } from "@/lib/preview/zoom";
 import {
 	DropdownMenu,
-	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
@@ -27,13 +26,8 @@ import {
 	ArrowDown01Icon,
 	Settings01Icon,
 	DashboardSquareSettingIcon,
-	ComponentIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-	useEditorUIStore,
-	type FloatablePanelId,
-} from "@/stores/editor-ui-store";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
 import { SavePresetDialog } from "./dialogs/save-preset-dialog";
 import Image from "next/image";
@@ -47,6 +41,7 @@ import {
 	type LayoutPreset,
 } from "@/stores/panel-store";
 
+import { AdvancedViewersDropdown } from "./advanced-viewers-dropdown";
 import { CloudStatusIndicator } from "./cloud-status-indicator";
 
 export function EditorHeader() {
@@ -122,7 +117,7 @@ export function EditorHeader() {
 					<>
 						<CloudStatusIndicator />
 						<LayoutPresetsDropdown />
-						<ComponentsDropdown />
+						<AdvancedViewersDropdown />
 						<SettingsButton />
 						{/* Theme toggle removed — the editor is pinned to dark, so a
 							light/dark switch did nothing visible here. */}
@@ -512,58 +507,6 @@ function LayoutPresetsDropdown() {
 						<span className="flex-1 truncate text-sm">{preset.name}</span>
 					</DropdownMenuItem>
 				))}
-			</DropdownMenuContent>
-		</DropdownMenu>
-	);
-}
-
-const FLOATABLE_PANELS: { id: FloatablePanelId; label: string }[] = [
-	{ id: "assets", label: "Assets" },
-	{ id: "preview", label: "Preview" },
-	{ id: "properties", label: "Properties" },
-	{ id: "timeline", label: "Timeline" },
-	{ id: "effects", label: "Effects" },
-	{ id: "transitions", label: "Transitions" },
-	{ id: "adjust", label: "Adjust" },
-	{ id: "plugins", label: "Plugins" },
-];
-
-function ComponentsDropdown() {
-	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
-	const popOutPanel = useEditorUIStore((s) => s.popOutPanel);
-	const dockPanel = useEditorUIStore((s) => s.dockPanel);
-
-	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<button
-					type="button"
-					className="grid size-8 cursor-pointer place-items-center rounded-md border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-					title="Component placement"
-					aria-label="Toggle floating components"
-				>
-					<HugeiconsIcon icon={ComponentIcon} className="size-4" />
-				</button>
-			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end" className="w-44">
-				{FLOATABLE_PANELS.map(({ id, label }) => {
-					const isFloating = floatingPanels[id] !== null;
-					return (
-						<DropdownMenuCheckboxItem
-							key={id}
-							checked={isFloating}
-							onCheckedChange={(checked) => {
-								if (checked) {
-									popOutPanel(id);
-								} else {
-									dockPanel(id);
-								}
-							}}
-						>
-							{label}
-						</DropdownMenuCheckboxItem>
-					);
-				})}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

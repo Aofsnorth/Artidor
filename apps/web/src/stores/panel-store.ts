@@ -32,50 +32,6 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
 		},
 	},
 	{
-		id: "compact",
-		name: "Compact",
-		sizes: {
-			tools: 20,
-			preview: 55,
-			properties: 25,
-			mainContent: 70,
-			timeline: 30,
-		},
-	},
-	{
-		id: "color-grading",
-		name: "Color Grading",
-		sizes: {
-			tools: 15,
-			preview: 50,
-			properties: 35,
-			mainContent: 60,
-			timeline: 40,
-		},
-	},
-	{
-		id: "effects-focus",
-		name: "Effects Focus",
-		sizes: {
-			tools: 35,
-			preview: 40,
-			properties: 25,
-			mainContent: 64,
-			timeline: 36,
-		},
-	},
-	{
-		id: "audio-mix",
-		name: "Audio Mix",
-		sizes: {
-			tools: 20,
-			preview: 40,
-			properties: 20,
-			mainContent: 45,
-			timeline: 55,
-		},
-	},
-	{
 		id: "fullscreen-preview",
 		name: "Fullscreen Preview",
 		sizes: {
@@ -87,23 +43,12 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
 		},
 	},
 	{
-		id: "minimal-tools",
-		name: "Minimal Tools",
+		id: "audio-mix",
+		name: "Audio Mix",
 		sizes: {
-			tools: 12,
-			preview: 58,
-			properties: 30,
-			mainContent: 70,
-			timeline: 30,
-		},
-	},
-	{
-		id: "timeline-focus",
-		name: "Timeline Focus",
-		sizes: {
-			tools: 18,
-			preview: 42,
-			properties: 25,
+			tools: 20,
+			preview: 40,
+			properties: 20,
 			mainContent: 45,
 			timeline: 55,
 		},
