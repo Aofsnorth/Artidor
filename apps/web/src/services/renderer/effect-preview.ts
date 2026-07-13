@@ -1,5 +1,6 @@
 import { createOffscreenCanvas } from "./canvas-utils";
 import { effectsRegistry, resolveEffectPasses } from "@/lib/effects";
+import { getEffectCategory } from "@/lib/effects/categories";
 import { buildDefaultParamValues } from "@/lib/registry";
 import type { ParamValues } from "@/lib/params";
 import { gpuRenderer } from "./gpu-renderer";
@@ -38,7 +39,8 @@ type SourcePattern =
 	| "grid" // perspective grid (great for distortion / 3D)
 	| "waves" // flowing colour waves (great for blur / motion)
 	| "halftone" // comic dots (great for stylize / threshold)
-	| "tiles"; // geometric mosaic (great for pixelate / kaleidoscope)
+	| "tiles" // geometric mosaic (great for pixelate / kaleidoscope)
+	| "text"; // text on a solid background (great for text effects)
 
 const SOURCE_PATTERNS: SourcePattern[] = [
 	"gradient",
@@ -56,6 +58,12 @@ const SOURCE_PATTERNS: SourcePattern[] = [
 ];
 
 function pickPatternForEffect(effectType: string): SourcePattern {
+	// Text effects (glow, stroke, shadow, 3d) should be previewed on
+	// a real text source so the user sees the font, not a random pattern.
+	if (getEffectCategory(effectType) === "Text") {
+		return "text";
+	}
+
 	// djb2 hash — same algorithm the panel cards use elsewhere, so
 	// the card preview matches any other "what pattern does this ID
 	// hash to" decision in the codebase.
@@ -424,6 +432,9 @@ class EffectPreviewService {
 				break;
 			case "tiles":
 				this.drawTilesSource({ ctx, width, height, effectType });
+				break;
+			case "text":
+				this.drawTextSource({ ctx, width, height, effectType });
 				break;
 		}
 
@@ -1084,6 +1095,36 @@ class EffectPreviewService {
 				ctx.strokeRect(x, y, tile, tile);
 			}
 		}
+	}
+
+	/**
+	 * Plain text on a solid background. The text category effects
+	 * (glow, stroke, shadow, 3d) are designed to operate on text, so
+	 * previewing them on a generic pattern makes the result look broken
+	 * or unrecognisable. A large "Aa" gives the effect a real glyph to
+	 * modify and lets the user read the font.
+	 */
+	private drawTextSource({
+		ctx,
+		width,
+		height,
+		effectType,
+	}: {
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+		width: number;
+		height: number;
+		effectType: string;
+	}): void {
+		const colors = this.getEffectColors(effectType);
+
+		ctx.fillStyle = colors.bg;
+		ctx.fillRect(0, 0, width, height);
+
+		ctx.font = `bold ${Math.floor(height * 0.36)}px Inter, sans-serif`;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillStyle = colors.light;
+		ctx.fillText("Aa", width / 2, height / 2);
 	}
 
 	private applyGpuEffect({

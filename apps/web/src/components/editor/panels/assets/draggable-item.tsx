@@ -65,6 +65,13 @@ export interface DraggableItemProps {
 	isRounded?: boolean;
 	variant?: "card" | "compact";
 	isDraggable?: boolean;
+	/**
+	 * Controls `content-visibility` for the card root. The default `auto`
+	 * is fine for static content, but it can block a child `IntersectionObserver`
+	 * (e.g. the effect preview canvas) from getting visibility updates. Pass
+	 * `visible` for children that observe their own visibility.
+	 */
+	contentVisibility?: "auto" | "hidden" | "visible";
 }
 
 export function DraggableItem({
@@ -83,6 +90,7 @@ export function DraggableItem({
 	isRounded = true,
 	variant = "card",
 	isDraggable = true,
+	contentVisibility = "auto",
 }: DraggableItemProps) {
 	const { t } = useI18n();
 	const [isDragging, setIsDragging] = useState(false);
@@ -164,7 +172,7 @@ export function DraggableItem({
 						"group relative w-full",
 						containerClassName,
 					)}
-					style={{ contentVisibility: "auto" }}
+					style={{ contentVisibility }}
 				>
 					<div
 						className={cn(
@@ -227,7 +235,7 @@ export function DraggableItem({
 				<div
 					ref={dragRef}
 					className={cn("group relative w-full", containerClassName)}
-					style={{ contentVisibility: "auto" }}
+					style={{ contentVisibility }}
 				>
 					<button
 						type="button"
