@@ -238,6 +238,16 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		],
 	},
 	{
+		id: "2026-07-13-caption-presets",
+		date: "2026-07-13",
+		tag: "feature",
+		title: "CapCut-style caption presets and word-highlight animator",
+		items: [
+			"The text preset catalog now has a dedicated Caption category with Karaoke, Pop, and Minimal styles, ready for auto-captions.",
+			"A new Word highlight animator preset fades unspoken words to half opacity and brightens the active word, matching CapCut-style karaoke captions.",
+		],
+	},
+	{
 		id: "2026-07-12-cleanup-untracked-files",
 		date: "2026-07-12",
 		tag: "fix",

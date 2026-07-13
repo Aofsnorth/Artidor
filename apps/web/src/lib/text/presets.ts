@@ -11,7 +11,8 @@ export type TextPresetCategory =
 	| "social"
 	| "bold"
 	| "handwritten"
-	| "neon";
+	| "neon"
+	| "caption";
 
 export interface TextPreset {
 	id: string;
@@ -1155,5 +1156,47 @@ textPresets.push(
 			letterSpacing: 1,
 		},
 		["credit", "subtle"],
+	),
+	/* ------------------------------- caption ------------------------------- */
+	tp(
+		"caption-karaoke",
+		"Karaoke",
+		"caption",
+		"Karaoke caption",
+		{
+			fontSize: 16,
+			fontFamily: "Arial",
+			fontWeight: "bold",
+			color: "#ffffff",
+			background: box("rgba(0,0,0,0.85)", 6),
+		},
+		["karaoke", "highlight"],
+	),
+	tp(
+		"caption-pop",
+		"Pop",
+		"caption",
+		"Pop caption",
+		{
+			fontSize: 18,
+			fontFamily: "Impact",
+			fontWeight: "bold",
+			color: "#ffeb3b",
+			background: box("rgba(0,0,0,0.85)", 6),
+		},
+		["pop", "bold"],
+	),
+	tp(
+		"caption-minimal",
+		"Minimal",
+		"caption",
+		"Minimal caption",
+		{
+			fontSize: 14,
+			fontFamily: "Inter",
+			color: "#e5e7eb",
+			background: box("rgba(0,0,0,0.5)", 4),
+		},
+		["minimal", "clean"],
 	),
 );

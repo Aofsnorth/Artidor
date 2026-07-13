@@ -22,6 +22,7 @@ export const TEXT_ANIMATOR_PRESETS: ReadonlyArray<{
 	{ value: "auto-shake", label: "Auto Shake" },
 	{ value: "repeat", label: "Repeat" },
 	{ value: "text-progress", label: "Text Progress" },
+	{ value: "word-highlight", label: "Word highlight" },
 ];
 
 export const TEXT_ANIMATOR_UNITS: ReadonlyArray<{
@@ -185,6 +186,12 @@ export function computeTextUnitAnimation({
 				(localTimeSeconds - start) / Math.max(0.0001, duration),
 			);
 			return { ...IDENTITY, opacity: progress, offsetX: (1 - progress) * -0.3 };
+		}
+		case "word-highlight": {
+			if (localTimeSeconds <= start) {
+				return { ...IDENTITY, opacity: 0.5 };
+			}
+			return IDENTITY;
 		}
 		default:
 			return IDENTITY;

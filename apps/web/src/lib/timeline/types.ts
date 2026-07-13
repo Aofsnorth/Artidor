@@ -366,7 +366,8 @@ export type TextAnimatorPreset =
 	| "spin"
 	| "auto-shake"
 	| "repeat"
-	| "text-progress";
+	| "text-progress"
+	| "word-highlight";
 
 /** Granularity the animator staggers over. */
 export type TextAnimatorUnit = "character" | "word";
