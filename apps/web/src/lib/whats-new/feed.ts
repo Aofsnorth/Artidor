@@ -29,7 +29,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		title: "Caption style selector in the captions panel",
 		items: [
 			"The Captions panel now has a Style selector so you can choose the preset look for generated captions (Karaoke, Pop, Minimal, and more).",
-			"The selected preset is passed through to the caption builder, ready for the next step that applies the style to each generated caption.",
+			"The selected preset is applied to every generated caption, so font, color, background, and style all match the chosen look.",
 		],
 	},
 	{
