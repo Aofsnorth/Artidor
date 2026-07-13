@@ -255,9 +255,29 @@ function buildCodecChain(
 	return chain;
 }
 
+const codecNegotiationCache = new Map<string, Promise<NegotiatedVideoCodec>>();
+
+function negotiationKey(
+	format: ExportFormat,
+	quality: ExportQuality,
+	width: number,
+	height: number,
+	fpsFloat: number,
+	forceSoftware: boolean,
+): string {
+	return JSON.stringify({
+		format,
+		quality,
+		width,
+		height,
+		fpsFloat,
+		forceSoftware,
+	});
+}
+
 export async function negotiateVideoCodec({
 	format,
-	quality: _quality,
+	quality,
 	width,
 	height,
 	fpsFloat,
@@ -270,68 +290,86 @@ export async function negotiateVideoCodec({
 	fpsFloat: number;
 	forceSoftware?: boolean;
 }): Promise<NegotiatedVideoCodec> {
-	const defaultResult: NegotiatedVideoCodec = {
-		codec: preferredVideoCodec(format),
-		hardwareAcceleration: forceSoftware ? "prefer-software" : "prefer-hardware",
-		outputFormat: format,
-	};
-
-	if (typeof VideoEncoder === "undefined") return defaultResult;
-
-	const chain = buildCodecChain(format, forceSoftware);
-
-	for (const candidate of chain) {
-		try {
-			const codecStr = codecStringFor(candidate.codec, width, height);
-			const { supported } = await VideoEncoder.isConfigSupported({
-				width,
-				height,
-				framerate: fpsFloat,
-				codec: codecStr,
-				hardwareAcceleration: candidate.hardwareAcceleration,
-			});
-			if (supported) {
-				if (
-					candidate.codec !== preferredVideoCodec(format) ||
-					candidate.format !== format ||
-					candidate.hardwareAcceleration !==
-						(forceSoftware ? "prefer-software" : "prefer-hardware")
-				) {
-					console.info(
-						`[export] negotiated codec: ${candidate.codec} (${candidate.hardwareAcceleration}) in ${candidate.format}` +
-							(candidate.codec !== preferredVideoCodec(format)
-								? ` (fallback from ${preferredVideoCodec(format)})`
-								: ""),
-					);
-				}
-				return {
-					codec: candidate.codec,
-					hardwareAcceleration: candidate.hardwareAcceleration,
-					outputFormat: candidate.format,
-				};
-			}
-			console.info(
-				`[export] ${candidate.codec} (${candidate.hardwareAcceleration}) not supported at ${width}x${height}, trying next fallback`,
-			);
-		} catch {
-			console.info(
-				`[export] ${candidate.codec} (${candidate.hardwareAcceleration}) probe threw at ${width}x${height}, trying next fallback`,
-			);
-		}
-	}
-
-	// All probes failed — return VP9 software in WebM as the last resort.
-	// This should be extremely rare (VP9 software handles any resolution on
-	// both Chrome and Firefox), but we never want to return a codec that
-	// will definitely fail.
-	console.warn(
-		"[export] all codec probes failed, using VP9 software in WebM as last resort",
+	const key = negotiationKey(
+		format,
+		quality,
+		width,
+		height,
+		fpsFloat,
+		forceSoftware,
 	);
-	return {
-		codec: "vp9",
-		hardwareAcceleration: "prefer-software",
-		outputFormat: "webm",
-	};
+	const cached = codecNegotiationCache.get(key);
+	if (cached) return cached;
+
+	const promise = (async (): Promise<NegotiatedVideoCodec> => {
+		const defaultResult: NegotiatedVideoCodec = {
+			codec: preferredVideoCodec(format),
+			hardwareAcceleration: forceSoftware
+				? "prefer-software"
+				: "prefer-hardware",
+			outputFormat: format,
+		};
+
+		if (typeof VideoEncoder === "undefined") return defaultResult;
+
+		const chain = buildCodecChain(format, forceSoftware);
+
+		for (const candidate of chain) {
+			try {
+				const codecStr = codecStringFor(candidate.codec, width, height);
+				const { supported } = await VideoEncoder.isConfigSupported({
+					width,
+					height,
+					framerate: fpsFloat,
+					codec: codecStr,
+					hardwareAcceleration: candidate.hardwareAcceleration,
+				});
+				if (supported) {
+					if (
+						candidate.codec !== preferredVideoCodec(format) ||
+						candidate.format !== format ||
+						candidate.hardwareAcceleration !==
+							(forceSoftware ? "prefer-software" : "prefer-hardware")
+					) {
+						console.info(
+							`[export] negotiated codec: ${candidate.codec} (${candidate.hardwareAcceleration}) in ${candidate.format}` +
+								(candidate.codec !== preferredVideoCodec(format)
+									? ` (fallback from ${preferredVideoCodec(format)})`
+									: ""),
+						);
+					}
+					return {
+						codec: candidate.codec,
+						hardwareAcceleration: candidate.hardwareAcceleration,
+						outputFormat: candidate.format,
+					};
+				}
+				console.info(
+					`[export] ${candidate.codec} (${candidate.hardwareAcceleration}) not supported at ${width}x${height}, trying next fallback`,
+				);
+			} catch {
+				console.info(
+					`[export] ${candidate.codec} (${candidate.hardwareAcceleration}) probe threw at ${width}x${height}, trying next fallback`,
+				);
+			}
+		}
+
+		// All probes failed — return VP9 software in WebM as the last resort.
+		// This should be extremely rare (VP9 software handles any resolution on
+		// both Chrome and Firefox), but we never want to return a codec that
+		// will definitely fail.
+		console.warn(
+			"[export] all codec probes failed, using VP9 software in WebM as last resort",
+		);
+		return {
+			codec: "vp9",
+			hardwareAcceleration: "prefer-software",
+			outputFormat: "webm",
+		};
+	})();
+
+	codecNegotiationCache.set(key, promise);
+	return promise;
 }
 
 /**
