@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-header-advanced-viewers",
+		date: "2026-07-19",
+		tag: "improvement",
+		title: "Streamlined editor header with advanced viewers",
+		items: [
+			"The top-right layout switcher now offers three focused presets that visibly change the editor layout.",
+			"The component-pop-out button is replaced by an Advanced Viewers menu that opens Scopes, Color Wheels, DaVinci Adjust, and Audio Meter as popups in the same window.",
+			"No new browser windows are opened — every viewer lives in a popup dialog.",
+		],
+	},
+	{
 		id: "2026-07-19-export-encoder-tuning",
 		date: "2026-07-19",
 		tag: "performance",
