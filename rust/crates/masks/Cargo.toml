@@ -10,4 +10,4 @@ crate-type = ["rlib"]
 [dependencies]
 bytemuck = { version = "1.25.0", features = ["derive"] }
 gpu = { version = "0.1.0", path = "../gpu" }
-wgpu = "29.0.1"
+wgpu = "30.0.0"
