@@ -1,3 +1,5 @@
+import { PREVIEW_FRAME_CACHE_BUDGET_BYTES } from "./preview-frame-cache";
+
 export const EDITOR_PERFORMANCE_BUDGETS = {
 	timelineCommitMsP95: 8,
 	dragFrameMsP95: 16.7,
@@ -7,6 +9,8 @@ export const EDITOR_PERFORMANCE_BUDGETS = {
 	transcriptionDuplicateLoadingCards: 1,
 	imageExportSuccessRate: 1,
 	filmstripCacheBytes: 64 * 1024 * 1024,
+	previewFrameCacheBytes: PREVIEW_FRAME_CACHE_BUDGET_BYTES,
+	previewRenderFrameMsP95: 16.7,
 } as const;
 
 export type EditorPerformanceMetric = keyof typeof EDITOR_PERFORMANCE_BUDGETS;

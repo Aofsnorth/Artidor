@@ -20,6 +20,8 @@ export interface EffectPassTemplate {
 		effectParams: ParamValues;
 		width: number;
 		height: number;
+		/** Element-local time in ticks (optional; 0 when unknown). */
+		localTime?: number;
 	}): Record<string, EffectUniformValue>;
 }
 
@@ -29,6 +31,8 @@ export interface EffectRendererConfig {
 		effectParams: ParamValues;
 		width: number;
 		height: number;
+		/** Element-local time in ticks (optional; 0 when unknown). */
+		localTime?: number;
 	}) => EffectPass[];
 }
 

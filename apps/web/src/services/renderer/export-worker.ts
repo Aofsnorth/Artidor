@@ -217,7 +217,7 @@ async function handleExport(msg: WorkerInMessage) {
 	self.postMessage({
 		type: "init-progress",
 		phase: "Loading render engine",
-		progress: 0.01,
+		progress: 0.03,
 	} satisfies WorkerOutMessage);
 	const wasm = await import("artidor-wasm");
 
@@ -225,14 +225,15 @@ async function handleExport(msg: WorkerInMessage) {
 	self.postMessage({
 		type: "init-progress",
 		phase: "Initializing GPU",
-		progress: 0.02,
+		progress: 0.07,
 	} satisfies WorkerOutMessage);
 	await wasm.initializeGpu();
 	console.info("[export-worker] GPU initialized");
+	// Emit real `progress` (not just init-progress) so the UI bar advances
+	// during setup instead of freezing at ~5% through the heavy GPU init.
 	self.postMessage({
-		type: "init-progress",
-		phase: "GPU ready",
-		progress: 0.04,
+		type: "progress",
+		progress: 0.10,
 	} satisfies WorkerOutMessage);
 
 	// Initialize compositor with the worker's OffscreenCanvas
@@ -245,9 +246,8 @@ async function handleExport(msg: WorkerInMessage) {
 	});
 	console.info("[export-worker] compositor initialized");
 	self.postMessage({
-		type: "init-progress",
-		phase: "Compositor ready",
-		progress: 0.06,
+		type: "progress",
+		progress: 0.12,
 	} satisfies WorkerOutMessage);
 
 	// Signal readiness so the parallel launcher can start the next worker's
@@ -259,15 +259,14 @@ async function handleExport(msg: WorkerInMessage) {
 	self.postMessage({
 		type: "init-progress",
 		phase: "Loading media assets",
-		progress: 0.08,
+		progress: 0.15,
 	} satisfies WorkerOutMessage);
 	const files = new Map(fileEntries.map((e) => [e.mediaId, e.file]));
 	const rootNode = deserializeSceneTree(serializedTree, files);
 	console.info("[export-worker] scene tree reconstructed");
 	self.postMessage({
-		type: "init-progress",
-		phase: "Preparing encoder",
-		progress: 0.1,
+		type: "progress",
+		progress: 0.18,
 	} satisfies WorkerOutMessage);
 
 	// ── 3. Create renderer ──
@@ -466,6 +465,10 @@ async function handleExport(msg: WorkerInMessage) {
 	const progressDenominator = Math.max(1, segmentFrameCount);
 
 	console.info(`[export-worker] render queue depth: ${renderQueueDepth}`);
+	self.postMessage({
+		type: "progress",
+		progress: 0.20,
+	} satisfies WorkerOutMessage);
 
 	// ── Timing instrumentation ──
 	// Measures where time actually goes so we can identify the real
@@ -523,7 +526,7 @@ async function handleExport(msg: WorkerInMessage) {
 		if (localFrame % 10 === 0 || localFrame === segmentFrameCount - 1) {
 			self.postMessage({
 				type: "progress",
-				progress: localFrame / progressDenominator,
+				progress: 0.20 + (localFrame / progressDenominator) * 0.78,
 			} satisfies WorkerOutMessage);
 		}
 

@@ -4,6 +4,14 @@ import { buildFrameDescriptor } from "./compositor/frame-descriptor";
 import { compositor } from "./compositor/unified-compositor";
 import { resolveRenderTree } from "./resolve";
 
+export type CanvasRenderTiming = {
+	resolveMs: number;
+	descriptorMs: number;
+	compositeMs: number;
+	blitMs: number;
+	totalMs: number;
+};
+
 export type CanvasRendererParams = {
 	width: number;
 	height: number;
@@ -16,6 +24,7 @@ export type CanvasRendererParams = {
 	 */
 	canvasSize?: { width: number; height: number };
 	fps: FrameRate;
+	measurePerformance?: boolean;
 };
 
 export class CanvasRenderer {
@@ -34,13 +43,21 @@ export class CanvasRenderer {
 	// 4K sources for a downscaled preview. Left undefined (= no cap, full
 	// source resolution) by the exporter so export quality is never reduced.
 	maxSourceDim: number | undefined;
+	private readonly measurePerformance: boolean;
 
-	constructor({ width, height, canvasSize, fps }: CanvasRendererParams) {
+	constructor({
+		width,
+		height,
+		canvasSize,
+		fps,
+		measurePerformance = false,
+	}: CanvasRendererParams) {
 		this.width = width;
 		this.height = height;
 		this.canvasSize = canvasSize ?? { width, height };
 		this.fps = fps;
 		this.maxSourceDim = undefined;
+		this.measurePerformance = measurePerformance;
 	}
 
 	getOutputCanvas(): HTMLCanvasElement | OffscreenCanvas {
@@ -78,8 +95,16 @@ export class CanvasRenderer {
 		if (canvasSize) this.canvasSize = canvasSize;
 	}
 
-	async render({ node, time }: { node: AnyBaseNode; time: number }) {
+	async render({
+		node,
+		time,
+	}: {
+		node: AnyBaseNode;
+		time: number;
+	}): Promise<Omit<CanvasRenderTiming, "blitMs"> | null> {
+		const renderStart = this.measurePerformance ? performance.now() : 0;
 		await resolveRenderTree({ node, renderer: this, time });
+		const resolveEnd = this.measurePerformance ? performance.now() : 0;
 		const { frame, textures } = await buildFrameDescriptor({
 			node,
 			renderer: this,
@@ -104,6 +129,7 @@ export class CanvasRenderer {
 				item.transform.height *= scaleY;
 			}
 		}
+		const descriptorEnd = this.measurePerformance ? performance.now() : 0;
 		// Guard the entire GPU pipeline — wgpu panics (device lost, driver
 		// reset, OOM) must not crash the render loop. A lost device means
 		// the preview freezes on the last good frame until page reload.
@@ -126,10 +152,19 @@ export class CanvasRenderer {
 					"[renderer] GPU device lost, preview frozen until reload:",
 					msg,
 				);
-				return;
+			} else {
+				throw error;
 			}
-			throw error;
 		}
+
+		if (!this.measurePerformance) return null;
+		const renderEnd = performance.now();
+		return {
+			resolveMs: resolveEnd - renderStart,
+			descriptorMs: descriptorEnd - resolveEnd,
+			compositeMs: renderEnd - descriptorEnd,
+			totalMs: renderEnd - renderStart,
+		};
 	}
 
 	async renderToCanvas({
@@ -140,8 +175,9 @@ export class CanvasRenderer {
 		node: AnyBaseNode;
 		time: number;
 		targetCanvas: HTMLCanvasElement;
-	}) {
-		await this.render({ node, time });
+	}): Promise<CanvasRenderTiming | null> {
+		const timing = await this.render({ node, time });
+		const blitStart = this.measurePerformance ? performance.now() : 0;
 
 		const ctx = targetCanvas.getContext("2d");
 		if (!ctx) {
@@ -155,5 +191,12 @@ export class CanvasRenderer {
 			targetCanvas.width,
 			targetCanvas.height,
 		);
+		if (!timing) return null;
+		const blitMs = performance.now() - blitStart;
+		return {
+			...timing,
+			blitMs,
+			totalMs: timing.totalMs + blitMs,
+		};
 	}
 }

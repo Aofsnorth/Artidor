@@ -4,7 +4,6 @@ import { cn } from "@/utils/ui";
 import { clamp } from "@/utils/math";
 import {
 	useEffect,
-	useLayoutEffect,
 	useRef,
 	useState,
 	type ComponentProps,
@@ -13,8 +12,6 @@ import { useFocusLock } from "@/hooks/use-focus-lock";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowTurnBackwardIcon } from "@hugeicons/core-free-icons";
-
-const SUFFIX_GAP_PX = 6;
 
 const DRAG_SENSITIVITIES = {
 	default: 1,
@@ -142,42 +139,23 @@ function NumberField({
 }: NumberFieldProps & { ref?: React.Ref<HTMLInputElement> }) {
 	const iconRef = useRef<HTMLButtonElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
-	const ghostRef = useRef<HTMLSpanElement>(null);
 	const bubbleRef = useRef<HTMLDivElement>(null);
 	const startValueRef = useRef(0);
 	const startXRef = useRef(0);
 	const cumulativeDeltaRef = useRef(0);
 	const lastPointerXRef = useRef(0);
 	const [isInputFocused, setIsInputFocused] = useState(false);
-	const [suffixLeft, setSuffixLeft] = useState(0);
 	const [scrubPreview, setScrubPreview] = useState<{
 		value: number;
 		x: number;
 		y: number;
 	} | null>(null);
-	const ghostValue = Array.isArray(value)
-		? value.join(", ")
-		: String(value ?? "");
 
 	useEffect(() => {
 		return () => {
 			setScrubPreview(null);
 		};
 	}, []);
-
-	useLayoutEffect(() => {
-		if (!suffix) {
-			setSuffixLeft(0);
-			return;
-		}
-		if (!ghostRef.current || !inputRef.current) return;
-		if (ghostRef.current.textContent !== ghostValue) {
-			ghostRef.current.textContent = ghostValue;
-		}
-		const paddingLeft =
-			parseFloat(getComputedStyle(inputRef.current).paddingLeft) || 0;
-		setSuffixLeft(paddingLeft + ghostRef.current.offsetWidth);
-	}, [ghostValue, suffix]);
 
 	const { containerRef: wrapperRef } = useFocusLock<HTMLDivElement>({
 		isActive: isInputFocused,
@@ -232,6 +210,9 @@ function NumberField({
 
 	const canScrub = Boolean(icon && onScrub);
 
+	// Reserve trailing space so absolute-right suffix never collides with digits.
+	const inputPaddingClass = suffix ? "pr-5" : "";
+
 	const inputNode = (
 		<input
 			type={allowExpressions ? "text" : "number"}
@@ -239,7 +220,10 @@ function NumberField({
 			ref={inputRef}
 			disabled={disabled}
 			value={value}
-			className="text-sm leading-none bg-transparent outline-none min-w-0 flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+			className={cn(
+				"text-sm leading-none bg-transparent outline-none min-w-0 flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+				inputPaddingClass,
+			)}
 			onMouseDown={(event) => {
 				const inputElement = event.currentTarget;
 				const shouldPreventNativeCaretPlacement =
@@ -305,27 +289,17 @@ function NumberField({
 					)}
 				>
 					{inputNode}
-					{suffix && (
-						<>
-							{/* Ghost mirrors value text to measure width for suffix positioning */}
-							<span
-								ref={ghostRef}
-								className="invisible absolute text-sm leading-none whitespace-pre pointer-events-none"
-								aria-hidden="true"
-							>
-								{ghostValue}
-							</span>
-							<span
-								className={cn(
-									"absolute top-1/2 -translate-y-1/2 select-none pointer-events-none text-sm leading-none",
-									suffixClassName,
-								)}
-								style={{ left: suffixLeft + SUFFIX_GAP_PX }}
-							>
-								{suffix}
-							</span>
-						</>
-					)}
+					{suffix ? (
+						<span
+							className={cn(
+								"pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 select-none text-sm leading-none text-muted-foreground",
+								suffixClassName,
+							)}
+							aria-hidden="true"
+						>
+							{suffix}
+						</span>
+					) : null}
 				</span>
 				{onReset && !isDefault && (
 					<div className="shrink-0 pr-2 flex items-center">

@@ -52,4 +52,26 @@ describe("resolveEffectLayerNode", () => {
 		expect(uniforms?.u_single_line).toBe(0);
 		expect(uniforms?.u_orientation).toBe(0);
 	});
+
+	it("bakes tile scrollSpeed into u_shift using local time", () => {
+		// scrollSpeed 100 → 1.0 UV/s; at 120_000 ticks (1s) shift should be 1.0
+		const node = createEffectLayerNode({
+			timeOffset: 0,
+			duration: 240_000,
+			effectType: "tile",
+			effectParams: {
+				amount: 40,
+				shift: 0,
+				singleLine: false,
+				orientation: "horizontal",
+				scrollSpeed: 100,
+			},
+		});
+		const result = resolveEffectLayerNode({
+			node,
+			context: { time: 120_000, renderer: mockRenderer } as ResolveContext,
+		});
+		expect(result).not.toBeNull();
+		expect(result?.passes[0]?.uniforms.u_shift).toBe(1);
+	});
 });

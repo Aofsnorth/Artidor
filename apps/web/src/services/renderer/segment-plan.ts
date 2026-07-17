@@ -23,6 +23,35 @@ export const MAX_SEGMENTS = 16;
  */
 export const MIN_FRAMES_PER_SEGMENT = 60;
 
+const FULL_HD_PIXELS = 1920 * 1080;
+const MIN_FULL_HD_FRAME_EQUIVALENTS_PER_SEGMENT = 120;
+
+/**
+ * Chooses parallel export only when each worker receives enough pixel work to
+ * repay fresh worker, WASM, GPU, and encoder startup. Light exports stay on the
+ * reusable single worker, which starts faster and avoids segment muxing.
+ */
+export function shouldUseParallelExport({
+	totalFrames,
+	width,
+	height,
+	segmentCount,
+}: {
+	totalFrames: number;
+	width: number;
+	height: number;
+	segmentCount: number;
+}): boolean {
+	if (segmentCount < 2 || totalFrames <= 0) return false;
+
+	const pixelsPerFrame = Math.max(0, width) * Math.max(0, height);
+	const frameEquivalents = (totalFrames * pixelsPerFrame) / FULL_HD_PIXELS;
+
+	return (
+		frameEquivalents / segmentCount >= MIN_FULL_HD_FRAME_EQUIVALENTS_PER_SEGMENT
+	);
+}
+
 export type SegmentPlan = {
 	index: number;
 	/** Inclusive start frame (global timeline index). */

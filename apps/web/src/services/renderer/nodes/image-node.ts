@@ -1,3 +1,4 @@
+import { decodeImageBitmap } from "../image-decode";
 import {
 	VisualNode,
 	type ResolvedVisualSourceNodeState,
@@ -5,7 +6,9 @@ import {
 } from "./visual-node";
 
 export interface ImageNodeParams extends VisualNodeParams {
+	mediaId: string;
 	url: string;
+	file: File;
 	maxSourceSize?: number;
 }
 
@@ -29,11 +32,13 @@ export function loadImageSource(
 	const promise = (async (): Promise<CachedImageSource> => {
 		// Use createImageBitmap via fetch so this path works in both the main
 		// thread and Web Worker contexts (where `new Image()` is unavailable).
-		const bitmap = await (async () => {
-			const response = await fetch(url);
-			const blob = await response.blob();
-			return createImageBitmap(blob);
-		})();
+		const response = await fetch(url);
+		const blob = await response.blob();
+		const bitmap = await decodeImageBitmap(blob, {
+			url,
+			maxSourceSize,
+			label: "image",
+		});
 
 		const naturalWidth = bitmap.width;
 		const naturalHeight = bitmap.height;

@@ -68,3 +68,5 @@ PROGRESS_SUMMARY.md
 .superpowers/
 
 docs/prompt-bangun-efek-alight-motion.md
+.context/
+.mcp-context.json

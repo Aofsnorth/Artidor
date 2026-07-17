@@ -18,6 +18,13 @@ const asSingleLine = (v: unknown): number =>
 const asOrientation = (v: unknown): number =>
 	v === "vertical" ? 1 : 0;
 
+/** Map UI scroll speed (-100..100) to UV units per second. */
+const asScrollSpeed = (v: unknown): number => {
+	const n = typeof v === "number" ? v : Number.parseFloat(String(v));
+	const clamped = Number.isFinite(n) ? Math.min(100, Math.max(-100, n)) : 0;
+	return clamped / 100;
+};
+
 function singleAmountEffect({
 	type,
 	name,
@@ -106,17 +113,35 @@ export const tileEffectDefinition: EffectDefinition = {
 				{ value: "vertical", label: "Vertical" },
 			],
 		},
+		{
+			key: "scrollSpeed",
+			label: "Scroll Speed",
+			type: "number",
+			default: 0,
+			min: -100,
+			max: 100,
+			step: 1,
+		},
 	],
 	renderer: {
 		passes: [
 			{
 				shader: "tile",
-				uniforms: ({ effectParams }) => ({
-					u_amount: asAmount01(effectParams.amount),
-					u_shift: asShift(effectParams.shift),
-					u_single_line: asSingleLine(effectParams.singleLine),
-					u_orientation: asOrientation(effectParams.orientation),
-				}),
+				// Bake auto-scroll into u_shift so shader/rust pack stay unchanged.
+				// localTime is ticks (TICKS_PER_SECOND = 120_000).
+				// ponytail: hardcode tick rate; switch to TICKS_PER_SECOND import if rate ever varies.
+				uniforms: ({ effectParams, localTime = 0 }) => {
+					const scrollSpeed = asScrollSpeed(effectParams.scrollSpeed);
+					const timeSeconds = localTime / 120_000;
+					const scrolledShift =
+						asShift(effectParams.shift) + scrollSpeed * timeSeconds;
+					return {
+						u_amount: asAmount01(effectParams.amount),
+						u_shift: scrolledShift,
+						u_single_line: asSingleLine(effectParams.singleLine),
+						u_orientation: asOrientation(effectParams.orientation),
+					};
+				},
 			},
 		],
 	},

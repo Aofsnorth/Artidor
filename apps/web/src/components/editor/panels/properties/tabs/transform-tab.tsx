@@ -754,7 +754,7 @@ export function TransformTab({
 
 						<div className="flex flex-col gap-2">
 							<div className="text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-								Skew (Nyerong)
+								Skew
 							</div>
 							<div className="grid grid-cols-2 gap-2">
 								<SectionField label="X" className="min-w-0">

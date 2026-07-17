@@ -113,7 +113,7 @@ export const SUGGESTIONS: Suggestion[] = [
 		text: "Make this jedag-jedug: detect beats in the audio, then split the video clip on every beat.",
 	},
 	{
-		label: "Skew (nyerong)",
+		label: "Skew",
 		text: "Apply a skew transform to this clip — pull the top-right up and bottom-left down for a slanted look.",
 	},
 	{
