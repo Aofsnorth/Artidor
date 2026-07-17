@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the tile effect track fix", () => {
+	test("the newest entry is the tile scroll + suffix fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-19-tile-effect-track-fix",
+			"2026-07-19-tile-scroll-suffix-fix",
 		);
 	});
 });

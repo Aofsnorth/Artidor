@@ -4,6 +4,7 @@ import {
 	MIN_FRAMES_PER_SEGMENT,
 	buildSegmentPlans,
 	planSegmentCount,
+	shouldUseParallelExport,
 } from "./segment-plan";
 
 describe("planSegmentCount", () => {
@@ -37,6 +38,67 @@ describe("planSegmentCount", () => {
 		// Bad core counts fall back to 4 (capped by MAX_SEGMENTS).
 		expect(planSegmentCount(longTimeline, 0)).toBe(4);
 		expect(planSegmentCount(longTimeline, Number.NaN)).toBe(4);
+	});
+});
+
+describe("shouldUseParallelExport", () => {
+	test("uses one warm worker for short 1080p exports", () => {
+		expect(
+			shouldUseParallelExport({
+				totalFrames: 150,
+				width: 1920,
+				height: 1080,
+				segmentCount: 2,
+			}),
+		).toBe(false);
+	});
+
+	test("parallelizes long 1080p exports", () => {
+		expect(
+			shouldUseParallelExport({
+				totalFrames: 600,
+				width: 1920,
+				height: 1080,
+				segmentCount: 4,
+			}),
+		).toBe(true);
+	});
+
+	test("rejects excess workers while allowing a smaller parallel split", () => {
+		const workload = {
+			totalFrames: 300,
+			width: 1920,
+			height: 1080,
+		};
+
+		expect(shouldUseParallelExport({ ...workload, segmentCount: 4 })).toBe(
+			false,
+		);
+		expect(shouldUseParallelExport({ ...workload, segmentCount: 2 })).toBe(
+			true,
+		);
+	});
+
+	test("parallelizes shorter high-resolution exports", () => {
+		expect(
+			shouldUseParallelExport({
+				totalFrames: 150,
+				width: 3840,
+				height: 2160,
+				segmentCount: 2,
+			}),
+		).toBe(true);
+	});
+
+	test("never parallelizes a single segment", () => {
+		expect(
+			shouldUseParallelExport({
+				totalFrames: 10_000,
+				width: 3840,
+				height: 2160,
+				segmentCount: 1,
+			}),
+		).toBe(false);
 	});
 });
 

@@ -2371,10 +2371,10 @@ function __wbg_get_imports() {
             arg0.unmap();
         },
         __wbg_useProgram_182d120fe476921b: function(arg0, arg1) {
-            arg0.useProgram(arg1);
+            arg0["useProgram"](arg1);
         },
         __wbg_useProgram_49495850b446fa56: function(arg0, arg1) {
-            arg0.useProgram(arg1);
+            arg0["useProgram"](arg1);
         },
         __wbg_value_a5d5488a9589444a: function(arg0) {
             const ret = arg0.value;

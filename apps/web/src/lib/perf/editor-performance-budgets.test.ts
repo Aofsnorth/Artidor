@@ -9,6 +9,12 @@ test("editor performance budgets stay explicit", () => {
 	expect(EDITOR_PERFORMANCE_BUDGETS.dragFrameMsP95).toBeLessThanOrEqual(16.7);
 	expect(EDITOR_PERFORMANCE_BUDGETS.mainThreadSliceMs).toBeLessThanOrEqual(8);
 	expect(EDITOR_PERFORMANCE_BUDGETS.exportInitialBytes).toBe(0);
+	expect(EDITOR_PERFORMANCE_BUDGETS.previewFrameCacheBytes).toBe(
+		96 * 1024 * 1024,
+	);
+	expect(
+		EDITOR_PERFORMANCE_BUDGETS.previewRenderFrameMsP95,
+	).toBeLessThanOrEqual(16.7);
 });
 
 test("assertWithinBudget rejects over-budget values", () => {

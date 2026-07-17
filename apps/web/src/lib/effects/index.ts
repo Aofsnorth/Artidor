@@ -13,18 +13,26 @@ export function resolveEffectPasses({
 	effectParams,
 	width,
 	height,
+	localTime = 0,
 }: {
 	definition: EffectDefinition;
 	effectParams: ParamValues;
 	width: number;
 	height: number;
+	/** Element-local time in ticks. Used by time-driven effects (e.g. tile scroll). */
+	localTime?: number;
 }): EffectPass[] {
 	if (definition.renderer.buildPasses) {
-		return definition.renderer.buildPasses({ effectParams, width, height });
+		return definition.renderer.buildPasses({
+			effectParams,
+			width,
+			height,
+			localTime,
+		});
 	}
 	return definition.renderer.passes.map((pass) => ({
 		shader: pass.shader,
-		uniforms: pass.uniforms({ effectParams, width, height }),
+		uniforms: pass.uniforms({ effectParams, width, height, localTime }),
 	}));
 }
 

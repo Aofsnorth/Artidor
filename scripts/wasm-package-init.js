@@ -53,4 +53,53 @@ if (typeof process !== "undefined" && process.versions?.node) {
 
 fs.writeFileSync(autoInitPath, autoInit);
 
+// Remove artifacts that a `--target web` build must NOT ship. wasm-pack
+// overwrites its own outputs but never deletes foreign files left in the
+// out-dir, so a `--target bundler` glue file (`artidor_wasm_bg.js`) from an
+// earlier build survives every subsequent `--target web` rebuild. Its mere
+// presence next to the `.wasm` makes Turbopack wire the worker's
+// `"./artidor_wasm_bg.js"` wasm import to the (cyclic, bundler-style) file
+// instead of the web loader's inline imports, producing a LinkError
+// ("function import requires a callable") at WebAssembly.instantiate().
+// Stripping it here keeps the on-disk package matching `package.json.files`.
+const staleArtifacts = ["artidor_wasm_bg.js", ".gitignore"];
+for (const name of staleArtifacts) {
+	fs.rmSync(path.join(pkgDir, name), { force: true });
+}
+
+// Neutralize React Fast Refresh false-positives in the generated glue.
+//
+// The web loader (`artidor_wasm.js`) lives under the Turbopack root (the
+// package is symlinked into node_modules but resolves to `rust/wasm/pkg`), so
+// Turbopack runs the React Refresh SWC transform over it in dev. That
+// transform flags any function whose body calls a `use[A-Z]*` method as a
+// custom hook and wraps the enclosing wasm import shim in a `$RefreshSig$()`
+// signature helper. On the main thread the helper returns the function
+// unchanged, but inside a Web Worker the refresh hooks are absent, so the
+// runtime substitutes a DUMMY context whose `signature()` returns a function
+// that yields `undefined`. The wrapped wasm import (`__wbg_useProgram_*`,
+// which calls `.useProgram(...)` on a WebGL2 context) therefore becomes
+// `undefined` and `WebAssembly.instantiate()` throws
+// `LinkError: ... function import requires a callable` — but only in the
+// export worker, only in dev.
+//
+// Rewriting the `.useMethod(` calls to computed access `["useMethod"](` is
+// behavior-identical but invisible to the detector, which only matches
+// non-computed member expressions. This keeps the standard `--target web`
+// output working in workers without disabling Fast Refresh app-wide.
+const loaderPath = path.join(pkgDir, "artidor_wasm.js");
+let loaderSource = fs.readFileSync(loaderPath, "utf8");
+const hookShapedCall = /\.(use[A-Z][A-Za-z0-9]*)\(/g;
+let rewrites = 0;
+loaderSource = loaderSource.replace(hookShapedCall, (_match, method) => {
+	rewrites += 1;
+	return `["${method}"](`;
+});
+if (rewrites > 0) {
+	fs.writeFileSync(loaderPath, loaderSource);
+	console.log(
+		`[wasm-package-init] rewrote ${rewrites} hook-shaped method call(s) to computed access`,
+	);
+}
+
 console.log("[wasm-package-init] set main to auto-init.js");

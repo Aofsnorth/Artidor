@@ -53,8 +53,13 @@ export function serializeSceneTree(root: RootNode): SerializedSceneTree {
 	function serialize(node: AnyBaseNode): SerializedNode {
 		const params = { ...node.params } as Record<string, unknown>;
 
-		// Extract File objects from video/image nodes
-		if (node instanceof VideoNode || node instanceof ImageNode) {
+		// Extract media files for worker transfer. Blob URLs are scoped to the
+		// current global, so the worker must create its own URL from the File.
+		if (
+			node instanceof VideoNode ||
+			node instanceof ImageNode ||
+			node instanceof BlurBackgroundNode
+		) {
 			const file = params.file as File | undefined;
 			const mediaId = params.mediaId as string | undefined;
 			if (file && mediaId) {

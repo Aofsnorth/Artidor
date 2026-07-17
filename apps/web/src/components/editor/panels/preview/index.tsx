@@ -32,6 +32,16 @@ import {
 	resolvePreviewRenderScales,
 } from "@/lib/perf/preview-quality";
 import { RenderPerfTracker } from "@/lib/perf/render-perf-tracker";
+import {
+	cachePreviewFrame,
+	clearPreviewFrameCache,
+	type PreviewFrameCacheEntry,
+} from "@/lib/perf/preview-frame-cache";
+import { shouldQueuePreviewRender } from "@/lib/perf/preview-render-scheduling";
+import {
+	PreviewRenderMetrics,
+	publishPreviewRenderMeasure,
+} from "@/lib/perf/preview-render-metrics";
 import { registerPreviewCanvas } from "@/stores/preview-canvas-scope";
 import { cn } from "@/utils/ui";
 import { Spinner } from "@/components/ui/spinner";
@@ -136,12 +146,16 @@ function PreviewCanvas({
 	const lastScaleRef = useRef(-1);
 	const renderingRef = useRef(false);
 	const pendingRenderRef = useRef(false);
+	const activeRenderFrameRef = useRef(-1);
+	const activeRenderSceneRef = useRef<RootNode | null>(null);
+	const activeRenderScaleInputsRef = useRef("");
 	const renderTokenRef = useRef(0);
 	const renderStartRef = useRef(0);
 	// Track whether playback was playing before a render froze it,
 	// so we can resume after the render completes.
 	const wasPlayingBeforeRenderRef = useRef(false);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
+	const phaseMetricsRef = useRef(new PreviewRenderMetrics());
 	// Loading overlay: toggled via direct DOM class manipulation instead of
 	// React state. Setting React state inside the requestAnimationFrame render
 	// loop triggers a full re-render (5-16ms jank) every time a slow frame
@@ -152,22 +166,11 @@ function PreviewCanvas({
 	// Cache scale inputs to skip recalculation for manual quality tiers.
 	const lastScaleInputsRef = useRef("");
 	const idleScaleRef = useRef(0);
-	// Composited frame cache: stores a snapshot of the rendered canvas keyed
-	// by (frameIndex, scale). When the user scrubs backward or re-visits a
-	// frame that was recently rendered, we blit the cached snapshot instead
-	// of re-running the full pipeline (resolve → build descriptor → texture
-	// upload → GPU render). This makes backward scrubbing instant and
-	// eliminates the "loading" flash on re-seeks.
-	//
-	// The cache is a simple Map with FIFO eviction (oldest inserted first).
-	// JS Maps preserve insertion order, so eviction is O(1). We cache up to
-	// 60 frames (~1s at 60fps) — enough for short-range scrubbing without
-	// significant memory use. Each entry is an ImageBitmap (GPU-backed, ~1MB
-	// at 1080p) so 60 entries ≈ 60MB — acceptable.
-	const FRAME_CACHE_SIZE = 60;
-	const frameCacheRef = useRef<
-		Map<string, { bitmap: ImageBitmap; frame: number; scale: number }>
-	>(new Map());
+	// Composited frame cache for paused scrubbing. Playback frames are never
+	// snapshotted: creating a GPU-backed ImageBitmap every frame adds a copy to
+	// the hot path and can retain hundreds of megabytes. Entries use the scaled
+	// compositor dimensions and a fixed memory budget.
+	const frameCacheRef = useRef<Map<string, PreviewFrameCacheEntry>>(new Map());
 	const previewQuality = useSettingsStore((s) => s.previewQuality);
 	const gpuDegraded = useEditor((e) => e.renderer.isDegraded);
 	const { width: nativeWidth, height: nativeHeight } = usePreviewSize();
@@ -194,6 +197,7 @@ function PreviewCanvas({
 			// blit-time concern.
 			canvasSize: { width: nativeWidth, height: nativeHeight },
 			fps: activeProject.settings.fps,
+			measurePerformance: process.env.NODE_ENV === "development",
 		});
 	}, [
 		nativeWidth,
@@ -236,11 +240,6 @@ function PreviewCanvas({
 				}
 			}
 
-			if (renderingRef.current) {
-				pendingRenderRef.current = true;
-				return;
-			}
-
 			const renderTime = Math.min(
 				editor.playback.getCurrentTime(),
 				editor.timeline.getLastFrameTime(),
@@ -249,6 +248,19 @@ function PreviewCanvas({
 				(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
 			);
 			const frame = Math.floor(renderTime / ticksPerFrame);
+			const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+
+			if (renderingRef.current) {
+				pendingRenderRef.current = shouldQueuePreviewRender({
+					activeFrame: activeRenderFrameRef.current,
+					requestedFrame: frame,
+					activeScene: activeRenderSceneRef.current,
+					requestedScene: renderTree,
+					activeScaleInputs: activeRenderScaleInputsRef.current,
+					requestedScaleInputs: scaleInputs,
+				});
+				return;
+			}
 
 			// Delta-frame skip: if the frame index, render tree, scale, AND
 			// playback state are all unchanged from the last successful render,
@@ -262,7 +274,6 @@ function PreviewCanvas({
 			// The frame cache check below handles the case where the frame IS
 			// different but was recently rendered (backward scrub). This check
 			// handles the case where nothing changed at all.
-			const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
 			if (
 				frame === lastFrameRef.current &&
 				renderTree === lastSceneRef.current &&
@@ -330,16 +341,6 @@ function PreviewCanvas({
 			// re-running the full pipeline. This makes backward scrubbing and
 			// re-seeks to recently-visited frames instant (0ms vs 5-80ms).
 			const cacheKey = `${frame}:${scale.toFixed(3)}`;
-			const cachedFrame = frameCacheRef.current.get(cacheKey);
-			if (
-				cachedFrame &&
-				frame === lastFrameRef.current &&
-				renderTree === lastSceneRef.current
-			) {
-				// Cache hit for the current frame — no need to re-render.
-				// (This branch is mainly for scale changes where we need to re-render,
-				//  but if the scale is the same we skip entirely.)
-			}
 			if (
 				frame !== lastFrameRef.current ||
 				renderTree !== lastSceneRef.current ||
@@ -371,6 +372,9 @@ function PreviewCanvas({
 
 				renderingRef.current = true;
 				pendingRenderRef.current = false;
+				activeRenderFrameRef.current = frame;
+				activeRenderSceneRef.current = renderTree;
+				activeRenderScaleInputsRef.current = scaleInputs;
 				renderStartRef.current = performance.now();
 				const token = ++renderTokenRef.current;
 
@@ -396,41 +400,35 @@ function PreviewCanvas({
 						time: renderTime,
 						targetCanvas: canvasRef.current,
 					})
-					.then(() => {
+					.then((timing) => {
+						if (timing) {
+							const averages = phaseMetricsRef.current.record(timing);
+							if (averages) publishPreviewRenderMeasure(averages);
+						}
 						if (token === renderTokenRef.current && !pendingRenderRef.current) {
 							lastSceneRef.current = renderTree;
 							lastFrameRef.current = frame;
 							lastScaleRef.current = scale;
-							// Cache the rendered frame as an ImageBitmap for instant
-							// re-blit on backward scrub / re-seek. ImageBitmap is
-							// GPU-backed and transferable — createImageBitmap is
-							// ~1-2ms (a GPU copy) and drawImage(bitmap) is ~0.5ms.
-							// Only cache during playback or when paused (not during
-							// active scene edits which change the render tree).
-							const canvas = canvasRef.current;
-							if (canvas && typeof createImageBitmap === "function") {
+							// Cache only settled paused/scrubbed frames. During playback the
+							// sequential video cache already handles nearby frames; snapshotting
+							// every composited frame adds GPU copies and memory pressure.
+							if (!isPlaying && typeof createImageBitmap === "function") {
+								const sourceCanvas = renderer.getOutputCanvas();
 								const key = `${frame}:${scale.toFixed(3)}`;
-								createImageBitmap(canvas)
+								createImageBitmap(sourceCanvas)
 									.then((bitmap) => {
 										if (token !== renderTokenRef.current) {
 											bitmap.close();
 											return;
 										}
-										const cache = frameCacheRef.current;
-										cache.set(key, { bitmap, frame, scale });
-										// Evict oldest entries (FIFO — JS Maps preserve
-										// insertion order, so .next().value is oldest).
-										while (cache.size > FRAME_CACHE_SIZE) {
-											const oldest = cache.keys().next().value;
-											if (oldest === undefined) break;
-											const evicted = cache.get(oldest);
-											evicted?.bitmap.close();
-											cache.delete(oldest);
-										}
+										cachePreviewFrame({
+											cache: frameCacheRef.current,
+											key,
+											entry: { bitmap, frame, scale },
+										});
 									})
 									.catch(() => {
-										// createImageBitmap can fail on very large
-										// canvases or OOM — silently skip caching.
+										// Large or resource-constrained canvases may reject snapshots.
 									});
 							}
 						}
@@ -481,12 +479,12 @@ function PreviewCanvas({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the renderTree identity changes so the cached frame bitmaps are invalidated, even though the value itself is not read inside the body.
 	useEffect(() => {
 		setNeedsRender(true);
-		const cache = frameCacheRef.current;
-		for (const [, entry] of cache) {
-			entry.bitmap.close();
-		}
-		cache.clear();
+		clearPreviewFrameCache(frameCacheRef.current);
 	}, [renderTree, setNeedsRender]);
+
+	useEffect(() => {
+		return () => clearPreviewFrameCache(frameCacheRef.current);
+	}, []);
 
 	// Mark a render as needed when the canvas size changes (panel resize).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional; this effect must run whenever the canvas size changes to request a fresh render, even though the dimensions are not read inside the body.

@@ -125,6 +125,7 @@ function resolveEffectPassGroups({
 				effectParams: resolvedParams,
 				width,
 				height,
+				localTime,
 			});
 		});
 }
@@ -249,10 +250,13 @@ async function resolveImageNode({
 	node: ImageNode;
 	context: ResolveContext;
 }): Promise<ResolvedVisualSourceNodeState | null> {
-	const source = await loadImageSource(
-		node.params.url,
-		node.params.maxSourceSize,
-	);
+	// Full exports should decode images up to the project canvas size so
+	// vector / SVG sources have enough resolution; preview already sets
+	// a tighter maxSourceSize in the scene builder.
+	const maxSourceSize =
+		node.params.maxSourceSize ??
+		Math.max(context.renderer.canvasSize.width, context.renderer.canvasSize.height);
+	const source = await loadImageSource(node.params.url, maxSourceSize);
 	const visualState = resolveVisualState({
 		params: node.params,
 		context,
@@ -278,9 +282,16 @@ async function resolveStickerNode({
 	node: StickerNode;
 	context: ResolveContext;
 }): Promise<ResolvedVisualSourceNodeState | null> {
-	const source = await loadStickerSource({ stickerId: node.params.stickerId });
-	const sourceWidth = node.params.intrinsicWidth ?? source.width;
-	const sourceHeight = node.params.intrinsicHeight ?? source.height;
+	const source = await loadStickerSource({
+		stickerId: node.params.stickerId,
+		intrinsicWidth: node.params.intrinsicWidth,
+		intrinsicHeight: node.params.intrinsicHeight,
+	});
+	// `source.width/height` come from the decoded bitmap and already reflect
+	// any SVG resize hint, so use them directly instead of the stored intrinsic
+	// size to avoid an aspect/size mismatch.
+	const sourceWidth = source.width;
+	const sourceHeight = source.height;
 	const visualState = resolveVisualState({
 		params: node.params,
 		context,
@@ -484,12 +495,18 @@ export function resolveEffectLayerNode({
 		return null;
 	}
 
+	const localTime = getElementLocalTime({
+		timelineTime: time,
+		elementStartTime: node.params.timeOffset,
+		elementDuration: node.params.duration,
+	});
 	const definition = effectsRegistry.get(node.params.effectType);
 	const passes = resolveEffectPasses({
 		definition,
 		effectParams: node.params.effectParams,
 		width: context.renderer.canvasSize.width,
 		height: context.renderer.canvasSize.height,
+		localTime,
 	});
 	if (passes.length === 0) {
 		return null;

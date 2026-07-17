@@ -1,4 +1,6 @@
+import { STICKER_INTRINSIC_SIZE_FALLBACK } from "@/lib/stickers/intrinsic-size";
 import { resolveStickerId } from "@/lib/stickers";
+import { decodeImageBitmap } from "../image-decode";
 import {
 	VisualNode,
 	type ResolvedVisualSourceNodeState,
@@ -21,23 +23,36 @@ const stickerSourceCache = new Map<string, Promise<CachedStickerSource>>();
 
 export function loadStickerSource({
 	stickerId,
+	intrinsicWidth,
+	intrinsicHeight,
 }: {
 	stickerId: string;
+	intrinsicWidth?: number;
+	intrinsicHeight?: number;
 }): Promise<CachedStickerSource> {
-	const cached = stickerSourceCache.get(stickerId);
+	const resizeWidth = intrinsicWidth ?? STICKER_INTRINSIC_SIZE_FALLBACK;
+	const cacheKey = `${stickerId}:${resizeWidth}`;
+	const cached = stickerSourceCache.get(cacheKey);
 	if (cached) return cached;
 
 	const promise = (async (): Promise<CachedStickerSource> => {
 		const url = resolveStickerId({
 			stickerId,
-			options: { width: 200, height: 200 },
+			options: {
+				width: intrinsicWidth ?? STICKER_INTRINSIC_SIZE_FALLBACK,
+				height: intrinsicHeight ?? STICKER_INTRINSIC_SIZE_FALLBACK,
+			},
 		});
 
 		// Use fetch + createImageBitmap so this path works in Web Worker
 		// contexts where `new Image()` (a DOM API) is unavailable.
 		const response = await fetch(url);
 		const blob = await response.blob();
-		const bitmap = await createImageBitmap(blob);
+		const bitmap = await decodeImageBitmap(blob, {
+			url,
+			resizeWidth,
+			label: "sticker",
+		});
 
 		return {
 			source: bitmap,
@@ -46,7 +61,7 @@ export function loadStickerSource({
 		};
 	})();
 
-	stickerSourceCache.set(stickerId, promise);
+	stickerSourceCache.set(cacheKey, promise);
 	return promise;
 }
 

@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-07-19-tile-scroll-suffix-fix",
+		date: "2026-07-19",
+		tag: "improvement",
+		title: "Tile auto-scroll and cleaner number field suffixes",
+		items: [
+			"Tile effect gains a Scroll Speed control that auto-scrolls the pattern over time (works on media layers and effect tracks).",
+			"NumberField suffixes like Opacity × sit on the right and no longer collide with short values.",
+		],
+	},
+	{
 		id: "2026-07-19-tile-effect-track-fix",
 		date: "2026-07-19",
 		tag: "fix",

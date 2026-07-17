@@ -7,7 +7,7 @@
     "rust/wasm/pkg"
   ],
   "scripts": {
-    "build:wasm": "wasm-pack build rust/wasm --target web --out-dir pkg && bun scripts/wasm-package-init.js && rm -f rust/wasm/pkg/.gitignore",
+    "build:wasm": "wasm-pack build rust/wasm --target web --out-dir pkg && bun scripts/wasm-package-init.js",
     "build:web": "turbo run build --filter=@artidor/web",
     "clean:web": "bun x rimraf apps/web/.next apps/web/.content-collections/cache node_modules/.cache",
     "deploy:web": "turbo run deploy --filter=@artidor/web",

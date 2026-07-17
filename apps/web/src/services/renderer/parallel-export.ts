@@ -66,7 +66,11 @@ import {
 	createExportTempFile,
 	isDiskBackedExportSupported,
 } from "./export-output";
-import { buildSegmentPlans, MIN_FRAMES_PER_SEGMENT } from "./segment-plan";
+import {
+	buildSegmentPlans,
+	MIN_FRAMES_PER_SEGMENT,
+	shouldUseParallelExport,
+} from "./segment-plan";
 
 export type ParallelExportResult =
 	| ExportWorkerResult
@@ -116,8 +120,23 @@ export async function runParallelExport({
 	const totalFrames = Math.floor(durationTicks / ticksPerFrame);
 
 	// Determine segment count: explicit override > auto-detect from hardware.
+	const hasWorkerOverride = workerCount !== undefined && workerCount > 0;
+	// Two workers are the cheapest parallel configuration. If even that cannot
+	// amortize startup, skip GPU adapter detection and use the warm worker now.
+	if (
+		!hasWorkerOverride &&
+		!shouldUseParallelExport({
+			totalFrames,
+			width,
+			height,
+			segmentCount: 2,
+		})
+	) {
+		return { success: false, fallback: true };
+	}
+
 	let segmentCount: number;
-	if (workerCount && workerCount > 0) {
+	if (hasWorkerOverride) {
 		segmentCount = workerCount;
 	} else {
 		const hardware = await detectHardware();
@@ -128,6 +147,19 @@ export async function runParallelExport({
 		segmentCount,
 		Math.floor(totalFrames / MIN_FRAMES_PER_SEGMENT),
 	);
+	if (!hasWorkerOverride) {
+		while (
+			segmentCount > 1 &&
+			!shouldUseParallelExport({
+				totalFrames,
+				width,
+				height,
+				segmentCount,
+			})
+		) {
+			segmentCount -= 1;
+		}
+	}
 	if (segmentCount < 2) {
 		return { success: false, fallback: true };
 	}
