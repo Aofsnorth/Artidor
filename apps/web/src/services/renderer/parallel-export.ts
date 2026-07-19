@@ -71,6 +71,7 @@ import {
 	MIN_FRAMES_PER_SEGMENT,
 	shouldUseParallelExport,
 } from "./segment-plan";
+import { isStaticScene } from "./static-scene";
 
 export type ParallelExportResult =
 	| ExportWorkerResult
@@ -118,6 +119,12 @@ export async function runParallelExport({
 		(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
 	);
 	const totalFrames = Math.floor(durationTicks / ticksPerFrame);
+
+	// A held still frame has no render work to parallelize. The reusable single
+	// worker can encode one long-duration sample without worker startup or muxing.
+	if (isStaticScene({ sceneTree, durationTicks })) {
+		return { success: false, fallback: true };
+	}
 
 	// Determine segment count: explicit override > auto-detect from hardware.
 	const hasWorkerOverride = workerCount !== undefined && workerCount > 0;
