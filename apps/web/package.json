@@ -53,7 +53,7 @@
 		"culori": "^4.0.2",
 		"drizzle-orm": "^0.45.2",
 		"eventemitter3": "^5.0.1",
-		"feed": "^5.1.0",
+		"feed": "^6.0.0",
 		"lucide-react": "^1.21.0",
 		"mediabunny": "^1.29.1",
 		"motion": "^12.18.1",
