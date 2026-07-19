@@ -43,7 +43,7 @@
     "js-yaml": "^5.1.0",
     "kysely": "^0.29.2",
     "mdast-util-to-hast": "^13.2.1",
-    "next": "^16.2.9",
+    "next": "^16.2.10",
     "path-to-regexp": "^8.4.2",
     "picomatch": "^4.0.4",
     "postcss": "^8.5.15",
