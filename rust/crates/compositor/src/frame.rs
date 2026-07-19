@@ -120,7 +120,8 @@ mod tests {
 
         let frame: FrameDescriptor = serde_json::from_str(json).unwrap();
         assert_eq!(frame.items.len(), 1);
-        let FrameItemDescriptor::SceneEffect { effect_pass_groups } = frame.items.first().unwrap() else {
+        let FrameItemDescriptor::SceneEffect { effect_pass_groups } = frame.items.first().unwrap()
+        else {
             panic!("expected sceneEffect");
         };
         assert_eq!(effect_pass_groups.len(), 1);
@@ -128,8 +129,17 @@ mod tests {
 
         let pass = &effect_pass_groups[0][0];
         assert_eq!(pass.shader, "tile");
-        assert!(matches!(pass.uniforms["u_amount"], EffectUniformValueDescriptor::Number(0.4)));
-        assert!(matches!(pass.uniforms["u_single_line"], EffectUniformValueDescriptor::Number(0.0)));
-        assert!(matches!(pass.uniforms["u_orientation"], EffectUniformValueDescriptor::Number(0.0)));
+        assert!(matches!(
+            pass.uniforms["u_amount"],
+            EffectUniformValueDescriptor::Number(0.4)
+        ));
+        assert!(matches!(
+            pass.uniforms["u_single_line"],
+            EffectUniformValueDescriptor::Number(0.0)
+        ));
+        assert!(matches!(
+            pass.uniforms["u_orientation"],
+            EffectUniformValueDescriptor::Number(0.0)
+        ));
     }
 }
