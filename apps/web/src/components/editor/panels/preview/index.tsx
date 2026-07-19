@@ -29,9 +29,11 @@ import { usePreviewStore } from "@/stores/preview-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
 	resolveDecodeMaxDim,
-	resolvePreviewRenderScales,
+	resolvePreviewScale,
 } from "@/lib/perf/preview-quality";
 import { RenderPerfTracker } from "@/lib/perf/render-perf-tracker";
+import { PreviewQualityGovernor } from "@/lib/perf/preview-quality-governor";
+import { resizePreviewCanvasBackingStore } from "@/lib/perf/preview-canvas-size";
 import {
 	cachePreviewFrame,
 	clearPreviewFrameCache,
@@ -155,6 +157,8 @@ function PreviewCanvas({
 	// so we can resume after the render completes.
 	const wasPlayingBeforeRenderRef = useRef(false);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
+	const qualityGovernorRef = useRef(new PreviewQualityGovernor());
+	const performanceContextRef = useRef("");
 	const phaseMetricsRef = useRef(new PreviewRenderMetrics());
 	// Loading overlay: toggled via direct DOM class manipulation instead of
 	// React state. Setting React state inside the requestAnimationFrame render
@@ -308,15 +312,21 @@ function PreviewCanvas({
 				scale = lastScaleRef.current;
 				idleScale = idleScaleRef.current;
 			} else {
-				const scales = resolvePreviewRenderScales({
+				scale = qualityGovernorRef.current.resolve({
 					quality: previewQuality,
 					isPlaying,
 					gpuDegraded,
 					avgRenderMs: avgRenderMs || undefined,
 					frameBudgetMs,
 				});
-				scale = scales.renderScale;
-				idleScale = scales.decodeScale;
+				if (qualityGovernorRef.current.consumeTierChange()) {
+					perfTrackerRef.current.reset();
+				}
+				idleScale = resolvePreviewScale({
+					quality: previewQuality,
+					isPlaying: false,
+					gpuDegraded,
+				});
 				idleScaleRef.current = idleScale;
 				lastScaleInputsRef.current = scaleInputs;
 			}
@@ -328,6 +338,11 @@ function PreviewCanvas({
 				// The scale pass in CanvasRenderer.render() then maps the
 				// resulting frame down to the (output) buffer size.
 				canvasSize: { width: nativeWidth, height: nativeHeight },
+			});
+			resizePreviewCanvasBackingStore({
+				canvas: canvasRef.current,
+				width: renderer.width,
+				height: renderer.height,
 			});
 			renderer.maxSourceDim = resolveDecodeMaxDim({
 				renderWidth: nativeWidth,
@@ -470,6 +485,25 @@ function PreviewCanvas({
 	]);
 
 	useRafLoop(render, rafEnabled);
+
+	const performanceContextKey = [
+		activeProject.metadata.id,
+		activeProject.settings.fps.numerator,
+		activeProject.settings.fps.denominator,
+		nativeWidth,
+		nativeHeight,
+		gpuDegraded,
+	].join("|");
+	useEffect(() => {
+		if (performanceContextRef.current === performanceContextKey) return;
+		performanceContextRef.current = performanceContextKey;
+		qualityGovernorRef.current.reset();
+		perfTrackerRef.current.reset();
+		lastScaleInputsRef.current = "";
+		idleScaleRef.current = 0;
+		lastScaleRef.current = -1;
+		setNeedsRender(true);
+	}, [performanceContextKey]);
 
 	// Mark a render as needed when the render tree changes (e.g. user edits
 	// the timeline, adds an effect, changes background). This re-enables the
@@ -640,8 +674,6 @@ function PreviewCanvas({
 								/>
 								<canvas
 									ref={canvasRef}
-									width={nativeWidth}
-									height={nativeHeight}
 									className="absolute block rounded-md border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.72)]"
 									style={{
 										left: viewport.sceneLeft,
