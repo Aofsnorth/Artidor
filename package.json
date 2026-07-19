@@ -22,7 +22,7 @@
     "preview:web": "turbo run preview --filter=@artidor/web",
     "harness:whats-new": "bun scripts/whats-new-check.mjs",
     "publish:wasm": "bun run build:wasm && npm publish rust/wasm/pkg --access public",
-    "test": "bun test apps/web/src",
+    "test": "bun test --isolate apps/web/src",
     "test:e2e": "playwright test"
   },
   "dependencies": {
