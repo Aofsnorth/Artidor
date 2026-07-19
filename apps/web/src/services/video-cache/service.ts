@@ -8,16 +8,6 @@ import {
 import { buildGOPIndex, type GOPIndex } from "./gop-index";
 
 /**
- * Maximum decoded frames to retain per video in the LRU frame cache.
- * At 60 fps this is ~1.1 s of video — enough to make backward scrubbing
- * and short-range re-seeks instant on long clips. Each frame wraps a
- * canvas (GPU-backed when available) decoded at the *preview* resolution
- * (capped by `maxDim`), so the cost is dominated by the downscaled canvas
- * backing-store, not full-res JS heap.
- */
-const MAX_CACHED_FRAMES_PER_MEDIA = 128;
-
-/**
  * Number of frames to prefetch ahead of the playhead during forward
  * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps.
  * 6 frames gives ~100 ms of buffer — enough to absorb decode spikes on
@@ -32,8 +22,27 @@ const PREFETCH_BUFFER_SIZE = 6;
  * current frame plus any frame the compositor is still holding a reference to.
  * With a prefetch buffer of 6 + current + compositor hold, 12 gives
  * headroom for the next batch to decode without churn.
+ *
+ * Pooled canvases are reused round-robin. Never retain raw WrappedCanvas
+ * objects beyond the current frame / short prefetch window — old canvas
+ * references silently flip to newer pixels.
  */
 const SINK_POOL_SIZE = 12;
+
+/**
+ * Raw decoded-frame cache is only safe when CanvasSink pooling is off.
+ * With poolSize > 0, canvases are reused and timestamp-keyed retention
+ * shows wrong frames during playback.
+ */
+export function resolveDecodedFrameCacheLimit({
+	poolSize,
+	desiredLimit,
+}: {
+	poolSize: number;
+	desiredLimit: number;
+}): number {
+	return poolSize > 0 ? 0 : desiredLimit;
+}
 
 interface VideoSinkData {
 	input: Input;
@@ -51,15 +60,7 @@ interface VideoSinkData {
 	// Seek generation counter. When a new seek comes in, this increments.
 	// Old seeks check this and bail out if they're stale.
 	seekGeneration: number;
-	/**
-	 * LRU frame cache: timestamp → decoded frame. Frames are inserted
-	 * after decode and looked up before decode. Eviction is FIFO
-	 * (oldest timestamp first), which approximates LRU for forward
-	 * playback. Map preserves insertion order in JS, so eviction is
-	 * O(1) via `entries().next()`.
-	 */
-	frameCache: Map<number, WrappedCanvas>;
-	/**
+/**
 	 * GOP index: sorted keyframe timestamps. Built lazily on first seek
 	 * (or eagerly on import). Used by `seekToTime` to jump directly to
 	 * the nearest preceding keyframe instead of scanning packets.
@@ -142,28 +143,17 @@ export class VideoCache {
 		// has been requested while we were waiting in the queue.
 		const myGeneration = sinkData.seekGeneration;
 
-		// 1. Check the LRU frame cache first — a cache hit skips decode
-		// entirely (0 ms vs 5-80 ms for a seek). This makes backward
-		// scrubbing and short-range re-seeks instant.
-		const cached = this.getCachedFrame({ sinkData, time });
-		if (cached) {
-			sinkData.currentFrame = cached;
-			if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
-				this.startPrefetch({ sinkData });
-			}
-			return cached;
-		}
-
-		// 2. Consume from the prefetch buffer if the next frame is at or
+		// 1. Consume from the prefetch buffer if the next frame is at or
 		// before the requested time. Shift frames that are before the
 		// target time (they're past their display window).
+		// ponytail: no long-lived raw WrappedCanvas cache — CanvasSink pool
+		// reuses canvas bitmaps; stale timestamp keys would show wrong frames.
 		while (sinkData.prefetchBuffer.length > 0) {
 			const next = sinkData.prefetchBuffer[0];
 			if (!next || next.timestamp > time) break;
 			const shifted = sinkData.prefetchBuffer.shift();
 			if (!shifted) break;
 			sinkData.currentFrame = shifted;
-			this.cacheFrame({ sinkData, frame: sinkData.currentFrame });
 			if (this.isFrameValid({ frame: sinkData.currentFrame, time })) {
 				if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
 					this.startPrefetch({ sinkData });
@@ -172,7 +162,7 @@ export class VideoCache {
 			}
 		}
 
-		// 3. Check if the current frame is still valid.
+		// 2. Check if the current frame is still valid.
 		if (
 			sinkData.currentFrame &&
 			this.isFrameValid({ frame: sinkData.currentFrame, time })
@@ -183,7 +173,7 @@ export class VideoCache {
 			return sinkData.currentFrame;
 		}
 
-		// 4. Try forward iteration (cheaper than a full seek).
+		// 3. Try forward iteration (cheaper than a full seek).
 		if (
 			sinkData.iterator &&
 			sinkData.currentFrame &&
@@ -198,7 +188,6 @@ export class VideoCache {
 			// Bail out if stale
 			if (sinkData.seekGeneration !== myGeneration) return null;
 			if (frame) {
-				this.cacheFrame({ sinkData, frame });
 				if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
 					this.startPrefetch({ sinkData });
 				}
@@ -206,7 +195,7 @@ export class VideoCache {
 			}
 		}
 
-		// 5. Fall back to a full seek.
+		// 4. Fall back to a full seek.
 		const frame = await this.seekToTime({
 			sinkData,
 			time,
@@ -215,7 +204,6 @@ export class VideoCache {
 		// Bail out if stale
 		if (sinkData.seekGeneration !== myGeneration) return null;
 		if (frame) {
-			this.cacheFrame({ sinkData, frame });
 			if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
 				this.startPrefetch({ sinkData });
 			}
@@ -223,55 +211,7 @@ export class VideoCache {
 		return frame;
 	}
 
-	/**
-	 * Look up a frame in the LRU cache by checking validity (timestamp
-	 * range). On hit, the entry is moved to the end of the Map (most
-	 * recently used) to implement LRU eviction.
-	 */
-	private getCachedFrame({
-		sinkData,
-		time,
-	}: {
-		sinkData: VideoSinkData;
-		time: number;
-	}): WrappedCanvas | null {
-		for (const [key, frame] of sinkData.frameCache) {
-			if (this.isFrameValid({ frame, time })) {
-				// Move to end (most recently used) by re-inserting.
-				sinkData.frameCache.delete(key);
-				sinkData.frameCache.set(key, frame);
-				return frame;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Store a decoded frame in the LRU cache. Evicts the oldest entry
-	 * when the cache exceeds MAX_CACHED_FRAMES_PER_MEDIA.
-	 */
-	private cacheFrame({
-		sinkData,
-		frame,
-	}: {
-		sinkData: VideoSinkData;
-		frame: WrappedCanvas;
-	}): void {
-		const key = frame.timestamp;
-		if (sinkData.frameCache.has(key)) {
-			// Already cached — move to end.
-			sinkData.frameCache.delete(key);
-		}
-		sinkData.frameCache.set(key, frame);
-		// Evict oldest entries (Map preserves insertion order).
-		while (sinkData.frameCache.size > MAX_CACHED_FRAMES_PER_MEDIA) {
-			const oldest = sinkData.frameCache.keys().next();
-			if (oldest.done) break;
-			sinkData.frameCache.delete(oldest.value);
-		}
-	}
-
-	private isFrameValid({
+		private isFrameValid({
 		frame,
 		time,
 	}: {
@@ -518,7 +458,6 @@ export class VideoCache {
 				prefetchPromise: null,
 				maxDim,
 				seekGeneration: 0,
-				frameCache: new Map(),
 				gopIndex: null,
 			});
 
@@ -580,7 +519,7 @@ export class VideoCache {
 			totalSinks: this.sinks.size,
 			activeSinks: sinks.filter((s) => s.iterator).length,
 			cachedFrames: sinks.filter((s) => s.currentFrame).length,
-			lruCachedFrames: sinks.reduce((sum, s) => sum + s.frameCache.size, 0),
+			lruCachedFrames: 0,
 			prefetchBuffered: sinks.reduce(
 				(sum, s) => sum + s.prefetchBuffer.length,
 				0,
