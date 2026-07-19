@@ -31,7 +31,7 @@ type ScrubClamp = {
 	max?: number;
 };
 
-function clampScrubValue({
+export function clampNumberFieldScrubValue({
 	value,
 	min,
 	max,
@@ -44,6 +44,16 @@ function clampScrubValue({
 	if (min != null) return Math.max(min, value);
 	if (max != null) return Math.min(max, value);
 	return value;
+}
+
+export function resolveNumberFieldDisplayValue({
+	value,
+	scrubValue,
+}: {
+	value: React.ComponentProps<"input">["value"];
+	scrubValue: number | null;
+}): React.ComponentProps<"input">["value"] {
+	return scrubValue ?? value;
 }
 
 function getActiveRange({
@@ -75,7 +85,11 @@ function scrubAcrossRanges({
 	min?: number;
 	max?: number;
 }): number {
-	let currentValue = clampScrubValue({ value: startValue, min, max });
+	let currentValue = clampNumberFieldScrubValue({
+		value: startValue,
+		min,
+		max,
+	});
 	let remainingPixels = pixelDelta;
 
 	while (remainingPixels !== 0) {
@@ -97,7 +111,7 @@ function scrubAcrossRanges({
 		remainingPixels -= direction * pixelsToBoundary;
 	}
 
-	return clampScrubValue({ value: currentValue, min, max });
+	return clampNumberFieldScrubValue({ value: currentValue, min, max });
 }
 
 interface NumberFieldProps
@@ -177,7 +191,7 @@ function NumberField({
 		const handlePointerMove = (moveEvent: PointerEvent) => {
 			lastPointerXRef.current = moveEvent.clientX;
 			cumulativeDeltaRef.current = moveEvent.clientX - startXRef.current;
-			const newValue = scrubRanges
+			const rawValue = scrubRanges
 				? scrubAcrossRanges({
 						startValue: startValueRef.current,
 						pixelDelta: cumulativeDeltaRef.current,
@@ -187,6 +201,11 @@ function NumberField({
 					})
 				: startValueRef.current +
 					cumulativeDeltaRef.current * DRAG_SENSITIVITIES[dragSensitivity];
+			const newValue = clampNumberFieldScrubValue({
+				value: rawValue,
+				min: scrubClamp?.min,
+				max: scrubClamp?.max,
+			});
 			setScrubPreview({
 				value: newValue,
 				x: moveEvent.clientX,
@@ -210,8 +229,10 @@ function NumberField({
 
 	const canScrub = Boolean(icon && onScrub);
 
-	// Reserve trailing space so absolute-right suffix never collides with digits.
-	const inputPaddingClass = suffix ? "pr-5" : "";
+	const displayValue = resolveNumberFieldDisplayValue({
+		value,
+		scrubValue: scrubPreview?.value ?? null,
+	});
 
 	const inputNode = (
 		<input
@@ -219,11 +240,8 @@ function NumberField({
 			inputMode={allowExpressions ? "decimal" : undefined}
 			ref={inputRef}
 			disabled={disabled}
-			value={value}
-			className={cn(
-				"text-sm leading-none bg-transparent outline-none min-w-0 flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-				inputPaddingClass,
-			)}
+			value={displayValue}
+			className="text-sm leading-none bg-transparent outline-none min-w-0 flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 			onMouseDown={(event) => {
 				const inputElement = event.currentTarget;
 				const shouldPreventNativeCaretPlacement =
@@ -292,7 +310,7 @@ function NumberField({
 					{suffix ? (
 						<span
 							className={cn(
-								"pointer-events-none absolute top-1/2 right-0 -translate-y-1/2 select-none text-sm leading-none text-muted-foreground",
+								"pointer-events-none shrink-0 select-none pr-1 text-sm leading-none text-muted-foreground",
 								suffixClassName,
 							)}
 							aria-hidden="true"
