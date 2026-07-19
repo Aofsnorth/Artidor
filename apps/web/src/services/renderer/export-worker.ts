@@ -31,6 +31,7 @@ import { CanvasRenderer } from "./canvas-renderer";
 import { deserializeSceneTree } from "./scene-deserializer";
 import type { SerializedNode } from "./scene-serializer";
 import { getExportRenderQueueDepth } from "./export-performance";
+import { isStaticScene } from "./static-scene";
 import {
 	EXPORT_QUALITY_MAP,
 	audioBitrateFor,
@@ -233,7 +234,7 @@ async function handleExport(msg: WorkerInMessage) {
 	// during setup instead of freezing at ~5% through the heavy GPU init.
 	self.postMessage({
 		type: "progress",
-		progress: 0.10,
+		progress: 0.1,
 	} satisfies WorkerOutMessage);
 
 	// Initialize compositor with the worker's OffscreenCanvas
@@ -285,6 +286,10 @@ async function handleExport(msg: WorkerInMessage) {
 		(rootNode.params as { duration?: number }).duration ?? 0,
 	);
 	const totalFrameCount = Math.floor(durationTicks / ticksPerFrame);
+	const staticScene = isStaticScene({
+		sceneTree: serializedTree,
+		durationTicks,
+	});
 
 	// Frame range for this (possibly segmented) export. The non-segmented path
 	// passes neither bound, so this is the full [0, totalFrameCount) range.
@@ -467,7 +472,7 @@ async function handleExport(msg: WorkerInMessage) {
 	console.info(`[export-worker] render queue depth: ${renderQueueDepth}`);
 	self.postMessage({
 		type: "progress",
-		progress: 0.20,
+		progress: 0.2,
 	} satisfies WorkerOutMessage);
 
 	// ── Timing instrumentation ──
@@ -478,99 +483,128 @@ async function handleExport(msg: WorkerInMessage) {
 	let encodeWaitMs = 0;
 	const loopStart = performance.now();
 
-	for (let i = startFrame; i < endFrame; i++) {
+	if (staticScene && segmentFrameCount > 0) {
+		const renderStart = performance.now();
+		await renderer.render({ node: rootNode, time: startFrame * ticksPerFrame });
+		renderMs += performance.now() - renderStart;
+		pendingEncodes.push(videoSource.add(0, segmentFrameCount * frameDuration));
+		self.postMessage({
+			type: "progress",
+			progress: 0.98,
+		} satisfies WorkerOutMessage);
+	} else {
+		for (let i = startFrame; i < endFrame; i++) {
+			if (isCancelled) {
+				// Wait for all pending encodes to settle, then cancel.
+				await Promise.allSettled(pendingEncodes);
+				await output.cancel();
+				self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
+				return;
+			}
+
+			// The scene is composited at the *global* timeline time so the rendered
+			// pixels are correct, but the frame is encoded at a segment-*local*
+			// (0-based) timestamp. Each segment is therefore a standalone clip; the
+			// concatenator offsets it back to its global position. For the
+			// non-segmented path startFrame is 0, so local == global as before.
+			const globalTimeTicks = i * ticksPerFrame;
+			const localTimeSeconds = mediaTimeToSeconds({
+				time: (i - startFrame) * ticksPerFrame,
+			});
+
+			// Backpressure: if the render queue is full, wait for the oldest
+			// pending encode to finish. This is the only point where the GPU
+			// might stall — and it only happens when the encoder is slower than
+			// the renderer (which is the normal case, so the queue stays full
+			// and both GPU and CPU stay busy). Time spent here = encoder is the
+			// bottleneck.
+			if (pendingEncodes.length >= renderQueueDepth) {
+				const waitStart = performance.now();
+				const oldest = pendingEncodes.shift();
+				if (!oldest) throw new Error("Pending encode queue unexpectedly empty");
+				await oldest;
+				encodeWaitMs += performance.now() - waitStart;
+			}
+
+			// Composite frame (GPU) — runs continuously while encoder processes
+			// the queue in the background. Time spent here = compositor is the
+			// bottleneck.
+			const renderStart = performance.now();
+			await renderer.render({ node: rootNode, time: globalTimeTicks });
+			renderMs += performance.now() - renderStart;
+
+			// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
+			pendingEncodes.push(videoSource.add(localTimeSeconds, frameDuration));
+
+			// Report progress every 10 frames (reduces postMessage overhead)
+			const localFrame = i - startFrame;
+			if (localFrame % 10 === 0 || localFrame === segmentFrameCount - 1) {
+				self.postMessage({
+					type: "progress",
+					progress: 0.2 + (localFrame / progressDenominator) * 0.78,
+				} satisfies WorkerOutMessage);
+			}
+
+			// Log timing breakdown every 500 frames so we can see the bottleneck
+			// live (and roughly the encode FPS).
+			if (localFrame > 0 && localFrame % 500 === 0) {
+				const elapsed = performance.now() - loopStart;
+				const fps = (localFrame / elapsed) * 1000;
+				console.info(
+					`[export-worker] frame ${localFrame}/${segmentFrameCount} | ` +
+						`${fps.toFixed(1)} fps | render ${renderMs.toFixed(0)}ms ` +
+						`(${(renderMs / localFrame).toFixed(1)}ms/f) | ` +
+						`encodeWait ${encodeWaitMs.toFixed(0)}ms ` +
+						`(${(encodeWaitMs / localFrame).toFixed(1)}ms/f)`,
+				);
+			}
+		}
+	}
+
+	// Held-frame exports can spend a long time encoding audio or finalizing the
+	// container after video rendering reaches 98%. Keep the bridge inactivity
+	// timer alive without claiming additional progress until completion.
+	const staticProgressHeartbeat = staticScene
+		? setInterval(() => {
+				self.postMessage({
+					type: "progress",
+					progress: 0.98,
+				} satisfies WorkerOutMessage);
+			}, 10_000)
+		: null;
+	let drainMs = 0;
+	try {
+		// Drain all pending encodes
+		const drainStart = performance.now();
+		await Promise.all(pendingEncodes);
+		drainMs = performance.now() - drainStart;
+
+		// Final timing summary — this is the key diagnostic. Compare renderMs
+		// (compositor) vs encodeWaitMs + drainMs (encoder) to find the bottleneck.
+		const totalMs = performance.now() - loopStart;
+		console.info(
+			`[export-worker] DONE ${segmentFrameCount} frames${staticScene ? " (held still)" : ""} in ${(totalMs / 1000).toFixed(1)}s ` +
+				`(${((segmentFrameCount / Math.max(totalMs, 0.001)) * 1000).toFixed(1)} fps) | ` +
+				`render ${(renderMs / 1000).toFixed(1)}s | ` +
+				`encodeWait ${(encodeWaitMs / 1000).toFixed(1)}s | ` +
+				`drain ${(drainMs / 1000).toFixed(1)}s`,
+		);
+
 		if (isCancelled) {
-			// Wait for all pending encodes to settle, then cancel.
-			await Promise.allSettled(pendingEncodes);
 			await output.cancel();
 			self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 			return;
 		}
 
-		// The scene is composited at the *global* timeline time so the rendered
-		// pixels are correct, but the frame is encoded at a segment-*local*
-		// (0-based) timestamp. Each segment is therefore a standalone clip; the
-		// concatenator offsets it back to its global position. For the
-		// non-segmented path startFrame is 0, so local == global as before.
-		const globalTimeTicks = i * ticksPerFrame;
-		const localTimeSeconds = mediaTimeToSeconds({
-			time: (i - startFrame) * ticksPerFrame,
-		});
-
-		// Backpressure: if the render queue is full, wait for the oldest
-		// pending encode to finish. This is the only point where the GPU
-		// might stall — and it only happens when the encoder is slower than
-		// the renderer (which is the normal case, so the queue stays full
-		// and both GPU and CPU stay busy). Time spent here = encoder is the
-		// bottleneck.
-		if (pendingEncodes.length >= renderQueueDepth) {
-			const waitStart = performance.now();
-			const oldest = pendingEncodes.shift();
-			if (!oldest) throw new Error("Pending encode queue unexpectedly empty");
-			await oldest;
-			encodeWaitMs += performance.now() - waitStart;
-		}
-
-		// Composite frame (GPU) — runs continuously while encoder processes
-		// the queue in the background. Time spent here = compositor is the
-		// bottleneck.
-		const renderStart = performance.now();
-		await renderer.render({ node: rootNode, time: globalTimeTicks });
-		renderMs += performance.now() - renderStart;
-
-		// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
-		pendingEncodes.push(videoSource.add(localTimeSeconds, frameDuration));
-
-		// Report progress every 10 frames (reduces postMessage overhead)
-		const localFrame = i - startFrame;
-		if (localFrame % 10 === 0 || localFrame === segmentFrameCount - 1) {
-			self.postMessage({
-				type: "progress",
-				progress: 0.20 + (localFrame / progressDenominator) * 0.78,
-			} satisfies WorkerOutMessage);
-		}
-
-		// Log timing breakdown every 500 frames so we can see the bottleneck
-		// live (and roughly the encode FPS).
-		if (localFrame > 0 && localFrame % 500 === 0) {
-			const elapsed = performance.now() - loopStart;
-			const fps = (localFrame / elapsed) * 1000;
-			console.info(
-				`[export-worker] frame ${localFrame}/${segmentFrameCount} | ` +
-					`${fps.toFixed(1)} fps | render ${renderMs.toFixed(0)}ms ` +
-					`(${(renderMs / localFrame).toFixed(1)}ms/f) | ` +
-					`encodeWait ${encodeWaitMs.toFixed(0)}ms ` +
-					`(${(encodeWaitMs / localFrame).toFixed(1)}ms/f)`,
-			);
+		// ── 6. Finalize ──
+		videoSource.close();
+		if (audioEncode) await audioEncode;
+		await output.finalize();
+	} finally {
+		if (staticProgressHeartbeat !== null) {
+			clearInterval(staticProgressHeartbeat);
 		}
 	}
-
-	// Drain all pending encodes
-	const drainStart = performance.now();
-	await Promise.all(pendingEncodes);
-	const drainMs = performance.now() - drainStart;
-
-	// Final timing summary — this is the key diagnostic. Compare renderMs
-	// (compositor) vs encodeWaitMs + drainMs (encoder) to find the bottleneck.
-	const totalMs = performance.now() - loopStart;
-	console.info(
-		`[export-worker] DONE ${segmentFrameCount} frames in ${(totalMs / 1000).toFixed(1)}s ` +
-			`(${((segmentFrameCount / totalMs) * 1000).toFixed(1)} fps) | ` +
-			`render ${(renderMs / 1000).toFixed(1)}s | ` +
-			`encodeWait ${(encodeWaitMs / 1000).toFixed(1)}s | ` +
-			`drain ${(drainMs / 1000).toFixed(1)}s`,
-	);
-
-	if (isCancelled) {
-		await output.cancel();
-		self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
-		return;
-	}
-
-	// ── 6. Finalize ──
-	videoSource.close();
-	if (audioEncode) await audioEncode;
-	await output.finalize();
 
 	const buffer = output.target.buffer;
 	if (!buffer) {
