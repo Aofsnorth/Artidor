@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@biomejs/biome": "^2.4.8",
-    "@mediapipe/tasks-vision": "^0.10.35",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@protobufjs/utf8": "^1.1.1",
     "@tauri-apps/api": "^2",
     "@types/react": "^19.2.10",
