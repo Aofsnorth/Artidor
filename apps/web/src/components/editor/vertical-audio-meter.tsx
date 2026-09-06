@@ -46,7 +46,9 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 			mediaAssets: e.media.getAssets(),
 		});
 	});
-	const isVisualizer = useUiOverlayStore((state) => state.audioMeterMode === "visualizer");
+	const isVisualizer = useUiOverlayStore(
+		(state) => state.audioMeterMode === "visualizer",
+	);
 	const toggleMode = useUiOverlayStore((state) => state.toggleAudioMeterMode);
 	// Width is stored unconstrained but clamped on every update so a
 	// stray drag (or a future programmatic call) can never collapse
@@ -122,13 +124,15 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 			const analyser = leftAnalyser ?? rightAnalyser ?? null;
 			const bins = analyser ? analyser.frequencyBinCount : 0;
 			if (isVisualizer && analyser) {
-				if (frequencyData?.length !== bins) frequencyData = new Uint8Array(bins);
+				if (frequencyData?.length !== bins)
+					frequencyData = new Uint8Array(bins);
 				analyser.getByteFrequencyData(frequencyData);
 			}
 
 			// 1. dB-meter bars (L + R): compute time-domain peak → height %.
 			if (!isVisualizer && leftAnalyser) {
-				if (leftData?.length !== leftAnalyser.fftSize) leftData = new Uint8Array(leftAnalyser.fftSize);
+				if (leftData?.length !== leftAnalyser.fftSize)
+					leftData = new Uint8Array(leftAnalyser.fftSize);
 				leftAnalyser.getByteTimeDomainData(leftData);
 				let maxL = 0;
 				for (let i = 0; i < leftData.length; i++) {
@@ -140,7 +144,8 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 				state.left = Math.max(0, state.left - 1.6);
 			}
 			if (!isVisualizer && rightAnalyser) {
-				if (rightData?.length !== rightAnalyser.fftSize) rightData = new Uint8Array(rightAnalyser.fftSize);
+				if (rightData?.length !== rightAnalyser.fftSize)
+					rightData = new Uint8Array(rightAnalyser.fftSize);
 				rightAnalyser.getByteTimeDomainData(rightData);
 				let maxR = 0;
 				for (let i = 0; i < rightData.length; i++) {
@@ -225,10 +230,21 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 				}
 			}
 			// Let a stopped meter settle, then do no frame work until playback resumes.
-			const settling = state.peakLeft > 0 || state.peakRight > 0 ||
-				state.clipLeft > 0 || state.clipRight > 0 ||
-				state.visLevels.some((level) => level > 0.001);
-			if ((isPlaying && hasAudio) || settling) frameId = requestAnimationFrame(tick);
+			let visualizerSettling = false;
+			for (const level of state.visLevels) {
+				if (level > 0.001) {
+					visualizerSettling = true;
+					break;
+				}
+			}
+			const settling =
+				state.peakLeft > 0 ||
+				state.peakRight > 0 ||
+				state.clipLeft > 0 ||
+				state.clipRight > 0 ||
+				visualizerSettling;
+			if ((isPlaying && hasAudio) || settling)
+				frameId = requestAnimationFrame(tick);
 		};
 		const onVisibilityChange = () => {
 			cancelAnimationFrame(frameId);
@@ -267,15 +283,18 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 					rightClipRef={rightClipRef}
 					leftContainerRef={leftContainerRef}
 					rightContainerRef={rightContainerRef}
-
 				/>
 			)}
 			<button
 				type="button"
 				onClick={toggleMode}
-				aria-label={isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"}
+				aria-label={
+					isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"
+				}
 				aria-pressed={isVisualizer}
-				title={isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"}
+				title={
+					isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"
+				}
 				className="h-7 w-full shrink-0 rounded bg-secondary text-[0.6rem] font-semibold tracking-wider text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none pointer-coarse:min-h-11"
 			>
 				{isVisualizer ? "VIS" : "DIM"}
@@ -303,7 +322,6 @@ function MeterView({
 	rightClipRef: React.RefObject<HTMLDivElement | null>;
 	leftContainerRef: React.RefObject<HTMLDivElement | null>;
 	rightContainerRef: React.RefObject<HTMLDivElement | null>;
-
 }) {
 	return (
 		<>
@@ -331,7 +349,6 @@ function MeterView({
 				<span className="w-3 text-center">L</span>
 				<span className="w-3 text-center">R</span>
 			</div>
-
 		</>
 	);
 }
@@ -344,16 +361,20 @@ function VisualizerCard({
 }) {
 	return (
 		<>
-			<div className="text-center text-[0.55rem] font-semibold text-muted-foreground">Spectrum</div>
-			<div className="flex min-h-0 flex-1 items-end gap-px overflow-hidden rounded border border-border bg-background p-1" aria-hidden="true">
+			<div className="text-center text-[0.55rem] font-semibold text-muted-foreground">
+				Spectrum
+			</div>
+			<div
+				className="flex min-h-0 flex-1 items-end gap-px overflow-hidden rounded border border-border bg-background p-1"
+				aria-hidden="true"
+			>
 				{VIS_BARS.map((i) => (
 					<div
-
 						key={i}
 						ref={(el) => {
 							barRefs.current[i] = el;
 						}}
-						className="h-full min-w-0 flex-1 origin-bottom rounded-t-[1px] bg-gradient-to-t from-emerald-500 via-yellow-400 to-red-500"
+						className="h-full min-w-0 flex-1 origin-bottom rounded-t-[1px] bg-linear-to-t from-emerald-500 via-yellow-400 to-red-500"
 						style={{ transform: "scaleY(0.04)" }}
 					/>
 				))}
@@ -362,7 +383,6 @@ function VisualizerCard({
 			<div className="flex items-center justify-between gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.16em] text-white/35">
 				<span className="flex-1 text-center">VIS</span>
 			</div>
-
 		</>
 	);
 }
@@ -392,7 +412,7 @@ function ChannelBar({
 			className="relative flex-1 overflow-hidden rounded-md border border-white/5 bg-black/70"
 		>
 			{/* Gradient layer — hidden when idle, revealed by mask when audio plays */}
-			<div className="absolute inset-0 z-0 rounded-md bg-gradient-to-t from-emerald-500 via-yellow-400 to-red-500 opacity-0 transition-opacity duration-200" />
+			<div className="absolute inset-0 z-0 rounded-md bg-linear-to-t from-emerald-500 via-yellow-400 to-red-500 opacity-0 transition-opacity duration-200" />
 
 			{/* Dark mask that covers the unrevealed portion, sliding up as level rises */}
 			<div

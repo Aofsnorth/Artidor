@@ -469,7 +469,11 @@ function PreviewCanvas({
 					});
 			}
 		} finally {
-			if (!isPlaying && !pendingRenderRef.current) {
+			if (
+				!isPlaying &&
+				!renderingRef.current &&
+				!pendingRenderRef.current
+			) {
 				setNeedsRender(false);
 			}
 		}

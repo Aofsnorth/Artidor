@@ -23,22 +23,30 @@ describe("buildFrameDescriptor for scene effects", () => {
 		root.add(
 			new EffectLayerNode({
 				effectType: "tile",
-				effectParams: { amount: 40, shift: 0, singleLine: false, orientation: "horizontal" },
+				effectParams: {
+					amount: 40,
+					shift: 0,
+					singleLine: false,
+					orientation: "horizontal",
+				},
 				timeOffset: 0,
 				duration: 600_000,
 			}),
 		);
 
 		await resolveRenderTree({ node: root, renderer: mockRenderer, time: 0 });
-		const descriptor = buildFrameDescriptor({ node: root, renderer: mockRenderer });
-			expect(descriptor).not.toBeInstanceOf(Promise);
-			const { frame } = descriptor;
-			// A second export/preview descriptor must not mutate the previous frame.
-			const empty = buildFrameDescriptor({
-				node: new RootNode({ duration: 600_000 }),
-				renderer: mockRenderer,
-			});
-			expect(empty.frame.items).toHaveLength(0);
+		const descriptor = buildFrameDescriptor({
+			node: root,
+			renderer: mockRenderer,
+		});
+		expect(descriptor).not.toBeInstanceOf(Promise);
+		const { frame } = descriptor;
+		// A second export/preview descriptor must not mutate the previous frame.
+		const empty = buildFrameDescriptor({
+			node: new RootNode({ duration: 600_000 }),
+			renderer: mockRenderer,
+		});
+		expect(empty.frame.items).toHaveLength(0);
 
 		expect(frame.items.length).toBe(1);
 		const item = frame.items[0];

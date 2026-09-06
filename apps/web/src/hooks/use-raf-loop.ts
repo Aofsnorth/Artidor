@@ -41,6 +41,8 @@ export function useRafLoop(
 
 		const stop = () => {
 			cancelAnimationFrame(requestRef.current);
+			requestRef.current = 0;
+			previousTimeRef.current = null;
 		};
 
 		// Pause the rAF loop when the tab is hidden to save CPU/battery.
@@ -50,7 +52,7 @@ export function useRafLoop(
 		const onVisibilityChange = () => {
 			if (document.hidden) {
 				stop();
-			} else {
+			} else if (requestRef.current === 0) {
 				start();
 			}
 		};
