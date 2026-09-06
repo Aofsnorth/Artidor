@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-07-video-scopes-monitor",
+		date: "2026-09-07",
+		tag: "improvement",
+		title: "More useful video scopes",
+		items: [
+			"Scopes now show denser Waveform, Vectorscope, and RGB Parade traces with calibrated guides and frame statistics.",
+			"The signal monitor now reports live, frozen, and waiting states and explains what each scope measures.",
+		],
+	},
+	{
 		id: "2026-09-06-editor-monitor-previews-performance",
 		date: "2026-09-06",
 		tag: "improvement",

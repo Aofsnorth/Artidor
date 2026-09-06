@@ -56,11 +56,9 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes editor monitoring and previews", () => {
+	test("the newest entry describes the upgraded video scopes", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe(
-			"2026-09-06-editor-monitor-previews-performance",
-		);
+		expect(getLatestWhatsNewId()).toBe("2026-09-07-video-scopes-monitor");
 	});
 });

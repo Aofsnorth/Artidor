@@ -27,13 +27,25 @@ export function useKeybindingsListener() {
 		const eventOptions: AddEventListenerOptions = { capture: true };
 		const handleKeyDown = (ev: KeyboardEvent) => {
 			const normalizedKey = (ev.key ?? "").toLowerCase();
+			const activeElement = document.activeElement;
+			// A few explicitly marked controls must retain browser-native Enter/Space
+			// activation instead of invoking timeline shortcuts in the capture phase.
+			const isNativeButtonActivation =
+				activeElement instanceof HTMLButtonElement &&
+				activeElement.dataset.nativeKeyActivation === "true" &&
+				(normalizedKey === "enter" ||
+					normalizedKey === " " ||
+					normalizedKey === "spacebar" ||
+					normalizedKey === "space");
 
 			if (overlayDepth > 0 || isLoadingProject || isRecording) {
 				return;
 			}
+			if (isNativeButtonActivation) {
+				return;
+			}
 
 			const binding = getKeybindingString(ev);
-			const activeElement = document.activeElement;
 			const isTextInput =
 				activeElement instanceof HTMLElement &&
 				isTypableDOMElement({ element: activeElement });
