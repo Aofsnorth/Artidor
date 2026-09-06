@@ -105,7 +105,7 @@ export class CanvasRenderer {
 		const renderStart = this.measurePerformance ? performance.now() : 0;
 		await resolveRenderTree({ node, renderer: this, time });
 		const resolveEnd = this.measurePerformance ? performance.now() : 0;
-		const { frame, textures } = await buildFrameDescriptor({
+		const { frame, textures } = buildFrameDescriptor({
 			node,
 			renderer: this,
 		});

@@ -29,6 +29,7 @@ import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
 import { usePluginsStore } from "@/lib/plugins/store";
 import { useViewerStore } from "@/stores/viewer-store";
+import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import {
 	Cancel01Icon,
 	ViewIcon,
@@ -61,6 +62,11 @@ import { useAIControlStore as useAIControlStoreSafe } from "@/stores/ai-control-
 // internal state decides to show, so defer the JS until first use.
 // Cuts the initial editor route's bundle by a meaningful chunk
 // because each dialog drags in its own icon set + hooks graph.
+const AdvancedViewersPanel = lazy(() =>
+	import("@/components/editor/advanced-viewers-panel").then((m) => ({
+		default: m.AdvancedViewersPanel,
+	})),
+);
 const Onboarding = lazy(() =>
 	import("@/components/editor/onboarding").then((m) => ({
 		default: m.Onboarding,
@@ -367,6 +373,7 @@ const METER_DETAILS_MIN_PX = 64;
 const METER_DETAILS_MAX_PX = 220;
 
 function MeterDetailsColumn() {
+	const isMeterVisible = useUiOverlayStore((state) => state.isAudioVisualizerOpen);
 	const [width, setWidth] = useState(AUDIO_METER_WIDTH_DEFAULT_PX);
 	const clampedSetWidth = (next: number) => {
 		setWidth(
@@ -378,10 +385,12 @@ function MeterDetailsColumn() {
 	};
 	return (
 		<div
-			className="flex shrink-0 flex-col items-stretch gap-2"
+			className="flex min-h-0 shrink-0 flex-col items-stretch gap-2"
 			style={{ width: `${width}px` }}
 		>
-			<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
+			{isMeterVisible ? (
+				<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
+			) : null}
 			<ProjectDetailsCard />
 		</div>
 	);
@@ -406,6 +415,9 @@ function EditorLayout() {
 function EditorPanels() {
 	const { panels, setPanel, resetPanels } = usePanelStore();
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
+	const isAdvancedViewersOpen = useUiOverlayStore((state) => state.isAdvancedViewersOpen);
+	const isViewer = useViewerStore((state) => state.isViewer);
+	const showAdvancedViewers = isAdvancedViewersOpen && !isViewer;
 	const [layoutVersion, setLayoutVersion] = useState(0);
 
 	// Self-healing: reset corrupt/collapsed layouts from old migrations
@@ -502,6 +514,8 @@ function EditorPanels() {
 						direction="horizontal"
 						className="size-full gap-1"
 						onLayoutChanged={(layout) => {
+							// Auxiliary viewers must not overwrite the user's saved layout preset.
+							if (showAdvancedViewers) return;
 							if (layout.tools !== undefined && layout.tools >= 10) {
 								setPanel("tools", layout.tools);
 							}
@@ -551,6 +565,23 @@ function EditorPanels() {
 						</ResizablePanel>
 
 						<ResizableHandle withHandle />
+
+						{showAdvancedViewers ? (
+							<>
+								<ResizablePanel
+									id="advanced-viewers"
+									defaultSize="28%"
+									minSize="260px"
+									maxSize="40%"
+									className="min-h-0 min-w-0"
+								>
+									<Suspense fallback={<p className="p-3 text-xs text-muted-foreground">Loading viewers…</p>}>
+										<AdvancedViewersPanel />
+									</Suspense>
+								</ResizablePanel>
+								<ResizableHandle withHandle />
+							</>
+						) : null}
 
 						<ResizablePanel
 							id="properties"

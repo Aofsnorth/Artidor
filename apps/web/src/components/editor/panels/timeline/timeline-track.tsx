@@ -13,7 +13,6 @@ import { timelineTimeToSnappedPixels } from "@/lib/timeline/pixel-utils";
 import { shouldMountTimelineElement } from "./timeline-element-cull";
 import { Plus } from "lucide-react";
 
-export const HORIZONTAL_OVERSCAN_PX = 600;
 
 const TRANSITION_ADJACENCY_TOLERANCE_TICKS = 2;
 
@@ -21,7 +20,7 @@ interface TimelineTrackContentProps {
 	track: TimelineTrack;
 	zoomLevel: number;
 	dragState: ElementDragState;
-	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
+	viewportWidth: number;
 	scrollWindow: { left: number; right: number };
 	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
 	onResizeStateChange?: (params: { isResizing: boolean }) => void;
@@ -45,7 +44,7 @@ function TimelineTrackContentInner({
 	track,
 	zoomLevel,
 	dragState,
-	tracksScrollRef,
+	viewportWidth,
 	scrollWindow,
 	onSnapPointChange,
 	onResizeStateChange,
@@ -114,7 +113,7 @@ function TimelineTrackContentInner({
 	);
 
 	return (
-		<div className="relative size-full overflow-hidden rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-size-[48px_100%,100%_100%]">
+		<div className="relative size-full overflow-clip rounded-lg bg-[linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012))] bg-size-[48px_100%,100%_100%]">
 			<button
 				type="button"
 				// `tabIndex={-1}` keeps the track button out of the tab
@@ -157,15 +156,12 @@ function TimelineTrackContentInner({
 			>
 				{track.elements.length === 0 ? (
 					<div className="pointer-events-none h-full w-full rounded-lg border border-dashed border-white/8 bg-black/12">
-						{/* Pin the label to the visible scroll viewport (sticky left-0
-						    + width = scroller clientWidth) so it stays centered on
-						    screen regardless of zoom/scroll, instead of drifting with
-						    the full timeline width.
-						    ponytail: viewport width read from the ref at render — no
-						    ResizeObserver. Add one if panel-resize centering drifts. */}
+						{/* Clipping ancestors must use overflow-clip, not hidden, so
+						    sticky follows the real scroller. Width comes from its
+						    shared resize subscription, not a render-time ref read. */}
 						<div
 							className="sticky left-0 flex h-full items-center justify-center text-[0.62rem] uppercase tracking-[0.18em] text-white/18"
-							style={{ width: tracksScrollRef.current?.clientWidth ?? "100%" }}
+							style={{ width: viewportWidth || "100%", maxWidth: "100%" }}
 						>
 							Drop media
 						</div>
@@ -259,7 +255,7 @@ function timelineTrackContentAreEqual(
 ): boolean {
 	if (prev.track !== next.track) return false;
 	if (prev.zoomLevel !== next.zoomLevel) return false;
-	if (prev.tracksScrollRef !== next.tracksScrollRef) return false;
+	if (prev.viewportWidth !== next.viewportWidth) return false;
 	if (prev.scrollWindow !== next.scrollWindow) {
 		if (
 			prev.scrollWindow.left !== next.scrollWindow.left ||

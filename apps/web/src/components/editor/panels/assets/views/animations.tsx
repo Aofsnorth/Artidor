@@ -6,7 +6,7 @@ import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-	PlayIcon,
+
 	ArrowDown01Icon,
 	ArrowUp01Icon,
 	RefreshIcon,
@@ -30,9 +30,10 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { cn } from "@/utils/ui";
-import { MarqueeText } from "@/components/ui/marquee-text";
+import { CatalogPreviewTitle, CatalogPreviewScene } from "./components/catalog-preview";
+import { useCatalogPreviewMotion } from "./components/use-catalog-preview";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
-import { getPaletteForId } from "@/components/editor/panels/assets/views/components/procedural-preview";
+
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -218,11 +219,6 @@ export function AnimationsView() {
 	);
 }
 
-function getAnimationPhotoUrl(_presetId: string): null {
-	// Backwards-compat. The animation preview uses procedural CSS via
-	// `getPaletteForId` — no remote thumbnail fetch.
-	return null;
-}
 
 const AnimationPresetItem = memo(function AnimationPresetItem({
 	preset,
@@ -232,8 +228,7 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 	onApply: (preset: AnimationPreset) => void;
 }) {
 	const [busy, setBusy] = useState(false);
-	const photoUrl = getAnimationPhotoUrl(preset.type);
-	void photoUrl;
+	const { ref, active, interactionProps } = useCatalogPreviewMotion();
 
 	const handleApply = useCallback(() => {
 		setBusy(true);
@@ -244,12 +239,13 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 		}
 	}, [onApply, preset]);
 
-	const previewStyle = useMemo(() => presetPreviewStyle(preset), [preset]);
-	const palette = useMemo(() => getPaletteForId(preset.type), [preset.type]);
+	const keyframes = useMemo(() => presetStyleKeyframes(preset), [preset]);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
 		<div
+			ref={ref}
+			{...interactionProps}
 			role="button"
 			tabIndex={0}
 			onClick={handleApply}
@@ -270,18 +266,14 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 				style={{ width: "80%", height: "80%" }}
 			>
 				<div
-					className="absolute inset-0 flex items-center justify-center"
-					style={previewStyle}
+					className="absolute inset-2 overflow-hidden rounded-sm"
+					style={{ animation: active ? `${preset.type} 2.4s ease-in-out infinite alternate` : "none" }}
 				>
-					<PresetIcon preset={preset} paletteAccent={palette.accent} />
+					<CatalogPreviewScene seed={`motion:${preset.type}`} />
 				</div>
+				<style>{keyframes}</style>
 			</div>
-			<MarqueeText
-				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
-				pxPerSecond={30}
-			>
-				{preset.name}
-			</MarqueeText>
+			<CatalogPreviewTitle>{preset.name}</CatalogPreviewTitle>
 			<div className="text-white/70 absolute left-1.5 top-1.5 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
 				{CATEGORY_ICONS[preset.category]}
 			</div>
@@ -289,35 +281,6 @@ const AnimationPresetItem = memo(function AnimationPresetItem({
 	);
 });
 
-const PresetIcon = memo(function PresetIcon({
-	preset,
-	paletteAccent,
-}: {
-	preset: AnimationPreset;
-	paletteAccent: string;
-}) {
-	const keyframes = useMemo(() => presetStyleKeyframes(preset), [preset]);
-
-	return (
-		<div
-			className="flex size-12 items-center justify-center rounded-md text-white"
-			style={{
-				background: `linear-gradient(135deg, ${paletteAccent}, rgba(0,0,0,0.4))`,
-				boxShadow: `inset 0 0 0 1px ${paletteAccent}`,
-				animation: `${preset.type} 2.4s ease-in-out infinite alternate`,
-			}}
-		>
-			<HugeiconsIcon icon={PlayIcon} className="size-5" />
-			<style>{keyframes}</style>
-		</div>
-	);
-});
-
-function presetPreviewStyle(preset: AnimationPreset): React.CSSProperties {
-	return {
-		animation: `${preset.type} 2.4s ease-in-out infinite alternate`,
-	};
-}
 
 function presetStyleKeyframes(preset: AnimationPreset): string {
 	switch (preset.type) {

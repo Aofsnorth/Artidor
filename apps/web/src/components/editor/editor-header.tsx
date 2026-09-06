@@ -69,22 +69,13 @@ export function EditorHeader() {
 				className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
 			/>
 
-			{/* Left Corner Logo & Breadcrumbs */}
+			{/* Project navigation and title */}
 			<div className="relative flex min-w-0 items-center gap-3">
 				{/* Logo at the absolute far-left corner */}
 				<ProjectDropdown />
 
 				{/* Identity Pod Capsule */}
-				<div className="group flex h-7 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
-					<div className="hidden items-center gap-1.5 text-[0.65rem] font-mono text-white/40 md:flex select-none tracking-wider">
-						<Link
-							href="/projects"
-							className="hover:text-white/90 transition-colors uppercase font-medium"
-						>
-							Projects
-						</Link>
-						<span className="text-white/20">/</span>
-					</div>
+				<div className="group flex h-7 min-w-0 items-center rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
 					<EditableProjectName />
 				</div>
 			</div>
@@ -263,7 +254,8 @@ function ProjectDropdown() {
 					<button
 						type="button"
 						className="relative size-10 shrink-0 cursor-pointer bg-[#0d0d0e] transition rounded-full [mask-image:radial-gradient(circle_at_center,black_45%,transparent_75%)] hover:scale-105 hover:ring-1 hover:ring-white/30 focus:outline-none flex items-center justify-center"
-						aria-label="Artidor Logo"
+						aria-label="Project menu"
+												title="Project menu"
 					>
 						<Image
 							src={DEFAULT_LOGO_URL}
@@ -399,6 +391,8 @@ function EditableProjectName() {
 		<input
 			ref={inputRef}
 			type="text"
+			aria-label="Project title"
+			title={projectName}
 			defaultValue={projectName}
 			readOnly={!isEditing}
 			onClick={startEditing}

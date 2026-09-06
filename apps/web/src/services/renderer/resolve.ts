@@ -93,6 +93,8 @@ async function resolveNode({
 		node.resolved = resolveEffectLayerNode({ node, context });
 	}
 
+	if (node.children.length === 0) return;
+
 	await Promise.all(
 		node.children.map((child) => resolveNode({ node: child, context })),
 	);

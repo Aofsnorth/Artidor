@@ -16,7 +16,8 @@ import {
 import { effectsRegistry } from "@/lib/effects";
 import { DEFAULT_CANVAS_SIZE } from "@/lib/canvas/sizes";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics/types";
-import { getPaletteForId, hashString } from "./components/procedural-preview";
+import { hashString } from "./components/procedural-preview";
+import { CatalogPreviewScene, CatalogPreviewTitle } from "./components/catalog-preview";
 import {
 	PROJECT_TEMPLATES,
 	TEMPLATE_CATEGORIES,
@@ -31,7 +32,7 @@ import {
 } from "@/components/editor/panels/assets/views/category-bar";
 import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { MarqueeText } from "@/components/ui/marquee-text";
+
 import type { EditorCore } from "@/core";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import {
@@ -361,7 +362,6 @@ function TemplateItem({
 	const h = hashString(template.id);
 	const layoutType = h % 5;
 
-	const templatePalette = getPaletteForId(template.id);
 
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
@@ -382,11 +382,7 @@ function TemplateItem({
 				className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10"
 				style={{ width: "80%", height: "80%" }}
 			>
-				<div
-					aria-hidden
-					className="absolute inset-0"
-					style={{ background: templatePalette.background }}
-				/>
+				<CatalogPreviewScene seed={`templates:${template.category}:${template.id}`} />
 				<div className="absolute inset-0 bg-black/40" />
 
 				{layoutType === 0 && (
@@ -439,12 +435,7 @@ function TemplateItem({
 					{template.name.slice(0, 2).toUpperCase()}
 				</div>
 			</div>
-			<MarqueeText
-				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
-				pxPerSecond={30}
-			>
-				{template.name}
-			</MarqueeText>
+			<CatalogPreviewTitle>{template.name}</CatalogPreviewTitle>
 			<div className="text-white/70 absolute right-1.5 top-1.5 z-20 flex items-center gap-0.5 rounded bg-black/60 border border-white/10 px-1 py-0.5 text-[0.55rem] backdrop-blur-sm">
 				{t("templates.durationSeconds", { duration: durationSec })}
 			</div>

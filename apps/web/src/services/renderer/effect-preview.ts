@@ -6,7 +6,7 @@ import type { ParamValues } from "@/lib/params";
 import { gpuRenderer } from "./gpu-renderer";
 
 const PREVIEW_SIZE = 160;
-const PREVIEW_IMAGE_PATH = "/effects/preview.jpg";
+
 
 /**
  * Hard cap on concurrent GPU renders. 4 keeps the GPU command
@@ -80,9 +80,7 @@ class EffectPreviewService {
 		string,
 		OffscreenCanvas | HTMLCanvasElement
 	>();
-	private previewImageElement: HTMLImageElement | null = null;
-	private hasPreviewImageFailed = false;
-	private onReadyCallbacks = new Set<() => void>();
+
 	/**
 	 * Pending GPU render jobs. The GPU pipeline is single-threaded
 	 * (WebGPU command queue), so calling `applyEffect` 165 times in
@@ -109,14 +107,6 @@ class EffectPreviewService {
 
 	readonly PREVIEW_SIZE = PREVIEW_SIZE;
 
-	constructor() {
-		this.loadPreviewImage();
-	}
-
-	onPreviewImageReady({ callback }: { callback: () => void }): () => void {
-		this.onReadyCallbacks.add(callback);
-		return () => this.onReadyCallbacks.delete(callback);
-	}
 
 	/**
 	 * Schedule a GPU render at the given priority. The default
@@ -138,10 +128,12 @@ class EffectPreviewService {
 	}): () => void {
 		const job = { id: ++this.nextRenderId, run, priority };
 		this.renderQueue.push(job);
-		// Re-sort so the lowest priority (most negative) jobs run
-		// first. Insertion sort is O(n) and n is small (≤ a few
-		// hundred in pathological cases) so this is fine.
-		this.renderQueue.sort((a, b) => a.priority - b.priority);
+		// Insert by priority without sorting the whole queue for every card.
+		let index = this.renderQueue.length;
+		while (index > 0 && (this.renderQueue.at(index - 1)?.priority ?? 0) > priority) {
+			index -= 1;
+		}
+		this.renderQueue.splice(index, 0, job);
 		this.pumpQueue();
 		return () => {
 			const index = this.renderQueue.findIndex((j) => j.id === job.id);
@@ -310,27 +302,6 @@ class EffectPreviewService {
 		}
 	}
 
-	private loadPreviewImage(): void {
-		if (typeof window === "undefined") return;
-		const image = new Image();
-		image.onload = () => {
-			this.hasPreviewImageFailed = false;
-			this.testSourceCanvases.clear();
-			this.notifyReadyCallbacks();
-		};
-		image.onerror = () => {
-			this.hasPreviewImageFailed = true;
-			this.notifyReadyCallbacks();
-		};
-		image.src = PREVIEW_IMAGE_PATH;
-		this.previewImageElement = image;
-	}
-
-	private notifyReadyCallbacks(): void {
-		for (const callback of this.onReadyCallbacks) {
-			callback();
-		}
-	}
 
 	private getTestSourceForEffect({
 		effectType,
@@ -381,24 +352,10 @@ class EffectPreviewService {
 			| null;
 		if (!ctx) return null;
 
-		// Some patterns benefit from the real preview.jpg if it's
-		// loaded (warmer base for the gradient pattern), but every
-		// pattern renders fully procedurally so the panel still looks
-		// good with no image at all.
-		const useImageForBase =
-			pattern === "gradient" &&
-			!this.hasPreviewImageFailed &&
-			this.previewImageElement?.complete &&
-			(this.previewImageElement.naturalWidth ?? 0) > 0;
-
-		if (useImageForBase && this.previewImageElement) {
-			ctx.drawImage(this.previewImageElement, 0, 0, width, height);
-		}
-
+		// Original canvas patterns need no stock-photo download or repaint after load.
 		switch (pattern) {
 			case "gradient":
-				if (!useImageForBase)
-					this.drawGradientSource({ ctx, width, height, effectType });
+				this.drawGradientSource({ ctx, width, height, effectType });
 				break;
 			case "checkerboard":
 				this.drawCheckerboardSource({ ctx, width, height, effectType });

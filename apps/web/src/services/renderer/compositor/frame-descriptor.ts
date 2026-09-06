@@ -46,21 +46,22 @@ export type TextureUploadDescriptor = {
 // the worker).
 const pooledTextureMap = new Map<string, TextureUploadDescriptor>();
 
-export async function buildFrameDescriptor({
+/** Assemble already-resolved nodes without yielding between layers. */
+export function buildFrameDescriptor({
 	node,
 	renderer,
 }: {
 	node: AnyBaseNode;
 	renderer: CanvasRenderer;
-}): Promise<{
+}): {
 	frame: FrameDescriptor;
 	textures: TextureUploadDescriptor[];
-}> {
+} {
 	const items: FrameItemDescriptor[] = [];
 	const textures = pooledTextureMap;
 	textures.clear();
 
-	await collectNode({
+	collectNode({
 		node,
 		renderer,
 		path: "root",
@@ -118,7 +119,7 @@ function getOrCreateBlurBackdrop({
 	return canvas;
 }
 
-async function collectNode({
+function collectNode({
 	node,
 	renderer,
 	path,
@@ -130,10 +131,10 @@ async function collectNode({
 	path: string;
 	items: FrameItemDescriptor[];
 	textures: Map<string, TextureUploadDescriptor>;
-}): Promise<void> {
+}): void {
 	if (node instanceof RootNode) {
 		for (let index = 0; index < node.children.length; index++) {
-			await collectNode({
+			collectNode({
 				node: node.children[index],
 				renderer,
 				path: `${path}:${index}`,
@@ -258,7 +259,7 @@ async function collectNode({
 		node instanceof StickerNode ||
 		node instanceof GraphicNode
 	) {
-		await collectVisualSourceNode({
+		collectVisualSourceNode({
 			node,
 			renderer,
 			path,
@@ -279,7 +280,7 @@ async function collectNode({
 	}
 }
 
-async function collectVisualSourceNode({
+function collectVisualSourceNode({
 	node,
 	renderer,
 	path,

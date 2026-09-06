@@ -10,7 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { MarqueeText } from "@/components/ui/marquee-text";
+import { CatalogPreviewTitle } from "./views/components/catalog-preview";
 import { Button } from "@/components/ui/button";
 import {
 	Tooltip,
@@ -214,7 +214,7 @@ export function DraggableItem({
 							)}
 							{!isDragging && (
 								<PlusButton
-									className="opacity-0 transition-opacity group-hover:opacity-100 bg-black/50 hover:bg-black/80 border border-white/10 text-cyan-400 z-20"
+									className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 bg-black/50 hover:bg-black/80 border border-white/10 text-cyan-400 z-20"
 									onClick={handleAddToTimeline}
 								/>
 							)}
@@ -222,12 +222,7 @@ export function DraggableItem({
 					</div>
 					{shouldShowLabel && (
 						<div className="mt-1 flex w-full justify-center">
-							<MarqueeText
-								className="text-foreground z-10 w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
-								pxPerSecond={30}
-							>
-								{name}
-							</MarqueeText>
+							<CatalogPreviewTitle>{name}</CatalogPreviewTitle>
 						</div>
 					)}
 				</div>

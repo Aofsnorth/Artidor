@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import { timelineHasAudio } from "@/lib/media/audio";
@@ -16,13 +16,13 @@ export const AUDIO_METER_WIDTH_MAX_PX = 220;
 export const AUDIO_METER_WIDTH_DEFAULT_PX = 64;
 
 const VIS_BAR_COUNT = 24;
-const VIS_HEIGHT_PX = 96;
+const VIS_BARS = Array.from({ length: VIS_BAR_COUNT }, (_, index) => index);
 
 const CLIP_THRESHOLD_PCT = 98;
 const CLIP_HOLD_MS = 1500;
 const CLIP_DECAY_PER_FRAME = 2;
 
-export function VerticalAudioMeter({
+export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 	width: controlledWidth,
 	onResize,
 }: {
@@ -46,12 +46,8 @@ export function VerticalAudioMeter({
 			mediaAssets: e.media.getAssets(),
 		});
 	});
-	const [dimmed, setDimmed] = useState(false);
-	// `isAudioVisualizerOpen` is the global toggle in the preview
-	// toolbar. When on, the meter swaps its dB bars for a compact
-	// visualizer card (spectrum + waveform) — same AnalyserNode
-	// data, same audio source, just rendered inline.
-	const isVisualizerOpen = useUiOverlayStore((s) => s.isAudioVisualizerOpen);
+	const isVisualizer = useUiOverlayStore((state) => state.audioMeterMode === "visualizer");
+	const toggleMode = useUiOverlayStore((state) => state.toggleAudioMeterMode);
 	// Width is stored unconstrained but clamped on every update so a
 	// stray drag (or a future programmatic call) can never collapse
 	// the column to nothing or push it past the properties panel.
@@ -82,7 +78,7 @@ export function VerticalAudioMeter({
 	const leftContainerRef = useRef<HTMLDivElement>(null);
 	const rightContainerRef = useRef<HTMLDivElement>(null);
 
-	// Visualizer card refs (only updated when isVisualizerOpen is true).
+	// Only the active display reads analyser data and updates its DOM refs.
 	const visBarRefs = useRef<Array<HTMLDivElement | null>>([]);
 
 	// Animation state lives entirely in a ref to avoid the React
@@ -97,20 +93,17 @@ export function VerticalAudioMeter({
 		clipLeftAt: 0,
 		clipRight: 0,
 		clipRightAt: 0,
-		visLevels: new Array<number>(VIS_BAR_COUNT).fill(0),
-		isPlaying: false,
-		hasAudio: true,
+		visLevels: Array.from({ length: VIS_BAR_COUNT }, () => 0),
 	});
-	useEffect(() => {
-		stateRef.current.isPlaying = isPlaying;
-	}, [isPlaying]);
-	useEffect(() => {
-		stateRef.current.hasAudio = hasAudio;
-	}, [hasAudio]);
 
 	useEffect(() => {
-		let frameId: number;
+		let frameId = 0;
+		let leftData: Uint8Array<ArrayBuffer> | null = null;
+		let rightData: Uint8Array<ArrayBuffer> | null = null;
+		let frequencyData: Uint8Array<ArrayBuffer> | null = null;
 		const tick = () => {
+			frameId = 0;
+			if (document.hidden) return;
 			const state = stateRef.current;
 			let { left: leftAnalyser, right: rightAnalyser } =
 				editor.audio.getAnalysers();
@@ -119,7 +112,7 @@ export function VerticalAudioMeter({
 			// read the analyser at all — it can report a non-silent
 			// baseline even for silent content, making the meter light
 			// up. Treat both channels as absent so the bars decay to 0.
-			if (!state.hasAudio) {
+			if (!hasAudio || !isPlaying) {
 				leftAnalyser = null;
 				rightAnalyser = null;
 			}
@@ -128,30 +121,30 @@ export function VerticalAudioMeter({
 			// just decay toward 0 — we don't want to crash on a fresh load.
 			const analyser = leftAnalyser ?? rightAnalyser ?? null;
 			const bins = analyser ? analyser.frequencyBinCount : 0;
-			const data = analyser ? new Uint8Array(bins) : null;
-			if (data && analyser) {
-				analyser.getByteFrequencyData(data);
+			if (isVisualizer && analyser) {
+				if (frequencyData?.length !== bins) frequencyData = new Uint8Array(bins);
+				analyser.getByteFrequencyData(frequencyData);
 			}
 
 			// 1. dB-meter bars (L + R): compute time-domain peak → height %.
-			if (leftAnalyser) {
-				const timeData = new Uint8Array(leftAnalyser.fftSize);
-				leftAnalyser.getByteTimeDomainData(timeData);
+			if (!isVisualizer && leftAnalyser) {
+				if (leftData?.length !== leftAnalyser.fftSize) leftData = new Uint8Array(leftAnalyser.fftSize);
+				leftAnalyser.getByteTimeDomainData(leftData);
 				let maxL = 0;
-				for (let i = 0; i < timeData.length; i++) {
-					const v = Math.abs((timeData[i] - 128) / 128);
+				for (let i = 0; i < leftData.length; i++) {
+					const v = Math.abs((leftData[i] - 128) / 128);
 					if (v > maxL) maxL = v;
 				}
 				state.left = state.left + (Math.sqrt(maxL) * 100 - state.left) * 0.85;
 			} else {
 				state.left = Math.max(0, state.left - 1.6);
 			}
-			if (rightAnalyser) {
-				const timeData = new Uint8Array(rightAnalyser.fftSize);
-				rightAnalyser.getByteTimeDomainData(timeData);
+			if (!isVisualizer && rightAnalyser) {
+				if (rightData?.length !== rightAnalyser.fftSize) rightData = new Uint8Array(rightAnalyser.fftSize);
+				rightAnalyser.getByteTimeDomainData(rightData);
 				let maxR = 0;
-				for (let i = 0; i < timeData.length; i++) {
-					const v = Math.abs((timeData[i] - 128) / 128);
+				for (let i = 0; i < rightData.length; i++) {
+					const v = Math.abs((rightData[i] - 128) / 128);
 					if (v > maxR) maxR = v;
 				}
 				state.right =
@@ -177,16 +170,13 @@ export function VerticalAudioMeter({
 			}
 
 			// 2. Visualizer bars: split frequency bins into N chunks.
-			if (data) {
-				const chunkSize = Math.max(1, Math.floor(bins / VIS_BAR_COUNT));
+			if (isVisualizer && analyser && frequencyData) {
 				for (let i = 0; i < VIS_BAR_COUNT; i++) {
 					let sum = 0;
-					const start = i * chunkSize;
-					const end = i === VIS_BAR_COUNT - 1 ? bins : start + chunkSize;
-					for (let j = start; j < end; j++) sum += data[j];
-					const avg = sum / (end - start) / 255;
-					const level = Math.sqrt(avg);
-					const target = state.isPlaying ? Math.max(level, 0.04) : level * 0.3;
+					const start = Math.floor((i * bins) / VIS_BAR_COUNT);
+					const end = Math.floor(((i + 1) * bins) / VIS_BAR_COUNT);
+					for (let j = start; j < end; j++) sum += frequencyData[j];
+					const target = Math.sqrt(sum / Math.max(1, end - start) / 255);
 					state.visLevels[i] =
 						state.visLevels[i] + (target - state.visLevels[i]) * 0.3;
 				}
@@ -200,10 +190,10 @@ export function VerticalAudioMeter({
 			// Bar is now a dark mask: height = (100 - level)%, so level 100% → mask 0% (fully revealed).
 			// Gradient layer only visible when there's actual audio signal.
 			if (leftBarRef.current) {
-				leftBarRef.current.style.height = `${100 - state.left}%`;
+				leftBarRef.current.style.transform = `scaleY(${1 - state.left / 100})`;
 			}
 			if (rightBarRef.current) {
-				rightBarRef.current.style.height = `${100 - state.right}%`;
+				rightBarRef.current.style.transform = `scaleY(${1 - state.right / 100})`;
 			}
 			if (leftContainerRef.current) {
 				const grad = leftContainerRef.current
@@ -231,36 +221,42 @@ export function VerticalAudioMeter({
 				const ref = visBarRefs.current[i];
 				if (ref) {
 					const pct = Math.min(100, Math.max(4, state.visLevels[i] * 100));
-					ref.style.height = `${pct}%`;
+					ref.style.transform = `scaleY(${pct / 100})`;
 				}
 			}
-			frameId = requestAnimationFrame(tick);
+			// Let a stopped meter settle, then do no frame work until playback resumes.
+			const settling = state.peakLeft > 0 || state.peakRight > 0 ||
+				state.clipLeft > 0 || state.clipRight > 0 ||
+				state.visLevels.some((level) => level > 0.001);
+			if ((isPlaying && hasAudio) || settling) frameId = requestAnimationFrame(tick);
 		};
-		frameId = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(frameId);
-	}, [editor]);
+		const onVisibilityChange = () => {
+			cancelAnimationFrame(frameId);
+			frameId = document.hidden ? 0 : requestAnimationFrame(tick);
+		};
+		onVisibilityChange();
+		document.addEventListener("visibilitychange", onVisibilityChange);
+		return () => {
+			cancelAnimationFrame(frameId);
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+		};
+	}, [editor, isVisualizer, isPlaying, hasAudio]);
 
 	return (
-		<div
-			title="Peak audio meter: L/R levels. Click VIS to switch to the audio visualizer."
+		<section
+			id="side-audio-meter"
+			aria-label="Audio monitor"
+			data-mode={isVisualizer ? "visualizer" : "meter"}
 			className={cn(
-				"relative flex h-full min-h-0 shrink-0 flex-col items-stretch gap-1.5 overflow-hidden rounded-lg",
-				"border border-white/[0.08] bg-black/40 p-1.5 select-none",
-				"transition-opacity duration-200",
-				dimmed ? "opacity-25 hover:opacity-70" : "opacity-100",
+				"relative flex min-h-0 flex-1 flex-col items-stretch gap-1.5 overflow-hidden rounded-lg",
+				"border border-border bg-background p-1.5 select-none",
 			)}
 			style={{ width: `${width}px` }}
 		>
 			<AudioMeterResizeHandle currentWidth={width} onResize={setWidth} />
 
-			{isVisualizerOpen ? (
-				<VisualizerCard
-					barRefs={visBarRefs}
-					width={width}
-					onClose={() =>
-						useUiOverlayStore.getState().setAudioVisualizerOpen(false)
-					}
-				/>
+			{isVisualizer ? (
+				<VisualizerCard barRefs={visBarRefs} />
 			) : (
 				<MeterView
 					leftBarRef={leftBarRef}
@@ -271,18 +267,24 @@ export function VerticalAudioMeter({
 					rightClipRef={rightClipRef}
 					leftContainerRef={leftContainerRef}
 					rightContainerRef={rightContainerRef}
-					dimmed={dimmed}
-					onToggleDim={() => setDimmed((value) => !value)}
+
 				/>
 			)}
-		</div>
+			<button
+				type="button"
+				onClick={toggleMode}
+				aria-label={isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"}
+				aria-pressed={isVisualizer}
+				title={isVisualizer ? "Switch to audio meter" : "Switch to audio visualizer"}
+				className="h-7 w-full shrink-0 rounded bg-secondary text-[0.6rem] font-semibold tracking-wider text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none pointer-coarse:min-h-11"
+			>
+				{isVisualizer ? "VIS" : "DIM"}
+			</button>
+		</section>
 	);
-}
+});
 
-/**
- * Default view: two broadcast-style dB bars (L + R) with peak ticks
- * and a "DIM" toggle at the bottom.
- */
+/** Default view: two broadcast-style dB bars (L + R) with peak ticks. */
 function MeterView({
 	leftBarRef,
 	rightBarRef,
@@ -292,8 +294,6 @@ function MeterView({
 	rightClipRef,
 	leftContainerRef,
 	rightContainerRef,
-	dimmed,
-	onToggleDim,
 }: {
 	leftBarRef: React.RefObject<HTMLDivElement | null>;
 	rightBarRef: React.RefObject<HTMLDivElement | null>;
@@ -303,8 +303,7 @@ function MeterView({
 	rightClipRef: React.RefObject<HTMLDivElement | null>;
 	leftContainerRef: React.RefObject<HTMLDivElement | null>;
 	rightContainerRef: React.RefObject<HTMLDivElement | null>;
-	dimmed: boolean;
-	onToggleDim: () => void;
+
 }) {
 	return (
 		<>
@@ -333,61 +332,29 @@ function MeterView({
 				<span className="w-3 text-center">R</span>
 			</div>
 
-			<div className="flex items-center gap-1">
-				<button
-					type="button"
-					onClick={onToggleDim}
-					aria-label="Toggle meter dim"
-					className={cn(
-						"h-4 flex-1 rounded text-[0.55rem] font-bold uppercase tracking-[0.16em] transition-colors",
-						dimmed
-							? "bg-white/15 text-white"
-							: "bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/70",
-					)}
-				>
-					DIM
-				</button>
-			</div>
 		</>
 	);
 }
 
-/**
- * Inline audio visualizer card. Replaces the dB bars when the user
- * toggles the audio visualizer (via the preview-toolbar pill).
- * Reuses the same AnalyserNode pair the meter uses, so the two
- * views are always in sync.
- */
+/** Frequency spectrum in the same column as the meter, never a floating panel. */
 function VisualizerCard({
 	barRefs,
-	width,
-	onClose,
 }: {
-	barRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
-	width: number;
-	onClose: () => void;
+	barRefs: React.RefObject<Array<HTMLDivElement | null>>;
 }) {
-	// Approximate bar width so the row scales with the meter column.
-	const barWidth = Math.max(2, Math.floor((width - 16) / VIS_BAR_COUNT) - 1);
 	return (
 		<>
-			<div
-				className="flex flex-1 items-end justify-between rounded-[2px] border border-white/[0.06] bg-black/50 p-1"
-				style={{ minHeight: `${VIS_HEIGHT_PX}px`, gap: "1px" }}
-			>
-				{Array.from({ length: VIS_BAR_COUNT }).map((_, i) => (
+			<div className="text-center text-[0.55rem] font-semibold text-muted-foreground">Spectrum</div>
+			<div className="flex min-h-0 flex-1 items-end gap-px overflow-hidden rounded border border-border bg-background p-1" aria-hidden="true">
+				{VIS_BARS.map((i) => (
 					<div
-						// biome-ignore lint/suspicious/noArrayIndexKey: static count
+
 						key={i}
 						ref={(el) => {
 							barRefs.current[i] = el;
 						}}
-						className="rounded-t-[1.5px] bg-gradient-to-t from-emerald-500 via-yellow-400 to-red-500"
-						style={{
-							width: `${barWidth}px`,
-							height: "4%",
-							minHeight: "2px",
-						}}
+						className="h-full min-w-0 flex-1 origin-bottom rounded-t-[1px] bg-gradient-to-t from-emerald-500 via-yellow-400 to-red-500"
+						style={{ transform: "scaleY(0.04)" }}
 					/>
 				))}
 			</div>
@@ -396,17 +363,6 @@ function VisualizerCard({
 				<span className="flex-1 text-center">VIS</span>
 			</div>
 
-			<div className="flex items-center gap-1">
-				<button
-					type="button"
-					onClick={onClose}
-					aria-label="Close audio visualizer"
-					title="Close audio visualizer (back to meter)"
-					className="h-4 flex-1 rounded bg-white/[0.04] text-[0.55rem] font-bold uppercase tracking-[0.16em] text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/70"
-				>
-					METER
-				</button>
-			</div>
 		</>
 	);
 }
@@ -441,8 +397,8 @@ function ChannelBar({
 			{/* Dark mask that covers the unrevealed portion, sliding up as level rises */}
 			<div
 				ref={barRef}
-				className="absolute inset-x-0 top-0 z-10 bg-black/70 transition-[height] duration-75 ease-out"
-				style={{ height: "100%" }}
+				className="absolute inset-0 z-10 origin-top bg-black/70 transition-transform duration-75 ease-out"
+				style={{ transform: "scaleY(1)" }}
 			/>
 
 			{/* Clip indicator: latches red at 0dB for ~1.5s, then decays. */}

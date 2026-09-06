@@ -21,7 +21,8 @@ import type { EditorCore } from "@/core";
 import { generateUUID } from "@/utils/id";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { Button } from "@/components/ui/button";
-import { MarqueeText } from "@/components/ui/marquee-text";
+import { CatalogPreviewScene, CatalogPreviewTitle } from "./components/catalog-preview";
+import { effectsToCssFilter } from "@/lib/effects/css-filter";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -187,7 +188,9 @@ function FilterItem({
 	onApply: () => void;
 }) {
 	const { t } = useI18n();
-	const [r, g, b] = preset.thumbnailColor;
+	const previewFilter = useMemo(() => effectsToCssFilter({
+		effects: preset.effects.map((effect) => ({ ...effect, id: effect.type, enabled: true })),
+	}), [preset]);
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains hover badges and nested affordances; outer button would be invalid
 		<div
@@ -195,7 +198,7 @@ function FilterItem({
 			tabIndex={0}
 			onClick={onApply}
 			onKeyDown={(event) => {
-				if (event.key === "Enter" || event.key === " ") {
+				if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
 					event.preventDefault();
 					onApply();
 				}
@@ -205,23 +208,15 @@ function FilterItem({
 			<div className="asset-preview-overlay" />
 			<div
 				className="relative mx-auto mt-2 size-full overflow-hidden rounded-sm border border-white/10 flex items-center justify-center"
-				style={{
-					width: "80%",
-					height: "80%",
-					background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 40)}) 100%)`,
-				}}
+				style={{ width: "80%", height: "80%" }}
 			>
-				<div className="text-white text-xl font-bold opacity-30 mix-blend-overlay">
-					{preset.name.slice(0, 1)}
-				</div>
+				<CatalogPreviewScene
+					seed={`filters:${preset.category}:${preset.id}`}
+					style={{ filter: previewFilter }}
+				/>
 			</div>
-			<MarqueeText
-				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
-				pxPerSecond={30}
-			>
-				{preset.name}
-			</MarqueeText>
-			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
+			<CatalogPreviewTitle>{preset.name}</CatalogPreviewTitle>
+			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
 				<Button
 					size="icon"
 					variant="secondary"

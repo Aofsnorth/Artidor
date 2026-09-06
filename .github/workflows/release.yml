@@ -9,6 +9,17 @@ on:
   push:
     tags:
       - "v*"
+  # Run the fixed workflow from main for an old tag without moving that tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to release (v*)
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 # Required so the GITHUB_TOKEN may create the release.
 permissions:
@@ -25,19 +36,43 @@ jobs:
           # the previous release instead of producing an empty changelog.
           fetch-depth: 0
 
-      - name: Create GitHub Release
+      - name: Ensure GitHub Release exists
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          # A hyphen in the tag marks a semver pre-release (v0.0.1-beta), so
-          # flag it as such; a clean tag (v1.2.3) becomes the "Latest" release.
+          set -euo pipefail
+          if [[ "$TAG" != v* ]] || ! git check-ref-format "refs/tags/$TAG"; then
+            echo "::error::Expected a valid version tag starting with v."
+            exit 1
+          fi
+          if ! git show-ref --verify --quiet "refs/tags/$TAG"; then
+            echo "::error::Target tag does not exist in the checkout."
+            exit 1
+          fi
+
+          # Only a successful, fully paginated lookup can establish absence.
+          # Auth, network, and API errors must fail, not trigger creation.
+          RELEASE_TAGS=$(gh api --paginate "repos/$GH_REPO/releases?per_page=100" --jq '.[].tag_name')
+          if grep -Fxq -- "$TAG" <<< "$RELEASE_TAGS"; then
+            echo "Release already exists; leaving metadata and assets unchanged."
+            exit 0
+          fi
+
+          # Hyphenated tags are prereleases. Manual stable backfills must not
+          # replace Latest; only stable tag pushes explicitly promote it.
           if [[ "$TAG" == *-* ]]; then
             FLAGS="--prerelease"
+          elif [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            FLAGS="--latest=false"
           else
             FLAGS="--latest"
           fi
           gh release create "$TAG" \
+            --verify-tag \
             --title "$TAG" \
             --generate-notes \
             $FLAGS

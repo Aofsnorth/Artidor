@@ -50,10 +50,7 @@ const BlurPreview = memo(
 				});
 			};
 
-			renderPreview();
-			return effectPreviewService.onPreviewImageReady({
-				callback: renderPreview,
-			});
+			return effectPreviewService.scheduleRender({ run: renderPreview });
 		}, [blur.value]);
 
 		return (

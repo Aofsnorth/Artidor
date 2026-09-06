@@ -1,29 +1,35 @@
 import { expect, test } from "bun:test";
 import {
 	getPaletteForId,
-	getTransitionPhotoPair,
-	getTransitionPalettes,
+	getSceneImageUrlForId,
+	getTransitionScenePair,
 } from "./procedural-preview";
 
-test("motion palettes stay neutral", () => {
-	expect(getPaletteForId("fade-up").label).toBe("default");
+const UNSAFE_SVG = /<script|<image|<foreignObject|href=|onload=|https:\/\//i;
+
+test("@fast catalog artwork is deterministic and distinct across presets", () => {
+	const ids = Array.from({ length: 100 }, (_, index) => `preset-${index}`);
+	const scenes = ids.map(getSceneImageUrlForId);
+	expect(scenes).toEqual(ids.map(getSceneImageUrlForId));
+	expect(new Set(scenes).size).toBeGreaterThan(90);
+	expect(new Set(ids.map((id) => getPaletteForId(id).label)).size).toBe(6);
 });
 
-test("transition palettes use different neutral plates", () => {
-	const palettes = getTransitionPalettes("cross-dissolve");
-
-	expect(palettes.a.label).not.toBe(palettes.b.label);
-	expect(palettes.a.label).toStartWith("neutral-");
-	expect(palettes.b.label).toStartWith("neutral-");
+test("@fast transition pairs use independent original compositions", () => {
+	const first = getTransitionScenePair("cross-dissolve");
+	expect(first).toEqual(getTransitionScenePair("cross-dissolve"));
+	expect(first.a).not.toBe(first.b);
+	expect(first.a).toStartWith("data:image/svg+xml,");
+	expect(first.b).toStartWith("data:image/svg+xml,");
 });
 
-test("transition photos are deterministic licensed local assets", () => {
-	const first = getTransitionPhotoPair("cross-dissolve");
-	const second = getTransitionPhotoPair("cross-dissolve");
-
-	expect(first).toEqual(second);
-	expect(first.a.src).toStartWith("/assets/transition-previews/");
-	expect(first.b.src).toStartWith("/assets/transition-previews/");
-	expect(first.a.src).not.toBe(first.b.src);
-	expect(first.a.license).toBe("Unsplash License");
+test("@fast generated artwork is bounded and cannot embed input markup or external media", () => {
+	for (const id of ["", "blur", "<script>alert(1)</script>", "\" onload=\"alert(1)", "🌅".repeat(200)]) {
+		const uri = getSceneImageUrlForId(id);
+		const svg = decodeURIComponent(uri.slice("data:image/svg+xml,".length));
+		expect(svg).toContain('viewBox="0 0 160 160"');
+		expect(svg).toContain("<title>");
+		expect(svg).not.toMatch(UNSAFE_SVG);
+		expect(svg.length).toBeLessThan(4_000);
+	}
 });

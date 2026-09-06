@@ -1,0 +1,33 @@
+{
+  "results": [
+    {
+      "name": "project breadcrumb removed",
+      "passed": true
+    },
+    {
+      "name": "default audio meter, DIM/VIS, hide/show, keyboard activation",
+      "passed": true
+    },
+    {
+      "name": "three docked viewer tools, keyboard tabs, close focus",
+      "passed": true
+    },
+    {
+      "name": "cloud card fills panel to the bottom",
+      "passed": true
+    },
+    {
+      "name": "empty track covers viewport after resize and horizontal scrolling",
+      "passed": true
+    },
+    {
+      "name": "catalog artwork, centered titles and motion gating",
+      "passed": true
+    },
+    {
+      "name": "reduced motion and responsive viewport bounds",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

@@ -28,6 +28,11 @@ import {
 } from "@/components/ui/context-menu";
 import { useTimelineZoom } from "@/hooks/timeline/use-timeline-zoom";
 import {
+	HORIZONTAL_OVERSCAN_PX,
+	useTimelineViewport,
+} from "@/hooks/timeline/use-timeline-viewport";
+import { useContainerSize } from "@/hooks/use-container-size";
+import {
 	memo,
 	useCallback,
 	useEffect,
@@ -37,7 +42,7 @@ import {
 	type ReactNode,
 } from "react";
 import type { ElementDragState, DropTarget } from "@/lib/timeline";
-import { TimelineTrackContent, HORIZONTAL_OVERSCAN_PX } from "./timeline-track";
+import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
 import { SelectionBox } from "@/lib/selection/selection-box";
 import { useBoxSelect } from "@/lib/selection/hooks/use-box-select";
@@ -368,6 +373,9 @@ export function Timeline() {
 	const trackLabelsRef = useRef<HTMLDivElement>(null);
 	const playheadRef = useRef<HTMLDivElement>(null);
 	const trackLabelsScrollRef = useRef<HTMLDivElement>(null);
+	const { width: tracksViewportWidth } = useContainerSize({
+		containerRef: tracksScrollRef,
+	});
 
 	const [isResizing, setIsResizing] = useState(false);
 	const [currentSnapPoint, setCurrentSnapPoint] = useState<SnapPoint | null>(
@@ -390,7 +398,7 @@ export function Timeline() {
 	const timelineDuration = timeline.getTotalDuration() || 0;
 	const minZoomLevel = getTimelineZoomMin({
 		duration: timelineDuration,
-		containerWidth: tracksContainerRef.current?.clientWidth,
+		containerWidth: tracksViewportWidth || undefined,
 	});
 
 	const savedViewState = editor.project.getTimelineViewState();
@@ -617,8 +625,7 @@ export function Timeline() {
 		},
 	});
 
-	const containerWidth =
-		tracksContainerRef.current?.clientWidth || FALLBACK_CONTAINER_WIDTH;
+	const containerWidth = tracksViewportWidth || FALLBACK_CONTAINER_WIDTH;
 	const contentWidth = timelineTimeToPixels({
 		time: timelineDuration,
 		zoomLevel,
@@ -632,10 +639,7 @@ export function Timeline() {
 		contentWidth + paddingPx,
 		containerWidth,
 	);
-	const tracksViewportWidth =
-		tracksScrollRef.current?.clientWidth ??
-		tracksContainerRef.current?.clientWidth ??
-		containerWidth;
+
 	const hasHorizontalScrollbar = dynamicTimelineWidth > tracksViewportWidth;
 
 	useEdgeAutoScroll({
@@ -728,7 +732,7 @@ export function Timeline() {
 					<div ref={rulerScrollRef} className="shrink-0 overflow-hidden">
 						<div
 							ref={timelineHeaderRef}
-							className="flex flex-col"
+							className="flex min-w-full flex-col"
 							style={{
 								width: `${dynamicTimelineWidth}px`,
 								paddingLeft: `${TIMELINE_CONTENT_LEFT_INSET_PX}px`,
@@ -766,7 +770,7 @@ export function Timeline() {
 						}}
 					>
 						<div
-							className="flex min-h-full flex-col"
+							className="flex min-h-full min-w-full flex-col"
 							style={{
 								width: `${dynamicTimelineWidth}px`,
 								paddingLeft: `${TIMELINE_CONTENT_LEFT_INSET_PX}px`,
@@ -1549,41 +1553,15 @@ function TimelineTrackRowsInner({
 	// current scroll viewport (+ overscan). This keeps the DOM small
 	// when the timeline has many tracks.
 	const OVERSCAN_PX = 120; // render 120px extra above/below viewport
-	const [scrollViewport, setScrollViewport] = useState({
-		top: 0,
-		height: 800,
-	});
-	const [scrollWindow, setScrollWindow] = useState({
-		left: 0,
-		right: 4096,
-	});
-
-	// Listen to scroll events on the tracks container once for all rows
-	// (vertical viewport for virtualization + horizontal window for element
-	// culling). The per-track scroll listeners have been removed.
-	useEffect(() => {
-		const el = tracksScrollRef.current;
-		if (!el) return;
-		const update = () => {
-			setScrollViewport((prev) => {
-				const top = el.scrollTop;
-				const height = el.clientHeight;
-				return prev.top === top && prev.height === height
-					? prev
-					: { top, height };
-			});
-			setScrollWindow((prev) => {
-				const left = el.scrollLeft - HORIZONTAL_OVERSCAN_PX;
-				const right = el.scrollLeft + el.clientWidth + HORIZONTAL_OVERSCAN_PX;
-				return prev.left === left && prev.right === right
-					? prev
-					: { left, right };
-			});
-		};
-		update();
-		el.addEventListener("scroll", update, { passive: true });
-		return () => el.removeEventListener("scroll", update);
-	}, [tracksScrollRef]);
+	const scrollViewport = useTimelineViewport(tracksScrollRef);
+	const scrollWindow = useMemo(
+		() => ({
+			left: scrollViewport.left - HORIZONTAL_OVERSCAN_PX,
+			right:
+				scrollViewport.left + scrollViewport.width + HORIZONTAL_OVERSCAN_PX,
+		}),
+		[scrollViewport.left, scrollViewport.width],
+	);
 
 	// One edge auto-scroll loop per drag, not one per track row.
 	useEdgeAutoScroll({
@@ -1658,7 +1636,7 @@ function TimelineTrackRowsInner({
 										// appears behind other tracks when crossing track boundaries.
 										dragState.isDragging || hasDraggedElement
 											? "overflow-visible"
-											: "overflow-hidden",
+											: "overflow-clip",
 										tracksWithSelection.has(track.id) &&
 											SELECTED_TRACK_ROW_CLASS,
 									)}
@@ -1690,7 +1668,7 @@ function TimelineTrackRowsInner({
 										track={track}
 										zoomLevel={zoomLevel}
 										dragState={dragState}
-										tracksScrollRef={tracksScrollRef}
+										viewportWidth={scrollViewport.width}
 										scrollWindow={scrollWindow}
 										onSnapPointChange={onSnapPointChange}
 										onResizeStateChange={onResizeStateChange}

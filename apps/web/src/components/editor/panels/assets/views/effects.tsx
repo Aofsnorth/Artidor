@@ -247,15 +247,7 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 			run: render,
 			priority: -1,
 		});
-		// If the preview image isn't loaded yet, also re-run the
-		// render once it does (gradient patterns use it as a base).
-		const unsubscribe = effectPreviewService.onPreviewImageReady({
-			callback: render,
-		});
-		return () => {
-			cancel();
-			unsubscribe();
-		};
+		return cancel;
 	}, [effectType, isVisible]);
 
 	return (

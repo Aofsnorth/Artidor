@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useMemo, useState } from "react";
+import { memo, useCallback, useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import { PopOutAction } from "@/components/editor/floating-window";
@@ -17,10 +17,9 @@ import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import {
-	getTransitionPhotoPair,
-	getTransitionPalettes,
-} from "./components/procedural-preview";
+import { getTransitionScenePair } from "./components/procedural-preview";
+import { CatalogPreviewTitle } from "./components/catalog-preview";
+import { useCatalogPreviewMotion } from "./components/use-catalog-preview";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -29,7 +28,7 @@ import {
 import type { TransitionDefinition } from "@/lib/transitions";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { useI18n } from "@/lib/i18n";
-import { MarqueeText } from "@/components/ui/marquee-text";
+
 
 const TRANSITION_CATEGORIES = [
 	"Fade",
@@ -131,6 +130,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	const editor = useEditor();
 	const { addTransition } = useTransitions();
 	const [busy, setBusy] = useState(false);
+	const { ref, active, interactionProps } = useCatalogPreviewMotion();
 
 	const handleAdd = useCallback(async () => {
 		setBusy(true);
@@ -205,11 +205,13 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: card contains nested add button, so outer button would be invalid HTML
 		<div
+			ref={ref}
+			{...interactionProps}
 			role="button"
 			tabIndex={0}
 			onClick={handleAdd}
 			onKeyDown={(e) => {
-				if (e.key === "Enter" || e.key === " ") {
+				if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
 					e.preventDefault();
 					handleAdd();
 				}
@@ -218,14 +220,9 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 		>
 			<div className="asset-preview-overlay" />
 
-			<TransitionPreview definition={definition} />
-			<MarqueeText
-				className="text-foreground z-10 block w-full px-2 text-center text-[0.7rem] font-medium drop-shadow-md"
-				pxPerSecond={30}
-			>
-				{definition.name}
-			</MarqueeText>
-			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100">
+			<TransitionPreview definition={definition} active={active} />
+			<CatalogPreviewTitle>{definition.name}</CatalogPreviewTitle>
+			<div className="absolute right-1 top-1 z-20 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
 				<Button
 					size="icon"
 					variant="secondary"
@@ -243,14 +240,18 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 	);
 }
 
+const KEYFRAME_NAME = /@keyframes\s+([^{\s]+)/;
+
 function extractKeyframeName(css: string): string | null {
-	return css.match(/@keyframes\s+([^{\s]+)/)?.[1] ?? null;
+	return css.match(KEYFRAME_NAME)?.[1] ?? null;
 }
 
-function TransitionPreview({
+const TransitionPreview = memo(function TransitionPreview({
 	definition,
+	active,
 }: {
 	definition: TransitionDefinition;
+	active: boolean;
 }) {
 	const id = useId().replaceAll(":", "");
 	const keyframeCss = definition.previewStyle({
@@ -265,18 +266,7 @@ function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
-	const { a: photoA, b: photoB } = getTransitionPhotoPair(definition.type);
-	const { a: paletteA, b: paletteB } = getTransitionPalettes(definition.type);
-	const usesColorEffect = /glitch|rgb|prism|light|flash|burn|color/i.test(
-		`${definition.type} ${definition.name}`,
-	);
-
-	const overlayA = usesColorEffect
-		? `linear-gradient(135deg, rgba(10,10,12,0.42), ${paletteA.accent})`
-		: `linear-gradient(135deg, rgba(10,10,12,0.55), rgba(10,10,12,0.15))`;
-	const overlayB = usesColorEffect
-		? `linear-gradient(135deg, rgba(10,10,12,0.38), ${paletteB.accent})`
-		: `linear-gradient(135deg, rgba(10,10,12,0.55), rgba(10,10,12,0.12))`;
+	const scenes = useMemo(() => getTransitionScenePair(definition.type), [definition.type]);
 
 	return (
 		<div
@@ -285,30 +275,19 @@ function TransitionPreview({
 		>
 			<div
 				aria-hidden
-				className="absolute inset-0 bg-cover bg-center saturate-[0.6]"
-				style={{
-					backgroundImage: `${overlayA}, url("${photoA.src}")`,
-				}}
+				className="absolute inset-0 bg-cover bg-center"
+				style={{ backgroundImage: `url("${scenes.a}")` }}
 			/>
 			<div
 				aria-hidden
-				className="absolute inset-0 z-10 bg-cover bg-center opacity-0 saturate-[0.6] transition-opacity duration-300 group-hover:opacity-100"
+				className="absolute inset-0 z-10 bg-cover bg-center"
 				style={{
-					animation: `${scopedName} 1.35s ${definition.easing} infinite alternate`,
-					backgroundImage: `${overlayB}, url("${photoB.src}")`,
+					animation: active ? `${scopedName} 2.4s ${definition.easing} infinite alternate` : "none",
+					clipPath: active ? undefined : "inset(0 0 0 50%)",
+					backgroundImage: `url("${scenes.b}")`,
 				}}
 			/>
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 z-20 opacity-0 mix-blend-screen transition-opacity duration-200 group-hover:opacity-100"
-				style={{
-					background: usesColorEffect
-						? `linear-gradient(120deg, transparent, ${paletteB.accent}, transparent)`
-						: "linear-gradient(120deg, transparent, rgba(255,255,255,0.18), transparent)",
-				}}
-			/>
-			<div className="pointer-events-none absolute inset-0 z-30 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.2)_45%,transparent_70%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 			<style>{scopedCss}</style>
 		</div>
 	);
-}
+});

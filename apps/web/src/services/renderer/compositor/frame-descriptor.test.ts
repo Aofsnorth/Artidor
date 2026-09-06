@@ -30,7 +30,15 @@ describe("buildFrameDescriptor for scene effects", () => {
 		);
 
 		await resolveRenderTree({ node: root, renderer: mockRenderer, time: 0 });
-		const { frame } = await buildFrameDescriptor({ node: root, renderer: mockRenderer });
+		const descriptor = buildFrameDescriptor({ node: root, renderer: mockRenderer });
+			expect(descriptor).not.toBeInstanceOf(Promise);
+			const { frame } = descriptor;
+			// A second export/preview descriptor must not mutate the previous frame.
+			const empty = buildFrameDescriptor({
+				node: new RootNode({ duration: 600_000 }),
+				renderer: mockRenderer,
+			});
+			expect(empty.frame.items).toHaveLength(0);
 
 		expect(frame.items.length).toBe(1);
 		const item = frame.items[0];

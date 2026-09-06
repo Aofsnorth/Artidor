@@ -650,7 +650,7 @@ function RemoteAssetPlaceholder({
 				};
 
 	return (
-		<div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.055),transparent_55%),rgba(255,255,255,0.025)] px-6 text-center">
+		<div className="flex min-h-[220px] flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.055),transparent_55%),rgba(255,255,255,0.025)] px-6 text-center">
 			<div className="rounded-full border border-white/[0.08] bg-white/[0.06] px-3 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-white/[0.45]">
 				{source}
 			</div>

@@ -11,7 +11,7 @@ import {
 	findOrCreateTextTrack,
 } from "@/lib/timeline/element-utils";
 import type { TimelineDragData } from "@/lib/timeline/drag";
-import { getPaletteForId } from "./components/procedural-preview";
+import { CatalogPreviewScene } from "./components/catalog-preview";
 import {
 	textPresets,
 	type TextPreset,
@@ -97,11 +97,6 @@ export function TextView() {
 	);
 }
 
-function getTextPhotoUrl(_presetId: string): null {
-	// Backwards-compat. The text preview now uses procedural CSS via
-	// `getPaletteForId` — no remote thumbnail fetch.
-	return null;
-}
 
 function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const { t } = useI18n();
@@ -150,10 +145,7 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 		[editor, preset, t],
 	);
 
-	const previewData = preset.build();
-	const photoUrl = getTextPhotoUrl(preset.id);
-	void photoUrl;
-	const textPalette = getPaletteForId(preset.id);
+	const previewData = useMemo(() => preset.build(), [preset]);
 	const previewStyle: React.CSSProperties = {
 		fontFamily: previewData.fontFamily ?? "var(--font-sans)",
 		fontSize: Math.min(previewData.fontSize ?? 32, 22),
@@ -166,8 +158,8 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 		padding: previewData.background?.enabled
 			? `${(previewData.background.paddingY ?? 0) / 6}px ${(previewData.background.paddingX ?? 0) / 6}px`
 			: 0,
-		borderRadius: preset.build().background.enabled
-			? Math.min(preset.build().background.cornerRadius ?? 0, 8)
+		borderRadius: previewData.background.enabled
+			? Math.min(previewData.background.cornerRadius ?? 0, 8)
 			: 0,
 	};
 
@@ -185,12 +177,8 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 				name={preset.name}
 				preview={
 					<div className="relative h-full w-full overflow-hidden">
-						<div
-							aria-hidden
-							className="absolute inset-0"
-							style={{ background: textPalette.background }}
-						/>
-						<div className="absolute inset-0 bg-black/30" />
+						<CatalogPreviewScene seed={`text:${preset.category}:${preset.id}`} />
+						<div className="absolute inset-0 bg-black/60" />
 						<div
 							className="relative z-10 line-clamp-2 text-balance break-words flex h-full w-full items-center justify-center px-3"
 							style={previewStyle}

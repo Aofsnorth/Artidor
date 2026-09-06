@@ -23,6 +23,28 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-06-editor-monitor-previews-performance",
+		date: "2026-09-06",
+		tag: "improvement",
+		title: "Clearer monitoring and faster catalog previews",
+		items: [
+			"The audio meter now opens by default and its DIM button switches between level and spectrum views.",
+			"Advanced viewers now dock beside Details with Scopes, Color Wheels, and Artidor Adjust.",
+			"Catalog previews use varied original artwork and animate only while you interact with visible cards.",
+		],
+	},
+	{
+		id: "2026-09-06-timeline-preview-throughput",
+		date: "2026-09-06",
+		tag: "performance",
+		title: "Smoother timelines, previews, and exports",
+		items: [
+			"Empty-track drop guidance stays aligned with the visible timeline while resizing or scrolling.",
+			"Off-screen timeline clips are skipped, audio monitors pause while hidden, and frame assembly no longer adds avoidable asynchronous work.",
+			"Long catalog titles move at a consistent readable speed and remain centered when they fit.",
+		],
+	},
+	{
 		id: "2026-07-19-tile-scroll-suffix-fix",
 		date: "2026-07-19",
 		tag: "improvement",
@@ -53,17 +75,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 			"Orientation switches between horizontal and vertical tiling.",
 		],
 	},
-	{
-		id: "2026-07-19-header-advanced-viewers",
-		date: "2026-07-19",
-		tag: "improvement",
-		title: "Streamlined editor header with advanced viewers",
-		items: [
-			"The top-right layout switcher now offers three focused presets that visibly change the editor layout.",
-			"The component-pop-out button is replaced by an Advanced Viewers menu that opens Scopes, Color Wheels, DaVinci Adjust, and Audio Meter as popups in the same window.",
-			"No new browser windows are opened — every viewer lives in a popup dialog.",
-		],
-	},
+
 	{
 		id: "2026-07-19-export-encoder-tuning",
 		date: "2026-07-19",
