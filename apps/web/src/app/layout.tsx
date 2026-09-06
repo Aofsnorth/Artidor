@@ -75,7 +75,7 @@ export default function RootLayout({
 								data-track-web-vitals={false}
 								data-track-sessions={false}
 							/>
-							<DynamicEnvWarningModal isMissing={isEnvMissing} />
+							{isEnvMissing ? <DynamicEnvWarningModal /> : null}
 							{children}
 							<Analytics />
 							<SpeedInsights />

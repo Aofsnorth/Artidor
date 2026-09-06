@@ -111,7 +111,7 @@ export function ColorWheelsTab({
 					</div>
 					<p className="mt-2 text-[0.68rem] text-white/50 text-center leading-relaxed">
 						Drag the puck to bias the colour, slide below to set luma. Wheels
-						write to the same DaVinci adjust effect as the Manual tab.
+						write to the same Artidor Adjust effect as the Manual tab.
 					</p>
 				</SectionContent>
 			</Section>

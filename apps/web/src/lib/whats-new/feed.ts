@@ -30,7 +30,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		items: [
 			"The audio meter now opens by default and its DIM button switches between level and spectrum views.",
 			"Advanced viewers now dock beside Details with Scopes, Color Wheels, and Artidor Adjust.",
-			"Catalog previews use varied original artwork and animate only while you interact with visible cards.",
+			"Catalog previews use varied original artwork, avoid duplicate GPU work, and animate only while you interact with visible cards.",
 		],
 	},
 	{
@@ -2287,7 +2287,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		items: [
 			"New: live Scopes sub-tab in the Advanced card — Waveform (luminance column histogram), Vectorscope (B-Y / R-Y with 75 % colour-bar targets), and RGB Parade. Samples the live preview canvas at ~12 fps via a downsampled getImageData and renders to a small canvas in the inspector. The Freeze button holds the current frame for A/B comparison; the Live chip in the legend tells the user whether they're seeing real-time or parked data.",
 			"New: Qualifier (HSL key) sub-tab with channel toggles (Hue / Sat / Lum), master Range, Low/High Softness sliders, and a triple-handle Luma range bar (Low — Mid — High). The B/W badge in the Matte finesse section shows whether the key includes all three channels or just one. Drag any of the three colour-coded handles horizontally; the numbers under the bar stay in sync with the param store.",
-			"New: Vignette sub-tab with Offset, Softness, Roundness sliders plus per-zone amount (Shadows / Midtones / Highlights). The shape preview SVG in the header mirrors the params live — drag Offset to slide the inner mask, watch the dashed inner ring move with it. Per-zone amount drives the same `vig_*` params the legacy DaVinci adjust tab used, so the grade round-trips cleanly.",
+			"New: Vignette sub-tab with Offset, Softness, Roundness sliders plus per-zone amount (Shadows / Midtones / Highlights). The shape preview SVG in the header mirrors the params live — drag Offset to slide the inner mask, watch the dashed inner ring move with it. Per-zone amount drives the same `vig_*` params the legacy Artidor Adjust tab used, so the grade round-trips cleanly.",
 			"New: HSL Curves sub-tab with the seven DaVinci HSL qualifier pairs: Hue vs Sat, Hue vs Lum, Hue vs Hue, Sat vs Sat, Sat vs Lum, Lum vs Sat, Lum vs Hue. Each curve's X axis is one component; the Y axis is another. Same drag / double-click-to-remove UX as the master Curves tab. Writes to a per-element `hsl-curve` effect (params: `hsl_<axis>_curve` per pair).",
 			"Improvement: Wheels sub-tab now opens with the full DaVinci primary panel (Lift / Gamma / Gain / Offset colour wheels + 11 primary bars: contrast, pivot, midtone detail, highlights, shadows, whites, blacks, saturation, hue, sharpen, blur) plus a Global strip at the top with Temperature (cool ↔ warm blue/orange gradient), Tint (green ↔ magenta), and a Y-only master toggle that switches the whole grade between luma+chroma and luma-only. A Reset all button at the panel header zeros every wheel, every bar, the temp/tint, and the Y-only flag in one click.",
 			"Improvement: Inspector primary tab bar now scopes each tab's `ids` to a specific element type. The shared `transform` / `effects` / `animations` / `masks` ids no longer light up both the Video and Image primaries at once — when an image is selected only the Image primary stays highlighted, and the Video primary is locked (with a tooltip explaining why). The Element / Text / Audio primaries keep their original single-id scopes.",

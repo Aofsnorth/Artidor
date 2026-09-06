@@ -17,6 +17,7 @@ import { useKeybindingsListener } from "@/hooks/use-keybindings";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { useViewerStore } from "@/stores/viewer-store";
+import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { useEditorActions } from "@/hooks/actions/use-editor-actions";
 import { loadFontAtlas } from "@/lib/fonts/google-fonts";
 import {
@@ -167,6 +168,9 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 function EditorRuntimeBindings() {
 	const editor = useEditor();
+	const commandPaletteOpen = useEditorUIStore(
+		(state) => state.commandPaletteOpen,
+	);
 	const rippleEditingEnabled = useTimelineStore(
 		(state) => state.rippleEditingEnabled,
 	);
@@ -231,9 +235,9 @@ function EditorRuntimeBindings() {
 
 	useEditorActions();
 	useKeybindingsListener();
-	return (
+	return commandPaletteOpen ? (
 		<Suspense fallback={null}>
 			<LazyCommandPalette />
 		</Suspense>
-	);
+	) : null;
 }

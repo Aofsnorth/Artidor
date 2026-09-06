@@ -7,6 +7,6 @@ const EnvWarningModal = dynamic(
 	{ ssr: false },
 );
 
-export function DynamicEnvWarningModal({ isMissing }: { isMissing: boolean }) {
-	return <EnvWarningModal isMissing={isMissing} />;
+export function DynamicEnvWarningModal() {
+	return <EnvWarningModal isMissing />;
 }

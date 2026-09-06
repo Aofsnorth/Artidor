@@ -7,7 +7,6 @@ import { gpuRenderer } from "./gpu-renderer";
 
 const PREVIEW_SIZE = 160;
 
-
 /**
  * Hard cap on concurrent GPU renders. 4 keeps the GPU command
  * queue full without starving the rest of the editor — the
@@ -107,7 +106,6 @@ class EffectPreviewService {
 
 	readonly PREVIEW_SIZE = PREVIEW_SIZE;
 
-
 	/**
 	 * Schedule a GPU render at the given priority. The default
 	 * priority is 0 (visible card). Negative numbers run sooner
@@ -127,10 +125,12 @@ class EffectPreviewService {
 		priority?: number;
 	}): () => void {
 		const job = { id: ++this.nextRenderId, run, priority };
-		this.renderQueue.push(job);
-		// Insert by priority without sorting the whole queue for every card.
+		// Insert once by priority without sorting the whole queue for every card.
 		let index = this.renderQueue.length;
-		while (index > 0 && (this.renderQueue.at(index - 1)?.priority ?? 0) > priority) {
+		while (
+			index > 0 &&
+			(this.renderQueue.at(index - 1)?.priority ?? 0) > priority
+		) {
 			index -= 1;
 		}
 		this.renderQueue.splice(index, 0, job);
@@ -141,15 +141,13 @@ class EffectPreviewService {
 		};
 	}
 
-	private pumpQueue(): void {
-		// Drain the visible / already-visible (priority ≤ 0) jobs
-		// immediately. Anything priority > 0 is deferred to the next
-		// idle slot via requestIdleCallback so the off-screen cards
-		// only paint when the browser has nothing better to do.
+	private pumpQueue(includeDeferred = false): void {
+		// Drain visible jobs immediately. Deferred jobs may enter the GPU queue
+		// only when an idle callback explicitly opens an idle drain.
 		while (
 			this.inFlight < MAX_CONCURRENT_RENDERS &&
 			this.renderQueue.length > 0 &&
-			(this.renderQueue[0]?.priority ?? 0) <= 0
+			(includeDeferred || (this.renderQueue[0]?.priority ?? 0) <= 0)
 		) {
 			const job = this.renderQueue.shift();
 			if (!job) break;
@@ -167,20 +165,14 @@ class EffectPreviewService {
 		// older browsers. The handle type is `number` in both cases
 		// at runtime, but TypeScript widens `setTimeout` to
 		// `Timeout`, so we cast to `number`.
-		const handle: number =
-			typeof window !== "undefined" && "requestIdleCallback" in window
-				? (
-						window as unknown as {
-							requestIdleCallback: (cb: () => void) => number;
-						}
-					).requestIdleCallback(() => {
-						this.idleDrainHandle = null;
-						this.pumpQueue();
-					})
-				: (setTimeout(() => {
-						this.idleDrainHandle = null;
-						this.pumpQueue();
-					}, 16) as unknown as number);
+		const runDeferredJobs = () => {
+			this.idleDrainHandle = null;
+			this.pumpQueue(true);
+		};
+		const handle =
+			typeof globalThis.requestIdleCallback === "function"
+				? globalThis.requestIdleCallback(runDeferredJobs)
+				: (setTimeout(runDeferredJobs, 16) as unknown as number);
 		this.idleDrainHandle = handle;
 	}
 
@@ -264,32 +256,10 @@ class EffectPreviewService {
 
 		targetCtx.clearRect(0, 0, size, size);
 		try {
+			// Do not sample GPU output with getImageData here. That forces a
+			// GPU-to-CPU synchronization for every visible card; structural GPU
+			// failures are handled above and draw failures use the source fallback.
 			targetCtx.drawImage(result, 0, 0, size, size);
-
-			// Even if the canvas object is valid, the underlying WebGL/WebGPU
-			// pipeline might fail silently and return a completely empty or
-			// black canvas. We sample the center pixel to ensure it actually
-			// rendered something.
-			if (result !== source) {
-				const pixels = targetCtx.getImageData(
-					Math.floor(size / 2),
-					Math.floor(size / 2),
-					1,
-					1,
-				).data;
-
-				const isBlank =
-					pixels[3] === 0 || // fully transparent
-					(pixels[0] === 0 && pixels[1] === 0 && pixels[2] === 0); // pure black
-
-				if (isBlank) {
-					console.warn(
-						`GPU effect preview for ${effectType} produced visually blank/black canvas, falling back to source.`,
-					);
-					targetCtx.clearRect(0, 0, size, size);
-					targetCtx.drawImage(source, 0, 0, size, size);
-				}
-			}
 		} catch (error) {
 			console.warn("Failed to draw effect preview:", effectType, error);
 			// Last resort: draw the original source without effects
@@ -301,7 +271,6 @@ class EffectPreviewService {
 			}
 		}
 	}
-
 
 	private getTestSourceForEffect({
 		effectType,

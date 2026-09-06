@@ -1,28 +1,28 @@
 # Web performance optimization plan
 
 ## Goal
-Push `apps/web` performance past CapCut in export, timeline, editor, and preview with the smallest safe changes first.
+Improve `apps/web` export, timeline, editor, and preview performance with the smallest safe changes first. Cross-product rankings require a controlled benchmark and are outside this plan.
 
 ## Audit findings (verified by reading code)
 
 ### 1. Bundle / initial load
-- `apps/web/src/app/editor/[project_id]/page.tsx` imports `EffectsView`, `TransitionsView`, `AdjustmentsView`, `PluginsView` eagerly, even though they are only used inside `FloatingWindow` and `AssetsPanel`.
-- `apps/web/src/components/editor/panels/assets/index.tsx` imports every asset view eagerly (`StickersView`, `SoundsView`, `FiltersView`, `OverlaysView`, `AnimationsView`, `TemplatesView`, `PresetsView`, `ScriptingView`, `SettingsView`, `AdvancedView`, `QuickToolsView`, etc.) even though only `MediaView` is the default.
-- `apps/web/src/components/editor/panels/properties/registry.tsx` imports every tab eagerly (`EffectsTab`, `MasksTab`, `AnimationsTab`, `CameraTab`, `SpeedRampTab`, `ParentingTab`, `ImageTab`, `GraphicsStyleTab`, `ElementTab`, `GraphicTab`, `AudioEffectsTab`) even though the inspector only shows one tab at a time.
-- `apps/web/src/components/providers/editor-provider.tsx` imports `CommandPalette` eagerly; `CommandPalette` pulls in `cmdk` and is only needed on `Cmd/Ctrl+K`.
-- `apps/web/src/components/page-transition.tsx` and `apps/web/src/components/editor/panels/preview/guide-popover.tsx` pull `motion/react` (~480KB) into the editor bundle for small fade/expand animations.
-- `apps/web/src/components/env-warning-modal.tsx` is in the root layout and pulls `motion/react` into every route, even though it only renders when env vars are missing.
-- `next.config.ts` `optimizePackageImports` does not list `motion` or `react-icons` (the latter is dead but present in `package.json`).
+- `apps/web/src/app/editor/[project_id]/page.tsx` previously imported `EffectsView`, `TransitionsView`, `AdjustmentsView`, and `PluginsView` eagerly, even though they are only used inside `FloatingWindow` and `AssetsPanel`.
+- `apps/web/src/components/editor/panels/assets/index.tsx` previously imported every asset view eagerly (`StickersView`, `SoundsView`, `FiltersView`, `OverlaysView`, `AnimationsView`, `TemplatesView`, `PresetsView`, `ScriptingView`, `SettingsView`, `AdvancedView`, `QuickToolsView`, etc.) even though only `MediaView` is the default.
+- `apps/web/src/components/editor/panels/properties/registry.tsx` previously imported every tab eagerly (`EffectsTab`, `MasksTab`, `AnimationsTab`, `CameraTab`, `SpeedRampTab`, `ParentingTab`, `ImageTab`, `GraphicsStyleTab`, `ElementTab`, `GraphicTab`, `AudioEffectsTab`) even though the inspector only shows one tab at a time.
+- `apps/web/src/components/providers/editor-provider.tsx` now imports `CommandPalette` lazily and mounts the lazy boundary only while the palette is open, keeping `cmdk` out of the initial editor request.
+- `apps/web/src/components/page-transition.tsx` and `apps/web/src/components/editor/panels/preview/guide-popover.tsx` previously pulled `motion/react` into the editor bundle for small fade/expand animations.
+- `apps/web/src/components/env-warning-modal.tsx` still uses `motion/react`, but the root layout now loads the modal through a client-only dynamic boundary that mounts only when required environment configuration is missing.
+- `next.config.ts` previously omitted `motion` and `react-icons` from `optimizePackageImports`. `react-icons` remains in use and is not a dead dependency.
 
 ### 2. Preview / render loop
-- `apps/web/src/components/editor/panels/preview/index.tsx` uses `useDeepCompareEffect` in `RenderTreeController`. `useEditor` already returns shallow-equal snapshots, so the deep comparison is wasted work per render.
-- `PreviewCanvas` `rafEnabled = isPlaying || needsRenderRef.current` relies on a ref, so `useRafLoop` can keep the loop running when paused after a render-tree change (the `needsRenderRef` transition is never re-rendered into `enabled`).
+- `apps/web/src/components/editor/panels/preview/index.tsx` previously used `useDeepCompareEffect` in `RenderTreeController`. `useEditor` already returns shallow-equal snapshots, so the deep comparison was wasted work per render.
+- `PreviewCanvas` previously derived rAF enablement from a ref, allowing the loop to keep running after paused work completed.
 - `apps/web/src/services/renderer/compositor/wasm-compositor.ts` `ensureOffscreenCanvas` copies every `ImageBitmap`, `HTMLCanvasElement`, and `HTMLImageElement` source into a new `OffscreenCanvas` before uploading to WASM, even when the Rust side can `copy_external_image_to_texture` directly.
 - `rust/crates/gpu/src/context.rs` `import_offscreen_canvas_texture` only accepts `OffscreenCanvas` and has a CPU `get_image_data` fallback for older WebGL paths. Updating it to accept `ExternalImageSource` (`ImageBitmap`, `HTMLCanvasElement`, `OffscreenCanvas`, `HTMLImageElement`) would avoid the JS-side copy.
 
 ### 3. Timeline re-renders
-- `apps/web/src/components/editor/panels/timeline/index.tsx` subscribes only to scenes (good), but `TimelineTrackRows` and `TimelineTrackContent` are not `memo`/`PureComponent`. The `Timeline` re-renders on scene changes and drags all visible tracks with it.
-- `TimelineTrackContent` adds a `scroll` listener per track; each track updates its own `scrollWindow` state. Moving the listener to the parent and passing `scrollWindow` down would reduce listener count and reconciliation.
+- `apps/web/src/components/editor/panels/timeline/index.tsx` already subscribed only to scenes, but `TimelineTrackRows` and `TimelineTrackContent` were not memoized.
+- `TimelineTrackContent` previously added a `scroll` listener per track; the parent now observes one shared viewport and passes the visible window to each row.
 
 ### 4. Render-tree resolve
 - `apps/web/src/services/renderer/resolve.ts` `resolveRenderTree` runs every frame. `resolveEffectPassGroups` rebuilds effect pass arrays and calls `resolveEffectParamsAtTime` per effect even when effects are not animated. Caching for static nodes/effects is a future win.
@@ -66,4 +66,8 @@ Push `apps/web` performance past CapCut in export, timeline, editor, and preview
 - `cargo check` (if/when Rust phase is approved)
 
 ## Status
-Phase 1 planned. Awaiting user direction for Phase 2 (Rust) and then proceeding with Phase 1 `apps/web` changes.
+
+- Phase 1 is complete and verified by lint, typecheck, unit tests, production build, and browser QA recorded in `features/editor-polish-performance-2026-09-06/`.
+- Effect preview scheduling now enqueues each job once, lets idle callbacks drain deferred jobs, and avoids a forced GPU-to-CPU pixel readback per visible card.
+- Phase 2 remains intentionally deferred. It touches sensitive Rust/WASM GPU paths and needs separate approval, API compatibility research, focused tests, and before/after benchmarks.
+- Phase 3 remains future profiling work; no speculative renderer cache was added.
