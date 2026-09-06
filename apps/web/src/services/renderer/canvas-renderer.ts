@@ -3,6 +3,10 @@ import type { AnyBaseNode } from "./nodes/base-node";
 import { buildFrameDescriptor } from "./compositor/frame-descriptor";
 import { compositor } from "./compositor/unified-compositor";
 import { resolveRenderTree } from "./resolve";
+import {
+	initializeGpuRenderer,
+	isGpuAvailable,
+} from "./gpu-renderer";
 
 export type CanvasRenderTiming = {
 	resolveMs: number;
@@ -11,6 +15,32 @@ export type CanvasRenderTiming = {
 	blitMs: number;
 	totalMs: number;
 };
+
+/**
+ * Thrown when the GPU device is lost mid-render. Distinct from a general
+ * render failure so callers can distinguish "this frame is stale" from
+ * "the pipeline is unusable" (e.g. unsupported GPU surface).
+ */
+export class GpuDeviceLostError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "GpuDeviceLostError";
+	}
+}
+
+/**
+ * Serializes all main-thread compositor renders. The WASM compositor is a
+ * singleton with ONE shared output canvas, but `renderToCanvas` has await
+ * points (resolveRenderTree, buildFrameDescriptor) before the GPU section.
+ * Without this lock, two concurrent callers — the preview's rAF loop and
+ * thumbnail generation — interleave: one resizes the shared canvas mid-flight
+ * (ensureInitialized/resizeCompositor), which invalidates the other's GPU
+ * surface and surfaces as "the output surface does not support the required
+ * texture format", and the later blit can copy the other caller's frame.
+ * Rendering the full resize → composite → blit section under this chain makes
+ * each call atomic. Errors don't break the chain; the next render still runs.
+ */
+let compositorRenderChain: Promise<unknown> = Promise.resolve();
 
 export type CanvasRendererParams = {
 	width: number;
@@ -102,6 +132,11 @@ export class CanvasRenderer {
 		node: AnyBaseNode;
 		time: number;
 	}): Promise<Omit<CanvasRenderTiming, "blitMs"> | null> {
+		await initializeGpuRenderer();
+		if (!isGpuAvailable()) {
+			throw new Error("GPU renderer is unavailable");
+		}
+
 		const renderStart = this.measurePerformance ? performance.now() : 0;
 		await resolveRenderTree({ node, renderer: this, time });
 		const resolveEnd = this.measurePerformance ? performance.now() : 0;
@@ -131,8 +166,10 @@ export class CanvasRenderer {
 		}
 		const descriptorEnd = this.measurePerformance ? performance.now() : 0;
 		// Guard the entire GPU pipeline — wgpu panics (device lost, driver
-		// reset, OOM) must not crash the render loop. A lost device means
-		// the preview freezes on the last good frame until page reload.
+		// reset, OOM) must not crash the render loop. Rethrow as a typed error
+		// instead of silently succeeding: a swallowed failure makes callers
+		// blit/caches the *previous* frame as if it were the requested one,
+		// poisoning frame caches with stale content.
 		try {
 			compositor.ensureInitialized({
 				width: this.width,
@@ -149,12 +186,12 @@ export class CanvasRenderer {
 				msg.includes("panicked")
 			) {
 				console.warn(
-					"[renderer] GPU device lost, preview frozen until reload:",
+					"[renderer] GPU device lost; skipping this frame (callers will retry):",
 					msg,
 				);
-			} else {
-				throw error;
+				throw new GpuDeviceLostError(msg);
 			}
+			throw error;
 		}
 
 		if (!this.measurePerformance) return null;
@@ -168,6 +205,81 @@ export class CanvasRenderer {
 	}
 
 	async renderToCanvas({
+		node,
+		time,
+		targetCanvas,
+	}: {
+		node: AnyBaseNode;
+		time: number;
+		targetCanvas: HTMLCanvasElement;
+	}): Promise<CanvasRenderTiming | null> {
+		const run = compositorRenderChain.then(() =>
+			this.renderAndBlit({ node, time, targetCanvas }),
+		);
+		compositorRenderChain = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		return run;
+	}
+
+	/**
+	 * Renders a frame and captures the compositor output as an ImageBitmap in
+	 * one serialized chain section. Capturing outside the chain races with a
+	 * queued thumbnail/preview render: the other render resizes the shared
+	 * compositor canvas between blit and pixel copy, so the snapshot contains
+	 * the other render's frame (cached under this frame's key).
+	 */
+	async renderToCanvasWithSnapshot({
+		node,
+		time,
+		targetCanvas,
+	}: {
+		node: AnyBaseNode;
+		time: number;
+		targetCanvas: HTMLCanvasElement;
+	}): Promise<{ timing: CanvasRenderTiming | null; bitmap: ImageBitmap | null }> {
+		const run = compositorRenderChain.then(async () => {
+			const timing = await this.renderAndBlit({ node, time, targetCanvas });
+			if (typeof createImageBitmap !== "function") {
+				return { timing, bitmap: null };
+			}
+			const bitmap = await createImageBitmap(compositor.getCanvas());
+			return { timing, bitmap };
+		});
+		compositorRenderChain = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		return run;
+	}
+
+	/**
+	 * Runs `render()` under the compositor chain without blitting. Main-thread
+	 * export loops (scene-exporter) call this instead of `render()` so their
+	 * await points cannot interleave with preview/thumbnail renders that resize
+	 * the shared compositor canvas. Deliberately not `async`: returning the raw
+	 * chained promise keeps the caller's continuation in the same microtask
+	 * cascade as the chain, so a synchronously-following canvas snapshot (the
+	 * exporter's `videoSource.add()`) cannot be preempted by the next chained
+	 * render.
+	 */
+	renderSerialized({
+		node,
+		time,
+	}: {
+		node: AnyBaseNode;
+		time: number;
+	}): Promise<Omit<CanvasRenderTiming, "blitMs"> | null> {
+		const run = compositorRenderChain.then(() => this.render({ node, time }));
+		compositorRenderChain = run.then(
+			() => undefined,
+			() => undefined,
+		);
+		return run;
+	}
+
+	private async renderAndBlit({
 		node,
 		time,
 		targetCanvas,

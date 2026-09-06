@@ -80,7 +80,11 @@ export class ProjectManager {
 		result: null,
 	};
 	private exportCancelRequested = false;
-	private exportHistory = new Map<string, ExportResult>();
+	private exportHistory = new Map<string, {
+		result: ExportResult;
+		scenes: TProject["scenes"];
+		settings: TProjectSettings | undefined;
+	}>();
 	private driveSyncState: DriveSyncState = {
 		status: "idle",
 		progress: 0,
@@ -134,8 +138,7 @@ export class ProjectManager {
 			version: CURRENT_PROJECT_VERSION,
 		};
 
-		this.active = newProject;
-		this.notify();
+		this.setActiveProject({ project: newProject });
 
 		// A new project is a fresh editing context; any element selection
 		// from the previous project is stale and would make the Properties
@@ -178,8 +181,8 @@ export class ProjectManager {
 
 			const project = result.project;
 
-			this.active = project;
-			this.notify();
+			this.editor.command.clear();
+			this.setActiveProject({ project });
 
 			// Switching projects is a fresh context; clear any selection carried
 			// over from the previous project so the Properties panel lands on
@@ -234,8 +237,11 @@ export class ProjectManager {
 		}
 	}
 
+	/** Persist a snapshot without overwriting newer edits; failures reach the save queue. */
 	async saveCurrentProject(): Promise<void> {
 		if (!this.active) return;
+		const savingProject = this.active;
+		const savingProjectId = savingProject.metadata.id;
 
 		try {
 			const scenes = this.editor.scenes.getScenes();
@@ -250,7 +256,13 @@ export class ProjectManager {
 			};
 
 			await storageService.saveProject({ project: updatedProject });
-			this.active = updatedProject;
+			// The await above lets the user switch projects. Only commit the saved
+			// snapshot if it is still the active project — otherwise the stale
+			// snapshot would clobber the newly-loaded project's state.
+			if (this.active?.metadata.id !== savingProjectId) return;
+			if (this.active === savingProject) {
+				this.active = updatedProject;
+			}
 			this.updateMetadata(updatedProject);
 
 			// If linked to Google Drive, save there in the background
@@ -292,6 +304,7 @@ export class ProjectManager {
 			}
 		} catch (error) {
 			console.error("Failed to save project:", error);
+			throw error;
 		}
 	}
 
@@ -313,9 +326,14 @@ export class ProjectManager {
 
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {
 		const cacheKey = this.getExportHistoryKey({ options });
+		const scenes = this.editor.scenes.getScenes();
+		const settings = this.active?.settings;
 		const cached = cacheKey ? this.exportHistory.get(cacheKey) : null;
-		if (cached?.success && cached.buffer) {
-			const result = { ...cached, cached: true };
+		// Unsaved edits do not necessarily change metadata.updatedAt. Scene/settings
+		// snapshots also guard against edits made while an export is in flight.
+		if (cached?.scenes === scenes && cached.settings === settings &&
+			cached.result.success && cached.result.buffer) {
+			const result = { ...cached.result, cached: true };
 			this.exportState = { isExporting: false, progress: 1, result };
 			this.notify();
 			return result;
@@ -333,7 +351,9 @@ export class ProjectManager {
 		// from 40% to 5%. With the guard, the bar only moves forward.
 		let maxProgress = 0;
 
-		const result = await this.editor.renderer.exportProject({
+		let result: ExportResult;
+		try {
+			result = await this.editor.renderer.exportProject({
 			options,
 			onProgress: ({ progress }) => {
 				// Clamp to monotonically increasing — the bar must never
@@ -344,10 +364,19 @@ export class ProjectManager {
 				this.notify();
 			},
 			onCancel: () => this.exportCancelRequested,
-		});
+			});
+		} catch {
+			result = { success: false, error: "Export failed. Please try again." };
+		}
+
+		if (result.success && result.buffer) {
+			// Stamp the container format so download filename/MIME always match
+			// the encoded buffer, including when restored from history.
+			result.format = options.format;
+		}
 
 		if (cacheKey && result.success && result.buffer) {
-			this.exportHistory.set(cacheKey, result);
+			this.exportHistory.set(cacheKey, { result, scenes, settings });
 			while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
 				const oldestKey = this.exportHistory.keys().next().value;
 				if (!oldestKey) break;
@@ -445,6 +474,7 @@ export class ProjectManager {
 		// triggers the AudioManager's handlePlaybackChange which calls
 		// stopPlayback() on the audio engine automatically.
 		this.editor.playback.pause();
+		this.editor.command.clear();
 
 		this.active = null;
 		this.notify();
@@ -669,17 +699,16 @@ export class ProjectManager {
 		this.editor.save.markDirty();
 	}
 
+	/** Thumbnail failure must never skip saving, and failed saves must block exit. */
 	async prepareExit(): Promise<void> {
 		if (!this.active) return;
 
 		try {
-			const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-			if (didUpdateThumbnail) {
-				await this.editor.save.flush();
-			}
+			await this.updateThumbnailFromTimeline();
 		} catch (error) {
 			console.error("Failed to generate project thumbnail on exit:", error);
 		}
+		await this.editor.save.flush();
 	}
 
 	getFilteredAndSortedProjects({
@@ -775,7 +804,11 @@ export class ProjectManager {
 		return this.migrationState;
 	}
 
+	/** Commands target the active project; never carry their snapshots into another one. */
 	setActiveProject({ project }: { project: TProject }): void {
+		if (this.active?.metadata.id !== project.metadata.id) {
+			this.editor.command.clear();
+		}
 		this.active = project;
 		this.notify();
 	}
@@ -812,15 +845,27 @@ export class ProjectManager {
 			background,
 		});
 
+		// Render the thumbnail at a bounded size instead of the full project
+		// canvas. The transform pipeline scales via canvasSize, so the frame is
+		// identical to the full-res render — this only avoids allocating a large
+		// GPU surface (1920×1080 or bigger) for a card-sized image and keeps the
+		// stored data URL small. Cap the longest edge; keep the aspect ratio.
+		const THUMBNAIL_MAX_EDGE = 640;
+		const longestEdge = Math.max(canvasSize.width, canvasSize.height);
+		const thumbnailScale = Math.min(1, THUMBNAIL_MAX_EDGE / longestEdge);
+		const thumbnailWidth = Math.max(2, Math.round(canvasSize.width * thumbnailScale));
+		const thumbnailHeight = Math.max(2, Math.round(canvasSize.height * thumbnailScale));
+
 		const renderer = new CanvasRenderer({
-			width: canvasSize.width,
-			height: canvasSize.height,
+			width: thumbnailWidth,
+			height: thumbnailHeight,
+			canvasSize,
 			fps: this.active.settings.fps,
 		});
 
 		const tempCanvas = document.createElement("canvas");
-		tempCanvas.width = canvasSize.width;
-		tempCanvas.height = canvasSize.height;
+		tempCanvas.width = thumbnailWidth;
+		tempCanvas.height = thumbnailHeight;
 
 		try {
 			await renderer.renderToCanvas({

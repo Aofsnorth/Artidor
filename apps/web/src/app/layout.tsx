@@ -10,7 +10,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { I18nProvider } from "@/lib/i18n";
-import { DynamicEnvWarningModal } from "@/components/dynamic-env-warning-modal";
+import { EnvWarningModal } from "@/components/env-warning-modal";
 
 const siteFont = Inter({
 	subsets: ["latin"],
@@ -75,7 +75,7 @@ export default function RootLayout({
 								data-track-web-vitals={false}
 								data-track-sessions={false}
 							/>
-							<DynamicEnvWarningModal isMissing={isEnvMissing} />
+							<EnvWarningModal isMissing={isEnvMissing} />
 							{children}
 							<Analytics />
 							<SpeedInsights />

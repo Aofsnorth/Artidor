@@ -104,30 +104,46 @@ class UnifiedCompositor {
 			this.nativeReady = true;
 		}
 
-		const { invoke } = await import("@tauri-apps/api/core");
-		const bytes = await invoke<number[]>("render_frame", { frame });
-		const uint8 = new Uint8Array(bytes);
+		try {
+			const { invoke } = await import("@tauri-apps/api/core");
+			const bytes = await invoke<number[]>("render_frame", { frame });
+			const uint8 = new Uint8Array(bytes);
 
-		// Draw BGRA bytes to the WASM compositor's canvas via putImageData.
-		// This keeps the output canvas consistent with the preview path.
-		const canvas = wasmCompositor.getCanvas();
-		const width = (canvas as HTMLCanvasElement).width;
-		const height = (canvas as HTMLCanvasElement).height;
+			// Draw BGRA bytes to the WASM compositor's canvas via putImageData.
+			// This keeps the output canvas consistent with the preview path.
+			const canvas = wasmCompositor.getCanvas();
+			const width = (canvas as HTMLCanvasElement).width;
+			const height = (canvas as HTMLCanvasElement).height;
 
-		const ctx = (canvas as HTMLCanvasElement).getContext("2d");
-		if (!ctx) throw new Error("Failed to get 2d context for native output");
+			const ctx = (canvas as HTMLCanvasElement).getContext("2d");
+			if (!ctx) throw new Error("Failed to get 2d context for native output");
 
-		// BGRA → RGBA conversion
-		const rgba = new Uint8ClampedArray(width * height * 4);
-		for (let i = 0; i < uint8.length; i += 4) {
-			rgba[i] = uint8[i + 2];
-			rgba[i + 1] = uint8[i + 1];
-			rgba[i + 2] = uint8[i];
-			rgba[i + 3] = uint8[i + 3];
+			// A resized canvas (or a native buffer sized from init dims) makes the
+			// BGRA→RGBA conversion read out of range and silently corrupt frames.
+			if (uint8.length !== width * height * 4) {
+				throw new Error(
+					`Native frame size mismatch: got ${uint8.length} bytes, expected ${width * height * 4}`,
+				);
+			}
+
+			// BGRA → RGBA conversion
+			const rgba = new Uint8ClampedArray(width * height * 4);
+			for (let i = 0; i < uint8.length; i += 4) {
+				rgba[i] = uint8[i + 2];
+				rgba[i + 1] = uint8[i + 1];
+				rgba[i + 2] = uint8[i];
+				rgba[i + 3] = uint8[i + 3];
+			}
+
+			const imageData = new ImageData(rgba, width, height);
+			ctx.putImageData(imageData, 0, 0);
+		} catch (error) {
+			// Force re-init on the next native attempt: a device loss or a Tauri
+			// restart leaves the native side dead, and retrying render_frame
+			// against it would fall back to WASM on every frame forever.
+			this.nativeReady = false;
+			throw error;
 		}
-
-		const imageData = new ImageData(rgba, width, height);
-		ctx.putImageData(imageData, 0, 0);
 	}
 
 	get isNative(): boolean {

@@ -7,43 +7,40 @@
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-animate";
 
-/* Hide scrollbar globally while keeping scrolling functional.
-   We strip the visible scrollbar on EVERY element (not just
-   html/body) — Firefox via `scrollbar-width: none`, WebKit via
-   `::-webkit-scrollbar { display: none }`. The user can still
-   scroll with mouse wheel / trackpad / keyboard; they just don't
-   see a chrome bar taking 16px on the side. Specific components
-   that *want* a visible scrollbar (timeline, AI chat, code
-   blocks) opt back in with `.scrollbar-thin`. */
-html,
-body,
-* {
-	scrollbar-width: none;
-	-ms-overflow-style: none;
+/* Keep overflow discoverable. Components with custom scroll controls can
+   still opt out via scrollbar-hidden; ordinary pages retain native scrolling. */
+@layer base {
+	* {
+		scrollbar-width: thin;
+		scrollbar-color: var(--muted-foreground) transparent;
+	}
+
+	/* Only editor chrome suppresses selection, never public documentation. */
+	.editing-screen {
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	input,
+	textarea,
+	[contenteditable="true"],
+	[contenteditable=""],
+	.select-text {
+		user-select: text;
+		-webkit-user-select: text;
+	}
+
+	button,
+	a {
+		touch-action: manipulation;
+	}
 }
 
-/* Disable native text selection app-wide (desktop-editor feel). Applied to
-   every element (not just body) so Radix portals / tooltips that escape the
-   body inheritance chain are still covered. Inputs, textareas, contenteditable,
-   and anything explicitly tagged .select-text opt back in. */
-* {
-	user-select: none;
-	-webkit-user-select: none;
-}
-input,
-textarea,
-[contenteditable="true"],
-[contenteditable=""],
-.select-text {
-	user-select: text;
-	-webkit-user-select: text;
-}
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-*::-webkit-scrollbar {
-	width: 0;
-	height: 0;
-	display: none;
+/* Raw controls need the same keyboard affordance as shared primitives.
+   Outside a layer so component outline resets cannot hide keyboard focus. */
+:where(button, a, input, textarea, select, [role="tab"], [role="slider"]):focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
 }
 
 /* Glassmorphism color system: pure grayscale from white to black. No blues,
@@ -116,10 +113,11 @@ body::-webkit-scrollbar,
 		0 8px 32px 0 rgba(0, 0, 0, 0.08),
 		inset 0 1px 0 rgba(255, 255, 255, 0.6);
 	border: 1px solid rgba(0, 0, 0, 0.06);
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 .dark {
+	color-scheme: dark;
 	--background: hsl(0, 0%, 6%);
 	--foreground: hsl(0, 0%, 96%);
 	--card: hsl(0, 0%, 9%);
@@ -224,8 +222,8 @@ body::-webkit-scrollbar,
 	--font-serif: var(--font-serif), serif;
 
 	/* Font sizes */
-	--text-xs: 0.72rem;
-	--text-sm: 0.79rem;
+	--text-xs: 0.75rem;
+	--text-sm: 0.8125rem;
 	--text-base: 0.92rem;
 	--text-base--line-height: calc(1.5 / 0.95);
 	--text-xs--line-height: calc(1 / 0.8);
@@ -336,7 +334,10 @@ body::-webkit-scrollbar,
 }
 
 @utility scrollbar-thin {
+	scrollbar-width: thin;
+	scrollbar-color: var(--muted-foreground) transparent;
 	&::-webkit-scrollbar {
+		display: block;
 		width: 7px;
 		height: 7px;
 	}
@@ -431,17 +432,13 @@ body::-webkit-scrollbar,
 }
 
 @utility asset-preview-container {
-	@apply relative flex aspect-square w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md text-center transition-all duration-300;
-	background: rgba(15, 15, 15, 0.4);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
-	border: 1px solid rgba(255, 255, 255, 0.05);
-	box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+	@apply relative flex aspect-square w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md text-center transition-colors duration-150;
+	background: var(--card);
+	border: 1px solid var(--border);
 
 	&:hover {
-		background: rgba(25, 25, 25, 0.65);
-		border-color: rgba(255, 255, 255, 0.15);
-		box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.7);
+		background: var(--accent);
+		border-color: var(--muted-foreground);
 	}
 }
 
@@ -451,6 +448,39 @@ body::-webkit-scrollbar,
 		linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
 		linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
 	background-size: 8px 8px;
+}
+
+@keyframes model-id-marquee-scroll {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(calc(-1 * var(--model-marquee-distance)));
+	}
+}
+
+.model-id-marquee {
+	animation: model-id-marquee-scroll var(--model-marquee-duration) linear
+		infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		/* biome-ignore lint/complexity/noImportantStyles: user motion preference must override utility and inline animations */
+		animation-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: prevent perpetual decorative loops in reduced-motion mode */
+		animation-iteration-count: 1 !important;
+		/* biome-ignore lint/complexity/noImportantStyles: accessibility override for component transition durations */
+		transition-duration: 0.01ms !important;
+		/* biome-ignore lint/complexity/noImportantStyles: user motion preference takes precedence over smooth-scroll utilities */
+		scroll-behavior: auto !important;
+	}
+
+	.model-id-marquee {
+		animation: none;
+	}
 }
 
 /* ── Drop-zone animations ─────────────────────────────────────── */
@@ -606,34 +636,24 @@ body::-webkit-scrollbar,
 }
 
 .editing-screen {
-	background:
-		radial-gradient(
-			circle at 100% 100%,
-			rgba(255, 255, 255, 0.05),
-			transparent 18rem
-		),
-		linear-gradient(180deg, #0e0e0f 0%, #0a0a0b 44%, #070708 100%);
+	background: var(--background);
 }
 
-.editing-screen::before {
-	pointer-events: none;
-	content: "";
-	position: fixed;
-	inset: 0;
-	z-index: 0;
-	opacity: 0.24;
-	background-image: radial-gradient(
-		rgba(255, 255, 255, 0.28) 0.6px,
-		transparent 0.8px
-	);
-	background-size: 22px 22px;
-	mask-image: linear-gradient(
-		to bottom,
-		black,
-		transparent 18%,
-		transparent 78%,
-		black
-	);
+/* Docked panels use opaque, quiet surfaces. Do not change preview imagery,
+   timeline clip colors or floating-window elevation with this rule. */
+.editing-screen .panel {
+	--background: #171719;
+	--card: #1d1d20;
+	--muted-foreground: #a6a6ad;
+	--border: #303034;
+	--input: #232326;
+	--ring: #c4c4cc;
+	background-color: var(--background);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	box-shadow: none;
+	backdrop-filter: none;
+	-webkit-backdrop-filter: none;
 }
 
 .editing-screen > * {

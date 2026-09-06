@@ -1,4 +1,5 @@
 import type { EditorCore } from "@/core";
+import { toast } from "sonner";
 
 type SaveManagerOptions = {
 	debounceMs?: number;
@@ -7,7 +8,7 @@ type SaveManagerOptions = {
 export class SaveManager {
 	private debounceMs: number;
 	private isPaused = false;
-	private isSaving = false;
+	private activeSave: Promise<void> | null = null;
 	private hasPendingSave = false;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private unsubscribeHandlers: Array<() => void> = [];
@@ -42,6 +43,7 @@ export class SaveManager {
 
 	pause(): void {
 		this.isPaused = true;
+		this.clearTimer();
 	}
 
 	resume(): void {
@@ -57,46 +59,58 @@ export class SaveManager {
 		this.queueSave();
 	}
 
+	/** Drain in-flight and newly dirtied snapshots before allowing navigation. */
 	async flush(): Promise<void> {
 		this.hasPendingSave = true;
-		await this.saveNow();
+		this.clearTimer();
+		while (this.getIsDirty()) {
+			if (!this.activeSave && !this.canSave()) return;
+			// Writes must be serialized; a concurrent edit can dirty the next snapshot.
+			await this.saveNow();
+		}
 	}
 
 	getIsDirty(): boolean {
-		return this.hasPendingSave || this.isSaving;
+		return this.hasPendingSave || this.activeSave !== null;
 	}
 
 	private queueSave(): void {
-		if (this.isSaving) return;
+		if (this.activeSave || this.isPaused) return;
 		if (this.saveTimer) {
 			clearTimeout(this.saveTimer);
 		}
 		this.saveTimer = setTimeout(() => {
-			void this.saveNow();
+			this.saveNow().catch(() => {
+				toast.error("Changes could not be saved", {
+					description: "Your edits are still in memory. Retry saving before closing the editor.",
+				});
+			});
 		}, this.debounceMs);
 	}
 
+	private canSave(): boolean {
+		return this.editor.project.getActiveOrNull() !== null &&
+			!this.editor.project.getIsLoading() &&
+			!this.editor.project.getMigrationState().isMigrating;
+	}
+
 	private async saveNow(): Promise<void> {
-		if (this.isSaving) return;
-		if (!this.hasPendingSave) return;
+		if (this.activeSave) return this.activeSave;
+		if (!this.hasPendingSave || !this.canSave()) return;
 
-		const activeProject = this.editor.project.getActiveOrNull();
-		if (!activeProject) return;
-		if (this.editor.project.getIsLoading()) return;
-		if (this.editor.project.getMigrationState().isMigrating) return;
-
-		this.isSaving = true;
 		this.hasPendingSave = false;
 		this.clearTimer();
-
+		this.activeSave = Promise.resolve().then(() => this.editor.project.saveCurrentProject());
 		try {
-			await this.editor.project.saveCurrentProject();
+			await this.activeSave;
+		} catch (error) {
+			this.hasPendingSave = true;
+			throw error;
 		} finally {
-			this.isSaving = false;
-			if (this.hasPendingSave) {
-				this.queueSave();
-			}
+			this.activeSave = null;
 		}
+		// Failed saves remain dirty but do not spin in an automatic retry loop.
+		if (this.hasPendingSave) this.queueSave();
 	}
 
 	private clearTimer(): void {

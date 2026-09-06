@@ -14,6 +14,7 @@ import {
 	DialogBody,
 	DialogContent,
 	DialogHeader,
+	DialogDescription,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Settings01Icon }[] =
 		{ id: "audio", label: "Audio", icon: MusicNote03Icon },
 	];
 
+/** Settings keep their existing store ownership; navigation stacks on small screens. */
 export function SettingsDialog({
 	isOpen,
 	onOpenChange,
@@ -45,29 +47,31 @@ export function SettingsDialog({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={onOpenChange}>
-			<DialogContent className="flex max-h-[85vh] max-w-3xl flex-col">
+			<DialogContent className="dark flex max-h-[85dvh] max-w-3xl flex-col text-foreground">
 				<DialogHeader>
 					<DialogTitle>Settings</DialogTitle>
+										<DialogDescription>Preferences apply as you change them.</DialogDescription>
 				</DialogHeader>
-				<DialogBody className="grid min-h-0 flex-1 grid-cols-[10rem_1fr] gap-4 overflow-hidden p-4">
-					<nav className="flex flex-col gap-1">
+				<DialogBody className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden p-4 sm:grid-cols-[9rem_minmax(0,1fr)]">
+					<nav aria-label="Settings categories" className="flex gap-1 overflow-x-auto pb-1 sm:flex-col">
 						{TABS.map((tab) => (
 							<button
 								type="button"
 								key={tab.id}
 								className={cn(
-									"flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-white/55 transition hover:bg-white/[0.06] hover:text-white",
+									"flex min-h-9 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
 									activeTab === tab.id &&
-										"bg-white/[0.08] text-white shadow-inner",
+										"bg-accent text-foreground",
 								)}
-								onClick={() => setActiveTab(tab.id)}
+								aria-pressed={activeTab === tab.id}
+																onClick={() => setActiveTab(tab.id)}
 							>
 								<HugeiconsIcon icon={tab.icon} className="size-4" />
 								{tab.label}
 							</button>
 						))}
 					</nav>
-					<div className="min-h-0 overflow-y-auto rounded-lg border border-white/[0.06] bg-white/[0.015] p-4">
+					<div className="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-1 sm:border-l sm:border-border sm:pl-4">
 						{activeTab === "general" && <GeneralSettings />}
 						{activeTab === "ai" && <AISettings />}
 						{activeTab === "shortcuts" && <ShortcutsSettings />}
@@ -111,7 +115,8 @@ function GeneralSettings() {
 			>
 				<select
 					className="rounded-md border border-white/10 bg-white/4 px-2 py-1 text-sm text-white/85"
-					value={locale}
+					aria-label={t("settings.language")}
+										value={locale}
 					onChange={(event) => setLocale(event.currentTarget.value as Locale)}
 				>
 					{LOCALES.map((item) => (
@@ -127,7 +132,8 @@ function GeneralSettings() {
 				description="Skip the 'type DELETE to confirm' step when removing a project from the home screen."
 			>
 				<Switch
-					checked={skipDeleteConfirm}
+					aria-label="Don't ask before deleting projects"
+										checked={skipDeleteConfirm}
 					onCheckedChange={setSkipDeleteConfirm}
 				/>
 			</SettingRow>
@@ -137,7 +143,8 @@ function GeneralSettings() {
 				description="Show hover-revealed popout buttons on editor panels (assets, preview, properties, timeline) to pop them out into separate browser windows. Disabled by default."
 			>
 				<Switch
-					checked={enablePopoutPanels}
+					aria-label="Enable popout panels"
+										checked={enablePopoutPanels}
 					onCheckedChange={setEnablePopoutPanels}
 				/>
 			</SettingRow>
@@ -146,14 +153,14 @@ function GeneralSettings() {
 				title="Show FPS monitor"
 				description="Display a realtime editor FPS badge in the bottom-left while editing. Measures UI smoothness, not video frame rate. Turning it off stops all measurement."
 			>
-				<Switch checked={showFpsMonitor} onCheckedChange={setShowFpsMonitor} />
+				<Switch aria-label="Show FPS monitor" checked={showFpsMonitor} onCheckedChange={setShowFpsMonitor} />
 			</SettingRow>
 
 			<SettingRow
 				title="HD drag preview"
 				description="Show detailed, opaque preview when dragging clips on the timeline. When off, drag previews are lightweight transparent outlines."
 			>
-				<Switch checked={hdDragPreview} onCheckedChange={setHdDragPreview} />
+				<Switch aria-label="HD drag preview" checked={hdDragPreview} onCheckedChange={setHdDragPreview} />
 			</SettingRow>
 
 			<SettingRow
@@ -162,7 +169,8 @@ function GeneralSettings() {
 			>
 				<select
 					className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-sm text-white/85"
-					value={defaultFps}
+					aria-label="Default frame rate for new projects"
+										value={defaultFps}
 					onChange={(e) => setDefaultFps(Number(e.target.value))}
 				>
 					{[24, 25, 30, 50, 60].map((fps) => (
@@ -208,8 +216,9 @@ function AISettings() {
 			{/* AI Persona */}
 			<div className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
 				<div className="flex flex-col gap-1.5">
-					<Label className="text-[12px] text-white/70">Assistant name</Label>
+					<Label htmlFor="settings-assistant-name" className="text-[12px] text-white/70">Assistant name</Label>
 					<Input
+						id="settings-assistant-name"
 						value={aiName}
 						onChange={(e) => setAiName(e.target.value)}
 						placeholder="Arth"
@@ -221,8 +230,9 @@ function AISettings() {
 					</p>
 				</div>
 				<div className="flex flex-col gap-1.5">
-					<Label className="text-[12px] text-white/70">Personality</Label>
+					<Label htmlFor="settings-assistant-personality" className="text-[12px] text-white/70">Personality</Label>
 					<textarea
+						id="settings-assistant-personality"
 						value={aiPersonality}
 						onChange={(e) => setAiPersonality(e.target.value)}
 						placeholder="e.g. Be concise and friendly. Use casual language. Focus on speed."
@@ -241,7 +251,7 @@ function AISettings() {
 				title="Co-edit mode"
 				description="When enabled, you can keep editing the timeline, preview, and properties while the AI is in control. The editor stays interactive instead of being locked. A thin border glow still shows the AI is active."
 			>
-				<Switch checked={aiCoEditMode} onCheckedChange={setAiCoEditMode} />
+				<Switch aria-label="Co-edit mode" checked={aiCoEditMode} onCheckedChange={setAiCoEditMode} />
 			</SettingRow>
 
 			<SettingRow
@@ -458,11 +468,11 @@ function SettingRow({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex items-start justify-between gap-3 rounded-md border border-white/[0.05] bg-white/[0.02] p-3">
-			<div className="min-w-0">
-				<Label className="text-[13px] font-medium text-white/85">{title}</Label>
+		<div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4 last:border-b-0">
+			<div className="min-w-0 flex-1 basis-40">
+				<p className="text-sm font-medium text-foreground">{title}</p>
 				{description && (
-					<p className="mt-0.5 text-[11.5px] leading-snug text-white/50">
+					<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
 						{description}
 					</p>
 				)}

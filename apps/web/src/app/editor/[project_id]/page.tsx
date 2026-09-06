@@ -14,6 +14,7 @@ import { PropertiesPanel } from "@/components/editor/panels/properties";
 import { Timeline } from "@/components/editor/panels/timeline";
 import { PreviewPanel } from "@/components/editor/panels/preview";
 import { EditorHeader } from "@/components/editor/editor-header";
+import { AdvancedViewerPanel } from "@/components/editor/advanced-viewers-dropdown";
 import {
 	AUDIO_METER_WIDTH_DEFAULT_PX,
 	VerticalAudioMeter,
@@ -32,16 +33,19 @@ import { useViewerStore } from "@/stores/viewer-store";
 import {
 	Cancel01Icon,
 	ViewIcon,
-	SparklesIcon,
+
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { cn } from "@/utils/ui";
+
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
+	DialogHeader,
+	DialogBody,
+	DialogFooter,
 } from "@/components/ui/dialog";
 import {
 	FloatingWindow,
@@ -123,7 +127,7 @@ export default function Editor() {
 					   dark colors, so light mode renders broken. Pin the `dark`
 					   class here so the whole editor subtree stays dark regardless
 					   of the global theme toggle. */}
-					<div className="dark editing-screen flex h-screen w-screen flex-col overflow-hidden bg-[#111114] text-white relative">
+					<div className="dark editing-screen flex h-dvh w-full flex-col overflow-hidden text-foreground relative">
 						{/* Main App Content */}
 						<div className="z-10 flex flex-col h-full w-full relative">
 							<ReadOnlyBanner />
@@ -179,88 +183,22 @@ function FeedbackPrompt() {
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent
-				className={cn(
-					"sm:max-w-110 p-0 overflow-hidden",
-					"bg-linear-to-b from-[#0c0c10] to-[#08080c]",
-					"border border-white/[0.07]",
-					"shadow-[0_40px_120px_-20px_rgba(0,0,0,0.75),0_0_80px_-20px_rgba(255,255,255,0.06)]",
-				)}
-			>
-				{/* Ambient glow */}
-				<div
-					aria-hidden
-					className="pointer-events-none absolute inset-0"
-					style={{
-						background: [
-							"radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%)",
-							"radial-gradient(ellipse 50% 40% at 50% 100%, rgba(255, 255, 255, 0.04), transparent 55%)",
-						].join(", "),
-					}}
-				/>
-				{/* Top accent line */}
-				<div
-					aria-hidden
-					className="absolute top-0 left-0 right-0 h-px"
-					style={{
-						background:
-							"linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)",
-					}}
-				/>
-
-				<div className="relative">
-					{/* Header */}
-					<div className="flex items-center gap-3 px-6 pt-6 pb-4">
-						<div className="grid size-10 place-items-center rounded-xl border border-white/8 bg-white/4">
-							<HugeiconsIcon
-								icon={SparklesIcon}
-								className="size-5 text-white/70"
-							/>
-						</div>
-						<div>
-							<DialogTitle className="font-serif text-base text-white">
-								How&apos;s the editor?
-							</DialogTitle>
-							<DialogDescription className="text-[0.7rem] text-white/40">
-								We&apos;d love to hear what you think.
-							</DialogDescription>
-						</div>
-					</div>
-
-					{/* Divider */}
-					<div className="mx-6 h-px bg-linear-to-r from-transparent via-white/8 to-transparent" />
-
-					{/* Body */}
-					<div className="px-6 py-5">
-						<p className="text-sm leading-relaxed text-white/60">
-							Your feedback helps us shape the future of Artidor. It only takes
-							a minute.
-						</p>
-					</div>
-
-					{/* Footer */}
-					<div className="flex items-center justify-between border-t border-white/6 px-6 py-4">
-						<button
-							type="button"
-							onClick={() => setOpen(false)}
-							className="text-[0.7rem] font-medium text-white/40 transition-colors hover:text-white/60"
-						>
-							Maybe later
-						</button>
-						<a
-							href="https://forms.gle/vxnmr1goxkLVAB3w9"
-							target="_blank"
-							rel="noreferrer"
-							onClick={() => setOpen(false)}
-							className={cn(
-								"flex items-center gap-2 rounded-lg border border-white/15 bg-white/8 px-4 py-2 text-xs font-medium text-white transition-all",
-								"hover:bg-white/12 hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.2)]",
-							)}
-						>
-							Open form
-						</a>
-					</div>
-				</div>
+			<DialogContent className="sm:max-w-110">
+				<DialogHeader>
+					<DialogTitle>How&apos;s the editor?</DialogTitle>
+					<DialogDescription>Tell us what worked and what got in your way.</DialogDescription>
+				</DialogHeader>
+				<DialogBody>
+					<p className="text-sm leading-relaxed text-muted-foreground">
+						Your feedback helps us improve Artidor. The form opens in a new tab.
+					</p>
+				</DialogBody>
+				<DialogFooter>
+					<Button variant="ghost" onClick={() => setOpen(false)}>Maybe later</Button>
+					<Button asChild>
+						<a href="https://forms.gle/vxnmr1goxkLVAB3w9" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Open feedback form</a>
+					</Button>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);
@@ -329,7 +267,10 @@ function DegradedRendererBanner() {
 
 	return (
 		<div className="bg-accent border-b h-9 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			<span>For the best experience, open Artidor in Chrome.</span>
+		<span>
+				GPU preview is unavailable in this browser session. Editing remains
+				available with a static preview fallback.
+			</span>
 			<Button
 				variant="text"
 				size="icon"
@@ -406,6 +347,7 @@ function EditorLayout() {
 function EditorPanels() {
 	const { panels, setPanel, resetPanels } = usePanelStore();
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
+	const activeAdvancedViewer = useEditorUIStore((s) => s.activeAdvancedViewer);
 	const [layoutVersion, setLayoutVersion] = useState(0);
 
 	// Self-healing: reset corrupt/collapsed layouts from old migrations
@@ -502,6 +444,7 @@ function EditorPanels() {
 						direction="horizontal"
 						className="size-full gap-1"
 						onLayoutChanged={(layout) => {
+							if (activeAdvancedViewer) return;
 							if (layout.tools !== undefined && layout.tools >= 10) {
 								setPanel("tools", layout.tools);
 							}
@@ -574,6 +517,21 @@ function EditorPanels() {
 								</div>
 							)}
 						</ResizablePanel>
+
+						{activeAdvancedViewer ? (
+							<>
+								<ResizableHandle withHandle />
+								<ResizablePanel
+									id="advanced-viewer"
+									defaultSize="24%"
+									minSize="18%"
+									maxSize="42%"
+									className="min-h-0 min-w-0"
+								>
+									<AdvancedViewerPanel />
+								</ResizablePanel>
+							</>
+						) : null}
 					</ResizablePanelGroup>
 				</ResizablePanel>
 

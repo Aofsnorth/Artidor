@@ -35,6 +35,7 @@ import { formatTimecode, mediaTimeToSeconds } from "artidor-wasm";
 import { cn } from "@/utils/ui";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+/** Read-only project summary; Reset panel restores inspector preferences only. */
 export function ProjectDetailsView() {
 	const editor = useEditor();
 	// We only re-render on the fields we actually display so this stays
@@ -76,32 +77,29 @@ export function ProjectDetailsView() {
 	})();
 
 	const onResetAll = () => {
-		// The Reset-all button normally applies to the selected element.
-		// With nothing selected it's still useful to revert any
-		// inspector-level preferences (e.g. accidentally collapsed the
-		// media card) back to defaults.
+		// This resets inspector preferences, never project settings or media.
 		resetMediaSummarySize("default");
 		setActiveTab("video", "transform");
 	};
 
 	return (
 		<div className="flex h-full w-full flex-col flex-1 min-h-0">
-			<div className="border-b border-white/10 bg-linear-to-b from-white/[0.045] to-transparent px-3.5 py-3.5">
+			<div className="border-b border-border px-3 py-3">
 				<div className="flex items-center justify-between">
-					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+					<div className="text-xs font-semibold text-foreground">
 						Details
 					</div>
 					<button
 						type="button"
 						onClick={onResetAll}
-						className="rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-1 text-[0.65rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+						className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
-						Reset all
+						Reset panel
 					</button>
 				</div>
 			</div>
 
-			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden">
+			<ScrollArea className="min-h-0 flex-1">
 				{/* `min-h-full` (not `h-full`) lets the stack fill the panel
 				   when there's room but grow past it — and scroll — when the
 				   panel is short. Combined with sections that keep their
@@ -111,7 +109,7 @@ export function ProjectDetailsView() {
 					<ProjectHero
 						name={meta.name}
 						thumbnail={meta.thumbnail}
-						onResetAll={onResetAll}
+
 						onRegenerate={async () => {
 							try {
 								toast.loading("Regenerating thumbnail…", {
@@ -153,7 +151,7 @@ export function ProjectDetailsView() {
 							value={
 								<span className="inline-flex items-baseline gap-1">
 									<span>{fps}</span>
-									<span className="text-[0.65rem] text-white/40">fps</span>
+									<span className="text-xs text-muted-foreground">fps</span>
 								</span>
 							}
 						/>
@@ -184,22 +182,22 @@ export function ProjectDetailsView() {
 function ProjectHero({
 	name,
 	thumbnail,
-	onResetAll,
+
 	onRegenerate,
 }: {
 	name: string;
 	thumbnail: string | undefined;
-	onResetAll: () => void;
+
 	onRegenerate: () => void | Promise<void>;
 }) {
 	return (
-		<div className="rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 shadow-inner shadow-white/[0.02]">
+		<div className="border-b border-border pb-3">
 			{/* Thumbnail is a compact `h-20` (80px) strip — the user
 			   just selected nothing on the timeline, so this is a
 			   at-a-glance summary, not a hero shot. The thumbnail
 			   is wide enough to recognise the first frame but small
 			   enough that the data cards below still have room. */}
-			<div className="group relative mb-2 flex h-20 w-full items-center justify-center overflow-hidden rounded-md border border-white/10 bg-gradient-to-br from-white/[0.06] to-black/40 shadow-[0_4px_14px_rgba(0,0,0,0.2)]">
+			<div className="group relative mb-3 flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-card">
 				{thumbnail ? (
 					<Image
 						src={thumbnail}
@@ -234,27 +232,7 @@ function ProjectHero({
 				>
 					{name}
 				</div>
-				<button
-					type="button"
-					onClick={onResetAll}
-					className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.045] px-2 py-0.5 text-[0.62rem] text-white/[0.55] transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-				>
-					Reset all
-				</button>
 			</div>
-			<div className="mt-1 flex items-center justify-center gap-1.5 text-[0.62rem] text-white/40">
-				<span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-1.5 py-px uppercase tracking-[0.14em]">
-					Project
-				</span>
-			</div>
-			<button
-				type="button"
-				onClick={onResetAll}
-				title="Reveal in the Projects page"
-				className="mt-2 w-full rounded-md border border-white/[0.06] bg-white/[0.025] px-2 py-1 text-[0.62rem] text-white/55 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-			>
-				View full project info
-			</button>
 		</div>
 	);
 }
@@ -269,8 +247,8 @@ function Section({
 	children: React.ReactNode;
 }) {
 	return (
-		<section className="flex flex-1 flex-col rounded-xl border border-white/[0.08] bg-white/[0.02] p-2.5 shadow-inner shadow-white/[0.015]">
-			<header className="mb-1.5 flex shrink-0 items-center gap-1.5 border-b border-white/[0.05] pb-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-white/40">
+		<section className="flex shrink-0 flex-col border-b border-border py-3 last:border-b-0">
+			<header className="mb-3 flex shrink-0 items-center gap-2 text-xs font-medium text-foreground">
 				<HugeiconsIcon icon={icon} className="size-3" />
 				<span>{title}</span>
 			</header>
@@ -281,8 +259,8 @@ function Section({
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 	return (
-		<div className="flex items-center justify-between gap-3 py-0.5 text-[0.7rem]">
-			<dt className="shrink-0 text-white/45">{label}</dt>
+		<div className="flex items-center justify-between gap-3 py-1 text-xs">
+			<dt className="shrink-0 text-muted-foreground">{label}</dt>
 			<dd className="min-w-0 truncate text-right font-medium text-white/90">
 				{value}
 			</dd>

@@ -4,10 +4,11 @@ import { generateUUID } from "@/utils/id";
 import { EditorCore } from "@/core";
 import { isRetimableElement } from "@/lib/timeline";
 import { splitAnimationsAtTime } from "@/lib/animation";
-import { getSourceSpanAtClipTime } from "@/lib/retime";
+import { getSourceSpanAtClipTime, splitRetimeAtClipTime } from "@/lib/retime";
 
 export class SplitElementsCommand extends Command {
 	private savedState: SceneTracks | null = null;
+	private appliedState: SceneTracks | null = null;
 	private rightSideElements: { trackId: string; elementId: string }[] = [];
 	private readonly elements: { trackId: string; elementId: string }[];
 	private readonly splitTime: number;
@@ -78,12 +79,19 @@ export class SplitElementsCommand extends Command {
 				const leftSourceSpan = getSourceSpanAtClipTime({
 					clipTime: leftVisibleDuration,
 					retime: retimeRef,
+					clipDuration: element.duration,
 				});
 				const totalSourceSpan = getSourceSpanAtClipTime({
 					clipTime: element.duration,
 					retime: retimeRef,
+					clipDuration: element.duration,
 				});
 				const rightSourceSpan = totalSourceSpan - leftSourceSpan;
+				const splitRetime = splitRetimeAtClipTime({
+					retime: retimeRef,
+					splitClipTime: relativeTime,
+					clipDuration: element.duration,
+				});
 				const { leftAnimations, rightAnimations } = splitAnimationsAtTime({
 					animations: element.animations,
 					splitTime: relativeTime,
@@ -98,7 +106,7 @@ export class SplitElementsCommand extends Command {
 							trimEnd: element.trimEnd + rightSourceSpan,
 							name: `${element.name} (left)`,
 							animations: leftAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(splitRetime.left !== undefined ? { retime: splitRetime.left } : {}),
 						},
 					];
 				}
@@ -118,7 +126,7 @@ export class SplitElementsCommand extends Command {
 							trimStart: element.trimStart + leftSourceSpan,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(splitRetime.right !== undefined ? { retime: splitRetime.right } : {}),
 						},
 					];
 				}
@@ -137,7 +145,7 @@ export class SplitElementsCommand extends Command {
 						trimEnd: element.trimEnd + rightSourceSpan,
 						name: `${element.name} (left)`,
 						animations: leftAnimations,
-						...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+						...(splitRetime.left !== undefined ? { retime: splitRetime.left } : {}),
 					},
 					{
 						...element,
@@ -147,7 +155,7 @@ export class SplitElementsCommand extends Command {
 						trimStart: element.trimStart + leftSourceSpan,
 						name: `${element.name} (right)`,
 						animations: rightAnimations,
-						...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+						...(splitRetime.right !== undefined ? { retime: splitRetime.right } : {}),
 					},
 				];
 			});
@@ -165,6 +173,7 @@ export class SplitElementsCommand extends Command {
 			audio: this.savedState.audio.map((track) => splitTrack(track)),
 		};
 
+		this.appliedState = updatedTracks;
 		editor.timeline.updateTracks(updatedTracks);
 
 		if (this.rightSideElements.length > 0) {
@@ -173,6 +182,15 @@ export class SplitElementsCommand extends Command {
 			};
 		}
 		return undefined;
+	}
+
+	/** Reuse the original split and boundary keyframe IDs on redo. */
+	redo(): CommandResult | undefined {
+		if (!this.appliedState) return undefined;
+		EditorCore.getInstance().timeline.updateTracks(this.appliedState);
+		return this.rightSideElements.length > 0
+			? { select: this.rightSideElements }
+			: undefined;
 	}
 
 	undo(): void {

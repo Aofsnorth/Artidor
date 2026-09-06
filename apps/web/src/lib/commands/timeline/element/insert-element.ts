@@ -1,5 +1,8 @@
 import { Command, type CommandResult } from "@/lib/commands/base-command";
 import { EditorCore } from "@/core";
+import { getOrderedTracks } from "@/lib/timeline/types";
+import { UpdateProjectSettingsCommand } from "@/lib/commands/project/update-project-settings";
+import type { TProjectSettings } from "@/lib/project/types";
 import type {
 	CreateTimelineElement,
 	SceneTracks,
@@ -31,7 +34,9 @@ export interface InsertElementParams {
 export class InsertElementCommand extends Command {
 	private elementId: string;
 	private savedState: SceneTracks | null = null;
+	private appliedState: SceneTracks | null = null;
 	private targetTrackId: string | null = null;
+	private settingsCommand: UpdateProjectSettingsCommand | null = null;
 
 	constructor({ element, placement }: InsertElementParams) {
 		super();
@@ -51,17 +56,9 @@ export class InsertElementCommand extends Command {
 			return;
 		}
 
-		const totalElementsInTimeline =
-			this.savedState.main.elements.length +
-			this.savedState.overlay.reduce(
-				(total, track) => total + track.elements.length,
-				0,
-			) +
-			this.savedState.audio.reduce(
-				(total, track) => total + track.elements.length,
-				0,
-			);
-		const isFirstElement = totalElementsInTimeline === 0;
+		const isFirstElement = getOrderedTracks(this.savedState).every(
+			(track) => track.elements.length === 0,
+		);
 
 		const newElement = this.buildElement({ element: this.element });
 		const updateResult = this.applyPlacementResult({
@@ -79,6 +76,7 @@ export class InsertElementCommand extends Command {
 		const isVisualMedia =
 			newElement.type === "video" || newElement.type === "image";
 
+		this.settingsCommand = null;
 		if (isFirstElement && isVisualMedia) {
 			const mediaAssets = editor.media.getAssets();
 			const activeProject = editor.project.getActive();
@@ -86,29 +84,28 @@ export class InsertElementCommand extends Command {
 				(item: MediaAsset) => item.id === newElement.mediaId,
 			);
 
+			const settings: Partial<TProjectSettings> = {};
 			if (asset?.width && asset?.height) {
 				const nextCanvasSize = { width: asset.width, height: asset.height };
 				const shouldSetOriginalCanvasSize =
 					!activeProject?.settings.originalCanvasSize;
-				editor.project.updateSettings({
-					settings: {
-						canvasSize: nextCanvasSize,
-						...(shouldSetOriginalCanvasSize
-							? { originalCanvasSize: nextCanvasSize }
-							: {}),
-					},
-					pushHistory: false,
-				});
+				settings.canvasSize = nextCanvasSize;
+				if (shouldSetOriginalCanvasSize) {
+					settings.originalCanvasSize = nextCanvasSize;
+				}
 			}
 
 			if (asset?.type === "video" && asset?.fps) {
-				editor.project.updateSettings({
-					settings: { fps: floatToFrameRate(asset.fps) },
-					pushHistory: false,
-				});
+				settings.fps = floatToFrameRate(asset.fps);
+			}
+			if (Object.keys(settings).length > 0) {
+				// The automatic settings change belongs to the same undoable insertion.
+				this.settingsCommand = new UpdateProjectSettingsCommand(settings);
+				this.settingsCommand.execute();
 			}
 		}
 
+		this.appliedState = updatedTracks;
 		editor.timeline.updateTracks(updatedTracks);
 
 		return {
@@ -120,7 +117,16 @@ export class InsertElementCommand extends Command {
 		if (this.savedState) {
 			const editor = EditorCore.getInstance();
 			editor.timeline.updateTracks(this.savedState);
+			this.settingsCommand?.undo();
 		}
+	}
+
+	/** Restore auto-created lanes with their original IDs for dependent edits. */
+	redo(): CommandResult | undefined {
+		if (!this.appliedState || !this.targetTrackId) return undefined;
+		this.settingsCommand?.redo();
+		EditorCore.getInstance().timeline.updateTracks(this.appliedState);
+		return { select: [{ trackId: this.targetTrackId, elementId: this.elementId }] };
 	}
 
 	getElementId(): string {

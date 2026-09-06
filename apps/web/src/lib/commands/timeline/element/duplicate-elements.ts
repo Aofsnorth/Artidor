@@ -1,5 +1,5 @@
 import { Command, type CommandResult } from "@/lib/commands/base-command";
-import type { SceneTracks, TimelineElement } from "@/lib/timeline";
+import { getOrderedTracks, type SceneTracks, type TimelineElement } from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 import { EditorCore } from "@/core";
 import {
@@ -12,9 +12,11 @@ interface DuplicateElementsParams {
 	elements: { trackId: string; elementId: string }[];
 }
 
+/** Duplicate selected clips from any track group without creating empty lanes. */
 export class DuplicateElementsCommand extends Command {
 	private duplicatedElements: { trackId: string; elementId: string }[] = [];
 	private savedState: SceneTracks | null = null;
+	private appliedState: SceneTracks | null = null;
 	private elements: DuplicateElementsParams["elements"];
 
 	constructor({ elements }: DuplicateElementsParams) {
@@ -29,11 +31,7 @@ export class DuplicateElementsCommand extends Command {
 
 		let updatedTracks = this.savedState;
 
-		for (const track of [
-			...this.savedState.overlay,
-			this.savedState.main,
-			...this.savedState.audio,
-		]) {
+		for (const track of getOrderedTracks(this.savedState)) {
 			const elementsToDuplicate = this.elements.filter(
 				(elementEntry) => elementEntry.trackId === track.id,
 			);
@@ -60,6 +58,10 @@ export class DuplicateElementsCommand extends Command {
 						startTime: element.startTime,
 					}),
 				);
+			}
+
+			if (newTrackElements.length === 0) {
+				continue;
 			}
 
 			const placementResult = resolveTrackPlacement({
@@ -91,6 +93,7 @@ export class DuplicateElementsCommand extends Command {
 			}
 		}
 
+		this.appliedState = updatedTracks;
 		editor.timeline.updateTracks(updatedTracks);
 
 		if (this.duplicatedElements.length > 0) {
@@ -106,6 +109,15 @@ export class DuplicateElementsCommand extends Command {
 			const editor = EditorCore.getInstance();
 			editor.timeline.updateTracks(this.savedState);
 		}
+	}
+
+	/** Restore the original IDs so later history entries still target the copies. */
+	redo(): CommandResult | undefined {
+		if (!this.appliedState) return undefined;
+		EditorCore.getInstance().timeline.updateTracks(this.appliedState);
+		return this.duplicatedElements.length > 0
+			? { select: this.duplicatedElements }
+			: undefined;
 	}
 
 	getDuplicatedElements(): { trackId: string; elementId: string }[] {

@@ -122,8 +122,16 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 
 	const handleDelete = (event?: React.MouseEvent) => {
 		event?.stopPropagation();
-		void removePreset(preset.id);
-		toast.success(t("catalog.presetDeleted", { name: preset.name }));
+		// Report the real outcome: storage failures (quota/IndexedDB) must not
+		// show a success toast while the preset reappears after reload.
+		removePreset(preset.id)
+			.then(() => {
+				toast.success(t("catalog.presetDeleted", { name: preset.name }));
+			})
+			.catch((error: unknown) => {
+				console.error("Failed to delete preset:", error);
+				toast.error(t("catalog.presetDeleteFailed", { name: preset.name }));
+			});
 	};
 
 	const startRename = () => {
@@ -238,7 +246,7 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 							>
 								<HugeiconsIcon
 									icon={PlusSignIcon}
-									className="size-3 text-cyan-400"
+									className="size-3 text-white"
 								/>
 							</Button>
 						</div>

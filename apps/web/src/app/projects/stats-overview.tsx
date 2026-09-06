@@ -4,7 +4,7 @@
  * StatsOverview — slim strip across the top of the projects page.
  *
  * Renders 4 KPIs (total projects, detected system/OS, recent edits,
- * storage used) with a serif italic numeral, a tiny caption, and a
+ * storage used) with tabular values, readable captions, and a
  * hairline divider between cells. The strip sits above the project
  * grid and is hidden when there are no projects at all (the empty
  * state owns the screen in that case).
@@ -65,18 +65,19 @@ function StatCell({
 	label: string;
 }) {
 	return (
-		<div className="flex flex-col gap-1 px-5 py-2 first:pl-0 last:pr-0 md:border-r md:border-white/[0.06] last:border-r-0">
-			<div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-[0.16em] text-white/45">
+		<div className="flex min-w-0 flex-col gap-1 px-3 py-2">
+			<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 				{icon}
 				{label}
 			</div>
-			<div className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white md:text-[1.65rem]">
+			<div className="truncate text-base font-medium tabular-nums text-foreground">
 				{value}
 			</div>
 		</div>
 	);
 }
 
+/** Local workspace metadata; never implies remote sync or fabricated usage. */
 export function StatsOverview({
 	projects,
 	className,
@@ -111,9 +112,7 @@ export function StatsOverview({
 		<section
 			aria-label="Workspace stats"
 			className={cn(
-				"grid grid-cols-2 gap-x-3 gap-y-4 md:grid-cols-4 md:gap-x-0",
-				"rounded-2xl border border-white/[0.06] bg-white/[0.02] p-2 md:p-3",
-				"backdrop-blur",
+				"grid shrink-0 grid-cols-2 gap-x-3 gap-y-1 border-b border-border pb-3 md:grid-cols-4",
 				className,
 			)}
 		>

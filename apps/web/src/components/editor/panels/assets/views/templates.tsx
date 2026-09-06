@@ -184,7 +184,7 @@ export function TemplatesView() {
 	);
 }
 
-function applyTemplate({
+async function applyTemplate({
 	editor,
 	template,
 	t,
@@ -199,7 +199,7 @@ function applyTemplate({
 			toast.error(t("catalog.templatePresetUnavailable"));
 			return;
 		}
-		applyPresetTemplate({ editor, name: template.name, build: build(), t });
+		await applyPresetTemplate({ editor, name: template.name, build: build(), t });
 		return;
 	}
 
@@ -213,7 +213,7 @@ function applyTemplate({
 			scenes: project.scenes,
 			activeSceneId: project.currentSceneId,
 		});
-		editor.project.saveCurrentProject();
+		await editor.project.saveCurrentProject();
 		toast.success(t("catalog.templateApplied", { name: template.name }));
 	} catch (err) {
 		console.error("Failed to apply template:", err);
@@ -232,7 +232,7 @@ const GRAPHIC_KIND_TO_DEFINITION: Record<string, string> = {
 	ellipse: "ellipse",
 };
 
-function applyPresetTemplate({
+async function applyPresetTemplate({
 	editor,
 	name,
 	build,
@@ -341,7 +341,7 @@ function applyPresetTemplate({
 			});
 		}
 
-		editor.project.saveCurrentProject();
+		await editor.project.saveCurrentProject();
 		toast.success(t("catalog.templateApplied", { name }));
 	} catch (err) {
 		console.error("Failed to apply preset template:", err);

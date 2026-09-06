@@ -94,8 +94,8 @@ export function TimelineToolbar({
 	};
 
 	return (
-		<ScrollArea className="scrollbar-hidden overflow-x-auto overflow-y-hidden">
-			<div className="grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/10 bg-transparent px-2 py-0.5 z-20">
+		<ScrollArea className="scrollbar-thin overflow-x-auto overflow-y-hidden">
+			<div className="flex h-11 min-w-max items-center gap-4 border-b border-border bg-transparent px-2 py-1 z-20">
 				{/* Left Section: + Track, Separator, Action Buttons */}
 				<div className="flex min-w-0 items-center gap-1 justify-start">
 					<AddSceneButton />
@@ -106,12 +106,12 @@ export function TimelineToolbar({
 				</div>
 
 				{/* Center Section: Scene Selector */}
-				<div className="-translate-x-6">
+				<div className="mx-auto shrink-0">
 					<SceneSelector />
 				</div>
 
 				{/* Right Section: Snapping, Ripple, Zoom controls */}
-				<div className="flex min-w-0 items-center justify-end">
+				<div className="flex shrink-0 items-center justify-end">
 					<ToolbarRightSection
 						zoomLevel={zoomLevel}
 						minZoom={minZoom}
@@ -127,15 +127,24 @@ export function TimelineToolbar({
 function AddSceneButton() {
 	const editor = useEditor();
 	const { t } = useI18n();
+	const [isCreating, setIsCreating] = useState(false);
 
 	const handleAddScene = async () => {
-		const scenes = editor.scenes.getScenes();
-		const nextNumber = scenes.length + 1;
-		const sceneId = await editor.scenes.createScene({
-			name: `Scene ${nextNumber}`,
-			isMain: false,
-		});
-		await editor.scenes.switchToScene({ sceneId });
+		// Busy guard: two rapid clicks would both read the same scenes.length
+		// and create duplicate "Scene N" entries.
+		if (isCreating) return;
+		setIsCreating(true);
+		try {
+			const scenes = editor.scenes.getScenes();
+			const nextNumber = scenes.length + 1;
+			const sceneId = await editor.scenes.createScene({
+				name: `Scene ${nextNumber}`,
+				isMain: false,
+			});
+			await editor.scenes.switchToScene({ sceneId });
+		} finally {
+			setIsCreating(false);
+		}
 	};
 
 	return (
@@ -145,6 +154,7 @@ function AddSceneButton() {
 			className="h-7 gap-1.5 px-1.5 sm:px-2.5 border border-white/10 bg-white/[0.04] text-[0.66rem] font-bold text-white/90 hover:bg-white/[0.08]"
 			aria-label={t("timeline.toolbar.addScene.aria")}
 			onClick={handleAddScene}
+			disabled={isCreating}
 		>
 			<Plus className="size-3" />
 			<span className="hidden sm:inline">{t("timeline.toolbar.addScene")}</span>
@@ -618,7 +628,7 @@ function SceneSelector() {
 				<DropdownMenuTrigger asChild>
 					<button
 						type="button"
-						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
+						className="flex h-7 items-center gap-2.5 rounded-full border border-white/[0.08] bg-[#161618]/70 hover:bg-[#1f1f22]/80 hover:border-white/15 px-3.5 text-[0.68rem] font-semibold text-white transition focus:outline-none cursor-pointer"
 					>
 						<span className="tracking-wide select-none">
 							{hasKeyframeLayers
@@ -708,21 +718,21 @@ function SceneSelector() {
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			{/* Layered chevron button — opens the ScenesView sheet (matches
-			    screenshot #2: select scenes, cancel / delete N, main
-			    scene dropdown). Icon swaps with mode; tooltip only on
-			    hover so the toolbar stays compact. */}
 			<ScenesView>
-				<button
-					type="button"
-					className="group relative grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none shadow-[0_2px_12px_rgba(0,0,0,0.4)]"
-					aria-label={t("timeline.toolbar.manageScenes")}
-				>
-					<HugeiconsIcon icon={ClapperboardIcon} className="size-3.5" />
-					<span className="pointer-events-none absolute -bottom-6 whitespace-nowrap rounded-md border border-white/10 bg-black/85 px-1.5 py-0.5 text-[0.6rem] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+				<Tooltip delayDuration={200}>
+					<TooltipTrigger asChild>
+						<button
+							type="button"
+							className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-[#161618]/70 text-white/70 transition hover:bg-[#1f1f22]/80 hover:border-white/15 hover:text-white focus:outline-none"
+							aria-label={t("timeline.toolbar.manageScenes")}
+						>
+							<HugeiconsIcon icon={ClapperboardIcon} className="size-3.5" />
+						</button>
+					</TooltipTrigger>
+					<TooltipContent side="bottom">
 						{t("timeline.toolbar.manageScenes")}
-					</span>
-				</button>
+					</TooltipContent>
+				</Tooltip>
 			</ScenesView>
 		</div>
 	);

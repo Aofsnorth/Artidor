@@ -215,6 +215,7 @@ export function MediaView() {
 		ids: string[];
 	}) => {
 		event.stopPropagation();
+		if (!activeProject) return;
 
 		invokeAction("remove-media-assets", {
 			projectId: activeProject.metadata.id,
@@ -241,6 +242,7 @@ export function MediaView() {
 	const handleFolderDialogSubmit = (name: string) => {
 		const dialog = folderDialog;
 		if (!dialog) return;
+		if (!activeProject) return;
 		if (dialog.mode === "create") {
 			void editor.media.createFolder({
 				projectId: activeProject.metadata.id,
@@ -397,7 +399,9 @@ export function MediaView() {
 							activeSource={assetSource}
 							onChange={setAssetSource}
 						/>
-						<QuickAccessGrid stats={mediaStats} />
+						{assetSource === "library" && mediaStats.all > 0 && (
+													<QuickAccessGrid stats={mediaStats} />
+												)}
 						{assetSource === "library" ? (
 							<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden p-[3px] -m-[3px]">
 								<FolderGrid
@@ -518,7 +522,7 @@ function AssetSourceTabs({
 	];
 
 	return (
-		<div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[0.08] bg-black/20 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+		<div className="grid shrink-0 grid-cols-3 gap-1 rounded-md bg-secondary/50 p-1">
 			{sources.map((source) => {
 				const isActive = activeSource === source.key;
 
@@ -527,19 +531,17 @@ function AssetSourceTabs({
 						key={source.key}
 						type="button"
 						onClick={() => onChange(source.key)}
+						aria-pressed={isActive}
 						className={cn(
-							"min-w-0 rounded-lg px-2 py-2 text-left transition-all duration-200",
+							"min-w-0 rounded-md px-2 py-2 text-center transition-colors duration-150",
 							isActive
-								? "border border-white/[0.12] bg-white/[0.12] text-white shadow-[0_10px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)]"
-								: "border border-transparent text-white/[0.48] hover:bg-white/[0.055] hover:text-white/[0.78]",
+								? "border border-border bg-accent text-foreground"
+								: "border border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
 						)}
 						title={source.description}
 					>
-						<span className="block truncate text-[0.68rem] font-semibold">
+						<span className="block truncate text-xs font-medium">
 							{source.label}
-						</span>
-						<span className="mt-0.5 hidden truncate text-[0.55rem] text-white/[0.35] xl:block">
-							{source.description}
 						</span>
 					</button>
 				);
@@ -558,34 +560,28 @@ function QuickAccessGrid({
 		{
 			label: t("assets.quickAccess.videos"),
 			value: stats.video,
-			tone: "from-blue-400/[0.22] to-cyan-300/[0.08]",
 		},
 		{
 			label: t("assets.quickAccess.audio"),
 			value: stats.audio,
-			tone: "from-emerald-300/[0.22] to-lime-300/[0.08]",
 		},
 		{
 			label: t("assets.quickAccess.images"),
 			value: stats.image,
-			tone: "from-violet-300/[0.22] to-fuchsia-300/[0.08]",
 		},
 	] as const;
 
 	return (
-		<div className="grid grid-cols-1 gap-2 @sm:grid-cols-3 @xs:grid-cols-2">
+		<div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-1 pb-3">
 			{cards.map((card) => (
 				<div
 					key={card.label}
-					className={cn(
-						"rounded-xl border border-white/[0.075] bg-gradient-to-br px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]",
-						card.tone,
-					)}
+					className="flex items-baseline gap-2"
 				>
-					<div className="text-[0.58rem] font-semibold uppercase tracking-[0.16em] text-white/[0.35]">
+					<div className="text-xs text-muted-foreground">
 						{card.label}
 					</div>
-					<div className="mt-1 text-lg font-semibold leading-none tracking-[-0.03em] text-white/90">
+					<div className="text-xs font-medium tabular-nums text-foreground">
 						{card.value}
 					</div>
 				</div>
@@ -600,32 +596,20 @@ function EmptyLibraryState({ onImport }: { onImport: () => void }) {
 		<button
 			type="button"
 			onClick={onImport}
-			className="glass relative flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-hidden rounded-xl p-8 text-center transition-colors hover:bg-white/[0.08]"
+			className="relative flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-4 rounded-md border border-dashed border-border p-4 text-center transition-colors hover:border-muted-foreground hover:bg-accent/50"
 		>
-			{/* Background glow — mirrors the drag-to-import overlay so the
-			   resting state and the drop state read as one design. */}
-			<div className="pointer-events-none absolute inset-0 [background:radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.14),transparent_55%)]" />
-
-			{/* Hero icon: a single dashed ring around the core icon. The resting
-			   state keeps just the inner ring; the drag overlay adds the outer
-			   one for extra emphasis. */}
-			<div className="relative grid size-24 place-items-center">
-				<div className="absolute size-28 rounded-full border border-dashed border-white/20 drop-ring-rotate-fast" />
-				<div className="relative grid size-24 place-items-center rounded-full border border-white/10 bg-black/35 shadow-inner shadow-white/10">
-					<HugeiconsIcon icon={UploadIcon} className="size-8 text-white/85" />
-				</div>
-			</div>
+			<HugeiconsIcon aria-hidden="true" icon={UploadIcon} className="size-7 shrink-0 text-muted-foreground" />
 
 			<div className="relative max-w-md space-y-2">
-				<h3 className="font-serif text-lg text-white">
-					{t("assets.empty.title")}
+				<h3 className="text-sm font-medium text-foreground">
+					{t("assets.empty.importButton")}
 				</h3>
 				<p className="text-muted-foreground mx-auto max-w-sm text-xs leading-relaxed">
 					{t("assets.empty.description")}
 				</p>
 			</div>
 
-			<span className="relative rounded-lg border border-white/10 bg-white/[0.08] px-4 py-2 text-xs text-white/85">
+			<span className="relative rounded-md bg-foreground px-4 py-2 text-xs font-medium text-background">
 				{t("assets.empty.importButton")}
 			</span>
 		</button>
@@ -650,17 +634,17 @@ function RemoteAssetPlaceholder({
 				};
 
 	return (
-		<div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border border-white/[0.08] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.055),transparent_55%),rgba(255,255,255,0.025)] px-6 text-center">
-			<div className="rounded-full border border-white/[0.08] bg-white/[0.06] px-3 py-1 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-white/[0.45]">
+		<div className="flex min-h-40 flex-1 flex-col items-center justify-center gap-3 px-4 py-6 text-center">
+			<div className="text-xs font-medium capitalize text-muted-foreground">
 				{source}
 			</div>
 			<div>
 				<p className="text-sm font-semibold text-white/[0.82]">{copy.title}</p>
-				<p className="mt-1 max-w-[17rem] text-xs leading-relaxed text-white/[0.38]">
+				<p className="mt-2 max-w-[17rem] text-xs leading-relaxed text-muted-foreground">
 					{copy.description}
 				</p>
 			</div>
-			<p className="text-[0.6rem] font-medium uppercase tracking-[0.16em] text-white/[0.32]">
+			<p className="text-xs text-muted-foreground">
 				{t("assets.remote.localImportsHint")}
 			</p>
 		</div>
@@ -686,14 +670,25 @@ function StockVideoSearch() {
 	const [error, setError] = useState<string | null>(null);
 	const [searched, setSearched] = useState(false);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Monotonic request id: a slow response for an earlier query must not
+	// overwrite the results of a newer one.
+	const searchSeqRef = useRef(0);
+
+	useEffect(() => {
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, []);
 
 	const search = useCallback(
 		async (q: string) => {
 			if (!q.trim()) {
+				searchSeqRef.current += 1;
 				setResults([]);
 				setSearched(false);
 				return;
 			}
+			const seq = ++searchSeqRef.current;
 			setLoading(true);
 			setError(null);
 			try {
@@ -707,15 +702,19 @@ function StockVideoSearch() {
 				const data = (await res.json()) as {
 					results: StockVideoResult[];
 				};
+				if (seq !== searchSeqRef.current) return;
 				setResults(data.results);
 				setSearched(true);
 			} catch (err) {
+				if (seq !== searchSeqRef.current) return;
 				setError(
 					err instanceof Error ? err.message : t("assets.stock.searchFailed"),
 				);
 				setResults([]);
 			} finally {
-				setLoading(false);
+				if (seq === searchSeqRef.current) {
+					setLoading(false);
+				}
 			}
 		},
 		[t],

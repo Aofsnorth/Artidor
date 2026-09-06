@@ -18,6 +18,7 @@ function addEffectToElement({
 
 export class AddClipEffectCommand extends Command {
 	private savedState: SceneTracks | null = null;
+	private appliedState: SceneTracks | null = null;
 	private effectId: string | null = null;
 	private readonly trackId: string;
 	private readonly elementId: string;
@@ -58,6 +59,7 @@ export class AddClipEffectCommand extends Command {
 			},
 		});
 
+		this.appliedState = updatedTracks;
 		editor.timeline.updateTracks(updatedTracks);
 		return undefined;
 	}
@@ -67,6 +69,14 @@ export class AddClipEffectCommand extends Command {
 			const editor = EditorCore.getInstance();
 			editor.timeline.updateTracks(this.savedState);
 		}
+	}
+
+	/** Preserve effect IDs referenced by subsequent parameter/keyframe commands. */
+	redo(): CommandResult | undefined {
+		if (this.appliedState) {
+			EditorCore.getInstance().timeline.updateTracks(this.appliedState);
+		}
+		return undefined;
 	}
 
 	getEffectId(): string | null {

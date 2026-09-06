@@ -1,5 +1,20 @@
 # Claude Code Instructions
 
+## Local Machine Constraint (mandatory)
+
+The dev machine is Fedora with 16 logical CPUs. Unthrottled builds/dev
+servers can freeze the whole desktop. **Every build, dev, test, or long-running
+command must be CPU-limited.** Apply at least one of:
+
+- `taskset -c 0-5 nice -n 19 <command>` — pin to a subset of cores for any
+  turbo/next/bun/playwright/cargo command
+- `turbo run <task> --concurrency=1` — serialize turbo tasks
+- `cargo build|check|test -j 4` — cap Rust build threads
+- `playwright test --workers=1` — cap e2e workers
+
+Never run `next dev`, `next build`, `cargo build`, or the full test suite
+without one of the above. This applies to agents and humans alike.
+
 This repository uses a harness engineering workflow.
 
 Before making any change, read and follow:

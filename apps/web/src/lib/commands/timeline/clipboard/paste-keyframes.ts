@@ -33,7 +33,7 @@ function pasteKeyframesIntoElement({
 
 		const keyframeTime = Math.max(
 			0,
-			Math.min(time + item.timeOffset, nextElement.duration),
+			Math.min(time - element.startTime + item.timeOffset, nextElement.duration),
 		);
 		const nextAnimations = upsertPathKeyframe({
 			animations: nextElement.animations,
@@ -75,8 +75,10 @@ function pasteKeyframesIntoElement({
 	return nextElement;
 }
 
+/** Paste at absolute timeline time; animation keys are stored in clip-local ticks. */
 export class PasteKeyframesCommand extends Command {
 	private savedState: SceneTracks | null = null;
+	private appliedState: SceneTracks | null = null;
 	private readonly trackId: string;
 	private readonly elementId: string;
 	private readonly time: number;
@@ -120,7 +122,16 @@ export class PasteKeyframesCommand extends Command {
 				}),
 		});
 
+		this.appliedState = updatedTracks;
 		editor.timeline.updateTracks(updatedTracks);
+		return undefined;
+	}
+
+	/** Preserve IDs used by subsequent keyframe edits and deletions. */
+	redo(): CommandResult | undefined {
+		if (this.appliedState) {
+			EditorCore.getInstance().timeline.updateTracks(this.appliedState);
+		}
 		return undefined;
 	}
 

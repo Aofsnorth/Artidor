@@ -299,15 +299,24 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			// Composite frame i, then immediately capture it. add() snapshots the
 			// canvas synchronously, so these two must stay adjacent (no await).
+			// renderSerialized keeps the render inside the compositor chain so a
+			// concurrent preview/thumbnail render cannot resize the shared canvas
+			// at the render's await points.
 			if (PROFILE_EXPORT) {
 				const tRender = performance.now();
-				await this.renderer.render({ node: rootNode, time: timeTicks });
+				await this.renderer.renderSerialized({
+					node: rootNode,
+					time: timeTicks,
+				});
 				const tAdd = performance.now();
 				profRender += tAdd - tRender;
 				pendingEncode = videoSource.add(timeSeconds, frameDuration);
 				profAdd += performance.now() - tAdd;
 			} else {
-				await this.renderer.render({ node: rootNode, time: timeTicks });
+				await this.renderer.renderSerialized({
+					node: rootNode,
+					time: timeTicks,
+				});
 				pendingEncode = videoSource.add(timeSeconds, frameDuration);
 			}
 

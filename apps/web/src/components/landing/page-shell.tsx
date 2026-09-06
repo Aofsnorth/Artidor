@@ -31,7 +31,7 @@ export function PageShell({
 
 	return (
 		<div
-			className="relative isolate min-h-screen bg-[#0a0a0c] text-white"
+			className="dark relative isolate min-h-screen bg-[#0a0a0c] text-white"
 			data-page-shell={variant}
 		>
 			{/* Fantasy artwork backdrop. Plain CSS background so

@@ -28,6 +28,7 @@ import {
 import { motion } from "motion/react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { truncateLongStrings } from "@/lib/ai/chat-display-helpers";
+import { getModelMarqueeDuration } from "@/lib/ai/model-marquee";
 import {
 	ArrowDown03Icon,
 	AlertCircleIcon,
@@ -574,7 +575,7 @@ export function AIEditView() {
 								},
 							},
 						});
-						void editor.project.saveCurrentProject();
+						editor.save.markDirty();
 					}}
 					aiName={aiName}
 					compactedSummary={compactedSummary}
@@ -1705,25 +1706,35 @@ function McpAddDialog({
 }
 
 /**
- * Model ID text with overflow detection. When the model id is too
- * long to fit in the available space, it scrolls horizontally
- * (marquee effect). When it fits, it displays statically.
+ * Scrolls overflowing model IDs at a constant pixel speed, so long provider
+ * names do not race past shorter ones.
  */
 function ModelIdText({ model }: { model: string }) {
 	const containerRef = useRef<HTMLSpanElement>(null);
 	const textRef = useRef<HTMLSpanElement>(null);
-	const [overflows, setOverflows] = useState(false);
+	const [marquee, setMarquee] = useState({ overflows: false, distance: 0 });
 
 	useEffect(() => {
-		const c = containerRef.current;
-		const t = textRef.current;
-		if (!c || !t) return;
-		const check = () => setOverflows(t.scrollWidth > c.clientWidth + 1);
-		check();
-		const ro = new ResizeObserver(check);
-		ro.observe(c);
-		return () => ro.disconnect();
+		const container = containerRef.current;
+		const text = textRef.current;
+		if (!container || !text) return;
+
+		const measure = () => {
+			const textWidth = text.scrollWidth;
+			setMarquee({
+				overflows: textWidth > container.clientWidth + 1,
+				distance: textWidth + 16,
+			});
+		};
+
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(container);
+		observer.observe(text);
+		return () => observer.disconnect();
 	}, []);
+
+	const duration = getModelMarqueeDuration({ distance: marquee.distance });
 
 	return (
 		<span
@@ -1731,23 +1742,29 @@ function ModelIdText({ model }: { model: string }) {
 			className="min-w-0 max-w-[90px] shrink overflow-hidden font-mono text-[9px] text-white/35"
 		>
 			<span
-				ref={textRef}
 				className={cn(
-					"inline-block whitespace-nowrap",
-					overflows && "animate-[marquee_8s_linear_infinite]",
+					"inline-flex whitespace-nowrap",
+					marquee.overflows && "model-id-marquee",
 				)}
 				style={
-					overflows ? { animation: "marquee 8s linear infinite" } : undefined
+					{
+						"--model-marquee-distance": `${marquee.distance}px`,
+						"--model-marquee-duration": `${duration}s`,
+					} as React.CSSProperties
 				}
 			>
-				{overflows ? `${model}  ·  ${model}  ·  ` : model}
+				<span
+					ref={textRef}
+					className={cn("shrink-0", marquee.overflows && "mr-4")}
+				>
+					{model}
+				</span>
+				{marquee.overflows ? (
+					<span aria-hidden="true" className="mr-4 shrink-0">
+						{model}
+					</span>
+				) : null}
 			</span>
-			<style>{`
-				@keyframes marquee {
-					0% { transform: translateX(0); }
-					100% { transform: translateX(-33.33%); }
-				}
-			`}</style>
 		</span>
 	);
 }
@@ -2090,6 +2107,10 @@ function QuickActionsBar({
 		const ro = new ResizeObserver(check);
 		ro.observe(c);
 		return () => ro.disconnect();
+		// Stable deps: containerRef points at a single wrapper node that exists
+		// in both render modes, and the hidden measurer row keeps the full
+		// content width observable even while collapsed. Re-observing per
+		// `overflow` flip would bounce between modes forever.
 	}, []);
 
 	const buttonClass = cn(
@@ -2099,28 +2120,17 @@ function QuickActionsBar({
 			"border-amber-400/15 text-amber-200/60 hover:border-amber-400/25 hover:bg-amber-400/[0.06]",
 	);
 
-	if (!overflow) {
-		return (
-			<div
-				ref={containerRef}
-				className="flex flex-nowrap gap-1 overflow-hidden"
-			>
-				<div ref={innerRef} className="flex flex-nowrap gap-1">
-					{actions.map((qa) => (
-						<button
-							key={qa.label}
-							type="button"
-							onClick={() => onPick(qa.prompt)}
-							className={buttonClass}
-						>
-							<HugeiconsIcon icon={qa.icon} className="size-3" />
-							{qa.label}
-						</button>
-					))}
-				</div>
-			</div>
-		);
-	}
+	const inlineButtons = actions.map((qa) => (
+		<button
+			key={qa.label}
+			type="button"
+			onClick={() => onPick(qa.prompt)}
+			className={buttonClass}
+		>
+			<HugeiconsIcon icon={qa.icon} className="size-3" />
+			{qa.label}
+		</button>
+	));
 
 	// Overflow mode: show first action + a "More" dropdown
 	return (
@@ -2128,58 +2138,75 @@ function QuickActionsBar({
 			ref={containerRef}
 			className="relative flex flex-nowrap gap-1 overflow-hidden"
 		>
-			<div ref={innerRef} className="flex flex-nowrap gap-1">
-				{actions.slice(0, 1).map((qa) => (
+			{/*
+			 * Hidden full-content measurer: always mounted so the ResizeObserver
+			 * can measure the uncollapsed row width in both modes. Without it the
+			 * collapsed tree (which only renders one action) measures as "fits"
+			 * and the collapse state gets stuck / oscillates after panel resizes.
+			 */}
+			<div
+				ref={innerRef}
+				aria-hidden
+				className="pointer-events-none invisible absolute flex flex-nowrap gap-1"
+			>
+				{inlineButtons}
+			</div>
+			{!overflow ? (
+				inlineButtons
+			) : (
+				<>
+					{actions.slice(0, 1).map((qa) => (
+						<button
+							key={qa.label}
+							type="button"
+							onClick={() => onPick(qa.prompt)}
+							className={cn(buttonClass, "shrink-0")}
+						>
+							<HugeiconsIcon icon={qa.icon} className="size-3" />
+							{qa.label}
+						</button>
+					))}
 					<button
-						key={qa.label}
 						type="button"
-						onClick={() => onPick(qa.prompt)}
+						onClick={() => setDropdownOpen((o) => !o)}
 						className={cn(buttonClass, "shrink-0")}
 					>
-						<HugeiconsIcon icon={qa.icon} className="size-3" />
-						{qa.label}
+						<HugeiconsIcon icon={Cursor02Icon} className="size-3" />
+						{t("aiEdit.common.more")}
+						<HugeiconsIcon
+							icon={ArrowDown03Icon}
+							className={cn(
+								"size-2.5 transition-transform",
+								dropdownOpen && "rotate-180",
+							)}
+						/>
 					</button>
-				))}
-			</div>
-			<button
-				type="button"
-				onClick={() => setDropdownOpen((o) => !o)}
-				className={cn(buttonClass, "shrink-0")}
-			>
-				<HugeiconsIcon icon={Cursor02Icon} className="size-3" />
-				{t("aiEdit.common.more")}
-				<HugeiconsIcon
-					icon={ArrowDown03Icon}
-					className={cn(
-						"size-2.5 transition-transform",
-						dropdownOpen && "rotate-180",
-					)}
-				/>
-			</button>
-			{dropdownOpen && (
-				<>
-					<button
-						type="button"
-						aria-label={t("aiEdit.common.closeMenu")}
-						className="fixed inset-0 z-40 cursor-default"
-						onClick={() => setDropdownOpen(false)}
-					/>
-					<div className="absolute left-0 top-7 z-50 flex flex-col gap-0.5 rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
-						{actions.slice(1).map((qa) => (
+					{dropdownOpen && (
+						<>
 							<button
-								key={qa.label}
 								type="button"
-								onClick={() => {
-									onPick(qa.prompt);
-									setDropdownOpen(false);
-								}}
-								className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white/85"
-							>
-								<HugeiconsIcon icon={qa.icon} className="size-3" />
-								{qa.label}
-							</button>
-						))}
-					</div>
+								aria-label={t("aiEdit.common.closeMenu")}
+								className="fixed inset-0 z-40 cursor-default"
+								onClick={() => setDropdownOpen(false)}
+							/>
+							<div className="absolute left-0 top-7 z-50 flex flex-col gap-0.5 rounded-lg border border-white/10 bg-[#1a1a1e] p-1 shadow-xl">
+								{actions.slice(1).map((qa) => (
+									<button
+										key={qa.label}
+										type="button"
+										onClick={() => {
+											onPick(qa.prompt);
+											setDropdownOpen(false);
+										}}
+										className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-[10px] font-medium text-white/60 transition-colors hover:bg-white/[0.06] hover:text-white/85"
+									>
+										<HugeiconsIcon icon={qa.icon} className="size-3" />
+										{qa.label}
+									</button>
+								))}
+							</div>
+						</>
+					)}
 				</>
 			)}
 		</div>
@@ -2220,25 +2247,12 @@ function OverflowRow({
 		const ro = new ResizeObserver(check);
 		ro.observe(c);
 		return () => ro.disconnect();
+		// Stable deps: containerRef points at a single wrapper node that exists
+		// in both render modes, and the hidden measurer row keeps the full
+		// content width observable even while collapsed. Re-observing per
+		// `overflow` flip would bounce between modes forever.
 	}, []);
 
-	if (!overflow) {
-		return (
-			<div
-				ref={containerRef}
-				className={cn(
-					"flex flex-nowrap items-center gap-1.5 overflow-hidden",
-					className,
-				)}
-			>
-				<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
-					{children}
-				</div>
-			</div>
-		);
-	}
-
-	// Overflow mode: show first child + a "More" dropdown with the rest.
 	return (
 		<div
 			ref={containerRef}
@@ -2247,43 +2261,62 @@ function OverflowRow({
 				className,
 			)}
 		>
-			<div ref={innerRef} className="flex flex-nowrap items-center gap-1.5">
-				{children[0]}
-			</div>
-			<button
-				type="button"
-				onClick={() => setDropdownOpen((o) => !o)}
-				className="flex h-6 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 text-[10px] font-medium text-white/60 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
+			{/*
+			 * Hidden full-content measurer: always mounted so the ResizeObserver
+			 * can measure the uncollapsed row width in both modes. Without it the
+			 * collapsed tree (which only renders the first child) measures as
+			 * "fits" and the collapse state gets stuck / oscillates after resizes.
+			 */}
+			<div
+				ref={innerRef}
+				aria-hidden
+				className="pointer-events-none invisible absolute flex flex-nowrap items-center gap-1.5"
 			>
-				{label}
-				<HugeiconsIcon
-					icon={ArrowDown03Icon}
-					className={cn(
-						"size-2.5 transition-transform",
-						dropdownOpen && "rotate-180",
-					)}
-				/>
-			</button>
-			{dropdownOpen && (
+				{children}
+			</div>
+			{!overflow ? (
+				children
+			) : (
 				<>
+					{children[0]}
 					<button
 						type="button"
-						aria-label={t("aiEdit.common.closeMenu")}
-						className="fixed inset-0 z-40 cursor-default"
-						onClick={() => setDropdownOpen(false)}
-					/>
-					<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
-						{children.slice(1).map((child, i) => (
+						onClick={() => setDropdownOpen((o) => !o)}
+						className="flex h-6 shrink-0 items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 text-[10px] font-medium text-white/60 transition-all hover:border-white/15 hover:bg-white/[0.06] hover:text-white/80"
+					>
+						{label}
+						<HugeiconsIcon
+							icon={ArrowDown03Icon}
+							className={cn(
+								"size-2.5 transition-transform",
+								dropdownOpen && "rotate-180",
+							)}
+						/>
+					</button>
+					{dropdownOpen && (
+						<>
 							<button
 								type="button"
-								key={/* biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position */ i}
+								aria-label={t("aiEdit.common.closeMenu")}
+								className="fixed inset-0 z-40 cursor-default"
 								onClick={() => setDropdownOpen(false)}
-								className="text-left"
-							>
-								{child}
-							</button>
-						))}
-					</div>
+							/>
+							<div className="absolute left-0 top-7 z-50 flex flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1a1e] p-1.5 shadow-xl">
+								{children.slice(1).map((child, i) => (
+									<button
+										type="button"
+										key={
+											/* biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position */ i
+										}
+										onClick={() => setDropdownOpen(false)}
+										className="text-left"
+									>
+										{child}
+									</button>
+								))}
+							</div>
+						</>
+					)}
 				</>
 			)}
 		</div>

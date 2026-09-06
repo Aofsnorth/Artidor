@@ -56,11 +56,10 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry is the tile scroll + suffix fix", () => {
-		// Guards against accidentally pushing a newer entry above this
-		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe(
-			"2026-07-19-tile-scroll-suffix-fix",
-		);
+	test("the newest entry covers interface polish and preserves reliability notes", () => {
+		expect(getLatestWhatsNewId()).toBe("2026-09-06-clearer-editor-interface");
+		for (const id of ["2026-09-06-timeline-save-reliability", "2026-09-06-render-export-reliability"]) {
+			expect(WHATS_NEW.some((entry) => entry.id === id)).toBe(true);
+		}
 	});
 });

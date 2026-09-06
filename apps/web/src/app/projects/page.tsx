@@ -249,10 +249,8 @@ export default function ProjectsPage() {
 			   the document taller. If a sub-region (the project
 			   grid) needs its own scroll, it gets its own
 			   `overflow-auto` — the page chrome itself never
-			   scrolls. The PinedIn-style background (dark canvas,
-			   hex pattern, animated wash, vignette) sits behind
-			   everything via <ProjectsBackground />. */}
-				<div className="relative z-20 flex h-screen flex-col overflow-hidden">
+			   scrolls. The neutral backdrop keeps project thumbnails prominent. */}
+				<div className="dark relative z-20 flex h-dvh flex-col overflow-hidden text-foreground">
 					<ProjectsBackground />
 					{/* Full-screen asset sync progress overlay */}
 					{syncState.status === "syncing-assets" && (
@@ -372,28 +370,7 @@ function ProjectsHeader() {
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
 	return (
-		<header className="sticky top-0 z-20">
-			{/* Glassmorphism backdrop for the header. The bottom edge fades
-					   into transparent so the header feels weightless against the
-					   artwork underneath, instead of leaving a hard seam. The
-					   backdrop is kept short with a softer mid-falloff so the
-					   blur reads through more before trailing into the seam. */}
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -bottom-6 -z-10 border-b border-white/6 bg-[#09090b]/55 shadow-[0_24px_78px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
-				style={{
-					maskImage:
-						"linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.85) 70%, transparent 100%)",
-					WebkitMaskImage:
-						"linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.85) 70%, transparent 100%)",
-				}}
-			/>
-			{/* A second, brighter glass pass on top so the controls read
-				   crisp against the artwork below. */}
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24 bg-linear-to-b from-white/4.5 via-white/2 to-transparent"
-			/>
+		<header className="shrink-0 border-b border-border bg-card z-20">
 			{/* The header content spans the full viewport so the left
 				   controls (breadcrumb + view toggle) pin to the left
 				   corner and the right cluster (search, actions, new
@@ -402,7 +379,7 @@ function ProjectsHeader() {
 				   narrower `max-w-7xl` rail so the project cards still
 				   read as a contained gallery. */}
 			<div className="flex w-full flex-col gap-2 px-4 sm:px-6 lg:px-8">
-				<div className="flex min-h-16 items-center justify-between gap-3 py-3">
+				<div className="flex min-h-16 flex-wrap items-center justify-between gap-3 py-3">
 					<div className="flex min-w-0 items-center justify-start gap-3 lg:gap-5">
 						<Breadcrumb>
 							<BreadcrumbList>
@@ -422,14 +399,14 @@ function ProjectsHeader() {
 							</BreadcrumbList>
 						</Breadcrumb>
 
-						<div className="hidden h-9 items-center rounded-full border border-white/8 bg-white/3.5 p-1 shadow-inner shadow-white/2 backdrop-blur-sm md:flex">
+						<div className="hidden h-9 items-center gap-1 rounded-md bg-secondary/50 p-1 md:flex">
 							{VIEW_MODE_OPTIONS.map(({ mode, icon, label }) => (
 								<Button
 									key={mode}
 									variant="ghost"
 									size="icon"
 									className={cn(
-										"size-7 rounded-full text-white/50 hover:bg-white/8 hover:text-white",
+										"size-7 rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground",
 										isHydrated &&
 											viewMode === mode &&
 											"bg-white! text-black! shadow-sm",
@@ -444,8 +421,8 @@ function ProjectsHeader() {
 						</div>
 					</div>
 
-					<div className="flex min-w-0 items-center justify-end gap-2 lg:gap-2.5">
-						<SearchBar className="hidden w-55 xl:block" />
+					<SearchBar className="order-last w-full xl:order-none xl:ml-auto xl:w-55" />
+					<div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
 						<div className="hidden items-center gap-3 text-nowrap 2xl:flex">
 							<ShortcutHint label="Search" keys={["/"]} />
 							<ShortcutHint label="New" keys={["N"]} />
@@ -457,7 +434,6 @@ function ProjectsHeader() {
 						<DriveAccountButton />
 					</div>
 				</div>
-				<SearchBar className="block md:hidden mb-4" />
 			</div>
 		</header>
 	);
@@ -497,8 +473,8 @@ function ProjectsToolbar({ projectIds }: { projectIds: string[] }) {
 	};
 
 	return (
-		<div className="sticky top-16 z-10 flex items-center justify-between px-6 h-14 pt-2 mt-1 transition-all">
-			<div className="flex items-center gap-2 bg-background/30 backdrop-blur-xl border border-white/5 rounded-full px-2 py-1 shadow-sm">
+		<div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
+			<div className="flex items-center gap-2 rounded-md px-2 py-1">
 				<Label
 					className="flex items-center gap-3 cursor-pointer px-2"
 					htmlFor="select-all-projects"
@@ -533,13 +509,7 @@ function ProjectsToolbar({ projectIds }: { projectIds: string[] }) {
 							sortOrder: sortOrder === "asc" ? "desc" : "asc",
 						})
 					}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" || event.key === " ") {
-							setSortOrder({
-								sortOrder: sortOrder === "asc" ? "desc" : "asc",
-							});
-						}
-					}}
+
 					aria-label={`Sort ${sortOrder === "asc" ? "ascending" : "descending"}`}
 				>
 					<HugeiconsIcon
@@ -603,11 +573,14 @@ function SearchBar({
 					/>
 					<Input
 						id="projects-search-input"
-						placeholder="Search..."
+						aria-label="Search projects"
+												name="project-search"
+												autoComplete="off"
+												placeholder="Search projects…"
 						value={searchQuery}
 						onChange={(event) => setSearchQuery({ query: event.target.value })}
 						size="lg"
-						className="pl-9"
+						className="h-9 pl-9"
 					/>
 				</div>
 			)}
@@ -1731,21 +1704,14 @@ function EmptyState({
 		}
 	};
 
-	// The "no search results" empty state — saved projects exist but
-	// the current query matches none of them. Inverts the page's
-	// surface treatment so it feels like a contextual nudge, not a
-	// generic placeholder.
+	// Search failure keeps recovery next to the query, distinct from first use.
 	if (savedProjects.length > 0) {
 		return (
-			<div className="panel glass-strong mx-auto mt-12 flex w-full max-w-xl flex-col items-center gap-5 rounded-2xl border border-white/8 p-10 text-center">
-				<div className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/70">
-					<HugeiconsIcon icon={Search01Icon} className="size-6" />
-				</div>
+			<div className="mx-auto flex w-full max-w-xl shrink-0 flex-col items-center gap-5 px-6 py-10 text-center">
+				<HugeiconsIcon aria-hidden="true" icon={Search01Icon} className="size-7 text-muted-foreground" />
 				<div className="flex flex-col gap-2">
-					<h3 className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white">
-						Nothing matched.
-					</h3>
-					<p className="text-muted-foreground max-w-sm text-[13.5px] font-light leading-relaxed">
+					<h2 className="text-xl font-semibold text-foreground">No matching projects</h2>
+					<p className="text-muted-foreground max-w-sm break-words text-sm leading-relaxed">
 						Your search for <span className="text-white">"{searchQuery}"</span>{" "}
 						didn't match any project names. Try a different keyword or clear the
 						filter.
@@ -1755,7 +1721,7 @@ function EmptyState({
 					onClick={() => setSearchQuery({ query: "" })}
 					variant="outline"
 					size="sm"
-					className="h-9 rounded-full border-white/15 bg-white/4 px-4 text-[12.5px] text-white/85 hover:bg-white/8"
+					className="h-11 rounded-md px-4"
 				>
 					Clear search
 				</Button>
@@ -1763,71 +1729,21 @@ function EmptyState({
 		);
 	}
 
-	// The "no projects at all" empty state. The marquee of the
-	// page — needs to look like a pitch, not a placeholder. The
-	// glassmorphic surface matches the rest of the dark luxury
-	// marketing chrome; the pulsing dot says "live"; the three
-	// quick-tip rows teach the visitor what Artidor can do for
-	// them in their first session.
+	// First use prioritizes creating a project, with templates as an alternative.
 	return (
-		<div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-4 rounded-3xl border border-white/8 bg-black/35 p-7 text-center shadow-[0_40px_120px_-20px_rgba(0,0,0,0.5)] backdrop-blur-xl md:p-9">
-			{/* Status pill — single line, anchored at the top. */}
-			<div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/4 px-3 py-1 text-[10.5px] font-medium tracking-wide text-white/65 backdrop-blur">
-				<span className="relative flex size-1.5">
-					<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-					<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
-				</span>
-				Empty workspace
-			</div>
+		<div className="mx-auto flex w-full max-w-2xl shrink-0 flex-col items-center gap-6 px-6 py-8 text-center">
 
-			{/* Hero block — icon + headline + sub. Three lines max. */}
 			<div className="flex flex-col items-center gap-2">
-				<div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/85 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
-					<HugeiconsIcon icon={Video01Icon} className="size-5" />
-				</div>
-				<h2 className="font-serif text-2xl font-medium italic tracking-[-0.01em] text-white md:text-[1.7rem]">
-					Your first project, one click away.
-				</h2>
-				<p className="text-muted-foreground max-w-md text-[12.5px] font-light leading-relaxed">
-					Drop in some media, trim on the timeline, export — that's the whole
-					loop. Everything stays on your device; nothing uploads anywhere.
+				<h2 className="text-2xl font-semibold tracking-tight text-foreground">Create your first project</h2>
+				<p className="text-muted-foreground max-w-md text-sm leading-relaxed">
+					Start a project, import your footage, and edit on the timeline. Projects are saved in this browser.
 				</p>
-			</div>
-
-			{/* Three-up feature strip — quick "what you can do" hints. */}
-			<div className="grid w-full grid-cols-1 gap-1.5 text-left sm:grid-cols-3">
-				{[
-					{
-						title: "Drop media in",
-						body: "Video, audio, images — your project holds whatever you throw at it.",
-					},
-					{
-						title: "Edit on the timeline",
-						body: "Trim, split, keyframe. The same primitives as a $500 editor.",
-					},
-					{
-						title: "Export in MP4 / WebM",
-						body: "Or ask Arth to do the whole thing for you.",
-					},
-				].map((tip) => (
-					<div
-						key={tip.title}
-						className="rounded-lg border border-white/6 bg-white/2.5 p-2"
-					>
-						<div className="text-[11.5px] font-semibold text-white/90">
-							{tip.title}
-						</div>
-						<div className="mt-0.5 text-[10.5px] font-light leading-snug text-white/55">
-							{tip.body}
-						</div>
-					</div>
-				))}
 			</div>
 
 			{/* Primary CTA — single, prominent. */}
 			<Button
 				size="lg"
-				className="mt-3 h-10 gap-2 rounded-full bg-white px-5 text-[13px] font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
+				className="h-11 gap-2 px-5"
 				onClick={() => void onCreateNew()}
 			>
 				<HugeiconsIcon icon={PlusSignIcon} className="size-3.5" />

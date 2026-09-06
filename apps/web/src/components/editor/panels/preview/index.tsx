@@ -6,6 +6,7 @@ import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
+import { isUnsupportedGpuSurfaceError } from "@/services/renderer/gpu-renderer";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
@@ -39,6 +40,12 @@ import {
 	clearPreviewFrameCache,
 	type PreviewFrameCacheEntry,
 } from "@/lib/perf/preview-frame-cache";
+
+// CanvasRenderer waits for GPU initialization. Transient runtime failures retry
+// on the next rAF tick, while an incompatible output surface opens a circuit
+// breaker and leaves a static background instead of burning CPU indefinitely.
+let lastPreviewRenderErrorAt = 0;
+let hasLoggedUnsupportedGpuSurface = false;
 import { shouldQueuePreviewRender } from "@/lib/perf/preview-render-scheduling";
 import {
 	PreviewRenderMetrics,
@@ -220,9 +227,14 @@ function PreviewCanvas({
 	// and a setSize call before reaching the "nothing changed" early-exit.
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
 	const [needsRender, setNeedsRender] = useState(true); // start true to render the first frame
-	const rafEnabled = isPlaying || needsRender;
+	const unsupportedGpuSurfaceRef = useRef(false);
+	const [hasUnsupportedGpuSurface, setHasUnsupportedGpuSurface] =
+		useState(false);
+	const rafEnabled = !hasUnsupportedGpuSurface && (isPlaying || needsRender);
 
 	const render = useCallback(() => {
+		if (unsupportedGpuSurfaceRef.current) return;
+
 		// Read playback state once at the start so the finally block can
 		// decide whether to keep the rAF loop alive.
 		const isPlaying = editor.playback.getIsPlaying();
@@ -409,49 +421,97 @@ function PreviewCanvas({
 					editor.playback.pause();
 				}
 
-				renderer
-					.renderToCanvas({
-						node: renderTree,
-						time: renderTime,
-						targetCanvas: canvasRef.current,
-					})
-					.then((timing) => {
+				// Snapshot paused/scrubbed frames for the frame cache. The snapshot
+				// must be captured inside the serialized compositor chain — a
+				// separate getOutputCanvas() call races with queued renders that
+				// resize the shared canvas, caching another render's frame.
+				const shouldSnapshot =
+					!isPlaying && typeof createImageBitmap === "function";
+				const renderPromise: Promise<{
+					timing: Awaited<ReturnType<typeof renderer.renderToCanvas>>;
+					bitmap: ImageBitmap | null;
+				}> = shouldSnapshot
+					? renderer
+							.renderToCanvasWithSnapshot({
+								node: renderTree,
+								time: renderTime,
+								targetCanvas: canvasRef.current,
+							})
+					: renderer
+							.renderToCanvas({
+								node: renderTree,
+								time: renderTime,
+								targetCanvas: canvasRef.current,
+							})
+							.then((timing) => ({ timing, bitmap: null }));
+
+				renderPromise
+					.then(({ timing, bitmap }) => {
 						if (timing) {
 							const averages = phaseMetricsRef.current.record(timing);
 							if (averages) publishPreviewRenderMeasure(averages);
+						}
+						// Drop (and close) the bitmap when a newer render superseded
+						// this one — caching it would store stale frame content.
+						if (bitmap && token !== renderTokenRef.current) {
+							bitmap.close();
+							return;
 						}
 						if (token === renderTokenRef.current && !pendingRenderRef.current) {
 							lastSceneRef.current = renderTree;
 							lastFrameRef.current = frame;
 							lastScaleRef.current = scale;
-							// Cache only settled paused/scrubbed frames. During playback the
-							// sequential video cache already handles nearby frames; snapshotting
-							// every composited frame adds GPU copies and memory pressure.
-							if (!isPlaying && typeof createImageBitmap === "function") {
-								const sourceCanvas = renderer.getOutputCanvas();
+							if (bitmap) {
 								const key = `${frame}:${scale.toFixed(3)}`;
-								createImageBitmap(sourceCanvas)
-									.then((bitmap) => {
-										if (token !== renderTokenRef.current) {
-											bitmap.close();
-											return;
-										}
-										cachePreviewFrame({
-											cache: frameCacheRef.current,
-											key,
-											entry: { bitmap, frame, scale },
-										});
-									})
-									.catch(() => {
-										// Large or resource-constrained canvases may reject snapshots.
-									});
+								cachePreviewFrame({
+									cache: frameCacheRef.current,
+									key,
+									entry: { bitmap, frame, scale },
+								});
 							}
+						} else if (bitmap) {
+							bitmap.close();
 						}
 					})
-					.catch(() => {
-						// Release the lock on failure (e.g. the GPU is still warming
-						// up, or a transient frame/device error) so the next frame
-						// retries instead of leaving the preview permanently stuck.
+					.catch((error: unknown) => {
+						const gpuUnavailable =
+							error instanceof Error &&
+							error.message === "GPU renderer is unavailable";
+						if (gpuUnavailable || isUnsupportedGpuSurfaceError(error)) {
+							unsupportedGpuSurfaceRef.current = true;
+							pendingRenderRef.current = false;
+							setNeedsRender(false);
+							setHasUnsupportedGpuSurface(true);
+							editor.renderer.setDegraded(true);
+							clearPreviewFrameCache(frameCacheRef.current);
+
+							const canvas = canvasRef.current;
+							const context = canvas?.getContext("2d");
+							if (canvas && context) {
+								context.fillStyle =
+									activeProject.settings.background.type === "color"
+										? activeProject.settings.background.color
+										: "#0a0a0c";
+								context.fillRect(0, 0, canvas.width, canvas.height);
+							}
+
+							if (!hasLoggedUnsupportedGpuSurface) {
+								hasLoggedUnsupportedGpuSurface = true;
+								console.warn(
+									"[preview] GPU presentation is unsupported; using a static canvas fallback.",
+								);
+							}
+							return;
+						}
+
+						// Release the lock after a transient frame/device error so the
+						// next frame retries instead of leaving the preview stuck.
+						// Rate-limit persistent driver failures to avoid console spam.
+						const now = performance.now();
+						if (now - lastPreviewRenderErrorAt > 5000) {
+							lastPreviewRenderErrorAt = now;
+							console.warn("[preview] render failed (will retry):", error);
+						}
 					})
 					.finally(() => {
 						const duration = performance.now() - renderStartRef.current;
@@ -482,9 +542,28 @@ function PreviewCanvas({
 		gpuDegraded,
 		nativeWidth,
 		nativeHeight,
+		activeProject.settings.background,
+		editor.renderer,
 	]);
 
 	useRafLoop(render, rafEnabled);
+
+	const surfaceRetryContextKey = [
+		activeProject.metadata.id,
+		nativeWidth,
+		nativeHeight,
+	].join("|");
+	const surfaceRetryContextRef = useRef(surfaceRetryContextKey);
+	useEffect(() => {
+		if (surfaceRetryContextRef.current === surfaceRetryContextKey) return;
+		surfaceRetryContextRef.current = surfaceRetryContextKey;
+		if (hasUnsupportedGpuSurface) {
+			unsupportedGpuSurfaceRef.current = false;
+			editor.renderer.setDegraded(false);
+			setHasUnsupportedGpuSurface(false);
+			setNeedsRender(true);
+		}
+	}, [surfaceRetryContextKey, hasUnsupportedGpuSurface, editor.renderer]);
 
 	const performanceContextKey = [
 		activeProject.metadata.id,

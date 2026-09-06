@@ -228,7 +228,7 @@ export function AssetsPanel() {
 
 	return (
 		<div className="panel glass-strong flex h-full overflow-hidden rounded-xl border border-white/10">
-			<div className="flex-1 overflow-hidden">{viewMap[activeTab]}</div>
+			<div className="min-w-0 flex-1 overflow-hidden">{viewMap[activeTab]}</div>
 		</div>
 	);
 }

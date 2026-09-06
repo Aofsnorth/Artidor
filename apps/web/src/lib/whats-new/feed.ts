@@ -23,6 +23,51 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-06-clearer-editor-interface",
+		date: "2026-09-06",
+		tag: "improvement",
+		title: "A clearer, quieter editing workspace",
+		items: [
+			"Editor panels, asset navigation, inspector tabs and project summaries now use calmer surfaces, readable labels and more consistent spacing.",
+			"Project search stays available at tablet widths, and the public mobile menu supports keyboard focus and Escape without hidden links getting in the way.",
+			"Dialogs fit smaller windows, scrolling is easier to discover, and reduced-motion preferences are respected across interface animations.",
+		],
+	},
+	{
+		id: "2026-09-06-timeline-save-reliability",
+		date: "2026-09-06",
+		tag: "fix",
+		title: "Safer editing, undo, and project saving",
+		items: [
+			"Duplicate and ripple edits now include tracks below the main track; undo/redo keeps clip, track, effect, and pasted keyframe identities stable.",
+			"Pasted keyframes follow the playhead within the clip, split speed ramps retain their timing, and pasted effects preserve their settings in one undoable action.",
+			"Saving waits for pending edits and reports failures; leaving the editor still saves without a thumbnail, and exports no longer reuse outdated timeline snapshots.",
+		],
+	},
+	{
+		id: "2026-09-06-render-export-reliability",
+		date: "2026-09-06",
+		tag: "fix",
+		title: "More reliable preview, export, and editor controls",
+		items: [
+			"The preview now recovers from a one-off effect or GPU hiccup instead of going permanently static, and a recovered frame is never cached as the wrong time.",
+			"Exports download with the format you actually picked (a WebM export stays .webm), and a failed export now shows an error toast instead of failing silently.",
+			"The project name field stays in sync with the loaded project, double-clicking “+ Scene” no longer creates duplicate scenes, and the export popover remembers settings chosen on the projects page.",
+			"Deleting a preset now reports failures honestly, and AI Edit quick actions un-collapse correctly after resizing the panel.",
+		],
+	},
+	{
+		id: "2026-09-05-editor-workspace-polish",
+		date: "2026-09-05",
+		tag: "improvement",
+		title: "Cleaner, more reliable editor workspace",
+		items: [
+			"Preview rendering now waits for GPU startup and falls back cleanly when a Linux browser cannot present the required texture format.",
+			"Advanced Viewers now opens Scopes and color tools in a resizable editor panel instead of dialogs, and the header and timeline controls are cleaner.",
+			"Export settings are easier to scan, Cloud empty states are centered, and long model names now move at a consistent speed.",
+		],
+	},
+	{
 		id: "2026-07-19-tile-scroll-suffix-fix",
 		date: "2026-07-19",
 		tag: "improvement",

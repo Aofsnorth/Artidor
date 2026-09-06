@@ -47,46 +47,11 @@ import { CloudStatusIndicator } from "./cloud-status-indicator";
 export function EditorHeader() {
 	const isViewer = useViewerStore((s) => s.isViewer);
 	return (
-		<header className="relative z-50 flex h-12 items-center justify-between gap-2 overflow-hidden bg-gradient-to-b from-[#111114] to-transparent px-4 transition-all">
-			{/* Subtle top glow that fades into the body. No bottom border
-			   (the header is the same color as the body, so the seam
-			   disappears). The radial accent stays to give the bar a
-			   little depth so it doesn't read as a flat strip. */}
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 opacity-60"
-				style={{
-					background:
-						"radial-gradient(ellipse 60% 100% at 50% 0%, rgba(255,255,255,0.035), transparent 70%)",
-				}}
-			/>
-			{/* Hairline at the very top to lift the bar off the canvas.
-			   Kept intentionally: it catches the light from the radial
-			   accent above and avoids a hard pixel edge against the
-			   window chrome. */}
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
-			/>
+		<header className="relative z-50 flex h-12 shrink-0 items-center justify-between gap-3 px-3">
 
-			{/* Left Corner Logo & Breadcrumbs */}
-			<div className="relative flex min-w-0 items-center gap-3">
-				{/* Logo at the absolute far-left corner */}
+			<div className="relative flex min-w-0 items-center gap-2">
 				<ProjectDropdown />
-
-				{/* Identity Pod Capsule */}
-				<div className="group flex h-7 items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.025] px-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045]">
-					<div className="hidden items-center gap-1.5 text-[0.65rem] font-mono text-white/40 md:flex select-none tracking-wider">
-						<Link
-							href="/projects"
-							className="hover:text-white/90 transition-colors uppercase font-medium"
-						>
-							Projects
-						</Link>
-						<span className="text-white/20">/</span>
-					</div>
-					<EditableProjectName />
-				</div>
+				<EditableProjectName />
 			</div>
 
 			{/* Center: Zoom Capsule — absolutely positioned at the header's
@@ -95,16 +60,16 @@ export function EditorHeader() {
 			   sections, so an asymmetric left/right made the "Fit" control
 			   drift off-centre; pulling it out of flex flow pins it to the
 			   middle of the bar regardless of how wide either side grows.
-			   Hidden on <lg where the left/right sections already saturate
+			   Hidden on <xl where the left/right sections already saturate
 			   the header. */}
-			<div className="absolute left-1/2 top-1/2 hidden min-w-0 -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.025] h-7 px-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_1px_2px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all hover:border-white/[0.16] hover:bg-white/[0.045] lg:flex">
+			<div className="absolute left-1/2 top-1/2 hidden min-w-0 -translate-x-1/2 -translate-y-1/2 items-center rounded-md border border-border h-8 px-1 hover:bg-accent xl:flex">
 				<HeaderZoomDropdown />
 			</div>
 
 			{/* Right: Segmented Action Hub — pushed to the right edge
 			   with breathing room so the Export button doesn't sit
 			   flush against the panel boundary. */}
-			<nav className="relative ml-auto flex items-center gap-2.5 pr-1">
+			<nav className="relative ml-auto flex shrink-0 items-center gap-2 pr-1">
 				{isViewer ? (
 					// Read-only share: no cloud sync, no re-sharing, no export of
 					// someone else's project. Surface the mode instead so the viewer
@@ -208,11 +173,14 @@ function ProjectDropdown() {
 		try {
 			await editor.project.prepareExit();
 			editor.project.closeProject();
+			router.push("/projects");
 		} catch (error) {
 			console.error("Failed to prepare project exit:", error);
-		} finally {
-			editor.project.closeProject();
-			router.push("/projects");
+			toast.error("Failed to close project", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
+			setIsExiting(false);
 		}
 	};
 
@@ -262,7 +230,7 @@ function ProjectDropdown() {
 				<DropdownMenuTrigger asChild>
 					<button
 						type="button"
-						className="relative size-10 shrink-0 cursor-pointer bg-[#0d0d0e] transition rounded-full [mask-image:radial-gradient(circle_at_center,black_45%,transparent_75%)] hover:scale-105 hover:ring-1 hover:ring-white/30 focus:outline-none flex items-center justify-center"
+						className="relative size-9 shrink-0 cursor-pointer rounded-md bg-background transition-colors hover:bg-accent flex items-center justify-center"
 						aria-label="Artidor Logo"
 					>
 						<Image
@@ -345,6 +313,15 @@ function EditableProjectName() {
 
 	const projectName = activeProject?.metadata.name || "";
 
+	// The input uses an uncontrolled default, so it must be re-synced when the
+	// project loads asynchronously, the project changes, or a rename lands —
+	// otherwise the box shows stale/blank text until the user edits it.
+	useEffect(() => {
+		if (!isEditing && inputRef.current) {
+			inputRef.current.value = projectName;
+		}
+	}, [projectName, isEditing]);
+
 	const startEditing = () => {
 		if (isEditing) return;
 		originalNameRef.current = projectName;
@@ -405,10 +382,11 @@ function EditableProjectName() {
 			onBlur={saveEdit}
 			onKeyDown={handleKeyDown}
 			style={{ fieldSizing: "content" }}
+			aria-label="Project name"
 			className={cn(
-				"h-7 min-w-0 max-w-[13rem] cursor-pointer rounded-md bg-transparent px-1.5 py-0.5 font-serif text-[0.85rem] font-medium text-white/90 outline-none hover:bg-white/[0.06] transition-all duration-200",
+				"h-8 min-w-0 max-w-[13rem] cursor-pointer rounded-md bg-transparent px-2 text-[0.8rem] font-medium text-white/80 outline-none transition-colors hover:bg-white/[0.05] hover:text-white focus-visible:ring-1 focus-visible:ring-white/25",
 				isEditing &&
-					"ring-1 ring-white/20 cursor-text hover:bg-transparent bg-black/20",
+					"cursor-text bg-white/[0.05] text-white ring-1 ring-white/20 hover:bg-white/[0.05]",
 			)}
 		/>
 	);

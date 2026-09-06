@@ -24,6 +24,7 @@ import {
 	useFeatureFlagsStore,
 } from "@/stores/feature-flags-store";
 
+/** Scrollable tool rail: labels stay readable instead of shrinking to fit. */
 export function TabBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
 	const aiStatus = useAIStore((s) => s.status);
@@ -34,19 +35,9 @@ export function TabBar() {
 	);
 
 	return (
-		<div className="panel glass-strong relative flex h-full w-18 shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
-			{/* Navigation Tabs. Each tab grows to fill the available
-		   vertical space (1fr) so the column always reaches the
-		   storage card below, regardless of the panel height. The
-		   grid layout replaces a fixed-height list so a short editor
-		   and a tall editor both produce a clean distribution.
-
-		   Sized tight: 13 visible tabs (incl. the new AI Edit) need
-		   to fit without scrolling on a ~600px tall editor. With
-		   auto-rows-fr + min-h-[1.95rem] (~31px) each, the tabs use
-		   ~25.4rem of vertical space and leave the rest for the
-		   storage card and any padding. */}
-			<div className="relative grid min-h-0 flex-1 auto-rows-fr content-start gap-0.5 overflow-y-auto scrollbar-hidden px-1.5 py-2 z-20">
+		<div className="panel glass-strong relative flex h-full w-20 shrink-0 flex-col overflow-hidden rounded-xl border border-white/10">
+			{/* Keep minimum target sizes; short workspaces scroll rather than compress labels. */}
+			<div className="relative grid min-h-0 flex-1 auto-rows-[minmax(2.75rem,1fr)] content-start gap-1 overflow-y-auto scrollbar-thin px-1 py-2 z-20">
 				{visibleTabKeys.map((tabKey) => {
 					const tab = tabs[tabKey];
 					const isAI = tabKey === "ai";
@@ -61,12 +52,13 @@ export function TabBar() {
 									variant="ghost"
 									size="icon"
 									aria-label={tab.label}
+									aria-pressed={activeTab === tabKey}
 									aria-disabled={aiDisabled || undefined}
 									className={cn(
-										"relative h-full w-full flex-col items-center justify-center gap-0.5 rounded-lg border border-transparent px-1 py-1 min-h-[1.95rem]",
+										"relative h-full w-full flex-col items-center justify-center gap-1 rounded-md border border-transparent px-1 py-1 min-h-11",
 										activeTab === tabKey
-											? "border-white/12 bg-white/[0.14] text-white shadow-[0_0_0_1px_rgba(255,255,255,0.05)_inset,0_8px_22px_rgba(0,0,0,0.55)]"
-											: "text-white/[0.55] hover:bg-white/6 hover:text-white",
+											? "border-white/20 bg-white/10 text-white"
+											: "text-muted-foreground hover:bg-white/6 hover:text-white",
 										aiDisabled &&
 											"opacity-40 cursor-not-allowed hover:bg-transparent hover:text-white/[0.55]",
 									)}
@@ -76,7 +68,7 @@ export function TabBar() {
 									}}
 								>
 									<tab.icon className="size-[1.15rem]" />
-									<span className="block max-w-full truncate text-[0.55rem] leading-none tracking-[0.02em]">
+									<span className="block max-w-full truncate text-[0.6875rem] leading-tight">
 										{tab.label}
 									</span>
 									{isAI && !aiDisabled && aiStatus === "streaming" && (
@@ -142,7 +134,7 @@ function StorageCard() {
 	return (
 		<div
 			role="status"
-			className="m-1.5 mt-2 rounded-xl border border-white/10 bg-[#121213]/90 px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] z-20"
+			className="shrink-0 border-t border-border px-2 py-3 z-20"
 			aria-label={
 				storage
 					? `Local browser storage: ${usedLabel} used of ${totalLabel}. ${freeLabel} available.`
@@ -157,7 +149,7 @@ function StorageCard() {
 			<div className="text-center text-[0.7rem] font-bold tracking-[-0.01em] text-white/90">
 				{usedLabel}
 			</div>
-			<div className="mt-0.5 text-center text-[0.5rem] tracking-[0.04em] text-white/40 font-semibold uppercase whitespace-nowrap">
+			<div className="mt-0.5 text-center text-[0.6875rem] text-muted-foreground whitespace-nowrap">
 				Used
 			</div>
 			<div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.07]">

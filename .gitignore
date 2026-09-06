@@ -6,19 +6,44 @@
 # Dependencies
 node_modules/
 
-# Package manager / locks
+# Legacy Bun lockfile (keep bun.lock and Cargo.lock tracked)
 bun.lockb
+.pnpm-store/
+.npm/
 
 # Turbo / cache
 .turbo/
 .cache/
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
 
-# Environment / secrets
+# Environment / secrets (only sanitized templates belong in Git)
 .env
 .env.*
+*.env
+*.env.*
 !.env.example
-!.env.local.example
+!.env.*.example
 !*.env.example
+!*.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+
+# Local deployment state
+.vercel/
+.wrangler/
+.netlify/
 
 # Next / web build
 .next/
@@ -27,9 +52,19 @@ out/
 dist/
 build/
 
+# Local databases and SQLite sidecars (keep migrations tracked)
 database.db
 database.db-shm
 database.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+database.db-journal
 
 # Rust
 target/
@@ -38,18 +73,29 @@ target/
 # Tests
 test-results/
 playwright-report/
+blob-report/
 coverage/
+.nyc_output/
 .playwright-mcp/
+# Browser authentication state may contain session cookies.
+**/playwright/.auth/
 
 # Content collections
 .content-collections/
 
-# Cursor / Claude local config
+# AI agent instructions, skills, and local config
+.agent/
+.agents/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
 .cursor/
 .cursorignore
 .claude/
 
 # Logs
+logs/
+/err.txt
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -60,7 +106,21 @@ bun-debug.log*
 # OS / editor
 .DS_Store
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+._*
 .idea/
+*.swp
+*.swo
+*~
+
+# Temporary files (do not ignore source, fixtures, or QA screenshots)
+*.tmp
+*.temp
+.tmp_*
+.tmp/
+tmp/
+temp/
 
 # Project-local notes
 PROGRESS_SUMMARY.md
@@ -74,3 +134,30 @@ docs/prompt-bangun-efek-alight-motion.md
 # Local tooling
 .codegraph/
 threads/
+
+.zed
+.vscode
+forme
+features/
+packages/
+patches/
+rust/
+script/
+scripts/
+stabilize/
+tests/
+
+CHECKLIST.md
+CLAUDE.md
+GEMINI.md
+HARNESS.md
+IDEA.md
+manifest.json
+PERMISSIONS.md
+playwright.config.ts
+PUBLISH.md
+README-HARNESS-PACK.md
+ROADMAP.md
+RULES.md
+SECURITY.md
+skills-lock.json

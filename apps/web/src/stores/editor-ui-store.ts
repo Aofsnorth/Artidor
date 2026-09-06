@@ -15,6 +15,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
 
+export type AdvancedViewerId = "scopes" | "color-wheels" | "davinci-adjust";
+
 export type FloatablePanelId =
 	| "assets"
 	| "preview"
@@ -60,6 +62,10 @@ interface EditorUIStore {
 	/** Command palette visibility. Transient (not persisted). */
 	commandPaletteOpen: boolean;
 	setCommandPaletteOpen: (value: boolean) => void;
+
+	/** Docked advanced viewer selection. Transient (not persisted). */
+	activeAdvancedViewer: AdvancedViewerId | null;
+	setActiveAdvancedViewer: (viewer: AdvancedViewerId | null) => void;
 
 	/**
 	 * Per-panel floating state. `null` means the panel is docked in the
@@ -109,6 +115,10 @@ export const useEditorUIStore = create<EditorUIStore>()(
 
 			commandPaletteOpen: false,
 			setCommandPaletteOpen: (value) => set({ commandPaletteOpen: value }),
+
+			activeAdvancedViewer: null,
+			setActiveAdvancedViewer: (viewer) =>
+				set({ activeAdvancedViewer: viewer }),
 
 			floatingPanels: {
 				assets: null,

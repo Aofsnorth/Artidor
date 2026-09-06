@@ -31,7 +31,9 @@ export class PlaybackManager {
 		this.reconcileTimelineScope();
 	}
 
+	/** Start once; repeated play requests must not reset the elapsed-time clock. */
 	play(): void {
+		if (this.isPlaying) return;
 		const maxTime = this.editor.timeline.getTotalDuration();
 		if (maxTime <= 0) {
 			return;
@@ -60,7 +62,9 @@ export class PlaybackManager {
 		}
 	}
 
+	/** Ignore non-finite input rather than poisoning the playback/render clock. */
 	seek({ time }: { time: number }): void {
+		if (!Number.isFinite(time)) return;
 		this.currentTime = this.clampTimeToTimeline(time);
 		if (this.isPlaying) {
 			this.playbackStartWallTime = performance.now();
@@ -71,6 +75,7 @@ export class PlaybackManager {
 	}
 
 	setVolume({ volume }: { volume: number }): void {
+		if (!Number.isFinite(volume)) return;
 		const clampedVolume = Math.max(0, Math.min(1, volume));
 		this.volume = clampedVolume;
 		this.muted = clampedVolume === 0;
@@ -163,7 +168,7 @@ export class PlaybackManager {
 	}
 
 	private startTimer(): void {
-		if (this.playbackTimer) {
+		if (this.playbackTimer !== null) {
 			cancelAnimationFrame(this.playbackTimer);
 		}
 
@@ -173,7 +178,7 @@ export class PlaybackManager {
 	}
 
 	private stopTimer(): void {
-		if (this.playbackTimer) {
+		if (this.playbackTimer !== null) {
 			cancelAnimationFrame(this.playbackTimer);
 			this.playbackTimer = null;
 		}

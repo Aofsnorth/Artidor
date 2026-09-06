@@ -37,7 +37,7 @@ const DialogOverlay = React.forwardRef<
 	<DialogPrimitive.Overlay
 		ref={ref}
 		className={cn(
-			"fixed inset-0 z-250 backdrop-blur-sm bg-black/10",
+			"fixed inset-0 z-250 bg-black/60",
 			className,
 		)}
 		{...props}
@@ -45,6 +45,7 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+/** Portaled modal with viewport-bounded scrolling and an accessible close target. */
 const DialogContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
 	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -54,7 +55,7 @@ const DialogContent = React.forwardRef<
 		<DialogPrimitive.Content
 			ref={ref}
 			className={cn(
-				"bg-popover fixed top-[50%] left-[50%] z-250 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-200",
+				"bg-popover fixed top-[50%] left-[50%] z-250 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto overscroll-contain translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-200",
 				className,
 			)}
 			onCloseAutoFocus={(e) => {
@@ -64,8 +65,8 @@ const DialogContent = React.forwardRef<
 			{...props}
 		>
 			{children}
-			<DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-6 right-6 cursor-pointer opacity-70 hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-				<X className="size-5 text-muted-foreground" />
+			<DialogPrimitive.Close type="button" className="ring-offset-background focus-visible:ring-ring absolute top-3 right-3 grid size-9 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:outline-hidden disabled:pointer-events-none">
+				<X aria-hidden="true" className="size-4" />
 				<span className="sr-only">Close</span>
 			</DialogPrimitive.Close>
 		</DialogPrimitive.Content>
@@ -78,7 +79,7 @@ const DialogHeader = ({
 	...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
 	<div
-		className={cn("flex flex-col space-y-2 text-left border-b p-6", className)}
+		className={cn("flex flex-col space-y-2 text-left border-b p-6 pr-14", className)}
 		{...props}
 	/>
 );

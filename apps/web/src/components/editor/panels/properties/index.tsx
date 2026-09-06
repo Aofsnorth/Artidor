@@ -69,7 +69,7 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 	return (
 		<div
 			data-testid="properties-panel"
-			className="panel glass-strong flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#09090b]/90 shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+			className="panel flex h-full min-w-0 flex-col overflow-hidden"
 		>
 			<InspectorView />
 		</div>
@@ -94,12 +94,12 @@ function InspectorView() {
 	if (toolMode === "draw" || toolMode === "vector") {
 		return (
 			<>
-				<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
-					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+				<div className="border-b border-border px-3 py-3">
+					<div className="text-xs font-semibold text-foreground">
 						Drawing
 					</div>
 				</div>
-				<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/12">
+				<ScrollArea className="min-h-0 flex-1">
 					<DrawToolConfigPanel />
 				</ScrollArea>
 			</>
@@ -167,15 +167,15 @@ function InspectorView() {
 
 	return (
 		<>
-			<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
+			<div className="border-b border-border px-3 py-3">
 				<div className="flex items-center justify-between gap-2">
-					<div className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+					<div className="text-xs font-semibold text-foreground">
 						Inspector
 					</div>
 					<div className="flex shrink-0 items-center gap-1.5">
 						<button
 							type="button"
-							className="rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white"
+							className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							onClick={() => setPrimaryTabsHidden(!arePrimaryTabsHidden)}
 							aria-pressed={arePrimaryTabsHidden}
 							aria-label={
@@ -195,16 +195,16 @@ function InspectorView() {
 						</button>
 						<button
 							type="button"
-							className="rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white"
+							className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							onClick={() => setActiveTab(element.type, config.defaultTab)}
 						>
-							Reset all
+							Default tab
 						</button>
 					</div>
 				</div>
 				{!arePrimaryTabsHidden && (
 					<div
-						className="mt-3 flex overflow-x-auto scrollbar-hidden gap-1 rounded-lg border border-white/8 bg-black/20 p-1 text-[0.64rem]"
+						className="mt-3 flex overflow-x-auto scrollbar-thin gap-1 rounded-md bg-secondary/50 p-1 text-xs"
 						onWheel={handleHorizontalTabWheel}
 					>
 						{primaryTabs.map((tab) => (
@@ -214,9 +214,10 @@ function InspectorView() {
 										<button
 											type="button"
 											disabled={!tab.target}
+											aria-pressed={tab.isActive}
 											className={cn(
-												"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1 text-center font-medium whitespace-nowrap text-white/50 transition hover:bg-white/6 hover:text-white focus:outline-none",
-												tab.isActive && "bg-white/12 text-white shadow-sm",
+												"relative flex-1 flex items-center justify-center gap-1 rounded-md px-2.5 py-1.5 text-center font-medium whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+												tab.isActive && "bg-accent text-foreground",
 												!tab.target &&
 													"cursor-not-allowed opacity-30 hover:bg-transparent hover:text-white/50",
 											)}
@@ -262,9 +263,9 @@ function InspectorView() {
 			   inspector still surfaces the high-level categories
 			   (Element / Text / Video / Image / Audio). */}
 			{
-				<div className="border-b border-white/10 px-3.5 py-3 pt-3.5">
+				<div className="border-b border-border px-3 py-2">
 					<div
-						className="scrollbar-hidden flex shrink-0 gap-1 overflow-x-auto"
+						className="scrollbar-thin flex shrink-0 gap-1 overflow-x-auto pb-1"
 						onWheel={handleHorizontalTabWheel}
 					>
 						{visibleTabs.map((tab) => (
@@ -276,11 +277,12 @@ function InspectorView() {
 											size="sm"
 											onClick={() => setActiveTab(element.type, tab.id)}
 											aria-label={tab.label}
+											aria-pressed={tab.id === activeTab.id}
 											className={cn(
-												"h-7 shrink-0 rounded-md border px-2.5 text-[0.68rem] flex items-center justify-center gap-1.5",
+												"h-8 shrink-0 rounded-md border px-2.5 text-xs flex items-center justify-center gap-1.5",
 												tab.id === activeTab.id
 													? "border-white/20 bg-white text-black hover:bg-white/90"
-													: "border-white/6 bg-white/2.5 text-white/50 hover:border-white/15 hover:bg-white/8 hover:text-white",
+													: "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
 											)}
 										>
 											<span className="opacity-70 shrink-0">{tab.icon}</span>
@@ -295,7 +297,7 @@ function InspectorView() {
 				</div>
 			}
 
-			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/12">
+			<ScrollArea className="min-h-0 flex-1">
 				{activeTab.content({
 					trackId: track.id,
 					trackName: track.name,
@@ -312,9 +314,9 @@ function InspectorView() {
 
 function InspectorHeader({ disabled }: { disabled?: boolean }) {
 	return (
-		<div className="border-b border-white/10 bg-linear-to-b from-white/4.5 to-transparent px-3.5 py-3.5">
+		<div className="border-b border-border px-3 py-3">
 			<div className="flex items-center justify-between gap-2">
-				<div className="min-w-0 truncate text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
+				<div className="min-w-0 truncate text-xs font-semibold text-foreground">
 					Inspector
 				</div>
 				<button
@@ -322,7 +324,7 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 					disabled={disabled}
 					className="shrink-0 rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
 				>
-					Reset all
+					Default tab
 				</button>
 			</div>
 			{/* Only render the 5-tab quick switcher when an element IS

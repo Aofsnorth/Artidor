@@ -31,6 +31,12 @@ export interface ExportResult {
 	error?: string;
 	cancelled?: boolean;
 	cached?: boolean;
+	/**
+	 * Container format the buffer was encoded with. Download filenames and
+	 * MIME types must come from this, not from the UI's currently-selected
+	 * format — they diverge when a result is restored from history.
+	 */
+	format?: ExportFormat;
 }
 
 export interface ExportState {

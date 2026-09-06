@@ -1,4 +1,4 @@
-import type { SceneTracks, TimelineElement } from "@/lib/timeline/types";
+import { getOrderedTracks, type SceneTracks, type TimelineElement } from "@/lib/timeline/types";
 import type { RippleAdjustment } from "./apply";
 
 interface Interval {
@@ -10,6 +10,7 @@ interface ElementSpan extends Interval {
 	id: string;
 }
 
+/** Find vacated spans across every lane, excluding clips moved between lanes. */
 export function computeRippleAdjustments({
 	beforeTracks,
 	afterTracks,
@@ -17,16 +18,8 @@ export function computeRippleAdjustments({
 	beforeTracks: SceneTracks;
 	afterTracks: SceneTracks;
 }): RippleAdjustment[] {
-	const beforeTrackList = [
-		...beforeTracks.overlay,
-		beforeTracks.main,
-		...beforeTracks.audio,
-	];
-	const afterTrackList = [
-		...afterTracks.overlay,
-		afterTracks.main,
-		...afterTracks.audio,
-	];
+	const beforeTrackList = getOrderedTracks(beforeTracks);
+	const afterTrackList = getOrderedTracks(afterTracks);
 	const afterTracksById = new Map(
 		afterTrackList.map((track) => [track.id, track]),
 	);

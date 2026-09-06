@@ -1,9 +1,7 @@
 # Turborepo
 .turbo
 
-# Env vars
-.env*
-!.env.example
+# Environment / secrets rules are inherited from the root .gitignore.
 
 .next/
 
