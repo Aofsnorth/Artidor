@@ -60,4 +60,20 @@ describe("effect preview scheduling @fast @regression", () => {
 	test("does not force effect-card GPU output through a pixel readback", () => {
 		expect(serviceSource).not.toContain("targetCtx.getImageData(");
 	});
+
+	test("reports a failed render instead of claiming success when the 2d context is missing", () => {
+		const fakeCanvas = {
+			width: 0,
+			height: 0,
+			getContext: () => null,
+		} as unknown as HTMLCanvasElement;
+
+		const outcome = effectPreviewService.renderPreview({
+			effectType: "blur",
+			params: {},
+			targetCanvas: fakeCanvas,
+		});
+
+		expect(outcome.rendered).toBe(false);
+	});
 });

@@ -1,10 +1,6 @@
 "use client";
 
-import {
-	ChartHistogramIcon,
-	PauseIcon,
-	PlayIcon,
-} from "@hugeicons/core-free-icons";
+import { ChartHistogramIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
@@ -94,15 +90,13 @@ const VECTOR_TARGETS = [
 
 /**
  * Renders one live preview scope at a time with contextual signal readouts.
- * Sampling stays at 12 fps while React statistics update at 3 fps, and the
- * freeze control retains only the latest downsampled frame in memory.
+ * Sampling stays at 12 fps while React statistics update at 3 fps.
  */
 export function ScopesCard() {
 	const { t } = useI18n();
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const latestSampleRef = useRef<ScopeSampleData | null>(null);
 	const [active, setActive] = useState<ScopeMode>("waveform");
-	const [frozen, setFrozen] = useState(false);
 	const [hasSignal, setHasSignal] = useState(false);
 	const [statistics, setStatistics] = useState<ScopeStatistics | null>(null);
 
@@ -129,9 +123,7 @@ export function ScopesCard() {
 		const tick = (now: number) => {
 			if (now - lastSampleAt >= 1000 / SAMPLE_RATE_FPS) {
 				lastSampleAt = now;
-				if (!frozen || !latestSampleRef.current) {
-					latestSampleRef.current = samplePreviewCanvas({ columns: 128 });
-				}
+				latestSampleRef.current = samplePreviewCanvas({ columns: 128 });
 
 				const sample = latestSampleRef.current;
 				if (sample) {
@@ -158,7 +150,7 @@ export function ScopesCard() {
 
 		animationFrame = window.requestAnimationFrame(tick);
 		return () => window.cancelAnimationFrame(animationFrame);
-	}, [active, frozen]);
+	}, [active]);
 
 	const readouts = getScopeReadouts({ active, statistics, t });
 	const sourceLabel = statistics
@@ -187,18 +179,11 @@ export function ScopesCard() {
 							{t("scopes.monitorDescription")}
 						</p>
 					</div>
-					<ScopeStatus frozen={frozen} hasSignal={hasSignal} t={t} />
 				</div>
 			</div>
 
 			<div className="p-2.5">
-				<ScopeToolbar
-					active={active}
-					frozen={frozen}
-					onActiveChange={setActive}
-					onFreezeToggle={() => setFrozen((value) => !value)}
-					t={t}
-				/>
+				<ScopeToolbar active={active} onActiveChange={setActive} t={t} />
 
 				<div className="relative mt-2.5 overflow-hidden rounded-lg border border-white/10 bg-[#030304] shadow-inner shadow-black/55">
 					<div
@@ -219,7 +204,6 @@ export function ScopesCard() {
 				<ScopeReadouts readouts={readouts} />
 				<ScopeFooter
 					active={active}
-					frozen={frozen}
 					hasSignal={hasSignal}
 					sourceLabel={sourceLabel}
 					t={t}
@@ -231,15 +215,11 @@ export function ScopesCard() {
 
 function ScopeToolbar({
 	active,
-	frozen,
 	onActiveChange,
-	onFreezeToggle,
 	t,
 }: {
 	active: ScopeMode;
-	frozen: boolean;
 	onActiveChange: (next: ScopeMode) => void;
-	onFreezeToggle: () => void;
 	t: (key: string) => string;
 }) {
 	return (
@@ -270,61 +250,6 @@ function ScopeToolbar({
 					);
 				})}
 			</div>
-			<button
-				type="button"
-				onClick={onFreezeToggle}
-				data-native-key-activation="true"
-				aria-pressed={frozen}
-				aria-label={
-					frozen ? t("scopes.resumeTooltip") : t("scopes.freezeTooltip")
-				}
-				title={frozen ? t("scopes.resumeTooltip") : t("scopes.freezeTooltip")}
-				className={cn(
-					"grid size-9 shrink-0 place-items-center rounded-lg border transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50 motion-reduce:transition-none pointer-coarse:size-11",
-					frozen
-						? "border-white/18 bg-white/12 text-white"
-						: "border-white/8 bg-white/2.5 text-white/45 hover:border-white/15 hover:bg-white/6 hover:text-white",
-				)}
-			>
-				<HugeiconsIcon
-					icon={frozen ? PlayIcon : PauseIcon}
-					className="size-3.5"
-					aria-hidden="true"
-				/>
-			</button>
-		</div>
-	);
-}
-
-function ScopeStatus({
-	frozen,
-	hasSignal,
-	t,
-}: {
-	frozen: boolean;
-	hasSignal: boolean;
-	t: (key: string) => string;
-}) {
-	const label = hasSignal
-		? frozen
-			? t("scopes.frozen")
-			: t("scopes.live")
-		: t("scopes.waitingShort");
-
-	return (
-		<div className="flex h-6 shrink-0 items-center gap-1.5 rounded-md border border-white/8 bg-black/25 px-2 font-mono text-[0.58rem] uppercase tracking-[0.12em] text-white/55">
-			<span
-				aria-hidden="true"
-				className={cn(
-					"size-1.5 rounded-full",
-					hasSignal
-						? frozen
-							? "bg-amber-300/75"
-							: "bg-emerald-300/75"
-						: "bg-white/25",
-				)}
-			/>
-			{label}
 		</div>
 	);
 }
@@ -372,13 +297,11 @@ function ScopeReadouts({ readouts }: { readouts: ScopeReadout[] }) {
 
 function ScopeFooter({
 	active,
-	frozen,
 	hasSignal,
 	sourceLabel,
 	t,
 }: {
 	active: ScopeMode;
-	frozen: boolean;
 	hasSignal: boolean;
 	sourceLabel: string;
 	t: (key: string) => string;
@@ -391,11 +314,7 @@ function ScopeFooter({
 				<span className="truncate font-mono tabular-nums">{sourceLabel}</span>
 			</div>
 			<span className="max-w-full truncate font-mono tabular-nums">
-				{hasSignal
-					? frozen
-						? t("scopes.holdStatus")
-						: t("scopes.sampleRate")
-					: t("scopes.noSignal")}
+				{hasSignal ? t("scopes.sampleRate") : t("scopes.noSignal")}
 			</span>
 		</div>
 	);

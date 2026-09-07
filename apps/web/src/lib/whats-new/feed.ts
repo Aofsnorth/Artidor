@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-07-cleaner-monitor-honest-previews",
+		date: "2026-09-07",
+		tag: "improvement",
+		title: "Cleaner monitor, honest catalog previews",
+		items: [
+			"The signal monitor now runs hands-free: the live badge and pause button are gone while automatic sampling continues.",
+			"The redundant project summary card beside the audio meter was removed.",
+			"Catalog add buttons are now white, failed effect previews show a visible fallback instead of a blank tile, and overlay and sticker previews sit on a contrast plate so transparent artwork stays visible.",
+		],
+	},
+	{
 		id: "2026-09-07-video-scopes-monitor",
 		date: "2026-09-07",
 		tag: "improvement",

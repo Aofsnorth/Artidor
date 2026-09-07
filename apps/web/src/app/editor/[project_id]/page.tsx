@@ -18,7 +18,6 @@ import {
 	AUDIO_METER_WIDTH_DEFAULT_PX,
 	VerticalAudioMeter,
 } from "@/components/editor/vertical-audio-meter";
-import { ProjectDetailsCard } from "@/components/editor/project-details-card";
 import { EditorProvider } from "@/components/providers/editor-provider";
 import { usePanelStore } from "@/stores/panel-store";
 import { useOpenDialogsStore } from "@/stores/open-dialogs-store";
@@ -391,7 +390,6 @@ function MeterDetailsColumn() {
 			{isMeterVisible ? (
 				<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
 			) : null}
-			<ProjectDetailsCard />
 		</div>
 	);
 }

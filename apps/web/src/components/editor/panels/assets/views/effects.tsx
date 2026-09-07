@@ -19,6 +19,7 @@ import {
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { getPreviewBackgroundStyle } from "@/components/editor/panels/assets/views/components/procedural-preview";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -184,11 +185,18 @@ function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
  * unmount so a card that scrolls back out of view before its
  * turn doesn't waste a render.
  */
-function EffectPreviewCanvas({ effectType }: { effectType: string }) {
+function EffectPreviewCanvas({
+	effectType,
+	name,
+}: {
+	effectType: string;
+	name: string;
+}) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const [isVisible, setIsVisible] = useState(false);
 	const [isPainted, setIsPainted] = useState(false);
+	const [renderFailed, setRenderFailed] = useState(false);
 
 	useEffect(() => {
 		const node = containerRef.current;
@@ -231,12 +239,13 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 		if (!isVisible) return;
 		const render = () => {
 			if (canvasRef.current) {
-				effectPreviewService.renderPreview({
+				const outcome = effectPreviewService.renderPreview({
 					effectType,
 					params: {},
 					targetCanvas: canvasRef.current,
 				});
-				setIsPainted(true);
+				setIsPainted(outcome.rendered);
+				setRenderFailed(!outcome.rendered);
 			}
 		};
 		// Submit to the service's bounded queue. Negative priority
@@ -264,6 +273,17 @@ function EffectPreviewCanvas({ effectType }: { effectType: string }) {
 						/>
 					)}
 					<canvas ref={canvasRef} className="relative z-10 size-full" />
+					{renderFailed ? (
+						<div
+							aria-hidden="true"
+							className="absolute inset-0 z-10 flex items-end justify-start p-1.5"
+							style={getPreviewBackgroundStyle(`effects:${effectType}`)}
+						>
+							<span className="rounded bg-black/65 px-1.5 py-0.5 text-[0.58rem] font-medium text-white/85">
+								{name}
+							</span>
+						</div>
+					) : null}
 					<div className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(120deg,transparent_0%,rgba(255,255,255,0.18)_42%,transparent_68%)] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 				</>
 			) : null}
@@ -291,7 +311,9 @@ const EffectItem = memo(function EffectItem({
 		});
 	}, [editor, effect.type]);
 
-	const preview = <EffectPreviewCanvas effectType={effect.type} />;
+	const preview = (
+		<EffectPreviewCanvas effectType={effect.type} name={effect.name} />
+	);
 
 	return (
 		<DraggableItem
