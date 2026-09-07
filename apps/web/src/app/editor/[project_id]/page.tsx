@@ -372,7 +372,9 @@ const METER_DETAILS_MIN_PX = 64;
 const METER_DETAILS_MAX_PX = 220;
 
 function MeterDetailsColumn() {
-	const isMeterVisible = useUiOverlayStore((state) => state.isAudioVisualizerOpen);
+	const isMeterVisible = useUiOverlayStore(
+		(state) => state.isAudioVisualizerOpen,
+	);
 	const [width, setWidth] = useState(AUDIO_METER_WIDTH_DEFAULT_PX);
 	const clampedSetWidth = (next: number) => {
 		setWidth(
@@ -382,14 +384,15 @@ function MeterDetailsColumn() {
 			),
 		);
 	};
+
+	if (!isMeterVisible) return null;
+
 	return (
 		<div
 			className="flex min-h-0 shrink-0 flex-col items-stretch gap-2"
 			style={{ width: `${width}px` }}
 		>
-			{isMeterVisible ? (
-				<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
-			) : null}
+			<VerticalAudioMeter width={width} onResize={clampedSetWidth} />
 		</div>
 	);
 }
@@ -413,7 +416,9 @@ function EditorLayout() {
 function EditorPanels() {
 	const { panels, setPanel, resetPanels } = usePanelStore();
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
-	const isAdvancedViewersOpen = useUiOverlayStore((state) => state.isAdvancedViewersOpen);
+	const isAdvancedViewersOpen = useUiOverlayStore(
+		(state) => state.isAdvancedViewersOpen,
+	);
 	const isViewer = useViewerStore((state) => state.isViewer);
 	const showAdvancedViewers = isAdvancedViewersOpen && !isViewer;
 	const [layoutVersion, setLayoutVersion] = useState(0);
@@ -573,7 +578,13 @@ function EditorPanels() {
 									maxSize="40%"
 									className="min-h-0 min-w-0"
 								>
-									<Suspense fallback={<p className="p-3 text-xs text-muted-foreground">Loading viewers…</p>}>
+									<Suspense
+										fallback={
+											<p className="p-3 text-xs text-muted-foreground">
+												Loading viewers…
+											</p>
+										}
+									>
 										<AdvancedViewersPanel />
 									</Suspense>
 								</ResizablePanel>

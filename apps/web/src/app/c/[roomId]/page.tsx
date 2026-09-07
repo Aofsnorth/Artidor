@@ -11,6 +11,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { JoinCollabDialog } from "@/components/editor/collab/collab-dialogs";
+import { useCollabStore } from "@/stores/collab-store";
 
 export default function CollabJoinPage({
 	params,
@@ -28,11 +29,16 @@ export default function CollabJoinPage({
 		});
 	}, [params]);
 
-	// If the user closes the dialog without joining, go to the editor home.
+	// If the user joined successfully, take them to projects/editor; otherwise return to home.
 	const handleOpenChange = (next: boolean) => {
 		setOpen(next);
 		if (!next) {
-			router.push("/");
+			const status = useCollabStore.getState().status;
+			if (status === "connected") {
+				router.push("/projects");
+			} else {
+				router.push("/");
+			}
 		}
 	};
 

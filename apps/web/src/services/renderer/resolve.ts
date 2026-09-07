@@ -16,6 +16,7 @@ import { effectsRegistry, resolveEffectPasses } from "@/lib/effects";
 import type { Effect, EffectPass } from "@/lib/effects/types";
 import { getSourceTimeAtClipTime } from "@/lib/retime";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/lib/graphics";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
 import {
 	getTextMeasurementContext,
 	measureTextElement,
@@ -50,6 +51,9 @@ import type {
 export type ResolveContext = {
 	renderer: CanvasRenderer;
 	time: number;
+	/** MediaIds with a currently-live clip at this frame — pre-warm skips them
+	 * so background seeks never disturb the decoder serving the visible cut. */
+	liveMediaIds?: ReadonlySet<string>;
 };
 
 export async function resolveRenderTree({
@@ -77,6 +81,17 @@ async function resolveNode({
 	node: AnyBaseNode;
 	context: ResolveContext;
 }): Promise<void> {
+	// Collect the mediaIds visible at this exact frame BEFORE resolving, so
+	// lookahead pre-warm can skip sinks that are actively decoding the live
+	// cut. Split halves share one sink — seeking it for the upcoming half
+	// while the current half still plays would thrash the iterator and
+	// stutter every transition, with or without effects.
+	if (node.children.length > 0 && !context.liveMediaIds) {
+		context = {
+			...context,
+			liveMediaIds: collectLiveMediaIds(node, context.time),
+		};
+	}
 	if (node instanceof VideoNode) {
 		node.resolved = await resolveVideoNode({ node, context });
 	} else if (node instanceof ImageNode) {
@@ -205,7 +220,26 @@ async function resolveVideoNode({
 	context: ResolveContext;
 }): Promise<ResolvedVisualSourceNodeState | null> {
 	const clipTime = context.time - node.params.timeOffset;
-	if (clipTime < 0 || clipTime >= node.params.duration) {
+	if (clipTime < 0) {
+		// Skip pre-warm for media that is live right now: the sink is busy
+		// decoding the visible cut, and a background seek would tear down
+		// its iterator + prefetch buffer mid-playback. Split halves share
+		// one sink, so prewarming the upcoming half would thrash the decoder
+		// serving the current half — stuttering every transition, with or
+		// without effects. Different-media cuts can still stall 150-500ms
+		// on first decode, so only those are pre-decoded ahead of the cut.
+		if (context.liveMediaIds?.has(node.params.mediaId)) return null;
+		if (clipTime >= -3 * TICKS_PER_SECOND) {
+			void videoCache.prewarm({
+				mediaId: node.params.mediaId,
+				file: node.params.file,
+				time: mediaTimeToSeconds({ time: Math.round(node.params.trimStart) }),
+				maxDim: context.renderer.maxSourceDim,
+			});
+		}
+		return null;
+	}
+	if (clipTime >= node.params.duration) {
 		return null;
 	}
 
@@ -224,6 +258,24 @@ async function resolveVideoNode({
 		maxDim: context.renderer.maxSourceDim,
 	});
 	if (!frame) {
+		// If videoCache returns null temporarily (e.g. during an in-flight seek or decode spike
+		// across a cut boundary), fall back to the last resolved frame so playback doesn't flash black.
+		if (node.resolved?.source) {
+			const visualState = resolveVisualState({
+				params: node.params,
+				context,
+				sourceWidth: node.resolved.sourceWidth,
+				sourceHeight: node.resolved.sourceHeight,
+			});
+			if (visualState) {
+				return {
+					...visualState,
+					source: node.resolved.source,
+					sourceWidth: node.resolved.sourceWidth,
+					sourceHeight: node.resolved.sourceHeight,
+				};
+			}
+		}
 		return null;
 	}
 
@@ -257,7 +309,10 @@ async function resolveImageNode({
 	// a tighter maxSourceSize in the scene builder.
 	const maxSourceSize =
 		node.params.maxSourceSize ??
-		Math.max(context.renderer.canvasSize.width, context.renderer.canvasSize.height);
+		Math.max(
+			context.renderer.canvasSize.width,
+			context.renderer.canvasSize.height,
+		);
 	const source = await loadImageSource(node.params.url, maxSourceSize);
 	const visualState = resolveVisualState({
 		params: node.params,
@@ -480,6 +535,26 @@ async function resolveBackdropSource({
 		width: source.width,
 		height: source.height,
 	};
+}
+
+/**
+ * MediaIds with a currently-live video/image clip at `time` — i.e. clips
+ * whose [timeOffset, timeOffset + duration) window contains this frame.
+ * Used to keep lookahead pre-warm away from busy decoders.
+ */
+function collectLiveMediaIds(node: AnyBaseNode, time: number): Set<string> {
+	const live = new Set<string>();
+	const visit = (current: AnyBaseNode) => {
+		if (current instanceof VideoNode || current instanceof ImageNode) {
+			const clipTime = time - current.params.timeOffset;
+			if (clipTime >= 0 && clipTime < current.params.duration) {
+				live.add(current.params.mediaId);
+			}
+		}
+		for (const child of current.children) visit(child);
+	};
+	visit(node);
+	return live;
 }
 
 export function resolveEffectLayerNode({

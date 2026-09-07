@@ -9,10 +9,19 @@ import { checkRateLimit, checkCreateResourceRateLimit } from "@/lib/rate-limit";
 import { createRoomStore } from "@/lib/collab/room-store";
 import { buildJoinUrl } from "@/lib/collab/client";
 import type { CreateRoomResult } from "@/lib/collab/types";
-import { getOptionalSession } from "@/lib/auth/require-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+function getOriginFromRequest(request: Request): string | undefined {
+	const host =
+		request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+	const proto = request.headers.get("x-forwarded-proto") ?? "http";
+	if (host) {
+		return `${proto}://${host}`;
+	}
+	return undefined;
+}
 
 const bodySchema = z.object({
 	projectName: z.string().min(1).max(200),
@@ -21,11 +30,6 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-	const session = await getOptionalSession();
-	if (!session) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
 	const { limited } = await checkRateLimit({ request });
 	if (limited) {
 		return Response.json({ error: "Too many requests" }, { status: 429 });
@@ -61,9 +65,10 @@ export async function POST(request: Request) {
 		nickname: body.nickname,
 	});
 
+	const origin = getOriginFromRequest(request);
 	const result: CreateRoomResult = {
 		roomId,
-		joinUrl: buildJoinUrl(roomId),
+		joinUrl: buildJoinUrl(roomId, origin),
 		sessionId,
 	};
 	return Response.json(result);

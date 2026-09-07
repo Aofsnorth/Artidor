@@ -31,7 +31,12 @@ export async function createRoom({
 		const detail = await res.json().catch(() => null);
 		throw new Error(detail?.error ?? "Could not create collaboration room.");
 	}
-	return (await res.json()) as CreateRoomResult;
+	const data = (await res.json()) as CreateRoomResult;
+	return {
+		...data,
+		joinUrl:
+			typeof window !== "undefined" ? buildJoinUrl(data.roomId) : data.joinUrl,
+	};
 }
 
 export async function joinRoom({
@@ -193,10 +198,11 @@ export async function setRoomMode({
 }
 
 /** Build the join URL for a room ID. */
-export function buildJoinUrl(roomId: string): string {
-	const origin =
-		typeof window !== "undefined"
+export function buildJoinUrl(roomId: string, origin?: string): string {
+	const resolvedOrigin =
+		origin ??
+		(typeof window !== "undefined"
 			? window.location.origin
-			: "https://artidor.vercel.app";
-	return `${origin}/c/${roomId}`;
+			: "https://artidor.vercel.app");
+	return `${resolvedOrigin}/c/${roomId}`;
 }

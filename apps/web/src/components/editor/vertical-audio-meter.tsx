@@ -1,6 +1,8 @@
 ﻿"use client";
 
 import { memo, useEffect, useRef, useState } from "react";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import { timelineHasAudio } from "@/lib/media/audio";
@@ -50,6 +52,9 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 		(state) => state.audioMeterMode === "visualizer",
 	);
 	const toggleMode = useUiOverlayStore((state) => state.toggleAudioMeterMode);
+	const setAudioVisualizerOpen = useUiOverlayStore(
+		(state) => state.setAudioVisualizerOpen,
+	);
 	// Width is stored unconstrained but clamped on every update so a
 	// stray drag (or a future programmatic call) can never collapse
 	// the column to nothing or push it past the properties panel.
@@ -271,6 +276,21 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 		>
 			<AudioMeterResizeHandle currentWidth={width} onResize={setWidth} />
 
+			<div className="flex items-center justify-between px-0.5 pt-0.5">
+				<span className="text-[0.55rem] font-bold uppercase tracking-[0.08em] text-white/40">
+					{isVisualizer ? "Spectrum" : "Meter"}
+				</span>
+				<button
+					type="button"
+					onClick={() => setAudioVisualizerOpen(false)}
+					className="flex size-4 cursor-pointer items-center justify-center rounded text-white/40 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					title="Hide audio visualizer"
+					aria-label="Hide audio visualizer"
+				>
+					<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
+				</button>
+			</div>
+
 			{isVisualizer ? (
 				<VisualizerCard barRefs={visBarRefs} />
 			) : (
@@ -325,9 +345,6 @@ function MeterView({
 }) {
 	return (
 		<>
-			<div className="text-center text-[0.5rem] font-bold uppercase tracking-[0.08em] text-white/35">
-				Meter
-			</div>
 			<div className="flex min-h-0 flex-1 items-stretch gap-1">
 				<ChannelBar
 					barRef={leftBarRef}
@@ -361,9 +378,6 @@ function VisualizerCard({
 }) {
 	return (
 		<>
-			<div className="text-center text-[0.55rem] font-semibold text-muted-foreground">
-				Spectrum
-			</div>
 			<div
 				className="flex min-h-0 flex-1 items-end gap-px overflow-hidden rounded border border-border bg-background p-1"
 				aria-hidden="true"

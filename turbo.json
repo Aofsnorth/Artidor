@@ -1,6 +1,6 @@
 {
 	"$schema": "https://v2-10-12.turborepo.dev/schema.json",
-	"globalPassThroughEnv": ["BASE_URL"],
+	"globalPassThroughEnv": ["BASE_URL", "NODE_OPTIONS"],
 	"tasks": {
 		"build": {
 			"dependsOn": ["^build"],

@@ -84,6 +84,7 @@ export class CollabManager {
 			store.setError(
 				err instanceof Error ? err.message : "Could not start collaboration.",
 			);
+			throw err;
 		}
 	}
 
@@ -123,6 +124,7 @@ export class CollabManager {
 			store.setError(
 				err instanceof Error ? err.message : "Could not join collaboration.",
 			);
+			throw err;
 		}
 	}
 

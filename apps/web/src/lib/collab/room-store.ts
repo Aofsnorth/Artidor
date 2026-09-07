@@ -90,13 +90,70 @@ function pruneStale(room: StoredRoom): void {
 	);
 }
 
+const memoryRoomStore = new Map<
+	string,
+	{ room: StoredRoom; expiresAt: number }
+>();
+
+let redisDisabledUntil = 0;
+const REDIS_COOLDOWN_MS = 30_000;
+const REDIS_TIMEOUT_MS = 1500;
+
 async function getRoom(roomId: string): Promise<StoredRoom | null> {
-	const raw = await redis.get<StoredRoom>(ROOM_KEY(roomId));
-	return raw ?? null;
+	if (Date.now() > redisDisabledUntil) {
+		try {
+			const raw = await Promise.race([
+				redis.get<StoredRoom>(ROOM_KEY(roomId)),
+				new Promise<null>((_, reject) =>
+					setTimeout(
+						() => reject(new Error("Redis get timeout")),
+						REDIS_TIMEOUT_MS,
+					),
+				),
+			]);
+			if (raw) return raw;
+		} catch (err) {
+			redisDisabledUntil = Date.now() + REDIS_COOLDOWN_MS;
+			console.warn(
+				"[collab] Redis get failed, using memory fallback (circuit broken for 30s):",
+				err,
+			);
+		}
+	}
+	const cached = memoryRoomStore.get(roomId);
+	if (cached && cached.expiresAt > Date.now()) {
+		return cached.room;
+	}
+	if (cached) {
+		memoryRoomStore.delete(roomId);
+	}
+	return null;
 }
 
 async function saveRoom(room: StoredRoom): Promise<void> {
-	await redis.set(ROOM_KEY(room.roomId), room, { ex: ROOM_TTL_SECONDS });
+	memoryRoomStore.set(room.roomId, {
+		room,
+		expiresAt: Date.now() + ROOM_TTL_SECONDS * 1000,
+	});
+	if (Date.now() > redisDisabledUntil) {
+		try {
+			await Promise.race([
+				redis.set(ROOM_KEY(room.roomId), room, { ex: ROOM_TTL_SECONDS }),
+				new Promise<null>((_, reject) =>
+					setTimeout(
+						() => reject(new Error("Redis set timeout")),
+						REDIS_TIMEOUT_MS,
+					),
+				),
+			]);
+		} catch (err) {
+			redisDisabledUntil = Date.now() + REDIS_COOLDOWN_MS;
+			console.warn(
+				"[collab] Redis set failed, kept in memory fallback (circuit broken for 30s):",
+				err,
+			);
+		}
+	}
 }
 
 export async function createRoomStore({

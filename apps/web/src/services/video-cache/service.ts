@@ -34,6 +34,30 @@ const SINK_POOL_SIZE = 12;
  * With poolSize > 0, canvases are reused and timestamp-keyed retention
  * shows wrong frames during playback.
  */
+/**
+ * Checks whether a frame covers the requested timestamp, accounting for
+ * minor timestamp jitter and container priming offsets at cut points.
+ */
+export function isFrameValid({
+	frameTimestamp,
+	frameDuration,
+	time,
+}: {
+	frameTimestamp: number;
+	frameDuration: number;
+	time: number;
+}): boolean {
+	const duration = frameDuration > 0 ? frameDuration : 1 / 30;
+	// 35ms start tolerance handles container priming offset and timestamp jitter at cut points.
+	// 10ms end tolerance handles precision rounding in float timestamps.
+	const startTolerance = 0.035;
+	const endTolerance = 0.01;
+	return (
+		time >= frameTimestamp - startTolerance &&
+		time < frameTimestamp + duration + endTolerance
+	);
+}
+
 export function resolveDecodedFrameCacheLimit({
 	poolSize,
 	desiredLimit,
@@ -60,7 +84,7 @@ interface VideoSinkData {
 	// Seek generation counter. When a new seek comes in, this increments.
 	// Old seeks check this and bail out if they're stale.
 	seekGeneration: number;
-/**
+	/**
 	 * GOP index: sorted keyframe timestamps. Built lazily on first seek
 	 * (or eagerly on import). Used by `seekToTime` to jump directly to
 	 * the nearest preceding keyframe instead of scanning packets.
@@ -94,6 +118,76 @@ export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
 	private frameChain = new Map<string, Promise<unknown>>();
+	private prewarmPromises = new Map<string, Promise<void>>();
+
+	/**
+	 * Pre-warm a video sink and pre-decode its starting frames ahead of time.
+	 * Called before the playhead reaches an upcoming clip, ensuring the sink,
+	 * decoder, and initial frame buffer are ready when the cut arrives.
+	 */
+	prewarm({
+		mediaId,
+		file,
+		time,
+		maxDim,
+	}: {
+		mediaId: string;
+		file: File;
+		time: number;
+		maxDim?: number;
+	}): Promise<void> {
+		const existingPromise = this.prewarmPromises.get(mediaId);
+		if (existingPromise) return existingPromise;
+
+		const promise = (async () => {
+			try {
+				await this.ensureSink({ mediaId, file, maxDim });
+				const sinkData = this.sinks.get(mediaId);
+				if (!sinkData) return;
+
+				// Never disturb a sink that is actively serving another playback
+				// position. Split clips share one mediaId: while the first half
+				// is still playing, prewarming the second half would seek this
+				// same sink — tearing down its iterator + prefetch buffer and
+				// forcing a full seek on every frame until the cut. That decode
+				// thrash stutters the transition with or without effects. An
+				// active sink already has a warm decoder, so leave it alone and
+				// let the cut perform one normal seek. Only seek idle sinks
+				// (no frame, no iterator) that have nothing to lose.
+				if (sinkData.currentFrame || sinkData.iterator) {
+					return;
+				}
+
+				// Otherwise, perform background seek to target time and fill prefetch buffer.
+				sinkData.seekGeneration++;
+				const gen = sinkData.seekGeneration;
+				const previous = this.frameChain.get(mediaId) ?? Promise.resolve();
+				const current = previous.then(async () => {
+					if (sinkData.seekGeneration !== gen) return;
+					const frame = await this.seekToTime({
+						sinkData,
+						time,
+						generation: gen,
+					});
+					if (frame && sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
+						this.startPrefetch({ sinkData });
+					}
+				});
+				this.frameChain.set(
+					mediaId,
+					current.catch(() => {}),
+				);
+				await current;
+			} catch (err) {
+				console.warn("[video-cache] Prewarm failed:", mediaId, err);
+			} finally {
+				this.prewarmPromises.delete(mediaId);
+			}
+		})();
+
+		this.prewarmPromises.set(mediaId, promise);
+		return promise;
+	}
 
 	async getFrameAt({
 		mediaId,
@@ -211,14 +305,18 @@ export class VideoCache {
 		return frame;
 	}
 
-		private isFrameValid({
+	private isFrameValid({
 		frame,
 		time,
 	}: {
 		frame: WrappedCanvas;
 		time: number;
 	}): boolean {
-		return time >= frame.timestamp && time < frame.timestamp + frame.duration;
+		return isFrameValid({
+			frameTimestamp: frame.timestamp,
+			frameDuration: frame.duration,
+			time,
+		});
 	}
 	private async iterateToTime({
 		sinkData,
@@ -505,12 +603,14 @@ export class VideoCache {
 
 		this.initPromises.delete(mediaId);
 		this.frameChain.delete(mediaId);
+		this.prewarmPromises.delete(mediaId);
 	}
 
 	clearAll(): void {
 		for (const [mediaId] of this.sinks) {
 			this.clearVideo({ mediaId });
 		}
+		this.prewarmPromises.clear();
 	}
 
 	getStats() {

@@ -1183,7 +1183,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 			"1 collaborator connected · Mode: {mode}",
 		"collaboration.startDialog.statusPlural":
 			"{count} collaborators connected · Mode: {mode}",
-		"collaboration.startDialog.endSessionButton": "End session",
+		"collaboration.startDialog.endSessionButton": "Stop session",
 		"collaboration.joinDialog.title": "Join collaboration",
 		"collaboration.joinDialog.description":
 			"Enter your name to join the editing session. You'll get a colored cursor on the timeline.",
@@ -2395,7 +2395,7 @@ const dictionaries: Record<Locale, Dictionary> = {
 			"1 collaborator connected · Mode: {mode}",
 		"collaboration.startDialog.statusPlural":
 			"{count} collaborators connected · Mode: {mode}",
-		"collaboration.startDialog.endSessionButton": "End session",
+		"collaboration.startDialog.endSessionButton": "Stop session",
 		"collaboration.joinDialog.title": "Join collaboration",
 		"collaboration.joinDialog.description":
 			"Enter your name to join the editing session. You'll get a colored cursor on the timeline.",

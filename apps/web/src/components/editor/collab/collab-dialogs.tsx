@@ -31,6 +31,7 @@ import {
 	Idea01Icon,
 	CheckIcon,
 	Copy01Icon,
+	Cancel01Icon,
 } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useCollabStore } from "@/stores/collab-store";
@@ -294,10 +295,11 @@ export function StartCollabDialog({
 							</div>
 							<Button
 								type="button"
-								variant="ghost"
+								variant="destructive"
 								onClick={() => void editor.collab.disconnect()}
-								className="h-8 self-start text-[0.74rem] text-white/50 hover:text-white/80"
+								className="h-8.5 gap-1.5 self-start rounded-lg border border-red-500/25 bg-red-500/15 px-3.5 text-[0.76rem] font-medium text-red-300 hover:bg-red-500/25 hover:text-red-200"
 							>
+								<HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
 								{t("collaboration.startDialog.endSessionButton")}
 							</Button>
 						</>

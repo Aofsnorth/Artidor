@@ -64,16 +64,35 @@ function checkLocalRateLimit(ip: string): {
 	return { success: true, limited: false };
 }
 
+let redisLimitDisabledUntil = 0;
+const REDIS_LIMIT_COOLDOWN_MS = 30_000;
+const REDIS_LIMIT_TIMEOUT_MS = 1500;
+
 export async function checkRateLimit({ request }: { request: Request }) {
 	const ip = clientIpOf(request);
-	try {
-		const { success } = await baseRateLimit.limit(ip);
-		return { success, limited: !success };
-	} catch (err) {
-		// Fail CLOSED with local fallback instead of failing open.
-		console.warn("[rate-limit] Redis unreachable, using local fallback:", err);
-		return checkLocalRateLimit(ip);
+	if (Date.now() > redisLimitDisabledUntil) {
+		try {
+			const { success } = await Promise.race([
+				baseRateLimit.limit(ip),
+				new Promise<{ success: boolean }>((_, reject) =>
+					setTimeout(
+						() => reject(new Error("RateLimit timeout")),
+						REDIS_LIMIT_TIMEOUT_MS,
+					),
+				),
+			]);
+			return { success, limited: !success };
+		} catch (err) {
+			redisLimitDisabledUntil = Date.now() + REDIS_LIMIT_COOLDOWN_MS;
+			// Fail CLOSED with local fallback instead of failing open.
+			console.warn(
+				"[rate-limit] Redis unreachable, using local fallback:",
+				err,
+			);
+			return checkLocalRateLimit(ip);
+		}
 	}
+	return checkLocalRateLimit(ip);
 }
 
 /**
@@ -130,14 +149,26 @@ export async function checkCreateResourceRateLimit({
 	request: Request;
 }) {
 	const ip = clientIpOf(request);
-	try {
-		const { success } = await createResourceRateLimit.limit(ip);
-		return { success, limited: !success };
-	} catch (err) {
-		console.warn(
-			"[rate-limit] Redis unreachable (create), using local fallback:",
-			err,
-		);
-		return checkLocalCreateRateLimit(ip);
+	if (Date.now() > redisLimitDisabledUntil) {
+		try {
+			const { success } = await Promise.race([
+				createResourceRateLimit.limit(ip),
+				new Promise<{ success: boolean }>((_, reject) =>
+					setTimeout(
+						() => reject(new Error("RateLimit create timeout")),
+						REDIS_LIMIT_TIMEOUT_MS,
+					),
+				),
+			]);
+			return { success, limited: !success };
+		} catch (err) {
+			redisLimitDisabledUntil = Date.now() + REDIS_LIMIT_COOLDOWN_MS;
+			console.warn(
+				"[rate-limit] Redis unreachable (create), using local fallback:",
+				err,
+			);
+			return checkLocalCreateRateLimit(ip);
+		}
 	}
+	return checkLocalCreateRateLimit(ip);
 }
