@@ -214,7 +214,7 @@ export function DraggableItem({
 							)}
 							{!isDragging && (
 								<PlusButton
-									className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 bg-black/50 hover:bg-black/80 border border-white/10 text-cyan-400 z-20"
+									className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 bg-black/50 hover:bg-black/80 border border-white/10 text-white z-20"
 									onClick={handleAddToTimeline}
 								/>
 							)}

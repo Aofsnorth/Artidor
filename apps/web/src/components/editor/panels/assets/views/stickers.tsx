@@ -495,6 +495,14 @@ interface StickerItemProps {
 	containerClassName?: string;
 }
 
+const STICKER_PREVIEW_BACKDROP: CSSProperties = {
+	backgroundColor: "rgba(24, 24, 27, 0.92)",
+	backgroundImage:
+		"linear-gradient(45deg, rgba(255,255,255,0.07) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.07) 75%), linear-gradient(45deg, rgba(255,255,255,0.07) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.07) 75%)",
+	backgroundPosition: "0 0, 8px 8px",
+	backgroundSize: "16px 16px",
+};
+
 function StickerItem({
 	item,
 	shouldCapSize = false,
@@ -563,7 +571,12 @@ function StickerItem({
 
 	const preview = (
 		<div className="relative flex size-full items-center justify-center p-3">
-			<div aria-hidden className="absolute inset-0 rounded-sm bg-black" />
+			{/* Neutral checkerboard so dark and light transparent artwork both read */}
+			<div
+				aria-hidden
+				className="absolute inset-0 rounded-sm"
+				style={STICKER_PREVIEW_BACKDROP}
+			/>
 			{hasImageError ? (
 				<span className="relative z-10 text-white text-center text-xs break-all">
 					{displayName}

@@ -202,12 +202,12 @@ class EffectPreviewService {
 		params: ParamValues;
 		targetCanvas: HTMLCanvasElement;
 		uniformDimensions?: { width: number; height: number };
-	}): void {
+	}): { rendered: boolean; usedFallback: boolean } {
 		const size = PREVIEW_SIZE;
 		const targetCtx = targetCanvas.getContext(
 			"2d",
 		) as CanvasRenderingContext2D | null;
-		if (!targetCtx) return;
+		if (!targetCtx) return { rendered: false, usedFallback: false };
 
 		targetCanvas.width = size;
 		targetCanvas.height = size;
@@ -217,7 +217,7 @@ class EffectPreviewService {
 			width: size,
 			height: size,
 		});
-		if (!source) return;
+		if (!source) return { rendered: false, usedFallback: false };
 
 		const definition = effectsRegistry.get(effectType);
 		const resolvedParams =
@@ -226,6 +226,7 @@ class EffectPreviewService {
 				: buildDefaultParamValues(definition.params);
 
 		let result: CanvasImageSource = source;
+		let usedFallback = false;
 		try {
 			const passes = resolveEffectPasses({
 				definition,
@@ -246,6 +247,7 @@ class EffectPreviewService {
 			if (this.isValidCanvasResult(gpuResult)) {
 				result = gpuResult;
 			} else {
+				usedFallback = true;
 				console.warn(
 					`GPU effect preview for ${effectType} produced invalid result, using source fallback`,
 				);
@@ -260,14 +262,17 @@ class EffectPreviewService {
 			// GPU-to-CPU synchronization for every visible card; structural GPU
 			// failures are handled above and draw failures use the source fallback.
 			targetCtx.drawImage(result, 0, 0, size, size);
+			return { rendered: true, usedFallback };
 		} catch (error) {
 			console.warn("Failed to draw effect preview:", effectType, error);
 			// Last resort: draw the original source without effects
 			try {
 				targetCtx.clearRect(0, 0, size, size);
 				targetCtx.drawImage(source, 0, 0, size, size);
+				return { rendered: true, usedFallback: true };
 			} catch {
 				// Nothing we can do — leave the canvas cleared
+				return { rendered: false, usedFallback: true };
 			}
 		}
 	}

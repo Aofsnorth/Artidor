@@ -1,0 +1,28 @@
+{
+  "passed": [
+    "Home fits 375/768/1440; public text selectable; no nested navigation controls",
+    "Mobile menu traps focus, closes on Escape/desktop resize, restores trigger focus",
+    "Inspector selection/default tab works; rail targets >=44px; opaque panels; reduced motion",
+    "Project search exists once at all widths; slash shortcut, no-results recovery, single keyboard sort",
+    "Settings fit 375/768/1440; all four categories remain accessible",
+    "/docs: 375/768/1440 layout",
+    "/roadmap: 375/768/1440 layout",
+    "/changelog: 375/768/1440 layout"
+  ],
+  "routes": [
+    "/docs",
+    "/roadmap",
+    "/changelog"
+  ],
+  "runtimeErrors": [
+    {
+      "url": "chrome-error://chromewebdata/",
+      "message": "Failed to read the 'localStorage' property from 'Window': Access is denied for this document."
+    }
+  ],
+  "failure": {
+    "message": "page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3005/blog\nCall log:\n\u001b[2m  - navigating to \"http://127.0.0.1:3005/blog\", waiting until \"domcontentloaded\"\u001b[22m\n",
+    "url": "http://127.0.0.1:3005/changelog",
+    "text": ""
+  }
+}

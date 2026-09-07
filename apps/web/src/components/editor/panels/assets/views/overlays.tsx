@@ -21,6 +21,7 @@ import {
 	CatalogSearch,
 	filterCatalogItems,
 } from "@/components/editor/panels/assets/views/components/catalog-search";
+import { getPreviewBackgroundStyle } from "@/components/editor/panels/assets/views/components/procedural-preview";
 import { useI18n } from "@/lib/i18n";
 
 interface OverlayPreset {
@@ -629,16 +630,21 @@ function OverlayPreview({ preset }: { preset: OverlayPreset }) {
 	const { t } = useI18n();
 	return (
 		<div className="relative size-full overflow-hidden rounded-sm p-2">
-			<div
-				className="absolute inset-2 overflow-hidden rounded-md border border-white/[0.08]"
-				style={preset.previewStyle}
-			>
-				{preset.accentStyle && (
-					<div
-						className="absolute inset-3 rounded-full"
-						style={preset.accentStyle}
-					/>
-				)}
+			<div className="absolute inset-2 overflow-hidden rounded-md border border-white/[0.08]">
+				{/* Deterministic scene plate so transparent/dark overlays stay readable */}
+				<div
+					aria-hidden="true"
+					className="absolute inset-0"
+					style={getPreviewBackgroundStyle(`overlays:${preset.id}`)}
+				/>
+				<div className="absolute inset-0" style={preset.previewStyle}>
+					{preset.accentStyle && (
+						<div
+							className="absolute inset-3 rounded-full"
+							style={preset.accentStyle}
+						/>
+					)}
+				</div>
 			</div>
 			<div className="absolute bottom-1.5 left-1.5 rounded bg-black/[0.46] px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.14em] text-white/[0.62]">
 				{t("overlays.badge")}

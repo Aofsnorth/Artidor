@@ -233,7 +233,7 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 						handleAdd();
 					}}
 				>
-					<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-cyan-400" />
+					<HugeiconsIcon icon={PlusSignIcon} className="size-3 text-white" />
 				</Button>
 			</div>
 		</div>

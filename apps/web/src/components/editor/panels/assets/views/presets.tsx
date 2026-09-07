@@ -238,7 +238,7 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 							>
 								<HugeiconsIcon
 									icon={PlusSignIcon}
-									className="size-3 text-cyan-400"
+									className="size-3 text-white"
 								/>
 							</Button>
 						</div>
