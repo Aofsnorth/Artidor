@@ -5,6 +5,9 @@ import { webEnv } from "@/lib/env/web";
 const redis = new Redis({
 	url: webEnv.UPSTASH_REDIS_REST_URL,
 	token: webEnv.UPSTASH_REDIS_REST_TOKEN,
+	retry: {
+		retries: 0,
+	},
 });
 
 export const baseRateLimit = new Ratelimit({
@@ -65,8 +68,11 @@ function checkLocalRateLimit(ip: string): {
 }
 
 let redisLimitDisabledUntil = 0;
-const REDIS_LIMIT_COOLDOWN_MS = 30_000;
-const REDIS_LIMIT_TIMEOUT_MS = 1500;
+const isDev = process.env.NODE_ENV === "development";
+const REDIS_LIMIT_COOLDOWN_MS = isDev ? 5 * 60_000 : 30_000;
+const REDIS_LIMIT_TIMEOUT_MS = 1000;
+let hasWarnedRedisUnavailable = false;
+let hasWarnedRedisCreateUnavailable = false;
 
 export async function checkRateLimit({ request }: { request: Request }) {
 	const ip = clientIpOf(request);
@@ -84,11 +90,13 @@ export async function checkRateLimit({ request }: { request: Request }) {
 			return { success, limited: !success };
 		} catch (err) {
 			redisLimitDisabledUntil = Date.now() + REDIS_LIMIT_COOLDOWN_MS;
-			// Fail CLOSED with local fallback instead of failing open.
-			console.warn(
-				"[rate-limit] Redis unreachable, using local fallback:",
-				err,
-			);
+			if (!hasWarnedRedisUnavailable) {
+				hasWarnedRedisUnavailable = true;
+				const reason = err instanceof Error ? err.message : String(err);
+				console.warn(
+					`[rate-limit] Redis unreachable (${reason}), using local fallback.`,
+				);
+			}
 			return checkLocalRateLimit(ip);
 		}
 	}
@@ -163,10 +171,13 @@ export async function checkCreateResourceRateLimit({
 			return { success, limited: !success };
 		} catch (err) {
 			redisLimitDisabledUntil = Date.now() + REDIS_LIMIT_COOLDOWN_MS;
-			console.warn(
-				"[rate-limit] Redis unreachable (create), using local fallback:",
-				err,
-			);
+			if (!hasWarnedRedisCreateUnavailable) {
+				hasWarnedRedisCreateUnavailable = true;
+				const reason = err instanceof Error ? err.message : String(err);
+				console.warn(
+					`[rate-limit] Redis unreachable for create (${reason}), using local fallback.`,
+				);
+			}
 			return checkLocalCreateRateLimit(ip);
 		}
 	}

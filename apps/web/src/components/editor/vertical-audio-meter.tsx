@@ -1,8 +1,6 @@
 ﻿"use client";
 
 import { memo, useEffect, useRef, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 import { timelineHasAudio } from "@/lib/media/audio";
@@ -52,9 +50,6 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 		(state) => state.audioMeterMode === "visualizer",
 	);
 	const toggleMode = useUiOverlayStore((state) => state.toggleAudioMeterMode);
-	const setAudioVisualizerOpen = useUiOverlayStore(
-		(state) => state.setAudioVisualizerOpen,
-	);
 	// Width is stored unconstrained but clamped on every update so a
 	// stray drag (or a future programmatic call) can never collapse
 	// the column to nothing or push it past the properties panel.
@@ -230,8 +225,9 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 			for (let i = 0; i < VIS_BAR_COUNT; i++) {
 				const ref = visBarRefs.current[i];
 				if (ref) {
-					const pct = Math.min(100, Math.max(4, state.visLevels[i] * 100));
-					ref.style.transform = `scaleY(${pct / 100})`;
+					const level = state.visLevels[i];
+					const mask = level <= 0.005 ? 1 : Math.max(0, 1 - level);
+					ref.style.transform = `scaleY(${mask})`;
 				}
 			}
 			// Let a stopped meter settle, then do no frame work until playback resumes.
@@ -276,19 +272,10 @@ export const VerticalAudioMeter = memo(function VerticalAudioMeter({
 		>
 			<AudioMeterResizeHandle currentWidth={width} onResize={setWidth} />
 
-			<div className="flex items-center justify-between px-0.5 pt-0.5">
-				<span className="text-[0.55rem] font-bold uppercase tracking-[0.08em] text-white/40">
+			<div className="flex items-center justify-center px-0.5 pt-0.5">
+				<span className="w-full text-center text-[0.48rem] font-bold uppercase tracking-[0.04em] text-white/40">
 					{isVisualizer ? "Spectrum" : "Meter"}
 				</span>
-				<button
-					type="button"
-					onClick={() => setAudioVisualizerOpen(false)}
-					className="flex size-4 cursor-pointer items-center justify-center rounded text-white/40 hover:bg-white/10 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-					title="Hide audio visualizer"
-					aria-label="Hide audio visualizer"
-				>
-					<HugeiconsIcon icon={Cancel01Icon} className="size-3" />
-				</button>
 			</div>
 
 			{isVisualizer ? (
@@ -362,7 +349,7 @@ function MeterView({
 				/>
 			</div>
 
-			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.04em] text-white/35">
+			<div className="flex items-center justify-center gap-1 pt-0.5 text-[0.48rem] font-bold uppercase tracking-[0.04em] text-white/35">
 				<span className="w-3 text-center">L</span>
 				<span className="w-3 text-center">R</span>
 			</div>
@@ -379,23 +366,34 @@ function VisualizerCard({
 	return (
 		<>
 			<div
-				className="flex min-h-0 flex-1 items-end gap-px overflow-hidden rounded border border-border bg-background p-1"
+				className="flex min-h-0 flex-1 items-stretch gap-px overflow-hidden rounded border border-border bg-background p-1"
 				aria-hidden="true"
 			>
 				{VIS_BARS.map((i) => (
 					<div
 						key={i}
-						ref={(el) => {
-							barRefs.current[i] = el;
-						}}
-						className="h-full min-w-0 flex-1 origin-bottom rounded-t-[1px] bg-linear-to-t from-emerald-500 via-yellow-400 to-red-500"
-						style={{ transform: "scaleY(0.04)" }}
-					/>
+						className="relative h-full min-w-0 flex-1 overflow-hidden rounded-t-[1px] bg-white/5"
+					>
+						{/* Fixed vertical gradient: green at bottom, yellow in middle, red at top */}
+						<div className="absolute inset-0 bg-linear-to-t from-emerald-500 from-0% via-yellow-400 via-70% to-red-500 to-95%" />
+						{/* Mask sliding down from top to reveal level from bottom */}
+						<div
+							ref={(el) => {
+								barRefs.current[i] = el;
+							}}
+							className="absolute inset-0 origin-top bg-background transition-transform duration-75 ease-out"
+							style={{ transform: "scaleY(1)" }}
+						/>
+					</div>
 				))}
 			</div>
 
-			<div className="flex items-center justify-between gap-1 pt-0.5 text-[0.55rem] font-bold uppercase tracking-[0.16em] text-white/35">
-				<span className="flex-1 text-center">VIS</span>
+			<div
+				className="flex items-center justify-between px-1.5 pt-0.5 text-[0.45rem] font-medium text-white/35 tabular-nums select-none"
+				title="Frequency range: 20 Hz - 20 kHz"
+			>
+				<span>20</span>
+				<span>20k</span>
 			</div>
 		</>
 	);
