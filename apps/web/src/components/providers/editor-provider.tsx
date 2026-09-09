@@ -102,8 +102,17 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 				if (isNotFound) {
 					try {
+						// A collab guest landing on /editor/<hostProjectId>?collabPlaceholder=<name>
+						// does not have the host's project locally. The collab protocol is
+						// notification-only — host project data is NOT shared — so create a
+						// LOCAL placeholder labeled with the host's project name instead of
+						// implying the guest now owns the host's data.
+						const placeholderName =
+							new URLSearchParams(window.location.search).get(
+								"collabPlaceholder",
+							) ?? "Untitled Project";
 						const newProjectId = await editor.project.createNewProject({
-							name: "Untitled Project",
+							name: placeholderName,
 						});
 						router.replace(`/editor/${newProjectId}`);
 					} catch (_createErr) {

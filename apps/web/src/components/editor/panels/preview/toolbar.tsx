@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { formatTimecode, type FrameRate } from "artidor-wasm";
 import { invokeAction } from "@/lib/actions";
@@ -226,30 +226,11 @@ function QualityMenu() {
 
 function LoopButton() {
 	const editor = useEditor();
-	const [loop, setLoop] = useState(false);
-	const loopRef = useRef(loop);
-
-	useEffect(() => {
-		loopRef.current = loop;
-	}, [loop]);
-
-	useEffect(() => {
-		const handler = (e: Event) => {
-			if (!loopRef.current) return;
-			const time = (e as CustomEvent<{ time: number }>).detail.time;
-			const duration = editor.timeline.getTotalDuration();
-			if (duration <= 0) return;
-			// Restart slightly before the end so playback never stalls on the last frame.
-			if (time >= duration - TICKS_PER_SECOND * 0.05) {
-				editor.playback.seek({ time: 0 });
-				if (!editor.playback.getIsPlaying()) {
-					invokeAction("toggle-play");
-				}
-			}
-		};
-		window.addEventListener("playback-update", handler);
-		return () => window.removeEventListener("playback-update", handler);
-	}, [editor]);
+	// Loop owns the timeline end: the rAF tick that detects it also restarts it
+	// (see PlaybackManager.updateTime). A UI listener had to beat the pause
+	// path in the same tick; a >1-frame gap could miss that window and stall at
+	// the end. This button remains only the toggle UI.
+	const loop = useEditor((e) => e.playback.getLoop(), ["playback"]);
 
 	return (
 		<Button
@@ -257,7 +238,8 @@ function LoopButton() {
 			size="icon"
 			aria-pressed={loop}
 			aria-label={loop ? "Disable loop playback" : "Enable loop playback"}
-			onClick={() => setLoop((value) => !value)}
+			type="button"
+			onClick={() => editor.playback.toggleLoop()}
 			className={loop ? "bg-white/[0.1] text-white" : "text-white/55"}
 		>
 			<HugeiconsIcon icon={RepeatIcon} className="size-4" />

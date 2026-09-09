@@ -73,11 +73,23 @@ export class ClipboardManager {
 		return this.styleEntry !== null;
 	}
 
+	/**
+	 * Copy the current selection into the elements/keyframes clipboard slot.
+	 *
+	 * On failure the previous clipboard entry is CLEARED, not kept: serving a
+	 * stale copy after a failed copy would silently paste content the user
+	 * believes they just replaced. Returns false and notifies on failure.
+	 */
 	copy(): boolean {
 		const entry = copyClipboardEntry({
 			context: this.getCopyContext(),
 		});
 		if (!entry) {
+			const hadStaleEntry = this.entry !== null;
+			this.entry = null;
+			if (hadStaleEntry) {
+				this.notify();
+			}
 			return false;
 		}
 
@@ -148,9 +160,10 @@ export class ClipboardManager {
 		params: ParamValues;
 		enabled: boolean;
 	}): boolean {
+		/** Effect params copied onto all targets must be private to the paste. */
 		this.effectEntry = {
 			type: effect.type,
-			params: { ...effect.params },
+			params: structuredClone(effect.params),
 			enabled: effect.enabled,
 		};
 		this.notify();
@@ -333,14 +346,15 @@ function extractStyle(element: TimelineElement): ElementStyle {
 		style.blendMode = element.blendMode;
 	}
 
-	// Effects
+	// Extract a deep snapshot: transform/effect/mask param objects must not be
+	// shared with the source element, or later edits mutate the copied style.
 	if ("effects" in element && element.effects) {
-		style.effects = element.effects.map((e) => ({ ...e }));
+		style.effects = structuredClone(element.effects);
 	}
 
 	// Masks
 	if ("masks" in element && element.masks) {
-		style.masks = element.masks.map((m) => ({ ...m }));
+		style.masks = structuredClone(element.masks);
 	}
 
 	// Animations

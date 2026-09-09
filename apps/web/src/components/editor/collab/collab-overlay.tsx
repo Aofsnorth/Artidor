@@ -95,6 +95,27 @@ export function CollabPresenceBar() {
 	);
 }
 
+/**
+ * Session banner — states honestly what the session does and does not do.
+ * The current protocol is presence + edit notifications: remote edits are NOT
+ * applied to any participant's timeline. Guests in view/comment/suggest modes
+ * are read-only; the host's own project is never shared or overwritten.
+ */
+export function CollabSessionBanner() {
+	const collab = useCollabStore();
+	if (collab.status !== "connected") return null;
+
+	return (
+		<div className="flex items-center gap-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[10px] text-amber-200/90">
+			<span aria-hidden>⚠</span>
+			<p>
+				Live presence session — edits stay in each participant's own project;
+				remote edits are not synced (notification-only protocol).
+			</p>
+		</div>
+	);
+}
+
 /** Cursor overlay — renders all remote cursors. Place inside the timeline content area. */
 export function CollabCursorOverlay() {
 	const collab = useCollabStore();

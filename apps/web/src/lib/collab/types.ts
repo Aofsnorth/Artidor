@@ -77,12 +77,14 @@ export interface CollabCommand {
 	id: string;
 	/** The collaborator session ID that originated the command. */
 	collaboratorId: string;
-	/** The command class name, e.g. "AddTrackCommand". */
+	/** Fixed protocol tag — see lib/collab/protocol.ts. */
 	commandName: string;
-	/** Serialized command arguments (JSON). */
+	/** Reserved: always empty in the current protocol. */
 	args: Record<string, unknown>;
-	/** ISO timestamp. */
+	/** Creation time (epoch ms). */
 	timestamp: number;
+	/** Monotonic per-room sequence, assigned by the server at append. */
+	seq: number;
 }
 
 /**
@@ -122,6 +124,10 @@ export interface CollabSuggestion {
 export interface RoomState {
 	roomId: string;
 	mode: CollabMode;
+	/** The host's local project id — joiners use it to land in the editor. */
+	projectId: string | null;
+	/** The host's project name, for labeling the guest's local placeholder. */
+	projectName: string | null;
 	collaborators: Collaborator[];
 	cursors: CollabCursor[];
 	locks: ElementLock[];

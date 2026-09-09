@@ -472,6 +472,7 @@ interface AudioMixSource {
 }
 
 export interface AudioClipSource {
+	/** Times and durations are SECONDS, converted from timeline ticks. */
 	timelineElement: AudioCapableElement;
 	id: string;
 	trackId: string;
@@ -555,10 +556,13 @@ async function fetchLibraryAudioClip({
 			trackId,
 			sourceKey: element.id,
 			file,
-			startTime: element.startTime,
-			duration: element.duration,
-			trimStart: element.trimStart,
-			trimEnd: element.trimEnd,
+			// AudioClipSource times are seconds, while timeline elements store
+			// ticks. Skipping this conversion made library clips play far in the
+			// future with absurd durations, unlike every other clip path.
+			startTime: element.startTime / TICKS_PER_SECOND,
+			duration: element.duration / TICKS_PER_SECOND,
+			trimStart: element.trimStart / TICKS_PER_SECOND,
+			trimEnd: element.trimEnd / TICKS_PER_SECOND,
 			volume,
 			muted,
 			retime: element.retime,

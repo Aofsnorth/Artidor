@@ -86,6 +86,12 @@ export class ProjectManager {
 		progress: 0,
 		message: null,
 	};
+	/** Serializes overlapping loadProject calls: last request wins, stale loads are inert. */
+	private loadProjectSeq = 0;
+	/** Promise of the newest in-flight load; direct saves wait on it so they never snapshot half-loaded scenes. */
+	private loadInFlight: Promise<void> | null = null;
+	/** Serializes direct saveCurrentProject calls so snapshots can't interleave writes. */
+	private directSaveChain: Promise<void> = Promise.resolve();
 
 	constructor(private editor: EditorCore) {}
 
@@ -160,138 +166,267 @@ export class ProjectManager {
 	}
 
 	async loadProject({ id }: { id: string }): Promise<void> {
+		// Serialize overlapping loads: the newest request wins and any load still
+		// running for an older request becomes inert. Without this, two mounts or a
+		// stale retry could interleave clearScenes()/initializeScenes() and land the
+		// editor on the wrong project while loading gates flap up and down.
+		const seq = ++this.loadProjectSeq;
+		const isStaleLoad = () => this.loadProjectSeq !== seq;
+
+		// Flush any pending edits of the outgoing project BEFORE tearing down
+		// editor state or raising the load gate. clearScenes() below empties the
+		// live scene list while `this.active` still points at the outgoing
+		// project; a debounced save firing in that window used to persist the
+		// outgoing project with empty scenes — destroying its timeline. Pausing
+		// also cancels the armed debounce timer, so the flush below is the only
+		// writer.
+		//
+		// If that flush fails, the switch MUST abort here: continuing would
+		// clear scenes that only exist in memory and the in-flight retry could
+		// then persist the outgoing project with empty scenes. Abort keeps the
+		// old project mounted, its state intact and still dirty, so the debounced
+		// retry keeps trying and the caller can surface the failure.
+		this.editor.save.pause();
+		try {
+			await this.editor.save.flush();
+		} catch (error) {
+			this.editor.save.resume();
+			if (!this.isInitialized) {
+				this.isLoading = false;
+				this.notify();
+			}
+			throw error;
+		}
+
+		if (isStaleLoad()) return;
+
 		if (!this.isInitialized) {
 			this.isLoading = true;
 			this.notify();
 		}
 
-		this.editor.save.pause();
-		await this.ensureStorageMigrations();
-		this.editor.media.clearAllAssets();
-		this.editor.scenes.clearScenes();
+		const switchingBetweenProjects =
+			this.active !== null && this.active.metadata.id !== id;
 
-		try {
-			const result = await storageService.loadProject({ id });
-			if (!result) {
-				throw new Error(`Project with id ${id} not found`);
-			}
+		// The load body runs behind `loadInFlight` so a direct save issued while
+		// the workspace is being torn down/replaced waits for the load instead of
+		// persisting cleared scenes under the outgoing project id.
+		const runLoad = async (): Promise<void> => {
+			try {
+				await this.ensureStorageMigrations();
+				if (isStaleLoad()) return;
 
-			const project = result.project;
+				// Keep `isLoading` true across the whole load so SaveManager refuses
+				// to start a save while scenes are cleared/replaced.
+				this.isLoading = true;
+				this.notify();
 
-			this.active = project;
-			this.notify();
+				this.editor.media.clearAllAssets();
+				this.editor.scenes.clearScenes();
 
-			// Switching projects is a fresh context; clear any selection carried
-			// over from the previous project so the Properties panel lands on
-			// the Details view instead of trying to inspect missing elements.
-			this.editor.selection.clearSelection();
+				const result = await storageService.loadProject({ id });
+				if (isStaleLoad()) return;
+				if (!result) {
+					throw new Error(`Project with id ${id} not found`);
+				}
 
-			if (project.scenes && project.scenes.length > 0) {
-				this.editor.scenes.initializeScenes({
-					scenes: project.scenes,
-					currentSceneId: project.currentSceneId,
-				});
-			}
+				const project = result.project;
 
-			await this.editor.media.loadProjectMedia({ projectId: id });
+				this.active = project;
+				this.notify();
 
-			await loadFonts({
-				families: [
-					...new Set(
-						(project.scenes ?? []).flatMap((scene) =>
-							getElementFontFamilies({ tracks: scene.tracks }),
+				// Switching projects is a fresh context; clear any selection carried
+				// over from the previous project so the Properties panel lands on
+				// the Details view instead of trying to inspect missing elements.
+				this.editor.selection.clearSelection();
+
+				if (project.scenes && project.scenes.length > 0) {
+					this.editor.scenes.initializeScenes({
+						scenes: project.scenes,
+						currentSceneId: project.currentSceneId,
+					});
+				}
+
+				await this.editor.media.loadProjectMedia({ projectId: id });
+				if (isStaleLoad()) return;
+
+				await loadFonts({
+					families: [
+						...new Set(
+							(project.scenes ?? []).flatMap((scene) =>
+								getElementFontFamilies({ tracks: scene.tracks }),
+							),
 						),
-					),
-				],
-			});
+					],
+				});
+				if (isStaleLoad()) return;
 
-			if (!project.metadata.thumbnail) {
-				// Generate the first thumbnail in the background once the GPU is
-				// ready. Never block (or fail) project load on it — a brand-new
-				// project has no thumbnail and the GPU init is deferred.
-				const thumbnailProjectId = project.metadata.id;
-				void (async () => {
-					try {
-						const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-						if (
-							didUpdateThumbnail &&
-							this.active?.metadata.id === thumbnailProjectId
-						) {
-							await this.saveCurrentProject();
+				if (!project.metadata.thumbnail) {
+					// Generate the first thumbnail in the background once the GPU is
+					// ready. Never block (or fail) project load on it — a brand-new
+					// project has no thumbnail and the GPU init is deferred.
+					const thumbnailProjectId = project.metadata.id;
+					void (async () => {
+						try {
+							const didUpdateThumbnail =
+								await this.updateThumbnailFromTimeline();
+							if (
+								didUpdateThumbnail &&
+								this.active?.metadata.id === thumbnailProjectId
+							) {
+								await this.saveCurrentProject();
+							}
+						} catch (error) {
+							console.error("Failed to generate project thumbnail:", error);
 						}
-					} catch (error) {
-						console.error("Failed to generate project thumbnail:", error);
+					})();
+				}
+			} catch (error) {
+				// A superseded load must not surface its own failure: the newer
+				// request owns the editor and the error UI.
+				if (isStaleLoad()) return;
+				console.error("Failed to load project:", error);
+				throw error;
+			} finally {
+				if (!isStaleLoad()) {
+					// Keep the paused save gate down through the whole load so the
+					// freshly-initialized scenes cannot trigger a save for the outgoing
+					// project. resume() re-arms any still-pending debounce.
+					if (switchingBetweenProjects) {
+						this.editor.selection.clearSelection();
 					}
-				})();
+					this.isLoading = false;
+					this.notify();
+					this.editor.save.resume();
+				}
 			}
-		} catch (error) {
-			console.error("Failed to load project:", error);
-			throw error;
+		};
+
+		const load = runLoad();
+		this.loadInFlight = load;
+		try {
+			await load;
 		} finally {
-			this.isLoading = false;
-			this.notify();
-			this.editor.save.resume();
+			// Only the newest load may clear the reference: an older load settling
+			// after being superseded must not release newer direct saves early.
+			if (this.loadInFlight === load) {
+				this.loadInFlight = null;
+			}
 		}
 	}
 
+	/**
+	 * Persist the active project. Errors propagate to the caller (SaveManager
+	 * keeps the work dirty and re-arms its debounce) instead of being swallowed:
+	 * a failed write previously cleared the dirty flag and left the user
+	 * editing under the false belief that autosave worked.
+	 *
+	 * Concurrency contract: only derived metadata (duration/updatedAt) is
+	 * written back onto `this.active` after the storage await. Assigning the
+	 * whole pre-await snapshot used to silently revert concurrent mutations
+	 * (settings changes, scene switches) that happened while IndexedDB was
+	 * writing.
+	 */
 	async saveCurrentProject(): Promise<void> {
-		if (!this.active) return;
+		// A direct save while a project is being torn down/replaced must wait:
+		// snapping the workspace mid-load would persist cleared scenes (or the
+		// incoming scenes) under the wrong project id.
+		if (this.loadInFlight) {
+			try {
+				await this.loadInFlight;
+			} catch {
+				// The load already reported its own failure; the caller's save must
+				// still run against the (unchanged) current workspace.
+			}
+		}
 
-		try {
-			const scenes = this.editor.scenes.getScenes();
-			const updatedProject = {
+		// Direct callers (export, AI save tool, template apply, thumbnail
+		// follow-up) expect *this* call to persist *now*, and caller errors must
+		// stay observable (dropped errors silently skip explicit saves and break
+		// SaveManager's keep-dirty retry). Chaining serializes the underlying
+		// storage writes; deferring the snapshot function inside the chain keeps
+		// overlapping direct saves from interleaving their reads/writes.
+		// saveInFlight semantics: subsequent calls chain behind this one.
+		const save = this.directSaveChain.then(() => this.persistActiveProject());
+		// Keep the chain alive across failures; the rejection is carried by
+		// `save` itself so the original caller still sees it.
+		this.directSaveChain = save.catch(() => undefined);
+		await save;
+	}
+
+	/** Snapshot the live workspace and persist it as-is. */
+	private async persistActiveProject(): Promise<void> {
+		const projectBeforeWrite = this.active;
+		if (!projectBeforeWrite) return;
+
+		const scenes = this.editor.scenes.getScenes();
+		const projectToPersist: TProject = {
+			...projectBeforeWrite,
+			scenes,
+			metadata: {
+				...projectBeforeWrite.metadata,
+				duration: getProjectDurationFromScenes({ scenes }),
+				updatedAt: new Date(),
+			},
+		};
+
+		// Bump the persisted-copy metadata first so failure paths below cannot
+		// lose it.
+		await storageService.saveProject({ project: projectToPersist });
+
+		if (this.active === projectBeforeWrite) {
+			// Merge ONLY derived fields onto the (possibly concurrently mutated)
+			// live project. settings/currentSceneId set during the write window
+			// must survive.
+			this.active = {
 				...this.active,
-				scenes,
 				metadata: {
 					...this.active.metadata,
-					duration: getProjectDurationFromScenes({ scenes }),
-					updatedAt: new Date(),
+					duration: projectToPersist.metadata.duration,
+					updatedAt: projectToPersist.metadata.updatedAt,
 				},
 			};
+		}
+		this.updateMetadata(projectToPersist);
 
-			await storageService.saveProject({ project: updatedProject });
-			this.active = updatedProject;
-			this.updateMetadata(updatedProject);
+		// If linked to Google Drive, save there in the background. Failures only
+		// surface through driveSyncState — the local IndexedDB write above already
+		// succeeded, so this must not fail the whole save.
+		const folderId = projectToPersist.metadata.googleDriveFolderId;
+		const fileId = projectToPersist.metadata.googleDriveFileId;
+		if (folderId) {
+			void (async () => {
+				const token = getGoogleAccessToken();
+				if (!token) return;
 
-			// If linked to Google Drive, save there in the background
-			const folderId = updatedProject.metadata.googleDriveFolderId;
-			const fileId = updatedProject.metadata.googleDriveFileId;
-			if (folderId) {
-				void (async () => {
-					const token = getGoogleAccessToken();
-					if (!token) return;
+				try {
+					this.setDriveSyncState("saving", 0, "Saving to Drive...");
+					const newFileId = await saveProjectToDrive(
+						folderId,
+						fileId || null,
+						projectToPersist,
+					);
 
-					try {
-						this.setDriveSyncState("saving", 0, "Saving to Drive...");
-						const newFileId = await saveProjectToDrive(
-							folderId,
-							fileId || null,
-							updatedProject,
-						);
-
-						if (
-							newFileId !== fileId &&
-							this.active &&
-							this.active.metadata.id === updatedProject.metadata.id
-						) {
-							this.active.metadata.googleDriveFileId = newFileId;
-							await storageService.saveProject({ project: this.active });
-						}
-
-						this.setDriveSyncState("saved", 100, "Saved to Drive");
-						setTimeout(() => {
-							if (this.driveSyncState.status === "saved") {
-								this.setDriveSyncState("idle");
-							}
-						}, 2000);
-					} catch (driveErr) {
-						console.error("Failed to save project to Google Drive:", driveErr);
-						this.setDriveSyncState("error", 0, "Save to Drive failed");
+					if (
+						newFileId !== fileId &&
+						this.active &&
+						this.active.metadata.id === projectToPersist.metadata.id
+					) {
+						this.active.metadata.googleDriveFileId = newFileId;
+						await storageService.saveProject({ project: this.active });
 					}
-				})();
-			}
-		} catch (error) {
-			console.error("Failed to save project:", error);
+
+					this.setDriveSyncState("saved", 100, "Saved to Drive");
+					setTimeout(() => {
+						if (this.driveSyncState.status === "saved") {
+							this.setDriveSyncState("idle");
+						}
+					}, 2000);
+				} catch (driveErr) {
+					console.error("Failed to save project to Google Drive:", driveErr);
+					this.setDriveSyncState("error", 0, "Save to Drive failed");
+				}
+			})();
 		}
 	}
 
@@ -669,16 +804,31 @@ export class ProjectManager {
 		this.editor.save.markDirty();
 	}
 
+	/**
+	 * Flush pending edits on exit. The flush is unconditional: thumbnail
+	 * rendering is best-effort and unavailable on machines without WebGPU,
+	 * but pending edits must still be persisted before the caller clears the
+	 * editor state.
+	 */
 	async prepareExit(): Promise<void> {
 		if (!this.active) return;
 
 		try {
-			const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-			if (didUpdateThumbnail) {
-				await this.editor.save.flush();
-			}
+			await this.updateThumbnailFromTimeline();
 		} catch (error) {
 			console.error("Failed to generate project thumbnail on exit:", error);
+		}
+
+		try {
+			await this.editor.save.flush();
+		} catch (error) {
+			// Storage write failed. The save manager keeps the work dirty and
+			// re-arms its debounce, but this may be the last chance to warn.
+			toast.error("Could not save your latest changes", {
+				description:
+					"Autosave will retry — please stay on this page if possible.",
+			});
+			throw error;
 		}
 	}
 

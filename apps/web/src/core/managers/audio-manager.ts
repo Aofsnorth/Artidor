@@ -123,9 +123,9 @@ export class AudioManager {
 		if (isPlaying !== this.lastIsPlaying) {
 			this.lastIsPlaying = isPlaying;
 			if (isPlaying) {
-				void this.startPlayback({
-					time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
-				});
+				// startPlayback re-reads the transport playhead AFTER its awaits, so
+				// no time argument is needed here.
+				void this.startPlayback();
 			} else {
 				this.stopPlayback();
 			}
@@ -145,7 +145,7 @@ export class AudioManager {
 				// audio source pile-up that causes exploding/crackling sound.
 				// Instead of restarting on every single seek event, we
 				// schedule a restart that coalesces rapid seeks into one.
-				this.debouncedRestartPlayback(detail.time / TICKS_PER_SECOND);
+				this.debouncedRestartPlayback();
 				return;
 			}
 			this.stopPlayback();
@@ -153,14 +153,16 @@ export class AudioManager {
 		}
 
 		if (this.editor.playback.getIsPlaying()) {
-			void this.startPlayback({ time: detail.time / TICKS_PER_SECOND });
+			void this.startPlayback();
 			return;
 		}
 
 		this.stopPlayback();
 	};
 
-	private debouncedRestartPlayback(timeSeconds: number): void {
+	// The debounce coalesces rapid scrub seeks into one restart; the actual
+	// anchor time is read from the transport when the restart fires.
+	private debouncedRestartPlayback(): void {
 		if (this.scrubRestartTimer !== null && typeof window !== "undefined") {
 			window.clearTimeout(this.scrubRestartTimer);
 		}
@@ -174,7 +176,7 @@ export class AudioManager {
 				this.editor.playback.getIsPlaying() &&
 				this.editor.playback.getIsScrubbing()
 			) {
-				void this.startPlayback({ time: timeSeconds });
+				void this.startPlayback();
 			}
 		}, AudioManager.SCRUB_RESTART_DEBOUNCE_MS);
 	}
@@ -199,12 +201,17 @@ export class AudioManager {
 		const tracks = activeScene.tracks;
 		const currentElements = new Map<
 			string,
-			{ element: AudioCapableElement; trackId: string }
+			{ element: AudioCapableElement; trackId: string; trackMuted: boolean }
 		>();
+
 		for (const track of getOrderedTracks(tracks)) {
+
 			for (const element of track.elements) {
 				if (element.type === "audio" || element.type === "video") {
-					currentElements.set(element.id, { element, trackId: track.id });
+					currentElements.set(element.id, {
+											element, trackId: track.id,
+											trackMuted: (track.type === "audio" || track.type === "video") && track.muted === true,
+										});
 				}
 			}
 		}
@@ -220,45 +227,69 @@ export class AudioManager {
 			if (oldClip.duration !== next.duration / TICK) return false;
 			if (oldClip.trimStart !== next.trimStart / TICK) return false;
 			if (oldClip.trimEnd !== next.trimEnd / TICK) return false;
-			const oldRetimeKey = oldClip.retime
-				? `${oldClip.retime.rate}|${oldClip.retime.mode ?? ""}|${oldClip.retime.maintainPitch ? 1 : 0}|${oldClip.retime.keyframes?.length ?? 0}`
-				: "";
-			const newRetimeKey = next.retime
-				? `${next.retime.rate}|${next.retime.mode ?? ""}|${next.retime.maintainPitch ? 1 : 0}|${next.retime.keyframes?.length ?? 0}`
-				: "";
-			if (oldRetimeKey !== newRetimeKey) return false;
+			if (JSON.stringify(oldClip.retime) !== JSON.stringify(next.retime)) return false;
+			const previous = oldClip.timelineElement;
+			if (previous.type !== next.type) return false;
+			if ("mediaId" in previous && (!('mediaId' in next) || previous.mediaId !== next.mediaId)) return false;
+			if ("sourceUrl" in previous && (!('sourceUrl' in next) || previous.sourceUrl !== next.sourceUrl)) return false;
+			if (previous.type === "video" && next.type === "video" && (
+				previous.selectedAudioTrackIndex !== next.selectedAudioTrackIndex ||
+				previous.hidden !== next.hidden
+			)) return false;
 		}
 
-		const playbackTime =
-			this.editor.playback.getCurrentTime() / TICKS_PER_SECOND;
+		const playbackTime = this.getPlaybackTime();
 		for (const oldClip of this.clips) {
 			const nextWrapper = currentElements.get(oldClip.id);
 			if (!nextWrapper) continue;
 			const next = nextWrapper.element;
+			const trackMuted = nextWrapper.trackMuted;
 			const trackSliderPercent =
 				useTimelineStore.getState().trackSliders[nextWrapper.trackId] ?? 100;
 			const elementGain = resolveEffectiveAudioGain({
 				element: next,
+				trackMuted,
 				localTime: Math.max(0, playbackTime - oldClip.startTime),
+			});
+			// Fade-free base gain: the current effective gain includes fades and
+			// keyframes sampled at the playhead. Writing THAT into clip.volume
+			// would bake a mid-fade snapshot into the base and double-apply the
+			// fade on every later buffer. Keep the automation-free base here; the
+			// per-clip gain NODE receives the current effective value below.
+			const baseGain = resolveEffectiveAudioGain({
+				element: next,
+				trackMuted,
+				localTime: Math.max(0, playbackTime - oldClip.startTime),
+				ignoreFades: true,
 			});
 			// Track slider is a linear percentage (0–100, default 100). The
 			// element's effective gain (from its dB volume + fades) is
 			// multiplied by slider/100 to get the final linear gain.
 			const newGain = elementGain * (trackSliderPercent / 100);
-			const newMuted = next.muted === true;
+			const newMuted = trackMuted || next.muted === true;
 
-			if (oldClip.lastAppliedGain === newGain && oldClip.muted === newMuted)
+			const elementChanged = oldClip.timelineElement !== next || oldClip.trackId !== nextWrapper.trackId;
+			oldClip.timelineElement = next;
+			oldClip.trackId = nextWrapper.trackId;
+			if (!elementChanged && oldClip.lastAppliedGain === newGain && oldClip.muted === newMuted)
 				continue;
 			oldClip.lastAppliedGain = newGain;
-			oldClip.volume = elementGain;
+			oldClip.volume = baseGain;
 			oldClip.muted = newMuted;
 			const gains = this.activeClipGains.get(oldClip.id);
 			if (!gains) continue;
+			const audioContext = this.audioContext;
+			if (!audioContext) continue;
 			for (const gain of gains) {
-				try {
-					gain.gain.cancelScheduledValues(0);
-					gain.gain.setValueAtTime(newMuted ? 0 : newGain, 0);
-				} catch {}
+				// Cancellation removes future events too; rebuild the remaining
+				// envelope for both sounding and lookahead-scheduled nodes.
+				const delay = Math.max(0, oldClip.startTime - playbackTime);
+				gain.gain.cancelScheduledValues(audioContext.currentTime);
+				this.scheduleClipGainAutomation({
+					audioContext, clip: oldClip, clipGain: gain,
+					startTimestamp: audioContext.currentTime + delay,
+					startLocalTime: Math.max(0, playbackTime - oldClip.startTime),
+				});
 			}
 		}
 		return true;
@@ -268,9 +299,7 @@ export class AudioManager {
 		this.disposeSinks();
 		this.preparedClipBuffers.clear();
 		this.decodedBuffers.clear();
-		void this.startPlayback({
-			time: this.editor.playback.getCurrentTime() / TICKS_PER_SECOND,
-		});
+		void this.startPlayback();
 	}
 
 	private registerClipGain({
@@ -341,12 +370,12 @@ export class AudioManager {
 		return this.playbackStartTime + elapsed;
 	}
 
-	private async startPlayback({ time }: { time: number }): Promise<void> {
+	private async startPlayback(): Promise<void> {
 		const audioContext = this.ensureAudioContext();
 		if (!audioContext) return;
 
 		this.stopPlayback();
-		this.playbackSessionId++;
+		const sessionId = ++this.playbackSessionId;
 		this.playbackLatencyCompensationSeconds = 0;
 
 		const tracks = this.editor.scenes.getActiveScene().tracks;
@@ -355,14 +384,36 @@ export class AudioManager {
 
 		if (duration <= 0) return;
 
-		if (audioContext.state === "suspended") {
-			await audioContext.resume();
+		let clips: AudioClipSource[];
+		try {
+			if (audioContext.state === "suspended") await audioContext.resume();
+			if (sessionId !== this.playbackSessionId || !this.editor.playback.getIsPlaying()) return;
+			clips = await collectAudioClips({ tracks, mediaAssets });
+		} catch (error) {
+			if (sessionId === this.playbackSessionId) {
+				this.stopPlayback();
+				console.warn("Failed to start audio playback:", error);
+			}
+			return;
 		}
-
-		this.clips = await collectAudioClips({ tracks, mediaAssets });
+		// Cancellation/seek race: `collectAudioClips` can resolve after a newer
+		// startPlayback (seek, scrub-restart, play toggle) bumped the session.
+		// Without this check the stale call clobbered the newer session's
+		// `playbackStartTime` and started a SECOND schedule timer against old
+		// clip data (double audio + wrong anchoring).
+		if (sessionId !== this.playbackSessionId) return;
 		if (!this.editor.playback.getIsPlaying()) return;
 
-		this.playbackStartTime = time;
+		// The awaits above (context resume, clip collection) can take real time;
+		// the transport playhead may have advanced or been seeked meanwhile.
+		// Anchoring to the PRE-await `time` produced a constant drift for the
+		// whole session (audio late by exactly the await duration). Re-read the
+		// transport position AFTER the awaits, mirroring restartPlayback.
+		const anchoredTime =
+			this.editor.playback.getCurrentTime() / TICKS_PER_SECOND;
+
+		this.clips = clips;
+		this.playbackStartTime = anchoredTime;
 		this.playbackStartContextTime = audioContext.currentTime;
 
 		this.scheduleUpcomingClips();
@@ -406,8 +457,11 @@ export class AudioManager {
 	}
 
 	private stopPlayback(): void {
+		// Invalidate pending resume/collection/decode/iterator work even when
+		// disposal leaves the transport's playing flag unchanged.
+		this.playbackSessionId++;
 		this.clearScrubRestartTimer();
-		if (this.scheduleTimer && typeof window !== "undefined") {
+		if (this.scheduleTimer !== null && typeof window !== "undefined") {
 			window.clearInterval(this.scheduleTimer);
 		}
 		this.scheduleTimer = null;
@@ -608,7 +662,7 @@ export class AudioManager {
 
 				const aheadTime = timelineTime - this.getPlaybackTime();
 				if (aheadTime >= 1) {
-					await this.waitUntilCaughtUp({ timelineTime, targetAhead: 1 });
+					await this.waitUntilCaughtUp({ timelineTime, targetAhead: 1, sessionId });
 					if (sessionId !== this.playbackSessionId) return;
 				}
 			}
@@ -622,7 +676,9 @@ export class AudioManager {
 			}
 		}
 
-		this.clipIterators.delete(clip.id);
+		if (this.clipIterators.get(clip.id) === iterator) {
+			this.clipIterators.delete(clip.id);
+		}
 		// don't remove from activeClipIds - prevents scheduler from restarting this clip
 		// the set is cleared on stopPlayback anyway
 	}
@@ -639,7 +695,16 @@ export class AudioManager {
 		const audioContext = this.ensureAudioContext();
 		if (!audioContext) return;
 
-		const buffer = await this.getPreparedClipBuffer({ clip });
+		let buffer: AudioBuffer | null;
+		try {
+			buffer = await this.getPreparedClipBuffer({ clip });
+		} catch (error) {
+			if (sessionId === this.playbackSessionId) {
+				this.activeClipIds.delete(clip.id);
+				console.warn("Failed to prepare audio clip:", error);
+			}
+			return;
+		}
 		if (!buffer || !this.editor.playback.getIsPlaying()) return;
 		if (sessionId !== this.playbackSessionId) return;
 
@@ -696,12 +761,16 @@ export class AudioManager {
 		});
 
 		this.queuedSources.add(node);
+		// Late completions (after a seek stop) must not confuse the next
+		// session: stale nodes that finish late could still be in this set if
+		// stopPlayback ran between the last await and the node creation.
 		node.addEventListener(
 			"ended",
 			() => {
 				node.disconnect();
 				clipGain.disconnect();
 				this.queuedSources.delete(node);
+				this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
 			},
 			{ once: true },
 		);
@@ -710,13 +779,15 @@ export class AudioManager {
 	private waitUntilCaughtUp({
 		timelineTime,
 		targetAhead,
+		sessionId,
 	}: {
 		timelineTime: number;
 		targetAhead: number;
+		sessionId: number;
 	}): Promise<void> {
 		return new Promise((resolve) => {
 			const checkInterval = setInterval(() => {
-				if (!this.editor.playback.getIsPlaying()) {
+				if (sessionId !== this.playbackSessionId || !this.editor.playback.getIsPlaying()) {
 					clearInterval(checkInterval);
 					resolve();
 					return;
@@ -802,6 +873,10 @@ export class AudioManager {
 		startLocalTime: number;
 	}): void {
 		clipGain.gain.cancelScheduledValues(startTimestamp);
+		if (clip.muted) {
+			clipGain.gain.setValueAtTime(0, startTimestamp);
+			return;
+		}
 
 		// The per-track volume slider (timeline store `trackSliders`) must
 		// apply on top of the element's own gain. The live update path
@@ -846,10 +921,12 @@ export class AudioManager {
 				}
 			};
 
-			// Start point
+			// Fades can push the true start below 0dB very quickly: clamp the
+			// fade-in ratio to [0, 1] so a tiny negative startLocalTime (float
+			// dust from the scheduler) cannot invert the gain to negative.
 			let startGain = baseGain;
 			if (startLocalTime < fadeIn) {
-				startGain = baseGain * (startLocalTime / fadeIn);
+				startGain = baseGain * Math.max(0, startLocalTime / fadeIn);
 			} else if (startLocalTime > clipDuration - fadeOut) {
 				const timeFromEnd = clipDuration - startLocalTime;
 				startGain = baseGain * Math.max(0, timeFromEnd / fadeOut);
@@ -966,7 +1043,12 @@ export class AudioManager {
 		})();
 
 		this.preparedClipBuffers.set(cacheKey, promise);
-		return promise;
+		try {
+			return await promise;
+		} catch (error) {
+			if (this.preparedClipBuffers.get(cacheKey) === promise) this.preparedClipBuffers.delete(cacheKey);
+			throw error;
+		}
 	}
 
 	private async getDecodedBuffer({
@@ -981,7 +1063,12 @@ export class AudioManager {
 
 		const promise = this.decodeClipBuffer({ clip });
 		this.decodedBuffers.set(clip.sourceKey, promise);
-		return promise;
+		try {
+			return await promise;
+		} catch (error) {
+			if (this.decodedBuffers.get(clip.sourceKey) === promise) this.decodedBuffers.delete(clip.sourceKey);
+			throw error;
+		}
 	}
 
 	private async decodeClipBuffer({

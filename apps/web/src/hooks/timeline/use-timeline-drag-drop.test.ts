@@ -14,6 +14,13 @@ mock.module("artidor-wasm", () => ({
 	lastFrameTime: ({ duration }: { duration: number }) => duration,
 	mediaTimeToSeconds: ({ time }: { time: number }) => time / 120_000,
 	formatTimecode: ({ time }: { time: number }) => String(time),
+	// Renderer modules statically import the GPU entry points; bun module
+	// mocks persist across test files, so a partial stub breaks linking for
+	// sibling suites (e.g. effect-preview.test.ts).
+	initializeGpu: () => Promise.resolve(),
+	destroyGpu: () => {},
+	applyEffectPasses: () => [0, 0, 0],
+	applyMaskFeather: () => [0, 0, 0],
 }));
 
 mock.module("sonner", () => ({
@@ -93,7 +100,9 @@ mock.module("@/stores/timeline-store", () => ({
 	},
 }));
 
-const dropTarget = await import("@/components/editor/panels/timeline/drop-target");
+const dropTarget = await import(
+	"@/components/editor/panels/timeline/drop-target"
+);
 spyOn(dropTarget, "computeDropTarget").mockImplementation(() => ({
 	trackIndex: 0,
 	isNewTrack: false,
@@ -149,7 +158,8 @@ describe("useTimelineDragDrop", () => {
 		function Test() {
 			const containerRef = useRef<HTMLDivElement>(null);
 			const result = useTimelineDragDrop({
-				containerRef: containerRef as unknown as React.RefObject<HTMLDivElement>,
+				containerRef:
+					containerRef as unknown as React.RefObject<HTMLDivElement>,
 				zoomLevel: 1,
 			});
 			const [phase, setPhase] = useState("dragover");
@@ -166,7 +176,7 @@ describe("useTimelineDragDrop", () => {
 						x: 0,
 						y: 0,
 						toJSON: () => {},
-					} as unknown as DOMRect),
+					}) as unknown as DOMRect,
 			} as unknown as HTMLDivElement;
 
 			if (phase === "dragover") {

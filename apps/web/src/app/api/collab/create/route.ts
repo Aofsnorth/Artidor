@@ -27,6 +27,8 @@ const bodySchema = z.object({
 	projectName: z.string().min(1).max(200),
 	mode: z.enum(["view", "comment", "edit", "suggest"]).default("edit"),
 	nickname: z.string().min(1).max(50),
+	// Host's local project id — joiners use it to land in the editor.
+	projectId: z.string().min(1).optional(),
 });
 
 export async function POST(request: Request) {
@@ -58,12 +60,21 @@ export async function POST(request: Request) {
 	}
 
 	const roomId = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-	const { sessionId } = await createRoomStore({
-		roomId,
-		mode: body.mode,
-		projectName: body.projectName,
-		nickname: body.nickname,
-	});
+	let sessionId: Awaited<ReturnType<typeof createRoomStore>>["sessionId"];
+	try {
+		({ sessionId } = await createRoomStore({
+			roomId,
+			mode: body.mode,
+			projectName: body.projectName,
+			nickname: body.nickname,
+			projectId: body.projectId ?? null,
+		}));
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 
 	const origin = getOriginFromRequest(request);
 	const result: CreateRoomResult = {

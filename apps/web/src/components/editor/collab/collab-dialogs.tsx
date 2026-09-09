@@ -155,7 +155,12 @@ export function StartCollabDialog({
 			project?.metadata.name ?? t("collaboration.defaultProjectName");
 		setCreating(true);
 		try {
-			await editor.collab.host({ projectName, mode, nickname: name });
+			await editor.collab.host({
+				projectName,
+				mode,
+				nickname: name,
+				projectId: project?.metadata.id ?? null,
+			});
 			const joinUrl = useCollabStore.getState().joinUrl;
 			toast.success(t("collaboration.toast.sessionStarted.title"), {
 				description: joinUrl

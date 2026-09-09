@@ -668,10 +668,17 @@ export function retimeKeyframe({
 		time,
 	};
 
+	// A retime can land on another key's exact timestamp; keep only the
+	// retimed key so a channel never holds two keys at the same time
+	// (duplicates would break "key at time" lookups and interpolation).
+	const deduplicatedKeys = nextKeys.filter(
+		(key, index) => index === keyframeByIdIndex || key.time !== time,
+	);
+
 	return normalizeChannel({
 		channel: {
 			...channel,
-			keys: nextKeys,
+			keys: deduplicatedKeys,
 		} as AnimationChannel,
 	});
 }

@@ -95,6 +95,13 @@ export class AddMediaAssetCommand extends Command {
 			const editor = EditorCore.getInstance();
 			editor.media.setAssets({ assets: this.savedAssets });
 
+			// The fps ratchet raised the project fps for this import; undo must
+			// lower it again when no remaining asset justifies the raised value —
+			// otherwise the raised fps stuck permanently (ratchet only goes up).
+			// Same guard as the failed-save path: only restore when the project
+			// still sits at the fps THIS command applied.
+			this.restoreProjectFpsAfterUndo({ editor });
+
 			if (this.createdAsset) {
 				storageService
 					.deleteMediaAsset({ projectId: this.projectId, id: this.assetId })
@@ -137,8 +144,25 @@ export class AddMediaAssetCommand extends Command {
 			return;
 		}
 
+		// No-op guard: if the pre-import fps is identical to the applied one,
+		// "restoring" would only bump updatedAt and mark the project dirty.
+		if (frameRatesEqual(this.previousProjectFps, this.appliedProjectFps)) {
+			return;
+		}
+
 		new UpdateProjectSettingsCommand({
 			fps: this.previousProjectFps,
 		}).execute();
+	}
+
+	/**
+	 * Undo counterpart of the fps ratchet; mirrors the failed-save guard.
+	 * (Extracted so both paths share ONE guard — the deferred .catch path and
+	 * the synchronous undo path have identical restore semantics.)
+	 */
+	private restoreProjectFpsAfterUndo({ editor }: { editor: EditorCore }): void {
+		// Reuse the exact same guard: undo has already removed this command's
+		// asset, so "remaining assets" is now the pre-import set.
+		this.restoreProjectFpsAfterFailedSave({ editor });
 	}
 }

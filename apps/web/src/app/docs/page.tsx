@@ -386,16 +386,16 @@ const SECTIONS: DocSection[] = [
 		content: [
 			{
 				type: "p",
-				text: "Artidor supports real-time collaboration. You can invite others to edit a project with you in real-time, with live cursors, synchronized playback, and shared edit history.",
+				text: "Artidor supports presence-based collaboration sessions. Invite others to follow your work with live cursors, participant presence, and element locks that show who is editing what.",
 			},
 			{
 				type: "ul",
 				items: [
 					"Click the Share button in the editor to create a collaboration room.",
 					"Share the room link with your collaborators.",
-					"Each collaborator's cursor and selections are visible in real-time.",
-					"Edits are synchronized and can be undone/redone by any participant.",
-					"Collaboration uses WebSocket-based real-time communication.",
+					"Each collaborator's cursor and selections are visible in real time.",
+					"Element locks show when another participant is editing an element.",
+					"Edits stay local to each participant's project. Remote command application is not implemented yet — sessions currently notify others that an edit happened.",
 				],
 			},
 		],

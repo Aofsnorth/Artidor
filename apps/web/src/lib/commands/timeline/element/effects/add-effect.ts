@@ -3,6 +3,21 @@ import { EditorCore } from "@/core";
 import { isVisualElement, updateElementInSceneTracks } from "@/lib/timeline";
 import type { SceneTracks, VisualElement } from "@/lib/timeline";
 import { buildDefaultEffectInstance } from "@/lib/effects";
+import type { Effect } from "@/lib/effects/types";
+
+function buildDefaultEffectInstanceDeep({
+	effectType,
+}: {
+	effectType: string;
+}): Effect | null {
+	const instance = buildDefaultEffectInstance({ effectType });
+	if (!instance) {
+		return null;
+	}
+	// buildDefaultEffectInstance may return shared default params; clone the
+	// instance so two clips never animate or mutate the same param object.
+	return structuredClone(instance);
+}
 
 function addEffectToElement({
 	element,
@@ -11,13 +26,15 @@ function addEffectToElement({
 	element: VisualElement;
 	effectType: string;
 }): VisualElement {
-	const instance = buildDefaultEffectInstance({ effectType });
+	const instance = buildDefaultEffectInstanceDeep({ effectType });
 	const currentEffects = element.effects ?? [];
-	return { ...element, effects: [...currentEffects, instance] };
+	return { ...element, effects: [...currentEffects, ...(instance ? [instance] : [])] };
 }
 
 export class AddClipEffectCommand extends Command {
 	private savedState: SceneTracks | null = null;
+	/** Post-execute snapshot so redo restores the exact same effect id. */
+	private addedState: SceneTracks | null = null;
 	private effectId: string | null = null;
 	private readonly trackId: string;
 	private readonly elementId: string;
@@ -59,6 +76,17 @@ export class AddClipEffectCommand extends Command {
 		});
 
 		editor.timeline.updateTracks(updatedTracks);
+		this.addedState = structuredClone(updatedTracks);
+		return undefined;
+	}
+
+	/** Replays the exact post-execute snapshot so the effect id stays stable. */
+	redo(): CommandResult | undefined {
+		if (this.addedState) {
+			EditorCore.getInstance().timeline.updateTracks(
+				structuredClone(this.addedState),
+			);
+		}
 		return undefined;
 	}
 

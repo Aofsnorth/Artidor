@@ -9,6 +9,7 @@ export class PlaybackManager {
 	private muted = false;
 	private previousVolume = 1;
 	private isScrubbing = false;
+	private loop = false;
 	private listeners = new Set<() => void>();
 	private playbackTimer: number | null = null;
 	private playbackStartWallTime = 0;
@@ -128,6 +129,26 @@ export class PlaybackManager {
 		return this.isScrubbing;
 	}
 
+	/**
+	 * Loop playback. When enabled, reaching the end of the timeline seeks
+	 * back to 0 and keeps playing instead of pausing. Owned here (not in UI
+	 * listeners) so the decision happens in the same rAF tick that detects
+	 * the end — a UI listener could miss a >1-frame rAF gap and stall on the
+	 * last frame.
+	 */
+	setLoopMode({ loop }: { loop: boolean }): void {
+		this.loop = loop;
+		this.notify();
+	}
+
+	getLoop(): boolean {
+		return this.loop;
+	}
+
+	toggleLoop(): void {
+		this.setLoopMode({ loop: !this.loop });
+	}
+
 	subscribe(listener: () => void): () => void {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
@@ -163,7 +184,7 @@ export class PlaybackManager {
 	}
 
 	private startTimer(): void {
-		if (this.playbackTimer) {
+		if (this.playbackTimer !== null) {
 			cancelAnimationFrame(this.playbackTimer);
 		}
 
@@ -173,13 +194,14 @@ export class PlaybackManager {
 	}
 
 	private stopTimer(): void {
-		if (this.playbackTimer) {
+		if (this.playbackTimer !== null) {
 			cancelAnimationFrame(this.playbackTimer);
 			this.playbackTimer = null;
 		}
 	}
 
 	private updateTime = (): void => {
+		this.playbackTimer = null;
 		if (!this.isPlaying) return;
 
 		const fps = this.editor.project.getActive()?.settings.fps;
@@ -193,16 +215,23 @@ export class PlaybackManager {
 		const maxTime = this.editor.timeline.getTotalDuration();
 
 		if (newTime >= maxTime) {
-			this.pause();
+			if (this.loop && maxTime > 0) {
+				// Restart from 0 in the same tick: a UI-side listener had to beat the
+				// pause path and could miss the window on a long rAF gap, stalling
+				// playback on the last frame with loop enabled.
+				this.seek({ time: 0 });
+				if (this.isPlaying) this.playbackTimer = requestAnimationFrame(this.updateTime);
+				return;
+			}
 			this.currentTime = maxTime;
-			this.notify();
+			this.pause();
 			this.dispatchSeekEvent(maxTime);
 			return;
 		}
 
 		this.currentTime = newTime;
 		this.dispatchUpdateEvent(newTime);
-		this.playbackTimer = requestAnimationFrame(this.updateTime);
+		if (this.isPlaying) this.playbackTimer = requestAnimationFrame(this.updateTime);
 	};
 
 	private clampTimeToTimeline(time: number): number {

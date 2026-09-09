@@ -17,6 +17,12 @@ export class RemoveTrackCommand extends Command {
 			overlay: this.savedState.overlay.filter(
 				(track) => track.id !== this.trackId,
 			),
+			// Video (and other visual) tracks added below the main track live in
+			// `overlayAfter` — without filtering this list, the X button on those
+			// tracks silently did nothing.
+			overlayAfter: this.savedState.overlayAfter.filter(
+				(track) => track.id !== this.trackId,
+			),
 			audio: this.savedState.audio.filter((track) => track.id !== this.trackId),
 		};
 		editor.timeline.updateTracks(updatedTracks);

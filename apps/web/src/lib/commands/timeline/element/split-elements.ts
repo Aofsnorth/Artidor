@@ -4,7 +4,41 @@ import { generateUUID } from "@/utils/id";
 import { EditorCore } from "@/core";
 import { isRetimableElement } from "@/lib/timeline";
 import { splitAnimationsAtTime } from "@/lib/animation";
-import { getSourceSpanAtClipTime } from "@/lib/retime";
+import { getSourceSpanAtClipTime, splitRetimeAtClipTime } from "@/lib/retime";
+import { roundToFrame, type FrameRate } from "artidor-wasm";
+
+/** Minimum split half-width: a side must hold at least one full frame. */
+function isSplitTooSmall({
+	splitTime,
+	elementStart,
+	elementEnd,
+	fps,
+}: {
+	splitTime: number;
+	elementStart: number;
+	elementEnd: number;
+	fps: FrameRate;
+}): boolean {
+	const perFrame = ticksPerFrameFor(fps);
+	const left = splitTime - elementStart;
+	const right = elementEnd - splitTime;
+	return left < perFrame || right < perFrame;
+}
+
+// Ticks per frame from the fps ratio (120_000 * denominator / numerator);
+// clamped to a sane fallback for malformed rates.
+const TICKS_PER_SECOND = 120_000;
+function ticksPerFrameFor(fps: FrameRate): number {
+	if (
+		!Number.isFinite(fps.numerator) ||
+		!Number.isFinite(fps.denominator) ||
+		fps.numerator <= 0 ||
+		fps.denominator <= 0
+	) {
+		return 4_000; // 30fps default
+	}
+	return Math.max(1, (TICKS_PER_SECOND * fps.denominator) / fps.numerator);
+}
 
 export class SplitElementsCommand extends Command {
 	private savedState: SceneTracks | null = null;
@@ -37,6 +71,15 @@ export class SplitElementsCommand extends Command {
 		this.savedState = editor.scenes.getActiveScene().tracks;
 		this.rightSideElements = [];
 
+		// Keyboard "S" passes the playhead time and the AI executor passes raw
+		// times; snap the split point onto the frame grid so both resulting
+		// halves stay frame-aligned (the drag/resize tool paths already snap).
+		const fps = editor.project.getActiveOrNull()?.settings.fps;
+		const rawSplitTime = this.splitTime;
+		const splitTime = fps
+			? (roundToFrame({ time: rawSplitTime, rate: fps }) ?? rawSplitTime)
+			: rawSplitTime;
+
 		const splitTrack = <
 			TTrack extends { id: string; elements: TimelineElement[] },
 		>(
@@ -62,14 +105,26 @@ export class SplitElementsCommand extends Command {
 				const effectiveStart = element.startTime;
 				const effectiveEnd = element.startTime + element.duration;
 
+				if (splitTime <= effectiveStart || splitTime >= effectiveEnd) {
+					return [element];
+				}
+
+				// A split that would leave either half shorter than one frame is a
+				// no-op for that element (keep the original) — otherwise a sub-frame
+				// split produced invisible zero-length clips.
 				if (
-					this.splitTime <= effectiveStart ||
-					this.splitTime >= effectiveEnd
+					fps &&
+					isSplitTooSmall({
+						splitTime,
+						elementStart: effectiveStart,
+						elementEnd: effectiveEnd,
+						fps,
+					})
 				) {
 					return [element];
 				}
 
-				const relativeTime = this.splitTime - element.startTime;
+				const relativeTime = splitTime - element.startTime;
 				const leftVisibleDuration = relativeTime;
 				const rightVisibleDuration = element.duration - relativeTime;
 				const retimeRef = isRetimableElement(element)
@@ -90,6 +145,20 @@ export class SplitElementsCommand extends Command {
 					shouldIncludeSplitBoundary: true,
 				});
 
+				// Curve (speed-ramp) retimes need a real slice: the right half must
+				// continue the ramp from the cut-point rate, not replay the curve
+				// from time 0. Constant-rate retimes are duration-invariant and can
+				// be carried as-is.
+				const splitRetime =
+					retimeRef !== undefined
+						? splitRetimeAtClipTime({
+								splitClipTime: relativeTime,
+								retime: { ...retimeRef, duration: element.duration },
+							})
+						: undefined;
+				const leftRetime = splitRetime?.left;
+				const rightRetime = splitRetime?.right;
+
 				if (this.retainSide === "left") {
 					return [
 						{
@@ -98,7 +167,7 @@ export class SplitElementsCommand extends Command {
 							trimEnd: element.trimEnd + rightSourceSpan,
 							name: `${element.name} (left)`,
 							animations: leftAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(leftRetime !== undefined ? { retime: leftRetime } : {}),
 						},
 					];
 				}
@@ -113,12 +182,12 @@ export class SplitElementsCommand extends Command {
 						{
 							...element,
 							id: newId,
-							startTime: this.splitTime,
+							startTime: splitTime,
 							duration: rightVisibleDuration,
 							trimStart: element.trimStart + leftSourceSpan,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
-							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+							...(rightRetime !== undefined ? { retime: rightRetime } : {}),
 						},
 					];
 				}
@@ -137,17 +206,17 @@ export class SplitElementsCommand extends Command {
 						trimEnd: element.trimEnd + rightSourceSpan,
 						name: `${element.name} (left)`,
 						animations: leftAnimations,
-						...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+						...(leftRetime !== undefined ? { retime: leftRetime } : {}),
 					},
 					{
 						...element,
 						id: secondElementId,
-						startTime: this.splitTime,
+						startTime: splitTime,
 						duration: rightVisibleDuration,
 						trimStart: element.trimStart + leftSourceSpan,
 						name: `${element.name} (right)`,
 						animations: rightAnimations,
-						...(retimeRef !== undefined ? { retime: retimeRef } : {}),
+						...(rightRetime !== undefined ? { retime: rightRetime } : {}),
 					},
 				];
 			});

@@ -36,7 +36,15 @@ export async function POST(
 		);
 	}
 
-	const result = await joinRoomStore({ roomId, nickname: body.nickname });
+	let result: Awaited<ReturnType<typeof joinRoomStore>>;
+	try {
+		result = await joinRoomStore({ roomId, nickname: body.nickname });
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	if (!result) {
 		return Response.json({ error: "Room not found" }, { status: 404 });
 	}
@@ -47,17 +55,7 @@ export async function POST(
 			result.room.collaborators.find((c) => c.id === result.sessionId)?.color ??
 			"#ef4444",
 		isHost: false,
-		room: {
-			roomId: result.room.roomId,
-			mode: result.room.mode,
-			collaborators: result.room.collaborators,
-			cursors: result.room.cursors,
-			locks: result.room.locks,
-			commands: result.room.commands,
-			comments: result.room.comments,
-			suggestions: result.room.suggestions,
-			seq: result.room.seq,
-		},
+		room: result.room,
 	};
 	return Response.json(response);
 }

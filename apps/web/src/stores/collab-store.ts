@@ -1,10 +1,14 @@
 /**
  * Collaboration store — React-facing state for the multiplayer editing
- * feature. Holds the room state, the local collaborator's identity, and
- * the connection status.
+ * feature. Holds the room state, the local collaborator's identity, and the
+ * connection status.
  *
  * The store is the UI mirror; the CollaborationManager owns the
  * transport (SSE + POST) and applies remote commands to the editor.
+ *
+ * Session data is ephemeral by design: only the nickname persists. Rejoining
+ * a room always goes through a fresh join so stale session capabilities can
+ * never be reused after the server pruned them.
  */
 
 import { create } from "zustand";
@@ -43,6 +47,10 @@ interface CollabState {
 	isHost: boolean;
 	/** The room's permission mode. */
 	mode: CollabMode;
+	/** The host's local project id — joiners navigate to it in the editor. */
+	hostProjectId: string | null;
+	/** The host's project name, for labeling the guest's local placeholder. */
+	hostProjectName: string | null;
 	/** All collaborators in the room (including local). */
 	collaborators: Collaborator[];
 	/** All remote cursors (excluding local — local cursor is sent, not displayed). */
@@ -66,6 +74,7 @@ interface CollabState {
 		color: string;
 		isHost: boolean;
 		mode: CollabMode;
+		hostProjectId: string | null;
 	}) => void;
 	updateRoomState: (state: RoomState) => void;
 	setMode: (mode: CollabMode) => void;
@@ -84,6 +93,8 @@ export const useCollabStore = create<CollabState>()(
 			color: null,
 			isHost: false,
 			mode: "view",
+			hostProjectId: null,
+			hostProjectName: null,
 			collaborators: [],
 			cursors: [],
 			locks: [],
@@ -102,6 +113,8 @@ export const useCollabStore = create<CollabState>()(
 					color: result.color,
 					isHost: result.isHost,
 					mode: result.mode,
+					hostProjectId: result.hostProjectId,
+					hostProjectName: null,
 					status: "connected",
 					error: null,
 				}),
@@ -114,6 +127,8 @@ export const useCollabStore = create<CollabState>()(
 					comments: state.comments,
 					suggestions: state.suggestions,
 					mode: state.mode,
+					hostProjectId: state.projectId ?? null,
+					hostProjectName: state.projectName ?? null,
 				}),
 
 			setMode: (mode) => set({ mode }),
@@ -130,6 +145,8 @@ export const useCollabStore = create<CollabState>()(
 					color: null,
 					isHost: false,
 					mode: "view",
+					hostProjectId: null,
+					hostProjectName: null,
 					collaborators: [],
 					cursors: [],
 					locks: [],

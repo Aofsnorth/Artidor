@@ -32,6 +32,13 @@ export async function POST(
 		return Response.json({ error: "Invalid request" }, { status: 400 });
 	}
 
-	await leaveRoomStore({ roomId, sessionId: body.sessionId });
+	try {
+		await leaveRoomStore({ roomId, sessionId: body.sessionId });
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	return Response.json({ ok: true });
 }

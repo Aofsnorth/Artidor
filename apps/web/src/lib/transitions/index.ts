@@ -51,6 +51,7 @@ import { flipVerticalTransition } from "./definitions/flip-vertical";
 import { noiseFadeTransition } from "./definitions/noise-fade";
 import { rippleTransition } from "./definitions/ripple";
 import { kaleidoscopeTransition } from "./definitions/kaleidoscope";
+import { blurTransition } from "./definitions/blur";
 
 const defaultTransitions = [
 	fadeTransition,
@@ -105,6 +106,7 @@ const defaultTransitions = [
 	noiseFadeTransition,
 	rippleTransition,
 	kaleidoscopeTransition,
+	blurTransition,
 ];
 
 export function registerDefaultTransitions(): void {

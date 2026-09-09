@@ -10,6 +10,13 @@ mock.module("artidor-wasm", () => ({
 	TICKS_PER_SECOND: 120_000,
 	roundToFrame: ({ time }: { time: number }) => time,
 	snappedSeekTime: ({ time }: { time: number }) => time,
+	// Renderer modules statically import the GPU entry points; bun module
+	// mocks persist across test files, so a partial stub breaks linking for
+	// sibling suites (e.g. effect-preview.test.ts).
+	initializeGpu: () => Promise.resolve(),
+	destroyGpu: () => {},
+	applyEffectPasses: () => [0, 0, 0],
+	applyMaskFeather: () => [0, 0, 0],
 }));
 
 let timelineHasAudio: typeof import("../audio").timelineHasAudio;

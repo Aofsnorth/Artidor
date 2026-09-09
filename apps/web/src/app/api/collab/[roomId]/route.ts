@@ -26,10 +26,18 @@ export async function GET(
 		return Response.json({ error: "Missing sessionId" }, { status: 400 });
 	}
 
-	const state = await getRoomState({ roomId, sessionId });
-	if (!state) {
-		return Response.json({ error: "Room not found" }, { status: 404 });
+	try {
+		const state = await getRoomState({ roomId, sessionId });
+		if (!state) {
+			return Response.json({ error: "Room not found" }, { status: 404 });
+		}
+		return Response.json(state);
+	} catch {
+		// Backing store unreachable — not a definitive "room gone". The
+		// client keeps its session and retries on the next poll tick.
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
 	}
-
-	return Response.json(state);
 }

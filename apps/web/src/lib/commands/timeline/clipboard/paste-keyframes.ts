@@ -7,7 +7,7 @@ import {
 } from "@/lib/animation";
 import { Command, type CommandResult } from "@/lib/commands/base-command";
 import type { KeyframeClipboardItem } from "@/lib/clipboard";
-import type { SceneTracks, TimelineElement } from "@/lib/timeline";
+import type { ElementRef, SceneTracks, TimelineElement } from "@/lib/timeline";
 import { updateElementInSceneTracks } from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 
@@ -31,10 +31,15 @@ function pasteKeyframesIntoElement({
 			continue;
 		}
 
-		const keyframeTime = Math.max(
-			0,
-			Math.min(time + item.timeOffset, nextElement.duration),
-		);
+		// Preserve spacing: omit out-of-clip keys instead of piling them at an endpoint.
+		const keyframeTime = time + item.timeOffset;
+		if (
+			!Number.isFinite(keyframeTime) ||
+			keyframeTime < 0 ||
+			keyframeTime > nextElement.duration
+		) {
+			continue;
+		}
 		const nextAnimations = upsertPathKeyframe({
 			animations: nextElement.animations,
 			propertyPath: item.propertyPath,
@@ -75,52 +80,68 @@ function pasteKeyframesIntoElement({
 	return nextElement;
 }
 
+/** Paste at clip-local ticks; keys outside [0, duration] are omitted, never rescaled. */
 export class PasteKeyframesCommand extends Command {
 	private savedState: SceneTracks | null = null;
-	private readonly trackId: string;
-	private readonly elementId: string;
+	private pastedState: SceneTracks | null = null;
+	private readonly targets: ElementRef[];
 	private readonly time: number;
 	private readonly clipboardItems: KeyframeClipboardItem[];
 
 	constructor({
-		trackId,
-		elementId,
+		targets,
 		time,
 		clipboardItems,
 	}: {
-		trackId: string;
-		elementId: string;
+		/** One or more targets; all get the keys in one undoable step (AE behavior). */
+		targets: ElementRef[];
 		time: number;
 		clipboardItems: KeyframeClipboardItem[];
 	}) {
 		super();
-		this.trackId = trackId;
-		this.elementId = elementId;
+		this.targets = targets;
 		this.time = time;
-		this.clipboardItems = clipboardItems;
+		this.clipboardItems = structuredClone(clipboardItems);
 	}
 
 	execute(): CommandResult | undefined {
-		if (this.clipboardItems.length === 0) {
+		if (this.clipboardItems.length === 0 || this.targets.length === 0) {
 			return undefined;
 		}
 
 		const editor = EditorCore.getInstance();
 		this.savedState = editor.scenes.getActiveScene().tracks;
 
-		const updatedTracks = updateElementInSceneTracks({
-			tracks: this.savedState,
-			trackId: this.trackId,
-			elementId: this.elementId,
-			update: (element) =>
-				pasteKeyframesIntoElement({
-					element,
-					time: this.time,
-					clipboardItems: this.clipboardItems,
-				}),
-		});
+		let updatedTracks = this.savedState;
+		for (const target of this.targets) {
+			// A missing target resolves to a no-op update (elementId doesn't match
+			// any element), so the other targets still get their keys and the
+			// command stays one undo step.
+			updatedTracks = updateElementInSceneTracks({
+				tracks: updatedTracks,
+				trackId: target.trackId,
+				elementId: target.elementId,
+				update: (element) =>
+					pasteKeyframesIntoElement({
+						element,
+						time: this.time,
+						clipboardItems: this.clipboardItems,
+					}),
+			});
+		}
 
+		this.pastedState = structuredClone(updatedTracks);
 		editor.timeline.updateTracks(updatedTracks);
+		return undefined;
+	}
+
+	/** Replays the exact post-execute snapshot so pasted keyframe IDs stay stable. */
+	redo(): CommandResult | undefined {
+		if (this.pastedState) {
+			EditorCore.getInstance().timeline.updateTracks(
+				structuredClone(this.pastedState),
+			);
+		}
 		return undefined;
 	}
 

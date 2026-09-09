@@ -97,8 +97,13 @@ export class MoveElementCommand extends Command {
 			tracks: tracksToUpdate,
 			targetTrackId: this.targetTrackId,
 			requestedStartTime: this.newStartTime,
-			excludeElementId: this.elementId,
+			extitleElementId: this.elementId,
 		});
+
+		// Non-main tracks have no enforceMainTrackStart clamping, and callers
+		// (notably the AI executor) can pass a raw negative time. A negative
+		// start would render the clip partly before the timeline origin.
+		adjustedStartTime = Math.max(0, adjustedStartTime);
 
 		// Overlap guard: after enforceMainTrackStart may have adjusted the
 		// start time (e.g. snapped to 0 on the main track), re-check whether
@@ -147,6 +152,22 @@ export class MoveElementCommand extends Command {
 					adjustedStartTime = pushedStart;
 				}
 			}
+		}
+
+		// A failed fallback must not commit the original overlapping position.
+		if (
+			!canPlaceTimeSpansOnTrack({
+				track: targetTrack,
+				timeSpans: [
+					{
+						startTime: adjustedStartTime,
+						duration: element.duration,
+						excludeElementId: this.elementId,
+					},
+				],
+			})
+		) {
+			return undefined;
 		}
 
 		// keyframe times remain clip-local, so moving only changes element startTime.

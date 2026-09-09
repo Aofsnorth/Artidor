@@ -3,16 +3,17 @@
  * real-time collaboration transport.
  *
  * Responsibilities:
- *  - Host: create a room, broadcast local commands to collaborators.
- *  - Guest: join a room, receive and apply remote commands, broadcast
- *    local commands (in edit mode), send suggestions (in suggest mode).
+ *  - Host: create a room, notify collaborators of local edits.
+ *  - Guest: join a room, mirror room state (presence, locks, mode).
  *  - All: broadcast cursor position, manage element locks, poll for
  *    room state updates, and update the collab store for UI.
  *
- * The manager hooks into CommandManager via `registerReactor` to
- * intercept local commands. Remote commands are applied through a
- * separate path that bypasses undo history (to avoid cross-user undo
- * confusion).
+ * What this manager does NOT do: apply remote edits. There is no safe
+ * wire protocol for reconstructing editor commands from serialized data
+ * (commands capture editor internals and undo snapshots as private
+ * state), no shared project baseline, and no undo reconciliation. A
+ * `local-edit` notification is broadcast for awareness only. Remote
+ * command application is a tracked limitation, not a stubbed success.
  *
  * Conflict prevention: before executing a local command that targets a
  * specific element, the manager acquires an element lock. If the lock
@@ -23,6 +24,7 @@
 import type { EditorCore } from "@/core";
 import { useCollabStore } from "@/stores/collab-store";
 import {
+	CollabSessionEndedError,
 	createRoom,
 	joinRoom,
 	pollRoomState,
@@ -33,6 +35,7 @@ import {
 	leaveRoom,
 	setRoomMode,
 } from "@/lib/collab/client";
+import { LOCAL_EDIT } from "@/lib/collab/protocol";
 import type { CollabMode } from "@/lib/collab/types";
 import type { Command } from "@/lib/commands";
 
@@ -46,10 +49,20 @@ export class CollabManager {
 	private cursorThrottle: ReturnType<typeof setTimeout> | null = null;
 	private pendingCursor: { x: number; y: number; elementId?: string } | null =
 		null;
-	private reactorAttached = false;
+	/** Unsubscribe from CommandManager reactors; null while detached. */
+	private detachReactor: (() => void) | null = null;
 	private lastSeq = 0;
+	/** Highest command sequence already reflected in local room state. */
+	private lastCommandSeq = 0;
 	/** Element IDs currently locked by this session. */
 	private myLocks = new Set<string>();
+	/** Guard against double host/join/start and concurrent disconnects. */
+	private joining = false;
+	private disconnecting: Promise<void> | null = null;
+	/** Increments on every host/join/disconnect; in-flight async work tags its
+	 * epoch at start and drops results when the epoch moved on. Prevents a
+	 * late response from a previous session being applied to the current one. */
+	private sessionEpoch = 0;
 
 	constructor(private editor: EditorCore) {}
 
@@ -58,16 +71,29 @@ export class CollabManager {
 		projectName,
 		mode,
 		nickname,
+		projectId,
 	}: {
 		projectName: string;
 		mode: CollabMode;
 		nickname: string;
+		/** Host's local project id — joiners use it to land in the editor. */
+		projectId: string | null;
 	}): Promise<void> {
+		if (this.joining || this.detachReactor) return;
+		this.joining = true;
 		const store = useCollabStore.getState();
 		store.setStatus("connecting");
 
 		try {
-			const result = await createRoom({ projectName, mode, nickname });
+			const result = await createRoom({
+				projectName,
+				mode,
+				nickname,
+				projectId,
+			});
+			// Invalidate any still-in-flight work from a previous session before
+			// this session's polling starts.
+			this.sessionEpoch += 1;
 			store.setRoom({
 				roomId: result.roomId,
 				joinUrl: result.joinUrl,
@@ -76,15 +102,17 @@ export class CollabManager {
 				color: "#ef4444", // host gets first color; server assigns actual
 				isHost: true,
 				mode,
+				hostProjectId: projectId ?? null,
 			});
-			this.lastSeq = 0;
-			this.attachReactor();
-			this.startPolling();
+			this.resetSyncState();
+			this.start();
 		} catch (err) {
 			store.setError(
 				err instanceof Error ? err.message : "Could not start collaboration.",
 			);
 			throw err;
+		} finally {
+			this.joining = false;
 		}
 	}
 
@@ -96,11 +124,14 @@ export class CollabManager {
 		roomId: string;
 		nickname: string;
 	}): Promise<void> {
+		if (this.joining || this.detachReactor) return;
+		this.joining = true;
 		const store = useCollabStore.getState();
 		store.setStatus("connecting");
 
 		try {
 			const result = await joinRoom({ roomId, nickname });
+			this.sessionEpoch += 1;
 			store.setRoom({
 				roomId,
 				joinUrl: "",
@@ -109,32 +140,50 @@ export class CollabManager {
 				color: result.color,
 				isHost: false,
 				mode: result.room.mode,
+				hostProjectId: result.room.projectId ?? null,
 			});
 			store.updateRoomState(result.room);
+			this.resetSyncState();
+			// Adopt the server's monotonic sequence as this session's baseline so
+			// the first poll starts from the exact snapshot we just received.
 			this.lastSeq = result.room.seq;
+			this.lastCommandSeq = result.room.seq;
 
-			// In view mode, the editor is read-only for guests.
-			if (result.room.mode === "view") {
-				this.editor.command.readOnly = true;
-			}
+			// Guests are read-only unless the room's mode permits edits. The
+			// server is the enforcement point (canEdit/tryLockElement), but the
+			// local flag blocks edit UI noise immediately on join instead of
+			// after the first poll tick. Hosts are never read-only: the room mode
+			// is the permission level for guests, not for the owner.
+			this.editor.command.readOnly = result.room.mode !== "edit";
 
-			this.attachReactor();
-			this.startPolling();
+			this.start();
 		} catch (err) {
 			store.setError(
 				err instanceof Error ? err.message : "Could not join collaboration.",
 			);
 			throw err;
+		} finally {
+			this.joining = false;
 		}
 	}
 
-	/** Disconnect from the room and clean up. */
+	/** Disconnect from the room and clean up. Idempotent and reentrant. */
 	async disconnect(): Promise<void> {
+		if (this.disconnecting) return this.disconnecting;
+		this.sessionEpoch += 1;
+		this.disconnecting = this.doDisconnect();
+		try {
+			await this.disconnecting;
+		} finally {
+			this.disconnecting = null;
+		}
+	}
+
+	private async doDisconnect(): Promise<void> {
 		const store = useCollabStore.getState();
 		const { roomId, sessionId } = store;
 
-		this.stopPolling();
-		this.detachReactor();
+		this.stop();
 		this.editor.command.readOnly = false;
 		this.myLocks.clear();
 
@@ -153,16 +202,15 @@ export class CollabManager {
 			sessionId: store.sessionId,
 			mode,
 		});
-		store.setMode(mode);
-		// Update read-only state for the local editor.
-		this.editor.command.readOnly = mode === "view";
+		useCollabStore.getState().setMode(mode);
+		// The room mode is the permission level for *guests* — the host
+		// always keeps full edit control, so the local editor's read-only
+		// flag is intentionally untouched here.
 	}
 
 	/** Broadcast the local cursor position (throttled). */
 	broadcastCursor(x: number, y: number, elementId?: string): void {
-		const store = useCollabStore.getState();
-		if (!store.roomId || !store.sessionId || store.status !== "connected")
-			return;
+		if (!this.hasActiveSession()) return;
 
 		this.pendingCursor = { x, y, elementId };
 
@@ -185,12 +233,14 @@ export class CollabManager {
 
 	/** Try to acquire a lock on an element before editing. */
 	async tryAcquireLock(elementId: string): Promise<boolean> {
-		const store = useCollabStore.getState();
-		if (!store.roomId || !store.sessionId) return true;
+		// No session ⇒ no contention: the local editor may edit freely.
+		if (!this.hasActiveSession()) return true;
 		if (this.myLocks.has(elementId)) return true;
+		const { roomId, sessionId } = useCollabStore.getState();
+		if (!roomId || !sessionId) return true;
 		const ok = await lockElement({
-			roomId: store.roomId,
-			sessionId: store.sessionId,
+			roomId,
+			sessionId,
 			elementId,
 		});
 		if (ok) this.myLocks.add(elementId);
@@ -199,18 +249,24 @@ export class CollabManager {
 
 	/** Release a lock on an element. */
 	releaseLock(elementId: string): void {
-		const store = useCollabStore.getState();
-		if (!store.roomId || !store.sessionId) return;
+		if (!this.hasActiveSession()) return;
 		if (!this.myLocks.has(elementId)) return;
+		const { roomId, sessionId } = useCollabStore.getState();
+		if (!roomId || !sessionId) return;
 		this.myLocks.delete(elementId);
 		void unlockElement({
-			roomId: store.roomId,
-			sessionId: store.sessionId,
+			roomId,
+			sessionId,
 			elementId,
 		});
 	}
 
-	/** Check if an element is locked by another collaborator. */
+	/**
+	 * Check if an element is locked by another collaborator.
+	 *
+	 * Lock state comes from the polled room state; the caller's own sessionId
+	 * filters self-owned locks. With no session there are no remote locks.
+	 */
 	isLockedByOther(elementId: string): boolean {
 		const store = useCollabStore.getState();
 		if (!store.sessionId) return false;
@@ -232,60 +288,72 @@ export class CollabManager {
 	/*                          Internal plumbing                          */
 	/* ------------------------------------------------------------------ */
 
-	private attachReactor(): void {
-		if (this.reactorAttached) return;
-		this.editor.command.registerReactor((command) => {
+	/** Register the reactor and start polling. Assumes no active session. */
+	private start(): void {
+		if (this.detachReactor) return;
+		this.detachReactor = this.editor.command.registerReactor((command) => {
 			this.onLocalCommand(command);
 		});
-		this.reactorAttached = true;
+		this.startPolling();
 	}
 
-	private detachReactor(): void {
-		// Reactors can't be individually removed in the current CommandManager
-		// design. We set a flag to stop broadcasting instead. The reactor
-		// stays registered but becomes a no-op when disconnected.
-		this.reactorAttached = false;
+	private stop(): void {
+		this.stopPolling();
+		if (this.cursorThrottle) {
+			clearTimeout(this.cursorThrottle);
+			this.cursorThrottle = null;
+		}
+		this.pendingCursor = null;
+		if (this.detachReactor) {
+			this.detachReactor();
+			this.detachReactor = null;
+		}
+	}
+
+	private resetSyncState(): void {
+		this.lastSeq = 0;
+		this.lastCommandSeq = 0;
+		this.myLocks.clear();
 	}
 
 	/**
-	 * Called after every local command execution. Broadcasts the command
-	 * to the room so other collaborators can apply it.
+	 * Called after every local command execution. Broadcasts an edit
+	 * notification so other collaborators see that an edit happened.
+	 *
+	 * The notification carries no command fields: remote application is
+	 * not implemented, and broadcasting editor internals would leak
+	 * undo snapshots without any receiver able to apply them.
 	 */
 	private onLocalCommand(command: Command): void {
-		if (!this.reactorAttached) return;
+		void command;
 		const store = useCollabStore.getState();
 		if (!store.roomId || !store.sessionId) return;
 		if (store.status !== "connected") return;
+		if (this.disconnecting) return;
 
-		// In view mode, commands shouldn't reach here (readOnly blocks them),
-		// but guard anyway.
-		if (store.mode === "view") return;
+		// Guests in non-edit modes are locally read-only, so their commands
+		// never reach here in practice. But the local gate is only hygiene:
+		// the server rejects non-host appends in every mode except "edit".
+		// Re-check here so a stale local mode (set between poll ticks) can
+		// never emit a broadcast the server would charge against the room log.
+		if (!store.isHost && store.mode !== "edit") return;
 
-		const commandName = command.constructor.name;
-		// Serialize the command's public fields as args. Commands store their
-		// constructor params as public readonly fields by convention.
-		const args: Record<string, unknown> = {};
-		for (const key of Object.keys(
-			command as unknown as Record<string, unknown>,
-		)) {
-			const value = (command as unknown as Record<string, unknown>)[key];
-			// Skip functions and undefined values.
-			if (typeof value === "function" || value === undefined) continue;
-			try {
-				// Only include JSON-serializable values.
-				JSON.stringify(value);
-				args[key] = value;
-			} catch {
-				// Skip non-serializable values.
-			}
-		}
-
-		void sendCommand({
+		// A rejected broadcast must never crash the reactor loop or the
+		// command that just executed locally — the local edit already
+		// succeeded, so log the failure and continue.
+		sendCommand({
 			roomId: store.roomId,
 			sessionId: store.sessionId,
-			commandName,
-			args,
-		});
+			commandName: LOCAL_EDIT,
+			args: {},
+		}).catch(() => {});
+	}
+
+	/** True while a session is active — used by broadcast/lock paths to gate
+	 * presence traffic so a disconnected manager never sends server writes. */
+	private hasActiveSession(): boolean {
+		const { status, roomId } = useCollabStore.getState();
+		return status === "connected" && !!roomId;
 	}
 
 	private startPolling(): void {
@@ -307,61 +375,52 @@ export class CollabManager {
 		if (!store.roomId || !store.sessionId || store.status !== "connected")
 			return;
 
+		// Capture the session this poll belongs to. If the room is left/joined
+		// again while the request is in flight, a late response must not be
+		// applied to the NEW session (stale epoch application).
+		const pollEpoch = this.sessionEpoch;
+		const pollSessionId = store.sessionId;
 		try {
 			const state = await pollRoomState({
 				roomId: store.roomId,
-				sessionId: store.sessionId,
+				sessionId: pollSessionId,
 				fromSeq: this.lastSeq,
 			});
+			// Late response from a previous session, or a disconnect raced the
+			// response: drop it entirely instead of poisoning the new session's
+			// store state or sequence baseline.
+			if (pollEpoch !== this.sessionEpoch || this.disconnecting) return;
+			const current = useCollabStore.getState();
+			if (current.sessionId !== pollSessionId || current.status !== "connected")
+				return;
+			// Room sequence must never move backwards (server restarts, or a
+			// re-created room reusing the id would look like a regression).
+			if (state.seq < this.lastSeq) return;
 			useCollabStore.getState().updateRoomState(state);
-
-			// Apply any new commands from other collaborators.
-			const newCommands = state.commands.filter(
-				(c) =>
-					c.collaboratorId !== store.sessionId &&
-					c.timestamp > this.lastCommandTimestamp,
-			);
-			for (const cmd of newCommands) {
-				this.applyRemoteCommand(cmd.commandName, cmd.args);
-				this.lastCommandTimestamp = Math.max(
-					this.lastCommandTimestamp,
-					cmd.timestamp,
-				);
-			}
-
 			this.lastSeq = state.seq;
+			this.lastCommandSeq = Math.max(this.lastCommandSeq, state.seq);
 
-			// Update read-only state based on mode.
-			this.editor.command.readOnly = state.mode === "view";
-		} catch {
-			// Transient polling errors are non-fatal; the next poll will retry.
-		}
-	}
-
-	private lastCommandTimestamp = 0;
-
-	/**
-	 * Apply a remote command from another collaborator. This reconstructs
-	 * the command from its serialized form and executes it WITHOUT adding
-	 * to undo history (to avoid cross-user undo confusion).
-	 *
-	 * Note: full command reconstruction requires a command registry. For
-	 * this first version, we apply the most common command types. Unknown
-	 * commands are logged and skipped — the host can re-sync full state
-	 * if needed.
-	 */
-	private applyRemoteCommand(
-		commandName: string,
-		_args: Record<string, unknown>,
-	): void {
-		// Command reconstruction is complex because commands hold references
-		// to editor internals. A full implementation would use a command
-		// registry/factory. For this first version, remote command application
-		// is a known limitation — the UI (cursors, presence, locks, mode)
-		// works fully, and full state sync will be added in a follow-up.
-		// This is documented in the What's New entry.
-		if (process.env.NODE_ENV !== "production") {
-			console.debug(`[collab] remote command: ${commandName}`);
+			// The room mode is the permission level for *guests*. Only guests
+			// follow it — the host must never be locked out of their own editor
+			// by starting a session in a restricted mode. Non-edit modes are
+			// read-only for guests (view = watch-only, comment/suggest have no
+			// implemented editing surface beyond the host's timeline).
+			this.editor.command.readOnly =
+				!useCollabStore.getState().isHost && state.mode !== "edit";
+		} catch (err) {
+			if (err instanceof CollabSessionEndedError) {
+				// The room is gone (host ended the session) — end the local
+				// session instead of polling a ghost room. Store-unavailable
+				// errors are transient and deliberately retried.
+				await this.disconnect();
+				return;
+			}
+			// Transient store/network errors are retried on the next tick. Any
+			// other rejection is logged, never rethrown: poll runs on an interval,
+			// and an unhandled rejection would kill the host page.
+			if (err instanceof Error) {
+				console.warn("[collab] poll failed; retrying next tick", err.message);
+			}
 		}
 	}
 }

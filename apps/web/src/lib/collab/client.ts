@@ -3,7 +3,10 @@
  * endpoints in `/api/collab` so UI code never hand-builds requests.
  *
  * All endpoints return typed results; errors are thrown as Error
- * instances with human-readable messages.
+ * instances with human-readable messages. When the server's storage is
+ * unavailable, endpoints fail with 503 and this client surfaces a
+ * distinct CollabStoreUnavailableError so the UI can say "retry" instead
+ * of "room ended".
  */
 
 import type {
@@ -13,23 +16,32 @@ import type {
 	RoomState,
 } from "./types";
 
+async function readErrorMessage(res: Response): Promise<string | null> {
+	const detail = (await res.json().catch(() => null)) as
+		| { error?: string }
+		| null;
+	return detail?.error ?? null;
+}
+
 export async function createRoom({
 	projectName,
 	mode,
 	nickname,
+	projectId,
 }: {
 	projectName: string;
 	mode: CollabMode;
 	nickname: string;
+	projectId: string | null;
 }): Promise<CreateRoomResult> {
 	const res = await fetch("/api/collab/create", {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ projectName, mode, nickname }),
+		body: JSON.stringify({ projectName, mode, nickname, projectId }),
 	});
 	if (!res.ok) {
-		const detail = await res.json().catch(() => null);
-		throw new Error(detail?.error ?? "Could not create collaboration room.");
+		const detail = await readErrorMessage(res);
+		throw new Error(detail ?? "Could not create collaboration room.");
 	}
 	const data = (await res.json()) as CreateRoomResult;
 	return {
@@ -54,8 +66,8 @@ export async function joinRoom({
 	if (res.status === 404)
 		throw new Error("This collaboration link is no longer active.");
 	if (!res.ok) {
-		const detail = await res.json().catch(() => null);
-		throw new Error(detail?.error ?? "Could not join the collaboration room.");
+		const detail = await readErrorMessage(res);
+		throw new Error(detail ?? "Could not join the collaboration room.");
 	}
 	return (await res.json()) as JoinRoomResult;
 }
@@ -73,8 +85,32 @@ export async function pollRoomState({
 		`/api/collab/${encodeURIComponent(roomId)}?sessionId=${encodeURIComponent(sessionId)}&fromSeq=${fromSeq}`,
 		{ method: "GET" },
 	);
+	// 404 means the room is gone (host ended the session) — not a transient
+	// failure. Callers should end their local session instead of retrying.
+	if (res.status === 404) throw new CollabSessionEndedError();
+	if (res.status === 503) throw new CollabStoreUnavailableError();
 	if (!res.ok) throw new Error("Could not fetch room state.");
 	return (await res.json()) as RoomState;
+}
+
+/** Thrown when the room no longer exists (host ended the session). */
+export class CollabSessionEndedError extends Error {
+	constructor() {
+		super("Collaboration session has ended.");
+		this.name = "CollabSessionEndedError";
+	}
+}
+
+/**
+ * Thrown when the server could not reach its backing store. Unlike
+ * CollabSessionEndedError this is transient: the local session should stay
+ * alive and the next poll should retry.
+ */
+export class CollabStoreUnavailableError extends Error {
+	constructor() {
+		super("Collaboration storage is temporarily unavailable.");
+		this.name = "CollabStoreUnavailableError";
+	}
 }
 
 export async function sendCommand({
@@ -94,8 +130,8 @@ export async function sendCommand({
 		body: JSON.stringify({ sessionId, commandName, args }),
 	});
 	if (!res.ok) {
-		const detail = await res.json().catch(() => null);
-		throw new Error(detail?.error ?? "Could not send command.");
+		const detail = await readErrorMessage(res);
+		throw new Error(detail ?? "Could not send command.");
 	}
 }
 

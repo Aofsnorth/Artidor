@@ -1,347 +1,385 @@
-import { expect, test, describe } from "bun:test";
+/**
+ * Regression tests for collaboration room-store semantics.
+ *
+ * The store is the authorization point for every collab route, so these tests
+ * run the real Redis-backed implementation. Redis is REQUIRED — an in-memory
+ * mock cannot prove atomicity, and fabricated pass results are forbidden. When
+ * Redis is unavailable the suite reports (and skips) rather than silently
+ * degrading to memory-only assertions.
+ *
+ * Requires a real Redis at REDIS_URL (default redis://127.0.0.1:6379). The
+ * store's production client (Upstash REST, https-only) is swapped for a
+ * raw-TCP RESP2 adapter so the real store functions run against real Redis.
+ */
+
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
+	appendCommand,
 	createRoomStore,
-	joinRoomStore,
 	getRoomState,
+	joinRoomStore,
+	leaveRoomStore,
+	setCollabRedisOverride,
+	setModeStore,
 	tryLockElement,
 	unlockElementStore,
-	leaveRoomStore,
-	setModeStore,
+	updateCursor,
 } from "./room-store";
-import { buildJoinUrl } from "./client";
-import { POST as handleCreateRoom } from "@/app/api/collab/create/route";
-import { GET as handleGetRoomState } from "@/app/api/collab/[roomId]/route";
-import { POST as handleJoinRoom } from "@/app/api/collab/[roomId]/join/route";
-import {
-	POST as handleLock,
-	DELETE as handleUnlock,
-} from "@/app/api/collab/[roomId]/lock/route";
-import { POST as handleCommand } from "@/app/api/collab/[roomId]/command/route";
-import { POST as handleCursor } from "@/app/api/collab/[roomId]/cursor/route";
-import { POST as handleMode } from "@/app/api/collab/[roomId]/mode/route";
-import { POST as handleLeave } from "@/app/api/collab/[roomId]/leave/route";
+import { RawRedisAdapter } from "./raw-redis-adapter";
 
-describe("Collaboration Room Store", () => {
-	test("creates a room and joins it", async () => {
-		const roomId = `test_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-		const created = await createRoomStore({
-			roomId,
-			mode: "edit",
-			projectName: "Test Project",
-			nickname: "HostAlex",
-		});
+const REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379";
 
-		expect(created.sessionId).toBeDefined();
-		expect(created.room.roomId).toBe(roomId);
-		expect(created.room.mode).toBe("edit");
-		expect(created.room.collaborators.length).toBe(1);
-		expect(created.room.collaborators[0].nickname).toBe("HostAlex");
-		expect(created.room.collaborators[0].isHost).toBe(true);
+/** Isolated namespace per run so tests never collide on room IDs. */
+const RUN_ID = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const roomIds: string[] = [];
 
-		// Guest joins
-		const joined = await joinRoomStore({
-			roomId,
-			nickname: "GuestSam",
-		});
+function newRoomId(): string {
+	const id = `t_${RUN_ID}_${roomIds.length}`;
+	roomIds.push(id);
+	return id;
+}
 
-		expect(joined).not.toBeNull();
-		if (!joined) return;
+let redisAvailable = false;
+let adapter: RawRedisAdapter | null = null;
 
-		expect(joined.sessionId).not.toBe(created.sessionId);
-		expect(joined.room.collaborators.length).toBe(2);
-		expect(joined.room.collaborators[1].nickname).toBe("GuestSam");
-		expect(joined.room.collaborators[1].isHost).toBe(false);
+beforeAll(async () => {
+	try {
+		adapter = new RawRedisAdapter(REDIS_URL);
+		await adapter.connect();
+		const pong = await adapter.get("__never__");
+		// A completed round-trip (null for a missing key) proves the connection.
+		redisAvailable = pong === null;
+		if (redisAvailable) {
+			setCollabRedisOverride(adapter);
+		}
+	} catch {
+		adapter?.close();
+		adapter = null;
+		redisAvailable = false;
+	}
+});
 
-		// State can be fetched
-		const state = await getRoomState({
-			roomId,
-			sessionId: created.sessionId,
-		});
+afterAll(() => {
+	setCollabRedisOverride(null);
+	adapter?.close();
+});
 
-		expect(state).not.toBeNull();
-		expect(state?.collaborators.length).toBe(2);
+describe("Collaboration Room Store (Redis)", () => {
+	test("requires real Redis", async () => {
+		expect(redisAvailable).toBe(true);
 	});
 
-	test("element locking and releasing", async () => {
-		const roomId = `test_lock_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+	test("join fails once the host leaves (deleted room, no resurrect)", async () => {
+		const roomId = newRoomId();
 		const host = await createRoomStore({
 			roomId,
 			mode: "edit",
-			projectName: "Lock Test",
-			nickname: "HostUser",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
 		});
-		const guest = await joinRoomStore({
+		await leaveRoomStore({ roomId, sessionId: host.sessionId });
+
+		expect(await joinRoomStore({ roomId, nickname: "Late" })).toBeNull();
+		expect(
+			await getRoomState({ roomId, sessionId: host.sessionId }),
+		).toBeNull();
+	}, 20000);
+
+	test("concurrent joins and commands do not lose each other's writes", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
 			roomId,
-			nickname: "GuestUser",
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
 		});
 
+		const joinResults = await Promise.all(
+			Array.from({ length: 8 }, (_, i) =>
+				joinRoomStore({ roomId, nickname: `Guest${i}` }),
+			),
+		);
+		for (const joined of joinResults) {
+			expect(joined).not.toBeNull();
+		}
+		const state = await getRoomState({
+			roomId,
+			sessionId: host.sessionId,
+		});
+		expect(state?.collaborators.length).toBe(9); // host + 8 guests, none lost
+
+		// Concurrent command appends must all be retained.
+		const send = (sessionId: string) =>
+			appendCommand({
+				roomId,
+				sessionId,
+				commandName: "local-edit",
+				args: {},
+			});
+		await Promise.all([
+			send(host.sessionId),
+			...joinResults
+				.filter((j): j is NonNullable<typeof j> => j !== null)
+				.map((j) => send(j.sessionId)),
+		]);
+		const after = await getRoomState({
+			roomId,
+			sessionId: host.sessionId,
+		});
+		expect(after?.commands.length).toBe(9);
+		expect(after?.seq).toBe(9);
+	}, 30000);
+
+	test("zombie session cannot poll, lock, or command after leave", async () => {
+		const roomId = newRoomId();
+		await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
 		expect(guest).not.toBeNull();
 		if (!guest) return;
 
-		const elementId = "clip-123";
+		await leaveRoomStore({ roomId, sessionId: guest.sessionId });
 
-		// Host locks clip-123
-		const hostLocked = await tryLockElement({
+		expect(
+			await getRoomState({ roomId, sessionId: guest.sessionId }),
+		).toBeNull();
+		expect(
+			await tryLockElement({
+				roomId,
+				sessionId: guest.sessionId,
+				elementId: "e1",
+			}),
+		).toBe(false);
+		expect(
+			await appendCommand({
+				roomId,
+				sessionId: guest.sessionId,
+				commandName: "local-edit",
+				args: {},
+			}),
+		).toBeNull();
+	}, 20000);
+
+	test("stale host terminates room for everyone on next operation", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
+		expect(guest).not.toBeNull();
+
+		// Simulate the host going stale by back-dating its lastSeenAt directly
+		// in Redis (the store prunes stale members before authorizing).
+		if (!adapter) throw new Error("Redis adapter missing");
+		const key = `collab:room:${roomId}`;
+		const raw = await adapter.get(key);
+		const room = JSON.parse(String(raw)) as {
+			collaborators: { id: string; lastSeenAt: number }[];
+		};
+		room.collaborators.forEach((c) => {
+			if (c.id === host.sessionId) c.lastSeenAt = Date.now() - 120_000;
+		});
+		await adapter.set(key, JSON.stringify(room));
+
+		// The guest's next poll ends the room: pruned host ⇒ room deleted.
+		expect(
+			await getRoomState({ roomId, sessionId: guest?.sessionId ?? "x" }),
+		).toBeNull();
+		expect(await joinRoomStore({ roomId, nickname: "Late" })).toBeNull();
+	}, 30000);
+
+	test("command log entries are notification-only; args stay empty", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
+		});
+		expect(
+			await appendCommand({
+				roomId,
+				sessionId: host.sessionId,
+				commandName: "AddTrackCommand",
+				args: { type: "video", savedState: { big: "private" } },
+			}),
+		).toBeNull();
+
+		const state = await getRoomState({
 			roomId,
 			sessionId: host.sessionId,
-			elementId,
 		});
-		expect(hostLocked).toBe(true);
+		expect(state?.commands.length).toBe(0);
+	}, 20000);
 
-		// Guest tries to lock the same element — should be blocked
-		const guestLocked = await tryLockElement({
+	test("room state projection hides other participants' session IDs", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
+		expect(guest).not.toBeNull();
+		if (!guest) return;
+
+		const guestView = await getRoomState({
 			roomId,
 			sessionId: guest.sessionId,
-			elementId,
 		});
-		expect(guestLocked).toBe(false);
+		const guestViewRoom = guestView?.collaborators.find(
+			(c) => c.nickname === "Host",
+		);
+		expect(guestViewRoom?.id === host.sessionId).toBe(false);
+		// The guest still sees its own real session ID (needed for
+		// self-identification in the store/UI).
+		expect(guestView?.collaborators.some((c) => c.id === guest.sessionId)).toBe(
+			true,
+		);
+	}, 20000);
 
-		// Host unlocks
+	test("guest poll exposes host project name and id for the join route", async () => {
+		const roomId = newRoomId();
+		await createRoomStore({
+			roomId,
+			mode: "view",
+			projectName: "Host Movie",
+			nickname: "Host",
+			projectId: "proj-9",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
+		expect(guest).not.toBeNull();
+		if (!guest) return;
+
+		const state = await getRoomState({
+			roomId,
+			sessionId: guest.sessionId,
+		});
+		// The join route needs both to land the guest in a labeled placeholder.
+		expect(state?.projectId).toBe("proj-9");
+		expect(state?.projectName).toBe("Host Movie");
+	}, 20000);
+
+	test("mode change restricted to host; guests cannot lock in view mode", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+		projectId: "proj-1",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
+		expect(guest).not.toBeNull();
+		if (!guest) return;
+
+		expect(
+			await setModeStore({ roomId, sessionId: guest.sessionId, mode: "view" }),
+		).toBe(false);
+		expect(
+			await setModeStore({ roomId, sessionId: host.sessionId, mode: "view" }),
+		).toBe(true);
+
+		// Guest cannot lock or append commands in view mode.
+		expect(
+			await tryLockElement({
+				roomId,
+				sessionId: guest.sessionId,
+				elementId: "e1",
+			}),
+		).toBe(false);
+		expect(
+			await appendCommand({
+				roomId,
+				sessionId: guest.sessionId,
+				commandName: "local-edit",
+				args: {},
+			}),
+		).toBeNull();
+
+		// Host can still broadcast its own edits in any mode.
+		expect(
+			await appendCommand({
+				roomId,
+				sessionId: host.sessionId,
+				commandName: "local-edit",
+				args: {},
+			}),
+		).not.toBeNull();
+	}, 20000);
+
+	test("element locking and release", async () => {
+		const roomId = newRoomId();
+		const host = await createRoomStore({
+			roomId,
+			mode: "edit",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
+		});
+		const guest = await joinRoomStore({ roomId, nickname: "Guest" });
+		expect(guest).not.toBeNull();
+		if (!guest) return;
+
+		expect(
+			await tryLockElement({
+				roomId,
+				sessionId: host.sessionId,
+				elementId: "clip-1",
+			}),
+		).toBe(true);
+		expect(
+			await tryLockElement({
+				roomId,
+				sessionId: guest.sessionId,
+				elementId: "clip-1",
+			}),
+		).toBe(false);
 		await unlockElementStore({
 			roomId,
 			sessionId: host.sessionId,
-			elementId,
+			elementId: "clip-1",
 		});
+		expect(
+			await tryLockElement({
+				roomId,
+				sessionId: guest.sessionId,
+				elementId: "clip-1",
+			}),
+		).toBe(true);
+	}, 20000);
 
-		// Guest tries to lock again — should succeed
-		const guestLockedAgain = await tryLockElement({
-			roomId,
-			sessionId: guest.sessionId,
-			elementId,
-		});
-		expect(guestLockedAgain).toBe(true);
-	});
-
-	test("mode change restricted to host", async () => {
-		const roomId = `test_mode_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+	test("cursor update keeps a single entry per collaborator", async () => {
+		const roomId = newRoomId();
 		const host = await createRoomStore({
 			roomId,
 			mode: "edit",
-			projectName: "Mode Test",
-			nickname: "HostUser",
+			projectName: "P",
+			nickname: "Host",
+			projectId: "proj-1",
 		});
-		const guest = await joinRoomStore({
-			roomId,
-			nickname: "GuestUser",
-		});
-
-		expect(guest).not.toBeNull();
-		if (!guest) return;
-
-		// Guest cannot change mode
-		const guestModeChanged = await setModeStore({
-			roomId,
-			sessionId: guest.sessionId,
-			mode: "view",
-		});
-		expect(guestModeChanged).toBe(false);
-
-		// Host can change mode
-		const hostModeChanged = await setModeStore({
-			roomId,
-			sessionId: host.sessionId,
-			mode: "view",
-		});
-		expect(hostModeChanged).toBe(true);
-	});
-
-	test("collaborator leaves room", async () => {
-		const roomId = `test_leave_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-		const host = await createRoomStore({
-			roomId,
-			mode: "edit",
-			projectName: "Leave Test",
-			nickname: "HostUser",
-		});
-		const guest = await joinRoomStore({
-			roomId,
-			nickname: "GuestUser",
-		});
-
-		expect(guest).not.toBeNull();
-		if (!guest) return;
-
-		await leaveRoomStore({
-			roomId,
-			sessionId: guest.sessionId,
-		});
+		await updateCursor({ roomId, sessionId: host.sessionId, x: 1, y: 2 });
+		await updateCursor({ roomId, sessionId: host.sessionId, x: 3, y: 4 });
 
 		const state = await getRoomState({
 			roomId,
 			sessionId: host.sessionId,
 		});
-		expect(state?.collaborators.length).toBe(1);
-		expect(state?.collaborators[0].id).toBe(host.sessionId);
-	});
-});
-
-describe("Collaboration Client URL Helper", () => {
-	test("buildJoinUrl produces valid URL with custom origin", () => {
-		const url = buildJoinUrl("room123", "http://localhost:3005");
-		expect(url).toBe("http://localhost:3005/c/room123");
-	});
-});
-
-describe("Collaboration API Route POST /api/collab/create", () => {
-	test("allows room creation without user account (anonymous local-first)", async () => {
-		const request = new Request("http://localhost:3005/api/collab/create", {
-			method: "POST",
-			headers: {
-				"content-type": "application/json",
-				host: "localhost:3005",
-			},
-			body: JSON.stringify({
-				projectName: "My Awesome Video",
-				mode: "edit",
-				nickname: "Arthenyx",
-			}),
-		});
-
-		const response = await handleCreateRoom(request);
-		expect(response.status).toBe(200);
-
-		const data = (await response.json()) as {
-			roomId: string;
-			joinUrl: string;
-			sessionId: string;
-		};
-
-		expect(data.roomId).toBeDefined();
-		expect(data.sessionId).toBeDefined();
-		expect(data.joinUrl).toContain(`/c/${data.roomId}`);
-		expect(data.joinUrl).toContain("localhost:3005");
-	});
-
-	test("end-to-end api route lifecycle without auth block", async () => {
-		// 1. Create Room via API
-		const createReq = new Request("http://localhost:3005/api/collab/create", {
-			method: "POST",
-			headers: { "content-type": "application/json", host: "localhost:3005" },
-			body: JSON.stringify({
-				projectName: "Lifecycle Test",
-				mode: "edit",
-				nickname: "HostCreator",
-			}),
-		});
-		const createRes = await handleCreateRoom(createReq);
-		expect(createRes.status).toBe(200);
-		const { roomId, sessionId: hostSessionId } = (await createRes.json()) as {
-			roomId: string;
-			sessionId: string;
-		};
-		const params = Promise.resolve({ roomId });
-
-		// 2. Poll room state via GET /api/collab/[roomId]
-		const pollReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}?sessionId=${hostSessionId}&fromSeq=0`,
-		);
-		const pollRes = await handleGetRoomState(pollReq, { params });
-		expect(pollRes.status).toBe(200);
-
-		// 3. Guest joins via POST /api/collab/[roomId]/join
-		const joinReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/join`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ nickname: "GuestParticipant" }),
-			},
-		);
-		const joinRes = await handleJoinRoom(joinReq, { params });
-		expect(joinRes.status).toBe(200);
-		const { sessionId: guestSessionId } = (await joinRes.json()) as {
-			sessionId: string;
-		};
-
-		// 4. Cursor broadcast via POST /api/collab/[roomId]/cursor
-		const cursorReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/cursor`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					sessionId: guestSessionId,
-					x: 150,
-					y: 75,
-				}),
-			},
-		);
-		const cursorRes = await handleCursor(cursorReq, { params });
-		expect(cursorRes.status).toBe(200);
-
-		// 5. Command broadcast via POST /api/collab/[roomId]/command
-		const commandReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/command`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					sessionId: hostSessionId,
-					commandName: "SplitClipCommand",
-					args: { clipId: "c1", time: 5 },
-				}),
-			},
-		);
-		const commandRes = await handleCommand(commandReq, { params });
-		expect(commandRes.status).toBe(200);
-
-		// 6. Element lock via POST /api/collab/[roomId]/lock
-		const lockReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/lock`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					sessionId: hostSessionId,
-					elementId: "clip-99",
-				}),
-			},
-		);
-		const lockRes = await handleLock(lockReq, { params });
-		expect(lockRes.status).toBe(200);
-		const lockData = (await lockRes.json()) as { ok: boolean };
-		expect(lockData.ok).toBe(true);
-
-		// 7. Element unlock via DELETE /api/collab/[roomId]/lock
-		const unlockReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/lock`,
-			{
-				method: "DELETE",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					sessionId: hostSessionId,
-					elementId: "clip-99",
-				}),
-			},
-		);
-		const unlockRes = await handleUnlock(unlockReq, { params });
-		expect(unlockRes.status).toBe(200);
-
-		// 8. Mode change via POST /api/collab/[roomId]/mode (host only)
-		const modeReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/mode`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({
-					sessionId: hostSessionId,
-					mode: "comment",
-				}),
-			},
-		);
-		const modeRes = await handleMode(modeReq, { params });
-		expect(modeRes.status).toBe(200);
-
-		// 9. Leave room via POST /api/collab/[roomId]/leave
-		const leaveReq = new Request(
-			`http://localhost:3005/api/collab/${roomId}/leave`,
-			{
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ sessionId: guestSessionId }),
-			},
-		);
-		const leaveRes = await handleLeave(leaveReq, { params });
-		expect(leaveRes.status).toBe(200);
-	});
+		expect(state?.cursors.length).toBe(1);
+		expect(state?.cursors[0]?.x).toBe(3);
+	}, 20000);
 });

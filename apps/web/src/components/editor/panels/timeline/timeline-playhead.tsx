@@ -9,6 +9,7 @@ import {
 } from "@/lib/timeline";
 import { useTimelinePlayhead } from "@/hooks/timeline/use-timeline-playhead";
 import { useKeyframeSelection } from "@/hooks/timeline/element/use-keyframe-selection";
+import { handlePlayheadArrow } from "@/lib/timeline/frame-step";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { frameRateToFloat } from "@/lib/fps/utils";
 import { useEditor } from "@/hooks/use-editor";
@@ -256,21 +257,13 @@ export function TimelinePlayhead({
 	const handlePlayheadKeyDown = (
 		event: React.KeyboardEvent<HTMLDivElement>,
 	) => {
-		if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-
-		event.preventDefault();
-		const fps = editor.project.getActive().settings.fps;
-		const ticksPerFrame = Math.round(
-			(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
-		);
-		const direction = event.key === "ArrowRight" ? 1 : -1;
-		const now = editor.playback.getCurrentTime();
-		const nextTime = Math.max(
-			0,
-			Math.min(duration, now + direction * ticksPerFrame),
-		);
-
-		editor.playback.seek({ time: nextTime });
+		handlePlayheadArrow({
+			event,
+			time: editor.playback.getCurrentTime(),
+			duration: editor.timeline.getTotalDuration(),
+			fps: editor.project.getActive().settings.fps,
+			seek: ({ time }) => editor.playback.seek({ time }),
+		});
 	};
 
 	return (

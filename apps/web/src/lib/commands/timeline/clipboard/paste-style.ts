@@ -12,7 +12,14 @@ import type {
 	AudioElement,
 } from "@/lib/timeline";
 import { updateElementInSceneTracks } from "@/lib/timeline";
-import { cloneAnimations } from "@/lib/animation";
+import {
+	clampAnimationsToDuration,
+	cloneAnimations,
+	resolveAnimationTarget,
+	upsertPathKeyframe,
+} from "@/lib/animation";
+import type { AnimationPath, AnimationValue } from "@/lib/animation/types";
+import { generateUUID } from "@/utils/id";
 
 /**
  * Apply a copied style onto one or more target elements. Only properties
@@ -68,6 +75,83 @@ export class PasteStyleCommand extends Command {
 	}
 }
 
+/**
+ * Rebuild copied animations for the target element.
+ *
+ * Bindings whose property path does not resolve on the target type are
+ * dropped (e.g. fontSize or transform.positionX copied from text onto an
+ * audio clip) — otherwise the target carries dead bindings no panel can
+ * resolve. Surviving bindings are re-cloned with fresh keyframe ids and
+ * clamped to the target's duration, so a style from a longer clip cannot
+ * plant keys beyond the target's end.
+ */
+function adaptAnimationsForTarget({
+	animations,
+	targetElement,
+}: {
+	animations: NonNullable<ElementStyle["animations"]>;
+	targetElement: TimelineElement;
+}): NonNullable<ElementStyle["animations"]> | undefined {
+	if (!animations || Object.keys(animations.bindings).length === 0) {
+		return undefined;
+	}
+
+	let rebuilt: NonNullable<ElementStyle["animations"]> | undefined;
+	for (const path of Object.keys(animations.bindings) as AnimationPath[]) {
+		const binding = animations.bindings[path];
+		if (!binding) {
+			continue;
+		}
+		const target = resolveAnimationTarget({ element: targetElement, path });
+		if (!target) {
+			continue; // Property does not exist on this element type.
+		}
+		for (const component of binding.components) {
+			const channel = animations.channels[component.channelId];
+			if (!channel) {
+				continue;
+			}
+			for (const key of channel.keys) {
+				if (key.value == null) {
+					continue;
+				}
+				// Discrete keys carry no interpolation; scalar keys map their
+				// segment type onto the upsert's interpolation vocabulary.
+				const segment =
+					channel.kind === "scalar"
+						? (key as { segmentToNext?: "step" | "linear" | "bezier" })
+								.segmentToNext
+						: undefined;
+				const interpolation =
+					segment === "step"
+						? "hold"
+						: segment === "linear"
+							? "linear"
+							: undefined;
+				rebuilt = upsertPathKeyframe({
+					animations: rebuilt,
+					propertyPath: path,
+					time: Math.max(0, key.time),
+					value: key.value as AnimationValue,
+					interpolation,
+					keyframeId: generateUUID(),
+					kind: target.kind,
+					defaultInterpolation: target.defaultInterpolation,
+					coerceValue: target.coerceValue,
+				});
+			}
+		}
+	}
+
+	if (!rebuilt) {
+		return undefined;
+	}
+	return cloneAnimations({
+		animations: rebuilt,
+		shouldRegenerateKeyframeIds: true,
+	});
+}
+
 function applyStyleToElement({
 	element,
 	style,
@@ -111,13 +195,20 @@ function applyStyleToElement({
 
 	// --- Animations (all elements that support them) ---
 	if (style.animations !== undefined) {
-		patched = {
-			...patched,
-			animations: cloneAnimations({
-				animations: style.animations,
-				shouldRegenerateKeyframeIds: true,
-			}),
-		};
+		const adapted = adaptAnimationsForTarget({
+			animations: style.animations,
+			targetElement: patched,
+		});
+		if (adapted) {
+			patched = {
+				...patched,
+				animations:
+					clampAnimationsToDuration({
+						animations: adapted,
+						duration: patched.duration,
+					}) ?? undefined,
+			};
+		}
 	}
 
 	// --- Text-specific properties ---

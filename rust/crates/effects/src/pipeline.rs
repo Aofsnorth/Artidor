@@ -159,6 +159,34 @@ const DISSOLVE_SHADER_ID: &str = "dissolve";
 const DISSOLVE_SHADER_SOURCE: &str = include_str!("shaders/dissolve.wgsl");
 const OPACITY_PRESSURE_SHADER_ID: &str = "opacity-pressure";
 const OPACITY_PRESSURE_SHADER_SOURCE: &str = include_str!("shaders/opacity-pressure.wgsl");
+// DonkeyCut-ported parametric effects and looks (Apache 2.0,
+// github.com/DonkeyCut/Donkey — site/packages/effects-kit).
+const ZOOM_PUSH_SHADER_ID: &str = "zoom-push";
+const ZOOM_PUSH_SHADER_SOURCE: &str = include_str!("shaders/zoom-push.wgsl");
+const SHAKE_SHADER_ID: &str = "shake";
+const SHAKE_SHADER_SOURCE: &str = include_str!("shaders/shake.wgsl");
+const LIGHTLEAK_SHADER_ID: &str = "lightleak";
+const LIGHTLEAK_SHADER_SOURCE: &str = include_str!("shaders/lightleak.wgsl");
+const FLASH_SHADER_ID: &str = "flash";
+const FLASH_SHADER_SOURCE: &str = include_str!("shaders/flash.wgsl");
+const CHROMA_GLITCH_SHADER_ID: &str = "chroma-glitch";
+const CHROMA_GLITCH_SHADER_SOURCE: &str = include_str!("shaders/chroma-glitch.wgsl");
+const LOOK_VINTAGE_SHADER_ID: &str = "look-vintage";
+const LOOK_VINTAGE_SHADER_SOURCE: &str = include_str!("shaders/look-vintage.wgsl");
+const LOOK_HORROR_SHADER_ID: &str = "look-horror";
+const LOOK_HORROR_SHADER_SOURCE: &str = include_str!("shaders/look-horror.wgsl");
+const LOOK_HALATION_SHADER_ID: &str = "look-halation";
+const LOOK_HALATION_SHADER_SOURCE: &str = include_str!("shaders/look-halation.wgsl");
+const LOOK_TECH_SHADER_ID: &str = "look-tech";
+const LOOK_TECH_SHADER_SOURCE: &str = include_str!("shaders/look-tech.wgsl");
+const LOOK_NOIR_SHADER_ID: &str = "look-noir";
+const LOOK_NOIR_SHADER_SOURCE: &str = include_str!("shaders/look-noir.wgsl");
+const LOOK_PASTEL_SHADER_ID: &str = "look-pastel";
+const LOOK_PASTEL_SHADER_SOURCE: &str = include_str!("shaders/look-pastel.wgsl");
+const LOOK_BLOCKBUSTER_SHADER_ID: &str = "look-blockbuster";
+const LOOK_BLOCKBUSTER_SHADER_SOURCE: &str = include_str!("shaders/look-blockbuster.wgsl");
+const LOOK_DREAMY_SHADER_ID: &str = "look-dreamy";
+const LOOK_DREAMY_SHADER_SOURCE: &str = include_str!("shaders/look-dreamy.wgsl");
 
 struct ShaderEntry {
     id: &'static str,
@@ -546,6 +574,71 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
         id: OPACITY_PRESSURE_SHADER_ID,
         label: "effects-opacity-pressure-shader",
         source: OPACITY_PRESSURE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: ZOOM_PUSH_SHADER_ID,
+        label: "effects-zoom-push-shader",
+        source: ZOOM_PUSH_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: SHAKE_SHADER_ID,
+        label: "effects-shake-shader",
+        source: SHAKE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LIGHTLEAK_SHADER_ID,
+        label: "effects-lightleak-shader",
+        source: LIGHTLEAK_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: FLASH_SHADER_ID,
+        label: "effects-flash-shader",
+        source: FLASH_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: CHROMA_GLITCH_SHADER_ID,
+        label: "effects-chroma-glitch-shader",
+        source: CHROMA_GLITCH_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_VINTAGE_SHADER_ID,
+        label: "effects-look-vintage-shader",
+        source: LOOK_VINTAGE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_HORROR_SHADER_ID,
+        label: "effects-look-horror-shader",
+        source: LOOK_HORROR_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_HALATION_SHADER_ID,
+        label: "effects-look-halation-shader",
+        source: LOOK_HALATION_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_TECH_SHADER_ID,
+        label: "effects-look-tech-shader",
+        source: LOOK_TECH_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_NOIR_SHADER_ID,
+        label: "effects-look-noir-shader",
+        source: LOOK_NOIR_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_PASTEL_SHADER_ID,
+        label: "effects-look-pastel-shader",
+        source: LOOK_PASTEL_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_BLOCKBUSTER_SHADER_ID,
+        label: "effects-look-blockbuster-shader",
+        source: LOOK_BLOCKBUSTER_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: LOOK_DREAMY_SHADER_ID,
+        label: "effects-look-dreamy-shader",
+        source: LOOK_DREAMY_SHADER_SOURCE,
     },
 ];
 pub struct ApplyEffectsOptions<'a> {
@@ -1250,6 +1343,37 @@ fn pack_effect_uniforms(
             scalars[1] = pressure;
             check_allowed_uniforms(pass, shader, &["u_amount", "u_pressure", "u_direction"])?;
         }
+        ZOOM_PUSH_SHADER_ID => {
+            // direction = focus point (0..1), scalars = [amount, ramp, time].
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let ramp = read_number_uniform(pass, "u_ramp")?;
+            let time = read_number_uniform(pass, "u_time")?;
+            direction = read_vec2_uniform(pass, "u_focus")?;
+            scalars[0] = amount;
+            scalars[1] = ramp;
+            scalars[2] = time;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_focus", "u_ramp", "u_time"])?;
+        }
+        SHAKE_SHADER_ID
+        | LIGHTLEAK_SHADER_ID
+        | FLASH_SHADER_ID
+        | CHROMA_GLITCH_SHADER_ID
+        | LOOK_VINTAGE_SHADER_ID
+        | LOOK_HORROR_SHADER_ID
+        | LOOK_HALATION_SHADER_ID
+        | LOOK_TECH_SHADER_ID
+        | LOOK_NOIR_SHADER_ID
+        | LOOK_PASTEL_SHADER_ID
+        | LOOK_BLOCKBUSTER_SHADER_ID
+        | LOOK_DREAMY_SHADER_ID => {
+            // DonkeyCut family: one amount knob plus element-local time in
+            // seconds; scalars = [amount, time].
+            let amount = read_number_uniform(pass, "u_amount")?;
+            let time = read_number_uniform(pass, "u_time")?;
+            scalars[0] = amount;
+            scalars[1] = time;
+            check_allowed_uniforms(pass, shader, &["u_amount", "u_time"])?;
+        }
         _ => {
             return Err(EffectsError::UnknownEffectShader {
                 shader: shader.to_string(),
@@ -1370,6 +1494,63 @@ mod tests {
         for entry in SHADER_REGISTRY {
             wgsl::parse_str(entry.source)
                 .unwrap_or_else(|err| panic!("WGSL parse error in shader '{}': {err}", entry.id));
+        }
+    }
+
+    #[test]
+    fn zoom_push_uniforms_pack_into_focus_and_scalars() {
+        use crate::UniformValue;
+
+        let mut uniforms = std::collections::HashMap::new();
+        uniforms.insert("u_amount".to_string(), UniformValue::Number(0.5));
+        uniforms.insert(
+            "u_focus".to_string(),
+            UniformValue::Vector(vec![0.25, 0.75]),
+        );
+        uniforms.insert("u_ramp".to_string(), UniformValue::Number(0.5));
+        uniforms.insert("u_time".to_string(), UniformValue::Number(1.2));
+
+        let pass = EffectPass {
+            shader: "zoom-push".to_string(),
+            uniforms,
+        };
+
+        let buffer = pack_effect_uniforms(&pass, 1920, 1080).unwrap();
+
+        assert_eq!(buffer.direction, [0.25, 0.75]);
+        assert_eq!(buffer.scalars, [0.5, 0.5, 1.2, 0.0]);
+    }
+
+    #[test]
+    fn donkeycut_amount_time_family_packs_correctly() {
+        use crate::UniformValue;
+
+        for shader in [
+            "shake",
+            "lightleak",
+            "flash",
+            "chroma-glitch",
+            "look-vintage",
+            "look-horror",
+            "look-halation",
+            "look-tech",
+            "look-noir",
+            "look-pastel",
+            "look-blockbuster",
+            "look-dreamy",
+        ] {
+            let mut uniforms = std::collections::HashMap::new();
+            uniforms.insert("u_amount".to_string(), UniformValue::Number(0.7));
+            uniforms.insert("u_time".to_string(), UniformValue::Number(2.0));
+
+            let pass = EffectPass {
+                shader: shader.to_string(),
+                uniforms,
+            };
+
+            let buffer = pack_effect_uniforms(&pass, 1920, 1080).unwrap();
+
+            assert_eq!(buffer.scalars, [0.7, 2.0, 0.0, 0.0]);
         }
     }
 

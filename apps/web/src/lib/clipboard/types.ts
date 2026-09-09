@@ -25,7 +25,11 @@ import type {
 export interface ElementClipboardItem {
 	trackId: string;
 	trackType: TrackType;
-	element: CreateTimelineElement;
+	/** Deep-cloned snapshot of the copied element. `id` is present at runtime
+	 * (the copy uses the full element) and is kept only as metadata so paste
+	 * can remap groupId/parentId links between copied clips; fresh IDs are
+	 * assigned before insertion. */
+	element: CreateTimelineElement & { id?: string };
 }
 
 export interface KeyframeClipboardCurvePatch {

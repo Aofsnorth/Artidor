@@ -11,7 +11,6 @@ import {
 	findOrCreateTextTrack,
 } from "@/lib/timeline/element-utils";
 import type { TimelineDragData } from "@/lib/timeline/drag";
-import { CatalogPreviewScene } from "./components/catalog-preview";
 import {
 	textPresets,
 	type TextPreset,
@@ -97,7 +96,6 @@ export function TextView() {
 	);
 }
 
-
 function TextPresetItem({ preset }: { preset: TextPreset }) {
 	const { t } = useI18n();
 	const editor = useEditor();
@@ -176,15 +174,13 @@ function TextPresetItem({ preset }: { preset: TextPreset }) {
 			<DraggableItem
 				name={preset.name}
 				preview={
-					<div className="relative h-full w-full overflow-hidden">
-						<CatalogPreviewScene seed={`text:${preset.category}:${preset.id}`} />
-						<div className="absolute inset-0 bg-black/60" />
-						<div
-							className="relative z-10 line-clamp-2 text-balance break-words flex h-full w-full items-center justify-center px-3"
+					<div className="bg-accent flex size-full items-center justify-center overflow-hidden px-3">
+						<span
+							className="line-clamp-3 text-center text-balance break-words"
 							style={previewStyle}
 						>
 							{previewData.content}
-						</div>
+						</span>
 					</div>
 				}
 				dragPreview={

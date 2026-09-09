@@ -150,20 +150,52 @@ export const KeyframesClipboardHandler = {
 		return {
 			type: "keyframes",
 			sourceElement,
-			items,
+			items: structuredClone(items),
 		};
 	},
 
-	paste(entry, { selectedElements, time }) {
-		const targetElement = selectedElements[0];
-		if (!targetElement || entry.items.length === 0) {
+	/**
+	 * Paste copied keyframes onto ALL selected elements (After Effects
+	 * behavior: copied keys apply to every selected layer), in one
+	 * undoable command. Keys outside a target's duration are omitted for
+	 * that target only — other targets keep them.
+	 *
+	 * `time` from the paste context is the absolute playhead; keyframes are
+	 * stored clip-locally, so it is converted to local time using the first
+	 * target's start.
+	 */
+	paste(entry, { editor, selectedElements, time }) {
+		if (entry.items.length === 0 || selectedElements.length === 0) {
+			return null;
+		}
+
+		// Resolve every selected element first: elements that no longer exist
+		// (deleted between copy and paste) are dropped so the command never
+		// runs — and never pushes a dead history entry — against them.
+		const targets = selectedElements.flatMap((ref) => {
+			const [result] = editor.timeline.getElementsWithTracks({
+				elements: [ref],
+			});
+			return result ? [ref] : [];
+		});
+		if (targets.length === 0) {
+			return null;
+		}
+
+		// Local paste time uses the FIRST target's start as the anchor. All
+		// targets paste at the same offset from the playhead, matching the
+		// pre-multi-target behavior for the first clip while applying the
+		// same anchor to the rest (AE semantics).
+		const [first] = editor.timeline.getElementsWithTracks({
+			elements: [targets[0]],
+		});
+		if (!first) {
 			return null;
 		}
 
 		return new PasteKeyframesCommand({
-			trackId: targetElement.trackId,
-			elementId: targetElement.elementId,
-			time,
+			targets,
+			time: time - first.element.startTime,
 			clipboardItems: entry.items,
 		});
 	},

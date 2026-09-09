@@ -106,6 +106,23 @@ import {
 	textShadowEffectDefinition,
 	text3dEffectDefinition,
 } from "./video/text-effects";
+import {
+	chromaGlitchEffectDefinition,
+	flashEffectDefinition,
+	lightLeakEffectDefinition,
+	shakeEffectDefinition,
+	zoomPushEffectDefinition,
+} from "./video/donkeycut-effects";
+import {
+	lookBlockbusterEffectDefinition,
+	lookDreamyEffectDefinition,
+	lookHalationEffectDefinition,
+	lookHorrorEffectDefinition,
+	lookNoirEffectDefinition,
+	lookPastelEffectDefinition,
+	lookTechEffectDefinition,
+	lookVintageEffectDefinition,
+} from "./video/donkeycut-looks";
 
 const defaultEffects = [
 	blurEffectDefinition,
@@ -195,6 +212,19 @@ const defaultEffects = [
 	textStrokeEffectDefinition,
 	textShadowEffectDefinition,
 	text3dEffectDefinition,
+	zoomPushEffectDefinition,
+	shakeEffectDefinition,
+	lightLeakEffectDefinition,
+	flashEffectDefinition,
+	chromaGlitchEffectDefinition,
+	lookVintageEffectDefinition,
+	lookHorrorEffectDefinition,
+	lookHalationEffectDefinition,
+	lookTechEffectDefinition,
+	lookNoirEffectDefinition,
+	lookPastelEffectDefinition,
+	lookBlockbusterEffectDefinition,
+	lookDreamyEffectDefinition,
 ];
 
 export function registerDefaultEffects(): void {

@@ -101,6 +101,9 @@ export function buildSeparatedAudioElement({
 		animations: cloneVolumeAnimations({
 			animations: sourceElement.animations,
 		}),
+		// Back-reference so the recover toggle can delete exactly this layer
+		// when the video's own audio is re-enabled.
+		sourceElementId: sourceElement.id,
 	};
 }
 

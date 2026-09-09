@@ -29,7 +29,12 @@ export function copyClipboardEntry({
 			continue;
 		}
 
-		return handler.copy(context);
+		// A handler that can copy but yields no entry must not block later
+		// handlers (e.g. keyframe copy with a stale source falls back to elements).
+		const entry = handler.copy(context);
+		if (entry) {
+			return entry;
+		}
 	}
 
 	return null;

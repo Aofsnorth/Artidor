@@ -32,11 +32,19 @@ export async function POST(
 		return Response.json({ error: "Invalid request" }, { status: 400 });
 	}
 
-	const ok = await setModeStore({
-		roomId,
-		sessionId: body.sessionId,
-		mode: body.mode,
-	});
+	let ok: Awaited<ReturnType<typeof setModeStore>>;
+	try {
+		ok = await setModeStore({
+			roomId,
+			sessionId: body.sessionId,
+			mode: body.mode,
+		});
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	if (!ok) {
 		return Response.json(
 			{ error: "Only the host can change the mode" },

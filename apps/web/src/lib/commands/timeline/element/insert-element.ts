@@ -11,6 +11,7 @@ import { requiresMediaId } from "@/lib/timeline/element-utils";
 import type { MediaAsset } from "@/lib/media/types";
 import { DEFAULT_NEW_ELEMENT_DURATION } from "@/lib/timeline/creation";
 import { floatToFrameRate } from "@/lib/fps/utils";
+import type { FrameRate } from "artidor-wasm";
 import { graphicsRegistry, registerDefaultGraphics } from "@/lib/graphics";
 import {
 	applyPlacement,
@@ -32,6 +33,12 @@ export class InsertElementCommand extends Command {
 	private elementId: string;
 	private savedState: SceneTracks | null = null;
 	private targetTrackId: string | null = null;
+	/** Settings adopted by first-element insertion; restored in undo. */
+	private savedSettings: {
+		canvasSize: { width: number; height: number };
+		originalCanvasSize?: { width: number; height: number };
+		fps: FrameRate;
+	} | null = null;
 
 	constructor({ element, placement }: InsertElementParams) {
 		super();
@@ -54,6 +61,10 @@ export class InsertElementCommand extends Command {
 		const totalElementsInTimeline =
 			this.savedState.main.elements.length +
 			this.savedState.overlay.reduce(
+				(total, track) => total + track.elements.length,
+				0,
+			) +
+			this.savedState.overlayAfter.reduce(
 				(total, track) => total + track.elements.length,
 				0,
 			) +
@@ -85,6 +96,21 @@ export class InsertElementCommand extends Command {
 			const asset = mediaAssets.find(
 				(item: MediaAsset) => item.id === newElement.mediaId,
 			);
+
+			// Snapshot the settings BEFORE adopting the media's size/fps so undo
+			// can restore them — otherwise undoing the insert kept the adopted
+			// canvas/fps (asymmetric undo that permanently changed the project).
+			this.savedSettings = {
+				canvasSize: { ...activeProject.settings.canvasSize },
+				...(activeProject.settings.originalCanvasSize
+					? {
+							originalCanvasSize: {
+								...activeProject.settings.originalCanvasSize,
+							},
+						}
+					: {}),
+				fps: { ...activeProject.settings.fps },
+			};
 
 			if (asset?.width && asset?.height) {
 				const nextCanvasSize = { width: asset.width, height: asset.height };
@@ -120,6 +146,24 @@ export class InsertElementCommand extends Command {
 		if (this.savedState) {
 			const editor = EditorCore.getInstance();
 			editor.timeline.updateTracks(this.savedState);
+			// Restore the settings the insertion adopted (canvas size / fps), so
+			// undo returns the project exactly to its pre-insert state.
+			if (this.savedSettings) {
+				editor.project.updateSettings({
+					settings: {
+						canvasSize: { ...this.savedSettings.canvasSize },
+						...(this.savedSettings.originalCanvasSize
+							? {
+									originalCanvasSize: {
+										...this.savedSettings.originalCanvasSize,
+									},
+								}
+							: {}),
+						fps: { ...this.savedSettings.fps },
+					},
+					pushHistory: false,
+				});
+			}
 		}
 	}
 

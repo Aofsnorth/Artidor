@@ -9,4 +9,5 @@ export * from "./zoom-utils";
 export * from "./ruler-utils";
 export * from "./pixel-utils";
 export * from "./parenting";
+export * from "./frame-step";
 export { calculateTotalDuration } from "./duration";

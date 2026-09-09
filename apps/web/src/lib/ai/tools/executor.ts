@@ -21,7 +21,7 @@ import {
 } from "@/lib/timeline";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { captureFrameFromVideo } from "@/lib/media/frame-capture";
-import { hasMediaId } from "@/lib/timeline/element-utils";
+import { hasMediaId, isVisualElement } from "@/lib/timeline/element-utils";
 import { TOOLS_BY_EXECUTOR_KEY } from "./registry";
 
 export interface ToolExecutionResult {
@@ -819,6 +819,56 @@ const HANDLERS: Record<string, Handler> = {
 			params: args.params ?? {},
 		});
 		return { ok: true, message: "Updated effect params" };
+	},
+
+	apply_grade: async (editor, args) => {
+		const { getGradePreset, buildGradePresetEffects } = await import(
+			"@/lib/effects/grade-presets"
+		);
+		const preset = getGradePreset(asString(args.presetId));
+		if (!preset) {
+			return {
+				ok: false,
+				message: `Unknown grade preset: ${asString(args.presetId)}`,
+			};
+		}
+		const trackId = asString(args.trackId);
+		const elementId = asString(args.elementId);
+		const track = editor.timeline.getTrackById({ trackId });
+		const element = track?.elements.find((e) => e.id === elementId);
+		if (!element || !isVisualElement(element)) {
+			return { ok: false, message: "Element not found or carries no effects" };
+		}
+
+		const amount =
+			typeof args.amount === "number"
+				? Math.min(100, Math.max(0, args.amount)) / 100
+				: 1;
+		// Replace the previous grade stack this tool wrote (tracked by a param
+		// marker), keep any other effects the user added themselves.
+		const GRADE_MARKER = "__artidor_grade";
+		const kept = (element.effects ?? []).filter(
+			(e) => e.params?.[GRADE_MARKER] === undefined,
+		);
+		const gradeEffects = buildGradePresetEffects({ preset, amount });
+		for (const effect of gradeEffects) {
+			effect.params[GRADE_MARKER] = asString(args.presetId);
+		}
+
+		editor.timeline.updateElements({
+			updates: [
+				{
+					trackId,
+					elementId,
+					patch: { effects: [...kept, ...gradeEffects] },
+				},
+			],
+			pushHistory: true,
+		});
+		return {
+			ok: true,
+			message: `Applied grade "${preset.label}" (${gradeEffects.length} adjustments, amount ${Math.round(amount * 100)}%)`,
+		};
 	},
 
 	/* --------------------------------- mask ------------------------------ */
@@ -1726,9 +1776,15 @@ const HANDLERS: Record<string, Handler> = {
 		const mod = await import(
 			"@/lib/commands/timeline/clipboard/paste-keyframes"
 		);
+		// AI pastes onto the single referenced element (multi-target applies
+		// to the interactive keyframe-clipboard path, where selection exists).
 		const cmd = new mod.PasteKeyframesCommand({
-			trackId: asString(args.trackId),
-			elementId: asString(args.elementId),
+			targets: [
+				{
+					trackId: asString(args.trackId),
+					elementId: asString(args.elementId),
+				},
+			],
 			time: asNumber(args.time, 0),
 			clipboardItems: [],
 		});
@@ -1975,6 +2031,99 @@ const HANDLERS: Record<string, Handler> = {
 			return {
 				ok: false,
 				message: `Beat detection failed: ${error instanceof Error ? error.message : "unknown error"}`,
+			};
+		}
+	},
+
+	/* --------------------------- audio (silence) -------------------------- */
+	detect_silence: async (editor, args) => {
+		const trackId = asString(args.trackId);
+		const elementId = asString(args.elementId);
+		const thresholdDb =
+			typeof args.thresholdDb === "number"
+				? Math.min(0, Math.max(-60, args.thresholdDb))
+				: -30;
+		const minSilenceSeconds =
+			typeof args.minSilenceSeconds === "number"
+				? Math.min(10, Math.max(0.05, args.minSilenceSeconds))
+				: 0.35;
+
+		const track = editor.timeline.getTrackById({ trackId });
+		const element = track?.elements.find((e) => e.id === elementId);
+		if (!element) {
+			return { ok: false, message: "Element not found" };
+		}
+		if (element.type !== "audio" && element.type !== "video") {
+			return {
+				ok: false,
+				message: "Silence detection works on audio or video clips only",
+			};
+		}
+
+		try {
+			const mediaAssets = editor.media.getAssets();
+			const mediaAsset = hasMediaId(element)
+				? (mediaAssets.find((a) => a.id === element.mediaId) ?? null)
+				: null;
+			if (!mediaAsset?.file) {
+				return {
+					ok: false,
+					message: "Media file not found for silence detection",
+				};
+			}
+
+			const { detectSilence } = await import("@/lib/media/silence-analysis");
+			const { intervals, totalSilenceSeconds } = await detectSilence({
+				file: mediaAsset.file,
+				trimStartSeconds: (element.trimStart ?? 0) / TICKS_PER_SECOND,
+				durationSeconds: element.duration / TICKS_PER_SECOND,
+				thresholdDb,
+				minSilenceSeconds,
+			});
+
+			if (intervals.length === 0) {
+				return {
+					ok: true,
+					message: "No silence detected in this clip.",
+					data: { intervals: [], totalSilenceSeconds: 0 },
+				};
+			}
+
+			// Timeline-relative ticks: clip start + silence offset, so
+			// split_element can cut on them directly.
+			const clipStartTicks = element.startTime;
+			const data = intervals.map((interval) => {
+				const startTicks =
+					clipStartTicks + Math.round(interval.startSeconds * TICKS_PER_SECOND);
+				const endTicks =
+					clipStartTicks + Math.round(interval.endSeconds * TICKS_PER_SECOND);
+				return {
+					...interval,
+					startTicks,
+					endTicks,
+				};
+			});
+
+			const summary = intervals
+				.slice(0, 20)
+				.map(
+					(i) =>
+						`${i.startSeconds.toFixed(2)}s–${i.endSeconds.toFixed(2)}s (${i.durationSeconds.toFixed(2)}s quiet)`,
+				)
+				.join("; ");
+			const truncatedNote =
+				intervals.length > 20
+					? ` ... (${intervals.length} quiet runs total)`
+					: "";
+			return {
+				ok: true,
+				message: `Detected ${intervals.length} quiet run(s), ${totalSilenceSeconds.toFixed(1)}s total silence: ${summary}${truncatedNote}. Split at the reported tick boundaries to cut the dead air.`,
+				data: { intervals: data, totalSilenceSeconds },
+			};
+		} catch (error) {
+			return {
+				ok: false,
+				message: `Silence detection failed: ${error instanceof Error ? error.message : "unknown error"}`,
 			};
 		}
 	},

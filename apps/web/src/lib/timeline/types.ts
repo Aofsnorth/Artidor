@@ -190,6 +190,14 @@ interface BaseAudioElement extends BaseTimelineElement {
 	pan?: number;
 	fadeInDuration?: number;
 	fadeOutDuration?: number;
+	/**
+	 * Back-reference for "detach audio": the id of the video element this
+	 * audio layer was extracted from. The recover toggle uses it to delete
+	 * the detached layer when the video's own audio is re-enabled (undoing
+	 * the separation); without it the detached layer kept playing and the
+	 * audio doubled.
+	 */
+	sourceElementId?: string;
 }
 
 export interface UploadAudioElement extends BaseAudioElement {

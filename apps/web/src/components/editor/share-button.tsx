@@ -34,7 +34,7 @@ import {
 } from "@/lib/drive/api";
 import { buildShareUrl, createShare } from "@/lib/share/client";
 import { StartCollabDialog } from "@/components/editor/collab/collab-dialogs";
-import { CollabPresenceBar } from "@/components/editor/collab/collab-overlay";
+import { CollabPresenceBar, CollabSessionBanner } from "@/components/editor/collab/collab-overlay";
 import { useCollabStore } from "@/stores/collab-store";
 
 export function ShareButton() {
@@ -159,6 +159,7 @@ export function ShareButton() {
 		<>
 			<div className="flex items-center gap-2">
 				<CollabPresenceBar />
+				<CollabSessionBanner />
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<button

@@ -36,12 +36,21 @@ export async function POST(
 		return Response.json({ error: "Invalid request" }, { status: 400 });
 	}
 
-	await updateCursor({
-		roomId,
-		sessionId: body.sessionId,
-		x: body.x,
-		y: body.y,
-		elementId: body.elementId,
-	});
+	try {
+		await updateCursor({
+			roomId,
+			sessionId: body.sessionId,
+			x: body.x,
+			y: body.y,
+			elementId: body.elementId,
+		});
+	} catch {
+		// Best-effort: a cursor is presence, not data. Still report the
+		// outage so clients aren't left with stale presence silently.
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	return Response.json({ ok: true });
 }

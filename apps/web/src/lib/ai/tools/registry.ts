@@ -11,6 +11,7 @@
  */
 
 import type { ToolDefinition } from "../provider";
+import { gradePresetCatalogText } from "@/lib/effects/grade-presets";
 
 /**
  * Each entry describes:
@@ -483,6 +484,22 @@ export const ALL_TOOLS: RegisteredTool[] = [
 		),
 	),
 
+	tool(
+		"effect",
+		"apply_grade",
+		"apply_grade",
+		`Apply a color grade preset to a clip. The preset writes a stack of adjustment effects (contrast, saturation, temperature, highlights, shadows, etc.) onto the element, replacing any previous grade from this tool. amount is 0..100 (default 100). DonkeyCut-ported preset ids: ${gradePresetCatalogText()}.`,
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				presetId: { type: "string" },
+				amount: numberSchema(0, 100),
+			},
+			["trackId", "elementId", "presetId"],
+		),
+	),
+
 	/* ---------------------------------- Mask --------------------------------- */
 	tool(
 		"mask",
@@ -664,6 +681,21 @@ export const ALL_TOOLS: RegisteredTool[] = [
 				elements: elementRefArraySchema(1),
 			},
 			["beatTimes", "elements"],
+		),
+	),
+	tool(
+		"audio",
+		"detect_silence",
+		"detect_silence",
+		"Analyze an audio or video clip and return the quiet runs (silence) that can be cut. Pass the trackId+elementId of the audio/video element. thresholdDb (default -30) sets the quiet threshold in dB; minSilenceSeconds (default 0.35) sets the shortest run reported. Returns intervals with startSeconds/endSeconds/durationSeconds relative to the clip's trimmed start, plus tick values and a suggested split plan (cut at silence boundaries). Pair with split_element for auto-cutting.",
+		objectSchema(
+			{
+				trackId: { type: "string" },
+				elementId: { type: "string" },
+				thresholdDb: numberSchema(-60, 0),
+				minSilenceSeconds: numberSchema(0.05, 10),
+			},
+			["trackId", "elementId"],
 		),
 	),
 

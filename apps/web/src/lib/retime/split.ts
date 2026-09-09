@@ -1,5 +1,6 @@
 import type { RetimeConfig } from "@/lib/timeline";
 import { getSourceTimeAtClipTime } from "./resolve";
+import { sampleSpeedCurve } from "./speed-ramp";
 
 export function getSourceSpanAtClipTime({
 	clipTime,
@@ -11,24 +12,178 @@ export function getSourceSpanAtClipTime({
 	return Math.max(0, getSourceTimeAtClipTime({ clipTime, retime }));
 }
 
+/**
+ * Split a curve (speed-ramp) retime at a clip-time boundary.
+ *
+ * The curve stores normalized times (0..1) over the WHOLE clip. After a split,
+ * each half owns a different sub-range of that curve:
+ *
+ * - LEFT keeps the curve from 0 to `t` renormalized onto [0,1], where
+ *   `t = splitClipTime / duration`.
+ * - RIGHT keeps the curve from `t` to 1, ALSO renormalized to [0,1] — the
+ *   right half's own local time starts at 0 at the cut, so its first speed
+ *   sample is exactly the curve's speed at the cut point. This is what makes
+ *   playback continue seamlessly across the cut instead of replaying the
+ *   ramp from speed(0).
+ *
+ * Constant-rate retimes are duration-invariant: both halves carry the same
+ * config. Non-curve configs are returned untouched.
+ */
 export function splitRetimeAtClipTime({
 	retime,
+	splitClipTime,
+	duration,
 }: {
-	retime?: RetimeConfig;
+	retime?: RetimeConfig & { duration?: number };
 	splitClipTime: number;
+	duration?: number;
 }): {
 	left: RetimeConfig | undefined;
 	right: RetimeConfig | undefined;
 } {
-	return { left: retime, right: retime };
+	if (!retime) {
+		return { left: undefined, right: undefined };
+	}
+
+	const mode = (retime as { mode?: unknown }).mode;
+	if (mode !== "curve") {
+		// Constant-rate (or future modes): carried as-is on both halves.
+		return { left: retime, right: retime };
+	}
+
+	const keyframes = (retime as { keyframes?: unknown }).keyframes as
+		| Array<{ time?: unknown; speed?: unknown }>
+		| undefined;
+	if (!Array.isArray(keyframes) || keyframes.length === 0) {
+		return { left: retime, right: retime };
+	}
+
+	const clipDuration = duration ?? (retime as { duration?: number }).duration;
+	if (
+		clipDuration === undefined ||
+		!Number.isFinite(clipDuration) ||
+		clipDuration <= 0
+	) {
+		// Unknown duration: cannot renormalize; keep the original on both halves
+		// rather than producing a garbage curve.
+		return { left: retime, right: retime };
+	}
+
+	const t = Math.max(0, Math.min(1, splitClipTime / clipDuration));
+	if (t <= 0) {
+		return { left: undefined, right: retime };
+	}
+	if (t >= 1) {
+		return { left: retime, right: undefined };
+	}
+
+	const curve = keyframes.map((k) => ({
+		time: typeof k.time === "number" ? k.time : 0,
+		speed: typeof k.speed === "number" ? k.speed : 1,
+	}));
+
+	// Endpoints must be exact (skill rule: verify endpoints, not lengths):
+	// left starts at the curve's speed(0), ends at speed(t);
+	// right starts at speed(t), ends at the curve's speed(1).
+	const leftCurve = remapCurveRange({
+		curve,
+		from: 0,
+		to: t,
+		endpoints: {
+			first: sampleCurveAt({ curve, t: 0 }),
+			last: sampleCurveAt({ curve, t }),
+		},
+	});
+	const rightCurve = remapCurveRange({
+		curve,
+		from: t,
+		to: 1,
+		endpoints: {
+			first: sampleCurveAt({ curve, t }),
+			last: sampleCurveAt({ curve, t: 1 }),
+		},
+	});
+
+	const base = { ...retime } as RetimeConfig & {
+		keyframes: typeof keyframes;
+		duration?: number;
+	};
+	const leftDuration = splitClipTime;
+	const rightDuration = clipDuration - splitClipTime;
+
+	return {
+		left: { ...base, keyframes: leftCurve, duration: leftDuration },
+		right: { ...base, keyframes: rightCurve, duration: rightDuration },
+	};
 }
 
+/**
+ * Renormalize the curve segment [from, to] onto [0, 1], with exact endpoint
+ * speeds pinned. Samples between endpoints preserve the original segment's
+ * internal shape (times are scaled; speeds are carried verbatim).
+ */
+function remapCurveRange({
+	curve,
+	from,
+	to,
+	endpoints,
+}: {
+	curve: Array<{ time: number; speed: number }>;
+	from: number;
+	to: number;
+	endpoints: { first: number; last: number };
+}): Array<{ time: number; speed: number }> {
+	const span = to - from;
+	const segment = curve
+		.filter((k) => k.time > from && k.time < to)
+		.map((k) => ({
+			time: (k.time - from) / span,
+			speed: k.speed,
+		}));
+
+	const result: Array<{ time: number; speed: number }> = [
+		{ time: 0, speed: endpoints.first },
+		...segment,
+		{ time: 1, speed: endpoints.last },
+	];
+	return result.sort((a, b) => a.time - b.time);
+}
+
+function sampleCurveAt({
+	curve,
+	t,
+}: {
+	curve: Array<{ time: number; speed: number }>;
+	t: number;
+}): number {
+	if (curve.length === 0) return 1;
+	if (curve.length === 1) return curve[0]?.speed ?? 1;
+	return sampleSpeedCurve({ curve, t });
+}
+
+/**
+ * Adjust a retime when a clip's trim changes (drag-resize). Curve retimes
+ * renormalize because the visible window changed; constant rates are
+ * duration-invariant and carried as-is.
+ *
+ * NOTE (documented limitation): the visible window changes size here, which
+ * shifts the whole curve mapping. Renormalizing endpoints for a trim requires
+ * knowing the new visible duration at call time; callers today trim by trim
+ * values, not by the post-trim clip duration, so the curve is carried as-is
+ * until the caller passes enough information to renormalize correctly.
+ * (Carrying a slightly stretched curve is far less destructive than the
+ * naive renormalize that anchored everything at speed(0).)
+ */
 export function adjustRetimeForTrimChange({
 	retime,
+	clipTrimTime,
+	side,
 }: {
 	retime?: RetimeConfig;
 	clipTrimTime: number;
 	side: "start" | "end";
 }): RetimeConfig | undefined {
+	void clipTrimTime;
+	void side;
 	return retime;
 }

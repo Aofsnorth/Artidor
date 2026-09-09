@@ -39,11 +39,19 @@ export async function POST(
 		return Response.json({ error: "Invalid request" }, { status: 400 });
 	}
 
-	const ok = await tryLockElement({
-		roomId,
-		sessionId: body.sessionId,
-		elementId: body.elementId,
-	});
+	let ok: Awaited<ReturnType<typeof tryLockElement>>;
+	try {
+		ok = await tryLockElement({
+			roomId,
+			sessionId: body.sessionId,
+			elementId: body.elementId,
+		});
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	return Response.json({ ok });
 }
 
@@ -65,10 +73,17 @@ export async function DELETE(
 		return Response.json({ error: "Invalid request" }, { status: 400 });
 	}
 
-	await unlockElementStore({
-		roomId,
-		sessionId: body.sessionId,
-		elementId: body.elementId,
-	});
+	try {
+		await unlockElementStore({
+			roomId,
+			sessionId: body.sessionId,
+			elementId: body.elementId,
+		});
+	} catch {
+		return Response.json(
+			{ error: "Collaboration storage unavailable" },
+			{ status: 503 },
+		);
+	}
 	return Response.json({ ok: true });
 }

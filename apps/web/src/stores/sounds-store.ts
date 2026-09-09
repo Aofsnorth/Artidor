@@ -4,6 +4,19 @@ import { storageService } from "@/services/storage/service";
 import { toast } from "sonner";
 import { EditorCore } from "@/core";
 import { buildLibraryAudioElement } from "@/lib/timeline/element-utils";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
+
+/**
+ * Converts a Freesound duration (seconds, per its API schema) to timeline
+ * ticks. Falls back to 0 for malformed metadata so a bad API row cannot
+ * produce a NaN-duration element that breaks timeline math.
+ */
+function soundDurationToTicks(durationSeconds: number): number {
+	if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+		return 0;
+	}
+	return Math.round(durationSeconds * TICKS_PER_SECOND);
+}
 
 interface SoundsStore {
 	topSoundEffects: SoundEffect[];
@@ -206,24 +219,61 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
 	},
 
 	addSoundToTimeline: async ({ sound }) => {
+		// Snapshot BEFORE async I/O. A later project/scene comparison must use
+		// these values, not values read after the download completes.
+		const editor = EditorCore.getInstance();
+		const beforeProject = editor.project.getActiveOrNull();
+		if (!beforeProject) return false;
+		const beforeProjectId = beforeProject.metadata.id;
+		const beforeScene = editor.scenes.getActiveSceneOrNull();
+		const beforeSceneId = beforeScene?.id ?? null;
+
 		const audioUrl = sound.previewUrl;
 		if (!audioUrl) {
 			toast.error("Sound file not available");
 			return false;
 		}
 
+		let decodedBuffer: AudioBuffer | undefined;
+		let decodedDurationSeconds = 0;
 		try {
-			const editor = EditorCore.getInstance();
-			const currentTime = editor.playback.getCurrentTime();
-			const tracks = editor.scenes.getActiveScene().tracks;
-
 			const response = await fetch(audioUrl);
 			if (!response.ok)
 				throw new Error(`Failed to download audio: ${response.statusText}`);
 
 			const arrayBuffer = await response.arrayBuffer();
+			// decodeAudioData needs a live context; close it immediately after so
+			// repeated insertions do not leak AudioContexts (browsers cap them).
+			// The decoded AudioBuffer itself stays valid across contexts.
 			const audioContext = new AudioContext();
-			const buffer = await audioContext.decodeAudioData(arrayBuffer);
+			try {
+				decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+				decodedDurationSeconds = decodedBuffer.duration;
+			} finally {
+				void audioContext.close();
+			}
+		} catch (error) {
+			console.error("Failed to add sound to timeline:", error);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: "Failed to add sound to timeline",
+				{ id: `sound-${sound.id}` },
+			);
+			return false;
+		}
+
+		try {
+			// Re-read everything AFTER the download: the playhead may have moved
+			// and the active scene/tracks may have changed while we awaited.
+			// Discovering/displaying a sound must not insert it into the wrong
+			// workspace after a project or scene switch.
+			const currentProject = editor.project.getActiveOrNull();
+			const currentScene = editor.scenes.getActiveSceneOrNull();
+			if (!currentProject || !currentScene) return false;
+			if (currentProject.metadata.id !== beforeProjectId || currentScene.id !== beforeSceneId) return false;
+			const currentTime = editor.playback.getCurrentTime();
+			const tracks = currentScene.tracks;
 
 			const audioTrack = tracks.audio[0];
 			let trackId: string;
@@ -234,12 +284,19 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
 				trackId = editor.timeline.addTrack({ type: "audio" });
 			}
 
+			// Freesound reports seconds; timeline elements store ticks. Prefer the
+			// decoded buffer's real duration, falling back to the API metadata.
+			const durationTicks =
+				soundDurationToTicks(
+					decodedDurationSeconds > 0 ? decodedDurationSeconds : sound.duration,
+				) || TICKS_PER_SECOND;
+
 			const element = buildLibraryAudioElement({
 				sourceUrl: audioUrl,
 				name: sound.name,
-				duration: sound.duration,
+				duration: durationTicks,
 				startTime: currentTime,
-				buffer,
+				buffer: decodedBuffer,
 			});
 
 			editor.timeline.insertElement({

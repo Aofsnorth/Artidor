@@ -58,8 +58,13 @@ export class CommandManager {
 		this.redoStack = [];
 	}
 
-	registerReactor(reactor: (command: Command) => void): void {
-		this.reactors.push(reactor);
+	/** Subscribe until the returned idempotent disposer is called. */
+	registerReactor(reactor: (command: Command) => void): () => void {
+		const subscription = (command: Command) => reactor(command);
+		this.reactors.push(subscription);
+		return () => {
+			this.reactors = this.reactors.filter((entry) => entry !== subscription);
+		};
 	}
 
 	undo(): void {

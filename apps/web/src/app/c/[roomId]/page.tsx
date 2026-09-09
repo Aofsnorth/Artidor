@@ -29,15 +29,29 @@ export default function CollabJoinPage({
 		});
 	}, [params]);
 
-	// If the user joined successfully, take them to projects/editor; otherwise return to home.
+	// If the user joined successfully, take them straight into the editor
+	// with the collab session active; otherwise return to home.
 	const handleOpenChange = (next: boolean) => {
 		setOpen(next);
 		if (!next) {
-			const status = useCollabStore.getState().status;
-			if (status === "connected") {
-				router.push("/projects");
-			} else {
+			const { status, hostProjectId, hostProjectName } =
+				useCollabStore.getState();
+			if (status !== "connected") {
 				router.push("/");
+				return;
+			}
+			// The guest's browser does not have the host's project stored locally,
+			// and the collab protocol is notification-only — the host's project data
+			// is NOT shared. The editor provider detects the unknown id and creates
+			// a fresh LOCAL placeholder project so the joiner lands in the editor.
+			// The host's project name is passed along so the placeholder is labeled
+			// with what the session is about, instead of implying shared data.
+			if (hostProjectId) {
+				const name = encodeURIComponent(hostProjectName ?? "Shared session");
+				router.push(`/editor/${hostProjectId}?collabPlaceholder=${name}`);
+			} else {
+				// Legacy rooms created before the room carried a project id.
+				router.push("/projects");
 			}
 		}
 	};

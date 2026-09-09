@@ -13,6 +13,10 @@ function reorderEffectsOnElement({
 	toIndex: number;
 }): VisualElement {
 	const effects = [...(element.effects ?? [])];
+	// Invalid drag/drop indices must not splice undefined into persisted stacks.
+	if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex) || fromIndex < 0 || toIndex < 0 || fromIndex >= effects.length || toIndex >= effects.length || fromIndex === toIndex) {
+		return element;
+	}
 	const [moved] = effects.splice(fromIndex, 1);
 	effects.splice(toIndex, 0, moved);
 	return { ...element, effects };
