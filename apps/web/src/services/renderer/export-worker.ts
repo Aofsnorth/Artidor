@@ -24,9 +24,16 @@ import {
 	Mp4OutputFormat,
 	WebMOutputFormat,
 	BufferTarget,
+	StreamTarget,
 	CanvasSource,
 	AudioBufferSource,
 } from "mediabunny";
+import {
+	discardExportTempFile,
+	exportTempExtensionForFormat,
+	tryCreateExportTempFile,
+	type ExportTempFile,
+} from "./export-output";
 import { CanvasRenderer } from "./canvas-renderer";
 import {
 	deserializeSceneTree,
@@ -95,18 +102,46 @@ type WorkerInMessage = {
 	 * `VideoEncoder.configure()` rejects it (Firefox).
 	 */
 	forceSoftwareEncoding?: boolean;
+	/**
+	 * Stream the muxed output to an OPFS temp file instead of buffering it in
+	 * RAM (Part 1 of streaming export). The worker creates the temp file AFTER
+	 * codec negotiation with the negotiated container's extension, muxes via
+	 * `StreamTarget(stream, { chunked: true })`, then posts `complete-streamed`.
+	 * Any OPFS failure silently falls back to the in-RAM `BufferTarget` path.
+	 */
+	streamToDisk?: boolean;
 };
 
 type WorkerOutMessage =
 	| { type: "progress"; progress: number }
 	| { type: "init-progress"; phase: string; progress: number }
 	| { type: "complete"; buffer: ArrayBuffer }
+	| {
+			type: "complete-streamed";
+			/** Byte length of the muxed file left in OPFS. */
+			byteLength: number;
+			/** Base name inside the OPFS `exports/` dir (Part 2 reads it back). */
+			fileName: string;
+	  }
 	| { type: "error"; error: string }
 	| { type: "cancelled" }
 	| { type: "ready" };
 
 // ── State ────────────────────────────────────────────────────────────
 let isCancelled = false;
+
+// OPFS temp file of the in-flight streamed export (Part 1). Module-scoped so
+// the outer error handler can delete it when handleExport throws before its
+// own cleanup runs — otherwise every failed streamed export orphans a file.
+// Cleared on handover (streamed success: Part 2 owns the file) and on every
+// cancel/error settle path.
+let activeStreamTempFile: ExportTempFile | null = null;
+
+async function discardActiveStreamTempFile(): Promise<void> {
+	const temp = activeStreamTempFile;
+	activeStreamTempFile = null;
+	await discardExportTempFile(temp);
+}
 
 // Catch any unhandled promise rejections so they surface as error messages
 // instead of silently killing the worker.
@@ -138,6 +173,10 @@ self.onmessage = async (event: MessageEvent<WorkerInMessage>) => {
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Unknown worker error";
+
+		// A streamed export that throws before settling must not orphan its
+		// OPFS temp file.
+		await discardActiveStreamTempFile();
 
 		// Treating "Output has been canceled." as a cancellation keeps a user
 		// cancel that races with output.start() from surfacing as an error.
@@ -346,9 +385,25 @@ async function handleExport(msg: WorkerInMessage) {
 	const outputFormatInstance =
 		effectiveFormat === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
 
+	// Streaming export (Part 1): mux straight to an OPFS temp file so peak RAM
+	// stays flat for long exports. The file is created AFTER negotiation with
+	// the negotiated container's extension (format can flip mp4 → webm), BEFORE
+	// Output creation. tryCreate never throws (Firefox/Safari workers may lack
+	// OPFS) — fallback is the existing in-RAM BufferTarget path.
+	let streamTempFile: ExportTempFile | null = null;
+	if (msg.streamToDisk) {
+		streamTempFile = await tryCreateExportTempFile(
+			exportTempExtensionForFormat(effectiveFormat),
+		);
+		// Publish for the outer error handler: any throw from here on deletes
+		// the temp file (settle-path cleanups clear it first on their way out).
+		activeStreamTempFile = streamTempFile;
+	}
 	const output = new Output({
 		format: outputFormatInstance,
-		target: new BufferTarget(),
+		target: streamTempFile
+			? new StreamTarget(streamTempFile.stream, { chunked: true })
+			: new BufferTarget(),
 	});
 
 	// The compositor canvas is now an OffscreenCanvas
@@ -430,6 +485,9 @@ async function handleExport(msg: WorkerInMessage) {
 	// canceled.", so we must short-circuit.
 	if (isCancelled) {
 		await output.cancel().catch(() => {});
+		await discardExportTempFile(streamTempFile);
+		streamTempFile = null;
+		activeStreamTempFile = null;
 		revokeBlobUrls();
 		self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 		return;
@@ -509,6 +567,9 @@ async function handleExport(msg: WorkerInMessage) {
 				// Wait for all pending encodes to settle, then cancel.
 				await Promise.allSettled(pendingEncodes);
 				await output.cancel();
+				await discardExportTempFile(streamTempFile);
+				streamTempFile = null;
+				activeStreamTempFile = null;
 				revokeBlobUrls();
 				self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 				return;
@@ -609,6 +670,9 @@ async function handleExport(msg: WorkerInMessage) {
 
 		if (isCancelled) {
 			await output.cancel();
+			await discardExportTempFile(streamTempFile);
+			streamTempFile = null;
+			activeStreamTempFile = null;
 			revokeBlobUrls();
 			self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 			return;
@@ -625,15 +689,50 @@ async function handleExport(msg: WorkerInMessage) {
 	}
 
 	// The frame loop tops out at (count - 1) / count mapped onto 0.2..0.98.
-	// Post the terminal 1.0 here so every path that produces a buffer — full
-	// export, segment worker, held-still scene — reports completion. The
-	// parallel concatenator already emits its own final 1.0 after stitching.
+	// Post the terminal 1.0 here so every path that produces output — full
+	// export, segment worker, held-still scene, streamed file — reports
+	// completion. The parallel concatenator already emits its own final 1.0
+	// after stitching.
 	self.postMessage({
 		type: "progress",
 		progress: 1,
 	} satisfies WorkerOutMessage);
 
-	const buffer = output.target.buffer;
+	// Streaming path: the muxed bytes already sit in OPFS. Hand ownership to
+	// Part 2 (main thread reads the file back for download) and post
+	// `complete-streamed` instead of `complete` + buffer — no RAM copy.
+	if (streamTempFile) {
+		let byteLength: number | null = null;
+		try {
+			byteLength = (await streamTempFile.handle.getFile()).size;
+		} catch {
+			byteLength = null;
+		}
+		if (byteLength === null) {
+			await discardExportTempFile(streamTempFile);
+			streamTempFile = null;
+			activeStreamTempFile = null;
+			revokeBlobUrls();
+			self.postMessage({
+				type: "error",
+				error: "Streamed export file is unreadable",
+			} satisfies WorkerOutMessage);
+			return;
+		}
+		const fileName = streamTempFile.name;
+		streamTempFile = null;
+		activeStreamTempFile = null;
+		revokeBlobUrls();
+		self.postMessage({
+			type: "complete-streamed",
+			byteLength,
+			fileName,
+		} satisfies WorkerOutMessage);
+		return;
+	}
+
+	const bufferTarget = output.target as BufferTarget;
+	const buffer = bufferTarget.buffer;
 	revokeBlobUrls();
 	if (!buffer) {
 		self.postMessage({

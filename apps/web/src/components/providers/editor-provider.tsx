@@ -242,6 +242,16 @@ function EditorRuntimeBindings() {
 		};
 	}, []);
 
+	// Boot sweep (streaming export lifecycle): delete orphaned OPFS temp files
+	// older than 24h left by crashed tabs. Bounded + never-throw; files newer
+	// than the cutoff are kept — they may belong to another live tab still
+	// previewing its export.
+	useEffect(() => {
+		void import("@/services/renderer/export-output").then(
+			({ sweepStaleExportTempFiles }) => sweepStaleExportTempFiles(),
+		);
+	}, []);
+
 	useEditorActions();
 	useKeybindingsListener();
 	return commandPaletteOpen ? (

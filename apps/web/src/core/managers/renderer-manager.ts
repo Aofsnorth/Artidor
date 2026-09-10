@@ -10,7 +10,9 @@ import { downloadBlob } from "@/utils/browser";
 import {
 	isExportWorkerSupported,
 	runExportInWorker,
+	type ExportWorkerResult,
 } from "@/services/renderer/export-worker-bridge";
+import { isDiskBackedExportSupported } from "@/services/renderer/export-output";
 import { runParallelExport } from "@/services/renderer/parallel-export";
 import { serializeSceneTree } from "@/services/renderer/scene-serializer";
 import { isEncoderConfigError } from "@/services/renderer/export-codec";
@@ -18,6 +20,26 @@ import { isEncoderConfigError } from "@/services/renderer/export-codec";
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
 	| { success: false; error: string };
+
+/**
+ * Maps a worker success to the public export result, preserving the backing.
+ * A streamed handover becomes `ExportResult.streamed` (no ArrayBuffer read —
+ * that would re-inflate peak RAM to ≈file size); buffer results pass through.
+ */
+function toExportResult(
+	result: ExportWorkerResult & { success: true },
+): ExportResult {
+	if (result.streamed) {
+		return {
+			success: true,
+			streamed: {
+				byteLength: result.streamed.byteLength,
+				fileName: result.streamed.fileName,
+			},
+		};
+	}
+	return { success: true, buffer: result.buffer };
+}
 
 export class RendererManager {
 	private renderTree: RootNode | null = null;
@@ -274,7 +296,7 @@ export class RendererManager {
 							`[export] render phase took ${((performance.now() - renderPhaseStart) / 1000).toFixed(1)}s, ` +
 								`total export ${((performance.now() - exportStart) / 1000).toFixed(1)}s`,
 						);
-						return { success: true, buffer: parallel.buffer };
+						return toExportResult(parallel);
 					}
 					if ("cancelled" in parallel && parallel.cancelled) {
 						return { success: false, cancelled: true };
@@ -294,6 +316,10 @@ export class RendererManager {
 				}
 
 				// 2. Single-worker path (whole timeline on one worker).
+				// Opt in to OPFS streaming whenever the browser supports it:
+				// the worker falls back to BufferTarget on its own when OPFS
+				// creation fails, so both result variants must be handled.
+				const streamToDisk = isDiskBackedExportSupported();
 				try {
 					const result = await runExportInWorker({
 						sceneTree: tree,
@@ -309,13 +335,14 @@ export class RendererManager {
 						// exports keep sending progress messages, so this only fires
 						// when the worker is truly stuck.
 						timeoutMs: 30_000,
+						streamToDisk,
 						onProgress: (p) =>
 							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
 					});
 
 					if (result.success) {
-						return { success: true, buffer: result.buffer };
+						return toExportResult(result);
 					}
 					if ("cancelled" in result && result.cancelled) {
 						return { success: false, cancelled: true };
@@ -343,12 +370,13 @@ export class RendererManager {
 							shouldIncludeAudio: !!includeAudio,
 							forceSoftwareEncoding: true,
 							timeoutMs: 30_000,
+							streamToDisk,
 							onProgress: (p) =>
 								onProgress?.({ progress: mapProgress(p.progress) }),
 							getCancelled: onCancel,
 						});
 						if (swResult.success) {
-							return { success: true, buffer: swResult.buffer };
+							return toExportResult(swResult);
 						}
 						if ("cancelled" in swResult && swResult.cancelled) {
 							return { success: false, cancelled: true };

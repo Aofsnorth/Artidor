@@ -25,12 +25,84 @@ export interface ExportOptions {
 	workerCount?: number;
 }
 
+/**
+ * Reference to a disk-backed (streaming) export result.
+ *
+ * The muxed bytes live in an OPFS temp file — never in JS RAM. Open with
+ * `openStreamedExportFile(fileName)` (one `File`, zero-copy) for preview and
+ * download; delete with `deleteExportTempFileByName(fileName)` when the
+ * result is replaced or dismissed.
+ */
+export interface StreamedExportRef {
+	/** Byte length of the muxed file (verified readable by the bridge). */
+	byteLength: number;
+	/**
+	 * Base name inside the OPFS `exports/` dir, including the negotiated
+	 * container extension (mp4/webm — may differ from the requested format
+	 * after codec fallback).
+	 */
+	fileName: string;
+}
+
 export interface ExportResult {
 	success: boolean;
 	buffer?: ArrayBuffer;
+	/** Disk-backed result: set instead of `buffer` (never both). */
+	streamed?: StreamedExportRef;
 	error?: string;
 	cancelled?: boolean;
 	cached?: boolean;
+}
+
+/** True when the result carries playable bytes (in-RAM or on-disk). */
+export function hasExportContent({
+	result,
+}: {
+	result: ExportResult;
+}): boolean {
+	return Boolean(result.buffer || result.streamed);
+}
+
+/** Byte length regardless of backing (RAM buffer or OPFS file). */
+export function exportResultByteLength({
+	result,
+}: {
+	result: ExportResult;
+}): number {
+	return result.buffer?.byteLength ?? result.streamed?.byteLength ?? 0;
+}
+
+/**
+ * Container extension carried by a streamed temp file name
+ * (`export-<uuid>.mp4|.webm`). Allow-listed so a corrupt name can never
+ * smuggle an executable-looking suffix into the download filename.
+ */
+export function streamedExportFileExtension({
+	fileName,
+}: {
+	fileName: string;
+}): string {
+	const ext = fileName.slice(fileName.lastIndexOf(".")).toLowerCase();
+	return ext === ".webm" ? ".webm" : ".mp4";
+}
+
+/**
+ * Download filename for an export result. Streamed results take their
+ * extension from the OPFS temp file (negotiated container), buffer results
+ * keep the caller-provided filename as-is.
+ */
+export function filenameForExportResult({
+	filename,
+	result,
+}: {
+	filename: string;
+	result: ExportResult;
+}): string {
+	if (!result.streamed) return filename;
+	const stem = filename.includes(".")
+		? filename.slice(0, filename.lastIndexOf("."))
+		: filename;
+	return `${stem}${streamedExportFileExtension({ fileName: result.streamed.fileName })}`;
 }
 
 export interface ExportState {

@@ -2,7 +2,6 @@
 
 import { lazy, Suspense, type ReactNode } from "react";
 import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
-import { useShallow } from "zustand/shallow";
 import { MediaView } from "./views/assets";
 import { DockPlaceholder } from "@/components/editor/floating-window";
 import { useEditorUIStore } from "@/stores/editor-ui-store";

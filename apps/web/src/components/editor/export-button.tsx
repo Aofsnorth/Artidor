@@ -31,13 +31,18 @@ import {
 	EXPORT_FORMAT_LABELS,
 	EXPORT_FORMAT_VALUES,
 	EXPORT_QUALITY_VALUES,
+	exportResultByteLength,
+	filenameForExportResult,
 	getExportFileExtension,
 	getExportMimeType,
 	downloadBuffer,
+	hasExportContent,
 	type ExportFormat,
 	type ExportQuality,
 	type ExportResult,
 } from "@/lib/export";
+import { openStreamedExportFile } from "@/services/renderer/export-output";
+import { downloadBlob } from "@/utils/browser";
 import {
 	Section,
 	SectionContent,
@@ -53,6 +58,86 @@ function isExportFormat(value: string): value is ExportFormat {
 
 function isExportQuality(value: string): value is ExportQuality {
 	return EXPORT_QUALITY_VALUES.some((qualityValue) => qualityValue === value);
+}
+
+/**
+ * True when the export result is finished and carries playable bytes
+ * (in-RAM buffer or on-disk OPFS handover). Narrows null away.
+ */
+function isPlayableExportResult(
+	result: ExportResult | null,
+): result is ExportResult & { success: true } {
+	return Boolean(result?.success && hasExportContent({ result }));
+}
+
+/**
+ * Opens the result's bytes as a single object URL. Buffer results wrap the
+ * (already in-RAM) bytes; streamed results open the OPFS `File` once —
+ * `URL.createObjectURL(file)` does NOT copy file bytes into JS RAM, the
+ * browser streams from disk for both <video> preview and download. The
+ * caller revokes the URL (existing unmount cleanup, preserved).
+ */
+async function createExportPreviewUrl({
+	result,
+	mimeType,
+}: {
+	result: ExportResult;
+	mimeType: string;
+}): Promise<string> {
+	if (result.streamed) {
+		const file = await openStreamedExportFile(result.streamed.fileName);
+		return URL.createObjectURL(
+			new Blob([file], { type: file.type || mimeType }),
+		);
+	}
+	if (!result.buffer) throw new Error("Export has no downloadable content");
+	return URL.createObjectURL(new Blob([result.buffer], { type: mimeType }));
+}
+
+/**
+ * Downloads the result. Reuses the preview object URL when available (the
+ * browser streams from disk — no second Blob copy); otherwise opens the OPFS
+ * file once (streamed) or wraps the in-RAM buffer (legacy).
+ */
+function downloadExportResult({
+	result,
+	filename,
+	mimeType,
+	previewUrl,
+}: {
+	result: ExportResult;
+	filename: string;
+	mimeType: string;
+	previewUrl?: string | null;
+}): void {
+	const resolvedFilename = filenameForExportResult({ filename, result });
+	if (previewUrl) {
+		// Anchor-download via the existing object URL — no new Blob, no RAM copy.
+		const anchor = document.createElement("a");
+		anchor.href = previewUrl;
+		anchor.download = resolvedFilename;
+		document.body.appendChild(anchor);
+		anchor.click();
+		document.body.removeChild(anchor);
+		return;
+	}
+	if (result.streamed) {
+		void openStreamedExportFile(result.streamed.fileName)
+			.then((file) =>
+				downloadBlob({
+					blob: new Blob([file], { type: file.type || mimeType }),
+					filename: resolvedFilename,
+				}),
+			)
+			.catch(() => {});
+		return;
+	}
+	if (!result.buffer) return;
+	downloadBuffer({
+		buffer: result.buffer,
+		filename: resolvedFilename,
+		mimeType,
+	});
 }
 
 const CustomEmblem = () => (
@@ -128,8 +213,7 @@ export function ExportButton() {
 	// large center overlay should only appear once — the first time.
 	useEffect(() => {
 		if (
-			exportResult?.success &&
-			exportResult.buffer &&
+			isPlayableExportResult(exportResult) &&
 			!exportState.isExporting &&
 			!exportResult.cached
 		) {
@@ -138,13 +222,16 @@ export function ExportButton() {
 	}, [exportResult, exportState.isExporting]);
 
 	const handleDownloadFromOverlay = () => {
-		if (!exportResult?.buffer || !activeProject) return;
+		if (!isPlayableExportResult(exportResult) || !activeProject) return;
 		const ext = getExportFileExtension({
 			format: DEFAULT_EXPORT_OPTIONS.format,
 		});
 		const mime = getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format });
-		downloadBuffer({
-			buffer: exportResult.buffer,
+		// Overlay download has no preview URL of its own; the overlay keeps one
+		// internally — this fallback opens the file once (streamed) or wraps
+		// the buffer (legacy).
+		downloadExportResult({
+			result: exportResult,
 			filename: `${activeProject.metadata.name}${ext}`,
 			mimeType: mime,
 		});
@@ -246,8 +333,7 @@ export function ExportButton() {
 			)}
 			{/* CapCut-style completion overlay */}
 			{showCompletionOverlay &&
-				exportResult?.success &&
-				exportResult.buffer &&
+				isPlayableExportResult(exportResult) &&
 				activeProject && (
 					<ExportCompletionOverlay
 						result={exportResult}
@@ -333,7 +419,7 @@ function ExportPopover({
 			return;
 		}
 
-		if (result.success && result.buffer) {
+		if (isPlayableExportResult(result)) {
 			toast.success(
 				result.cached ? "Export restored from history" : "Export ready",
 			);
@@ -363,7 +449,7 @@ function ExportPopover({
 				} as React.CSSProperties
 			}
 		>
-			{exportResult?.success && exportResult.buffer ? (
+			{isPlayableExportResult(exportResult) ? (
 				<ExportResultCard
 					result={exportResult}
 					filename={filename}
@@ -576,18 +662,28 @@ function ExportResultCard({
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (!result.buffer) return;
-
-		const url = URL.createObjectURL(
-			new Blob([result.buffer], { type: mimeType }),
-		);
-		setPreviewUrl(url);
-		return () => URL.revokeObjectURL(url);
-	}, [result.buffer, mimeType]);
+		if (!hasExportContent({ result })) return;
+		let revoked = false;
+		let url: string | null = null;
+		void createExportPreviewUrl({ result, mimeType })
+			.then((created) => {
+				if (revoked) {
+					URL.revokeObjectURL(created);
+					return;
+				}
+				url = created;
+				setPreviewUrl(created);
+			})
+			.catch(() => {});
+		return () => {
+			revoked = true;
+			if (url) URL.revokeObjectURL(url);
+		};
+	}, [result, mimeType]);
 
 	const handleDownload = () => {
-		if (!result.buffer) return;
-		downloadBuffer({ buffer: result.buffer, filename, mimeType });
+		if (!hasExportContent({ result })) return;
+		downloadExportResult({ result, filename, mimeType, previewUrl });
 	};
 
 	return (
@@ -613,7 +709,7 @@ function ExportResultCard({
 				<p className="truncate text-xs text-stone-500">{filename}</p>
 				<p className="text-xs text-stone-500">
 					{result.cached ? "From history" : "Fresh render"} ·{" "}
-					{formatBytes(result.buffer?.byteLength ?? 0)}
+					{formatBytes(exportResultByteLength({ result }))}
 				</p>
 			</div>
 
@@ -667,15 +763,26 @@ function ExportCompletionOverlay({
 	const [isVisible, setIsVisible] = useState(false);
 
 	useEffect(() => {
-		if (!result.buffer) return;
-		const url = URL.createObjectURL(
-			new Blob([result.buffer], { type: mimeType }),
-		);
-		setPreviewUrl(url);
-		// Trigger entrance animation
-		requestAnimationFrame(() => setIsVisible(true));
-		return () => URL.revokeObjectURL(url);
-	}, [result.buffer, mimeType]);
+		if (!hasExportContent({ result })) return;
+		let revoked = false;
+		let url: string | null = null;
+		void createExportPreviewUrl({ result, mimeType })
+			.then((created) => {
+				if (revoked) {
+					URL.revokeObjectURL(created);
+					return;
+				}
+				url = created;
+				setPreviewUrl(created);
+				// Trigger entrance animation
+				requestAnimationFrame(() => setIsVisible(true));
+			})
+			.catch(() => {});
+		return () => {
+			revoked = true;
+			if (url) URL.revokeObjectURL(url);
+		};
+	}, [result, mimeType]);
 
 	const handleClose = () => {
 		setIsVisible(false);
@@ -759,7 +866,7 @@ function ExportCompletionOverlay({
 								Size
 							</p>
 							<p className="text-xs font-medium text-white/80">
-								{formatBytes(result.buffer?.byteLength ?? 0)}
+								{formatBytes(exportResultByteLength({ result }))}
 							</p>
 						</div>
 						<div className="rounded-lg border border-white/6 bg-white/2 p-2 text-center">

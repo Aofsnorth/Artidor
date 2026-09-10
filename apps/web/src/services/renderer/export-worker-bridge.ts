@@ -16,14 +16,35 @@
 import type { FrameRate } from "artidor-wasm";
 import type { ExportFormat, ExportQuality } from "@/lib/export";
 import type { SerializedNode } from "./scene-serializer";
-import type { ExportAudioCodec, ExportVideoCodec } from "./export-codec";
+import type { ExportVideoCodec, ExportAudioCodec } from "./export-codec";
+import {
+	deleteExportTempFileByName,
+	openStreamedExportFile,
+} from "./export-output";
 
 export type ExportWorkerProgress = {
 	progress: number;
 };
 
 export type ExportWorkerResult =
-	| { success: true; buffer: ArrayBuffer }
+	| {
+			success: true;
+			buffer: ArrayBuffer;
+			/** Disk-backed handover (set instead of `buffer`, never both). */
+			streamed?: undefined;
+	  }
+	| {
+			success: true;
+			buffer?: undefined;
+			/**
+			 * Disk-backed handover: the muxed bytes live in
+			 * `OPFS exports/<fileName>` (verified readable by the bridge).
+			 * Resolve info only — reading to ArrayBuffer would cancel the
+			 * streaming win. Open once via `openStreamedExportFile` for
+			 * preview/download; delete via `deleteExportTempFileByName`.
+			 */
+			streamed: { byteLength: number; fileName: string };
+	  }
 	| { success: false; cancelled: true }
 	| { success: false; error: string };
 
@@ -143,6 +164,7 @@ export async function runExportInWorker({
 	getCancelled,
 	timeoutMs = 0,
 	reuseWorker = true,
+	streamToDisk = false,
 }: {
 	sceneTree: SerializedNode;
 	files: Array<{ mediaId: string; file: File }>;
@@ -187,6 +209,15 @@ export async function runExportInWorker({
 	 * per segment.
 	 */
 	reuseWorker?: boolean;
+	/**
+	 * Stream the muxed output to an OPFS temp file (streaming export Part 2).
+	 * Default false preserves the legacy in-RAM buffer behavior; segment
+	 * workers keep buffer mode (deliberate: streamed segments = large
+	 * refactor, documented follow-up). The worker still falls back to buffer
+	 * mode when OPFS is unavailable, so callers must handle both result
+	 * variants.
+	 */
+	streamToDisk?: boolean;
 }): Promise<ExportWorkerResult> {
 	return new Promise((resolve) => {
 		// Warm-reuse: if the worker came from the pool, it's already past
@@ -236,6 +267,18 @@ export async function runExportInWorker({
 			};
 		}
 
+		// Lifecycle: name of the handed-over OPFS file owned by THIS export.
+		// Deleted best-effort on cancel/error/timeout (the worker is already
+		// terminated then, so the main thread must own cleanup via
+		// directory.removeEntry). Success hands ownership to the caller.
+		let pendingStreamedFileName: string | null = null;
+		const discardPendingStreamedFile = () => {
+			if (!pendingStreamedFileName) return;
+			const fileName = pendingStreamedFileName;
+			pendingStreamedFileName = null;
+			void deleteExportTempFileByName(fileName);
+		};
+
 		// Cancel polling
 		let cancelInterval: ReturnType<typeof setInterval> | null = null;
 		let cancelled = false;
@@ -247,6 +290,7 @@ export async function runExportInWorker({
 					// Terminate the worker immediately. If the worker is stuck in
 					// a blocking operation (e.g. GPU init), it can't process a
 					// "cancel" message — so we must terminate from this side.
+					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, cancelled: true });
 				}
@@ -280,6 +324,7 @@ export async function runExportInWorker({
 					scheduleTimeout();
 					return;
 				}
+				discardPendingStreamedFile();
 				cleanup();
 				resolve({
 					success: false,
@@ -303,6 +348,7 @@ export async function runExportInWorker({
 				| { type: "progress"; progress: number }
 				| { type: "init-progress"; phase: string; progress: number }
 				| { type: "complete"; buffer: ArrayBuffer }
+				| { type: "complete-streamed"; byteLength: number; fileName: string }
 				| { type: "error"; error: string }
 				| { type: "cancelled" }
 				| { type: "ready" }
@@ -342,12 +388,48 @@ export async function runExportInWorker({
 					resolve({ success: true, buffer: data.buffer });
 					break;
 
+				case "complete-streamed": {
+					// Resolve metadata only — reading to ArrayBuffer would defeat
+					// streaming (peak RAM ≈ file size again). Verify readability
+					// (size matches the worker's report) WITHOUT retaining bytes.
+					const { byteLength, fileName } = data;
+					void openStreamedExportFile(fileName).then(
+						(file) => {
+							if (file.size !== byteLength) {
+								cleanup();
+								void deleteExportTempFileByName(fileName);
+								resolve({
+									success: false,
+									error: `Streamed export file size mismatch (expected ${byteLength}, got ${file.size})`,
+								});
+								return;
+							}
+							pendingStreamedFileName = fileName;
+							cleanup();
+							resolve({
+								success: true,
+								streamed: { byteLength, fileName },
+							});
+						},
+						() => {
+							cleanup();
+							resolve({
+								success: false,
+								error: "Streamed export file is unreadable",
+							});
+						},
+					);
+					break;
+				}
+
 				case "error":
+					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, error: data.error });
 					break;
 
 				case "cancelled":
+					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, cancelled: true });
 					break;
@@ -355,6 +437,7 @@ export async function runExportInWorker({
 		};
 
 		worker.onmessageerror = () => {
+			discardPendingStreamedFile();
 			cleanup();
 			resolve({
 				success: false,
@@ -363,6 +446,7 @@ export async function runExportInWorker({
 		};
 
 		worker.onerror = (event) => {
+			discardPendingStreamedFile();
 			cleanup();
 			resolve({
 				success: false,
@@ -401,6 +485,7 @@ export async function runExportInWorker({
 					videoCodec,
 					audioCodec,
 					forceSoftwareEncoding,
+					streamToDisk,
 				},
 				transferables,
 			);

@@ -19,6 +19,8 @@ import {
 import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
 import { processMediaAssets } from "@/lib/media/processing";
 import type { ExportOptions, ExportResult, ExportState } from "@/lib/export";
+import { hasExportContent } from "@/lib/export";
+import { deleteExportTempFileByName } from "@/services/renderer/export-output";
 import { storageService } from "@/services/storage/service";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
@@ -449,13 +451,17 @@ export class ProjectManager {
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {
 		const cacheKey = this.getExportHistoryKey({ options });
 		const cached = cacheKey ? this.exportHistory.get(cacheKey) : null;
-		if (cached?.success && cached.buffer) {
+		if (cached?.success && hasExportContent({ result: cached })) {
 			const result = { ...cached, cached: true };
 			this.exportState = { isExporting: false, progress: 1, result };
 			this.notify();
 			return result;
 		}
 
+		// A new export replaces the previous result: delete the handed-over
+		// OPFS file (if any) so it never orphans. Evicted history entries get
+		// the same treatment below.
+		void this.discardStreamedExportFile(this.exportState.result);
 		this.exportCancelRequested = false;
 		this.exportState = { isExporting: true, progress: 0, result: null };
 		this.notify();
@@ -481,12 +487,26 @@ export class ProjectManager {
 			onCancel: () => this.exportCancelRequested,
 		});
 
-		if (cacheKey && result.success && result.buffer) {
-			this.exportHistory.set(cacheKey, result);
-			while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
-				const oldestKey = this.exportHistory.keys().next().value;
-				if (!oldestKey) break;
-				this.exportHistory.delete(oldestKey);
+		// Cancelled/failed runs leave no handed-over file on the success path
+		// (worker + bridge already deleted it), but the cancel poll can win
+		// after a streamed success resolved — belt-and-braces delete here.
+		if (!result.success) {
+			void this.discardStreamedExportFile(result);
+		}
+
+		if (cacheKey && result.success && hasExportContent({ result })) {
+			// History holds at most one entry; a streamed result must NOT be
+			// cached — replaying it after its file was deleted would hand the
+			// UI a dangling fileName. Buffer results keep the old behavior.
+			if (result.buffer) {
+				this.exportHistory.set(cacheKey, result);
+				while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
+					const oldestKey = this.exportHistory.keys().next().value;
+					if (!oldestKey) break;
+					const evicted = this.exportHistory.get(oldestKey);
+					this.exportHistory.delete(oldestKey);
+					void this.discardStreamedExportFile(evicted);
+				}
 			}
 		}
 
@@ -504,7 +524,21 @@ export class ProjectManager {
 		this.exportCancelRequested = true;
 	}
 
+	/**
+	 * Best-effort delete of a result's handed-over OPFS file. Never throws;
+	 * buffer-only results are a no-op.
+	 */
+	private discardStreamedExportFile(
+		result: ExportResult | null | undefined,
+	): Promise<void> {
+		if (!result?.streamed) return Promise.resolve();
+		return deleteExportTempFileByName(result.streamed.fileName);
+	}
+
 	clearExportState(): void {
+		// Dialog dismissed without download (or explicit reset): the handed-over
+		// OPFS file would otherwise orphan — its only reference was this state.
+		void this.discardStreamedExportFile(this.exportState.result);
 		this.exportState = { isExporting: false, progress: 0, result: null };
 		this.notify();
 	}

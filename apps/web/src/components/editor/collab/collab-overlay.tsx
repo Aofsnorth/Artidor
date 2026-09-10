@@ -12,7 +12,6 @@
 
 import { useCollabStore } from "@/stores/collab-store";
 import { useMemo } from "react";
-import { useShallow } from "zustand/shallow";
 
 /** Remote cursor rendered on the timeline. */
 function RemoteCursor({

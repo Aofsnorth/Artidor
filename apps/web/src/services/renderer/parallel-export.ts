@@ -257,9 +257,12 @@ export async function runParallelExport({
 	}
 
 	// Any segment failure → throw so the caller falls back to single-worker.
+	// (Segment workers stay buffer-backed: a streamed segment here would mean
+	// a no-buffer handover the concatenator can't consume — deliberate
+	// follow-up, not a silent path. See ledger export-streaming R-track.)
 	const segmentBuffers: ArrayBuffer[] = [];
 	for (const result of segmentResults) {
-		if (!result.success || !("buffer" in result)) {
+		if (!result.success || !("buffer" in result) || !result.buffer) {
 			const error =
 				!result.success && "error" in result
 					? result.error

@@ -42,7 +42,7 @@ export class ToggleSourceAudioSeparationCommand extends Command {
 			track: sourceTrack,
 			elementId: this.params.elementId,
 		});
-		if (!sourceElement || sourceElement.type !== "video") {
+		if (sourceElement?.type !== "video") {
 			return;
 		}
 		const videoElement = sourceElement;
