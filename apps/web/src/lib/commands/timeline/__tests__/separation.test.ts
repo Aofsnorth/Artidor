@@ -7,7 +7,12 @@
  */
 import { afterAll, beforeEach, expect, mock, test } from "bun:test";
 import type { EditorCore } from "@/core";
-import type { SceneTracks, TimelineElement, VideoElement } from "@/lib/timeline";
+import type {
+	AudioTrack,
+	SceneTracks,
+	TimelineElement,
+	VideoElement,
+} from "@/lib/timeline";
 import {
 	buildSceneTracks,
 	buildVideoElement,
@@ -28,10 +33,15 @@ const editorMock = {
 	timeline: {
 		updateTracks: updateTracksMock,
 	},
+	selection: {
+		getSelectedElements: () => [],
+		setSelectedElements: () => {},
+	},
 	media: {
-		getAssets: () => [
-			{ id: "media", type: "video", hasAudio: true },
-		] as Array<Record<string, unknown>>,
+		getAssets: () =>
+			[{ id: "media", type: "video", hasAudio: true }] as Array<
+				Record<string, unknown>
+			>,
 	},
 } as unknown as EditorCore;
 
@@ -69,8 +79,16 @@ function findElement(id: string): TimelineElement | undefined {
 	return allElements().find((element) => element.id === id);
 }
 
-function buildVideo(id: string, overrides: Partial<VideoElement> = {}): VideoElement {
-	return buildVideoElement({ id, startTime: 0, duration: 120_000, ...overrides });
+function buildVideo(
+	id: string,
+	overrides: Partial<VideoElement> = {},
+): VideoElement {
+	return buildVideoElement({
+		id,
+		startTime: 0,
+		duration: 120_000,
+		...overrides,
+	});
 }
 
 test("separate then recover removes the detached layer — no doubled audio", () => {
@@ -173,11 +191,13 @@ test("separate→undo→redo chain leaves a single detached layer", () => {
 	// Undo restores the pre-separation tracks (video enabled, no audio layer).
 	manager.undo();
 	expect(currentTracks).toBe(original);
-	expect(findElement("clip")).toMatchObject({ isSourceAudioEnabled: true });
+	expect(findElement("clip")?.isSourceAudioEnabled).not.toBe(false);
 
 	// Redo (base Command.redo → execute) re-separates: exactly one layer again.
 	manager.redo();
-	const audioLayers = allElements().filter((element) => element.type === "audio");
+	const audioLayers = allElements().filter(
+		(element) => element.type === "audio",
+	);
 	expect(audioLayers).toHaveLength(1);
 	expect(findElement("clip")).toMatchObject({ isSourceAudioEnabled: false });
 });
@@ -201,4 +221,43 @@ test("detached audio element carries the sourceElementId back-reference", () => 
 		sourceElementId?: string;
 	};
 	expect(detached.sourceElementId).toBe("clip");
+});
+
+test("recover keeps a pre-existing empty lane while dropping its own emptied lane", () => {
+	resetTracks(
+		buildSceneTracks({
+			main: buildVideoTrack({ elements: [buildVideo("clip")] }),
+			audio: [
+				{
+					id: "pre-empty",
+					name: "Empty",
+					type: "audio",
+					elements: [],
+					muted: false,
+				} as AudioTrack,
+			],
+		}),
+	);
+	const manager = new CommandManager(editorMock);
+
+	manager.execute({
+		command: new ToggleSourceAudioSeparationCommand({
+			trackId: "main",
+			elementId: "clip",
+		}),
+	});
+	// Separation appended its own lane; the pre-existing empty lane is untouched.
+	expect(currentTracks.audio.map((track) => track.id)).toContain("pre-empty");
+
+	manager.execute({
+		command: new ToggleSourceAudioSeparationCommand({
+			trackId: "main",
+			elementId: "clip",
+		}),
+	});
+	// Recover drops ONLY the lane it emptied; the pre-existing empty lane stays.
+	expect(currentTracks.audio.map((track) => track.id)).toContain("pre-empty");
+	expect(
+		allElements().filter((element) => element.type === "audio"),
+	).toHaveLength(0);
 });

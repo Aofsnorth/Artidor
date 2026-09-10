@@ -9,6 +9,21 @@ interface CommandHistoryEntry {
 	selectionOverride?: ElementRef[];
 }
 
+/**
+ * Maximum number of retained undo entries. The history was unbounded
+ * (every executed command retained its full before/after snapshots
+ * forever), so long sessions leaked memory proportional to edit count.
+ * Evicted entries drop out of the undo window; an optional `dispose`
+ * hook on the command is invoked so entries holding external resources
+ * (e.g. Blob URLs) release them. Plain-data snapshots need no hook —
+ * dropping the reference lets GC reclaim them.
+ *
+ * Tradeoff: AI revert snapshots (`AIManager.revertToMessage`) older than
+ * this window can only partially revert — the revert loop already
+ * terminates via `canUndo()`, so it undoes what is retained and stops.
+ */
+export const MAX_COMMAND_HISTORY_LENGTH = 100;
+
 export class CommandManager {
 	public isRippleEnabled = false;
 	// When true, every mutating command is rejected. This is the single
@@ -41,7 +56,7 @@ export class CommandManager {
 		this.applyRippleIfEnabled({ beforeTracks });
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors(command);
-		this.history.push({
+		this.appendHistory({
 			command,
 			previousSelection,
 			selectionOverride,
@@ -51,11 +66,26 @@ export class CommandManager {
 	}
 
 	push({ command }: { command: Command }): void {
-		this.history.push({
+		this.appendHistory({
 			command,
 			previousSelection: this.getSelectionSnapshot(),
 		});
 		this.redoStack = [];
+	}
+
+	/**
+	 * Append one entry, evicting the oldest entries past
+	 * `MAX_HISTORY_LENGTH` (oldest-first) so the undo stack stays bounded.
+	 * When `dispose` exists on the evicted command it is invoked so entries
+	 * holding external resources (Blob URLs, object URLs) release them;
+	 * plain-data snapshots are reclaimed by GC once the reference drops.
+	 */
+	private appendHistory(entry: CommandHistoryEntry): void {
+		this.history.push(entry);
+		while (this.history.length > MAX_COMMAND_HISTORY_LENGTH) {
+			const evicted = this.history.shift();
+			evicted?.command.dispose?.();
+		}
 	}
 
 	/** Subscribe until the returned idempotent disposer is called. */
@@ -104,7 +134,7 @@ export class CommandManager {
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors(entry.command);
 
-		this.history.push({
+		this.appendHistory({
 			command: entry.command,
 			previousSelection,
 			selectionOverride,

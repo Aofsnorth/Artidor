@@ -186,11 +186,13 @@ function CameraNumberInput({
 }) {
 	const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
 		const parsed = parseFloat(e.target.value);
-		if (Number.isNaN(parsed)) return;
-		const clamped =
-			min != null && max != null
-				? Math.min(max, Math.max(min, parsed))
-				: parsed;
+		// NaN *and* non-finite are both no-ops: single-sided clamps (near/far
+		// carry only min) use Math.max alone, so Infinity would otherwise
+		// bypass the clamp and land raw in the camera element.
+		if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return;
+		let clamped = parsed;
+		if (min != null) clamped = Math.max(min, clamped);
+		if (max != null) clamped = Math.min(max, clamped);
 		if (clamped !== value) onChange(clamped);
 	};
 

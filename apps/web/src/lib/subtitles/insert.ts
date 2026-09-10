@@ -5,6 +5,9 @@ import {
 	InsertElementCommand,
 	RemoveTrackCommand,
 } from "@/lib/commands";
+// Direct module import: UpdateTrackCommand is not re-exported by the
+// commands barrel (owned by another track — do not touch it here).
+import { UpdateTrackCommand } from "@/lib/commands/timeline/track/update-track";
 import { buildSubtitleTextElement } from "./build-subtitle-text-element";
 import type { SubtitleCue } from "./types";
 import type { TextTrack } from "@/lib/timeline";
@@ -63,31 +66,23 @@ export function insertCaptionChunksAsTextTrack({
 			}),
 	);
 
+	// Name the new track inside the SAME batch via UpdateTrackCommand so
+	// undo removes the whole import (remove-old + add + inserts + rename)
+	// in one step. The old direct updateTracks() rename was a second,
+	// non-undoable write that also clobbered redo.
+	const renameCommand = new UpdateTrackCommand({
+		trackId,
+		updates: { name: CAPTION_TRACK_NAME },
+	});
 	const commands = existing
-		? [new RemoveTrackCommand(existing.id), addTrackCommand, ...insertCommands]
-		: [addTrackCommand, ...insertCommands];
+		? [
+				new RemoveTrackCommand(existing.id),
+				addTrackCommand,
+				...insertCommands,
+				renameCommand,
+			]
+		: [addTrackCommand, ...insertCommands, renameCommand];
 	editor.command.execute({ command: new BatchCommand(commands) });
 
-	// Name the new track so it's recognisable as the caption track on the
-	// next regenerate / export. Done as a direct state patch (the batch above
-	// has already created it); this keeps AddTrackCommand generic.
-	renameTrack({ editor, trackId, name: CAPTION_TRACK_NAME });
-
 	return trackId;
-}
-
-function renameTrack({
-	editor,
-	trackId,
-	name,
-}: {
-	editor: EditorCore;
-	trackId: string;
-	name: string;
-}): void {
-	const tracks = editor.scenes.getActiveScene().tracks;
-	const overlay = tracks.overlay.map((t) =>
-		t.id === trackId ? { ...t, name } : t,
-	);
-	editor.timeline.updateTracks({ ...tracks, overlay });
 }

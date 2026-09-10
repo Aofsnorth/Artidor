@@ -76,6 +76,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import { useAssetPreviewStore } from "@/stores/asset-preview-store";
+import { useShallow } from "zustand/shallow";
 
 type AssetSource = "library" | "stock" | "cloud";
 
@@ -94,7 +95,21 @@ export function MediaView() {
 		mediaSortOrder,
 		setMediaSort,
 		assetCardSize,
-	} = useAssetsPanelStore();
+	} = useAssetsPanelStore(
+		// useShallow: whole-store destructure returned a fresh object every
+		// call; the media grid re-rendered on unrelated assets-panel churn
+		// (e.g. activeTab switches from other surfaces).
+		useShallow((s) => ({
+			mediaViewMode: s.mediaViewMode,
+			setMediaViewMode: s.setMediaViewMode,
+			highlightMediaId: s.highlightMediaId,
+			clearHighlight: s.clearHighlight,
+			mediaSortBy: s.mediaSortBy,
+			mediaSortOrder: s.mediaSortOrder,
+			setMediaSort: s.setMediaSort,
+			assetCardSize: s.assetCardSize,
+		})),
+	);
 
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [progress, setProgress] = useState(0);

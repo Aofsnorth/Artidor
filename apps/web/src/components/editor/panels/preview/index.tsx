@@ -182,7 +182,11 @@ function PreviewCanvas({
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const renderTree = useEditor((e) => e.renderer.getRenderTree());
-	const { overlays } = usePreviewStore();
+	// Single-field selector (stable identity): the canvas only depends on
+	// overlays — a whole-store or object destructure would re-render it on
+	// every preview-store change (grid edits, guide toggles for OTHER
+	// overlays), including during playback-adjacent preview updates.
+	const overlays = usePreviewStore((s) => s.overlays);
 	const viewport = usePreviewViewportState({
 		canvasHeight: nativeHeight,
 		canvasWidth: nativeWidth,

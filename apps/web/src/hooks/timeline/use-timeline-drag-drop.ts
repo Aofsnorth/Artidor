@@ -515,7 +515,14 @@ export function useTimelineDragDrop({
 			}
 
 			const tracks = getOrderedTracks(editor.scenes.getActiveScene().tracks);
-			const effectTrack = tracks.find((t) => t.type === "effect");
+			// Prefer the hovered track when it is already an effect track so the
+			// commit lands where the drop-line ghost points. Falling back to the
+			// first effect track keeps single-effect-track projects unchanged.
+			const hoveredTrack = tracks[target.trackIndex];
+			const effectTrack =
+				hoveredTrack?.type === "effect"
+					? hoveredTrack
+					: tracks.find((t) => t.type === "effect");
 			let trackId: string;
 
 			if (effectTrack) {

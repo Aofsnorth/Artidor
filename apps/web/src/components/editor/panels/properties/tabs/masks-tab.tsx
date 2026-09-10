@@ -677,7 +677,7 @@ function MaskNumberField({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return (
 				clampDisplay(snapToStep({ value: parsed, step })) / displayMultiplier
 			);

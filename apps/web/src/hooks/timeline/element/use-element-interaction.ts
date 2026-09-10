@@ -66,6 +66,86 @@ interface PendingDragState {
 	clickOffsetTime: number;
 }
 
+export interface MultiDragRef {
+	trackId: string;
+	elementId: string;
+}
+
+/**
+ * Builds the drag set for a timeline move: when the dragged element belongs
+ * to a multi-selection, every selected element travels with it, keeping its
+ * relative time offset to the primary element. Otherwise the set is just the
+ * primary element. Unresolvable refs (stale selection entries) are skipped.
+ *
+ * Pure so the multi-select offset math can be unit-tested without a DOM.
+ */
+export function buildMultiDragSet({
+	selectedElements,
+	primaryTrackId,
+	primaryElementId,
+	primaryStartTime,
+	getElementStartTime,
+}: {
+	selectedElements: MultiDragRef[];
+	primaryTrackId: string;
+	primaryElementId: string;
+	primaryStartTime: number;
+	getElementStartTime: (ref: MultiDragRef) => number | null;
+}): {
+	dragElementIds: string[];
+	dragTimeOffsets: Record<string, number>;
+} {
+	const primaryInSelection = selectedElements.some(
+		(ref) =>
+			ref.trackId === primaryTrackId && ref.elementId === primaryElementId,
+	);
+	if (!primaryInSelection || selectedElements.length < 2) {
+		return { dragElementIds: [primaryElementId], dragTimeOffsets: {} };
+	}
+
+	const dragElementIds: string[] = [primaryElementId];
+	const dragTimeOffsets: Record<string, number> = {};
+	for (const ref of selectedElements) {
+		if (ref.trackId === primaryTrackId && ref.elementId === primaryElementId) {
+			continue;
+		}
+		const startTime = getElementStartTime(ref);
+		if (startTime === null) continue;
+		dragElementIds.push(ref.elementId);
+		dragTimeOffsets[ref.elementId] = startTime - primaryStartTime;
+	}
+	return { dragElementIds, dragTimeOffsets };
+}
+
+/**
+ * Resolves the commit-time moves for a multi-drag: the primary element takes
+ * `snappedTime`, every sibling keeps its relative offset (clamped at zero).
+ * Siblings always stay on their own track — only the primary may change
+ * tracks via the drop target. Pure for unit testing.
+ */
+export function resolveMultiDragMoves({
+	snappedTime,
+	dragElementIds,
+	primaryElementId,
+	dragTimeOffsets,
+}: {
+	snappedTime: number;
+	dragElementIds: string[];
+	primaryElementId: string;
+	dragTimeOffsets: Record<string, number>;
+}): Array<{ elementId: string; newStartTime: number }> {
+	const moves: Array<{ elementId: string; newStartTime: number }> = [];
+	for (const elementId of dragElementIds) {
+		if (elementId === primaryElementId) continue;
+		const offset = dragTimeOffsets[elementId] ?? 0;
+		moves.push({
+			elementId,
+			newStartTime: Math.max(0, snappedTime + offset),
+		});
+	}
+	return moves;
+}
+
 function getClickOffsetTime({
 	clientX,
 	elementRect,
@@ -172,6 +252,8 @@ interface StartDragParams
 	> {
 	initialCurrentTime: number;
 	initialCurrentMouseY: number;
+	dragElementIds?: string[];
+	dragTimeOffsets?: Record<string, number>;
 }
 
 export function useElementInteraction({
@@ -228,12 +310,14 @@ export function useElementInteraction({
 			clickOffsetTime,
 			initialCurrentTime,
 			initialCurrentMouseY,
+			dragElementIds,
+			dragTimeOffsets,
 		}: StartDragParams) => {
 			setDragState({
 				isDragging: true,
 				elementId,
-				dragElementIds: elementId ? [elementId] : [],
-				dragTimeOffsets: {},
+				dragElementIds: dragElementIds ?? (elementId ? [elementId] : []),
+				dragTimeOffsets: dragTimeOffsets ?? {},
 				trackId,
 				startMouseX,
 				startMouseY,
@@ -351,10 +435,27 @@ export function useElementInteraction({
 							time: adjustedTime,
 							rate: activeProject.settings.fps,
 						}) ?? adjustedTime;
+					// Snapshot the multi-select drag set at drag start so the
+					// whole group travels with the primary element, keeping
+					// relative offsets (CapCut/Premiere group-drag behavior).
+					const pending = pendingDragRef.current;
+					const { dragElementIds, dragTimeOffsets } = buildMultiDragSet({
+						selectedElements,
+						primaryTrackId: pending.trackId,
+						primaryElementId: pending.elementId,
+						primaryStartTime: pending.startElementTime,
+						getElementStartTime: (ref) =>
+							tracks
+								.find(({ id }) => id === ref.trackId)
+								?.elements.find(({ id }) => id === ref.elementId)?.startTime ??
+							null,
+					});
 					startDrag({
-						...pendingDragRef.current,
+						...pending,
 						initialCurrentTime: snappedTime,
 						initialCurrentMouseY: clientY,
+						dragElementIds,
+						dragTimeOffsets,
 					});
 					startedDragThisEvent = true;
 					pendingDragRef.current = null;
@@ -460,6 +561,7 @@ export function useElementInteraction({
 		sceneTracks,
 		trackHeights,
 		extraHeights,
+		selectedElements,
 	]);
 
 	useEffect(() => {
@@ -548,35 +650,35 @@ export function useElementInteraction({
 				} else {
 					const targetTrack = tracks[dropTarget.trackIndex];
 					if (targetTrack) {
-						// Move the dragged element. If it has grouped siblings in the
-						// selection, shift each of them by the SAME time delta so the
-						// whole group moves together, preserving relative offsets.
-						const timeDelta = movingElement
-							? snappedTime - movingElement.startTime
-							: 0;
+						// Move the dragged element. Every other member of the
+						// drag set (snapshotted at drag start, see buildMultiDragSet)
+						// shifts by the SAME snapped delta on its own track, so the
+						// whole group moves together, preserving relative offsets —
+						// including siblings on other tracks. Siblings never change
+						// tracks; only the primary element may.
 						editor.timeline.moveElement({
 							sourceTrackId: dragState.trackId,
 							targetTrackId: targetTrack.id,
 							elementId: dragState.elementId,
 							newStartTime: snappedTime,
 						});
-						if (timeDelta !== 0 && targetTrack.id === dragState.trackId) {
-							for (const ref of selectedElements) {
-								if (
-									ref.elementId === dragState.elementId &&
-									ref.trackId === dragState.trackId
-								) {
-									continue;
-								}
-								const sib = editor.timeline
-									.getTrackById({ trackId: ref.trackId })
-									?.elements.find((e) => e.id === ref.elementId);
-								if (!sib) continue;
+						if (dragState.elementId) {
+							const siblingMoves = resolveMultiDragMoves({
+								snappedTime,
+								dragElementIds: dragState.dragElementIds,
+								primaryElementId: dragState.elementId,
+								dragTimeOffsets: dragState.dragTimeOffsets,
+							});
+							for (const move of siblingMoves) {
+								const sibRef = selectedElements.find(
+									(ref) => ref.elementId === move.elementId,
+								);
+								if (!sibRef) continue;
 								editor.timeline.moveElement({
-									sourceTrackId: ref.trackId,
-									targetTrackId: ref.trackId,
-									elementId: ref.elementId,
-									newStartTime: Math.max(0, sib.startTime + timeDelta),
+									sourceTrackId: sibRef.trackId,
+									targetTrackId: sibRef.trackId,
+									elementId: move.elementId,
+									newStartTime: move.newStartTime,
 								});
 							}
 						}
@@ -609,6 +711,8 @@ export function useElementInteraction({
 		dragState.startMouseY,
 		dragState.trackId,
 		dragState.currentTime,
+		dragState.dragElementIds,
+		dragState.dragTimeOffsets,
 		zoomLevel,
 		tracks,
 		endDrag,

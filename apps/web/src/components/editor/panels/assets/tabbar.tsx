@@ -12,6 +12,7 @@ import {
 	tabs,
 	useAssetsPanelStore,
 } from "@/stores/assets-panel-store";
+import { useShallow } from "zustand/shallow";
 import {
 	formatStorageSize,
 	useStorageEstimate,
@@ -25,8 +26,19 @@ import {
 } from "@/stores/feature-flags-store";
 
 export function TabBar() {
-	const { activeTab, setActiveTab } = useAssetsPanelStore();
+	// useShallow: whole-store destructure returned a fresh object every call;
+	// the tab rail (always mounted) re-rendered on unrelated assets-panel
+	// churn (sort changes, card-size drags, highlight reveals).
+	const { activeTab, setActiveTab } = useAssetsPanelStore(
+		useShallow((s) => ({
+			activeTab: s.activeTab,
+			setActiveTab: s.setActiveTab,
+		})),
+	);
 	const aiStatus = useAIStore((s) => s.status);
+	// Single-field selector (stable identity): the rail only needs the
+	// flags map — a whole-store destructure would re-render it on every
+	// flag toggle AND on ephemeral keybindings-store-adjacent churn.
 	const enabledFlags = useFeatureFlagsStore((s) => s.enabled);
 	// Hide tabs the user has disabled via the feature-flags (modularity).
 	const visibleTabKeys = VISIBLE_TAB_KEYS.filter(

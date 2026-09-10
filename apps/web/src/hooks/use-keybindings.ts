@@ -3,6 +3,7 @@ import { invokeAction } from "@/lib/actions";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { isTypableDOMElement } from "@/utils/browser";
+import { useShallow } from "zustand/shallow";
 
 /**
  * a composable that hooks to the caller component's
@@ -11,13 +12,26 @@ import { isTypableDOMElement } from "@/utils/browser";
  */
 export function useKeybindingsListener() {
 	const editor = useEditor();
+	// useShallow: the whole-store destructure previously returned a fresh
+	// object every call, re-rendering the listener host (the editor page)
+	// on ANY keybindings change — including per-keystroke overlay-depth
+	// toggles while recording a shortcut. Actions are stable references;
+	// only the small primitives (depth/flags) can still trigger renders.
 	const {
 		keybindings,
 		getKeybindingString,
 		overlayDepth,
 		isLoadingProject,
 		isRecording,
-	} = useKeybindingsStore();
+	} = useKeybindingsStore(
+		useShallow((s) => ({
+			keybindings: s.keybindings,
+			getKeybindingString: s.getKeybindingString,
+			overlayDepth: s.overlayDepth,
+			isLoadingProject: s.isLoadingProject,
+			isRecording: s.isRecording,
+		})),
+	);
 	// Track the most recent space press for the double-space shortcut.
 	// Two presses within 350ms adds a timeline mark.
 	const lastSpaceAtRef = useRef<number>(0);

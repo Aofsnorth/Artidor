@@ -97,7 +97,7 @@ export class MoveElementCommand extends Command {
 			tracks: tracksToUpdate,
 			targetTrackId: this.targetTrackId,
 			requestedStartTime: this.newStartTime,
-			extitleElementId: this.elementId,
+			excludeElementId: this.elementId,
 		});
 
 		// Non-main tracks have no enforceMainTrackStart clamping, and callers

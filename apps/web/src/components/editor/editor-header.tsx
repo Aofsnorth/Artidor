@@ -13,7 +13,6 @@ import Link from "next/link";
 import { RenameProjectDialog } from "./dialogs/rename-project-dialog";
 import { DeleteProjectDialog } from "./dialogs/delete-project-dialog";
 import { useRouter } from "next/navigation";
-import { FaDiscord } from "react-icons/fa6";
 import { ExportButton } from "./export-button";
 import { ShareButton } from "./share-button";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
@@ -26,6 +25,7 @@ import {
 	ArrowDown01Icon,
 	Settings01Icon,
 	DashboardSquareSettingIcon,
+	DiscordIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
@@ -293,7 +293,7 @@ function ProjectDropdown() {
 					{SOCIAL_LINKS.discord && (
 						<DropdownMenuItem
 							asChild
-							icon={<FaDiscord className="size-4!" />}
+							icon={<HugeiconsIcon icon={DiscordIcon} className="size-4!" />}
 							className="hover:bg-white/[0.08] transition-colors focus:bg-white/[0.08] focus:text-white rounded"
 						>
 							<Link

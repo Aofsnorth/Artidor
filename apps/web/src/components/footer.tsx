@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { RiDiscordFill, RiTwitterXLine } from "react-icons/ri";
-import { FaGithub } from "react-icons/fa6";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+	DiscordIcon,
+	GithubIcon,
+	NewTwitterIcon,
+} from "@hugeicons/core-free-icons";
 import Image from "next/image";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
@@ -76,7 +80,7 @@ export function Footer() {
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.github")}
 							>
-								<FaGithub className="size-4" />
+								<HugeiconsIcon icon={GithubIcon} className="size-4" />
 							</Link>
 							<Link
 								href={SOCIAL_LINKS.x}
@@ -85,7 +89,7 @@ export function Footer() {
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.x")}
 							>
-								<RiTwitterXLine className="size-4" />
+								<HugeiconsIcon icon={NewTwitterIcon} className="size-4" />
 							</Link>
 							{SOCIAL_LINKS.discord && (
 								<Link
@@ -95,7 +99,7 @@ export function Footer() {
 									rel="noopener noreferrer"
 									aria-label={t("home.footer.social.discord")}
 								>
-									<RiDiscordFill className="size-4" />
+									<HugeiconsIcon icon={DiscordIcon} className="size-4" />
 								</Link>
 							)}
 						</div>

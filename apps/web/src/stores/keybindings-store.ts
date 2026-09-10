@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
 import type { TActionWithOptionalArgs } from "@/lib/actions";
-import { getDefaultShortcuts } from "@/lib/actions";
+import { ACTIONS, getDefaultShortcuts } from "@/lib/actions";
 import { isTypableDOMElement } from "@/utils/browser";
 import { isAppleDevice } from "@/utils/platform";
 import type { KeybindingConfig, ShortcutKey } from "@/lib/actions/keybinding";
@@ -115,9 +115,20 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 			},
 
 			importKeybindings: (config: KeybindingConfig) => {
-				for (const [key] of Object.entries(config)) {
+				// Reject unknown actions: a stale export (or a hand-edited
+				// file) referencing a renamed/removed action would
+				// otherwise plant dead bindings the shortcuts help skips
+				// silently (useKeyboardShortcutsHelp drops ids missing
+				// from ACTIONS), leaving the user with fewer shortcuts
+				// than the import claimed to install.
+				for (const [key, action] of Object.entries(config)) {
 					if (typeof key !== "string" || key.length === 0) {
 						throw new Error(`Invalid key format: ${key}`);
+					}
+					if (typeof action !== "string" || !(action in ACTIONS)) {
+						throw new Error(
+							`Unknown action "${String(action)}" for key "${key}". Import a file exported from this version of the editor.`,
+						);
 					}
 				}
 				set({

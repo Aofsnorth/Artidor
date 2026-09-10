@@ -531,7 +531,7 @@ function ShadowNumberField({
 					onChange={(event) => {
 						const raw = (event.target as HTMLInputElement).value;
 						const parsed = parseFloat(raw);
-						if (Number.isNaN(parsed)) return;
+						if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return;
 						const clamped =
 							min !== undefined && max !== undefined
 								? Math.max(min, Math.min(max, parsed))

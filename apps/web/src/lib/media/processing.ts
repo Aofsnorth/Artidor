@@ -172,6 +172,15 @@ async function generateImageThumbnail({
 	});
 }
 
+export function getThumbnailTimeForDuration({
+	durationSeconds,
+}: {
+	durationSeconds: number;
+}): number {
+	if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return 0;
+	return Math.min(1, durationSeconds * 0.5);
+}
+
 export async function processMediaAssets({
 	files,
 	onProgress,
@@ -184,6 +193,12 @@ export async function processMediaAssets({
 
 	const total = fileArray.length;
 	let completed = 0;
+	const reportProgress = () => {
+		if (onProgress && total > 0) {
+			const percent = Math.round((completed / total) * 100);
+			onProgress({ progress: percent });
+		}
+	};
 
 	// Quick check: if total batch size fits, skip per-file quota checks entirely.
 	// If it doesn't fit, fall back to per-file checks so the user can still
@@ -219,6 +234,7 @@ export async function processMediaAssets({
 			if (!fileType) {
 				toast.error(`Unsupported file type: ${file.name}`);
 				completed += 1;
+				reportProgress();
 				continue;
 			}
 
@@ -240,6 +256,7 @@ export async function processMediaAssets({
 						},
 					});
 					completed += 1;
+					reportProgress();
 					continue;
 				}
 			}
@@ -277,7 +294,9 @@ export async function processMediaAssets({
 
 						thumbnailUrl = await generateThumbnail({
 							videoFile: file,
-							timeInSeconds: 1,
+							timeInSeconds: getThumbnailTimeForDuration({
+								durationSeconds: duration ?? Number.NaN,
+							}),
 						});
 					} catch (error) {
 						console.warn("Video processing failed", error);
@@ -301,14 +320,12 @@ export async function processMediaAssets({
 				});
 
 				completed += 1;
-				if (onProgress) {
-					const percent = Math.round((completed / total) * 100);
-					onProgress({ progress: percent });
-				}
+				reportProgress();
 			} catch (error) {
 				console.error("Error processing file:", file.name, error);
 				toast.error(`Failed to process ${file.name}`);
 				completed += 1;
+				reportProgress();
 			}
 		}
 	};

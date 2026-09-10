@@ -119,8 +119,10 @@ describe("RemoveTrackCommand", () => {
 			audio: [buildAudioTrack("audio-1")],
 		});
 
-		new RemoveTrackCommand("no-such-track").execute();
+		const result = new RemoveTrackCommand("no-such-track").execute();
 
+		expect(result).toBeUndefined();
+		expect(updateTracksMock).not.toHaveBeenCalled();
 		expect(currentTracks.main.id).toBe("main-track");
 		expect(currentTracks.overlay).toHaveLength(1);
 		expect(currentTracks.overlayAfter).toHaveLength(1);

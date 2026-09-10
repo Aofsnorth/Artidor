@@ -254,9 +254,15 @@ export function getVisibleElementsWithBounds({
 	mediaAssets: MediaAsset[];
 }): ElementWithBounds[] {
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
+	// Render stack order is overlay (top) → main → overlayAfter (bottom), so
+	// hit order must include overlayAfter too (scene-builder paints it).
+	// `.reverse()` makes index 0 the topmost layer for the hit loop below.
 	const orderedTracks = [
 		...tracks.overlay.filter((track) => !("hidden" in track && track.hidden)),
 		...(!tracks.main.hidden ? [tracks.main] : []),
+		...tracks.overlayAfter.filter(
+			(track) => !("hidden" in track && track.hidden),
+		),
 	].reverse();
 
 	const result: ElementWithBounds[] = [];

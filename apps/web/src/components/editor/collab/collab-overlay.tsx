@@ -12,6 +12,7 @@
 
 import { useCollabStore } from "@/stores/collab-store";
 import { useMemo } from "react";
+import { useShallow } from "zustand/shallow";
 
 /** Remote cursor rendered on the timeline. */
 function RemoteCursor({
@@ -62,18 +63,23 @@ function RemoteCursor({
 
 /** Presence bar — shows colored dots for each connected collaborator. */
 export function CollabPresenceBar() {
-	const collab = useCollabStore();
+	// useShallow: the whole-store subscription re-rendered on EVERY collab
+	// change (cursor moves at pointer rate, lock toggles). Now only the
+	// three fields this bar reads can trigger a render.
+	const collaborators = useCollabStore((s) => s.collaborators);
+	const sessionId = useCollabStore((s) => s.sessionId);
+	const status = useCollabStore((s) => s.status);
 
-	const collaborators = useMemo(
-		() => collab.collaborators.filter((c) => c.id !== collab.sessionId),
-		[collab.collaborators, collab.sessionId],
+	const others = useMemo(
+		() => collaborators.filter((c) => c.id !== sessionId),
+		[collaborators, sessionId],
 	);
 
-	if (collab.status !== "connected" || collaborators.length === 0) return null;
+	if (status !== "connected" || others.length === 0) return null;
 
 	return (
 		<div className="flex items-center gap-1">
-			{collaborators.map((c) => (
+			{others.map((c) => (
 				<div
 					key={c.id}
 					className="group relative flex items-center"
@@ -102,8 +108,10 @@ export function CollabPresenceBar() {
  * are read-only; the host's own project is never shared or overwritten.
  */
 export function CollabSessionBanner() {
-	const collab = useCollabStore();
-	if (collab.status !== "connected") return null;
+	// Single-field selector (stable identity): text-only banner — cursor
+	// moves and lock toggles must not re-render it.
+	const status = useCollabStore((s) => s.status);
+	if (status !== "connected") return null;
 
 	return (
 		<div className="flex items-center gap-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-[10px] text-amber-200/90">
@@ -118,21 +126,25 @@ export function CollabSessionBanner() {
 
 /** Cursor overlay — renders all remote cursors. Place inside the timeline content area. */
 export function CollabCursorOverlay() {
-	const collab = useCollabStore();
+	// Primitive + single-array selectors (stable identities): cursor
+	// positions update at pointer rate, collaborator list changes rarely.
+	// A whole-store destructure re-rendered this overlay on every lock /
+	// comment / suggestion change too.
+	const cursors = useCollabStore((s) => s.cursors);
+	const sessionId = useCollabStore((s) => s.sessionId);
+	const status = useCollabStore((s) => s.status);
+	const collaborators = useCollabStore((s) => s.collaborators);
 
 	const remoteCursors = useMemo(
-		() => collab.cursors.filter((c) => c.collaboratorId !== collab.sessionId),
-		[collab.cursors, collab.sessionId],
+		() => cursors.filter((c) => c.collaboratorId !== sessionId),
+		[cursors, sessionId],
 	);
 
-	if (collab.status !== "connected" || remoteCursors.length === 0) return null;
+	if (status !== "connected" || remoteCursors.length === 0) return null;
 
 	// Map collaborator IDs to nicknames + colors.
 	const collabMap = new Map(
-		collab.collaborators.map((c) => [
-			c.id,
-			{ nickname: c.nickname, color: c.color },
-		]),
+		collaborators.map((c) => [c.id, { nickname: c.nickname, color: c.color }]),
 	);
 
 	return (
@@ -156,15 +168,20 @@ export function CollabCursorOverlay() {
 
 /** Lock indicator — shows a colored border on elements locked by others. */
 export function ElementLockIndicator({ elementId }: { elementId: string }) {
-	const collab = useCollabStore();
+	// Single-field selectors (stable identities): per-clip component, mounted
+	// on every timeline element — a whole-store destructure re-rendered ALL
+	// clips on every cursor move / presence change.
+	const locks = useCollabStore((s) => s.locks);
+	const collaborators = useCollabStore((s) => s.collaborators);
+	const sessionId = useCollabStore((s) => s.sessionId);
 
 	const lockHolder = useMemo(() => {
-		const lock = collab.locks.find((l) => l.elementId === elementId);
-		if (!lock || lock.lockedBy === collab.sessionId) return null;
-		const holder = collab.collaborators.find((c) => c.id === lock.lockedBy);
+		const lock = locks.find((l) => l.elementId === elementId);
+		if (!lock || lock.lockedBy === sessionId) return null;
+		const holder = collaborators.find((c) => c.id === lock.lockedBy);
 		if (!holder) return null;
 		return { nickname: holder.nickname, color: holder.color };
-	}, [collab.locks, collab.collaborators, collab.sessionId, elementId]);
+	}, [locks, collaborators, sessionId, elementId]);
 
 	if (!lockHolder) return null;
 

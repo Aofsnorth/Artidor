@@ -14,6 +14,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
+import { createThrottledStorage } from "@/stores/throttled-storage";
 
 export type FloatablePanelId =
 	| "assets"
@@ -78,24 +79,58 @@ interface EditorUIStore {
 	}) => void;
 }
 
+function sanitizeFloatingNumber({
+	value,
+	fallback,
+}: {
+	value: number;
+	fallback: number;
+}): number {
+	return Number.isFinite(value) ? value : fallback;
+}
+
 function clampFloatingPosition({
 	position,
+	panelId,
 }: {
 	position: FloatingPanelState;
+	panelId?: FloatablePanelId;
 }): FloatingPanelState {
-	if (typeof window === "undefined") return position;
+	// NaN/Infinity positions (e.g. a torn drag event) would otherwise sail
+	// through Math.min/Math.max as NaN, persist as JSON null, and rehydrate
+	// into a broken layout. Sanitize to that panel's default first.
+	const fallback = panelId ? DEFAULT_FLOATING_PANELS[panelId] : undefined;
+	const sane: FloatingPanelState = {
+		x: sanitizeFloatingNumber({
+			value: position.x,
+			fallback: fallback?.x ?? 0,
+		}),
+		y: sanitizeFloatingNumber({
+			value: position.y,
+			fallback: fallback?.y ?? 0,
+		}),
+		width: sanitizeFloatingNumber({
+			value: position.width,
+			fallback: fallback?.width ?? FLOATING_PANEL_MIN_SIZE.width,
+		}),
+		height: sanitizeFloatingNumber({
+			value: position.height,
+			fallback: fallback?.height ?? FLOATING_PANEL_MIN_SIZE.height,
+		}),
+	};
+	if (typeof window === "undefined") return sane;
 	const maxX = Math.max(0, window.innerWidth - FLOATING_PANEL_MIN_SIZE.width);
 	const maxY = Math.max(0, window.innerHeight - FLOATING_PANEL_MIN_SIZE.height);
 	return {
-		x: Math.max(0, Math.min(maxX, position.x)),
-		y: Math.max(0, Math.min(maxY, position.y)),
+		x: Math.max(0, Math.min(maxX, sane.x)),
+		y: Math.max(0, Math.min(maxY, sane.y)),
 		width: Math.max(
 			FLOATING_PANEL_MIN_SIZE.width,
-			Math.min(window.innerWidth, position.width),
+			Math.min(window.innerWidth, sane.width),
 		),
 		height: Math.max(
 			FLOATING_PANEL_MIN_SIZE.height,
-			Math.min(window.innerHeight, position.height),
+			Math.min(window.innerHeight, sane.height),
 		),
 	};
 }
@@ -129,6 +164,7 @@ export const useEditorUIStore = create<EditorUIStore>()(
 						...state.floatingPanels,
 						[id]: clampFloatingPosition({
 							position: DEFAULT_FLOATING_PANELS[id],
+							panelId: id,
 						}),
 					},
 				}));
@@ -147,14 +183,25 @@ export const useEditorUIStore = create<EditorUIStore>()(
 				set((state) => ({
 					floatingPanels: {
 						...state.floatingPanels,
-						[id]: clampFloatingPosition({ position }),
+						[id]: clampFloatingPosition({ position, panelId: id }),
 					},
 				}));
 			},
 		}),
 		{
 			name: "editor-ui",
-			storage: browserStorage,
+			// Throttled (250ms trailing): floating-panel drags fire
+			// `setFloatingPanelPosition` per mousemove (60+/sec), and each
+			// `set` re-serializes + writes localStorage synchronously on the
+			// main thread. Coalescing the burst keeps the final drop position
+			// (the only value that matters) while skipping ~60 writes/sec
+			// mid-drag. Behavior unchanged: same key, same partialize, same
+			// rehydrate; only write timing. Durability tradeoff (tab closed
+			// mid-drag can lose ≤250ms of position) accepted for UI layout.
+			storage: createThrottledStorage({
+				storage: browserStorage,
+				waitMs: 250,
+			}),
 			partialize: (state) => ({
 				focusMode: state.focusMode,
 				floatingPanels: state.floatingPanels,

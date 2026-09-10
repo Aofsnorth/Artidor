@@ -33,7 +33,11 @@ import { CopyPasteButtons } from "../components/copy-paste-buttons";
 
 export function parseNumericInput({ input }: { input: string }): number | null {
 	const parsed = parseFloat(input);
-	return Number.isNaN(parsed) ? null : parsed;
+	// Reject NaN *and* non-finite (Infinity / 1e999 overflow): without this,
+	// transform/text fields wrote Infinity raw into commands, poisoning
+	// duration math and WASM time conversion downstream.
+	if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+	return parsed;
 }
 
 export function isPropertyAtDefault({
@@ -845,7 +849,7 @@ function PivotSection({
 					value={(pivot.x * 100).toFixed(0)}
 					onChange={(event) => {
 						const parsed = Number.parseFloat(event.currentTarget.value);
-						if (Number.isNaN(parsed)) return;
+						if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return;
 						onCommit({ x: clamp01({ value: parsed / 100 }), y: pivot.y });
 					}}
 				/>
@@ -856,7 +860,7 @@ function PivotSection({
 					value={(pivot.y * 100).toFixed(0)}
 					onChange={(event) => {
 						const parsed = Number.parseFloat(event.currentTarget.value);
-						if (Number.isNaN(parsed)) return;
+						if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return;
 						onCommit({ x: pivot.x, y: clamp01({ value: parsed / 100 }) });
 					}}
 				/>

@@ -134,7 +134,7 @@ function ColorFillSection({
 									scrubClamp={{ min: 0, max: 100 }}
 									onChange={(event) => {
 										const parsed = Number.parseFloat(event.currentTarget.value);
-										if (!Number.isNaN(parsed)) {
+										if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
 											setMediaFillOpacity(parsed / 100);
 										}
 									}}
@@ -224,7 +224,7 @@ function StrokeSection({
 									max={128}
 									onChange={(event) => {
 										const parsed = Number.parseFloat(event.currentTarget.value);
-										if (!Number.isNaN(parsed)) {
+										if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
 											patchStroke({ ...stroke, width: Math.max(0, parsed) });
 										}
 									}}
@@ -313,7 +313,7 @@ function BorderSection({
 									max={128}
 									onChange={(event) => {
 										const parsed = Number.parseFloat(event.currentTarget.value);
-										if (!Number.isNaN(parsed)) {
+										if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
 											patchBorder({
 												...border,
 												width: Math.max(0, parsed),
@@ -332,10 +332,14 @@ function BorderSection({
 									scrubClamp={{ min: 0, max: 100 }}
 									onChange={(event) => {
 										const parsed = Number.parseFloat(event.currentTarget.value);
-										if (!Number.isNaN(parsed)) {
+										if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
 											patchBorder({
 												...border,
-												opacity: parsed / 100,
+												// Same 0–100 → 0–1 mapping as the fill-opacity
+												// field above; unclamped negatives/over-100
+												// previously wrote raw (invisible / blown
+												// border) despite the NumberField min/max.
+												opacity: Math.max(0, Math.min(1, parsed / 100)),
 											});
 										}
 									}}
@@ -448,7 +452,7 @@ function ShadowSection({
 											const parsed = Number.parseFloat(
 												event.currentTarget.value,
 											);
-											if (!Number.isNaN(parsed)) {
+											if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
 												patchShadow({
 													...shadow,
 													[key]: key === "blur" ? Math.max(0, parsed) : parsed,

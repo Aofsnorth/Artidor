@@ -22,19 +22,20 @@ export class ToggleTrackVisibilityCommand extends Command {
 			tracks: this.savedState,
 			trackId: this.trackId,
 		});
-		if (!targetTrack) {
-			return;
+		// No-op: unknown id or incompatible type. Must not write or the
+		// command manager leaves a dead history step behind.
+		if (!targetTrack || !canTrackBeHidden(targetTrack)) {
+			this.savedState = null;
+			return undefined;
 		}
 
 		const updatedTracks = updateTrackInSceneTracks({
 			tracks: this.savedState,
 			trackId: this.trackId,
-			update: (track) => {
-				if (canTrackBeHidden(track)) {
-					return { ...track, hidden: !track.hidden };
-				}
-				return track;
-			},
+			update: (track) => ({
+				...track,
+				hidden: !(track as { hidden: boolean }).hidden,
+			}),
 		});
 
 		editor.timeline.updateTracks(updatedTracks);

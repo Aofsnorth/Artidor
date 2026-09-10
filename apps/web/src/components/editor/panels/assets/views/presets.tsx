@@ -14,6 +14,7 @@ import { PanelView } from "./base-panel";
 import { useEditor } from "@/hooks/use-editor";
 import { usePresetsStore } from "@/stores/presets-store";
 import { presetToClipboardItems } from "@/lib/presets";
+import { useShallow } from "zustand/shallow";
 import type { UserPreset } from "@/lib/presets/types";
 import { PasteCommand } from "@/lib/commands/timeline";
 import { setDragData } from "@/lib/drag-data";
@@ -36,7 +37,15 @@ import { useI18n } from "@/lib/i18n";
 
 export function PresetsView() {
 	const { t } = useI18n();
-	const { presets, isLoaded, loadPresets } = usePresetsStore();
+	// useShallow: whole-store destructure returned a fresh object every call;
+	// the presets grid re-rendered on unrelated presets-store churn.
+	const { presets, isLoaded, loadPresets } = usePresetsStore(
+		useShallow((s) => ({
+			presets: s.presets,
+			isLoaded: s.isLoaded,
+			loadPresets: s.loadPresets,
+		})),
+	);
 	const [query, setQuery] = useState("");
 
 	useEffect(() => {
@@ -106,13 +115,27 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 	const [renameDraft, setRenameDraft] = useState(preset.name);
 	const dragRef = useRef<HTMLDivElement>(null);
 
+	// Single insertion point: every pasted item lands at the playhead in ONE
+	// PasteCommand (one undo step). Each item keeps its relativeStartTime
+	// offset from the preset's earliest element, so multi-item presets keep
+	// their internal timing; single-item presets land exactly at the playhead.
 	const insertPreset = () => {
 		try {
 			const clipboardItems = presetToClipboardItems({ preset });
+			if (clipboardItems.length === 0) {
+				toast.error(t("catalog.failedToAddPreset"));
+				return;
+			}
 			const time = editor.playback.getCurrentTime();
 			editor.command.execute({
 				command: new PasteCommand({ time, clipboardItems }),
 			});
+			if (clipboardItems.length < preset.items.length) {
+				toast.warning(
+					`${t("catalog.presetAdded", { name: preset.name })} (${preset.items.length - clipboardItems.length} item(s) skipped: unsupported track type)`,
+				);
+				return;
+			}
 			toast.success(t("catalog.presetAdded", { name: preset.name }));
 		} catch (error) {
 			console.error("Failed to insert preset:", error);

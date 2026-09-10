@@ -14,6 +14,7 @@ import { Command, type CommandResult } from "@/lib/commands/base-command";
 import { EditorCore } from "@/core";
 import {
 	getOrderedTracks,
+	type CombinedElement,
 	type SceneTracks,
 	type TimelineElement,
 	type ElementRef,
@@ -228,10 +229,9 @@ export class CombineElementsCommand extends Command {
 		const minStart = Math.min(...startTimes);
 		const maxEnd = Math.max(...endTimes);
 
-		const combinedElement: TimelineElement = {
+		const combinedElement: CombinedElement = {
 			...firstSource,
 			id: this.combinedId,
-			type: "combined" as const,
 			name: `Combined ${sources.length} layers`,
 			startTime: minStart,
 			duration: maxEnd - minStart,

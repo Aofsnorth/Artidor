@@ -128,23 +128,30 @@ function resolveEffectPassGroups({
 	width: number;
 	height: number;
 }): EffectPass[][] {
-	return (effects ?? [])
-		.filter((effect) => effect.enabled)
-		.map((effect) => {
-			const resolvedParams = resolveEffectParamsAtTime({
-				effect,
-				animations,
-				localTime,
-			});
-			const definition = effectsRegistry.get(effect.type);
-			return resolveEffectPasses({
-				definition,
-				effectParams: resolvedParams,
-				width,
-				height,
-				localTime,
-			});
-		});
+	return (
+		(effects ?? [])
+			// Skip effects whose type is not registered (stale project data, removed
+			// plugin). The graphics path falls back to a default definition and the
+			// param-update path leaves unknown types untouched, so throwing here and
+			// failing the whole export would be inconsistent — a normal editor skips
+			// the unknown effect and renders the rest.
+			.filter((effect) => effect.enabled && effectsRegistry.has(effect.type))
+			.map((effect) => {
+				const resolvedParams = resolveEffectParamsAtTime({
+					effect,
+					animations,
+					localTime,
+				});
+				const definition = effectsRegistry.get(effect.type);
+				return resolveEffectPasses({
+					definition,
+					effectParams: resolvedParams,
+					width,
+					height,
+					localTime,
+				});
+			})
+	);
 }
 
 function resolveVisualState({
@@ -577,6 +584,11 @@ export function resolveEffectLayerNode({
 		elementStartTime: node.params.timeOffset,
 		elementDuration: node.params.duration,
 	});
+	// An unregistered effect type (stale project, removed plugin) contributes
+	// no passes instead of throwing and failing the entire export.
+	if (!effectsRegistry.has(node.params.effectType)) {
+		return null;
+	}
 	const definition = effectsRegistry.get(node.params.effectType);
 	const passes = resolveEffectPasses({
 		definition,

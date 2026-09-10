@@ -20,7 +20,8 @@ import type { EditorCore } from "@/core";
 mock.module("artidor-wasm", () => ({
 	TICKS_PER_SECOND: 120_000,
 	// 30fps grid: 4_000 ticks per frame.
-	roundToFrame: ({ time }: { time: number }) => Math.round(time / 4_000) * 4_000,
+	roundToFrame: ({ time }: { time: number }) =>
+		Math.round(time / 4_000) * 4_000,
 	snappedSeekTime: ({ time }: { time: number }) => time,
 }));
 
@@ -120,7 +121,7 @@ test("loop restarts from zero in the same tick that hits the end", () => {
 
 	// Start near the end: one frame before the 10s end.
 	manager.seek({ time: TOTAL_DURATION - 4_000 });
-	manager.setLoop({ loop: true });
+	manager.setLoopMode({ loop: true });
 	manager.play();
 
 	expect(manager.getIsPlaying()).toBe(true);
@@ -144,7 +145,7 @@ test("loop survives a >1-frame rAF gap that jumps past the old 50ms window", () 
 
 	// Start 2 frames before the end.
 	manager.seek({ time: TOTAL_DURATION - 2 * 4_000 });
-	manager.setLoop({ loop: true });
+	manager.setLoopMode({ loop: true });
 	manager.play();
 
 	// A single rAF tick covering 6 frames (~200ms at 30fps) blows straight
@@ -192,7 +193,7 @@ test("seek while looping re-anchors the wall clock so playback does not jump", (
 	const editor = buildEditor();
 	const manager = new PlaybackManager(editor);
 
-	manager.setLoop({ loop: true });
+	manager.setLoopMode({ loop: true });
 	manager.seek({ time: 5 * 120_000 });
 	manager.play();
 	advanceFrames(3);

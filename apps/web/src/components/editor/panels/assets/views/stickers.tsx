@@ -27,6 +27,7 @@ import type {
 	StickerItem as StickerData,
 } from "@/lib/stickers";
 import { useStickersStore } from "@/stores/stickers-store";
+import { useShallow } from "zustand/shallow";
 import { cn } from "@/utils/ui";
 import { HappyIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -63,6 +64,9 @@ const STICKER_CATEGORY_TO_KEY: Record<
 
 export function StickersView() {
 	const { t } = useI18n();
+	// useShallow: the whole-store destructure previously returned a fresh
+	// object every call, re-rendering this view on ANY stickers-store
+	// change (e.g. isBrowsing toggles from an unrelated fetch).
 	const {
 		browseContent,
 		browseStickers,
@@ -72,7 +76,18 @@ export function StickersView() {
 		setSearchQuery,
 		setSelectedCategory,
 		viewMode,
-	} = useStickersStore();
+	} = useStickersStore(
+		useShallow((s) => ({
+			browseContent: s.browseContent,
+			browseStickers: s.browseStickers,
+			searchQuery: s.searchQuery,
+			searchStickers: s.searchStickers,
+			selectedCategory: s.selectedCategory,
+			setSearchQuery: s.setSearchQuery,
+			setSelectedCategory: s.setSelectedCategory,
+			viewMode: s.viewMode,
+		})),
+	);
 
 	useEffect(() => {
 		if (viewMode === "browse" && !browseContent) {
@@ -223,6 +238,8 @@ function RegionBanner({ region }: { region: string }) {
 
 function StickersContentView() {
 	const { t } = useI18n();
+	// useShallow: same whole-store destructure fix as StickersView — this
+	// view re-renders on every keystroke otherwise (searchQuery lives here).
 	const {
 		browseContent,
 		clearRecentStickers,
@@ -233,7 +250,19 @@ function StickersContentView() {
 		selectedCategory,
 		setSelectedCategory,
 		viewMode,
-	} = useStickersStore();
+	} = useStickersStore(
+		useShallow((s) => ({
+			browseContent: s.browseContent,
+			clearRecentStickers: s.clearRecentStickers,
+			isBrowsing: s.isBrowsing,
+			isSearching: s.isSearching,
+			searchQuery: s.searchQuery,
+			searchResults: s.searchResults,
+			selectedCategory: s.selectedCategory,
+			setSelectedCategory: s.setSelectedCategory,
+			viewMode: s.viewMode,
+		})),
+	);
 
 	if (viewMode === "search") {
 		if (isSearching) {
@@ -510,7 +539,10 @@ function StickerItem({
 }: StickerItemProps) {
 	const { t } = useI18n();
 	const editor = useEditor();
-	const { addToRecentStickers } = useStickersStore();
+	// Single-field selector (stable identity): subscribes only to the
+	// action, so unrelated stickers-store churn (browse results, search
+	// text) never re-renders this per-card component.
+	const addToRecentStickers = useStickersStore((s) => s.addToRecentStickers);
 	const [isAdding, setIsAdding] = useState(false);
 	const [hasImageError, setHasImageError] = useState(false);
 

@@ -11,9 +11,9 @@ import { getOrderedTracks } from "@/lib/timeline";
 import type {
 	AudioTrack,
 	SceneTracks,
-	TimelineElement,
+	TimelineTrack,
 	VideoElement,
-} from "@/lib/timeline/types";
+} from "@/lib/timeline";
 import { generateUUID } from "@/utils/id";
 
 export class ToggleSourceAudioSeparationCommand extends Command {
@@ -38,13 +38,14 @@ export class ToggleSourceAudioSeparationCommand extends Command {
 		if (!sourceTrack) {
 			return;
 		}
-		const sourceElement = sourceTrack.elements.find(
-			(element) => element.id === this.params.elementId,
-		) as TimelineElement | undefined;
-		if (sourceElement?.type !== "video") {
+		const sourceElement = findElementOnTrack({
+			track: sourceTrack,
+			elementId: this.params.elementId,
+		});
+		if (!sourceElement || sourceElement.type !== "video") {
 			return;
 		}
-		const videoElement: VideoElement = sourceElement;
+		const videoElement = sourceElement;
 
 		if (isSourceAudioSeparated({ element: videoElement })) {
 			// Recover = re-enable the video's own audio AND remove the detached
@@ -151,35 +152,68 @@ function removeDetachedAudioLayer({
 	tracks: SceneTracks;
 	sourceElementId: string;
 }): SceneTracks {
-	const sourceElement = getOrderedTracks(tracks)
-		.flatMap((track) => track.elements)
-		.find((element) => element.id === sourceElementId) as
-		| VideoElement
-		| undefined;
+	const sourceElement = findVideoElement({
+		tracks,
+		elementId: sourceElementId,
+	});
 	if (!sourceElement) {
 		return tracks;
 	}
 
+	// Lanes this removal empties are dropped; lanes that were ALREADY empty
+	// before the removal are left alone (pruning those would delete lanes
+	// the user created deliberately as a side effect of a recover toggle).
+	const emptiedLaneIds = new Set<string>();
+	const nextAudio = tracks.audio.map((track) => ({
+		...track,
+		elements: track.elements.filter((element) => {
+			if (element.sourceElementId !== sourceElementId) return true;
+			// Still pristine? (same media, same placement). Otherwise keep it.
+			const detachedMediaId =
+				element.sourceType === "upload" ? element.mediaId : undefined;
+			const isUnchanged =
+				detachedMediaId === sourceElement.mediaId &&
+				element.startTime === sourceElement.startTime &&
+				element.duration === sourceElement.duration;
+			if (isUnchanged) emptiedLaneIds.add(track.id);
+			return !isUnchanged;
+		}),
+	}));
+
 	return {
 		...tracks,
-		audio: tracks.audio
-			.map((track) => ({
-				...track,
-				elements: track.elements.filter((element) => {
-					if (element.type !== "audio") return true;
-					const detached = element as TimelineElement & {
-						sourceElementId?: string;
-						mediaId?: string;
-					};
-					if (detached.sourceElementId !== sourceElementId) return true;
-					// Still pristine? (same media, same placement). Otherwise keep it.
-					const isUnchanged =
-						detached.mediaId === sourceElement.mediaId &&
-						detached.startTime === sourceElement.startTime &&
-						detached.duration === sourceElement.duration;
-					return !isUnchanged;
-				}),
-			}))
-			.filter((track) => track.elements.length > 0),
+		audio: nextAudio.filter(
+			(track) => track.elements.length > 0 || !emptiedLaneIds.has(track.id),
+		),
 	};
+}
+
+/**
+ * Per-track-type element lookup: the track discriminant narrows
+ * `track.elements` to that lane's element type, so the find result is
+ * already typed (no cross-union cast of `track.elements`, no `unknown`).
+ */
+function findElementOnTrack({
+	track,
+	elementId,
+}: {
+	track: TimelineTrack;
+	elementId: string;
+}): TimelineTrack["elements"][number] | undefined {
+	return track.elements.find((element) => element.id === elementId);
+}
+function findVideoElement({
+	tracks,
+	elementId,
+}: {
+	tracks: SceneTracks;
+	elementId: string;
+}): VideoElement | undefined {
+	for (const track of getOrderedTracks(tracks)) {
+		if (track.type !== "video") continue;
+		const found = track.elements.find((element) => element.id === elementId);
+		if (!found) continue;
+		return found.type === "video" ? found : undefined;
+	}
+	return undefined;
 }

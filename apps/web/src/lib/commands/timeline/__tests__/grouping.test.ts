@@ -20,6 +20,7 @@ import type { EditorCore } from "@/core";
 import type {
 	AudioElement,
 	AudioTrack,
+	CombinedElement,
 	ElementRef,
 	SceneTracks,
 	TimelineElement,
@@ -244,10 +245,8 @@ test("combine lands the reported id on the timeline, once, and round-trips undo/
 	// Both sources are consumed by the combine.
 	expect(findElement("a")).toBeUndefined();
 	expect(findElement("b")).toBeUndefined();
-	const combined = findElement(combinedId) as TimelineElement & {
-		combinedElements?: TimelineElement[];
-	};
-	expect(combined.combinedElements).toHaveLength(2);
+	const combined = findElement(combinedId) as CombinedElement | undefined;
+	expect(combined?.combinedElements).toHaveLength(2);
 	expect(combined.startTime).toBe(0);
 	expect(combined.duration).toBe(110_000);
 	// The combined element is selected for follow-up edits.
@@ -581,4 +580,74 @@ test("a dependent setParent survives undo/redo of the group command via stable i
 	expect(findElement("a")).toMatchObject({ groupId });
 	expect(findElement("b")).toMatchObject({ groupId });
 	expect(findElement("a")).toMatchObject({ parentId: "b" });
+});
+
+/* ------------------------------------------------------------------ */
+/* 7. Multi-undo grouping corruption round-trips                       */
+/* ------------------------------------------------------------------ */
+
+test("interleaved group/ungroup/combine multi-undo restores each layer exactly", () => {
+	resetTracks(
+		buildSceneTracks({
+			main: buildVideoTrack({
+				elements: [
+					buildVideoElement({ id: "a", startTime: 0, duration: 50_000 }),
+					buildVideoElement({ id: "b", startTime: 60_000, duration: 50_000 }),
+				],
+			}),
+		}),
+	);
+	const manager = new CommandManager(editorMock);
+	const pristine = currentTracks;
+
+	// Layer 1: group a+b.
+	const group = new GroupElementsCommand({
+		elementRefs: [
+			{ trackId: "main", elementId: "a" },
+			{ trackId: "main", elementId: "b" },
+		],
+	});
+	manager.execute({ command: group });
+	const grouped = currentTracks;
+	const groupId = group.getGroupId();
+	expect(findElement("a")).toMatchObject({ groupId });
+
+	// Layer 2: ungroup them again.
+	manager.execute({ command: new UngroupElementsCommand({ groupId }) });
+	expect(findElement("a")?.groupId).toBeUndefined();
+
+	// Layer 3: combine them (consumes both sources).
+	const combine = new CombineElementsCommand({
+		elementRefs: [
+			{ trackId: "main", elementId: "a" },
+			{ trackId: "main", elementId: "b" },
+		],
+	});
+	manager.execute({ command: combine });
+	const combinedId = combine.getCombinedId();
+	expect(findElement(combinedId)).toBeDefined();
+
+	// Unwind one layer at a time: each undo restores the exact prior tracks.
+	manager.undo();
+	expect(findElement(combinedId)).toBeUndefined();
+	expect(findElement("a")).toBeDefined();
+	expect(findElement("b")).toBeDefined();
+
+	manager.undo();
+	expect(currentTracks).toBe(grouped);
+	expect(findElement("a")).toMatchObject({ groupId });
+
+	manager.undo();
+	expect(currentTracks).toBe(pristine);
+	expect(findElement("a")?.groupId).toBeUndefined();
+
+	// Redo the whole stack: group tag, then combine id, all stable.
+	manager.redo();
+	manager.redo();
+	manager.redo();
+	const recombined = findElement(combinedId) as CombinedElement | undefined;
+	expect(recombined).toBeDefined();
+	expect(recombined?.combinedElements).toHaveLength(2);
+	expect(findElement("a")).toBeUndefined();
+	expect(findElement("b")).toBeUndefined();
 });

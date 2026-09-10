@@ -8,6 +8,7 @@ import {
 } from "@/hooks/use-keyboard-shortcuts-help";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { getDefaultShortcuts } from "@/lib/actions";
+import { useShallow } from "zustand/shallow";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -23,6 +24,10 @@ export function ShortcutsEditor() {
 		useState<KeyboardShortcut | null>(null);
 	const [query, setQuery] = useState("");
 
+	// useShallow: the whole-store destructure returned a fresh object every
+	// call, re-rendering the (large, per-key-row) editor on ANY keybindings
+	// change. Now each field is compared shallowly so only real changes
+	// re-render.
 	const {
 		updateKeybinding,
 		removeKeybinding,
@@ -32,7 +37,18 @@ export function ShortcutsEditor() {
 		setIsRecording,
 		resetToDefaults,
 		isRecording,
-	} = useKeybindingsStore();
+	} = useKeybindingsStore(
+		useShallow((s) => ({
+			updateKeybinding: s.updateKeybinding,
+			removeKeybinding: s.removeKeybinding,
+			getKeybindingString: s.getKeybindingString,
+			validateKeybinding: s.validateKeybinding,
+			getKeybindingsForAction: s.getKeybindingsForAction,
+			setIsRecording: s.setIsRecording,
+			resetToDefaults: s.resetToDefaults,
+			isRecording: s.isRecording,
+		})),
+	);
 
 	const { shortcuts } = useKeyboardShortcutsHelp();
 
@@ -138,14 +154,24 @@ export function ShortcutsEditor() {
 				return;
 			}
 			// Drop current bindings for this action, restore the defaults.
-			for (const key of getKeybindingsForAction(shortcut.action)) {
+			// Roll back on conflict: if a default key is taken by another
+			// action, restore the pre-reset bindings instead of leaving
+			// the action half-reset (some defaults applied, the rest
+			// dropped). The conflicting occupant keeps its key.
+			const previousKeys = getKeybindingsForAction(shortcut.action);
+			const conflictingKeys = defaultKeys.filter(
+				(key) => validateKeybinding(key, shortcut.action) !== null,
+			);
+			if (conflictingKeys.length > 0) {
+				toast.error(
+					`Cannot reset: ${conflictingKeys.join(", ")} ${conflictingKeys.length === 1 ? "is" : "are"} already used by another action. Reassign ${conflictingKeys.length === 1 ? "it" : "them"} first.`,
+				);
+				return;
+			}
+			for (const key of previousKeys) {
 				removeKeybinding(key);
 			}
 			for (const key of defaultKeys) {
-				const conflict = validateKeybinding(key, shortcut.action);
-				if (conflict) {
-					removeKeybinding(key);
-				}
 				updateKeybinding(key, shortcut.action);
 			}
 			toast.success("Shortcut reset to default");

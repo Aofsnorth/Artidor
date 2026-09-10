@@ -9,32 +9,58 @@
  * overlay so global single-key hotkeys are suppressed (the user is typing).
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Command } from "cmdk";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useEditorUIStore } from "@/stores/editor-ui-store";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { useKeyboardShortcutsHelp } from "@/hooks/use-keyboard-shortcuts-help";
+import { useShallow } from "zustand/shallow";
 import { invokeAction } from "@/lib/actions";
 import type { TActionWithOptionalArgs } from "@/lib/actions";
 
 export function CommandPalette() {
 	const open = useEditorUIStore((s) => s.commandPaletteOpen);
 	const setOpen = useEditorUIStore((s) => s.setCommandPaletteOpen);
-	const { openOverlay, closeOverlay } = useKeybindingsStore();
+	// useShallow: the whole-store destructure returned a fresh object every
+	// call, re-rendering the palette on ANY keybindings change (e.g. overlay
+	// depth toggles from unrelated dialogs) even while closed.
+	const { openOverlay, closeOverlay } = useKeybindingsStore(
+		useShallow((s) => ({
+			openOverlay: s.openOverlay,
+			closeOverlay: s.closeOverlay,
+		})),
+	);
 	const { shortcuts } = useKeyboardShortcutsHelp();
+	// cmdk keeps its input value across Dialog mounts (internal state
+	// survives the close), so without a reset the next Ctrl+K reopen shows
+	// the previous query — a stale filter from before a project switch.
+	// Controlled value: cleared on every close (and on unmount via the
+	// overlay cleanup below, which also covers unmount during a switch).
+	const [query, setQuery] = useState("");
 
 	// Suppress global single-key hotkeys while the palette has focus.
 	useEffect(() => {
-		if (!open) return;
+		if (!open) {
+			setQuery("");
+			return;
+		}
 		openOverlay("command-palette");
-		return () => closeOverlay("command-palette");
+		return () => {
+			closeOverlay("command-palette");
+			setQuery("");
+		};
 	}, [open, openOverlay, closeOverlay]);
 
 	const runAction = (action: TActionWithOptionalArgs) => {
 		setOpen(false);
 		// Defer so the dialog unmounts before the action runs (some actions
 		// touch focus / the timeline that the dialog was trapping).
+		// Palette items come from the keybindings catalog (no-arg UI actions
+		// only: toggle-play, split, undo, ...). invokeAction with undefined
+		// args is correct for exactly those actions; arg-bearing actions such
+		// as remove-media-asset or seek-forward are never listed here, so no
+		// scope check is needed beyond that invariant.
 		requestAnimationFrame(() => invokeAction(action));
 	};
 
@@ -55,6 +81,8 @@ export function CommandPalette() {
 				>
 					<Command.Input
 						autoFocus
+						value={query}
+						onValueChange={setQuery}
 						placeholder="Search commands…"
 						className="h-11 w-full border-b border-white/[0.08] bg-transparent px-4 text-sm text-white/90 outline-none placeholder:text-white/35"
 					/>

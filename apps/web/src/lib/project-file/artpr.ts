@@ -24,6 +24,8 @@ interface ArtprEnvelope {
 	data: string;
 }
 
+export const ARTPR_MAX_ITERATIONS = 1_000_000;
+
 export const ARTPR_PROJECT_MIME = ARTPR_MIME;
 export const ARTPR_PROJECT_EXTENSION = ARTPR_EXTENSION;
 export const ARTPR_PROJECT_FILE_NAME = `artidor${ARTPR_EXTENSION}`;
@@ -75,20 +77,42 @@ async function deriveArtprKey({
 	);
 }
 
+const BASE64_PATTERN = /^[A-Za-z0-9+/]*={0,2}$/;
+
 function assertEnvelope(value: unknown): ArtprEnvelope {
 	if (!value || typeof value !== "object") {
 		throw new Error("Invalid .artpr file");
 	}
 	const envelope = value as Partial<ArtprEnvelope>;
+	// Version-gate FIRST with a dedicated message: a newer app version's
+	// file must tell the user to update, not look like a corrupt download.
+	if (
+		envelope.format === ARTPR_FORMAT &&
+		typeof envelope.version === "number" &&
+		envelope.version !== ARTPR_VERSION
+	) {
+		throw new Error(
+			`Unsupported .artpr version ${envelope.version} (this app reads version ${ARTPR_VERSION})`,
+		);
+	}
+	// Reject non-integer / non-positive KDF iterations (DoS via crafted
+	// iteration counts) and malformed base64 (atob would throw later with
+	// an unhelpful message; fail here with the envelope error instead).
 	if (
 		envelope.format !== ARTPR_FORMAT ||
 		envelope.version !== ARTPR_VERSION ||
 		envelope.alg !== ARTPR_ALG ||
 		envelope.kdf !== ARTPR_KDF ||
 		typeof envelope.iterations !== "number" ||
+		!Number.isInteger(envelope.iterations) ||
+		envelope.iterations <= 0 ||
+		envelope.iterations > ARTPR_MAX_ITERATIONS ||
 		typeof envelope.salt !== "string" ||
 		typeof envelope.iv !== "string" ||
-		typeof envelope.data !== "string"
+		typeof envelope.data !== "string" ||
+		!BASE64_PATTERN.test(envelope.salt) ||
+		!BASE64_PATTERN.test(envelope.iv) ||
+		!BASE64_PATTERN.test(envelope.data)
 	) {
 		throw new Error("Unsupported or invalid .artpr file");
 	}
@@ -121,10 +145,29 @@ export async function encodeArtprProject(project: unknown): Promise<string> {
 export async function decodeArtprProject<T = unknown>(
 	content: string,
 ): Promise<T> {
-	const envelope = assertEnvelope(JSON.parse(content));
-	const salt = base64ToBytes(envelope.salt);
-	const iv = base64ToBytes(envelope.iv);
-	const data = base64ToBytes(envelope.data);
+	// JSON.parse throws SyntaxError on garbage input — normalize every
+	// malformed-input failure to the envelope error so callers show one
+	// clean "invalid file" message instead of crashing on raw SyntaxError.
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(content);
+	} catch {
+		throw new Error("Unsupported or invalid .artpr file");
+	}
+	const envelope = assertEnvelope(parsed);
+	let salt: Uint8Array;
+	let iv: Uint8Array;
+	let data: Uint8Array;
+	try {
+		salt = base64ToBytes(envelope.salt);
+		iv = base64ToBytes(envelope.iv);
+		data = base64ToBytes(envelope.data);
+	} catch {
+		throw new Error("Unsupported or invalid .artpr file");
+	}
+	if (salt.length !== ARTPR_SALT_BYTES || iv.length !== ARTPR_IV_BYTES) {
+		throw new Error("Unsupported or invalid .artpr file");
+	}
 	const key = await deriveArtprKey({
 		salt,
 		iterations: envelope.iterations,

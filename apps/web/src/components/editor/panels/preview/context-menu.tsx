@@ -9,6 +9,7 @@ import {
 import { usePreviewViewport } from "@/components/editor/panels/preview/preview-viewport";
 import { useEditor } from "@/hooks/use-editor";
 import { usePreviewStore } from "@/stores/preview-store";
+import { useShallow } from "zustand/shallow";
 import { toast } from "sonner";
 
 export function PreviewContextMenu({
@@ -20,7 +21,15 @@ export function PreviewContextMenu({
 }) {
 	const editor = useEditor();
 	const viewport = usePreviewViewport();
-	const { overlays, setOverlayVisibility } = usePreviewStore();
+	// useShallow: the combined destructure returned a fresh object every
+	// call; the context menu re-rendered on every preview-store change
+	// (guide toggles, grid edits) even when overlays were untouched.
+	const { overlays, setOverlayVisibility } = usePreviewStore(
+		useShallow((s) => ({
+			overlays: s.overlays,
+			setOverlayVisibility: s.setOverlayVisibility,
+		})),
+	);
 
 	const handleCopySnapshot = async () => {
 		const result = await editor.renderer.copySnapshot();

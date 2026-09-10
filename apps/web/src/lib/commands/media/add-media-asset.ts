@@ -62,6 +62,7 @@ export class AddMediaAssetCommand extends Command {
 				for (const track of [
 					...currentTracks.overlay,
 					currentTracks.main,
+					...currentTracks.overlayAfter,
 					...currentTracks.audio,
 				]) {
 					for (const element of track.elements) {

@@ -328,12 +328,21 @@ export function buildSubtitleTextElement({
 		});
 	}
 
+	// Round to whole ticks (float seconds drift by ±1 tick otherwise) and
+	// clamp to >= 0 — a negative startTime would place the cue off-timeline
+	// and a zero duration would create an invisible unselectable element.
+	const startTime = Math.max(
+		0,
+		Math.round(caption.startTime * TICKS_PER_SECOND),
+	);
+	const duration = Math.max(1, Math.round(caption.duration * TICKS_PER_SECOND));
+
 	return {
 		...DEFAULTS.text.element,
 		name: `Caption ${index + 1}`,
 		content,
-		duration: Math.round(caption.duration * TICKS_PER_SECOND),
-		startTime: Math.round(caption.startTime * TICKS_PER_SECOND),
+		duration,
+		startTime,
 		fontSize: style.fontSize,
 		fontFamily: style.fontFamily,
 		color: style.color,

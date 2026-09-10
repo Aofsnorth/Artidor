@@ -13,11 +13,14 @@ export class SelectionManager {
 	}
 
 	getSelectedElements(): ElementRef[] {
-		return this.selectedElements;
+		// Defensive copies: callers (hooks, commands) spread/push these arrays.
+		// Returning the live reference let one caller mutate another's snapshot
+		// and skip notify() — selection UI desynced silently.
+		return [...this.selectedElements];
 	}
 
 	getSelectedKeyframes(): SelectedKeyframeRef[] {
-		return this.selectedKeyframes;
+		return [...this.selectedKeyframes];
 	}
 
 	getKeyframeSelectionAnchor(): SelectedKeyframeRef | null {
@@ -31,7 +34,7 @@ export class SelectionManager {
 		elements: ElementRef[];
 		preserveKeyframes?: boolean;
 	}): void {
-		this.selectedElements = elements;
+		this.selectedElements = [...elements];
 		if (!preserveKeyframes) {
 			this.selectedKeyframes = [];
 			this.keyframeSelectionAnchor = null;
@@ -46,7 +49,7 @@ export class SelectionManager {
 		keyframes: SelectedKeyframeRef[];
 		anchorKeyframe?: SelectedKeyframeRef | null;
 	}): void {
-		this.selectedKeyframes = keyframes;
+		this.selectedKeyframes = [...keyframes];
 		if (anchorKeyframe !== undefined) {
 			this.keyframeSelectionAnchor = anchorKeyframe;
 		} else if (keyframes.length === 0) {

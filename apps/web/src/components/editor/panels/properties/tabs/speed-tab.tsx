@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import dynamic from "next/dynamic";
 import { useEditor } from "@/hooks/use-editor";
 import { NumberField } from "@/components/ui/number-field";
 import { Switch } from "@/components/ui/switch";
@@ -27,7 +28,20 @@ import {
 	getFractionDigitsForStep,
 	snapToStep,
 } from "@/utils/math";
-import { FrameInterpolationSection } from "./frame-interpolation-tab";
+
+// Frame interpolation pulls in the ONNX capability probe + a 10-icon set +
+// element-preview hooks. It only renders for video elements, so defer it
+// until the speed tab actually mounts for one. `ssr: false` keeps the probe
+// client-only; the section renders nothing until the chunk loads (its own
+// loading/error states sit inside the section, so no outer fallback needed
+// beyond the tab's existing speed controls which stay interactive).
+const FrameInterpolationSection = dynamic(
+	() =>
+		import("./frame-interpolation-tab").then(
+			(m) => m.FrameInterpolationSection,
+		),
+	{ ssr: false },
+);
 
 const SPEED_STEP = 0.01;
 const SPEED_FRACTION_DIGITS = getFractionDigitsForStep({ step: SPEED_STEP });

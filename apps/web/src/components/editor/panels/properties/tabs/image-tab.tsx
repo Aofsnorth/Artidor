@@ -60,7 +60,7 @@ export function ImageTab({
 		displayValue: (renderElement.opacity ?? DEFAULT_OPACITY ?? 1).toFixed(2),
 		parse: (input) => {
 			const parsed = Number.parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return Math.max(0, Math.min(1, parsed));
 		},
 		onPreview: (value) =>

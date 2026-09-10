@@ -36,6 +36,7 @@ import {
 	filterCatalogItems,
 } from "@/components/editor/panels/assets/views/components/catalog-search";
 import { useI18n } from "@/lib/i18n";
+import { useShallow } from "zustand/shallow";
 
 /**
  * Plugin Manager panel. Lives in the left assets panel under the
@@ -51,7 +52,15 @@ import { useI18n } from "@/lib/i18n";
  */
 export function PluginsView() {
 	const { t } = useI18n();
-	const { plugins, loaded, loadPlugins } = usePluginsStore();
+	// useShallow: whole-store destructure returned a fresh object every call;
+	// the plugin list re-rendered on unrelated plugin-store churn.
+	const { plugins, loaded, loadPlugins } = usePluginsStore(
+		useShallow((s) => ({
+			plugins: s.plugins,
+			loaded: s.loaded,
+			loadPlugins: s.loadPlugins,
+		})),
+	);
 	const [filter, setFilter] = useState<PluginCategory | "all">("all");
 	const [query, setQuery] = useState("");
 	const [detailPlugin, setDetailPlugin] = useState<InstalledPlugin | null>(

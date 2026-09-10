@@ -280,12 +280,24 @@ function AnimateSection({
 		update({ textAnimator: { ...animator, unit: value } });
 	};
 
-	const onNumberChange = (key: "duration" | "stagger", min: number) => {
+	// Mirrors the NumberField min/max above (duration 0.05–10, stagger 0–2):
+	// the raw onChange previously applied only Math.max(min), so over-max
+	// input (e.g. 999s) wrote through despite the declared max.
+	const onNumberChange = (
+		key: "duration" | "stagger",
+		min: number,
+		max: number,
+	) => {
 		return (event: React.ChangeEvent<HTMLInputElement>) => {
 			if (!animator) return;
 			const parsed = parseFloat(event.currentTarget.value);
-			if (Number.isNaN(parsed)) return;
-			update({ textAnimator: { ...animator, [key]: Math.max(min, parsed) } });
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return;
+			update({
+				textAnimator: {
+					...animator,
+					[key]: Math.max(min, Math.min(max, parsed)),
+				},
+			});
 		};
 	};
 
@@ -341,7 +353,7 @@ function AnimateSection({
 										max={10}
 										step={0.05}
 										suffix="s"
-										onChange={onNumberChange("duration", 0.05)}
+										onChange={onNumberChange("duration", 0.05, 10)}
 									/>
 								</SectionField>
 								<SectionField label="Stagger" className="min-w-0">
@@ -354,7 +366,7 @@ function AnimateSection({
 										max={2}
 										step={0.01}
 										suffix="s"
-										onChange={onNumberChange("stagger", 0)}
+										onChange={onNumberChange("stagger", 0, 2)}
 									/>
 								</SectionField>
 							</div>
@@ -463,7 +475,7 @@ function TypographySection({
 		displayValue: element.fontSize.toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return clamp({
 				value: Math.round(parsed),
 				min: MIN_FONT_SIZE,
@@ -569,7 +581,8 @@ function SpacingSection({
 		).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed) ? null : Math.round(parsed);
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.round(parsed);
 		},
 		onPreview: (value) =>
 			editor.timeline.previewElements({
@@ -587,9 +600,8 @@ function SpacingSection({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed)
-				? null
-				: Math.max(0.1, Math.round(parsed * 10) / 10);
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.max(0.1, Math.round(parsed * 10) / 10);
 		},
 		onPreview: (value) =>
 			editor.timeline.previewElements({
@@ -741,7 +753,8 @@ function BackgroundSection({
 		displayValue: Math.round(resolvedPaddingX).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed) ? null : Math.max(0, Math.round(parsed));
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.max(0, Math.round(parsed));
 		},
 		valueAtPlayhead: resolvedPaddingX,
 		step: 1,
@@ -760,7 +773,8 @@ function BackgroundSection({
 		displayValue: Math.round(resolvedPaddingY).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed) ? null : Math.max(0, Math.round(parsed));
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.max(0, Math.round(parsed));
 		},
 		valueAtPlayhead: resolvedPaddingY,
 		step: 1,
@@ -779,7 +793,8 @@ function BackgroundSection({
 		displayValue: Math.round(resolvedOffsetX).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed) ? null : Math.round(parsed);
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.round(parsed);
 		},
 		valueAtPlayhead: resolvedOffsetX,
 		step: 1,
@@ -798,7 +813,8 @@ function BackgroundSection({
 		displayValue: Math.round(resolvedOffsetY).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			return Number.isNaN(parsed) ? null : Math.round(parsed);
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
+			return Math.round(parsed);
 		},
 		valueAtPlayhead: resolvedOffsetY,
 		step: 1,
@@ -817,7 +833,7 @@ function BackgroundSection({
 		displayValue: Math.round(resolvedCornerRadius).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return clamp({
 				value: Math.round(parsed),
 				min: CORNER_RADIUS_MIN,

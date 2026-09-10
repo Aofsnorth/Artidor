@@ -12,6 +12,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
+import { createThrottledStorage } from "@/stores/throttled-storage";
 import {
 	McpClientConnection,
 	type McpConnection,
@@ -90,7 +91,15 @@ export const useMcpStore = create<McpState>()(
 		}),
 		{
 			name: "artidor-mcp-servers",
-			storage: browserStorage,
+			// Throttled (500ms trailing): connection status flips at network
+			// rate during connect/reconnect storms; each flip re-serializes
+			// the (persisted) servers array. Config edits land ≤500ms later —
+			// acceptable for a reconnect-on-mount store. Behavior unchanged:
+			// same key, same partialize, same rehydrate; only write timing.
+			storage: createThrottledStorage({
+				storage: browserStorage,
+				waitMs: 500,
+			}),
 			partialize: (state) => ({ servers: state.servers }),
 		},
 	),

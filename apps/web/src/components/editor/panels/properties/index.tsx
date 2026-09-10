@@ -37,6 +37,7 @@ import {
 	usePropertiesStore,
 	type MediaSummarySize,
 } from "./stores/properties-store";
+import { useShallow } from "zustand/shallow";
 import { getPropertiesConfig, type PropertiesTabDef } from "./registry";
 import { cn } from "@/utils/ui";
 import { ProjectDetailsView } from "./details-view";
@@ -81,7 +82,15 @@ function InspectorView() {
 	useEditor((e) => e.scenes.getActiveSceneOrNull());
 	useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
-	const { activeTabPerType, setActiveTab } = usePropertiesStore();
+	// useShallow: the whole-store destructure returned a fresh object every
+	// call; the inspector re-rendered on unrelated properties-store churn
+	// (favourite toggles, scale-lock flips while another tab is active).
+	const { activeTabPerType, setActiveTab } = usePropertiesStore(
+		useShallow((s) => ({
+			activeTabPerType: s.activeTabPerType,
+			setActiveTab: s.setActiveTab,
+		})),
+	);
 	const arePrimaryTabsHidden = usePropertiesStore(
 		(s) => s.arePrimaryTabsHidden,
 	);
@@ -129,7 +138,10 @@ function InspectorView() {
 	});
 	const elementWithTrack = elementsWithTracks[0];
 
-	if (!elementWithTrack) return null;
+	// Stale refs (deleted/undo-removed element, deleted active scene) resolve
+	// to zero tracks here while selection still holds one ref. Fall back to
+	// Details instead of a blank panel — matches project-switch behaviour.
+	if (!elementWithTrack) return <ProjectDetailsView />;
 
 	const { element, track } = elementWithTrack;
 	const config = getPropertiesConfig({ element, mediaAssets });
@@ -516,6 +528,8 @@ function SelectedElementSummary({
 		media?.thumbnailUrl ?? (media && !isAudioMedia ? media.url : undefined);
 	const mediaSummarySize = usePropertiesStore((s) => s.mediaSummarySize);
 	const setMediaSummarySize = usePropertiesStore((s) => s.setMediaSummarySize);
+	// Single-field selector (stable identity): the star only depends on the
+	// favourites set — tab switches and scale-lock flips must not re-render it.
 	const favoriteMediaIds = usePropertiesStore((s) => s.favoriteMediaIds);
 	const toggleMediaFavorite = usePropertiesStore((s) => s.toggleMediaFavorite);
 	const isFavorited = mediaId ? favoriteMediaIds.has(mediaId) : false;

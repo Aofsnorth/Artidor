@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
 	Dialog,
 	DialogContent,
@@ -33,9 +34,25 @@ import {
 	initiateGoogleOAuth,
 } from "@/lib/drive/api";
 import { buildShareUrl, createShare } from "@/lib/share/client";
-import { StartCollabDialog } from "@/components/editor/collab/collab-dialogs";
-import { CollabPresenceBar, CollabSessionBanner } from "@/components/editor/collab/collab-overlay";
+import {
+	CollabPresenceBar,
+	CollabSessionBanner,
+} from "@/components/editor/collab/collab-overlay";
 import { useCollabStore } from "@/stores/collab-store";
+
+// Collab dialog is only needed when the user opens the Collaboration menu
+// entry — the header itself (Invite button + dropdown) must stay light so
+// the editor's initial bundle skips the dialog's icon set + hooks graph.
+// `ssr: false` matches the dialog's client-only behaviour (it reads the
+// editor singleton + collab store on mount). Fallback is null because the
+// Radix Dialog renders nothing until `open` is true anyway.
+const StartCollabDialog = dynamic(
+	() =>
+		import("@/components/editor/collab/collab-dialogs").then(
+			(m) => m.StartCollabDialog,
+		),
+	{ ssr: false },
+);
 
 export function ShareButton() {
 	const [open, setOpen] = useState(false);

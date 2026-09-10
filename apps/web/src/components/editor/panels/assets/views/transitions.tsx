@@ -16,7 +16,6 @@ import { transitions as presetTransitions } from "@/lib/presets/transitions";
 import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
-import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getTransitionScenePair } from "./components/procedural-preview";
 import { CatalogPreviewTitle } from "./components/catalog-preview";
 import { useCatalogPreviewMotion } from "./components/use-catalog-preview";
@@ -28,7 +27,6 @@ import {
 import type { TransitionDefinition } from "@/lib/transitions";
 import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { useI18n } from "@/lib/i18n";
-
 
 const TRANSITION_CATEGORIES = [
 	"Fade",
@@ -169,15 +167,46 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			const firstEl = firstTrack?.elements.find(
 				(e) => e.id === first.elementId,
 			);
-			if (!firstEl) {
+			const secondTrack = editor.timeline.getTrackById({
+				trackId: second.trackId,
+			});
+			const secondEl = secondTrack?.elements.find(
+				(e) => e.id === second.elementId,
+			);
+			if (!firstEl || !secondEl) {
 				toast.error(t("catalog.firstClipNotFound"));
 				return;
 			}
 
-			const startTime = firstEl.startTime + firstEl.duration;
-			const duration = Math.min(
-				definition.defaultDuration,
-				Math.max(definition.minDuration, TICKS_PER_SECOND),
+			// Overlap window (inside BOTH clips), not the end of the from-clip.
+			// The command re-clamps + validates; this keeps the UI request sane.
+			const overlapStart = Math.max(firstEl.startTime, secondEl.startTime);
+			const overlapEnd = Math.min(
+				firstEl.startTime + firstEl.duration,
+				secondEl.startTime + secondEl.duration,
+			);
+			if (overlapEnd <= overlapStart) {
+				toast.error(t("catalog.failedToAddTransition"), {
+					description: t("catalog.selectTwoClips"),
+				});
+				return;
+			}
+			const duration = Math.max(
+				definition.minDuration,
+				Math.min(
+					definition.defaultDuration,
+					overlapEnd - overlapStart,
+					definition.maxDuration,
+					firstEl.duration,
+					secondEl.duration,
+				),
+			);
+			const startTime = Math.max(
+				overlapStart,
+				Math.min(
+					firstEl.startTime + firstEl.duration - duration,
+					overlapEnd - duration,
+				),
 			);
 
 			addTransition({
@@ -211,7 +240,10 @@ function TransitionItem({ definition }: { definition: TransitionDefinition }) {
 			tabIndex={0}
 			onClick={handleAdd}
 			onKeyDown={(e) => {
-				if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+				if (
+					e.target === e.currentTarget &&
+					(e.key === "Enter" || e.key === " ")
+				) {
 					e.preventDefault();
 					handleAdd();
 				}
@@ -266,7 +298,10 @@ const TransitionPreview = memo(function TransitionPreview({
 		? keyframeCss.replaceAll(keyframeName, scopedName)
 		: keyframeCss;
 
-	const scenes = useMemo(() => getTransitionScenePair(definition.type), [definition.type]);
+	const scenes = useMemo(
+		() => getTransitionScenePair(definition.type),
+		[definition.type],
+	);
 
 	return (
 		<div
@@ -282,7 +317,9 @@ const TransitionPreview = memo(function TransitionPreview({
 				aria-hidden
 				className="absolute inset-0 z-10 bg-cover bg-center"
 				style={{
-					animation: active ? `${scopedName} 2.4s ${definition.easing} infinite alternate` : "none",
+					animation: active
+						? `${scopedName} 2.4s ${definition.easing} infinite alternate`
+						: "none",
 					clipPath: active ? undefined : "inset(0 0 0 50%)",
 					backgroundImage: `url("${scenes.b}")`,
 				}}

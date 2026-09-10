@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
+import { createThrottledStorage } from "@/stores/throttled-storage";
 import { PANEL_CONFIG } from "@/lib/panels/layout";
 
 export interface PanelSizes {
@@ -124,7 +125,16 @@ export const usePanelStore = create<PanelState>()(
 		}),
 		{
 			name: "panel-sizes",
-			storage: browserStorage,
+			// Throttled (250ms trailing): panel + track-label resize drags
+			// fire `setPanel`/`setTrackLabelsWidth` per mousemove (60+/sec),
+			// each synchronously re-serializing + writing localStorage.
+			// Coalescing keeps the final drop size; same key/partialize/
+			// rehydrate, only write timing. Mid-drag tab-close can lose
+			// ≤250ms of layout — accepted for UI chrome.
+			storage: createThrottledStorage({
+				storage: browserStorage,
+				waitMs: 250,
+			}),
 			version: 6,
 			migrate: (persistedState, version) => {
 				// react-resizable-panels v2→v4 changed size units: bare numbers

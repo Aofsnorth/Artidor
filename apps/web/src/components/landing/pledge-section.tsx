@@ -11,7 +11,8 @@
 import { motion } from "motion/react";
 import Link from "next/link";
 import { ArrowRight, Heart, Star } from "lucide-react";
-import { FaGithub } from "react-icons/fa6";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { GithubIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useGitHubRepo } from "@/hooks/use-github-repo";
 import { useI18n } from "@/lib/i18n";
@@ -74,7 +75,7 @@ export function PledgeSection() {
 									size="lg"
 									className="h-11 rounded-full bg-white px-5 text-sm font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
 								>
-									<FaGithub className="mr-1.5 size-4" />
+									<HugeiconsIcon icon={GithubIcon} className="mr-1.5 size-4" />
 									{t("home.pledge.cta.starRepo")}
 									<Star className="ml-1.5 size-3.5 text-amber-400" />
 									{repoStats?.stars && (

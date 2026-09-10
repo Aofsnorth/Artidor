@@ -9,6 +9,7 @@ import {
 	ArrowRight01Icon,
 } from "@hugeicons/core-free-icons";
 import { useWhatsNewStore } from "@/stores/whats-new-store";
+import { useShallow } from "zustand/shallow";
 import { WHATS_NEW, type WhatsNewTag } from "@/lib/whats-new/feed";
 import { cn } from "@/utils/ui";
 
@@ -44,7 +45,17 @@ const TAG_STYLES: Record<
 };
 
 export function WhatsNewCard() {
-	const { isOpen, open, close, toggle, hasUnseen } = useWhatsNewStore();
+	// useShallow: whole-store destructure returned a fresh object every call;
+	// the fixed-position card re-rendered on unrelated whats-new churn.
+	const { isOpen, open, close, toggle, hasUnseen } = useWhatsNewStore(
+		useShallow((s) => ({
+			isOpen: s.isOpen,
+			open: s.open,
+			close: s.close,
+			toggle: s.toggle,
+			hasUnseen: s.hasUnseen,
+		})),
+	);
 	const [mounted, setMounted] = useState(false);
 	const autoOpenedRef = useRef(false);
 

@@ -256,6 +256,26 @@ export function parseAss({ input }: { input: string }): ParseSubtitleResult {
 		);
 	}
 
+	captions.sort((a, b) => a.startTime - b.startTime);
+	let clampedOverlapCount = 0;
+	for (let i = 1; i < captions.length; i++) {
+		const previous = captions[i - 1];
+		const current = captions[i];
+		if (!previous || !current) continue;
+		const previousEnd = previous.startTime + previous.duration;
+		if (current.startTime < previousEnd) {
+			const clampedDuration = current.startTime - previous.startTime;
+			if (clampedDuration <= 0) continue;
+			previous.duration = clampedDuration;
+			clampedOverlapCount += 1;
+		}
+	}
+	if (clampedOverlapCount > 0) {
+		warnings.add(
+			`Clamped ${clampedOverlapCount} overlapping subtitle cue(s) to end where the next cue starts.`,
+		);
+	}
+
 	return {
 		captions,
 		skippedCueCount,

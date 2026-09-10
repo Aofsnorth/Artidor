@@ -137,7 +137,7 @@ export function BlendingTab({
 		displayValue: Math.round(resolvedOpacity * 100).toString(),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return clamp({ value: parsed, min: 0, max: 100 }) / 100;
 		},
 		valueAtPlayhead: resolvedOpacity,

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSoundsStore } from "@/stores/sounds-store";
+import { useShallow } from "zustand/shallow";
 
 export function useSoundSearch({
 	query,
@@ -8,6 +9,10 @@ export function useSoundSearch({
 	query: string;
 	commercialOnly: boolean;
 }) {
+	// useShallow: the whole-store destructure previously returned a fresh
+	// object every call, re-rendering the search view on ANY sounds-store
+	// change (scroll position, pagination counters) — including mid-keystroke
+	// while this hook's own debounce timer is pending.
 	const {
 		searchResults,
 		isSearching,
@@ -28,7 +33,29 @@ export function useSoundSearch({
 		appendSearchResults,
 		appendTopSounds,
 		resetPagination,
-	} = useSoundsStore();
+	} = useSoundsStore(
+		useShallow((s) => ({
+			searchResults: s.searchResults,
+			isSearching: s.isSearching,
+			searchError: s.searchError,
+			lastSearchQuery: s.lastSearchQuery,
+			currentPage: s.currentPage,
+			hasNextPage: s.hasNextPage,
+			isLoadingMore: s.isLoadingMore,
+			totalCount: s.totalCount,
+			setSearchResults: s.setSearchResults,
+			setSearching: s.setSearching,
+			setSearchError: s.setSearchError,
+			setLastSearchQuery: s.setLastSearchQuery,
+			setCurrentPage: s.setCurrentPage,
+			setHasNextPage: s.setHasNextPage,
+			setTotalCount: s.setTotalCount,
+			setLoadingMore: s.setLoadingMore,
+			appendSearchResults: s.appendSearchResults,
+			appendTopSounds: s.appendTopSounds,
+			resetPagination: s.resetPagination,
+		})),
+	);
 
 	const loadMore = async () => {
 		if (isLoadingMore || !hasNextPage) return;

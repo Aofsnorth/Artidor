@@ -9,7 +9,7 @@ import type { ParseSubtitleResult, SubtitleCue } from "./types";
  */
 const TIMESTAMP_SEPARATOR = /\s*--[>]\s*/;
 const TIMESTAMP_PATTERN =
-	/^(\d{2}:\d{2}:\d{2}[,.]\d{1,3})\s*--[>]\s*(\d{2}:\d{2}:\d{2}[,.]\d{1,3})/;
+	/^(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})\s*--[>]\s*(\d{1,2}:\d{2}:\d{2}[,.]\d{1,3})/;
 
 export function parseSrt({ input }: { input: string }): ParseSubtitleResult {
 	const normalized = input.replace(/\r\n?/g, "\n").trim();
@@ -23,6 +23,7 @@ export function parseSrt({ input }: { input: string }): ParseSubtitleResult {
 
 	const blocks = normalized.split(/\n{2,}/);
 	const cues: SubtitleCue[] = [];
+	const warnings: string[] = [];
 	let skippedCueCount = 0;
 
 	for (const block of blocks) {
@@ -36,9 +37,14 @@ export function parseSrt({ input }: { input: string }): ParseSubtitleResult {
 			continue;
 		}
 
-		const timestampIndex = TIMESTAMP_SEPARATOR.test(lines[0]) ? 0 : 1;
-		const timestampLine = lines[timestampIndex];
-		if (!timestampLine || !TIMESTAMP_PATTERN.test(timestampLine)) {
+		// Cue-number line is optional (many exporters omit it). Scan for
+		// the first timestamp line instead of assuming index 0/1.
+		const timestampIndex = lines.findIndex((line) =>
+			TIMESTAMP_PATTERN.test(line),
+		);
+		const timestampLine =
+			timestampIndex === -1 ? undefined : lines[timestampIndex];
+		if (!timestampLine) {
 			skippedCueCount += 1;
 			continue;
 		}
@@ -76,16 +82,36 @@ export function parseSrt({ input }: { input: string }): ParseSubtitleResult {
 		});
 	}
 
+	cues.sort((a, b) => a.startTime - b.startTime);
+	let clampedOverlapCount = 0;
+	for (let i = 1; i < cues.length; i++) {
+		const previous = cues[i - 1];
+		const current = cues[i];
+		if (!previous || !current) continue;
+		const previousEnd = previous.startTime + previous.duration;
+		if (current.startTime < previousEnd) {
+			const clampedDuration = current.startTime - previous.startTime;
+			if (clampedDuration <= 0) continue;
+			previous.duration = clampedDuration;
+			clampedOverlapCount += 1;
+		}
+	}
+	if (clampedOverlapCount > 0) {
+		warnings.push(
+			`Clamped ${clampedOverlapCount} overlapping subtitle cue(s) to end where the next cue starts.`,
+		);
+	}
+
 	return {
 		captions: cues,
 		skippedCueCount,
-		warnings: [],
+		warnings,
 	};
 }
 
 function parseSrtTimestamp({ input }: { input: string }): number {
 	const normalized = input.trim().replace(",", ".");
-	const match = normalized.match(/^(\d{2}):(\d{2}):(\d{2})\.(\d{1,3})$/);
+	const match = normalized.match(/^(\d{1,2}):(\d{2}):(\d{2})\.(\d{1,3})$/);
 	if (!match) {
 		return Number.NaN;
 	}
@@ -94,6 +120,9 @@ function parseSrtTimestamp({ input }: { input: string }): number {
 	const parsedHours = Number.parseInt(hours, 10);
 	const parsedMinutes = Number.parseInt(minutes, 10);
 	const parsedSeconds = Number.parseInt(seconds, 10);
+	if (parsedMinutes > 59 || parsedSeconds > 59) {
+		return Number.NaN;
+	}
 	const parsedMilliseconds = Number.parseInt(milliseconds.padEnd(3, "0"), 10);
 
 	return (

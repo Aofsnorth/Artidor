@@ -1710,28 +1710,28 @@ function TimelineTrackRowsInner({
 										Reset track height
 									</ContextMenuItem>
 								)}
-								<ContextMenuItem
-									icon={<HugeiconsIcon icon={VolumeHighIcon} />}
-									onClick={(event: React.MouseEvent) => {
-										event.stopPropagation();
-										timeline.toggleTrackMute({ trackId: track.id });
-									}}
-								>
-									{canTrackHaveAudio(track) && track.muted
-										? "Unmute track"
-										: "Mute track"}
-								</ContextMenuItem>
-								<ContextMenuItem
-									icon={<HugeiconsIcon icon={ViewIcon} />}
-									onClick={(event: React.MouseEvent) => {
-										event.stopPropagation();
-										timeline.toggleTrackVisibility({ trackId: track.id });
-									}}
-								>
-									{canTrackBeHidden(track) && track.hidden
-										? "Show track"
-										: "Hide track"}
-								</ContextMenuItem>
+								{canTrackHaveAudio(track) && (
+									<ContextMenuItem
+										icon={<HugeiconsIcon icon={VolumeHighIcon} />}
+										onClick={(event: React.MouseEvent) => {
+											event.stopPropagation();
+											timeline.toggleTrackMute({ trackId: track.id });
+										}}
+									>
+										{track.muted ? "Unmute track" : "Mute track"}
+									</ContextMenuItem>
+								)}
+								{canTrackBeHidden(track) && (
+									<ContextMenuItem
+										icon={<HugeiconsIcon icon={ViewIcon} />}
+										onClick={(event: React.MouseEvent) => {
+											event.stopPropagation();
+											timeline.toggleTrackVisibility({ trackId: track.id });
+										}}
+									>
+										{track.hidden ? "Show track" : "Hide track"}
+									</ContextMenuItem>
+								)}
 								{track.id !== mainTrackId && (
 									<ContextMenuItem
 										icon={<HugeiconsIcon icon={Delete02Icon} />}

@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, type ReactNode } from "react";
 import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
+import { useShallow } from "zustand/shallow";
 import { MediaView } from "./views/assets";
 import { DockPlaceholder } from "@/components/editor/floating-window";
 import { useEditorUIStore } from "@/stores/editor-ui-store";
@@ -94,7 +95,11 @@ function AIEditFallback() {
 }
 
 export function AssetsPanel() {
-	const { activeTab } = useAssetsPanelStore();
+	// Single-field selector (stable identity): the panel shell only needs
+	// the active tab — a whole-store destructure re-rendered the shell
+	// (and re-created the viewMap) on every assets-panel change.
+	const activeTab = useAssetsPanelStore((s) => s.activeTab);
+	// Single-field selector (stable identity): floating-panel map only.
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
 
 	// Helper — if the requested sub-view is currently popped out into

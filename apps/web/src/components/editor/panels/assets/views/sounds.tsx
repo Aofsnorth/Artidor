@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSoundSearch } from "@/hooks/use-sound-search";
 import { useSoundsStore } from "@/stores/sounds-store";
+import { useShallow } from "zustand/shallow";
 import { useAssetPreviewStore } from "@/stores/asset-preview-store";
 import type { SavedSound, SoundEffect } from "@/lib/sounds/types";
 import {
@@ -81,6 +82,10 @@ export function SoundsView() {
 }
 
 function SoundEffectsView() {
+	// useShallow: the whole-store destructure previously returned a fresh
+	// object every call, re-rendering this (large) list on ANY sounds-store
+	// change — including per-card `audioPreviewId` toggles and pagination
+	// counters unrelated to the visible rows.
 	const {
 		topSoundEffects,
 		isLoading,
@@ -99,7 +104,27 @@ function SoundEffectsView() {
 		setCurrentPage,
 		setHasNextPage,
 		setTotalCount,
-	} = useSoundsStore();
+	} = useSoundsStore(
+		useShallow((s) => ({
+			topSoundEffects: s.topSoundEffects,
+			isLoading: s.isLoading,
+			searchQuery: s.searchQuery,
+			setSearchQuery: s.setSearchQuery,
+			scrollPosition: s.scrollPosition,
+			setScrollPosition: s.setScrollPosition,
+			loadSavedSounds: s.loadSavedSounds,
+			showCommercialOnly: s.showCommercialOnly,
+			toggleCommercialFilter: s.toggleCommercialFilter,
+			hasLoaded: s.hasLoaded,
+			setTopSoundEffects: s.setTopSoundEffects,
+			setLoading: s.setLoading,
+			setError: s.setError,
+			setHasLoaded: s.setHasLoaded,
+			setCurrentPage: s.setCurrentPage,
+			setHasNextPage: s.setHasNextPage,
+			setTotalCount: s.setTotalCount,
+		})),
+	);
 	const { t } = useI18n();
 
 	const soundCategories = useMemo(
@@ -366,13 +391,23 @@ function SoundEffectsView() {
 
 function SavedSoundsView() {
 	const { t } = useI18n();
+	// useShallow: same whole-store destructure fix — saved-sounds rows
+	// re-rendered on every unrelated sounds-store field change.
 	const {
 		savedSounds,
 		isLoadingSavedSounds,
 		savedSoundsError,
 		loadSavedSounds,
 		clearSavedSounds,
-	} = useSoundsStore();
+	} = useSoundsStore(
+		useShallow((s) => ({
+			savedSounds: s.savedSounds,
+			isLoadingSavedSounds: s.isLoadingSavedSounds,
+			savedSoundsError: s.savedSoundsError,
+			loadSavedSounds: s.loadSavedSounds,
+			clearSavedSounds: s.clearSavedSounds,
+		})),
+	);
 
 	const [showClearDialog, setShowClearDialog] = useState(false);
 
@@ -542,9 +577,18 @@ interface AudioItemProps {
 
 function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
 	const { t } = useI18n();
-	const { addSoundToTimeline, isSoundSaved, toggleSavedSound } =
-		useSoundsStore();
-	const isSaved = isSoundSaved({ soundId: sound.id });
+	// useShallow: per-row destructure — without it each row re-renders when
+	// ANY sounds-store field changes (search text, pagination, loading flags).
+	// `isSoundSaved` is intentionally derived AFTER the hook, from the
+	// shallow-selected `savedSounds` snapshot, so the row only recomputes
+	// when the saved-sounds list itself changes.
+	const { addSoundToTimeline, toggleSavedSound, isSaved } = useSoundsStore(
+		useShallow((s) => ({
+			addSoundToTimeline: s.addSoundToTimeline,
+			toggleSavedSound: s.toggleSavedSound,
+			isSaved: s.savedSounds.some((saved) => saved.id === sound.id),
+		})),
+	);
 
 	const handleClick = () => {
 		onPlay({ sound });

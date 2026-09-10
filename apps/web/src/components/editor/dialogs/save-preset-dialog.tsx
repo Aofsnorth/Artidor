@@ -17,11 +17,21 @@ import { BookmarkAdd02Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
 import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
 import { usePresetsStore } from "@/stores/presets-store";
+import { useShallow } from "zustand/shallow";
 import { buildPresetFromElements, renderPresetThumbnail } from "@/lib/presets";
 
 export function SavePresetDialog() {
 	const editor = useEditor();
-	const { isOpen, elements, defaultName, close } = useSavePresetDialogStore();
+	// useShallow: whole-store destructure returned a fresh object every call;
+	// the dialog re-rendered on unrelated save-preset-dialog churn.
+	const { isOpen, elements, defaultName, close } = useSavePresetDialogStore(
+		useShallow((s) => ({
+			isOpen: s.isOpen,
+			elements: s.elements,
+			defaultName: s.defaultName,
+			close: s.close,
+		})),
+	);
 	const addPreset = usePresetsStore((s) => s.addPreset);
 	const [name, setName] = useState(defaultName);
 	const [isSaving, setIsSaving] = useState(false);

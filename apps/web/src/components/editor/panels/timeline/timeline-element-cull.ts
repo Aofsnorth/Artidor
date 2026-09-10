@@ -10,6 +10,11 @@ import { TIMELINE_CONTENT_LEFT_INSET_PX } from "./layout";
  * selection hooks. Mounting off-screen clips makes every timeline
  * re-render scale with project length instead of what's actually visible.
  *
+ * Conditional render, not CSS-hide: callers return `null` for culled
+ * clips (see `timeline-track.tsx`), so culled clips mount zero DOM nodes
+ * and run zero hooks. Verified by `timeline-element-cull.test.ts` plus
+ * the visible-count round in `react-perf-100-pass-owned.test.ts`.
+ *
  * The function is intentionally pure so it can be unit-tested in isolation
  * and cheaply evaluated inside a `useMemo` filter.
  */

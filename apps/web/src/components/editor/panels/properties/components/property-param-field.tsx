@@ -178,7 +178,7 @@ function NumberParamField({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) return null;
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) return null;
 			return clampDisplayValue(snapToStep({ value: parsed, step }));
 		},
 		onPreview: previewFromDisplay,

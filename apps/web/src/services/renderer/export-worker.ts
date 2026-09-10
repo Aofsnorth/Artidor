@@ -28,7 +28,10 @@ import {
 	AudioBufferSource,
 } from "mediabunny";
 import { CanvasRenderer } from "./canvas-renderer";
-import { deserializeSceneTree } from "./scene-deserializer";
+import {
+	deserializeSceneTree,
+	revokeSceneBlobUrls,
+} from "./scene-deserializer";
 import type { SerializedNode } from "./scene-serializer";
 import { getExportRenderQueueDepth } from "./export-performance";
 import { isStaticScene } from "./static-scene";
@@ -263,7 +266,14 @@ async function handleExport(msg: WorkerInMessage) {
 		progress: 0.15,
 	} satisfies WorkerOutMessage);
 	const files = new Map(fileEntries.map((e) => [e.mediaId, e.file]));
-	const rootNode = deserializeSceneTree(serializedTree, files);
+	const { root: rootNode, blobUrls } = deserializeSceneTree(
+		serializedTree,
+		files,
+	);
+	// The worker is warm-reused across exports, so blob URLs created for this
+	// run must be revoked when it settles — otherwise every export leaks one
+	// URL per media file for the lifetime of the page.
+	const revokeBlobUrls = () => revokeSceneBlobUrls(blobUrls);
 	console.info("[export-worker] scene tree reconstructed");
 	self.postMessage({
 		type: "progress",
@@ -420,6 +430,7 @@ async function handleExport(msg: WorkerInMessage) {
 	// canceled.", so we must short-circuit.
 	if (isCancelled) {
 		await output.cancel().catch(() => {});
+		revokeBlobUrls();
 		self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 		return;
 	}
@@ -498,6 +509,7 @@ async function handleExport(msg: WorkerInMessage) {
 				// Wait for all pending encodes to settle, then cancel.
 				await Promise.allSettled(pendingEncodes);
 				await output.cancel();
+				revokeBlobUrls();
 				self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 				return;
 			}
@@ -536,12 +548,17 @@ async function handleExport(msg: WorkerInMessage) {
 			// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
 			pendingEncodes.push(videoSource.add(localTimeSeconds, frameDuration));
 
-			// Report progress every 10 frames (reduces postMessage overhead)
+			// Report progress every 10 frames (reduces postMessage overhead).
+			// The last frame reports (count - 1) / count, so the loop alone can
+			// never reach 1.0 — completion below posts the final 1.0.
 			const localFrame = i - startFrame;
 			if (localFrame % 10 === 0 || localFrame === segmentFrameCount - 1) {
 				self.postMessage({
 					type: "progress",
-					progress: 0.2 + (localFrame / progressDenominator) * 0.78,
+					progress: Math.min(
+						1,
+						0.2 + (localFrame / progressDenominator) * 0.78,
+					),
 				} satisfies WorkerOutMessage);
 			}
 
@@ -592,6 +609,7 @@ async function handleExport(msg: WorkerInMessage) {
 
 		if (isCancelled) {
 			await output.cancel();
+			revokeBlobUrls();
 			self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 			return;
 		}
@@ -606,7 +624,17 @@ async function handleExport(msg: WorkerInMessage) {
 		}
 	}
 
+	// The frame loop tops out at (count - 1) / count mapped onto 0.2..0.98.
+	// Post the terminal 1.0 here so every path that produces a buffer — full
+	// export, segment worker, held-still scene — reports completion. The
+	// parallel concatenator already emits its own final 1.0 after stitching.
+	self.postMessage({
+		type: "progress",
+		progress: 1,
+	} satisfies WorkerOutMessage);
+
 	const buffer = output.target.buffer;
+	revokeBlobUrls();
 	if (!buffer) {
 		self.postMessage({
 			type: "error",

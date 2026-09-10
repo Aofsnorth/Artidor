@@ -22,15 +22,20 @@ export class ToggleTrackMuteCommand extends Command {
 			tracks: this.savedState,
 			trackId: this.trackId,
 		});
-		if (!targetTrack) {
-			return;
+		// No-op: unknown id or incompatible type. Must not write or the
+		// command manager leaves a dead history step behind.
+		if (!targetTrack || !canTrackHaveAudio(targetTrack)) {
+			this.savedState = null;
+			return undefined;
 		}
 
 		const updatedTracks = updateTrackInSceneTracks({
 			tracks: this.savedState,
 			trackId: this.trackId,
-			update: (track) =>
-				canTrackHaveAudio(track) ? { ...track, muted: !track.muted } : track,
+			update: (track) => ({
+				...track,
+				muted: !(track as { muted: boolean }).muted,
+			}),
 		});
 
 		editor.timeline.updateTracks(updatedTracks);

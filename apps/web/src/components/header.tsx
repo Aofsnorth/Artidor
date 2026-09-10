@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowRight, Sparkles, Menu } from "lucide-react";
-import { FaGithub } from "react-icons/fa6";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { GithubIcon } from "@hugeicons/core-free-icons";
 import { Button } from "./ui/button";
 import { cn } from "@/utils/ui";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
@@ -96,7 +97,7 @@ export function Header() {
 							stars: repoStats?.stars ?? "",
 						})}
 					>
-						<FaGithub className="size-3" />
+						<HugeiconsIcon icon={GithubIcon} className="size-3" />
 						{starsLabel}
 					</Link>
 

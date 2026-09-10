@@ -40,15 +40,42 @@ function asString(v: unknown, fallback = ""): string {
 function asNumber(v: unknown, fallback = 0): number {
 	return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 }
+function clampNumber(v: number, min?: number, max?: number): number {
+	let n = v;
+	if (min !== undefined) n = Math.max(min, n);
+	if (max !== undefined) n = Math.min(max, n);
+	return n;
+}
+function asClampedNumber(
+	v: unknown,
+	fallback: number,
+	min?: number,
+	max?: number,
+): number {
+	return clampNumber(asNumber(v, fallback), min, max);
+}
+function asClampedInt(
+	v: unknown,
+	fallback: number,
+	min?: number,
+	max?: number,
+): number {
+	return clampNumber(asInt(v, fallback), min, max);
+}
 function asBool(v: unknown, fallback = false): boolean {
 	return typeof v === "boolean" ? v : fallback;
 }
 function asInt(v: unknown, fallback = 0): number {
 	return Math.round(asNumber(v, fallback));
 }
-function secondsToTicks(seconds: unknown, fallbackTicks = 0): number {
+function secondsToTicks(
+	seconds: unknown,
+	fallbackTicks = 0,
+	min = 0,
+	max?: number,
+): number {
 	if (typeof seconds === "number" && Number.isFinite(seconds)) {
-		return Math.round(seconds * TICKS_PER_SECOND);
+		return clampNumber(Math.round(seconds * TICKS_PER_SECOND), min, max);
 	}
 	return fallbackTicks;
 }
@@ -149,12 +176,16 @@ interface ElementRef {
 function dispatchCommand(
 	_editor: EditorCore,
 	commandFactory: () => unknown,
+	options: { okMessage?: string } = {},
 ): ToolExecutionResult {
 	try {
 		// All CommandManager.execute() implementations return the command.
-		// The side effect is what we care about.
+		// The side effect is what we care about. The return value is
+		// threaded back: throw-on-bad-geometry commands (transitions, moves)
+		// previously had their errors swallowed by callers that ignored the
+		// result and unconditionally returned ok:true.
 		commandFactory();
-		return { ok: true };
+		return { ok: true, message: options.okMessage };
 	} catch (err) {
 		return {
 			ok: false,
@@ -221,8 +252,11 @@ type Handler = (
 const HANDLERS: Record<string, Handler> = {
 	/* ------------------------------ project ----------------------------- */
 	set_project_fps: async (editor, args) => {
-		const fps = asNumber(args.fps);
-		if (!fps) return { ok: false, message: "fps is required" };
+		// Clamp AFTER the required check: fps=0/missing/NaN must stay
+		// ok:false ("required"), not clamp up to 1 and write fps=1.
+		const rawFps = asNumber(args.fps, 0);
+		if (!rawFps) return { ok: false, message: "fps is required" };
+		const fps = clampNumber(rawFps, 1, 240);
 		const project = editor.project.getActive();
 		if (!project) return { ok: false, message: "No active project" };
 		editor.project.setActiveProject({
@@ -238,9 +272,13 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	set_project_canvas: async (editor, args) => {
-		const w = asInt(args.width);
-		const h = asInt(args.height);
-		if (!w || !h) return { ok: false, message: "width/height required" };
+		// Same required-then-clamp order as fps: 0/missing must stay
+		// ok:false, never clamp up to the 16px minimum.
+		const rawW = asInt(args.width, 0);
+		const rawH = asInt(args.height, 0);
+		if (!rawW || !rawH) return { ok: false, message: "width/height required" };
+		const w = clampNumber(rawW, 16, 7680);
+		const h = clampNumber(rawH, 16, 4320);
 		const project = editor.project.getActive();
 		if (!project) return { ok: false, message: "No active project" };
 		editor.project.setActiveProject({
@@ -269,7 +307,7 @@ const HANDLERS: Record<string, Handler> = {
 						type === "blur"
 							? {
 									type: "blur",
-									blurIntensity: asNumber(args.blurIntensity, 12),
+									blurIntensity: asClampedNumber(args.blurIntensity, 12, 0, 64),
 								}
 							: { type: "color", color: asString(args.color, "#000000") },
 				},
@@ -318,13 +356,13 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	add_bookmark: async (editor, args) => {
-		const time = asNumber(args.time, 0);
+		const time = asClampedNumber(args.time, 0, 0);
 		await editor.scenes.toggleBookmark({ time });
 		return { ok: true, message: `Bookmark at ${time}` };
 	},
 
 	remove_bookmark: async (editor, args) => {
-		const time = asNumber(args.time, 0);
+		const time = asClampedNumber(args.time, 0, 0);
 		await editor.scenes.removeBookmark({ time });
 		return { ok: true, message: `Removed bookmark` };
 	},
@@ -357,19 +395,20 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	update_bookmark: async (editor, args) => {
-		const time = asNumber(args.time, 0);
+		const time = asClampedNumber(args.time, 0, 0);
 		const updates: Partial<{ note: string; color: string; duration: number }> =
 			{};
 		if (typeof args.note === "string") updates.note = args.note;
 		if (typeof args.color === "string") updates.color = args.color;
-		if (typeof args.duration === "number") updates.duration = args.duration;
+		if (typeof args.duration === "number")
+			updates.duration = Math.max(0, args.duration as number);
 		await editor.scenes.updateBookmark({ time, updates });
 		return { ok: true, message: `Updated bookmark at ${time}` };
 	},
 
 	move_bookmark: async (editor, args) => {
-		const fromTime = asNumber(args.fromTime, 0);
-		const toTime = asNumber(args.toTime, 0);
+		const fromTime = asClampedNumber(args.fromTime, 0, 0);
+		const toTime = asClampedNumber(args.toTime, 0, 0);
 		await editor.scenes.moveBookmark({ fromTime, toTime });
 		return {
 			ok: true,
@@ -385,7 +424,10 @@ const HANDLERS: Record<string, Handler> = {
 			| "audio"
 			| "graphic"
 			| "effect";
-		const id = editor.timeline.addTrack({ type, index: asInt(args.index, -1) });
+		const id = editor.timeline.addTrack({
+			type,
+			index: asClampedInt(args.index, -1, 0, 32),
+		});
 		return { ok: true, message: `Added ${type} track`, data: { id } };
 	},
 
@@ -429,7 +471,12 @@ const HANDLERS: Record<string, Handler> = {
 		const { generateUUID } = await import("@/utils/id");
 		const tracks = editor.scenes.getActiveScene().tracks;
 		const playhead = editor.playback.getCurrentTime();
-		const duration = secondsToTicks(args.durationSeconds, 5 * TICKS_PER_SECOND);
+		const duration = secondsToTicks(
+			args.durationSeconds,
+			5 * TICKS_PER_SECOND,
+			Math.round(0.1 * TICKS_PER_SECOND),
+			60 * TICKS_PER_SECOND,
+		);
 		const element = {
 			id: generateUUID(),
 			type: "text" as const,
@@ -441,7 +488,7 @@ const HANDLERS: Record<string, Handler> = {
 			hidden: false,
 			content: asString(args.content, "Text"),
 			fontFamily: "Inter",
-			fontSize: asNumber(args.fontSize, 48),
+			fontSize: asClampedNumber(args.fontSize, 48, 4, 320),
 			fontWeight: "normal" as const,
 			fontStyle: "normal" as const,
 			textDecoration: "none" as const,
@@ -540,16 +587,31 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	move_element: async (editor, args) => {
-		editor.timeline.moveElement({
-			sourceTrackId: asString(args.sourceTrackId),
-			targetTrackId: asString(args.targetTrackId, asString(args.sourceTrackId)),
-			elementId: asString(args.elementId),
-			newStartTime: asNumber(args.newStartTime, 0),
-		});
+		try {
+			editor.timeline.moveElement({
+				sourceTrackId: asString(args.sourceTrackId),
+				targetTrackId: asString(
+					args.targetTrackId,
+					asString(args.sourceTrackId),
+				),
+				elementId: asString(args.elementId),
+				newStartTime: asClampedNumber(args.newStartTime, 0, 0),
+			});
+		} catch (err) {
+			return {
+				ok: false,
+				message: err instanceof Error ? err.message : "Move failed",
+			};
+		}
 		return { ok: true, message: "Moved element" };
 	},
 
 	split_element: async (editor, args) => {
+		// Split reports right-half ids so the LLM can chain; a split outside
+		// the element (or on a sub-frame sliver) is a no-op that writes
+		// nothing. Report it honestly instead of ok:true so the agent can
+		// re-read ids with list_elements rather than assume a cut happened.
+		const splitTime = asClampedNumber(args.time, 0, 0);
 		const rightSide = editor.timeline.splitElements({
 			elements: [
 				{
@@ -557,18 +619,23 @@ const HANDLERS: Record<string, Handler> = {
 					elementId: asString(args.elementId),
 				},
 			],
-			splitTime: asNumber(args.time, 0),
+			splitTime,
 			retainSide: asString(args.retainSide, "both") as
 				| "both"
 				| "left"
 				| "right",
 		});
 		const right = rightSide[0];
+		if (!right) {
+			return {
+				ok: false,
+				message: `Split at ${splitTime} ticks did not cut anything — the time is outside the element or would leave a sub-frame half. Call list_elements to re-read the clip bounds, then split strictly inside [startTime, startTime+duration).`,
+				data: { rightSide: rightSide },
+			};
+		}
 		return {
 			ok: true,
-			message: right
-				? `Split at ${asNumber(args.time, 0)} ticks. Right half → elementId=${right.elementId}, trackId=${right.trackId}. Left half keeps the original elementId. Use these IDs for further trim/delete/move.`
-				: `Split at ${asNumber(args.time, 0)} ticks (retainSide=${asString(args.retainSide, "both")}).`,
+			message: `Split at ${splitTime} ticks. Right half → elementId=${right.elementId}, trackId=${right.trackId}. Left half keeps the original elementId. Use these IDs for further trim/delete/move.`,
 			data: { rightSide: rightSide },
 		};
 	},
@@ -584,23 +651,30 @@ const HANDLERS: Record<string, Handler> = {
 		const trackId = asString(args.trackId);
 		const elementId = asString(args.elementId);
 		const patch: Record<string, unknown> = {};
-		if (typeof args.startTime === "number") patch.startTime = args.startTime;
-		if (typeof args.duration === "number") patch.duration = args.duration;
-		if (typeof args.trimStart === "number") patch.trimStart = args.trimStart;
-		if (typeof args.trimEnd === "number") patch.trimEnd = args.trimEnd;
-		if (typeof args.opacity === "number") patch.opacity = args.opacity;
+		if (typeof args.startTime === "number")
+			patch.startTime = Math.max(0, args.startTime as number);
+		if (typeof args.duration === "number")
+			patch.duration = Math.max(1, args.duration as number);
+		if (typeof args.trimStart === "number")
+			patch.trimStart = Math.max(0, args.trimStart as number);
+		if (typeof args.trimEnd === "number")
+			patch.trimEnd = Math.max(0, args.trimEnd as number);
+		if (typeof args.opacity === "number")
+			patch.opacity = clampNumber(args.opacity as number, 0, 1);
 		if (typeof args.hidden === "boolean") patch.hidden = args.hidden;
 		if (typeof args.customName === "string") patch.customName = args.customName;
 		if (typeof args.content === "string") patch.content = args.content;
 		if (typeof args.color === "string") patch.color = args.color;
-		if (typeof args.fontSize === "number") patch.fontSize = args.fontSize;
+		if (typeof args.fontSize === "number")
+			patch.fontSize = clampNumber(args.fontSize as number, 4, 320);
 		if (typeof args.blendMode === "string") patch.blendMode = args.blendMode;
 		if (typeof args.volume === "number") patch.volume = args.volume;
-		if (typeof args.pan === "number") patch.pan = args.pan;
+		if (typeof args.pan === "number")
+			patch.pan = clampNumber(args.pan as number, -100, 100);
 		if (typeof args.fadeInDuration === "number")
-			patch.fadeInDuration = args.fadeInDuration;
+			patch.fadeInDuration = Math.max(0, args.fadeInDuration as number);
 		if (typeof args.fadeOutDuration === "number")
-			patch.fadeOutDuration = args.fadeOutDuration;
+			patch.fadeOutDuration = Math.max(0, args.fadeOutDuration as number);
 
 		// ── Transform merge ──
 		// The update pipeline does a SHALLOW merge ({ ...element, ...patch }),
@@ -656,7 +730,11 @@ const HANDLERS: Record<string, Handler> = {
 				if (typeof args.scaleY === "number")
 					mergedTransform.scaleY = args.scaleY;
 				if (typeof args.rotate === "number")
-					mergedTransform.rotate = args.rotate;
+					mergedTransform.rotate = clampNumber(
+						args.rotate as number,
+						-360,
+						360,
+					);
 				if (
 					typeof args.pivotX === "number" ||
 					typeof args.pivotY === "number"
@@ -667,16 +745,18 @@ const HANDLERS: Record<string, Handler> = {
 					mergedTransform.pivot = {
 						x:
 							typeof args.pivotX === "number"
-								? args.pivotX
+								? clampNumber(args.pivotX as number, 0, 1)
 								: (existingPivot.x ?? 0.5),
 						y:
 							typeof args.pivotY === "number"
-								? args.pivotY
+								? clampNumber(args.pivotY as number, 0, 1)
 								: (existingPivot.y ?? 0.5),
 					};
 				}
-				if (typeof args.skewX === "number") mergedTransform.skewX = args.skewX;
-				if (typeof args.skewY === "number") mergedTransform.skewY = args.skewY;
+				if (typeof args.skewX === "number")
+					mergedTransform.skewX = clampNumber(args.skewX as number, -89, 89);
+				if (typeof args.skewY === "number")
+					mergedTransform.skewY = clampNumber(args.skewY as number, -89, 89);
 				patch.transform = mergedTransform;
 			}
 
@@ -693,8 +773,10 @@ const HANDLERS: Record<string, Handler> = {
 							rotateX: 0,
 							rotateY: 0,
 						};
-				if (typeof args.rotateX === "number") merged3d.rotateX = args.rotateX;
-				if (typeof args.rotateY === "number") merged3d.rotateY = args.rotateY;
+				if (typeof args.rotateX === "number")
+					merged3d.rotateX = clampNumber(args.rotateX as number, -360, 360);
+				if (typeof args.rotateY === "number")
+					merged3d.rotateY = clampNumber(args.rotateY as number, -360, 360);
 				patch.transform3d = merged3d;
 			}
 		}
@@ -904,19 +986,22 @@ const HANDLERS: Record<string, Handler> = {
 			trackId: asString(args.trackId),
 			elementId: asString(args.elementId),
 			propertyPath: asString(args.path) as never,
-			time: asNumber(args.time, 0),
+			time: asClampedNumber(args.time, 0, 0),
 			value: asNumber(args.value, 0) as never,
 			interpolation: easing as never,
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Keyframe upserted" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Keyframe upserted" },
+		);
 	},
 
 	remove_keyframe: async (editor, args) => {
 		const trackId = asString(args.trackId);
 		const elementId = asString(args.elementId);
 		const path = asString(args.path);
-		const time = asNumber(args.time, 0);
+		const time = asClampedNumber(args.time, 0, 0);
 
 		// Find the keyframe at this time so we can pass the real
 		// keyframeId to RemoveKeyframeCommand. The lookup walks the
@@ -959,8 +1044,11 @@ const HANDLERS: Record<string, Handler> = {
 			keyframeId: keyframe.id,
 			valueAtPlayhead: keyframe.value as never,
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Keyframe removed" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Keyframe removed" },
+		);
 	},
 
 	/* ----------------------------- transition ---------------------------- */
@@ -974,11 +1062,14 @@ const HANDLERS: Record<string, Handler> = {
 			fromElementId: asString(args.fromElementId),
 			toTrackId: asString(args.toTrackId),
 			toElementId: asString(args.toElementId),
-			startTime: asNumber(args.startTime, 0),
-			duration: asNumber(args.duration, TICKS_PER_SECOND),
+			startTime: asClampedNumber(args.startTime, 0, 0),
+			duration: asClampedNumber(args.duration, TICKS_PER_SECOND, 1),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Added transition" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Added transition" },
+		);
 	},
 
 	/* ------------------------------ playback ----------------------------- */
@@ -991,11 +1082,13 @@ const HANDLERS: Record<string, Handler> = {
 		return { ok: true, message: "Paused" };
 	},
 	seek: async (editor, args) => {
-		editor.playback.seek({ time: asNumber(args.time, 0) });
+		editor.playback.seek({ time: asClampedNumber(args.time, 0, 0) });
 		return { ok: true, message: "Seeked" };
 	},
 	set_volume: async (editor, args) => {
-		editor.playback.setVolume({ volume: asNumber(args.value, 1) });
+		editor.playback.setVolume({
+			volume: asClampedNumber(args.value, 1, 0, 1),
+		});
 		return { ok: true, message: "Volume updated" };
 	},
 	toggle_playback: async (editor) => {
@@ -1210,7 +1303,7 @@ const HANDLERS: Record<string, Handler> = {
 		);
 		const startTime =
 			typeof args.startTime === "number"
-				? asNumber(args.startTime)
+				? asClampedNumber(args.startTime, 0, 0)
 				: editor.playback.getCurrentTime();
 		const duration =
 			asset.duration != null
@@ -1318,7 +1411,7 @@ const HANDLERS: Record<string, Handler> = {
 			);
 			const startTime =
 				typeof args.startTime === "number"
-					? asNumber(args.startTime)
+					? asClampedNumber(args.startTime, 0, 0)
 					: editor.playback.getCurrentTime();
 			const duration =
 				asset.duration != null
@@ -1493,7 +1586,9 @@ const HANDLERS: Record<string, Handler> = {
 	paste: async (editor, args) => {
 		const ok =
 			typeof args.time === "number"
-				? editor.clipboard.paste({ time: asNumber(args.time) })
+				? editor.clipboard.paste({
+						time: asClampedNumber(args.time, 0, 0),
+					})
 				: editor.clipboard.paste();
 		return { ok, message: ok ? "Pasted" : "Nothing to paste" };
 	},
@@ -1639,8 +1734,11 @@ const HANDLERS: Record<string, Handler> = {
 	remove_transition: async (editor, args) => {
 		const mod = await import("@/lib/commands/scene/transition");
 		const cmd = new mod.RemoveTransitionCommand(asString(args.transitionId));
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Transition removed" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Transition removed" },
+		);
 	},
 
 	update_transition: async (editor, args) => {
@@ -1648,14 +1746,19 @@ const HANDLERS: Record<string, Handler> = {
 		const patch: Record<string, unknown> = {};
 		if (typeof args.transitionType === "string")
 			patch.transitionType = args.transitionType;
-		if (typeof args.startTime === "number") patch.startTime = args.startTime;
-		if (typeof args.duration === "number") patch.duration = args.duration;
+		if (typeof args.startTime === "number")
+			patch.startTime = Math.max(0, args.startTime as number);
+		if (typeof args.duration === "number")
+			patch.duration = Math.max(1, args.duration as number);
 		const cmd = new mod.UpdateTransitionCommand(
 			asString(args.transitionId),
 			patch as never,
 		);
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Transition updated" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Transition updated" },
+		);
 	},
 
 	/* --------------------------- effect (extra) -------------------------- */
@@ -1668,8 +1771,11 @@ const HANDLERS: Record<string, Handler> = {
 			elementId: asString(args.elementId),
 			effectId: asString(args.effectId),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Effect toggled" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Effect toggled" },
+		);
 	},
 
 	reorder_effects: async (editor, args) => {
@@ -1679,11 +1785,14 @@ const HANDLERS: Record<string, Handler> = {
 		const cmd = new mod.ReorderClipEffectsCommand({
 			trackId: asString(args.trackId),
 			elementId: asString(args.elementId),
-			fromIndex: asInt(args.fromIndex),
-			toIndex: asInt(args.toIndex),
+			fromIndex: asClampedInt(args.fromIndex, 0, 0),
+			toIndex: asClampedInt(args.toIndex, 0, 0),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Effects reordered" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Effects reordered" },
+		);
 	},
 
 	/* ---------------------------- mask (extra) --------------------------- */
@@ -1696,8 +1805,11 @@ const HANDLERS: Record<string, Handler> = {
 			elementId: asString(args.elementId),
 			maskId: asString(args.maskId),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Mask inversion toggled" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Mask inversion toggled" },
+		);
 	},
 
 	/* -------------------------- keyframe (extra) ------------------------- */
@@ -1710,10 +1822,13 @@ const HANDLERS: Record<string, Handler> = {
 			elementId: asString(args.elementId),
 			propertyPath: asString(args.path) as never,
 			keyframeId: asString(args.keyframeId),
-			nextTime: asNumber(args.newTime, 0),
+			nextTime: asClampedNumber(args.newTime, 0, 0),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Keyframe retimed" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Keyframe retimed" },
+		);
 	},
 
 	upsert_effect_param_keyframe: async (editor, args) => {
@@ -1725,11 +1840,14 @@ const HANDLERS: Record<string, Handler> = {
 			elementId: asString(args.elementId),
 			effectId: asString(args.effectId),
 			paramKey: asString(args.paramKey),
-			time: asNumber(args.time, 0),
+			time: asClampedNumber(args.time, 0, 0),
 			value: args.value as never,
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Effect param keyframe upserted" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Effect param keyframe upserted" },
+		);
 	},
 
 	remove_effect_param_keyframe: async (editor, args) => {
@@ -1743,8 +1861,11 @@ const HANDLERS: Record<string, Handler> = {
 			paramKey: asString(args.paramKey),
 			keyframeId: asString(args.keyframeId),
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Effect param keyframe removed" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Effect param keyframe removed" },
+		);
 	},
 
 	/* ---------------------------- asset (extra) -------------------------- */
@@ -1785,11 +1906,14 @@ const HANDLERS: Record<string, Handler> = {
 					elementId: asString(args.elementId),
 				},
 			],
-			time: asNumber(args.time, 0),
+			time: asClampedNumber(args.time, 0, 0),
 			clipboardItems: [],
 		});
-		dispatchCommand(editor, () => editor.command.execute({ command: cmd }));
-		return { ok: true, message: "Keyframes pasted" };
+		return dispatchCommand(
+			editor,
+			() => editor.command.execute({ command: cmd }),
+			{ okMessage: "Keyframes pasted" },
+		);
 	},
 
 	/* ------------------------------- skill -------------------------------- */
@@ -1950,8 +2074,8 @@ const HANDLERS: Record<string, Handler> = {
 		const trackId = asString(args.trackId);
 		const elementId = asString(args.elementId);
 		const limit =
-			typeof args.limit === "number"
-				? Math.max(1, Math.min(args.limit as number, 1000))
+			typeof args.limit === "number" && Number.isFinite(args.limit as number)
+				? Math.max(1, Math.min(Math.round(args.limit as number), 1000))
 				: undefined;
 		const sortBy =
 			args.sortBy === "energy" || args.sortBy === "time" ? args.sortBy : "time";
@@ -2129,7 +2253,12 @@ const HANDLERS: Record<string, Handler> = {
 	},
 
 	apply_beat_sync: async (editor, args) => {
-		const beatTimes = asArray<number>(args.beatTimes);
+		// Registry: beatTimes items minimum 0. Filter non-finite/negative
+		// entries (LLM hallucinations) instead of letting Math.min/max or the
+		// update pipeline store them verbatim.
+		const beatTimes = asArray<number>(args.beatTimes).filter(
+			(b) => typeof b === "number" && Number.isFinite(b) && b >= 0,
+		);
 		if (beatTimes.length === 0) {
 			return { ok: false, message: "No beat times provided" };
 		}

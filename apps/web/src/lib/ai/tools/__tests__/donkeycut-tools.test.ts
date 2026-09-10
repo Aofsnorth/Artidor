@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { getToolDefinitions, TOOLS_BY_EXECUTOR_KEY } from "../registry";
 
-	describe("DonkeyCut-ported AI tools", () => {
+describe("DonkeyCut-ported AI tools", () => {
 	it("registers detect_silence with DonkeyCut's default thresholds", () => {
 		const tool = TOOLS_BY_EXECUTOR_KEY["detect_silence"];
 		expect(tool).toBeDefined();

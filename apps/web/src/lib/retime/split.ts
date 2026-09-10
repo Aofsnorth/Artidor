@@ -34,8 +34,9 @@ export function splitRetimeAtClipTime({
 	splitClipTime,
 	duration,
 }: {
-	retime?: RetimeConfig & { duration?: number };
+	retime?: RetimeConfig;
 	splitClipTime: number;
+	/** Explicit owning-clip duration; falls back to `retime.duration` when omitted. */
 	duration?: number;
 }): {
 	left: RetimeConfig | undefined;
@@ -45,20 +46,18 @@ export function splitRetimeAtClipTime({
 		return { left: undefined, right: undefined };
 	}
 
-	const mode = (retime as { mode?: unknown }).mode;
+	const mode = retime.mode === "curve" ? "curve" : undefined;
 	if (mode !== "curve") {
 		// Constant-rate (or future modes): carried as-is on both halves.
 		return { left: retime, right: retime };
 	}
 
-	const keyframes = (retime as { keyframes?: unknown }).keyframes as
-		| Array<{ time?: unknown; speed?: unknown }>
-		| undefined;
+	const keyframes = retime.keyframes;
 	if (!Array.isArray(keyframes) || keyframes.length === 0) {
 		return { left: retime, right: retime };
 	}
 
-	const clipDuration = duration ?? (retime as { duration?: number }).duration;
+	const clipDuration = duration ?? retime.duration;
 	if (
 		clipDuration === undefined ||
 		!Number.isFinite(clipDuration) ||
@@ -78,8 +77,8 @@ export function splitRetimeAtClipTime({
 	}
 
 	const curve = keyframes.map((k) => ({
-		time: typeof k.time === "number" ? k.time : 0,
-		speed: typeof k.speed === "number" ? k.speed : 1,
+		time: k.time,
+		speed: k.speed,
 	}));
 
 	// Endpoints must be exact (skill rule: verify endpoints, not lengths):
@@ -104,10 +103,7 @@ export function splitRetimeAtClipTime({
 		},
 	});
 
-	const base = { ...retime } as RetimeConfig & {
-		keyframes: typeof keyframes;
-		duration?: number;
-	};
+	const base: RetimeConfig = { ...retime };
 	const leftDuration = splitClipTime;
 	const rightDuration = clipDuration - splitClipTime;
 
@@ -162,18 +158,18 @@ function sampleCurveAt({
 }
 
 /**
- * Adjust a retime when a clip's trim changes (drag-resize). Curve retimes
- * renormalize because the visible window changed; constant rates are
- * duration-invariant and carried as-is.
+ * Trim-time retime adjustment (drag-resize). Currently a verified no-op:
+ * no caller passes trim through here (grep: zero call sites outside this
+ * module), so there is no removed behavior anyone can depend on. Kept as
+ * the named seam so the future trim path has one place to renormalize the
+ * curve against the post-trim visible duration instead of scattering
+ * ad-hoc curve math across callers.
  *
- * NOTE (documented limitation): the visible window changes size here, which
- * shifts the whole curve mapping. Renormalizing endpoints for a trim requires
- * knowing the new visible duration at call time; callers today trim by trim
- * values, not by the post-trim clip duration, so the curve is carried as-is
- * until the caller passes enough information to renormalize correctly.
- * (Carrying a slightly stretched curve is far less destructive than the
- * naive renormalize that anchored everything at speed(0).)
+ * When a caller arrives, the correct implementation is: curve retimes
+ * re-anchor `duration` to the post-trim visible duration (keyframe times
+ * are normalized 0..1 over the clip); constant rates carry as-is.
  */
+// ponytail: deliberately not implemented; implement when a trim caller lands.
 export function adjustRetimeForTrimChange({
 	retime,
 	clipTrimTime,

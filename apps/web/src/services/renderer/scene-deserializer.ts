@@ -2,7 +2,9 @@
  * Deserializes a scene tree in a Web Worker.
  *
  * Reconstructs class instances from the plain data format sent by the
- * main thread, and creates Blob URLs for media files.
+ * main thread, and creates Blob URLs for media files. The caller owns the
+ * returned tree and must call {@link revokeSceneBlobUrls} when the export
+ * finishes (or is cancelled) so per-export blob URLs do not accumulate.
  */
 
 import type { AnyBaseNode } from "./nodes/base-node";
@@ -24,13 +26,32 @@ import { ColorNode, type ColorNodeParams } from "./nodes/color-node";
 import type { SerializedNode } from "./scene-serializer";
 
 /**
+ * Release the blob URLs created by {@link deserializeSceneTree} for one
+ * export run. Safe to call with an empty map or with URLs that were already
+ * revoked.
+ */
+export function revokeSceneBlobUrls(blobUrls: Map<string, string>): void {
+	for (const url of blobUrls.values()) {
+		try {
+			URL.revokeObjectURL(url);
+		} catch {
+			// Already revoked or invalid — nothing left to free.
+		}
+	}
+	blobUrls.clear();
+}
+
+/**
  * Reconstruct a node tree from serialized data.
  * Creates Blob URLs for media files and attaches them to the nodes.
+ *
+ * Returns both the tree and the created blob URLs so the caller can revoke
+ * them with {@link revokeSceneBlobUrls} after the export settles.
  */
 export function deserializeSceneTree(
 	serialized: SerializedNode,
 	files: Map<string, File>,
-): AnyBaseNode {
+): { root: AnyBaseNode; blobUrls: Map<string, string> } {
 	// Create blob URLs for media files
 	const blobUrls = new Map<string, string>();
 	for (const [mediaId, file] of files) {
@@ -82,9 +103,13 @@ export function deserializeSceneTree(
 					params as unknown as BlurBackgroundNodeParams,
 				);
 				break;
-			case "effect-layer":
+			case "effect-layer": {
+				// A stale effectType (removed plugin) must not fail the whole
+				// export — resolve.ts already skips unregistered types, so keep
+				// the node and let resolution produce no passes.
 				node = new EffectLayerNode(params as unknown as EffectLayerNodeParams);
 				break;
+			}
 			case "color":
 				node = new ColorNode(params as unknown as ColorNodeParams);
 				break;
@@ -97,5 +122,5 @@ export function deserializeSceneTree(
 		return node;
 	}
 
-	return deserialize(serialized);
+	return { root: deserialize(serialized), blobUrls };
 }

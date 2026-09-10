@@ -9,23 +9,25 @@ function pad(value: number, length: number): string {
 	return Math.floor(value).toString().padStart(length, "0");
 }
 
-/** seconds -> "HH:MM:SS,mmm" (SRT) */
+/** seconds -> "HH:MM:SS,mmm" (SRT). Rounds to whole milliseconds first
+ * so 59.9996s never renders as an invalid "59,1000" timestamp. */
 function formatSrtTimestamp(seconds: number): string {
-	const clamped = Math.max(0, seconds);
-	const hours = Math.floor(clamped / 3600);
-	const minutes = Math.floor((clamped % 3600) / 60);
-	const secs = Math.floor(clamped % 60);
-	const millis = Math.round((clamped - Math.floor(clamped)) * 1000);
+	const totalMillis = Math.round(Math.max(0, seconds) * 1000);
+	const hours = Math.floor(totalMillis / 3_600_000);
+	const minutes = Math.floor((totalMillis % 3_600_000) / 60_000);
+	const secs = Math.floor((totalMillis % 60_000) / 1000);
+	const millis = totalMillis % 1000;
 	return `${pad(hours, 2)}:${pad(minutes, 2)}:${pad(secs, 2)},${pad(millis, 3)}`;
 }
 
-/** seconds -> "H:MM:SS.cc" (ASS, centiseconds) */
+/** seconds -> "H:MM:SS.cc" (ASS, centiseconds). Same rounding-carry rule
+ * as the SRT formatter so 59.999s never renders as an invalid ".100". */
 function formatAssTimestamp(seconds: number): string {
-	const clamped = Math.max(0, seconds);
-	const hours = Math.floor(clamped / 3600);
-	const minutes = Math.floor((clamped % 3600) / 60);
-	const secs = Math.floor(clamped % 60);
-	const centis = Math.round((clamped - Math.floor(clamped)) * 100);
+	const totalCentis = Math.round(Math.max(0, seconds) * 100);
+	const hours = Math.floor(totalCentis / 360_000);
+	const minutes = Math.floor((totalCentis % 360_000) / 6000);
+	const secs = Math.floor((totalCentis % 6000) / 100);
+	const centis = totalCentis % 100;
 	return `${hours}:${pad(minutes, 2)}:${pad(secs, 2)}.${pad(centis, 2)}`;
 }
 

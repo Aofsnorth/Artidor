@@ -2,6 +2,7 @@ import type { ElementType } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
+import { createThrottledStorage } from "@/stores/throttled-storage";
 import {
 	ArrowRightDoubleIcon,
 	ClosedCaptionIcon,
@@ -250,7 +251,14 @@ export const useAssetsPanelStore = create<AssetsPanelStore>()(
 		}),
 		{
 			name: "assets-panel",
-			storage: browserStorage,
+			// Throttled (250ms trailing): the asset-card-size slider fires
+			// `setAssetCardSize` per input event (60+/sec while dragging),
+			// each synchronously re-serializing + writing localStorage.
+			// Same key/partialize/rehydrate; only write timing changes.
+			storage: createThrottledStorage({
+				storage: browserStorage,
+				waitMs: 250,
+			}),
 			partialize: (state) => ({
 				mediaViewMode: state.mediaViewMode,
 				mediaSortBy: state.mediaSortBy,

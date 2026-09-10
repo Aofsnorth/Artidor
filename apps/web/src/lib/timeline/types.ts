@@ -156,6 +156,15 @@ export interface RetimeConfig {
 	mode?: "constant" | "curve";
 	keyframes?: RetimeCurveKeyframe[];
 	/**
+	 * Owning clip's visible duration (timeline ticks) at the time this config
+	 * was written. Curve keyframes are normalized 0..1 over the WHOLE clip,
+	 * so splitting or re-resolving a curve needs the duration it was
+	 * normalized against. Constant-rate playback ignores it (rate multiplies
+	 * clip time directly). Always prefer the explicit `clipDuration`
+	 * parameter where a caller has it; this field is the stored fallback.
+	 */
+	duration?: number;
+	/**
 	 * Frame interpolation method used to synthesize in-between frames when
 	 * the source rate doesn't align with the retimed rate (e.g. 24→60 fps
 	 * slow-motion).
@@ -436,12 +445,6 @@ export interface EffectElement extends BaseTimelineElement {
 	params: ParamValues;
 }
 
-export type ElementUpdatePatch =
-	| { transform: Transform }
-	| { opacity: number }
-	| { volume: number }
-	| { bookmarks: Bookmark[] };
-
 export type TimelineElement =
 	| AudioElement
 	| VideoElement
@@ -451,6 +454,25 @@ export type TimelineElement =
 	| GraphicElement
 	| EffectElement
 	| CameraElement;
+
+/**
+ * Flattened multi-layer clip produced ONLY by CombineElementsCommand, which
+ * spreads the first source element and overrides id/name/geometry. The
+ * `type` stays the source's concrete type (so every renderer/placement
+ * switch over the TimelineElement union keeps working); the combine marker
+ * is the `combinedElements` payload, not a new discriminant.
+ */
+// ponytail: no dedicated renderer/placement branch for combined clips; add
+// when they need distinct playback/export behavior.
+export type CombinedElement = TimelineElement & {
+	combinedElements: TimelineElement[];
+};
+
+export type ElementUpdatePatch =
+	| { transform: Transform }
+	| { opacity: number }
+	| { volume: number }
+	| { bookmarks: Bookmark[] };
 
 export type ElementType = TimelineElement["type"];
 

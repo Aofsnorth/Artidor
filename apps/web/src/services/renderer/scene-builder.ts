@@ -179,6 +179,13 @@ function buildTrackNodes({
 			}
 
 			if (element.type === "text") {
+				// Null layers (Alight Motion-style holders) carry no intrinsic
+				// content — the timeline shows a dashed placeholder and they must
+				// not render text (often empty content) into preview/export.
+				// They stay in the parent-chain index so children keep inheriting.
+				if (element.nullLayer === true) {
+					continue;
+				}
 				nodes.push(
 					new TextNode({
 						...element,

@@ -56,7 +56,14 @@ export function ProjectDetailsView() {
 
 	const meta = activeProject.metadata;
 	const settings = activeProject.settings;
-	const fps = Math.round(settings.fps.numerator / settings.fps.denominator);
+	// Guard zero/negative denominator: without this a corrupt fps shape
+	// yields Infinity/NaN fps here (and NaN duration below) — Details must
+	// never render garbage from a torn project shape.
+	const rawFps =
+		settings.fps.denominator > 0
+			? settings.fps.numerator / settings.fps.denominator
+			: 0;
+	const fps = Number.isFinite(rawFps) ? Math.round(rawFps) : 0;
 	const durationSeconds = mediaTimeToSeconds({
 		time: Math.round(meta.duration),
 	});
@@ -72,6 +79,9 @@ export function ProjectDetailsView() {
 	const backgroundLabel = (() => {
 		const bg = settings.background;
 		if (bg.type === "color") return "Solid color";
+		// Corrupt blurIntensity (NaN/Infinity from a torn update) must not
+		// render as "Blur · NaN" — fall back to a plain label.
+		if (!Number.isFinite(bg.blurIntensity)) return "Blur";
 		return `Blur · ${bg.blurIntensity.toFixed(1)}`;
 	})();
 

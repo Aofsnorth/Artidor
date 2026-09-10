@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
+import { useShallow } from "zustand/shallow";
 import { ACTIONS, type TActionWithOptionalArgs } from "@/lib/actions";
 import {
 	getPlatformAlternateKey,
@@ -36,7 +37,13 @@ function formatKey({ key }: { key: string }): string {
 }
 
 export function useKeyboardShortcutsHelp() {
-	const { keybindings } = useKeybindingsStore();
+	// Single-field selector (stable identity): the derived shortcut list
+	// only recomputes when the keybindings map itself changes — not on
+	// unrelated keybindings-store churn (overlay depth, recording flag).
+	// Previously `const { keybindings } = useKeybindingsStore()` returned a
+	// fresh object every call, re-running the O(actions) useMemo and
+	// re-rendering every consumer on each of those unrelated updates.
+	const keybindings = useKeybindingsStore(useShallow((s) => s.keybindings));
 
 	const shortcuts = useMemo(() => {
 		const result: KeyboardShortcut[] = [];

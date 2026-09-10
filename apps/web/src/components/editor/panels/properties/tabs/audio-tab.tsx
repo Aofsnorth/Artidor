@@ -89,7 +89,7 @@ export function AudioTab({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) {
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
 				return null;
 			}
 
@@ -133,7 +133,7 @@ export function AudioTab({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) {
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
 				return null;
 			}
 
@@ -166,7 +166,7 @@ export function AudioTab({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) {
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
 				return null;
 			}
 
@@ -199,7 +199,7 @@ export function AudioTab({
 		}),
 		parse: (input) => {
 			const parsed = parseFloat(input);
-			if (Number.isNaN(parsed)) {
+			if (Number.isNaN(parsed) || !Number.isFinite(parsed)) {
 				return null;
 			}
 

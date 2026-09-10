@@ -80,7 +80,7 @@ export class RemoveMediaAssetCommand extends Command {
 				...this.removedAsset,
 				url: URL.createObjectURL(this.removedAsset.file),
 			};
-			this.restoredObjectUrls = [restoredAsset.url];
+			this.restoredObjectUrls = restoredAsset.url ? [restoredAsset.url] : [];
 
 			editor.media.setAssets({
 				assets: this.savedAssets.map((a) =>
@@ -111,6 +111,18 @@ export class RemoveMediaAssetCommand extends Command {
 		}
 		this.restoredObjectUrls = [];
 		return this.execute();
+	}
+
+	/**
+	 * Release object URLs minted by undo() when the history cap evicts this
+	 * entry. Without this, an evicted entry would pin revoked-but-unreleased
+	 * Blob URLs until the tab closed.
+	 */
+	dispose(): void {
+		for (const url of this.restoredObjectUrls) {
+			URL.revokeObjectURL(url);
+		}
+		this.restoredObjectUrls = [];
 	}
 }
 

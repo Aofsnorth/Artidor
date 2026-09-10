@@ -24,6 +24,23 @@ export interface BookmarkDragState {
 	currentTime: number;
 }
 
+/**
+ * Final clamp for a bookmark drag time: frame-snapping and magnet-snapping
+ * run on an already-clamped value but can still nudge the result past the
+ * timeline end (e.g. rounding up to the next frame), so the ghost and the
+ * commit must both clamp AFTER snapping — not just before it.
+ * Pure for unit testing.
+ */
+export function clampBookmarkDragTime({
+	time,
+	duration,
+}: {
+	time: number;
+	duration: number;
+}): number {
+	return Math.max(0, Math.min(time, duration));
+}
+
 interface PendingBookmarkDrag {
 	bookmarkTime: number;
 	startMouseX: number;
@@ -169,7 +186,10 @@ export function useBookmarkDrag({
 
 				startDrag({
 					bookmarkTime,
-					initialCurrentTime: initialTime,
+					initialCurrentTime: clampBookmarkDragTime({
+						time: initialTime,
+						duration,
+					}),
 				});
 				pendingDragRef.current = null;
 				setIsPendingDrag(false);
@@ -200,7 +220,13 @@ export function useBookmarkDrag({
 
 			setDragState((previousDragState) => ({
 				...previousDragState,
-				currentTime: snapResult.snappedTime,
+				// Re-clamp after frame+snap: either step can push the time
+				// back past the timeline end, which the ghost would then show
+				// while the mouseup commit clamps again (1-frame divergence).
+				currentTime: clampBookmarkDragTime({
+					time: snapResult.snappedTime,
+					duration,
+				}),
 			}));
 			onSnapPointChange?.(snapResult.snapPoint);
 		};

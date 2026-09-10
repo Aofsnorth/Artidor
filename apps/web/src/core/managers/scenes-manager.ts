@@ -61,8 +61,18 @@ export class ScenesManager {
 			throw new Error("No active project");
 		}
 
+		// Capture pre-delete activeness: the command swaps the active scene via
+		// setScenes fallback, so post-delete identity can't tell whether the
+		// deleted scene was active.
+		const wasActive = this.active?.id === sceneId;
+		const hadSelection = this.editor.selection.getSelectedElements().length > 0;
 		const command = new DeleteSceneCommand(sceneId);
 		this.editor.command.execute({ command });
+		// Post-delete the active scene holds new tracks/elements: refs selected
+		// from the deleted scene are stale (same class as project/switch clears
+		// above). Without this the inspector resolves zero tracks. Deleting a
+		// background scene keeps the current selection untouched.
+		if (wasActive && hadSelection) this.editor.selection.clearSelection();
 	}
 
 	async renameScene({
@@ -102,6 +112,13 @@ export class ScenesManager {
 			this.editor.project.setActiveProject({ project: updatedProject });
 		}
 
+		// New scene = fresh context: refs into the old scene's tracks/elements
+		// are stale (same pattern as project switch in project-manager).
+		this.editor.selection.clearSelection();
+		// Shared playhead would start the new scene mid-timeline. No per-scene
+		// playhead store exists (single PlaybackManager.currentTime), so reset
+		// to 0 — reconcileTimelineScope clamps to the new duration.
+		this.editor.playback.seek({ time: 0 });
 		this.active = targetScene;
 		this.notify();
 	}

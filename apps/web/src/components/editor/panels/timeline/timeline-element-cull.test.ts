@@ -92,3 +92,26 @@ test("always mounts a selected clip regardless of position", () => {
 test("zoom produces a usable px-per-second scale", () => {
 	expect(pps).toBeGreaterThan(1);
 });
+
+test("react perf round 10: long track mounts O(visible), not O(total)", () => {
+	// 500 one-second clips laid end-to-end (≈500s of media). The [0,1000]px
+	// window shows ~1s at this zoom, so only a handful of clips overlap it.
+	// Evidence that culling skips render work (conditional render → null)
+	// instead of CSS-hiding: culled clips never reach <TimelineElement />.
+	let mounted = 0;
+	for (let i = 0; i < 500; i += 1) {
+		const mount = shouldMountTimelineElement({
+			elementId: `clip-${i}`,
+			startTime: secToTicks(i),
+			duration: secToTicks(1),
+			zoomLevel: ZOOM,
+			windowLeft: WINDOW.left,
+			windowRight: WINDOW.right,
+			isSelected: false,
+		});
+		if (mount) mounted += 1;
+	}
+	// 500 total → ≤3 mounted (the ~1s visible + boundary overlap).
+	expect(mounted).toBeLessThanOrEqual(3);
+	expect(mounted).toBeGreaterThan(0);
+});
