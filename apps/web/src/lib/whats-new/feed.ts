@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-13-timeline-seek-clip-disappear-fix",
+		date: "2026-09-13",
+		tag: "fix",
+		title: "Timeline clips no longer vanish when seeking",
+		items: [
+			"Fixed a race that left the timeline viewport unmeasured, so clips past the first ~600px could disappear after a seek and never come back on scroll.",
+			"Seeking while paused now scrolls the timeline just enough to keep the playhead visible, instead of leaving it stranded off-screen.",
+		],
+	},
+	{
 		id: "2026-09-07-cleaner-monitor-honest-previews",
 		date: "2026-09-07",
 		tag: "improvement",

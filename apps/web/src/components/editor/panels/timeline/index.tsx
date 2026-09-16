@@ -589,6 +589,7 @@ export function Timeline() {
 			containerRef: tracksContainerRef,
 			tracksScrollRef,
 			zoomLevel,
+			onSnapPointChange: handleSnapPointChange,
 		});
 
 	const {

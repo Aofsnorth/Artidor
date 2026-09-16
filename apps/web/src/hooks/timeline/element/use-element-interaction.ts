@@ -364,11 +364,12 @@ export function useElementInteraction({
 
 			const elementDuration = movingElement.duration;
 			const playheadTime = editor.playback.getCurrentTime();
+			const liveSceneTracks = editor.scenes.getActiveScene().tracks;
 
 			const startSnap = snapElementEdge({
 				targetTime: frameSnappedTime,
 				elementDuration,
-				tracks: sceneTracks,
+				tracks: liveSceneTracks,
 				playheadTime,
 				zoomLevel,
 				excludeElementId: movingElement.id,
@@ -378,7 +379,7 @@ export function useElementInteraction({
 			const endSnap = snapElementEdge({
 				targetTime: frameSnappedTime,
 				elementDuration,
-				tracks: sceneTracks,
+				tracks: liveSceneTracks,
 				playheadTime,
 				zoomLevel,
 				excludeElementId: movingElement.id,
@@ -396,7 +397,13 @@ export function useElementInteraction({
 				snapPoint: snapResult.snapPoint,
 			};
 		},
-		[snappingEnabled, editor.playback, zoomLevel, isShiftHeldRef, sceneTracks],
+		[
+			snappingEnabled,
+			editor.playback,
+			zoomLevel,
+			isShiftHeldRef,
+			editor.scenes.getActiveScene,
+		],
 	);
 
 	useEffect(() => {
@@ -439,13 +446,16 @@ export function useElementInteraction({
 					// whole group travels with the primary element, keeping
 					// relative offsets (CapCut/Premiere group-drag behavior).
 					const pending = pendingDragRef.current;
+					const liveTracks = getOrderedTracks(
+						editor.scenes.getActiveScene().tracks,
+					);
 					const { dragElementIds, dragTimeOffsets } = buildMultiDragSet({
 						selectedElements,
 						primaryTrackId: pending.trackId,
 						primaryElementId: pending.elementId,
 						primaryStartTime: pending.startElementTime,
 						getElementStartTime: (ref) =>
-							tracks
+							liveTracks
 								.find(({ id }) => id === ref.trackId)
 								?.elements.find(({ id }) => id === ref.elementId)?.startTime ??
 							null,
@@ -498,7 +508,9 @@ export function useElementInteraction({
 			const frameSnappedTime =
 				roundToFrame({ time: adjustedTime, rate: fps }) ?? adjustedTime;
 
-			const sourceTrack = tracks.find(({ id }) => id === dragState.trackId);
+			const liveSceneTracks = editor.scenes.getActiveScene().tracks;
+			const liveTracks = getOrderedTracks(liveSceneTracks);
+			const sourceTrack = liveTracks.find(({ id }) => id === dragState.trackId);
 			const movingElement = sourceTrack?.elements.find(
 				({ id }) => id === dragState.elementId,
 			);
@@ -523,7 +535,7 @@ export function useElementInteraction({
 					clientY,
 					elementId: dragState.elementId,
 					trackId: dragState.trackId,
-					tracks: sceneTracks,
+					tracks: liveSceneTracks,
 					tracksContainerRef,
 					tracksScrollRef,
 					headerRef,
@@ -553,15 +565,14 @@ export function useElementInteraction({
 		tracksScrollRef,
 		tracksContainerRef,
 		headerRef,
-		tracks,
 		isPendingDrag,
 		startDrag,
 		getDragSnapResult,
 		onSnapPointChange,
-		sceneTracks,
 		trackHeights,
 		extraHeights,
 		selectedElements,
+		editor.scenes.getActiveScene,
 	]);
 
 	useEffect(() => {
@@ -584,12 +595,14 @@ export function useElementInteraction({
 				}
 			}
 
+			const liveSceneTracks = editor.scenes.getActiveScene().tracks;
+			const liveTracks = getOrderedTracks(liveSceneTracks);
 			const dropTarget = getDragDropTarget({
 				clientX,
 				clientY,
 				elementId: dragState.elementId,
 				trackId: dragState.trackId,
-				tracks: sceneTracks,
+				tracks: liveSceneTracks,
 				tracksContainerRef,
 				tracksScrollRef,
 				headerRef,
@@ -609,7 +622,7 @@ export function useElementInteraction({
 			}
 			const snappedTime = dragState.currentTime;
 
-			const sourceTrack = tracks.find(({ id }) => id === dragState.trackId);
+			const sourceTrack = liveTracks.find(({ id }) => id === dragState.trackId);
 			if (!sourceTrack) {
 				endDrag();
 				onSnapPointChange?.(null);
@@ -621,7 +634,7 @@ export function useElementInteraction({
 			if (
 				movingElement &&
 				!dropTarget.isNewTrack &&
-				tracks[dropTarget.trackIndex]?.id === dragState.trackId &&
+				liveTracks[dropTarget.trackIndex]?.id === dragState.trackId &&
 				snappedTime === movingElement.startTime
 			) {
 				endDrag();
@@ -648,7 +661,7 @@ export function useElementInteraction({
 						elementId: dragState.elementId,
 					});
 				} else {
-					const targetTrack = tracks[dropTarget.trackIndex];
+					const targetTrack = liveTracks[dropTarget.trackIndex];
 					if (targetTrack) {
 						// Move the dragged element. Every other member of the
 						// drag set (snapshotted at drag start, see buildMultiDragSet)
@@ -714,7 +727,6 @@ export function useElementInteraction({
 		dragState.dragElementIds,
 		dragState.dragTimeOffsets,
 		zoomLevel,
-		tracks,
 		endDrag,
 		onSnapPointChange,
 		editor.timeline,
@@ -722,10 +734,10 @@ export function useElementInteraction({
 		tracksScrollRef,
 		headerRef,
 		selectElement,
-		sceneTracks,
 		selectedElements,
 		trackHeights,
 		extraHeights,
+		editor.scenes.getActiveScene,
 	]);
 
 	useEffect(() => {

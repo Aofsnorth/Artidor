@@ -39,6 +39,7 @@ description: Verifies Artidor web UI changes using isolated Playwright contexts,
 - Disable GPU only when testing fallback behavior. Headless unsupported WebGPU does not validate real playback quality.
 - Read/write JSON as UTF-8 on Windows; default Python cp1252 cannot decode some app text.
 - File-edit batches can partially apply before a later match fails. Continue from the reported success, never blindly replay the full batch.
+- A custom overlay portaled outside an open Radix modal inherits the modal layer's blocked pointer behavior. Add `pointer-events-auto` to the portaled overlay and prevent the parent `DialogContent`'s `onPointerDownOutside` dismissal while the child overlay is open.
 
 ## Verification
 

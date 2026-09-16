@@ -1,0 +1,276 @@
+[
+  {
+    "consoleError": "Failed to load project: Error: Project with id timeline-seek-repro not found\n    at runLoad (http://127.0.0.1:3005/_next/static/chunks/apps_web_src_core_1ejr87n._.js:1786:27)\n    at async ProjectManager.loadProject (http://127.0.0.1:3005/_next/static/chunks/apps_web_src_core_1ejr87n._.js:1852:13)\n  "
+  },
+  {
+    "phase": "boot",
+    "mainTrackRect": {
+      "x": 328,
+      "y": 685.84375,
+      "width": 1102,
+      "height": 78
+    }
+  },
+  {
+    "phase": "after-drop-1",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      }
+    ],
+    "domClips": 1
+  },
+  {
+    "phase": "after-drop-2",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-1-at-5.1s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-2-at-5.4s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-3-at-5.8s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-4-at-6.2s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-5-at-6.6s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "click-6-at-7s",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "final",
+    "stateElements": [
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "cb43e8e0-1e2f-4956-91b4-e53b80ecd3dc",
+        "type": "image",
+        "name": "Screenshot-135.png",
+        "startTime": 0,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "45a1462d-2a3d-4937-b417-a401896ce133"
+      },
+      {
+        "trackId": "408a2590-2100-4bd8-ab4c-9d366d222fb2",
+        "trackType": "image",
+        "elementId": "2a1e837b-aaa7-42cf-a368-665b20b640b6",
+        "type": "image",
+        "name": "Screenshot-136.png",
+        "startTime": 600000,
+        "duration": 600000,
+        "trimStart": 0,
+        "trimEnd": 0,
+        "mediaId": "8e544574-5fab-4d37-a833-36931a7190e0"
+      }
+    ],
+    "domClips": 2
+  },
+  {
+    "phase": "result",
+    "verdict": "NOT REPRODUCED (both clips intact in state and DOM)"
+  }
+]

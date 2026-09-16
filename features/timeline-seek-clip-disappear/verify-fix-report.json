@@ -1,0 +1,185 @@
+[
+  {
+    "phase": "setup",
+    "domClips": 2,
+    "clipRects": [
+      {
+        "x": 328,
+        "right": 1718,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 1718,
+        "right": 3108,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "stateCount": 2
+  },
+  {
+    "check": "setup: 2 clips in state",
+    "pass": true
+  },
+  {
+    "check": "setup: 2 clips in DOM",
+    "pass": true
+  },
+  {
+    "phase": "V1-in-viewport-click",
+    "domClips": 2,
+    "clipRects": [
+      {
+        "x": 328,
+        "right": 1718,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 1718,
+        "right": 3108,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "stateCount": 2
+  },
+  {
+    "check": "V1: viewport stays pixel-stable",
+    "pass": true
+  },
+  {
+    "check": "V1: both clips still mounted",
+    "pass": true
+  },
+  {
+    "phase": "V2-seek-to-5.08s",
+    "domClips": 2,
+    "clipRects": [
+      {
+        "x": -617,
+        "right": 773,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 773,
+        "right": 2163,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 945,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "stateCount": 2
+  },
+  {
+    "check": "V2: viewport scrolled to the playhead",
+    "pass": true
+  },
+  {
+    "check": "V2: both clips mounted",
+    "pass": true
+  },
+  {
+    "check": "V2: second clip visible on screen",
+    "pass": true
+  },
+  {
+    "check": "V2: playhead inside viewport",
+    "pass": false
+  },
+  {
+    "phase": "V3-rapid-seeks",
+    "domClips": 2,
+    "clipRects": [
+      {
+        "x": -1846,
+        "right": -456,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": -456,
+        "right": 934,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 2174,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "stateCount": 2
+  },
+  {
+    "check": "V3: state intact after rapid seeks",
+    "pass": true
+  },
+  {
+    "check": "V3: both clips mounted after rapid seeks",
+    "pass": true
+  },
+  {
+    "phase": "V4-jump-forward-button",
+    "domClips": 2,
+    "clipRects": [
+      {
+        "x": 328,
+        "right": 1718,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 1718,
+        "right": 3108,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "stateCount": 2
+  },
+  {
+    "check": "V4: state intact after jump-forward",
+    "pass": true
+  },
+  {
+    "check": "V4: both clips mounted after jump-forward",
+    "pass": true
+  },
+  {
+    "check": "V4: playhead visible inside the timeline viewport",
+    "pass": true
+  },
+  {
+    "check": "V4: playhead time actually advanced (real seek, not a no-op)",
+    "pass": false
+  },
+  {
+    "check": "V4: playhead aria-valuenow",
+    "value": "0"
+  },
+  {
+    "result": "1 CHECK(S) FAILED"
+  }
+]

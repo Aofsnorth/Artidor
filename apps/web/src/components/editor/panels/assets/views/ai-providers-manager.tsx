@@ -28,6 +28,7 @@ import {
 	Dialog,
 	DialogBody,
 	DialogContent,
+	DialogPortal,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
@@ -910,7 +911,12 @@ function ProviderFormDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-md">
+			<DialogContent
+				className="max-w-md"
+				onPointerDownOutside={(event) => {
+					if (showPuterWarning) event.preventDefault();
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						{isEditing
@@ -1278,72 +1284,74 @@ function ProviderFormDialog({
 					)}
 					<FormKeyBridge key={key} />
 					{showPuterWarning && (
-						<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-							<div className="mx-4 w-full max-w-md rounded-2xl border-2 border-amber-400/40 bg-[#1a1510] p-6 shadow-2xl">
-								<div className="mb-4 flex items-center justify-center">
-									<div className="grid size-12 place-items-center rounded-full border-2 border-amber-400/30 bg-amber-400/10">
-										<HugeiconsIcon
-											icon={AlertCircleIcon}
-											className="size-6 text-amber-300"
-										/>
+						<DialogPortal>
+							<div className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+								<div className="mx-4 w-full max-w-md rounded-2xl border-2 border-amber-400/40 bg-[#1a1510] p-6 shadow-2xl">
+									<div className="mb-4 flex items-center justify-center">
+										<div className="grid size-12 place-items-center rounded-full border-2 border-amber-400/30 bg-amber-400/10">
+											<HugeiconsIcon
+												icon={AlertCircleIcon}
+												className="size-6 text-amber-300"
+											/>
+										</div>
 									</div>
-								</div>
-								<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
-									{t("aiProviders.puterWarning.title")}
-								</h3>
-								<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
-									{t("aiProviders.puterWarning.bodyPrefix")}{" "}
-									<strong>{t("aiProviders.puterWarning.bodyStrong")}</strong>{" "}
-									{t("aiProviders.puterWarning.bodySuffix")}
-								</p>
-								<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
-									{t("aiProviders.puterWarning.acknowledge")}
-								</p>
-								<div className="flex flex-col gap-2">
-									<button
-										type="button"
-										onClick={handlePuterConfirm}
-										disabled={puterCountdown > 0}
-										className={cn(
-											"w-full rounded-lg border px-4 py-2.5 text-[0.75rem] font-semibold transition-all",
-											puterCountdown > 0
-												? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
-												: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
-										)}
-									>
-										{puterCountdown > 0
-											? t("aiProviders.puterWarning.wait", {
-													count: puterCountdown,
-												})
-											: t("aiProviders.puterWarning.accept")}
-									</button>
-									<button
-										type="button"
-										onClick={handlePuterCancel}
-										disabled={puterCountdown > 0}
-										className={cn(
-											"w-full rounded-lg border px-4 py-2 text-[0.6875rem] transition-all",
-											puterCountdown > 0
-												? "cursor-not-allowed border-white/5 text-white/20"
-												: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
-										)}
-									>
-										{t("aiProviders.puterWarning.cancel")}
-									</button>
-								</div>
-								{puterCountdown > 0 && (
-									<p className="mt-3 text-center text-[0.5625rem] text-white/30">
-										{puterCountdown > 1
-											? t("aiProviders.puterWarning.cannotDismissPlural", {
-													count: puterCountdown,
-												})
-											: t("aiProviders.puterWarning.cannotDismissSingular", {
-													count: puterCountdown,
-												})}
+									<h3 className="mb-2 text-center text-[0.875rem] font-bold text-amber-200">
+										{t("aiProviders.puterWarning.title")}
+									</h3>
+									<p className="mb-3 text-center text-[0.6875rem] leading-relaxed text-amber-100/80">
+										{t("aiProviders.puterWarning.bodyPrefix")}{" "}
+										<strong>{t("aiProviders.puterWarning.bodyStrong")}</strong>{" "}
+										{t("aiProviders.puterWarning.bodySuffix")}
 									</p>
-								)}
+									<p className="mb-4 text-center text-[0.6875rem] text-amber-100/60">
+										{t("aiProviders.puterWarning.acknowledge")}
+									</p>
+									<div className="flex flex-col gap-2">
+										<button
+											type="button"
+											onClick={handlePuterConfirm}
+											disabled={puterCountdown > 0}
+											className={cn(
+												"w-full rounded-lg border px-4 py-2.5 text-[0.75rem] font-semibold transition-all",
+												puterCountdown > 0
+													? "cursor-not-allowed border-white/10 bg-white/[0.02] text-white/30"
+													: "border-amber-400/30 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25",
+											)}
+										>
+											{puterCountdown > 0
+												? t("aiProviders.puterWarning.wait", {
+														count: puterCountdown,
+													})
+												: t("aiProviders.puterWarning.accept")}
+										</button>
+										<button
+											type="button"
+											onClick={handlePuterCancel}
+											disabled={puterCountdown > 0}
+											className={cn(
+												"w-full rounded-lg border px-4 py-2 text-[0.6875rem] transition-all",
+												puterCountdown > 0
+													? "cursor-not-allowed border-white/5 text-white/20"
+													: "border-white/10 text-white/50 hover:bg-white/[0.04] hover:text-white/70",
+											)}
+										>
+											{t("aiProviders.puterWarning.cancel")}
+										</button>
+									</div>
+									{puterCountdown > 0 && (
+										<p className="mt-3 text-center text-[0.5625rem] text-white/30">
+											{puterCountdown > 1
+												? t("aiProviders.puterWarning.cannotDismissPlural", {
+														count: puterCountdown,
+													})
+												: t("aiProviders.puterWarning.cannotDismissSingular", {
+														count: puterCountdown,
+													})}
+										</p>
+									)}
+								</div>
 							</div>
-						</div>
+						</DialogPortal>
 					)}
 				</DialogBody>
 

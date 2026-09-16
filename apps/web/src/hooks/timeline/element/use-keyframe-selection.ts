@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import type { SelectedKeyframeRef } from "@/lib/animation/types";
 
@@ -24,13 +24,13 @@ function mergeUniqueKeyframes({
 
 export function useKeyframeSelection() {
 	const editor = useEditor();
-	const selectedKeyframes = useSyncExternalStore(
-		(listener) => editor.selection.subscribe(listener),
-		() => editor.selection.getSelectedKeyframes(),
+	const selectedKeyframes = useEditor(
+		(e) => e.selection.getSelectedKeyframes(),
+		["selection"],
 	);
-	const keyframeSelectionAnchor = useSyncExternalStore(
-		(listener) => editor.selection.subscribe(listener),
-		() => editor.selection.getKeyframeSelectionAnchor(),
+	const keyframeSelectionAnchor = useEditor(
+		(e) => e.selection.getKeyframeSelectionAnchor(),
+		["selection"],
 	);
 
 	const isKeyframeSelected = useCallback(

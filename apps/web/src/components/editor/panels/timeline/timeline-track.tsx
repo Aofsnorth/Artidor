@@ -221,7 +221,7 @@ function TimelineTrackContentInner({
 						<button
 							key={`${pair.from.id}-${pair.to.id}`}
 							type="button"
-							className="absolute top-1/2 z-10 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-300/70 bg-cyan-400/90 text-black shadow-[0_0_0_2px_rgba(0,0,0,0.8),0_0_12px_rgba(34,211,238,0.55)] transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-cyan-200"
+							className="absolute top-1/2 z-10 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/80 bg-white text-black shadow-[0_0_0_2px_rgba(0,0,0,0.8),0_0_10px_rgba(255,255,255,0.45)] transition-transform hover:scale-110 hover:bg-white/90 focus-visible:outline-2 focus-visible:outline-white"
 							style={{ left: `${left}px` }}
 							aria-label={`Add transition between ${pair.from.name} and ${pair.to.name}`}
 							title="Add transition"

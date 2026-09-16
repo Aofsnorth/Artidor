@@ -12,9 +12,37 @@ export function useTimelineViewport(
 		left: 0,
 		width: 0,
 	});
+	const [element, setElement] = useState<HTMLDivElement | null>(null);
+
+	// Resolve the scroll element defensively: when the track rows mount in
+	// the same commit as the ScrollArea that owns the ref, this child's
+	// layout effect runs BEFORE the parent's host ref is assigned, so
+	// `tracksScrollRef.current` is still null here. Returning early in that
+	// case would silently skip the scroll listener AND the ResizeObserver
+	// forever — the culling window stayed `[-OVERSCAN, +OVERSCAN]` (width 0),
+	// which unmounted every clip past ~600px the moment it lost selection
+	// and never remounted it on scroll. Retry on rAF until the ref is live;
+	// this settles within a frame or two of mount.
+	useLayoutEffect(() => {
+		const existing = tracksScrollRef.current;
+		if (existing) {
+			setElement(existing);
+			return;
+		}
+		let frame = 0;
+		const tick = () => {
+			const node = tracksScrollRef.current;
+			if (node) {
+				setElement(node);
+				return;
+			}
+			frame = requestAnimationFrame(tick);
+		};
+		frame = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(frame);
+	}, [tracksScrollRef]);
 
 	useLayoutEffect(() => {
-		const element = tracksScrollRef.current;
 		if (!element) return;
 
 		const update = () => {
@@ -40,7 +68,7 @@ export function useTimelineViewport(
 			observer.disconnect();
 			element.removeEventListener("scroll", update);
 		};
-	}, [tracksScrollRef]);
+	}, [element]);
 
 	return viewport;
 }

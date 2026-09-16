@@ -431,7 +431,16 @@ export function useTimelinePlayhead({
 				editor.selection.clearKeyframeSelection();
 			}
 
-			if (!isPlayingRef.current || isScrubbingRef.current) return;
+			if (isScrubbingRef.current) return;
+			// A paused seek (click-to-seek on the empty track/ruler area, or a
+			// programmatic seek) must still keep the playhead on screen: the
+			// viewport used to stay put, so clips ahead — mounted only because
+			// they were selected — got culled the moment the seek click cleared
+			// the selection, making the clip look like it vanished. Scrolling
+			// only when the playhead actually leaves the viewport keeps in-view
+			// seeks pixel-stable (no jump on every click).
+			const isSeek = e.type === "playback-seek";
+			if (!isPlayingRef.current && !isSeek) return;
 			const rulerViewport = rulerScrollRef.current;
 			const tracksViewport = tracksScrollRef.current;
 			if (!rulerViewport || !tracksViewport) return;
@@ -444,7 +453,11 @@ export function useTimelinePlayhead({
 			const scrollMinimum = 0;
 			const scrollMaximum = rulerViewport.scrollWidth - viewportWidth;
 
-			const isAutoScrollOn = autoScrollEnabledRef.current;
+			// Centre-following is a playback affordance: while paused it would
+			// yank the viewport on every seek, so paused seeks fall through to
+			// the needsScroll branch below.
+			const isAutoScrollOn =
+				isPlayingRef.current && autoScrollEnabledRef.current;
 
 			// If auto-scroll is on, always try to keep it centered (within bounds)
 			if (isAutoScrollOn) {

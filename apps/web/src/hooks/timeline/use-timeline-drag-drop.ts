@@ -8,7 +8,7 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { roundToFrame } from "artidor-wasm";
-import { snapElementEdge } from "@/lib/timeline/snap-utils";
+import { snapElementEdge, type SnapPoint } from "@/lib/timeline/snap-utils";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { toast } from "sonner";
 import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
@@ -73,6 +73,7 @@ interface UseTimelineDragDropProps {
 	headerRef?: RefObject<HTMLElement | null>;
 	tracksScrollRef?: RefObject<HTMLDivElement | null>;
 	zoomLevel: number;
+	onSnapPointChange?: (snapPoint: SnapPoint | null) => void;
 }
 
 export function useTimelineDragDrop({
@@ -80,6 +81,7 @@ export function useTimelineDragDrop({
 	headerRef,
 	tracksScrollRef,
 	zoomLevel,
+	onSnapPointChange,
 }: UseTimelineDragDropProps) {
 	const editor = useEditor();
 	const { t } = useI18n();
@@ -207,30 +209,22 @@ export function useTimelineDragDrop({
 			const extraHeights = orderedTracks.map((track) =>
 				computeTrackExpansionHeight({ track, expandedElementIds }),
 			);
-			const target = computeDropTarget({
-				elementType,
-				mouseX,
-				mouseY,
-				tracks: sceneTracks,
-				playheadTime: currentTime,
-				isExternalDrop: isExternal,
-				elementDuration: duration,
-				pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
-				zoomLevel,
-				targetElementTypes,
-				overrideHeights: trackHeights,
-				extraHeights,
-			});
 
-			// Magnet snap for external drops (file drops from OS, library
-			// tiles): when snapping is enabled, snap the new clip's start
-			// OR end edge to the nearest existing clip edge within the
-			// default snap threshold. Mirrors the behaviour used by the
-			// internal drag interaction so the magnet toggle behaves
-			// consistently regardless of drag source.
-			if (isExternal && snappingEnabled) {
+			const rawTime = Math.max(
+				0,
+				(mouseX / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel)) *
+					TICKS_PER_SECOND,
+			);
+			const frameSnappedTime = getSnappedTime({ time: Math.round(rawTime) });
+			let snappedTime = frameSnappedTime;
+			let activeSnapPoint: SnapPoint | null = null;
+
+			// Magnet snap for drops (library tiles, OS file drops): when snapping
+			// is enabled, snap the new clip's start OR end edge to the nearest
+			// existing clip edge within the default snap threshold.
+			if (snappingEnabled) {
 				const startSnap = snapElementEdge({
-					targetTime: target.xPosition,
+					targetTime: frameSnappedTime,
 					elementDuration: duration,
 					tracks: sceneTracks,
 					playheadTime: currentTime,
@@ -238,7 +232,7 @@ export function useTimelineDragDrop({
 					snapToStart: true,
 				});
 				const endSnap = snapElementEdge({
-					targetTime: target.xPosition,
+					targetTime: frameSnappedTime,
 					elementDuration: duration,
 					tracks: sceneTracks,
 					playheadTime: currentTime,
@@ -248,11 +242,28 @@ export function useTimelineDragDrop({
 				const best =
 					startSnap.snapDistance <= endSnap.snapDistance ? startSnap : endSnap;
 				if (best.snapPoint) {
-					target.xPosition = best.snappedTime;
+					snappedTime = best.snappedTime;
+					activeSnapPoint = best.snapPoint;
 				}
 			}
 
-			target.xPosition = getSnappedTime({ time: target.xPosition });
+			onSnapPointChange?.(activeSnapPoint);
+
+			const target = computeDropTarget({
+				elementType,
+				mouseX,
+				mouseY,
+				tracks: sceneTracks,
+				playheadTime: currentTime,
+				isExternalDrop: isExternal,
+				startTimeOverride: snappedTime,
+				elementDuration: duration,
+				pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
+				zoomLevel,
+				targetElementTypes,
+				overrideHeights: trackHeights,
+				extraHeights,
+			});
 
 			setDropTarget(target);
 			e.dataTransfer.dropEffect = "copy";
@@ -269,6 +280,7 @@ export function useTimelineDragDrop({
 			snappingEnabled,
 			expandedElementIds,
 			trackHeights,
+			onSnapPointChange,
 		],
 	);
 
@@ -287,10 +299,11 @@ export function useTimelineDragDrop({
 					setIsDragOver(false);
 					setDropTarget(null);
 					setElementType(null);
+					onSnapPointChange?.(null);
 				}
 			}
 		},
-		[containerRef],
+		[containerRef, onSnapPointChange],
 	);
 
 	const executeTextDrop = useCallback(
@@ -634,32 +647,16 @@ export function useTimelineDragDrop({
 							sceneTracks.main.elements.length === 0
 								? sceneTracks.main.id
 								: null;
-						let dropTarget = reuseMainTrackId
-							? null
-							: computeDropTarget({
-									elementType: createdAsset.type,
-									mouseX,
-									mouseY,
-									tracks: sceneTracks,
-									playheadTime: currentTime,
-									isExternalDrop: true,
-									elementDuration: duration,
-									pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
-									zoomLevel,
-									overrideHeights: trackHeights,
-									extraHeights: orderedTracks.map((track) =>
-										computeTrackExpansionHeight({ track, expandedElementIds }),
-									),
-								});
-
-						// Magnet snap for OS file drops: this path runs after
-						// the user releases the mouse, so it can't reuse the
-						// drag-over `dropTarget` state. Re-apply the same
-						// snap-to-adjacent logic that handleDragOver uses
-						// for library-asset drags.
-						if (dropTarget && snappingEnabled) {
+						const rawX = Math.round(
+							Math.max(
+								0,
+								mouseX / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel),
+							) * TICKS_PER_SECOND,
+						);
+						let fileDropTime = getSnappedTime({ time: rawX });
+						if (snappingEnabled) {
 							const startSnap = snapElementEdge({
-								targetTime: dropTarget.xPosition,
+								targetTime: fileDropTime,
 								elementDuration: duration,
 								tracks: sceneTracks,
 								playheadTime: currentTime,
@@ -667,7 +664,7 @@ export function useTimelineDragDrop({
 								snapToStart: true,
 							});
 							const endSnap = snapElementEdge({
-								targetTime: dropTarget.xPosition,
+								targetTime: fileDropTime,
 								elementDuration: duration,
 								tracks: sceneTracks,
 								playheadTime: currentTime,
@@ -679,9 +676,28 @@ export function useTimelineDragDrop({
 									? startSnap
 									: endSnap;
 							if (best.snapPoint) {
-								dropTarget = { ...dropTarget, xPosition: best.snappedTime };
+								fileDropTime = best.snappedTime;
 							}
 						}
+
+						const dropTarget = reuseMainTrackId
+							? null
+							: computeDropTarget({
+									elementType: createdAsset.type,
+									mouseX,
+									mouseY,
+									tracks: sceneTracks,
+									playheadTime: currentTime,
+									isExternalDrop: false,
+									startTimeOverride: fileDropTime,
+									elementDuration: duration,
+									pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
+									zoomLevel,
+									overrideHeights: trackHeights,
+									extraHeights: orderedTracks.map((track) =>
+										computeTrackExpansionHeight({ track, expandedElementIds }),
+									),
+								});
 
 						const trackType: TrackType = createdAsset.type;
 
@@ -744,7 +760,14 @@ export function useTimelineDragDrop({
 				},
 			});
 		},
-		[editor, zoomLevel, snappingEnabled, expandedElementIds, trackHeights],
+		[
+			editor,
+			zoomLevel,
+			snappingEnabled,
+			expandedElementIds,
+			trackHeights,
+			getSnappedTime,
+		],
 	);
 
 	const handleDrop = useCallback(
@@ -760,6 +783,7 @@ export function useTimelineDragDrop({
 			setIsDragOver(false);
 			setDropTarget(null);
 			setElementType(null);
+			onSnapPointChange?.(null);
 
 			try {
 				if (hasAsset) {
@@ -828,6 +852,7 @@ export function useTimelineDragDrop({
 			containerRef,
 			headerRef,
 			tracksScrollRef,
+			onSnapPointChange,
 		],
 	);
 
@@ -840,6 +865,7 @@ export function useTimelineDragDrop({
 			setIsDragOver(false);
 			setDropTarget(null);
 			setElementType(null);
+			onSnapPointChange?.(null);
 		};
 		const onVisibility = () => {
 			if (document.hidden) reset();
@@ -852,7 +878,7 @@ export function useTimelineDragDrop({
 			document.removeEventListener("dragend", reset);
 			document.removeEventListener("visibilitychange", onVisibility);
 		};
-	}, [isDragOver]);
+	}, [isDragOver, onSnapPointChange]);
 
 	return {
 		isDragOver,

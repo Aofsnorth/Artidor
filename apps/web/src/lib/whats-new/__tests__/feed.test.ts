@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes the monitor and catalog cleanup", () => {
+	test("the newest entry describes the timeline seek fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-09-07-cleaner-monitor-honest-previews",
+			"2026-09-13-timeline-seek-clip-disappear-fix",
 		);
 	});
 });

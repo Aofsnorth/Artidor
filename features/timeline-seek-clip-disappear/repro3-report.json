@@ -1,0 +1,88 @@
+[
+  {
+    "phase": "H1:after-insert",
+    "domClips": 2,
+    "selectedClips": 0,
+    "clipRects": [
+      {
+        "x": 328,
+        "width": 1390,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 1718,
+        "width": 1390,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 3446
+    },
+    "playheadLeft": "0%",
+    "stateCount": 2
+  },
+  {
+    "phase": "H2:after-zoom",
+    "domClips": 2,
+    "selectedClips": 0,
+    "clipRects": [
+      {
+        "x": 328,
+        "width": 11609,
+        "name": "Screenshot-135.png"
+      },
+      {
+        "x": 11937,
+        "width": 11609,
+        "name": "Screenshot-136.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 23386
+    },
+    "playheadLeft": "0%",
+    "stateCount": 2
+  },
+  {
+    "phase": "H3:after-single-seek-click",
+    "domClips": 1,
+    "selectedClips": 0,
+    "clipRects": [
+      {
+        "x": 328,
+        "width": 11609,
+        "name": "Screenshot-135.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 0,
+      "clientWidth": 1112,
+      "scrollWidth": 23386
+    },
+    "playheadLeft": "0%",
+    "stateCount": 2
+  },
+  {
+    "phase": "control:after-manual-scroll",
+    "domClips": 1,
+    "selectedClips": 0,
+    "clipRects": [
+      {
+        "x": -2672,
+        "width": 11609,
+        "name": "Screenshot-135.png"
+      }
+    ],
+    "scroll": {
+      "scrollLeft": 3000,
+      "clientWidth": 1112,
+      "scrollWidth": 23386
+    },
+    "playheadLeft": "0%",
+    "stateCount": 2
+  }
+]
