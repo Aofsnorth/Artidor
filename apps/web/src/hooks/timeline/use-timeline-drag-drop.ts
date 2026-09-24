@@ -249,6 +249,14 @@ export function useTimelineDragDrop({
 
 			onSnapPointChange?.(activeSnapPoint);
 
+			const isMediaEdgeSnap =
+				dragData?.type === "media" &&
+				(activeSnapPoint?.type === "element-start" ||
+					activeSnapPoint?.type === "element-end");
+			const dropTargetElementTypes = isMediaEdgeSnap
+				? undefined
+				: targetElementTypes;
+
 			const target = computeDropTarget({
 				elementType,
 				mouseX,
@@ -260,7 +268,7 @@ export function useTimelineDragDrop({
 				elementDuration: duration,
 				pixelsPerSecond: BASE_TIMELINE_PIXELS_PER_SECOND,
 				zoomLevel,
-				targetElementTypes,
+				targetElementTypes: dropTargetElementTypes,
 				overrideHeights: trackHeights,
 				extraHeights,
 			});

@@ -18,6 +18,7 @@
 import {
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -322,7 +323,6 @@ export function AIEditView() {
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isExtracting, setIsExtracting] = useState(false);
 	const [providersOpen, setProvidersOpen] = useState(false);
-	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const composerRef = useRef<HTMLTextAreaElement>(null);
 	const [draft, setDraft] = useState("");
@@ -341,28 +341,33 @@ export function AIEditView() {
 	// don't yank them away while they're reading older messages).
 	// The "atBottom" flag also controls whether the scroll-down button
 	// is shown.
-	const [isAtBottom, setIsAtBottom] = useState(true);
+	const [isAtBottom, setIsAtBottom] = useState(false);
 	const [isAtTop, setIsAtTop] = useState(true);
-	// Track whether this is the initial mount. We don't want to
-	// auto-scroll to the bottom on the first render — the user should
-	// see the "Welcome to Artidor" message at the top. After the user
-	// has interacted (scrolled or sent a message), we enable auto-scroll.
-	const hasInitializedRef = useRef(false);
+	// Following is user intent, not mount state: StrictMode replays effects.
+	const isFollowingRef = useRef(false);
 
 	const handleMessagesScroll = useCallback(() => {
 		const el = messagesContainerRef.current;
 		if (!el) return;
 		const threshold = 32; // px from edge to count as "at bottom/top"
-		setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < threshold);
+		const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+		// Fitting at scrollTop=0 is not consent to follow later content.
+		isFollowingRef.current =
+			atBottom && (el.scrollTop > 0 || isFollowingRef.current);
+		setIsAtBottom(atBottom);
 		setIsAtTop(el.scrollTop < threshold);
 	}, []);
 
 	const scrollToBottom = useCallback(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		isFollowingRef.current = true;
+		const el = messagesContainerRef.current;
+		// Smooth-scroll intermediate events would turn following off mid-stream.
+		el?.scrollTo({ top: el.scrollHeight, behavior: "instant" });
 	}, []);
 
 	const scrollToTop = useCallback(() => {
-		messagesContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+		isFollowingRef.current = false;
+		messagesContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
 	}, []);
 
 	// Auto-scroll to the latest message when the chat updates — but
@@ -377,25 +382,33 @@ export function AIEditView() {
 	// A single value that changes whenever the chat content changes
 	// (new message, streaming token, status change) so the effect fires.
 	const chatTick = `${messages.length}:${messages[messages.length - 1]?.content ?? ""}:${status}`;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick is a proxy for messages changes
-	useEffect(() => {
-		// On initial mount, don't auto-scroll — let the user see the
-		// welcome message at the top. Mark as initialized so subsequent
-		// message changes do auto-scroll.
-		if (!hasInitializedRef.current) {
-			hasInitializedRef.current = true;
-			// Scroll to top on first open so the welcome is visible.
-			messagesContainerRef.current?.scrollTo({ top: 0 });
-			return;
+	const hasMessages = messages.length > 0;
+	useLayoutEffect(() => {
+		if (!hasMessages) {
+			isFollowingRef.current = false;
+			messagesContainerRef.current?.scrollTo({ top: 0, behavior: "instant" });
 		}
-		if (isAtBottom) {
-			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-		}
-	}, [chatTick, isAtBottom]);
+	}, [hasMessages]);
 
-	// Auto-focus the composer once on mount.
+	// Remeasure before paint when the in-flow jump buttons appear/disappear.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: chatTick and edge flags track content/layout changes
+	useLayoutEffect(() => {
+		if (hasMessages && isFollowingRef.current) {
+			scrollToBottom();
+		}
+		handleMessagesScroll();
+	}, [
+		chatTick,
+		hasMessages,
+		isAtBottom,
+		isAtTop,
+		handleMessagesScroll,
+		scrollToBottom,
+	]);
+
+	// Keep keyboard focus without moving the assets panel or editor ancestors.
 	useEffect(() => {
-		composerRef.current?.focus();
+		composerRef.current?.focus({ preventScroll: true });
 	}, []);
 
 	const recentCount = telemetryEvents.length;
@@ -405,13 +418,14 @@ export function AIEditView() {
 		async (text: string) => {
 			const trimmed = text.trim();
 			if (!trimmed) return;
+			scrollToBottom();
 			// If the AI is busy, the manager will queue the message.
 			// We still clear the draft so the user can type the next one.
 			setDraft("");
 			setMentionQuery(null);
 			await editor.ai.send({ text: trimmed });
 		},
-		[editor.ai],
+		[editor.ai, scrollToBottom],
 	);
 
 	const handleSubmit = (event: FormEvent) => {
@@ -481,7 +495,7 @@ export function AIEditView() {
 		// Move cursor right after the inserted mention + space.
 		const newCursorPos = before.length + insertion.length;
 		requestAnimationFrame(() => {
-			composerRef.current?.focus();
+			composerRef.current?.focus({ preventScroll: true });
 			composerRef.current?.setSelectionRange(newCursorPos, newCursorPos);
 		});
 	};
@@ -539,6 +553,7 @@ export function AIEditView() {
 		const trimmed = draft.trim();
 		if (!trimmed) return;
 		// Steer: interrupt current generation and send this message next.
+		scrollToBottom();
 		editor.ai.steer(trimmed);
 		setDraft("");
 		setMentionQuery(null);
@@ -696,7 +711,6 @@ export function AIEditView() {
 							</button>
 						</div>
 					)}
-					<div ref={messagesEndRef} />
 
 					{/* Scroll-to-top button — only visible when not at top and
 					    mention dropdown is closed (so it doesn't overlap) */}

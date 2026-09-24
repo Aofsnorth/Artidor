@@ -149,6 +149,7 @@ function makeMediaDragEvent(clientX: number): {
 		type: "media",
 		id: "asset-2",
 		mediaType: "video",
+		targetElementTypes: ["video", "image", "text", "sticker", "graphic"],
 	};
 
 	return {
@@ -201,11 +202,12 @@ describe("useTimelineDragDrop adjacent snap (bughunt)", () => {
 			} as unknown as HTMLDivElement;
 
 			// BASE_TIMELINE_PIXELS_PER_SECOND = 50. Inset = 8.
-			// At zoom 1, 1s = 50px. Clip 1 ends at 120_000 ticks = 1s = 50px + 8px inset = 58px clientX.
-			// Hover at clientX = 60px (approx 1.04s, 4800 ticks from 120_000, well within threshold of 24_000 ticks / 10px).
+			// At zoom 1, clip 1 ends at 120_000 ticks = 1s = 50px + 8px inset = 58px clientX.
+			// Hover at clientX = 55px: the cursor is still inside clip 1, but
+			// the dragged clip's start is 7,200 ticks from clip 1's end.
 			if (!fired) {
 				setFired(true);
-				result.dragProps.onDragOver(makeMediaDragEvent(60) as never);
+				result.dragProps.onDragOver(makeMediaDragEvent(55) as never);
 			}
 
 			return createElement("div", null, "running");
@@ -215,6 +217,9 @@ describe("useTimelineDragDrop adjacent snap (bughunt)", () => {
 
 		// Snapped time passed to computeDropTarget should be exactly clip-1's end time (120_000)
 		expect(capturedDropTargetParams?.startTimeOverride).toBe(120_000);
+		// A media edge snap must insert at the edge, not replace the clip under
+		// the cursor when the cursor is still inside that clip.
+		expect(capturedDropTargetParams?.targetElementTypes).toBeUndefined();
 		// Snap point should be reported to onSnapPointChange
 		expect(reportedSnapPoint).not.toBeNull();
 		expect(reportedSnapPoint?.time).toBe(120_000);

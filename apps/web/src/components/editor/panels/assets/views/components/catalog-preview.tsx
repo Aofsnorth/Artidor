@@ -2,7 +2,7 @@
 
 import { memo, useMemo, type CSSProperties } from "react";
 import { MarqueeText } from "@/components/ui/marquee-text";
-import { getSceneImageUrlForId } from "./procedural-preview";
+import { getSceneImageUrlForId } from "./preview-photos";
 
 /** Catalog labels share alignment and spacing; MarqueeText owns fitting/motion. */
 export function CatalogPreviewTitle({ children }: { children: string }) {

@@ -190,6 +190,14 @@ function SoundEffectsView() {
 				);
 
 				if (!shouldIgnore) {
+					if (response.status === 401) {
+						setTopSoundEffects({ sounds: [] });
+						setHasNextPage({ hasNext: false });
+						setTotalCount({ count: 0 });
+						setHasLoaded({ loaded: true });
+						return;
+					}
+
 					if (!response.ok) {
 						throw new Error(`Failed to fetch: ${response.status}`);
 					}

@@ -16,7 +16,7 @@ import { transitions as presetTransitions } from "@/lib/presets/transitions";
 import { transitionsRegistry } from "@/lib/transitions";
 import { useEditor } from "@/hooks/use-editor";
 import { useTransitions } from "@/hooks/use-transitions";
-import { getTransitionScenePair } from "./components/procedural-preview";
+import { getTransitionPhotoPair } from "./components/preview-photos";
 import { CatalogPreviewTitle } from "./components/catalog-preview";
 import { useCatalogPreviewMotion } from "./components/use-catalog-preview";
 import {
@@ -299,7 +299,7 @@ const TransitionPreview = memo(function TransitionPreview({
 		: keyframeCss;
 
 	const scenes = useMemo(
-		() => getTransitionScenePair(definition.type),
+		() => getTransitionPhotoPair(definition.type),
 		[definition.type],
 	);
 

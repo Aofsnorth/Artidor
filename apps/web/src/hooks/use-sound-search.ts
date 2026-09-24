@@ -78,21 +78,26 @@ export function useSoundSearch({
 				`/api/sounds/search?${searchParams.toString()}`,
 			);
 
-			if (response.ok) {
-				const data = await response.json();
-
-				if (query.trim()) {
-					appendSearchResults(data.results);
-				} else {
-					appendTopSounds(data.results);
-				}
-
-				setCurrentPage({ page: nextPage });
-				setHasNextPage({ hasNext: !!data.next });
-				setTotalCount(data.count);
-			} else {
-				setSearchError({ error: `Load more failed: ${response.status}` });
+			if (response.status === 401) {
+				setHasNextPage({ hasNext: false });
+				return;
 			}
+
+			if (!response.ok) {
+				setSearchError({ error: `Load more failed: ${response.status}` });
+				return;
+			}
+
+			const data = await response.json();
+			if (query.trim()) {
+				appendSearchResults(data.results);
+			} else {
+				appendTopSounds(data.results);
+			}
+
+			setCurrentPage({ page: nextPage });
+			setHasNextPage({ hasNext: !!data.next });
+			setTotalCount({ count: data.count });
 		} catch (err) {
 			setSearchError({
 				error: err instanceof Error ? err.message : "Load more failed",
@@ -127,16 +132,25 @@ export function useSoundSearch({
 				);
 
 				if (!ignore) {
-					if (response.ok) {
-						const data = await response.json();
-						setSearchResults({ results: data.results });
-						setLastSearchQuery({ query: query });
-						setHasNextPage({ hasNext: !!data.next });
-						setTotalCount({ count: data.count });
-						setCurrentPage({ page: 1 });
-					} else {
-						setSearchError({ error: `Search failed: ${response.status}` });
+					if (response.status === 401) {
+						setSearchResults({ results: [] });
+						setHasNextPage({ hasNext: false });
+						setTotalCount({ count: 0 });
+						setLastSearchQuery({ query });
+						return;
 					}
+
+					if (!response.ok) {
+						setSearchError({ error: `Search failed: ${response.status}` });
+						return;
+					}
+
+					const data = await response.json();
+					setSearchResults({ results: data.results });
+					setLastSearchQuery({ query });
+					setHasNextPage({ hasNext: !!data.next });
+					setTotalCount({ count: data.count });
+					setCurrentPage({ page: 1 });
 				}
 			} catch (err) {
 				if (!ignore) {
