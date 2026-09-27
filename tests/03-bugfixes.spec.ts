@@ -194,14 +194,16 @@ test.describe("Editor — bug-fix verification", () => {
 		).toBe(true);
 
 		// Also check that the SelectedElementSummary uses MarqueeText
-		// (the wrapper has the `relative inline-block max-w-full
-		// overflow-hidden whitespace-nowrap` signature class chain).
+		// (the wrapper keeps `relative overflow-hidden whitespace-nowrap`; the
+		// display class is `block w-full` via tailwind-merge, so the selector
+		// must not depend on the inline-block/battle display class).
 		const marqueeWrappers = await inspector.evaluate((node) => {
 			return Array.from(
-				node.querySelectorAll<HTMLElement>("span.relative.inline-block"),
+				node.querySelectorAll<HTMLElement>(
+					"span.relative.overflow-hidden.whitespace-nowrap",
+				),
 			).filter((el) =>
-				el.classList.contains("overflow-hidden") &&
-				el.classList.contains("whitespace-nowrap"),
+				el.classList.contains("max-w-full"),
 			).length;
 		});
 		expect(

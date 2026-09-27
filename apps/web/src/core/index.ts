@@ -131,6 +131,7 @@ export class EditorCore {
 			if (process.env.NODE_ENV !== "production") {
 				const insertMockVideo = (opts?: {
 					durationSeconds?: number;
+					startTime?: number;
 				}): string => {
 					const TICKS_PER_SECOND = 120_000;
 					const duration = (opts?.durationSeconds ?? 5) * TICKS_PER_SECOND;
@@ -138,7 +139,7 @@ export class EditorCore {
 						id: generateUUID(),
 						type: "video" as const,
 						name: "Mock Video",
-						startTime: 0,
+						startTime: (opts?.startTime ?? 0) * TICKS_PER_SECOND,
 						duration,
 						trimStart: 0,
 						trimEnd: 0,

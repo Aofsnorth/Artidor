@@ -47,7 +47,7 @@ test.describe("Editor — asset & inspector tabs", () => {
 		await bootEditor(page);
 		const expected: RegExp[] = [
 			/^Assets$/i,
-			/^AI Edit$/i,
+			/^Arth$/i,
 			/^Text$/i,
 			/^Elements$/i,
 			/^Transitions$/i,
@@ -132,7 +132,7 @@ test.describe("Editor — asset & inspector tabs", () => {
 		expect(
 			count,
 			"Effects panel should expose many distinct cards (>=30)",
-		).toBeGreaterThan(30);
+		).toBeGreaterThanOrEqual(30);
 	});
 
 	test("long effect preset names render via MarqueeText", async ({
@@ -191,19 +191,21 @@ test.describe("Editor — asset & inspector tabs", () => {
 		).toBeGreaterThan(10);
 	});
 
-	test("AI Edit tab is gated (Coming Soon) but the DOM exists", async ({
+	test("Arth tab is enabled by default (AI_FEATURE_ENABLED defaults on)", async ({
 		page,
 	}) => {
 		await bootEditor(page);
-		const aiTab = page.getByRole("button", { name: /AI Edit/i }).first();
+		const aiTab = page.getByRole("button", { name: /^Arth$/i }).first();
 		await expect(aiTab).toBeVisible();
+		// The master switch defaults to enabled, so the tab must NOT render
+		// in its disabled "coming soon" state (no aria-disabled, no dimming).
 		const ariaDisabled = await aiTab.getAttribute("aria-disabled");
 		const classAttr = (await aiTab.getAttribute("class")) ?? "";
 		const isDimmed = /opacity-40|cursor-not-allowed/.test(classAttr);
 		expect(
 			ariaDisabled === "true" || isDimmed,
-			"AI Edit tab should be visibly disabled while feature flag is off",
-		).toBeTruthy();
+			"Arth tab should be interactive while AI_FEATURE_ENABLED is on",
+		).toBe(false);
 	});
 
 	test("inspector shows a Text tab when a text element is selected", async ({

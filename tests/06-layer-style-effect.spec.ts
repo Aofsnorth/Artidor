@@ -129,8 +129,12 @@ test.describe("Editor — copy / paste flows", () => {
 			effectType: "blur",
 		});
 		expect(copyResult.ok, `copy-effect: ${copyResult.message}`).toBe(true);
-		// Insert a new video, paste the effect onto it.
-		const targetId = await insertMockVideo(page, { durationSeconds: 3 });
+		// Insert the target AFTER the source's clip window (no-overlap policy
+		// rejects a second main-track clip at the same time range).
+		const targetId = await insertMockVideo(page, {
+			durationSeconds: 3,
+			startTime: 4,
+		});
 		const targetState = await getEditorState(page);
 		const target = targetState.elements.find((e) => e.id === targetId);
 		expect(target, "target video element").toBeTruthy();

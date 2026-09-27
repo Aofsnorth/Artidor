@@ -97,14 +97,12 @@ test.describe("Editor — preset tools", () => {
 		await clickAssetTab(page, /^Preset$/i);
 		await page.waitForTimeout(800);
 		// The Preset Tools panel renders preset cards as
-		// `<button draggable>` with a title attribute. Find that
-		// one specifically (the timeline clip uses a different
-		// <button> markup, and the original element's name is
-		// "Text" so its visible name is "Text", not "RoundTrip"
-		// — but the renamed / display-named timeline clip would
-		// also show "RoundTrip", hence the need to scope).
+		// `div[role=button][draggable]` with a nested apply button whose
+		// aria-label is "Apply {name}". Scope to that apply button: the
+		// timeline clip uses a different markup, and the original element's
+		// visible name is "Text", so text matching would be ambiguous.
 		const presetCard = page
-			.locator('button[draggable="true"][title*="RoundTrip"]')
+			.locator('button[aria-label="Apply RoundTrip"]')
 			.first();
 		await expect(presetCard, "preset card").toBeVisible({ timeout: 5_000 });
 		await presetCard.click({ force: true });

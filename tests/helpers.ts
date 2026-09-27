@@ -129,12 +129,15 @@ export async function runCommand(
 /** Insert a synthetic video element for tests. Returns the new id. */
 export async function insertMockVideo(
 	page: Page,
-	opts: { durationSeconds?: number } = {},
+	opts: { durationSeconds?: number; startTime?: number } = {},
 ): Promise<string> {
 	return await page.evaluate((o) => {
 		const w = window as unknown as {
 			__ARTIDOR_DEBUG__?: {
-				insertMockVideo: (o?: { durationSeconds?: number }) => string;
+				insertMockVideo: (o?: {
+					durationSeconds?: number;
+					startTime?: number;
+				}) => string;
 			};
 		};
 		if (!w.__ARTIDOR_DEBUG__) throw new Error("__ARTIDOR_DEBUG__ missing");
