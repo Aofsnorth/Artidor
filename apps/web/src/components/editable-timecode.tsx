@@ -10,6 +10,49 @@ import {
 } from "artidor-wasm";
 import { cn } from "@/utils/ui";
 
+/**
+ * Guarded wrappers around the WASM timecode bindings. These calls run inside
+ * event handlers (blur/keydown) where a thrown wasm trap — e.g. the "memory
+ * access out of bounds" a corrupted GPU-state instance can produce — would
+ * otherwise surface as a fatal page error and kill the editor. Degrading to
+ * `undefined` (the same contract as a failed parse) keeps the UI alive.
+ */
+function safeFormatTimecode(args: {
+	time: number;
+	format?: TimeCodeFormat;
+	rate?: FrameRate;
+}): string {
+	try {
+		return formatTimecode(args) ?? "";
+	} catch {
+		return "";
+	}
+}
+
+function safeParseTimecode(args: {
+	timeCode: string;
+	format?: TimeCodeFormat;
+	rate?: FrameRate;
+}): number | undefined {
+	try {
+		return parseTimecode(args);
+	} catch {
+		return undefined;
+	}
+}
+
+function safeSnappedSeekTime(args: {
+	time: number;
+	duration: number;
+	rate: FrameRate;
+}): number | undefined {
+	try {
+		return snappedSeekTime(args);
+	} catch {
+		return undefined;
+	}
+}
+
 interface EditableTimecodeProps {
 	time: number;
 	duration: number;
@@ -37,9 +80,14 @@ export function EditableTimecode({
 	// The Rust formatTimecode binding only accepts i64 ticks. The `time` we
 	// receive here is normally already rounded by the playback manager, but
 	// rounding defensively avoids a runtime error if a caller hands us a
-	// fractional value.
-	const formattedTime =
-		formatTimecode({ time: Math.round(time), format, rate: fps }) ?? "";
+	// fractional value. All WASM calls here are guarded: a thrown error (bad
+	// input, or a wasm trap) must degrade to the error-styled input, never
+	// bubble up as a fatal page error from a blur handler.
+	const formattedTime = safeFormatTimecode({
+		time: Math.round(time),
+		format,
+		rate: fps,
+	});
 
 	const startEditing = () => {
 		if (disabled) return;
@@ -57,7 +105,7 @@ export function EditableTimecode({
 	};
 
 	const applyEdit = () => {
-		const parsedTime = parseTimecode({
+		const parsedTime = safeParseTimecode({
 			timeCode: inputValue,
 			format,
 			rate: fps,
@@ -69,7 +117,7 @@ export function EditableTimecode({
 		}
 
 		const clampedTime = duration
-			? (snappedSeekTime({ time: parsedTime, duration, rate: fps }) ??
+			? (safeSnappedSeekTime({ time: parsedTime, duration, rate: fps }) ??
 				parsedTime)
 			: parsedTime;
 

@@ -49,6 +49,20 @@ pub struct ParseTimecodeOptions {
     pub rate: Option<FrameRate>,
 }
 
+/// `MediaTime` crosses the wasm boundary as a JS number, so values beyond
+/// 2^53 (Number.MAX_SAFE_INTEGER) panic inside the tsify conversion instead
+/// of failing cleanly. Every `parse_timecode` result must stay within this
+/// bound; real timelines max out around 1e9 ticks, so the cap is invisible
+/// to legitimate edits while hand-typed garbage folds into `None`.
+const MAX_JS_SAFE_TICKS: i64 = (1i64 << 53) - 1;
+
+fn safe_media_time(ticks: i64) -> Option<MediaTime> {
+    if ticks.abs() > MAX_JS_SAFE_TICKS {
+        return None;
+    }
+    Some(MediaTime::from_ticks(ticks))
+}
+
 #[cfg_attr(feature = "wasm", derive(tsify_next::Tsify))]
 #[cfg_attr(feature = "wasm", tsify(from_wasm_abi))]
 #[derive(Deserialize)]
@@ -126,86 +140,88 @@ pub fn parse_timecode(
         return None;
     }
 
-    let format = format.unwrap_or(TimeCodeFormat::HhMmSsCs);
-    let parts = time_code
-        .trim()
-        .split(':')
-        .map(|part| part.parse::<u32>().ok())
-        .collect::<Option<Vec<_>>>()?;
+    	let format = format.unwrap_or(TimeCodeFormat::HhMmSsCs);
+    	let parts = time_code
+    		.trim()
+    		.split(':')
+    		.map(|part| part.parse::<u32>().ok())
+    		.collect::<Option<Vec<_>>>()?;
 
-    match format {
-        TimeCodeFormat::MmSs => {
-            let [minutes, seconds] = parts.as_slice() else {
-                return None;
-            };
-            if i64::from(*seconds) >= SECONDS_PER_MINUTE {
-                return None;
-            }
+    	// Every part is a u32, so even a hand-typed value like
+    	// "4294967295:59:59:99" overflows i64 tick math — this must fold into
+    	// `None` (rejected edit) instead of panicking inside wasm.
+    	let total_seconds = |hours: u32, minutes: u32, seconds: u32| -> Option<i64> {
+    		i64::from(hours)
+    			.checked_mul(SECONDS_PER_HOUR)?
+    			.checked_add(i64::from(minutes).checked_mul(SECONDS_PER_MINUTE)?)?
+    			.checked_add(i64::from(seconds))
+    	};
 
-            Some(MediaTime::from_ticks(
-                (i64::from(*minutes) * SECONDS_PER_MINUTE + i64::from(*seconds)) * TICKS_PER_SECOND,
-            ))
-        }
-        TimeCodeFormat::HhMmSs => {
-            let [hours, minutes, seconds] = parts.as_slice() else {
-                return None;
-            };
-            if i64::from(*minutes) >= SECONDS_PER_MINUTE
-                || i64::from(*seconds) >= SECONDS_PER_MINUTE
-            {
-                return None;
-            }
+    	match format {
+    		TimeCodeFormat::MmSs => {
+    			let [minutes, seconds] = parts.as_slice() else {
+    				return None;
+    			};
+    			if i64::from(*seconds) >= SECONDS_PER_MINUTE {
+    				return None;
+    			}
 
-            Some(MediaTime::from_ticks(
-                (i64::from(*hours) * SECONDS_PER_HOUR
-                    + i64::from(*minutes) * SECONDS_PER_MINUTE
-                    + i64::from(*seconds))
-                    * TICKS_PER_SECOND,
-            ))
-        }
-        TimeCodeFormat::HhMmSsCs => {
-            let [hours, minutes, seconds, centiseconds] = parts.as_slice() else {
-                return None;
-            };
-            if i64::from(*minutes) >= SECONDS_PER_MINUTE
-                || i64::from(*seconds) >= SECONDS_PER_MINUTE
-                || i64::from(*centiseconds) >= CENTISECONDS_PER_SECOND
-            {
-                return None;
-            }
+			safe_media_time(
+				total_seconds(0, *minutes, *seconds)?.checked_mul(TICKS_PER_SECOND)?,
+			)
+		}
+    		TimeCodeFormat::HhMmSs => {
+    			let [hours, minutes, seconds] = parts.as_slice() else {
+    				return None;
+    			};
+    			if i64::from(*minutes) >= SECONDS_PER_MINUTE
+    				|| i64::from(*seconds) >= SECONDS_PER_MINUTE
+    			{
+    				return None;
+    			}
 
-            Some(MediaTime::from_ticks(
-                (i64::from(*hours) * SECONDS_PER_HOUR
-                    + i64::from(*minutes) * SECONDS_PER_MINUTE
-                    + i64::from(*seconds))
-                    * TICKS_PER_SECOND
-                    + i64::from(*centiseconds) * TICKS_PER_CENTISECOND,
-            ))
-        }
-        TimeCodeFormat::HhMmSsFf => {
-            let rate = rate?;
-            let frame_upper_bound = rate.frame_number_upper_bound()?;
-            let [hours, minutes, seconds, frames] = parts.as_slice() else {
-                return None;
-            };
-            if i64::from(*minutes) >= SECONDS_PER_MINUTE
-                || i64::from(*seconds) >= SECONDS_PER_MINUTE
-                || *frames >= frame_upper_bound
-            {
-                return None;
-            }
+			safe_media_time(
+				total_seconds(*hours, *minutes, *seconds)?.checked_mul(TICKS_PER_SECOND)?,
+			)
+		}
+		TimeCodeFormat::HhMmSsCs => {
+    			let [hours, minutes, seconds, centiseconds] = parts.as_slice() else {
+    				return None;
+    			};
+    			if i64::from(*minutes) >= SECONDS_PER_MINUTE
+    				|| i64::from(*seconds) >= SECONDS_PER_MINUTE
+    				|| i64::from(*centiseconds) >= CENTISECONDS_PER_SECOND
+    			{
+    				return None;
+    			}
 
-            Some(
-                MediaTime::from_ticks(
-                    (i64::from(*hours) * SECONDS_PER_HOUR
-                        + i64::from(*minutes) * SECONDS_PER_MINUTE
-                        + i64::from(*seconds))
-                        * TICKS_PER_SECOND,
-                ) + MediaTime::from_frame(i64::from(*frames), rate)?,
-            )
-        }
+			safe_media_time(
+				total_seconds(*hours, *minutes, *seconds)?
+					.checked_mul(TICKS_PER_SECOND)?
+					.checked_add(i64::from(*centiseconds) * TICKS_PER_CENTISECOND)?,
+			)
+		}
+    		TimeCodeFormat::HhMmSsFf => {
+    			let rate = rate?;
+    			let frame_upper_bound = rate.frame_number_upper_bound()?;
+    			let [hours, minutes, seconds, frames] = parts.as_slice() else {
+    				return None;
+    			};
+    			if i64::from(*minutes) >= SECONDS_PER_MINUTE
+    				|| i64::from(*seconds) >= SECONDS_PER_MINUTE
+    				|| *frames >= frame_upper_bound
+    			{
+    				return None;
+    			}
+
+				Some(
+					safe_media_time(
+						total_seconds(*hours, *minutes, *seconds)?.checked_mul(TICKS_PER_SECOND)?,
+					)? + MediaTime::from_frame(i64::from(*frames), rate)?,
+				)
+			}
+    	}
     }
-}
 
 #[cfg(test)]
 mod tests {
@@ -253,15 +269,37 @@ mod tests {
             }),
             Some(MediaTime::from_seconds_f64(1.5).unwrap()),
         );
-        assert_eq!(
-            parse_timecode(ParseTimecodeOptions {
-                time_code: "00:00:01:30".to_string(),
-                format: Some(TimeCodeFormat::HhMmSsFf),
-                rate: Some(FrameRate::FPS_30),
-            }),
-            None,
-        );
-    }
+        		assert_eq!(
+        			parse_timecode(ParseTimecodeOptions {
+        				time_code: "00:00:01:30".to_string(),
+        				format: Some(TimeCodeFormat::HhMmSsFf),
+        				rate: Some(FrameRate::FPS_30),
+        			}),
+        			None,
+        		);
+        	}
+
+	#[test]
+	fn rejects_out_of_range_timecodes_without_panicking() {
+        		// u32-sized parts must fold into `None` instead of overflowing the
+        		// i64 tick math (a wasm panic aborts the whole instance).
+        		for time_code in [
+        			"4294967295:59:59:99",
+        			"600000000:59:59:99",
+        			"4294967295:59:59",
+        			"4294967295:59",
+        		] {
+        			assert_eq!(
+        				parse_timecode(ParseTimecodeOptions {
+        					time_code: time_code.to_string(),
+        					format: None,
+        					rate: Some(FrameRate::FPS_30),
+        				}),
+        				None,
+        				"overflow input must be rejected: {time_code}",
+        			);
+        		}
+        	}
 
     #[test]
     fn guesses_timecode_formats() {
