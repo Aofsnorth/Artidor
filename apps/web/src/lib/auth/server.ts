@@ -1,4 +1,4 @@
-import { betterAuth, type RateLimit } from "better-auth";
+import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { Redis } from "@upstash/redis";
 import { db } from "@/lib/db";
@@ -25,13 +25,21 @@ export const auth = betterAuth({
 	},
 	rateLimit: {
 		storage: "secondary-storage",
+		// better-auth 1.7 replaced the { get, set } custom storage contract with
+		// an atomic consume(key, rule) => { allowed, retryAfter } shape. Redis
+		// INCR + first-write EXPIRE implements the counter; the TTL reset on the
+		// first increment per window keeps the window sliding per key.
 		customStorage: {
-			get: async (key) => {
-				const value = await redis.get(key);
-				return value as RateLimit | undefined;
-			},
-			set: async (key, value) => {
-				await redis.set(key, value);
+			consume: async (key, rule) => {
+				const windowSeconds = rule.window ?? 10;
+				const count = await redis.incr(key);
+				if (count === 1) {
+					await redis.expire(key, windowSeconds);
+				}
+				if (count > rule.max) {
+					return { allowed: false, retryAfter: windowSeconds };
+				}
+				return { allowed: true, retryAfter: null };
 			},
 		},
 	},

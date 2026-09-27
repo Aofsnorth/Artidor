@@ -13,7 +13,7 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(
 	`${import.meta.dir}/../../core/managers/renderer-manager.ts`,
 	"utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("renderer manager pre-flight (static-only)", () => {
 	test("runs before any expensive work and refuses an impossible export", () => {
