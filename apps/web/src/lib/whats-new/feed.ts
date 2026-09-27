@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-28-responsive-editor-layout",
+		date: "2026-09-28",
+		tag: "feature",
+		title: "Compatible with different screen sizes",
+		items: [
+			"The editor now adapts to your window: on smaller windows the Assets and Properties panels keep a minimum usable width (pixel floors) instead of shrinking into unusable slivers, and the audio-meter column tucks away on the tightest layouts.",
+			"Resizing across screen sizes no longer drifts your saved layout — the preset you saved stays intact when you shrink the window and is restored when you widen it again.",
+		],
+	},
+	{
 		id: "2026-09-27-alight-motion-grouping",
 		date: "2026-09-27",
 		tag: "feature",
@@ -74,7 +84,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		items: [
 			"Fixed media turning black when added to the timeline: a GPU texture-pool lifetime bug let the WebGPU compositor allocate oversized buffers (createBuffer RangeError) and drop frames. Textures are now correctly sized and pooled per frame format.",
 			"Image adjust sliders in the inspector now keep their values while you drag — no more snapping back to 0 mid-adjustment.",
-		"Drag-and-drop snapping (magnet) to clip edges and the playhead is more reliable during timeline drags.",
+			"Drag-and-drop snapping (magnet) to clip edges and the playhead is more reliable during timeline drags.",
 		],
 	},
 	{
