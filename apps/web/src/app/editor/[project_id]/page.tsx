@@ -27,6 +27,10 @@ import { usePasteMedia } from "@/hooks/use-paste-media";
 import { useProjectSessionPersistence } from "@/hooks/use-project-session-persistence";
 import { MobileGate } from "@/components/editor/mobile-gate";
 import { useEditor } from "@/hooks/use-editor";
+import {
+	useEditorViewport,
+	sidePanelConstraints,
+} from "@/hooks/use-editor-viewport";
 import { usePluginsStore } from "@/lib/plugins/store";
 import { useViewerStore } from "@/stores/viewer-store";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
@@ -433,6 +437,15 @@ function EditorPanels() {
 	const isViewer = useViewerStore((state) => state.isViewer);
 	const showAdvancedViewers = isAdvancedViewersOpen && !isViewer;
 	const [layoutVersion, setLayoutVersion] = useState(0);
+	// "Compatible with different screen sizes": classify the window width so
+	// the horizontal side panels can floor themselves in pixels while the
+	// window is narrow (a pure-percentage layout lets them shrink to an
+	// unusable sliver) and secondary chrome can tuck away.
+	const viewport = useEditorViewport();
+	const toolsBounds = sidePanelConstraints(viewport, "tools");
+	const propertiesBounds = sidePanelConstraints(viewport, "properties");
+
+	// Self-healing: reset corrupt/collapsed layouts from old migrations
 
 	// Self-healing: reset corrupt/collapsed layouts from old migrations
 	useEffect(() => {
@@ -499,6 +512,30 @@ function EditorPanels() {
 		return () => observer.disconnect();
 	}, []);
 
+	// Restore the saved percentage layout when the active breakpoint changes.
+	// While the window is narrow the pixel floors clamp the live row layout
+	// (v4 keeps those adjusted sizes even after the constraints relax —
+	// `defaultSize` is initial-only), so crossing back to a wider breakpoint
+	// would otherwise leave the side panels wider than the user's saved
+	// preset until reload. `resize()` clamps to the active min/max, so this
+	// also re-binds the floors when the window shrinks across a breakpoint.
+	const toolsPanelRef = useRef<ImperativePanelHandle>(null);
+	const previewPanelRef = useRef<ImperativePanelHandle>(null);
+	const propertiesPanelRef = useRef<ImperativePanelHandle>(null);
+	const lastViewportRef = useRef(viewport);
+	useEffect(() => {
+		if (lastViewportRef.current === viewport) return;
+		lastViewportRef.current = viewport;
+		// Defer one frame: the group's own constraint-change normalization runs
+		// after this effect and would override a same-tick resize.
+		const raf = requestAnimationFrame(() => {
+			toolsPanelRef.current?.resize(`${panels.tools}%`);
+			previewPanelRef.current?.resize(`${panels.preview}%`);
+			propertiesPanelRef.current?.resize(`${panels.properties}%`);
+		});
+		return () => cancelAnimationFrame(raf);
+	}, [viewport, panels.tools, panels.preview, panels.properties]);
+
 	return (
 		<div ref={containerRef} className="size-full">
 			<ResizablePanelGroup
@@ -530,6 +567,13 @@ function EditorPanels() {
 						onLayoutChanged={(layout) => {
 							// Auxiliary viewers must not overwrite the user's saved layout preset.
 							if (showAdvancedViewers) return;
+							// While a width-adaptive pixel floor is active (compact/medium)
+							// the group clamps tools/properties/preview to those floors;
+							// persisting the clamped percentages would permanently drift the
+							// user's saved preset every time the window crosses a breakpoint.
+							// Side-panel drags still hold for the session; only wide windows
+							// (no floors) write through to the persisted store.
+							if (viewport !== "wide") return;
 							if (layout.tools !== undefined && layout.tools >= 10) {
 								setPanel("tools", layout.tools);
 							}
@@ -543,9 +587,10 @@ function EditorPanels() {
 					>
 						<ResizablePanel
 							id="tools"
+							panelRef={toolsPanelRef}
 							defaultSize={`${panels.tools}%`}
-							minSize="15%"
-							maxSize="40%"
+							minSize={toolsBounds.minSize}
+							maxSize={toolsBounds.maxSize}
 							className="min-w-0"
 						>
 							{floatingPanels.assets ? (
@@ -564,6 +609,7 @@ function EditorPanels() {
 
 						<ResizablePanel
 							id="preview"
+							panelRef={previewPanelRef}
 							defaultSize={`${panels.preview}%`}
 							minSize="30%"
 							className="min-h-0 min-w-0 flex-1"
@@ -605,9 +651,10 @@ function EditorPanels() {
 
 						<ResizablePanel
 							id="properties"
+							panelRef={propertiesPanelRef}
 							defaultSize={`${panels.properties}%`}
-							minSize="15%"
-							maxSize="40%"
+							minSize={propertiesBounds.minSize}
+							maxSize={propertiesBounds.maxSize}
 							className="min-w-0"
 							style={{ overflow: "hidden" }}
 						>
@@ -619,7 +666,10 @@ function EditorPanels() {
 										<div className="flex-1 min-w-0">
 											<PropertiesPanel />
 										</div>
-										<MeterDetailsColumn />
+										{/* The audio-meter column is a fixed px overlay next to the
+										    inspector; on a compact window it would eat a quarter of
+										    the already-floored properties panel, so it yields. */}
+										{viewport !== "compact" && <MeterDetailsColumn />}
 									</div>
 									<PopOutButton id="properties" title="Properties" />
 								</div>
