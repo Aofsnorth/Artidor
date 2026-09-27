@@ -39,6 +39,11 @@ export function useBoxSelect<TId>({
 }) {
 	const [selectionBox, setSelectionBox] =
 		useState<SelectionBoxState<TId> | null>(null);
+	// Mirror of `selectionBox` for the window listeners. The listeners are
+	// mounted once (see the rAF effect below) instead of re-binding on every
+	// mousemove, so they read the live box from here rather than closing over
+	// the state value.
+	const selectionBoxRef = useRef<SelectionBoxState<TId> | null>(null);
 	const justFinishedSelectingRef = useRef(false);
 	const shouldStartSelectionCheck = shouldStartSelection ?? (() => true);
 	const getIsAdditiveSelectionCheck =
@@ -52,14 +57,16 @@ export function useBoxSelect<TId>({
 				return;
 			}
 
-			setSelectionBox({
+			const nextSelectionBox: SelectionBoxState<TId> = {
 				startPos: { x: event.clientX, y: event.clientY },
 				currentPos: { x: event.clientX, y: event.clientY },
 				isActive: false,
 				isAdditive: getIsAdditiveSelectionCheck(event),
 				initialSelectedIds: selectedIds,
 				initialAnchorId: anchorId,
-			});
+			};
+			selectionBoxRef.current = nextSelectionBox;
+			setSelectionBox(nextSelectionBox);
 		},
 		[
 			anchorId,
@@ -92,37 +99,69 @@ export function useBoxSelect<TId>({
 		[onSelectionChange, resolveIntersections],
 	);
 
-	useEffect(() => {
-		if (!selectionBox) {
+	// Latest `updateSelection`, read by the rAF flush. Identity changes
+	// whenever the consumer passes new callbacks, which must not force the
+	// window listeners to re-bind.
+	const updateSelectionRef = useRef(updateSelection);
+	updateSelectionRef.current = updateSelection;
+
+	// Mousemove is coalesced to one `setSelectionBox` + one
+	// `resolveIntersections()` scan per animation frame. Browsers can fire
+	// mousemove well above 60Hz, and each call scanned every candidate box
+	// and published a selection change.
+	const pendingMoveRef = useRef<{ clientX: number; clientY: number } | null>(
+		null,
+	);
+	const moveFrameRef = useRef<number | null>(null);
+
+	const flushPendingMove = useCallback(() => {
+		moveFrameRef.current = null;
+		const pending = pendingMoveRef.current;
+		pendingMoveRef.current = null;
+		const current = selectionBoxRef.current;
+		if (!pending || !current) return;
+
+		const deltaX = Math.abs(pending.clientX - current.startPos.x);
+		const deltaY = Math.abs(pending.clientY - current.startPos.y);
+		const nextSelectionBox: SelectionBoxState<TId> = {
+			...current,
+			currentPos: { x: pending.clientX, y: pending.clientY },
+			isActive: deltaX > 5 || deltaY > 5 || current.isActive,
+		};
+		selectionBoxRef.current = nextSelectionBox;
+		setSelectionBox(nextSelectionBox);
+
+		if (!nextSelectionBox.isActive) {
 			return;
 		}
 
+		updateSelectionRef.current(nextSelectionBox);
+	}, []);
+
+	useEffect(() => {
 		const handleMouseMove = ({ clientX, clientY }: MouseEvent) => {
-			const deltaX = Math.abs(clientX - selectionBox.startPos.x);
-			const deltaY = Math.abs(clientY - selectionBox.startPos.y);
-			const nextSelectionBox = {
-				...selectionBox,
-				currentPos: { x: clientX, y: clientY },
-				isActive: deltaX > 5 || deltaY > 5 || selectionBox.isActive,
-			};
-
-			setSelectionBox(nextSelectionBox);
-
-			if (!nextSelectionBox.isActive) {
-				return;
-			}
-
-			updateSelection(nextSelectionBox);
+			pendingMoveRef.current = { clientX, clientY };
+			if (moveFrameRef.current !== null) return;
+			moveFrameRef.current = requestAnimationFrame(flushPendingMove);
 		};
 
 		const handleMouseUp = () => {
-			if (selectionBox.isActive) {
+			// Apply the final pointer position synchronously so the released
+			// selection is exact even if the last mousemove frame has not run.
+			if (moveFrameRef.current !== null) {
+				cancelAnimationFrame(moveFrameRef.current);
+				moveFrameRef.current = null;
+			}
+			flushPendingMove();
+
+			if (selectionBoxRef.current?.isActive) {
 				justFinishedSelectingRef.current = true;
 				requestAnimationFrame(() => {
 					justFinishedSelectingRef.current = false;
 				});
 			}
 
+			selectionBoxRef.current = null;
 			setSelectionBox(null);
 		};
 
@@ -132,11 +171,17 @@ export function useBoxSelect<TId>({
 		return () => {
 			window.removeEventListener("mousemove", handleMouseMove);
 			window.removeEventListener("mouseup", handleMouseUp);
+			if (moveFrameRef.current !== null) {
+				cancelAnimationFrame(moveFrameRef.current);
+				moveFrameRef.current = null;
+			}
+			pendingMoveRef.current = null;
 		};
-	}, [selectionBox, updateSelection]);
+	}, [flushPendingMove]);
 
+	const isBoxSelectActive = selectionBox !== null;
 	useEffect(() => {
-		if (!selectionBox) {
+		if (!isBoxSelectActive) {
 			return;
 		}
 
@@ -155,7 +200,7 @@ export function useBoxSelect<TId>({
 				containerRef.current.style.userSelect = previousContainerUserSelect;
 			}
 		};
-	}, [containerRef, selectionBox]);
+	}, [containerRef, isBoxSelectActive]);
 
 	const shouldIgnoreClick = useCallback(() => {
 		return justFinishedSelectingRef.current;

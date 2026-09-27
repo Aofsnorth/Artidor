@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ProjectsBackground } from "./projects-background";
 import type { EditorCore } from "@/core";
@@ -153,6 +152,14 @@ export default function ProjectsPage() {
 	const allProjects = useEditor((e) => e.project.getSavedProjects());
 	const syncState = useEditor((e) => e.project.getDriveSyncState());
 
+	// One id array for the whole page. It used to be rebuilt per project card
+	// (and twice more for the toolbar and the keyboard layer), so every store
+	// write allocated N arrays of N ids.
+	const projectIds = useMemo(
+		() => projectsToDisplay.map((project) => project.id),
+		[projectsToDisplay],
+	);
+
 	useEffect(() => {
 		if (!editor.project.getIsInitialized()) {
 			editor.project.loadAllProjects();
@@ -187,7 +194,7 @@ export default function ProjectsPage() {
 	}, []);
 
 	useProjectsKeyboardShortcuts({
-		projectIds: projectsToDisplay.map((p) => p.id),
+		projectIds,
 		handlers: {
 			onCreateNew: () => {
 				void createNewProject();
@@ -280,7 +287,7 @@ export default function ProjectsPage() {
 					<MigrationDialog />
 					<StoragePersistenceDialog />
 					<ProjectsHeader />
-					<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
+					<ProjectsToolbar projectIds={projectIds} />
 					<main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-3 overflow-hidden px-4 pt-2 pb-4">
 						{isLoading || !isInitialized ? (
 							<ProjectsSkeleton />
@@ -320,7 +327,7 @@ export default function ProjectsPage() {
 										<ProjectItem
 											key={project.id}
 											project={project}
-											allProjectIds={projectsToDisplay.map((p) => p.id)}
+											allProjectIds={projectIds}
 										/>
 									))}
 								</div>
@@ -1029,6 +1036,74 @@ function TemplatesButton() {
 	);
 }
 
+/**
+ * Loads a project card's image.
+ *
+ * Thumbnails are stored as their own blob record rather than inline in the
+ * project row, so the list metadata stays a few hundred bytes per project and
+ * autosaves never rewrite an image. The bytes are fetched per visible card and
+ * handed to the browser as an object URL, which the effect revokes on unmount.
+ * `next/image` is not an option: its optimizer cannot read `blob:` URLs.
+ */
+function useProjectThumbnail({ projectId }: { projectId: string }) {
+	const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+	useEffect(() => {
+		let isStale = false;
+		let objectUrl: string | null = null;
+
+		void storageService
+			.loadProjectThumbnail({ projectId })
+			.then((blob) => {
+				if (!blob) return;
+				const nextUrl = URL.createObjectURL(blob);
+				if (isStale) {
+					URL.revokeObjectURL(nextUrl);
+					return;
+				}
+				objectUrl = nextUrl;
+				setThumbnailUrl(nextUrl);
+			})
+			.catch((error) => {
+				console.error("Failed to load project thumbnail:", error);
+			});
+
+		return () => {
+			isStale = true;
+			if (objectUrl) URL.revokeObjectURL(objectUrl);
+		};
+	}, [projectId]);
+
+	return thumbnailUrl;
+}
+
+function ProjectThumbnail({
+	projectId,
+	className,
+	placeholder,
+}: {
+	projectId: string;
+	className: string;
+	placeholder: React.ReactNode;
+}) {
+	const thumbnailUrl = useProjectThumbnail({ projectId });
+
+	return (
+		<>
+			{placeholder}
+			{thumbnailUrl ? (
+				// biome-ignore lint/performance/noImgElement: object URL for an in-memory thumbnail blob
+				<img
+					src={thumbnailUrl}
+					alt="Project thumbnail"
+					className={className}
+					decoding="async"
+				/>
+			) : null}
+		</>
+	);
+}
+
 function ProjectItem({
 	project,
 	allProjectIds,
@@ -1036,15 +1111,22 @@ function ProjectItem({
 	project: TProjectMetadata;
 	allProjectIds: string[];
 }) {
-	const {
-		selectedProjectIds,
-		viewMode,
-		setProjectSelected,
-		selectProjectRange,
-	} = useProjectsStore();
-	const selectedProjectIdSet = new Set(selectedProjectIds);
-	const isSelected = selectedProjectIdSet.has(project.id);
-	const selectedProjectCount = selectedProjectIds.length;
+	// Narrow selectors: subscribing to the whole store re-rendered every card
+	// on every store write and rebuilt a `Set` of the selection per card. The
+	// action identities are stable for the life of the store.
+	const isSelected = useProjectsStore((state) =>
+		state.selectedProjectIds.includes(project.id),
+	);
+	const selectedProjectCount = useProjectsStore(
+		(state) => state.selectedProjectIds.length,
+	);
+	const viewMode = useProjectsStore((state) => state.viewMode);
+	const setProjectSelected = useProjectsStore(
+		(state) => state.setProjectSelected,
+	);
+	const selectProjectRange = useProjectsStore(
+		(state) => state.selectProjectRange,
+	);
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -1086,18 +1168,11 @@ function ProjectItem({
 			className="bg-card/40 hover:bg-card/65 border border-border/10 rounded-xl backdrop-blur-md transition-all duration-300 hover:shadow-[0_8px_32px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 overflow-hidden p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
 		>
 			<div className="bg-muted/30 relative aspect-video border-b border-border/5">
-				<div className="absolute inset-0">
-					{project.thumbnail ? (
-						<Image
-							src={project.thumbnail}
-							alt="Project thumbnail"
-							fill
-							className="object-cover"
-						/>
-					) : (
-						<GeneratedThumbnail seed={project.id} />
-					)}
-				</div>
+				<ProjectThumbnail
+					projectId={project.id}
+					className="absolute inset-0 h-full w-full object-cover"
+					placeholder={<GeneratedThumbnail seed={project.id} />}
+				/>
 
 				{durationLabel && (
 					<div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-semibold px-2 py-1 rounded-sm">
@@ -1125,19 +1200,16 @@ function ProjectItem({
 			className="flex items-center gap-3 flex-1 min-w-0 focus:outline-none"
 		>
 			<div className="bg-muted relative size-10 rounded overflow-hidden shrink-0">
-				{project.thumbnail ? (
-					<Image
-						src={project.thumbnail}
-						alt="Project thumbnail"
-						fill
-						className="object-cover"
-					/>
-				) : (
-					<GeneratedThumbnail
-						seed={project.id}
-						className="[&>div]:text-[10px]"
-					/>
-				)}
+				<ProjectThumbnail
+					projectId={project.id}
+					className="h-full w-full object-cover"
+					placeholder={
+						<GeneratedThumbnail
+							seed={project.id}
+							className="[&>div]:text-[10px]"
+						/>
+					}
+				/>
 			</div>
 
 			<h3 className="group-hover:text-foreground/90 text-sm font-medium truncate flex-1 min-w-0">
@@ -1180,6 +1252,7 @@ function ProjectItem({
 			{!isMultiSelect && (
 				<ProjectMenu
 					projectId={project.id}
+					projectName={project.name}
 					isOpen={isDropdownOpen}
 					onOpenChange={setIsDropdownOpen}
 					variant="list"
@@ -1223,6 +1296,7 @@ function ProjectItem({
 								{!isMultiSelect && (
 									<ProjectMenu
 										projectId={project.id}
+										projectName={project.name}
 										isOpen={isDropdownOpen}
 										onOpenChange={setIsDropdownOpen}
 										onRenameClick={handleRename}
@@ -1239,6 +1313,7 @@ function ProjectItem({
 				</ContextMenuTrigger>
 				<ProjectContextMenuContent
 					projectId={project.id}
+					projectName={project.name}
 					onRenameClick={handleRename}
 					onDuplicateClick={handleDuplicate}
 					onDeleteClick={handleDeleteClick}
@@ -1246,28 +1321,36 @@ function ProjectItem({
 				/>
 			</ContextMenu>
 
-			<RenameProjectDialog
-				isOpen={isRenameDialogOpen}
-				onOpenChange={setIsRenameDialogOpen}
-				projectName={project.name}
-				onConfirm={async (newName) => {
-					await renameProject({ editor, id: project.id, name: newName });
-					setIsRenameDialogOpen(false);
-				}}
-			/>
+			{/* Dialog roots are mounted only while they are open: at 50+ projects
+			    the seven per-card dialog roots were the bulk of this page's DOM. */}
+			{isRenameDialogOpen && (
+				<RenameProjectDialog
+					isOpen={isRenameDialogOpen}
+					onOpenChange={setIsRenameDialogOpen}
+					projectName={project.name}
+					onConfirm={async (newName) => {
+						await renameProject({ editor, id: project.id, name: newName });
+						setIsRenameDialogOpen(false);
+					}}
+				/>
+			)}
 
-			<DeleteProjectDialog
-				isOpen={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-				projectNames={[project.name]}
-				onConfirm={handleDeleteConfirm}
-			/>
+			{isDeleteDialogOpen && (
+				<DeleteProjectDialog
+					isOpen={isDeleteDialogOpen}
+					onOpenChange={setIsDeleteDialogOpen}
+					projectNames={[project.name]}
+					onConfirm={handleDeleteConfirm}
+				/>
+			)}
 
-			<ProjectInfoDialog
-				isOpen={isInfoDialogOpen}
-				onOpenChange={setIsInfoDialogOpen}
-				project={project}
-			/>
+			{isInfoDialogOpen && (
+				<ProjectInfoDialog
+					isOpen={isInfoDialogOpen}
+					onOpenChange={setIsInfoDialogOpen}
+					project={project}
+				/>
+			)}
 		</>
 	);
 }
@@ -1278,21 +1361,19 @@ function ProjectContextMenuContent({
 	onDeleteClick,
 	onInfoClick,
 	projectId,
+	projectName,
 }: {
 	onRenameClick: () => void;
 	onDuplicateClick: () => void;
 	onDeleteClick: () => void;
 	onInfoClick: () => void;
 	projectId: string;
+	projectName: string;
 }) {
 	const editor = useEditor();
 	const [exportVideoOpen, setExportVideoOpen] = useState(false);
 	const [exportProjectOpen, setExportProjectOpen] = useState(false);
 	const [driveBusy, setDriveBusy] = useState(false);
-
-	const projectName =
-		editor.project.getSavedProjects().find((p) => p.id === projectId)?.name ??
-		"Project";
 
 	const handleSaveAsPreset = async () => {
 		try {
@@ -1421,24 +1502,29 @@ function ProjectContextMenuContent({
 				</ContextMenuItem>
 			</ContextMenuContent>
 
-			<ExportVideoDialog
-				open={exportVideoOpen}
-				onOpenChange={setExportVideoOpen}
-				projectId={projectId}
-				projectName={projectName}
-			/>
-			<ExportProjectDialog
-				open={exportProjectOpen}
-				onOpenChange={setExportProjectOpen}
-				projectId={projectId}
-				projectName={projectName}
-			/>
+			{exportVideoOpen && (
+				<ExportVideoDialog
+					open={exportVideoOpen}
+					onOpenChange={setExportVideoOpen}
+					projectId={projectId}
+					projectName={projectName}
+				/>
+			)}
+			{exportProjectOpen && (
+				<ExportProjectDialog
+					open={exportProjectOpen}
+					onOpenChange={setExportProjectOpen}
+					projectId={projectId}
+					projectName={projectName}
+				/>
+			)}
 		</>
 	);
 }
 
 function ProjectMenu({
 	projectId,
+	projectName,
 	isOpen,
 	onOpenChange,
 	variant = "grid",
@@ -1448,6 +1534,7 @@ function ProjectMenu({
 	onInfoClick,
 }: {
 	projectId: string;
+	projectName: string;
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	variant?: "grid" | "list";
@@ -1460,10 +1547,6 @@ function ProjectMenu({
 	const [exportVideoOpen, setExportVideoOpen] = useState(false);
 	const [exportProjectOpen, setExportProjectOpen] = useState(false);
 	const [driveBusy, setDriveBusy] = useState(false);
-
-	const projectName =
-		editor.project.getSavedProjects().find((p) => p.id === projectId)?.name ??
-		"Project";
 
 	const handleSaveAsPreset = async () => {
 		const fullProject = await storageService.loadProject({ id: projectId });
@@ -1657,18 +1740,22 @@ function ProjectMenu({
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			<ExportVideoDialog
-				open={exportVideoOpen}
-				onOpenChange={setExportVideoOpen}
-				projectId={projectId}
-				projectName={projectName}
-			/>
-			<ExportProjectDialog
-				open={exportProjectOpen}
-				onOpenChange={setExportProjectOpen}
-				projectId={projectId}
-				projectName={projectName}
-			/>
+			{exportVideoOpen && (
+				<ExportVideoDialog
+					open={exportVideoOpen}
+					onOpenChange={setExportVideoOpen}
+					projectId={projectId}
+					projectName={projectName}
+				/>
+			)}
+			{exportProjectOpen && (
+				<ExportProjectDialog
+					open={exportProjectOpen}
+					onOpenChange={setExportProjectOpen}
+					projectId={projectId}
+					projectName={projectName}
+				/>
+			)}
 		</>
 	);
 }

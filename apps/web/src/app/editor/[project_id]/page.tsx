@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { useShallow } from "zustand/shallow";
 import {
 	ResizablePanelGroup,
 	ResizablePanel,
@@ -414,7 +415,17 @@ function EditorLayout() {
 }
 
 function EditorPanels() {
-	const { panels, setPanel, resetPanels } = usePanelStore();
+	// Scoped to the three fields this component reads. A whole-store
+	// subscription re-rendered the entire editor layout (all four panels) on
+	// every unrelated panel-store write — e.g. every track-label drag, which
+	// only touches `trackLabelsWidth`.
+	const { panels, setPanel, resetPanels } = usePanelStore(
+		useShallow((state) => ({
+			panels: state.panels,
+			setPanel: state.setPanel,
+			resetPanels: state.resetPanels,
+		})),
+	);
 	const floatingPanels = useEditorUIStore((s) => s.floatingPanels);
 	const isAdvancedViewersOpen = useUiOverlayStore(
 		(state) => state.isAdvancedViewersOpen,

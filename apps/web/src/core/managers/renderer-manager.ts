@@ -5,6 +5,8 @@ import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { createTimelineAudioBuffer } from "@/lib/media/audio";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { frameRateToFloat } from "@/lib/fps/utils";
 import { formatTimecode } from "artidor-wasm";
 import { downloadBlob } from "@/utils/browser";
 import {
@@ -13,6 +15,10 @@ import {
 	type ExportWorkerResult,
 } from "@/services/renderer/export-worker-bridge";
 import { isDiskBackedExportSupported } from "@/services/renderer/export-output";
+import {
+	planExportMemory,
+	readExportHostHeadroom,
+} from "@/services/renderer/export-performance";
 import { runParallelExport } from "@/services/renderer/parallel-export";
 import { serializeSceneTree } from "@/services/renderer/scene-serializer";
 import { isEncoderConfigError } from "@/services/renderer/export-codec";
@@ -20,6 +26,13 @@ import { isEncoderConfigError } from "@/services/renderer/export-codec";
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
 	| { success: false; error: string };
+
+/**
+ * Widest parallel fan-out the exporter will ever consider. Used as the
+ * "no preference" input to the memory pre-flight, so the plan it produces is
+ * the ceiling the hardware auto-detection is then allowed to pick from.
+ */
+const MAX_PARALLEL_SEGMENTS = 16;
 
 /**
  * Maps a worker success to the public export result, preserving the backing.
@@ -219,13 +232,58 @@ export class RendererManager {
 
 			const exportFps = fps ?? activeProject.settings.fps;
 			const canvasSize = activeProject.settings.canvasSize;
+			const streamToDisk = isDiskBackedExportSupported();
+			const workerPathAvailable = isExportWorkerSupported();
+
+			// Pre-flight: refuse to start an export that provably cannot finish.
+			//
+			// Quota exhaustion and RAM exhaustion otherwise surface at the very
+			// end of a multi-minute render, after all the work is done — and the
+			// parallel ladder restarts from frame 0, so the user pays for the
+			// whole timeline twice and still sees an error. The planner also
+			// returns the worker fan-out the device can actually hold, which is
+			// threaded into the parallel path as a ceiling.
+			const hostHeadroom = await readExportHostHeadroom();
+			const memoryPlan = planExportMemory({
+				durationSeconds: duration / TICKS_PER_SECOND,
+				width: canvasSize.width,
+				height: canvasSize.height,
+				fps: frameRateToFloat(exportFps),
+				quality,
+				includeAudio: !!includeAudio,
+				requestedWorkerCount: workerCount ?? MAX_PARALLEL_SEGMENTS,
+				// Only the worker paths can write to disk. There, the parallel
+				// path is the default and is the worst case: every segment file
+				// exists at the same time as the stitched result. Without
+				// workers the main-thread `SceneExporter` muxes into RAM, so the
+				// output is charged to the RAM budget instead.
+				diskCopies:
+					workerPathAvailable && streamToDisk ? 2 : workerPathAvailable ? 1 : 0,
+				storageQuotaBytes: hostHeadroom.storageQuotaBytes,
+				storageUsageBytes: hostHeadroom.storageUsageBytes,
+				deviceMemoryGb: hostHeadroom.deviceMemoryGb,
+			});
+			if (memoryPlan.insufficient) {
+				console.warn("[export] pre-flight:", memoryPlan.reason);
+				return {
+					success: false,
+					error:
+						memoryPlan.reason ??
+						"Export does not fit in the available memory or storage",
+				};
+			}
+			console.info(
+				`[export] pre-flight: ~${Math.round(memoryPlan.estimatedOutputBytes / 1_048_576)}MB output, ` +
+					`~${Math.round(memoryPlan.estimatedDiskBytes / 1_048_576)}MB on disk, ` +
+					`peak ~${Math.round(memoryPlan.estimatedPeakBytes / 1_048_576)}MB, ` +
+					`at most ${memoryPlan.workerCount} worker(s)`,
+			);
 
 			// Kick off audio mixing first (it is I/O heavy: decode + offline
 			// resampling) so its async work overlaps the synchronous scene build
 			// below instead of running strictly before it.
-			let audioBufferPromise: Promise<AudioBuffer | null> | null = null;
-			if (includeAudio) {
-				audioBufferPromise = createTimelineAudioBuffer({
+			const mixAudio = () =>
+				createTimelineAudioBuffer({
 					tracks,
 					mediaAssets,
 					duration,
@@ -233,7 +291,27 @@ export class RendererManager {
 					onProgress: (audioProgress) =>
 						onProgress?.({ progress: audioProgress * 0.05 }),
 				});
-			}
+			const audioBufferPromise: Promise<AudioBuffer | null> | null =
+				includeAudio ? mixAudio() : null;
+			let audioBuffer: AudioBuffer | null = null;
+
+			// The worker path transfers (and therefore detaches) the mixdown's
+			// PCM channel buffers instead of copying them, which is only sound
+			// if nothing reads the buffer again. This flag records that the
+			// handover happened so `ensureAudio` re-mixes before any later
+			// consumer (software retry, main-thread fallback) — otherwise the
+			// fallback would silently produce an export with no audio.
+			let audioConsumedByWorker = false;
+			const ensureAudio = async (): Promise<AudioBuffer | null> => {
+				if (!includeAudio) return null;
+				if (!audioConsumedByWorker) return audioBuffer;
+				audioConsumedByWorker = false;
+				console.info(
+					"[export] re-mixing audio: the worker consumed the previous mixdown's PCM",
+				);
+				audioBuffer = await mixAudio();
+				return audioBuffer;
+			};
 
 			const scene = buildScene({
 				tracks,
@@ -247,7 +325,7 @@ export class RendererManager {
 			// audio, we must deliver audio. A timeout that silently drops audio is
 			// worse than a slow export. If audio mixing genuinely hangs, the user
 			// can cancel the export.
-			const audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
+			audioBuffer = audioBufferPromise ? await audioBufferPromise : null;
 
 			if (includeAudio) {
 				console.info(
@@ -257,7 +335,7 @@ export class RendererManager {
 			const renderPhaseStart = performance.now();
 
 			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
-			if (isExportWorkerSupported()) {
+			if (workerPathAvailable) {
 				console.info("[export] worker path supported, serializing scene tree");
 				const { tree, files } = serializeSceneTree(scene);
 				const fileEntries = Array.from(files.entries()).map(
@@ -286,6 +364,11 @@ export class RendererManager {
 						quality,
 						shouldIncludeAudio: !!includeAudio,
 						workerCount,
+						// Ceiling from the memory pre-flight, applied on top of the
+						// hardware auto-detection. Never raises the count, so a
+						// low-RAM device trades a little speed for an export that
+						// finishes instead of aborting out of memory.
+						maxWorkerCount: memoryPlan.workerCount,
 						onProgress: (p) =>
 							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
@@ -316,10 +399,9 @@ export class RendererManager {
 				}
 
 				// 2. Single-worker path (whole timeline on one worker).
-				// Opt in to OPFS streaming whenever the browser supports it:
-				// the worker falls back to BufferTarget on its own when OPFS
-				// creation fails, so both result variants must be handled.
-				const streamToDisk = isDiskBackedExportSupported();
+				// Opt in to OPFS streaming (streamToDisk, resolved once by the
+				// pre-flight above): the worker falls back to BufferTarget on its
+				// own when OPFS creation fails, so both result variants are handled.
 				try {
 					const result = await runExportInWorker({
 						sceneTree: tree,
@@ -336,10 +418,15 @@ export class RendererManager {
 						// when the worker is truly stuck.
 						timeoutMs: 30_000,
 						streamToDisk,
+						// Hand the PCM over by transfer instead of copying it (~106 MB for a
+						// 5-minute stereo track). `ensureAudio` re-mixes before any later
+						// consumer, so no fallback can end up silently mute.
+						consumeAudioBuffer: !!includeAudio,
 						onProgress: (p) =>
-							onProgress?.({ progress: mapProgress(p.progress) }),
+						onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
-					});
+						});
+						if (includeAudio) audioConsumedByWorker = true;
 
 					if (result.success) {
 						return toExportResult(result);
@@ -358,10 +445,11 @@ export class RendererManager {
 						console.info(
 							"[export] worker encoder config rejected, retrying with software encoding",
 						);
+						const swAudio = await ensureAudio();
 						const swResult = await runExportInWorker({
-							sceneTree: tree,
-							files: fileEntries,
-							audioBuffer: audioBuffer || null,
+						sceneTree: tree,
+						files: fileEntries,
+						audioBuffer: swAudio || null,
 							width: canvasSize.width,
 							height: canvasSize.height,
 							fps: exportFps,
@@ -371,6 +459,7 @@ export class RendererManager {
 							forceSoftwareEncoding: true,
 							timeoutMs: 30_000,
 							streamToDisk,
+							consumeAudioBuffer: !!includeAudio,
 							onProgress: (p) =>
 								onProgress?.({ progress: mapProgress(p.progress) }),
 							getCancelled: onCancel,
@@ -405,15 +494,16 @@ export class RendererManager {
 			// any valid resolution).
 			const runMainThreadExport = async (
 				forceSoftwareEncoding: boolean,
-			): Promise<ExportResult> => {
-				const exporter = new SceneExporter({
+					): Promise<ExportResult> => {
+					const mainThreadAudio = await ensureAudio();
+					const exporter = new SceneExporter({
 					width: canvasSize.width,
 					height: canvasSize.height,
 					fps: exportFps,
 					format,
 					quality,
 					shouldIncludeAudio: !!includeAudio,
-					audioBuffer: audioBuffer || undefined,
+						audioBuffer: mainThreadAudio || undefined,
 					forceSoftwareEncoding,
 				});
 

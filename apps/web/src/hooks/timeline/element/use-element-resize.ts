@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { roundToFrame } from "artidor-wasm";
-import type { TimelineElement, TimelineTrack } from "@/lib/timeline";
+import type { SceneTracks, TimelineElement, TimelineTrack } from "@/lib/timeline";
 import { useEditor } from "@/hooks/use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
 import {
@@ -36,6 +36,56 @@ interface UseTimelineElementResizeProps {
 	onResizeStateChange?: (params: { isResizing: boolean }) => void;
 }
 
+/** Unbounded defaults — also what the old per-event scan produced. */
+const NO_NEIGHBOR_BOUNDS = {
+	rightNeighborBound: Infinity,
+	leftNeighborBound: -Infinity,
+} as const;
+
+/**
+ * Nearest same-track neighbour edges that bound a resize, in one pass:
+ * the closest clip starting at or after the dragged clip's initial end
+ * (right-edge drags) and the closest clip ending at or before its initial
+ * start (left-edge drags). The dragged clip is excluded either way.
+ *
+ * Pure and side-aware so it can be hoisted out of the mousemove handler: the
+ * track's element list cannot change under a resize gesture, so this is
+ * computed once per gesture instead of on every event.
+ */
+export function computeResizeNeighborBounds({
+	elements,
+	elementId,
+	side,
+	initialStartTime,
+	initialDuration,
+}: {
+	elements: readonly TimelineElement[];
+	elementId: string;
+	side: "left" | "right";
+	initialStartTime: number;
+	initialDuration: number;
+}): { rightNeighborBound: number; leftNeighborBound: number } {
+	const initialEndTime = initialStartTime + initialDuration;
+	let rightNeighborBound = Infinity;
+	let leftNeighborBound = -Infinity;
+	for (const element of elements) {
+		if (element.id === elementId) continue;
+		if (side === "right" && element.startTime >= initialEndTime) {
+			rightNeighborBound = Math.min(rightNeighborBound, element.startTime);
+		}
+		if (
+			side === "left" &&
+			element.startTime + element.duration <= initialStartTime
+		) {
+			leftNeighborBound = Math.max(
+				leftNeighborBound,
+				element.startTime + element.duration,
+			);
+		}
+	}
+	return { rightNeighborBound, leftNeighborBound };
+}
+
 export function useTimelineElementResize({
 	element,
 	track,
@@ -56,6 +106,38 @@ export function useTimelineElementResize({
 	const currentTrimEndRef = useRef(element.trimEnd);
 	const currentStartTimeRef = useRef(element.startTime);
 	const currentDurationRef = useRef(element.duration);
+	// Snap points for the gesture in progress. `findSnapPoints` is
+	// O(clips + keyframes) and allocates two objects per element, so it is
+	// cached against the only two things that can change it under a resize
+	// gesture: the scene tracks and the playhead (which keeps moving while
+	// playback runs). Re-keyed on both, so the result is identical to
+	// recomputing per event, but a paused resize builds the set once.
+	const snapPointsRef = useRef<{
+		tracks: SceneTracks;
+		playheadTime: number;
+		snapPoints: SnapPoint[];
+	} | null>(null);
+	// Latest coalesced mousemove, flushed on mouseup so the committed
+	// resize is always the exact final pointer position.
+	const pendingClientXRef = useRef<number | null>(null);
+	const resizeFrameRef = useRef<number | null>(null);
+
+	/** Drop the last coalesced move without applying it (cancel / unmount). */
+	const discardPendingResizeMove = useCallback(() => {
+		if (resizeFrameRef.current !== null) {
+			cancelAnimationFrame(resizeFrameRef.current);
+			resizeFrameRef.current = null;
+		}
+		pendingClientXRef.current = null;
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (resizeFrameRef.current !== null) {
+				cancelAnimationFrame(resizeFrameRef.current);
+			}
+		};
+	}, []);
 
 	const handleResizeStart = ({
 		event,
@@ -68,6 +150,11 @@ export function useTimelineElementResize({
 	}) => {
 		event.stopPropagation();
 		event.preventDefault();
+
+		// Never let a coalesced move from a previous gesture land in the new
+		// one: the pending callback closes over the old gesture state.
+		discardPendingResizeMove();
+		snapPointsRef.current = null;
 
 		setResizing({
 			elementId,
@@ -163,6 +250,7 @@ export function useTimelineElementResize({
 	const cancelResize = useCallback(() => {
 		if (!resizing) return;
 
+		discardPendingResizeMove();
 		setCurrentTrimStart(resizing.initialTrimStart);
 		setCurrentTrimEnd(resizing.initialTrimEnd);
 		setCurrentStartTime(resizing.initialStartTime);
@@ -174,13 +262,37 @@ export function useTimelineElementResize({
 		setResizing(null);
 		onResizeStateChange?.({ isResizing: false });
 		onSnapPointChange?.(null);
-	}, [resizing, onResizeStateChange, onSnapPointChange]);
+	}, [
+		resizing,
+		discardPendingResizeMove,
+		onResizeStateChange,
+		onSnapPointChange,
+	]);
 
 	useEffect(() => {
 		if (!resizing) return;
 
 		return registerCanceller({ fn: cancelResize });
 	}, [resizing, cancelResize]);
+
+	/**
+	 * Neighbour bounds for the gesture in progress, resolved once per drag.
+	 * `resizing` (and `track.elements`) keep a stable identity for the whole
+	 * gesture, so the element-list scan no longer runs on every mousemove.
+	 */
+	const neighborBounds = useMemo(
+		() =>
+			resizing
+				? computeResizeNeighborBounds({
+						elements: track.elements,
+						elementId: element.id,
+						side: resizing.side,
+						initialStartTime: resizing.initialStartTime,
+						initialDuration: resizing.initialDuration,
+					})
+				: null,
+		[resizing, track.elements, element.id],
+	);
 
 	const updateTrimFromMouseMove = useCallback(
 		({ clientX }: { clientX: number }) => {
@@ -201,11 +313,28 @@ export function useTimelineElementResize({
 			if (shouldSnap) {
 				const tracks = editor.scenes.getActiveScene().tracks;
 				const playheadTime = editor.playback.getCurrentTime();
-				const snapPoints = findSnapPoints({
-					tracks,
-					playheadTime,
-					excludeElementId: element.id,
-				});
+				// Re-keyed on the tracks and the playhead — the only inputs
+				// that can change the set. A paused resize therefore builds it
+				// once, and a resize during playback still tracks the
+				// playhead, exactly as the per-event call did.
+				let cached = snapPointsRef.current;
+				if (
+					!cached ||
+					cached.tracks !== tracks ||
+					cached.playheadTime !== playheadTime
+				) {
+					cached = {
+						tracks,
+						playheadTime,
+						snapPoints: findSnapPoints({
+							tracks,
+							playheadTime,
+							excludeElementId: element.id,
+						}),
+					};
+					snapPointsRef.current = cached;
+				}
+				const snapPoints = cached.snapPoints;
 				if (resizing.side === "left") {
 					const targetStartTime = resizing.initialStartTime + deltaTime;
 					const snapResult = snapToNearestPoint({
@@ -234,35 +363,11 @@ export function useTimelineElementResize({
 			}
 			onSnapPointChange?.(resizeSnapPoint);
 
-			const otherElements = track.elements.filter(
-				({ id }) => id !== element.id,
-			);
-			const initialEndTime =
-				resizing.initialStartTime + resizing.initialDuration;
-
-			const rightNeighborBound =
-				resizing.side === "right"
-					? otherElements
-							.filter(({ startTime }) => startTime >= initialEndTime)
-							.reduce(
-								(min, { startTime }) => Math.min(min, startTime),
-								Infinity,
-							)
-					: Infinity;
-
-			const leftNeighborBound =
-				resizing.side === "left"
-					? otherElements
-							.filter(
-								({ startTime, duration }) =>
-									startTime + duration <= resizing.initialStartTime,
-							)
-							.reduce(
-								(max, { startTime, duration }) =>
-									Math.max(max, startTime + duration),
-								-Infinity,
-							)
-					: -Infinity;
+			// `neighborBounds` is non-null whenever `resizing` is: the gesture
+			// state and the memo are derived from the same inputs, and the
+			// fallback is exactly the unbounded default.
+			const { rightNeighborBound, leftNeighborBound } =
+				neighborBounds ?? NO_NEIGHBOR_BOUNDS;
 
 			if (resizing.side === "left") {
 				const sourceDuration = getSourceDuration({
@@ -479,7 +584,7 @@ export function useTimelineElementResize({
 			snappingEnabled,
 			editor,
 			element.id,
-			track.elements,
+			neighborBounds,
 			onSnapPointChange,
 			canExtendElementDuration,
 			getDurationForVisibleSourceSpan,
@@ -490,8 +595,44 @@ export function useTimelineElementResize({
 		],
 	);
 
+	// Mousemoves arrive faster than the display can paint (and each one used
+	// to do a snap-point rebuild plus four setStates), so they are coalesced
+	// into one update per animation frame. Mirrors the scrub coalescing in
+	// use-timeline-playhead. The final frame is flushed synchronously on
+	// mouseup, so the committed trim is the exact final pointer position.
+	const flushPendingResizeMove = useCallback(() => {
+		resizeFrameRef.current = null;
+		const pendingClientX = pendingClientXRef.current;
+		pendingClientXRef.current = null;
+		if (pendingClientX === null) return;
+		updateTrimFromMouseMove({ clientX: pendingClientX });
+	}, [updateTrimFromMouseMove]);
+
+	const scheduleResizeMove = useCallback(
+		({ clientX }: { clientX: number }) => {
+			pendingClientXRef.current = clientX;
+			if (resizeFrameRef.current !== null) return;
+			resizeFrameRef.current = requestAnimationFrame(flushPendingResizeMove);
+		},
+		[flushPendingResizeMove],
+	);
+
+	/** Run the last coalesced move now (mouseup) so the commit is exact. */
+	const flushScheduledResizeMove = useCallback(() => {
+		if (resizeFrameRef.current !== null) {
+			cancelAnimationFrame(resizeFrameRef.current);
+			resizeFrameRef.current = null;
+		}
+		flushPendingResizeMove();
+	}, [flushPendingResizeMove]);
+
 	const handleResizeEnd = useCallback(() => {
 		if (!resizing) return;
+
+		// Apply the final coalesced mousemove before reading the committed
+		// values, otherwise a fast drag would commit the second-to-last
+		// pointer position.
+		flushScheduledResizeMove();
 
 		const finalTrimStart = currentTrimStartRef.current;
 		const finalTrimEnd = currentTrimEndRef.current;
@@ -524,6 +665,7 @@ export function useTimelineElementResize({
 		resizing,
 		editor.timeline,
 		element.id,
+		flushScheduledResizeMove,
 		onResizeStateChange,
 		onSnapPointChange,
 	]);
@@ -532,7 +674,7 @@ export function useTimelineElementResize({
 		if (!resizing) return;
 
 		const handleDocumentMouseMove = ({ clientX }: MouseEvent) => {
-			updateTrimFromMouseMove({ clientX });
+			scheduleResizeMove({ clientX });
 		};
 
 		const handleDocumentMouseUp = () => {
@@ -546,7 +688,7 @@ export function useTimelineElementResize({
 			document.removeEventListener("mousemove", handleDocumentMouseMove);
 			document.removeEventListener("mouseup", handleDocumentMouseUp);
 		};
-	}, [resizing, handleResizeEnd, updateTrimFromMouseMove]);
+	}, [resizing, handleResizeEnd, scheduleResizeMove]);
 
 	return {
 		resizing,

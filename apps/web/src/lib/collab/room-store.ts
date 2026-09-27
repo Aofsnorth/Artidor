@@ -3,6 +3,10 @@
  * commits against the exact snapshot read, so stale writers cannot recreate a
  * deleted room or overwrite a concurrent edit. Redis errors fail closed: a
  * process-local fallback would split membership and authorization across hosts.
+ *
+ * Reads (the 1 Hz poll) are served from their own GET and commit only the
+ * session heartbeat, and only when that heartbeat is actually due — see
+ * `getRoomState`.
  */
 import { createHash } from "node:crypto";
 import { Redis } from "@upstash/redis";
@@ -46,6 +50,17 @@ const redis = new Redis({
 const roomKey = (roomId: string) => `collab:room:${roomId}`;
 const ROOM_TTL_SECONDS = 6 * 60 * 60;
 const MAX_COMMIT_ATTEMPTS = 32;
+/**
+ * How often the read path must commit the one field a poll changes
+ * (session liveness). Polling no longer rewrites the room on every tick,
+ * so the heartbeat is renewed on this cadence instead.
+ * STALE_COLLABORATOR_MS is 60s — 4x this interval — so a live session can
+ * never be pruned between heartbeats, and an abandoned one is still
+ * pruned within the same window as before. A cursor update also refreshes
+ * `lastSeenAt`, so a client that is actively moving skips the poll's
+ * write entirely.
+ */
+const HEARTBEAT_INTERVAL_MS = 15_000;
 
 interface StoredRoom extends RoomState {
 	projectName: string;
@@ -213,16 +228,101 @@ export async function joinRoomStore({ roomId, nickname }: {
 	});
 }
 
-/** Polling is an authenticated heartbeat; missing/expired members get no state. */
-export async function getRoomState({ roomId, sessionId }: {
-	roomId: string; sessionId: string;
+/**
+ * `fromSeq` is advisory: only a finite, non-negative sequence enables a
+ * delta response. Anything else (including an omitted value, which is
+ * what every pre-delta client sends) gets the full snapshot.
+ */
+function normalizeFromSeq(fromSeq: number | undefined): number | null {
+	return typeof fromSeq === "number" &&
+		Number.isFinite(fromSeq) &&
+		fromSeq >= 0
+		? fromSeq
+		: null;
+}
+
+/**
+ * Project a room for one session, optionally as a delta against the
+ * caller's sequence.
+ *
+ * Collaborators, cursors and locks change on every other client's write
+ * (cursors at 10 Hz), so they always travel in full — a delta that
+ * omitted them would silently freeze remote presence. The command log is
+ * the only unbounded collection, so it is the one that honours `seq`.
+ * A baseline older than the retained window cannot be served as a delta
+ * without skipping commands, so it falls back to the full log.
+ */
+function projectRoom(
+	room: StoredRoom,
+	sessionId: string,
+	fromSeq: number | null,
+): RoomState {
+	const state = toRoomState(room, sessionId);
+	if (fromSeq === null) return state;
+	if (fromSeq < room.seq - room.commands.length) return state;
+	return {
+		...state,
+		commands: state.commands.filter((command) => command.seq > fromSeq),
+	};
+}
+
+/** Polling is an authenticated heartbeat; missing/expired members get no state.
+ *
+ * A poll is a READ, so it is served from the single Redis GET it already
+ * needs instead of routing through `mutateRoom`, which turned every
+ * 1 Hz poll from every client into a full JSON parse plus a complete
+ * compare-and-swap rewrite of the room. The guarantees `mutateRoom`
+ * provides are preserved where they actually matter:
+ *
+ *  - host expiry still terminates the room, through the CAS path, because
+ *    a read must never delete on a snapshot it did not validate;
+ *  - the heartbeat commits against the exact snapshot it read, so a
+ *    stale poll still cannot overwrite a concurrent edit;
+ *  - a non-member (zombie) session still gets no state, and now performs
+ *    no write at all — a zombie poll can no longer keep a room alive;
+ *  - Redis errors still fail closed.
+ *
+ * `fromSeq` (optional) makes the response a delta containing only the
+ * commands the caller has not seen. Omit it for a full snapshot; the
+ * response shape is a `RoomState` either way, so a pre-delta client that
+ * omits it parses the response exactly as before.
+ */
+export async function getRoomState({ roomId, sessionId, fromSeq }: {
+	roomId: string; sessionId: string; fromSeq?: number;
 }): Promise<RoomState | null> {
-	return mutateRoom<RoomState | null>(roomId, null, (room) => {
-		const collaborator = member(room, sessionId);
-		if (!collaborator) return { result: null };
-		collaborator.lastSeenAt = Date.now();
-		return { result: toRoomState(room, sessionId) };
-	});
+	const client = redisOverride ?? redis;
+	let room: StoredRoom;
+	try {
+		const snapshot = await client.get(roomKey(roomId));
+		if (snapshot === null) return null;
+		room = JSON.parse(snapshot) as StoredRoom;
+	} catch {
+		throw new CollabStoreUnavailableError();
+	}
+
+	pruneStale(room);
+	// Host expiry terminates the room on every operation, not just join.
+	// That is a write, so hand it to the CAS path, which re-reads and
+	// re-validates before deleting.
+	if (!room.collaborators.some((c) => c.id === room.hostSessionId)) {
+		return mutateRoom<RoomState | null>(roomId, null, () => ({ result: null }));
+	}
+
+	const collaborator = member(room, sessionId);
+	if (!collaborator) return null;
+
+	const delta = normalizeFromSeq(fromSeq);
+	// Liveness is the only field a poll changes, and it is already fresh
+	// whenever a cursor update or another write just refreshed it.
+	if (Date.now() - collaborator.lastSeenAt >= HEARTBEAT_INTERVAL_MS) {
+		return mutateRoom<RoomState | null>(roomId, null, (committed) => {
+			const live = member(committed, sessionId);
+			if (!live) return { result: null };
+			live.lastSeenAt = Date.now();
+			return { result: projectRoom(committed, sessionId, delta) };
+		});
+	}
+	return projectRoom(room, sessionId, delta);
 }
 
 /** Update presence for an active member only. */

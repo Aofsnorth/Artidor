@@ -2,7 +2,11 @@ import type { EditorCore } from "@/core";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { clampRetimeRate, shouldMaintainPitch } from "@/lib/retime/rate";
 import type { AudioClipSource } from "@/lib/media/audio";
-import { createAudioContext, collectAudioClips } from "@/lib/media/audio";
+import {
+	buildAudioSourceKey,
+	createAudioContext,
+	collectAudioClips,
+} from "@/lib/media/audio";
 import {
 	buildAudioGainAutomation,
 	hasAnimatedVolume,
@@ -15,18 +19,69 @@ import {
 	getSourceTimeAtClipTime,
 	renderRetimedBuffer,
 } from "@/lib/retime";
-import {
-	ALL_FORMATS,
+import type {
 	AudioBufferSink,
-	BlobSource,
 	Input,
-	type WrappedAudioBuffer,
+	WrappedAudioBuffer,
 } from "mediabunny";
 import { resolveAudioTrackByIndex } from "@/lib/media/mediabunny";
+
+/**
+ * Loads `mediabunny` on demand, memoized so concurrent callers share one
+ * import.
+ *
+ * The audio manager is constructed by the `EditorCore` constructor, so a
+ * module-level `import` of `mediabunny` put the library in the initial editor
+ * chunk even for a user who never plays audio. A rejected import is not
+ * cached, so a transient network failure can be retried.
+ */
+let mediabunnyPromise: Promise<typeof import("mediabunny")> | null = null;
+
+function loadMediabunny(): Promise<typeof import("mediabunny")> {
+	mediabunnyPromise ??= import("mediabunny").catch((error) => {
+		mediabunnyPromise = null;
+		throw error;
+	});
+	return mediabunnyPromise;
+}
 import { getOrderedTracks } from "@/lib/timeline";
+import { hasMediaId } from "@/lib/timeline/element-utils";
 import { yieldToEventLoop } from "@/lib/media/yield";
 
 import { useTimelineStore } from "@/stores/timeline-store";
+
+/**
+ * Shape encoded in the `preparedClipBuffers` key (see
+ * `buildPreparedClipCacheKey`). Only read back to decide whether a cached
+ * entry still matches the clip on the timeline; the cache itself stays
+ * keyed by the string, so this never becomes a second source of truth.
+ */
+interface PreparedClipCacheKey {
+	id: string;
+	startTime: number;
+	duration: number;
+	trimStart: number;
+	trimEnd: number;
+	retime?: unknown;
+}
+
+function parsePreparedClipCacheKey(key: string): PreparedClipCacheKey | null {
+	try {
+		const parsed = JSON.parse(key) as Partial<PreparedClipCacheKey>;
+		if (typeof parsed?.id !== "string") return null;
+		return {
+			id: parsed.id,
+			startTime: Number(parsed.startTime),
+			duration: Number(parsed.duration),
+			trimStart: Number(parsed.trimStart),
+			trimEnd: Number(parsed.trimEnd),
+			retime: parsed.retime,
+		};
+	} catch {
+		// A key we cannot read cannot be matched against a clip; drop it.
+		return null;
+	}
+}
 
 export class AudioManager {
 	private audioContext: AudioContext | null = null;
@@ -183,9 +238,7 @@ export class AudioManager {
 
 	private handleTimelineChange = (): void => {
 		if (!this.editor.playback.getIsPlaying()) {
-			this.disposeSinks();
-			this.preparedClipBuffers.clear();
-			this.decodedBuffers.clear();
+			this.pruneAudioCachesToTimeline();
 			return;
 		}
 
@@ -193,6 +246,130 @@ export class AudioManager {
 
 		this.restartPlayback();
 	};
+
+	/**
+	 * Invalidate only the decoded audio the timeline change actually affects.
+	 *
+	 * While paused there is nothing decoding, and a timeline notification here
+	 * is almost always a UI edit that does not touch the audio samples at all
+	 * (a volume slider, a track mute, a selection change). Clearing every cache
+	 * here meant nudging one slider forced a full re-decode of every audio
+	 * clip on the next play.
+	 *
+	 * Both decoded caches are content-addressed, so nothing needs to be
+	 * *invalidated* for correctness — a retimed, re-trimmed or moved clip gets
+	 * a different key and is decoded again on its own. This is therefore a
+	 * memory prune: entries that no live clip can ever hit again are dropped,
+	 * and the ones that still match are kept warm.
+	 *
+	 * A change we cannot map onto the current tracks (no active scene) falls
+	 * back to the old full clear rather than guessing.
+	 */
+	private pruneAudioCachesToTimeline(): void {
+		const liveElements = this.collectLiveAudioElements();
+		if (!liveElements) {
+			// Unknown timeline — keep the conservative full invalidation.
+			this.disposeSinks();
+			this.preparedClipBuffers.clear();
+			this.decodedBuffers.clear();
+			return;
+		}
+
+		for (const iterator of this.clipIterators.values()) {
+			void iterator.return();
+		}
+		this.clipIterators.clear();
+		this.activeClipIds.clear();
+
+		// Streaming sinks are keyed by source, and re-created on demand from
+		// the file, so they are pruned the same way as the decoded buffers.
+		const liveSourceKeys = new Set<string>();
+		for (const live of liveElements.values()) liveSourceKeys.add(live.sourceKey);
+		for (const key of this.sinks.keys()) {
+			if (liveSourceKeys.has(key)) continue;
+			this.sinks.delete(key);
+			this.inputs.get(key)?.dispose();
+			this.inputs.delete(key);
+		}
+		for (const key of this.decodedBuffers.keys()) {
+			if (!liveSourceKeys.has(key)) this.decodedBuffers.delete(key);
+		}
+
+		const TICK = TICKS_PER_SECOND;
+		for (const key of Array.from(this.preparedClipBuffers.keys())) {
+			const cached = parsePreparedClipCacheKey(key);
+			const live = cached ? liveElements.get(cached.id) : undefined;
+			if (
+				cached &&
+				live &&
+				cached.startTime === live.startTime / TICK &&
+				cached.duration === live.duration / TICK &&
+				cached.trimStart === live.trimStart / TICK &&
+				cached.trimEnd === live.trimEnd / TICK &&
+				JSON.stringify(cached.retime ?? null) ===
+					JSON.stringify(live.retime ?? null)
+			) {
+				continue;
+			}
+			this.preparedClipBuffers.delete(key);
+		}
+	}
+
+	/**
+	 * Every audio-capable element of the active scene, keyed by element id and
+	 * carrying the fields the decoded caches are keyed by. Returns null when
+	 * there is no active scene to read.
+	 */
+	private collectLiveAudioElements(): Map<
+		string,
+		{
+			element: AudioCapableElement;
+			startTime: number;
+			duration: number;
+			trimStart: number;
+			trimEnd: number;
+			retime: AudioCapableElement["retime"];
+			sourceKey: string;
+		}
+	> | null {
+		const activeScene = this.editor.scenes.getActiveSceneOrNull();
+		if (!activeScene) return null;
+
+		const live = new Map<
+			string,
+			{
+				element: AudioCapableElement;
+				startTime: number;
+				duration: number;
+				trimStart: number;
+				trimEnd: number;
+				retime: AudioCapableElement["retime"];
+				sourceKey: string;
+			}
+		>();
+
+		for (const track of getOrderedTracks(activeScene.tracks)) {
+			for (const element of track.elements) {
+				if (element.type !== "audio" && element.type !== "video") continue;
+				live.set(element.id, {
+					element,
+					startTime: element.startTime,
+					duration: element.duration,
+					trimStart: element.trimStart,
+					trimEnd: element.trimEnd,
+					retime: element.retime,
+					// Mirrors collectAudioClips: media clips are keyed by asset +
+					// embedded audio track, library clips by element id.
+					sourceKey: buildAudioSourceKey({
+						element,
+						mediaId: hasMediaId(element) ? element.mediaId : undefined,
+					}),
+				});
+			}
+		}
+
+		return live;
+	}
 
 	private applyLiveAudioUpdates(): boolean {
 		const activeScene = this.editor.scenes.getActiveSceneOrNull();
@@ -1099,6 +1276,12 @@ export class AudioManager {
 			}
 		}
 
+		// `mediabunny` is the largest third-party payload in the editor, and
+		// this manager is constructed by the EditorCore constructor. Loading it
+		// here rather than at module scope keeps it out of the initial editor
+		// chunk; the promise is memoized so it is fetched at most once.
+		const { ALL_FORMATS, AudioBufferSink, BlobSource, Input } = await loadMediabunny();
+
 		const input = new Input({
 			source: new BlobSource(clip.file),
 			formats: ALL_FORMATS,
@@ -1186,6 +1369,11 @@ export class AudioManager {
 	}): Promise<AudioBufferSink | null> {
 		const existingSink = this.sinks.get(clip.sourceKey);
 		if (existingSink) return existingSink;
+
+		// Lazily loaded so `mediabunny` stays out of the initial editor chunk:
+		// this manager is constructed by the EditorCore constructor. See
+		// `loadMediabunny` at the top of this file.
+		const { ALL_FORMATS, AudioBufferSink, BlobSource, Input } = await loadMediabunny();
 
 		try {
 			const input = new Input({

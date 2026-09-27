@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import {
+	memo,
 	type ReactNode,
 	useCallback,
 	useEffect,
@@ -74,7 +75,17 @@ export interface DraggableItemProps {
 	contentVisibility?: "auto" | "hidden" | "visible";
 }
 
-export function DraggableItem({
+/**
+ * Memoized: the card subtree is one of the heaviest things an asset catalog
+ * mounts (aspect-ratio box, preview canvas, `PlusButton` tooltip, optional
+ * floating-drag portal), and it has no context or store subscriptions of its
+ * own — `useEditor()` is called with no selector, so it subscribes to
+ * nothing. That makes `React.memo` fully effective here: a parent re-render
+ * (typing in the catalog search box, a selection change rippling through
+ * `SelectableItem`) no longer re-renders each card as long as the caller
+ * passes a stable `preview` / `dragData` / `onAddToTimeline`.
+ */
+export const DraggableItem = memo(function DraggableItem({
 	name,
 	preview,
 	dragPreview,
@@ -286,7 +297,7 @@ export function DraggableItem({
 				)}
 		</>
 	);
-}
+});
 
 function PlusButton({
 	className,

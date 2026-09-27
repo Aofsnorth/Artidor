@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use gpu::{FULLSCREEN_SHADER_SOURCE, GpuContext};
-use wgpu::util::DeviceExt;
+use std::sync::Mutex;
 
 use crate::SdfPipeline;
 
@@ -19,6 +19,11 @@ pub struct MaskFeatherPipeline {
     outside_texture_bind_group_layout: wgpu::BindGroupLayout,
     uniform_bind_group_layout: wgpu::BindGroupLayout,
     distance_pipeline: wgpu::RenderPipeline,
+    /// Reusable per-draw uniform buffer, written with `Queue::write_buffer`
+    /// instead of being reallocated (as a mapped buffer) per draw.
+    ///
+    /// Behind a [`Mutex`] because the apply entry points are `&self`.
+    uniforms: Mutex<gpu::UniformBufferPool<wgpu::Buffer>>,
 }
 
 #[repr(C)]
@@ -147,6 +152,7 @@ impl MaskFeatherPipeline {
             outside_texture_bind_group_layout,
             uniform_bind_group_layout,
             distance_pipeline,
+            uniforms: Mutex::new(gpu::UniformBufferPool::default()),
         }
     }
 
@@ -160,6 +166,10 @@ impl MaskFeatherPipeline {
             feather,
         }: ApplyMaskFeatherOptions<'_>,
     ) -> wgpu::Texture {
+        // This path submits its own encoder below, so for it a call IS the
+        // frame boundary: everything the previous call borrowed was submitted
+        // long before this line runs.
+        self.recycle_frame();
         let mut encoder =
             context
                 .device()
@@ -178,6 +188,27 @@ impl MaskFeatherPipeline {
         );
         context.queue().submit([encoder.finish()]);
         output
+    }
+
+    /// Returns every uniform buffer the previous frame borrowed — this
+    /// pipeline's and the SDF stages it drives — to the free lists.
+    ///
+    /// The frame path records all masks into one encoder that the compositor
+    /// submits once at the end of the frame, so these pools may only be
+    /// recycled at the frame boundary. Recycling between acquires of the same
+    /// frame hands a buffer a recorded draw still reads back out, and the
+    /// later `Queue::write_buffer` (staged before the encoder is submitted)
+    /// would clobber the earlier draw's uniforms — every JFA step after the
+    /// first would run with the last step's `step_size`. The compositor calls
+    /// this next to its own frame-boundary recycles;
+    /// [`MaskFeatherPipeline::apply_mask_feather`] recycles itself because it
+    /// submits its own encoder.
+    pub fn recycle_frame(&self) {
+        self.uniforms
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .recycle_frame();
+        self.sdf_pipeline.recycle_frame();
     }
 
     pub fn apply_mask_feather_with_encoder(
@@ -234,18 +265,24 @@ impl MaskFeatherPipeline {
                     },
                 ],
             });
-        let uniform_buffer =
-            context
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("gpu-mask-distance-uniform-buffer"),
-                    contents: bytemuck::bytes_of(&DistanceUniformBuffer {
-                        resolution: [width as f32, height as f32],
-                        feather_half: feather / 2.0,
-                        _padding: 0.0,
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let uniform_buffer = {
+            let mut uniforms = self
+                .uniforms
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            // No recycle here: within a frame every acquire must resolve
+            // to a distinct buffer (see `recycle_frame`).
+            uniforms.acquire_uniform(
+                context,
+                core::mem::size_of::<DistanceUniformBuffer>() as u64,
+                "gpu-mask-distance-uniform-buffer",
+                bytemuck::bytes_of(&DistanceUniformBuffer {
+                    resolution: [width as f32, height as f32],
+                    feather_half: feather / 2.0,
+                    _padding: 0.0,
+                }),
+            )
+        };
         let uniform_bind_group = context
             .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {

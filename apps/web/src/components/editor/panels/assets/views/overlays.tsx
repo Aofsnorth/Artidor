@@ -1,11 +1,12 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { parseCssDeclarations } from "@/lib/presets/css-parser";
 import { overlays as presetOverlays } from "@/lib/presets/overlays";
 import type { OverlaySubcategory } from "@/lib/presets/types";
 import { DraggableItem } from "@/components/editor/panels/assets/draggable-item";
+import type { TimelineDragData } from "@/lib/timeline/drag";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import {
 	ALL_CATEGORY,
@@ -15,7 +16,7 @@ import {
 import { useEditor } from "@/hooks/use-editor";
 import type { ParamValues } from "@/lib/params";
 import { buildGraphicElement } from "@/lib/timeline/element-utils";
-import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { VirtualAssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -573,11 +574,12 @@ export function OverlaysView() {
 					placeholder={t("catalog.searchOverlays")}
 				/>
 				{filtered.length > 0 ? (
-					<AssetGrid gap="gap-2">
-						{filtered.map((preset) => (
-							<OverlayItem key={preset.id} preset={preset} />
-						))}
-					</AssetGrid>
+					<VirtualAssetGrid
+						items={filtered}
+						getKey={(preset) => preset.id}
+						renderItem={(preset) => <OverlayItem preset={preset} />}
+						gap="gap-2"
+					/>
 				) : (
 					<CatalogEmptyState query={query} />
 				)}
@@ -586,7 +588,18 @@ export function OverlaysView() {
 	);
 }
 
-function OverlayItem({ preset }: { preset: OverlayPreset }) {
+/**
+ * Memoized: `preset` is a stable object from the module-level catalog, and
+ * `useEditor()` is called with no selector so it subscribes to nothing. That
+ * keeps the card's preview + drag plumbing out of the render pass when the
+ * panel re-renders (e.g. while typing in the catalog search box), which is
+ * what makes the `DraggableItem` memo downstream effective.
+ */
+const OverlayItem = memo(function OverlayItem({
+	preset,
+}: {
+	preset: OverlayPreset;
+}) {
 	const editor = useEditor();
 
 	const handleAddToTimeline = useCallback(
@@ -606,17 +619,22 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 		[editor, preset],
 	);
 
+	const dragData = useMemo<TimelineDragData>(
+		() => ({
+			id: preset.id,
+			name: preset.name,
+			type: "graphic",
+			definitionId: preset.definitionId,
+			params: preset.params,
+		}),
+		[preset],
+	);
+
 	return (
 		<DraggableItem
 			name={preset.name}
 			preview={<OverlayPreview preset={preset} />}
-			dragData={{
-				id: preset.id,
-				name: preset.name,
-				type: "graphic",
-				definitionId: preset.definitionId,
-				params: preset.params,
-			}}
+			dragData={dragData}
 			onAddToTimeline={handleAddToTimeline}
 			aspectRatio={1}
 			isRounded
@@ -624,7 +642,7 @@ function OverlayItem({ preset }: { preset: OverlayPreset }) {
 			containerClassName="w-full"
 		/>
 	);
-}
+});
 
 function OverlayPreview({ preset }: { preset: OverlayPreset }) {
 	const { t } = useI18n();

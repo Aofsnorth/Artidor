@@ -149,7 +149,6 @@ function makeMediaDragEvent(clientX: number): {
 		type: "media",
 		id: "asset-2",
 		mediaType: "video",
-		targetElementTypes: ["video", "image", "text", "sticker", "graphic"],
 	};
 
 	return {
@@ -171,7 +170,53 @@ function makeMediaDragEvent(clientX: number): {
 }
 
 describe("useTimelineDragDrop adjacent snap (bughunt)", () => {
-	test("internal media drag from library snaps to adjacent clip-1 end edge", () => {
+	test("media drag over clip-1 does not force an adjacent-edge snap", () => {
+		let reportedSnapPoint: SnapPoint | null = null;
+
+		function Test() {
+			const containerRef = useRef<HTMLDivElement>(null);
+			const [fired, setFired] = useState(false);
+			const result = useTimelineDragDrop({
+				containerRef:
+					containerRef as unknown as React.RefObject<HTMLDivElement>,
+				zoomLevel: 1,
+				onSnapPointChange: (pt) => {
+					reportedSnapPoint = pt;
+				},
+			});
+
+			containerRef.current = {
+				getBoundingClientRect: () =>
+					({
+						left: 0,
+						top: 0,
+						right: 1200,
+						bottom: 800,
+						width: 1200,
+						height: 800,
+						x: 0,
+						y: 0,
+						toJSON: () => {},
+					}) as unknown as DOMRect,
+			} as unknown as HTMLDivElement;
+
+			if (!fired) {
+				setFired(true);
+				result.dragProps.onDragOver(makeMediaDragEvent(35) as never);
+			}
+
+			return createElement("div", null, "running");
+		}
+
+		renderToString(createElement(Test));
+
+		// Cursor over clip 1 must keep its cursor-derived position. The drop
+		// resolver decides whether the overlapping media needs another track.
+		expect(capturedDropTargetParams?.startTimeOverride).toBe(64_800);
+		expect(reportedSnapPoint).toBeNull();
+	});
+
+	test("media drag right of clip-1 within import radius snaps start to clip-1 end", () => {
 		let reportedSnapPoint: SnapPoint | null = null;
 
 		function Test() {
@@ -202,12 +247,11 @@ describe("useTimelineDragDrop adjacent snap (bughunt)", () => {
 			} as unknown as HTMLDivElement;
 
 			// BASE_TIMELINE_PIXELS_PER_SECOND = 50. Inset = 8.
-			// At zoom 1, clip 1 ends at 120_000 ticks = 1s = 50px + 8px inset = 58px clientX.
-			// Hover at clientX = 55px: the cursor is still inside clip 1, but
-			// the dragged clip's start is 7,200 ticks from clip 1's end.
+			// Clip 1 ends at clientX = 58. The new clip starts at clientX = 105,
+			// 47px to its right: close enough for the 64px import-snap radius.
 			if (!fired) {
 				setFired(true);
-				result.dragProps.onDragOver(makeMediaDragEvent(55) as never);
+				result.dragProps.onDragOver(makeMediaDragEvent(105) as never);
 			}
 
 			return createElement("div", null, "running");

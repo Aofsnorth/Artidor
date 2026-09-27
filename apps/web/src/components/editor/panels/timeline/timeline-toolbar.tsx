@@ -23,7 +23,7 @@ import { canDeleteScene } from "@/lib/scenes";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFreezeFrame } from "@/hooks/use-freeze-frame";
 import { getElementKeyframes } from "@/lib/animation";
-import type { TimelineTrack, TScene } from "@/lib/timeline";
+import type { SceneTracks, TimelineTrack, TScene } from "@/lib/timeline";
 import { getPropertyLabel } from "./expanded-layout";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -409,38 +409,24 @@ function SceneItem({
 }
 
 function ToolbarLeftSection() {
-	const editor = useEditor();
 	const { t } = useI18n();
 	const freezeFrame = useFreezeFrame();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
-	const allTimelineElements = useEditor((e) =>
-		Object.values(e.scenes.getActiveScene().tracks)
-			.flat()
-			.flatMap((track) => track.elements),
+	// Select-all only needs the *count* of every element in the active
+	// scene, never the elements themselves. Selecting a scalar means
+	// `useEditor`'s snapshot comparison settles on `Object.is` and this
+	// selector stops re-rendering the whole left section when unrelated
+	// element data changes — and the selector itself allocates nothing
+	// instead of building three throwaway arrays on every notification of
+	// all eight subscribed subsystems.
+	const totalTimelineElementCount = useEditor((e) =>
+		countSceneElements(e.scenes.getActiveScene().tracks),
 	);
-	const playhead = useEditor((e) => e.playback.getCurrentTime(), ["playback"]);
 	const canUndo = useEditor((e) => e.command.canUndo());
 	const canRedo = useEditor((e) => e.command.canRedo());
-	const alignDirection = useMemo(() => {
-		for (const ref of selectedElements) {
-			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
-			const element = track?.elements.find((el) => el.id === ref.elementId);
-			if (!element) continue;
-			if (playhead < element.startTime) return "left";
-			if (playhead > element.startTime + element.duration) return "right";
-		}
-		return "center";
-	}, [editor, selectedElements, playhead]);
 	const hasSelection = selectedElements.length > 0;
 	const singleSelection = selectedElements.length === 1;
-	const canSelectAll = allTimelineElements.length > selectedElements.length;
-	const canAlignToPlayhead = alignDirection !== "center";
-	const alignIcon =
-		alignDirection === "left"
-			? AlignLeftIcon
-			: alignDirection === "right"
-				? AlignRightIcon
-				: AlignHorizontalCenterIcon;
+	const canSelectAll = totalTimelineElementCount > selectedElements.length;
 	return (
 		<div className="flex items-center gap-1">
 			<TooltipProvider delayDuration={400}>
@@ -517,18 +503,11 @@ function ToolbarLeftSection() {
 					disabled={!hasSelection}
 					onClick={() => invokeAction("split-right")}
 				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={alignIcon} />}
-					tooltip={t("timeline.toolbar.alignToPlayhead")}
-					disabled={!canAlignToPlayhead}
-					onClick={() => invokeAction("align-to-playhead")}
-				/>
-				<ToolbarButton
-					icon={<StretchHorizontal className="size-3.5" />}
-					tooltip={t("timeline.toolbar.extendToPlayhead")}
-					disabled={!canAlignToPlayhead}
-					onClick={() => invokeAction("extend-to-playhead")}
-				/>
+				{/* The only two playhead-dependent buttons. Isolated in a
+				    leaf so the per-frame `playback` subscription below
+				    stops re-rendering the ~15 buttons and tooltips around
+				    them while the timeline plays. */}
+				<PlayheadAlignmentButtons />
 
 				<SectionDivider />
 
@@ -553,6 +532,73 @@ function ToolbarLeftSection() {
 				/>
 			</TooltipProvider>
 		</div>
+	);
+}
+
+/**
+ * Total element count across every track bucket of a scene, without
+ * allocating the intermediate `Object.values(...).flat()` arrays.
+ * Equivalent to `Object.values(tracks).flat().flatMap(t => t.elements).length`.
+ *
+ * Exported so the equivalence with that expression — notably that the
+ * single `main` track, which is not a list, is counted too — is covered by a
+ * test instead of by inspection.
+ */
+export function countSceneElements(tracks: SceneTracks): number {
+	let count = tracks.main.elements.length;
+	for (const track of tracks.overlay) count += track.elements.length;
+	for (const track of tracks.overlayAfter) count += track.elements.length;
+	for (const track of tracks.audio) count += track.elements.length;
+	return count;
+}
+
+/**
+ * Align-to-playhead / extend-to-playhead buttons, and the only place in the
+ * toolbar that subscribes to `playback`.
+ *
+ * `playback` notifies on every animation frame while the timeline plays, so
+ * keeping this read inside a leaf means playback re-renders two buttons instead
+ * of the whole left toolbar section. The playhead is still read on every frame,
+ * so the timecode-sensitive enable state and the align icon keep updating
+ * exactly as before.
+ */
+function PlayheadAlignmentButtons() {
+	const editor = useEditor();
+	const { t } = useI18n();
+	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
+	const playhead = useEditor((e) => e.playback.getCurrentTime(), ["playback"]);
+	const alignDirection = useMemo(() => {
+		for (const ref of selectedElements) {
+			const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+			const element = track?.elements.find((el) => el.id === ref.elementId);
+			if (!element) continue;
+			if (playhead < element.startTime) return "left";
+			if (playhead > element.startTime + element.duration) return "right";
+		}
+		return "center";
+	}, [editor, selectedElements, playhead]);
+	const canAlignToPlayhead = alignDirection !== "center";
+	const alignIcon =
+		alignDirection === "left"
+			? AlignLeftIcon
+			: alignDirection === "right"
+				? AlignRightIcon
+				: AlignHorizontalCenterIcon;
+	return (
+		<>
+			<ToolbarButton
+				icon={<HugeiconsIcon icon={alignIcon} />}
+				tooltip={t("timeline.toolbar.alignToPlayhead")}
+				disabled={!canAlignToPlayhead}
+				onClick={() => invokeAction("align-to-playhead")}
+			/>
+			<ToolbarButton
+				icon={<StretchHorizontal className="size-3.5" />}
+				tooltip={t("timeline.toolbar.extendToPlayhead")}
+				disabled={!canAlignToPlayhead}
+				onClick={() => invokeAction("extend-to-playhead")}
+			/>
+		</>
 	);
 }
 

@@ -32,7 +32,7 @@ import {
 import { cn } from "@/utils/ui";
 import { CatalogPreviewTitle, CatalogPreviewScene } from "./components/catalog-preview";
 import { useCatalogPreviewMotion } from "./components/use-catalog-preview";
-import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { VirtualAssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 
 import {
 	CatalogEmptyState,
@@ -202,15 +202,17 @@ export function AnimationsView() {
 					placeholder={t("catalog.searchMotion")}
 				/>
 				{filtered.length > 0 ? (
-					<AssetGrid gap="gap-2">
-						{filtered.map((preset) => (
+					<VirtualAssetGrid
+						items={filtered}
+						getKey={(preset) => preset.type}
+						renderItem={(preset) => (
 							<AnimationPresetItem
-								key={preset.type}
 								preset={preset}
 								onApply={handleApplyPreset}
 							/>
-						))}
-					</AssetGrid>
+						)}
+						gap="gap-2"
+					/>
 				) : (
 					<CatalogEmptyState query={query} />
 				)}

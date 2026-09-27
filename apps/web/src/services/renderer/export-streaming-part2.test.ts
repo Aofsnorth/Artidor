@@ -334,8 +334,29 @@ describe("streaming export part 2 — bridge/manager contract (static-only)", ()
 			"utf8",
 		);
 		expect(source).toContain("new StreamTarget(tempOutput.stream");
-		// Segment workers stay buffer-backed (documented follow-up, not changed).
 		expect(source).toContain("reuseWorker: false");
-		expect(source).not.toContain("streamToDisk");
+		// The stitched result is handed over as a file, never read back into an
+		// ArrayBuffer — reading it would re-inflate peak RAM to the file size.
+		expect(source).toContain("streamed: { byteLength, fileName: tempOutput.name }");
+		expect(source).not.toContain("arrayBuffer()");
+	});
+
+	test("segments stream to OPFS too, and the stitch reads their file handles", async () => {
+		const { readFileSync } = await import("node:fs");
+		const source = readFileSync(
+			`${import.meta.dir}/parallel-export.ts`,
+			"utf8",
+		);
+		// Segments used to be buffer-backed, which meant every segment's
+		// ArrayBuffer was held at once (~2x the output size in RAM).
+		expect(source).toContain("streamToDisk: diskBacked");
+		// The concatenator opens the OPFS file (a Blob) so mediabunny reads it
+		// lazily through a bounded cache instead of materialising it.
+		expect(source).toContain("openStreamedExportFile(segment.fileName)");
+		// The buffer path survives for browsers without OPFS.
+		expect(source).toContain("new Blob([segment.buffer as ArrayBuffer])");
+		// Segment temp files are owned by the parallel exporter and deleted.
+		expect(source).toContain("discardOwnedFiles");
+		expect(source).toContain("deleteExportTempFileByName");
 	});
 });

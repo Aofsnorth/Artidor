@@ -35,7 +35,11 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	const router = useRouter();
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const { setLoadingProject } = useKeybindingsStore();
+	// Scoped to the single field read here. A whole-store subscription
+	// re-rendered the entire editor (every child of `EditorProvider`) on every
+	// keybinding-store write — opening/closing an overlay, the recording flag,
+	// or any shortcut rebind.
+	const setLoadingProject = useKeybindingsStore((s) => s.setLoadingProject);
 	const setViewer = useViewerStore((s) => s.setViewer);
 
 	useEffect(() => {

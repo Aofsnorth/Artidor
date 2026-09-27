@@ -13,6 +13,7 @@
  * use are provably narrower than the full store.
  */
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { useStickersStore } from "@/stores/stickers-store";
 import { useSoundsStore } from "@/stores/sounds-store";
 import { useCollabStore } from "@/stores/collab-store";
@@ -20,6 +21,7 @@ import { usePropertiesStore } from "@/components/editor/panels/properties/stores
 import { useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
 import { usePreviewStore } from "@/stores/preview-store";
+import { isShallowEqual } from "@/lib/perf/editor-snapshot-equality";
 
 describe("react perf: selector scoping (rounds 11-16)", () => {
 	// NOTE: vanilla zustand `subscribe(listener)` (without
@@ -105,5 +107,54 @@ describe("react perf: selector scoping (rounds 11-16)", () => {
 		useKeybindingsStore.getState().openOverlay("probe-overlay");
 		useKeybindingsStore.getState().closeOverlay("probe-overlay");
 		expect(useKeybindingsStore.getState().keybindings).toBe(beforeBindings);
+	});
+});
+
+/**
+ * `useEditor(selector)` re-runs its selector on every notify of every
+ * SUBSCRIBED subsystem, so the breadth of the default subscription is
+ * multiplied by ~295 call sites. What keeps that affordable is the snapshot
+ * gate: a selector that returns a fresh object with unchanged fields
+ * compares EQUAL, so the extra notifies do not become extra re-renders.
+ * These cases pin that gate (object path) and the documented default set.
+ */
+describe("react perf: useEditor snapshot gate (rounds 21-22)", () => {
+	test("round 21: object path — fresh object with equal fields is equal", () => {
+		// The shape most editor selectors return: a newly built object per
+		// call whose fields are unchanged. Equal → no re-render.
+		expect(
+			isShallowEqual({ fps: 30, dirty: false }, { fps: 30, dirty: false }),
+		).toBe(true);
+		// A single changed field must NOT compare equal, or the UI would pin
+		// a stale value.
+		expect(
+			isShallowEqual({ fps: 30, dirty: false }, { fps: 30, dirty: true }),
+		).toBe(false);
+		// A different key set is a different value even at equal arity.
+		expect(isShallowEqual({ fps: 30 }, { rate: 30 })).toBe(false);
+		// Identical references and nullish values keep their prior meaning.
+		const editor = { fps: 30 };
+		expect(isShallowEqual(editor, editor)).toBe(true);
+		expect(isShallowEqual(null, {})).toBe(false);
+		expect(isShallowEqual(undefined, null)).toBe(false);
+	});
+
+	test("round 22: the default subsystem set is frozen and excludes playback", () => {
+		// `playback` fires every animation frame: it must never be part of the
+		// default subscription. Source-scanned (not imported) because
+		// `use-editor` pulls in `@/core` → `artidor-wasm`, which is not
+		// resolvable in every test environment.
+		const source = readFileSync(
+			`${import.meta.dir}/../../hooks/use-editor.ts`,
+			"utf8",
+		);
+		const freezeStart = source.indexOf("Object.freeze([");
+		const defaultBlock = source.slice(
+			freezeStart,
+			source.indexOf("]);", freezeStart),
+		);
+		expect(defaultBlock).not.toBe("");
+		expect(defaultBlock).not.toContain("playback");
+		expect(defaultBlock).toContain("selection");
 	});
 });

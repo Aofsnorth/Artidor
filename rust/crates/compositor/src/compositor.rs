@@ -1,9 +1,8 @@
 use bytemuck::{Pod, Zeroable};
 use effects::{ApplyEffectsOptions, EffectPass, EffectPipeline, UniformValue};
-use gpu::{FULLSCREEN_SHADER_SOURCE, GpuContext, wgpu};
+use gpu::{FULLSCREEN_SHADER_SOURCE, GpuContext, UniformBufferPool, wgpu};
 use masks::{ApplyMaskFeatherOptions, MaskFeatherPipeline};
 use thiserror::Error;
-use wgpu::util::DeviceExt;
 
 use crate::{
     BlendMode,
@@ -26,7 +25,13 @@ pub struct RenderFrameOptions<'a, 'surface> {
 
 pub struct Compositor {
     textures: TextureStore,
-    texture_pool: TexturePool,
+    texture_pool: TexturePool<wgpu::Texture>,
+    /// Reusable uniform buffers for the per-draw layer / blend / mask passes.
+    ///
+    /// These used to be rebuilt with `create_buffer_init` (a mapped allocation)
+    /// for every draw of every frame; pooled buffers are written with
+    /// `Queue::write_buffer` instead.
+    uniform_pool: UniformBufferPool<wgpu::Buffer>,
     effects: EffectPipeline,
     masks: MaskFeatherPipeline,
     layer_uniform_bind_group_layout: wgpu::BindGroupLayout,
@@ -269,6 +274,7 @@ impl Compositor {
         Self {
             textures: TextureStore::default(),
             texture_pool: TexturePool::default(),
+            uniform_pool: UniformBufferPool::default(),
             effects: EffectPipeline::new(context),
             masks: MaskFeatherPipeline::new(context),
             layer_uniform_bind_group_layout,
@@ -295,6 +301,12 @@ impl Compositor {
     ) -> Result<(), CompositorError> {
         let frame = options.frame;
         self.texture_pool.recycle_frame();
+        self.uniform_pool.recycle_frame();
+        // Frame-boundary recycle for the borrowed pipelines: every effect
+        // chain and mask recorded below shares this frame's encoder, which is
+        // submitted once at the end of the frame.
+        self.effects.recycle_frame();
+        self.masks.recycle_frame();
         context.configure_surface(options.surface, frame.width, frame.height)?;
         let surface_texture = context.acquire_surface_texture(options.surface)?;
         let surface_view = surface_texture
@@ -306,40 +318,7 @@ impl Compositor {
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("compositor-frame-encoder"),
                 });
-        let mut scene = self.create_cleared_texture(
-            context,
-            &mut encoder,
-            frame.width,
-            frame.height,
-            frame.clear.color,
-        );
-
-        for item in &frame.items {
-            match item {
-                FrameItemDescriptor::Layer(layer) => {
-                    let layer_texture = self.render_layer(context, &mut encoder, frame, layer)?;
-                    scene = self.blend_texture(
-                        context,
-                        &mut encoder,
-                        &scene,
-                        &layer_texture,
-                        layer.blend_mode,
-                        frame.width,
-                        frame.height,
-                    )?;
-                }
-                FrameItemDescriptor::SceneEffect { effect_pass_groups } => {
-                    scene = self.apply_effect_groups(
-                        context,
-                        &mut encoder,
-                        &scene,
-                        frame.width,
-                        frame.height,
-                        effect_pass_groups,
-                    )?;
-                }
-            }
-        }
+        let scene = self.composite_items(context, &mut encoder, frame)?;
 
         context.encode_texture_blit_to_view(
             &mut encoder,
@@ -370,6 +349,9 @@ impl Compositor {
         let padded_bytes_per_row = (bytes_per_row + 255) & !255; // WGPU requires 256-byte alignment
 
         self.texture_pool.recycle_frame();
+        self.uniform_pool.recycle_frame();
+        self.effects.recycle_frame();
+        self.masks.recycle_frame();
         let mut encoder =
             context
                 .device()
@@ -377,40 +359,7 @@ impl Compositor {
                     label: Some("compositor-offscreen-encoder"),
                 });
 
-        let mut scene = self.create_cleared_texture(
-            context,
-            &mut encoder,
-            frame.width,
-            frame.height,
-            frame.clear.color,
-        );
-
-        for item in &frame.items {
-            match item {
-                FrameItemDescriptor::Layer(layer) => {
-                    let layer_texture = self.render_layer(context, &mut encoder, frame, layer)?;
-                    scene = self.blend_texture(
-                        context,
-                        &mut encoder,
-                        &scene,
-                        &layer_texture,
-                        layer.blend_mode,
-                        frame.width,
-                        frame.height,
-                    )?;
-                }
-                FrameItemDescriptor::SceneEffect { effect_pass_groups } => {
-                    scene = self.apply_effect_groups(
-                        context,
-                        &mut encoder,
-                        &scene,
-                        frame.width,
-                        frame.height,
-                        effect_pass_groups,
-                    )?;
-                }
-            }
-        }
+        let scene = self.composite_items(context, &mut encoder, frame)?;
 
         // Copy the final scene texture into a CPU-readable buffer.
         let readback_buffer = context.device().create_buffer(&wgpu::BufferDescriptor {
@@ -489,6 +438,62 @@ impl Compositor {
         Ok(output)
     }
 
+    /// Builds the composited scene texture for `frame`.
+    ///
+    /// Every intermediate texture that stops being referenced is handed back
+    /// to the pool immediately rather than lingering until the next frame, so
+    /// peak retention stays at three full-size textures (scene, incoming
+    /// layer, blend target) no matter how many items the frame contains.
+    /// Releasing lazily made retention `2 * items + 1`, which is ~845 MB of
+    /// VRAM at 1080p for a 50-item timeline.
+    fn composite_items(
+        &mut self,
+        context: &GpuContext,
+        encoder: &mut wgpu::CommandEncoder,
+        frame: &FrameDescriptor,
+    ) -> Result<wgpu::Texture, CompositorError> {
+        let (width, height) = (frame.width, frame.height);
+        let mut scene =
+            self.create_cleared_texture(context, encoder, width, height, frame.clear.color);
+
+        for item in &frame.items {
+            match item {
+                FrameItemDescriptor::Layer(layer) => {
+                    let layer_texture = self.render_layer(context, encoder, frame, layer)?;
+                    // `blend_texture` acquires its target before we release
+                    // anything, so the target can never alias `scene` or
+                    // `layer_texture` even when the pool is nearly empty.
+                    let blended = self.blend_texture(
+                        context,
+                        encoder,
+                        &scene,
+                        &layer_texture,
+                        layer.blend_mode,
+                        width,
+                        height,
+                    )?;
+                    self.texture_pool.release(width, height, scene);
+                    self.texture_pool.release(width, height, layer_texture);
+                    scene = blended;
+                }
+                FrameItemDescriptor::SceneEffect { effect_pass_groups } => {
+                    let effected = self.apply_effect_groups(
+                        context,
+                        encoder,
+                        &scene,
+                        width,
+                        height,
+                        effect_pass_groups,
+                    )?;
+                    self.texture_pool.release(width, height, scene);
+                    scene = effected;
+                }
+            }
+        }
+
+        Ok(scene)
+    }
+
     fn render_layer(
         &mut self,
         context: &GpuContext,
@@ -502,13 +507,19 @@ impl Compositor {
             }
         })?;
 
-        let mut current =
-            self.texture_pool
-                .acquire(context, frame.width, frame.height, "compositor-layer");
+        // Cloned so the texture-store borrow ends before `&mut self` work
+        // below (the store itself is a refcount map; cloning a handle is free).
+        let source_texture = source.texture().clone();
+        let mut current = self.texture_pool.acquire_texture(
+            context,
+            frame.width,
+            frame.height,
+            "compositor-layer",
+        );
         self.render_source_to_texture(
             context,
             encoder,
-            source.texture(),
+            &source_texture,
             &current,
             frame.width,
             frame.height,
@@ -516,7 +527,7 @@ impl Compositor {
         );
 
         if !layer.effect_pass_groups.is_empty() {
-            current = self.apply_effect_groups(
+            let effected = self.apply_effect_groups(
                 context,
                 encoder,
                 &current,
@@ -524,6 +535,9 @@ impl Compositor {
                 frame.height,
                 &layer.effect_pass_groups,
             )?;
+            self.texture_pool
+                .release(frame.width, frame.height, current);
+            current = effected;
         }
 
         if let Some(mask) = &layer.mask {
@@ -553,15 +567,24 @@ impl Compositor {
                     frame.height,
                 )
             };
-            current = self.apply_mask(
+            // `apply_mask` allocated its target before this point, so the
+            // texture it reads (`current`) and the mask are both dead once it
+            // returns and can go straight back to the pool.
+            let masked_source = current;
+            let masked = self.apply_mask(
                 context,
                 encoder,
-                &current,
+                &masked_source,
                 &mask_texture,
                 mask.inverted,
                 frame.width,
                 frame.height,
             );
+            self.texture_pool
+                .release(frame.width, frame.height, mask_texture);
+            self.texture_pool
+                .release(frame.width, frame.height, masked_source);
+            current = masked;
         }
 
         Ok(current)
@@ -577,9 +600,14 @@ impl Compositor {
         effect_pass_groups: &[Vec<EffectPassDescriptor>],
     ) -> Result<wgpu::Texture, CompositorError> {
         let mut current = self.copy_texture(context, encoder, source, width, height);
+        // Split the borrow so the effects pass loop can take targets from the
+        // shared pool while `self.effects` is borrowed. Without this the loop
+        // below would have to hand the compositor pool to the effects crate by
+        // name, and `effects` cannot see `compositor::texture_pool`.
+        let pool = &mut self.texture_pool;
         for group in effect_pass_groups {
             let passes = map_effect_passes(group);
-            current = self.effects.apply_with_encoder(
+            let next = self.effects.apply_with_encoder(
                 context,
                 encoder,
                 ApplyEffectsOptions {
@@ -588,7 +616,28 @@ impl Compositor {
                     height,
                     passes: &passes,
                 },
+                // `effects` releases the texture each pass superseded, so the
+                // pool sees a linear acquire/release chain instead of one fresh
+                // full-frame texture per pass. Order matters and must stay
+                // acquire-then-release: a pool holding a single texture would
+                // otherwise hand back the same allocation as both the sampled
+                // texture and the render target of one pass. The effects loop
+                // records the reading pass into `encoder` before any later pass
+                // that reuses the allocation, so submission order protects it.
+                &mut |previous, context, width, height| {
+                    let next = pool.acquire_texture(context, width, height, "effects-pass-output");
+                    if let Some(previous) = previous {
+                        pool.release(width, height, previous);
+                    }
+                    next
+                },
             )?;
+            // `current` is the source of the first pass, which the effects loop
+            // treats as caller-owned and never releases. Every target the loop
+            // needed is already claimed by the time it returns, so recycling it
+            // here cannot alias `next`.
+            pool.release(width, height, current);
+            current = next;
         }
         Ok(current)
     }
@@ -603,7 +652,7 @@ impl Compositor {
     ) -> wgpu::Texture {
         let texture =
             self.texture_pool
-                .acquire(context, width, height, "compositor-cleared-texture");
+                .acquire_texture(context, width, height, "compositor-cleared-texture");
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         {
             let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -639,15 +688,15 @@ impl Compositor {
         width: u32,
         height: u32,
     ) -> wgpu::Texture {
-        let texture = self
-            .texture_pool
-            .acquire(context, width, height, "compositor-copy-texture");
+        let texture =
+            self.texture_pool
+                .acquire_texture(context, width, height, "compositor-copy-texture");
         self.blit_texture(context, encoder, source, &texture);
         texture
     }
 
     fn render_source_to_texture(
-        &self,
+        &mut self,
         context: &GpuContext,
         encoder: &mut wgpu::CommandEncoder,
         source: &wgpu::Texture,
@@ -674,23 +723,21 @@ impl Compositor {
                     },
                 ],
             });
-        let uniform_buffer =
-            context
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("compositor-layer-uniform-buffer"),
-                    contents: bytemuck::bytes_of(&LayerUniformBuffer {
-                        resolution: [width as f32, height as f32],
-                        center: [layer.transform.center_x, layer.transform.center_y],
-                        size: [layer.transform.width, layer.transform.height],
-                        rotation_radians: layer.transform.rotation_degrees.to_radians(),
-                        opacity: layer.opacity,
-                        flip_x: if layer.transform.flip_x { 1.0 } else { 0.0 },
-                        flip_y: if layer.transform.flip_y { 1.0 } else { 0.0 },
-                        _padding: [0.0; 2],
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let uniform_buffer = self.uniform_pool.acquire_uniform(
+            context,
+            core::mem::size_of::<LayerUniformBuffer>() as u64,
+            "compositor-layer-uniform-buffer",
+            bytemuck::bytes_of(&LayerUniformBuffer {
+                resolution: [width as f32, height as f32],
+                center: [layer.transform.center_x, layer.transform.center_y],
+                size: [layer.transform.width, layer.transform.height],
+                rotation_radians: layer.transform.rotation_degrees.to_radians(),
+                opacity: layer.opacity,
+                flip_x: if layer.transform.flip_x { 1.0 } else { 0.0 },
+                flip_y: if layer.transform.flip_y { 1.0 } else { 0.0 },
+                _padding: [0.0; 2],
+            }),
+        );
         let uniform_bind_group = context
             .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -737,9 +784,9 @@ impl Compositor {
         width: u32,
         height: u32,
     ) -> wgpu::Texture {
-        let target = self
-            .texture_pool
-            .acquire(context, width, height, "compositor-masked-texture");
+        let target =
+            self.texture_pool
+                .acquire_texture(context, width, height, "compositor-masked-texture");
         let layer_view = layer_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let mask_view = mask_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let target_view = target.create_view(&wgpu::TextureViewDescriptor::default());
@@ -776,17 +823,15 @@ impl Compositor {
                     },
                 ],
             });
-        let uniform_buffer =
-            context
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("compositor-mask-uniform-buffer"),
-                    contents: bytemuck::bytes_of(&MaskUniformBuffer {
-                        inverted: if inverted { 1.0 } else { 0.0 },
-                        _padding: [0.0; 3],
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let uniform_buffer = self.uniform_pool.acquire_uniform(
+            context,
+            core::mem::size_of::<MaskUniformBuffer>() as u64,
+            "compositor-mask-uniform-buffer",
+            bytemuck::bytes_of(&MaskUniformBuffer {
+                inverted: if inverted { 1.0 } else { 0.0 },
+                _padding: [0.0; 3],
+            }),
+        );
         let uniform_bind_group = context
             .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {
@@ -837,7 +882,7 @@ impl Compositor {
     ) -> Result<wgpu::Texture, CompositorError> {
         let target =
             self.texture_pool
-                .acquire(context, width, height, "compositor-blended-texture");
+                .acquire_texture(context, width, height, "compositor-blended-texture");
         let base_view = base.create_view(&wgpu::TextureViewDescriptor::default());
         let layer_view = layer.create_view(&wgpu::TextureViewDescriptor::default());
         let target_view = target.create_view(&wgpu::TextureViewDescriptor::default());
@@ -873,17 +918,15 @@ impl Compositor {
                     },
                 ],
             });
-        let uniform_buffer =
-            context
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("compositor-blend-uniform-buffer"),
-                    contents: bytemuck::bytes_of(&BlendUniformBuffer {
-                        blend_mode: blend_mode.shader_code(),
-                        _padding: [0; 3],
-                    }),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let uniform_buffer = self.uniform_pool.acquire_uniform(
+            context,
+            core::mem::size_of::<BlendUniformBuffer>() as u64,
+            "compositor-blend-uniform-buffer",
+            bytemuck::bytes_of(&BlendUniformBuffer {
+                blend_mode: blend_mode.shader_code(),
+                _padding: [0; 3],
+            }),
+        );
         let uniform_bind_group = context
             .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {

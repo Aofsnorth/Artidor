@@ -406,20 +406,24 @@ body::-webkit-scrollbar,
 	button,
 	input,
 	[role="dialog"] {
+		/* Only compositor-cheap / paint-cheap properties here. Listing
+		   `box-shadow` or `backdrop-filter` in a *global* transition makes
+		   the engine watch both properties on every interactive node in the
+		   editor, so any class swap or hover invalidates style and repaints
+		   shadow/filter layers. Elements that genuinely want a shadow or
+		   blur cross-fade declare it themselves (e.g. `.timeline-clip`
+		   below), which keeps the polish and drops the global cost. */
 		transition:
 			background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 			background-image 0.4s cubic-bezier(0.4, 0, 0.2, 1),
 			border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-			color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-			box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-			backdrop-filter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+			color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	/* Opt timeline clips out of the global box-shadow / backdrop-filter
-	   transitions. These properties are the most expensive to animate in
-	   Firefox and are unnecessary inside clip cards (which manage their own
-	   transitions explicitly). This measurably reduces paint cost during
-	   drag and scroll on Firefox. */
+	/* Timeline clips stay off the global background-image cross-fade and
+	   keep their own short opacity timing. Clip cards manage their
+	   transitions explicitly because they are dragged every frame, where
+	   any extra animated property shows up as drag lag. */
 	.timeline-clip,
 	.timeline-clip * {
 		transition:
@@ -433,10 +437,18 @@ body::-webkit-scrollbar,
 @utility asset-preview-container {
 	@apply relative flex aspect-square w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-md text-center transition-all duration-300;
 	background: rgba(15, 15, 15, 0.4);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
 	border: 1px solid rgba(255, 255, 255, 0.05);
 	box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+
+	/* No `backdrop-filter` here on purpose. This utility is on the root of
+	   every catalog card, so one blur layer per card meant 150-254 backdrop
+	   re-blurs per tab, re-evaluated on any repaint. The enclosing `.panel`
+	   already carries `backdrop-filter: blur(20px) saturate(180%)` over a
+	   near-opaque dark surface, so the extra 12px was blurring an already
+	   uniform field — visually a no-op, compositionally the most expensive
+	   thing on the page. The translucent background + inset shadow below
+	   reproduce the same read. If a card ever needs to sit over detailed
+	   content, give that one card its own blur instead of re-adding it here. */
 
 	&:hover {
 		background: rgba(25, 25, 25, 0.65);

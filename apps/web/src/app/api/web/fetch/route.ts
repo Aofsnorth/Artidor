@@ -8,8 +8,8 @@
  * Security guards:
  *  - only http/https schemes
  *  - no private/reserved IP addresses or localhost
- *  - 30s timeout
- *  - 500 KB max response size
+ *  - 30s timeout (headers and body read)
+ *  - 500 KB max response size, enforced while streaming (413 on overflow)
  *  - only GET requests
  */
 
@@ -187,7 +187,6 @@ export async function POST(request: Request): Promise<NextResponse> {
 			signal: controller.signal,
 			redirect: "follow",
 		});
-		clearTimeout(timeout);
 
 		if (!response.ok) {
 			return NextResponse.json(
@@ -200,13 +199,74 @@ export async function POST(request: Request): Promise<NextResponse> {
 		}
 
 		const contentType = response.headers.get("content-type") ?? "";
-		const buffer = await response.arrayBuffer();
-		const truncated = buffer.slice(0, MAX_SIZE);
-		const tooBig = buffer.byteLength > MAX_SIZE;
+		const declaredLength = Number.parseInt(
+			response.headers.get("content-length") ?? "",
+			10,
+		);
+		// Reject an oversized body before a single byte of it is read.
+		if (Number.isFinite(declaredLength) && declaredLength > MAX_SIZE) {
+			return NextResponse.json(
+				{
+					ok: false,
+					error: `Response is larger than the ${MAX_SIZE / 1024} KB limit.`,
+				},
+				{ status: 413 },
+			);
+		}
+
+		// Read the body through the reader and stop the moment it crosses
+		// the cap. `arrayBuffer()` would buffer the ENTIRE upstream response
+		// first and only then slice, so a 500 MB page cost 500 MB of server
+		// memory and 500 MB of egress to return 500 KB — and a lying
+		// `content-length` could make that arbitrarily large. Oversized
+		// bodies are now refused outright (413) instead of answered with a
+		// silently truncated document.
+		const reader = response.body?.getReader();
+		if (!reader) {
+			return NextResponse.json(
+				{ ok: true, url, contentType, text: "" },
+				{ status: 200 },
+			);
+		}
+		const chunks: Uint8Array[] = [];
+		let received = 0;
+		let tooBig = false;
+		try {
+			for (;;) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				if (!value) continue;
+				received += value.byteLength;
+				if (received > MAX_SIZE) {
+					tooBig = true;
+					break;
+				}
+				chunks.push(value);
+			}
+		} finally {
+			// Releases the upstream connection; a no-op once fully drained.
+			await reader.cancel().catch(() => {});
+		}
+		if (tooBig) {
+			return NextResponse.json(
+				{
+					ok: false,
+					error: `Response exceeded the ${MAX_SIZE / 1024} KB limit.`,
+				},
+				{ status: 413 },
+			);
+		}
 
 		let text: string;
 		try {
-			text = new TextDecoder("utf-8", { fatal: false }).decode(truncated);
+			// `{ stream: true }` keeps a multi-byte character that straddles
+			// two chunks intact, so the bytes never need a concatenated copy.
+			const decoder = new TextDecoder("utf-8", { fatal: false });
+			text = "";
+			for (const chunk of chunks) {
+				text += decoder.decode(chunk, { stream: true });
+			}
+			text += decoder.decode();
 		} catch {
 			text = "[Binary response could not be decoded as text]";
 		}
@@ -216,11 +276,13 @@ export async function POST(request: Request): Promise<NextResponse> {
 			url,
 			contentType,
 			text,
-			truncated: tooBig,
 		});
 	} catch (err) {
-		clearTimeout(timeout);
 		const message = err instanceof Error ? err.message : "Fetch failed";
 		return NextResponse.json({ ok: false, error: message }, { status: 502 });
+	} finally {
+		// The deadline now covers the streamed body read as well as the
+		// response headers, so a slow upstream cannot hold the route open.
+		clearTimeout(timeout);
 	}
 }

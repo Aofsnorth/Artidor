@@ -165,7 +165,11 @@ describe("preset insert undo contract (single PasteCommand)", () => {
 			.sort((a, b) => a - b);
 		// Items carried relative offsets 0 and 100 → pasted 100 apart.
 		expect(starts.length).toBe(2);
-		expect(starts[1]! - starts[0]!).toBe(100);
+		const [first, second] = starts;
+		if (first === undefined || second === undefined) {
+			throw new Error("expected exactly two pasted items");
+		}
+		expect(second - first).toBe(100);
 	});
 });
 
@@ -225,8 +229,8 @@ describe("keybindings migrations v5→v6→v7", () => {
 				isCustomized: true,
 			},
 		}) as { keybindings: Record<string, string> };
-		expect(out.keybindings["escape"]).toBe("cancel-interaction");
-		expect(out.keybindings["s"]).toBe("split");
+		expect(out.keybindings.escape).toBe("cancel-interaction");
+		expect(out.keybindings.s).toBe("split");
 	});
 
 	test("v6ToV7 renames split-element → split", () => {
@@ -236,7 +240,7 @@ describe("keybindings migrations v5→v6→v7", () => {
 				isCustomized: true,
 			},
 		}) as { keybindings: Record<string, string> };
-		expect(out.keybindings["s"]).toBe("split");
+		expect(out.keybindings.s).toBe("split");
 	});
 
 	test("runMigrations composes v5→v7 across both renames", () => {
@@ -247,8 +251,8 @@ describe("keybindings migrations v5→v6→v7", () => {
 			},
 			fromVersion: 5,
 		}) as { keybindings: Record<string, string> };
-		expect(out.keybindings["escape"]).toBe("cancel-interaction");
-		expect(out.keybindings["s"]).toBe("split");
+		expect(out.keybindings.escape).toBe("cancel-interaction");
+		expect(out.keybindings.s).toBe("split");
 	});
 });
 

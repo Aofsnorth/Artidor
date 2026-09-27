@@ -7,6 +7,7 @@ import {
 	decodeMediaFileAudioBuffer,
 } from "@/lib/media/audio";
 import { yieldToEventLoop } from "@/lib/media/yield";
+import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { findScrollParent } from "@/utils/browser";
 import { cn } from "@/utils/ui";
 
@@ -43,42 +44,306 @@ export type WaveformVariant =
 	| "graph";
 
 // ---------------------------------------------------------------------------
-// Shared decode cache – keyed by File identity (or URL string).
+// Shared decode cache – keyed by File identity (or URL string) AND the trim
+// window that was decoded.
 // Multiple AudioWaveform instances pointing at the same underlying File share
 // one decode, eliminating duplicate WASM work and lag. We only keep the
 // downsampled peak buffer (not the full AudioBuffer) so memory stays small.
 // ---------------------------------------------------------------------------
-export interface DecodedPeaks {
+
+/** Downsampled peaks of a decoded buffer. */
+export interface AudioPeaks {
 	peakBuffer: Float32Array;
 	bufferLength: number;
 	globalPeak: number;
 }
 
-const DECODE_CACHE = new Map<string, Promise<DecodedPeaks>>();
-
-export function getCacheKey(audioUrl?: string, mediaFile?: File): string {
-	if (mediaFile) {
-		return `file:${mediaFile.name}:${mediaFile.size}:${mediaFile.lastModified}`;
-	}
-	if (audioUrl) return `url:${audioUrl}`;
-	return "";
+/**
+ * Peaks plus how the clip's trim range sits *inside the decoded buffer*.
+ *
+ * A draw maps the visible part of the clip onto a sample range by scaling
+ * these two ratios by `bufferLength`, so they have to be expressed against the
+ * buffer the peaks were computed from:
+ *  - full-source decode → the buffer is the whole file, so the ratios are the
+ *    clip's trim fractions of the source duration;
+ *  - windowed decode → the buffer *is* (a padded version of) the trim window,
+ *    so the ratios are the padding that sits before / after the clip.
+ */
+export interface DecodedPeaks extends AudioPeaks {
+	trimStartRatio: number;
+	trimEndRatio: number;
 }
 
-export async function decodeAndCache(
-	cacheKey: string,
-	audioUrl: string | undefined,
-	mediaFile: File | undefined,
-): Promise<DecodedPeaks> {
-	const cached = DECODE_CACHE.get(cacheKey);
+/** A slice of a source file, in seconds. */
+export interface DecodeWindowSeconds {
+	startSeconds: number;
+	durationSeconds: number;
+}
+
+/** The clip-side trim a waveform covers, in ticks. */
+export interface WaveformTrim {
+	trimStartTicks?: number;
+	trimEndTicks?: number;
+	sourceDurationTicks?: number;
+}
+
+/** The two ratio sets a decode can land on. */
+interface TrimRatios {
+	trimStartRatio: number;
+	trimEndRatio: number;
+}
+
+export interface DecodePlan {
+	/** Window to decode, or null to decode the whole source. */
+	window: DecodeWindowSeconds | null;
+	/**
+	 * Ratios for a buffer that holds the whole source. Used whenever the
+	 * windowed decode could not run (no File to window, or it failed and the
+	 * fall-through decoded everything).
+	 */
+	sourceRatios: TrimRatios;
+	/** Ratios for a buffer that holds only `window`. */
+	windowRatios: TrimRatios;
+}
+
+/**
+ * Decode windows snap outward to this grid so that dragging a trim edge
+ * doesn't mint a new cache key — and a new decode — on every pointer move.
+ * Snapping *outward* (never inward) is a correctness requirement: a window
+ * that fell even a hair short of the clip would leave its last bars reading
+ * past the end of the peak buffer, i.e. a flat spot at the clip's right edge.
+ */
+const WINDOW_QUANTUM_SECONDS = 0.5;
+
+/**
+ * Trim fractions of a buffer that holds the whole source. Kept in ticks (not
+ * seconds) so an untrimmed clip's ratios are bit-for-bit what they were before
+ * windows existed.
+ */
+export function computeSourceTrimRatios(trim: WaveformTrim): {
+	trimStartRatio: number;
+	trimEndRatio: number;
+} {
+	const { trimStartTicks, trimEndTicks, sourceDurationTicks } = trim;
+	const duration =
+		sourceDurationTicks && sourceDurationTicks > 0 ? sourceDurationTicks : 0;
+	return {
+		trimStartRatio:
+			duration > 0 && trimStartTicks
+				? Math.min(1, Math.max(0, trimStartTicks / duration))
+				: 0,
+		trimEndRatio:
+			duration > 0 && trimEndTicks
+				? Math.min(1, Math.max(0, trimEndTicks / duration))
+				: 0,
+	};
+}
+
+/**
+ * Decides how much of a source file a clip needs decoded.
+ *
+ * A 1-hour 48 kHz stereo AudioBuffer is ~1.4 GB of float PCM, and it used to
+ * be built in full for every mounted clip just to draw the 4 seconds the clip
+ * actually shows — 2.8 GB for two clips of the same recording. The decoder
+ * takes a window (`trimStartSeconds` / `durationSeconds`), so the fix is to ask
+ * for the clip's trim range instead of the file. Windows are skipped when
+ * there is no trustworthy source length to scale them against, and when the
+ * trim removes less than a quantum of audio (windowing would then cost more
+ * bookkeeping than it saves bytes).
+ */
+export function resolveDecodePlan(trim: WaveformTrim): DecodePlan {
+	const sourceRatios = computeSourceTrimRatios(trim);
+	const sourceSeconds =
+		trim.sourceDurationTicks && trim.sourceDurationTicks > 0
+			? trim.sourceDurationTicks / TICKS_PER_SECOND
+			: 0;
+	const trimStartSeconds = Math.max(
+		0,
+		(trim.trimStartTicks ?? 0) / TICKS_PER_SECOND,
+	);
+	const trimEndSeconds = Math.max(
+		0,
+		(trim.trimEndTicks ?? 0) / TICKS_PER_SECOND,
+	);
+	const clipSeconds = sourceSeconds - trimStartSeconds - trimEndSeconds;
+	const trimmedSeconds = sourceSeconds - clipSeconds;
+
+	// No window: one ratio set, used for whichever buffer comes back.
+	const wholeSource: DecodePlan = {
+		window: null,
+		sourceRatios,
+		windowRatios: sourceRatios,
+	};
+
+	if (sourceSeconds <= 0 || clipSeconds <= 0) return wholeSource;
+	if (trimmedSeconds <= WINDOW_QUANTUM_SECONDS) return wholeSource;
+
+	const startSeconds = Math.min(
+		sourceSeconds,
+		Math.floor(trimStartSeconds / WINDOW_QUANTUM_SECONDS) *
+			WINDOW_QUANTUM_SECONDS,
+	);
+	const endSeconds = Math.min(
+		sourceSeconds,
+		Math.ceil((trimStartSeconds + clipSeconds) / WINDOW_QUANTUM_SECONDS) *
+			WINDOW_QUANTUM_SECONDS,
+	);
+	const windowSeconds = Math.max(0, endSeconds - startSeconds);
+	if (windowSeconds <= 0) return wholeSource;
+
+	// The windowed buffer spans [startSeconds, endSeconds] of the source, so
+	// its ratios are the padding inside that window, not fractions of the whole
+	// file. Clamped because a float endpoint can land a hair outside it.
+	const clampRatio = (value: number) => Math.min(1, Math.max(0, value));
+	return {
+		window: { startSeconds, durationSeconds: windowSeconds },
+		sourceRatios,
+		windowRatios: {
+			trimStartRatio: clampRatio(
+				(trimStartSeconds - startSeconds) / windowSeconds,
+			),
+			trimEndRatio: clampRatio(
+				(endSeconds - (trimStartSeconds + clipSeconds)) / windowSeconds,
+			),
+		},
+	};
+}
+
+interface DecodeCacheEntry {
+	promise: Promise<DecodedPeaks>;
+	/** `peakBuffer.byteLength`, 0 until the decode resolves. */
+	bytes: number;
+}
+
+/**
+ * Hard byte budget for the peak cache. Bytes, not entry count, are the real
+ * constraint: an entry is ceil(samples / PEAK_BLOCK_SIZE) float32s, i.e.
+ * 48000/256 ≈ 187 blocks/s ≈ 750 B per second of decoded audio no matter how
+ * many channels it had, so a 1-hour source costs ~2.7 MB and a 24-hour field
+ * recording ~65 MB. An entry-count cap would clip the 3 MB music files and let
+ * the pathological ones through. 64 MB is ~24 hours of audio — well past a
+ * normal session, so the cap only fires on the case it exists for, and the
+ * least-recently-used entries go first.
+ */
+const MAX_DECODE_CACHE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * LRU map: insertion order is use order (a hit re-inserts), so the front is
+ * the least recently used entry.
+ */
+const DECODE_CACHE = new Map<string, DecodeCacheEntry>();
+let decodeCacheBytes = 0;
+
+/**
+ * Drops least-recently-used entries until the retained peaks fit `budgetBytes`.
+ * The newest entry is never dropped: a single source larger than the whole
+ * budget would otherwise be evicted and re-decoded on every mount. Exposed
+ * (and parameterised) so tests can exercise the order without allocating the
+ * full 64 MB.
+ */
+export function evictDecodeCacheToBudget({
+	budgetBytes,
+}: {
+	budgetBytes: number;
+}): void {
+	while (decodeCacheBytes > budgetBytes) {
+		const oldestKey = DECODE_CACHE.keys().next().value;
+		if (oldestKey === undefined || DECODE_CACHE.size <= 1) return;
+		const oldest = DECODE_CACHE.get(oldestKey);
+		if (oldest) decodeCacheBytes -= oldest.bytes;
+		DECODE_CACHE.delete(oldestKey);
+	}
+}
+
+/**
+ * Peaks of a caller-supplied AudioBuffer, keyed on the buffer's identity.
+ *
+ * `audioBuffer` clips ran `computePeakBuffer` on every mount, and culling
+ * remounts clips as the viewport moves — so an hour of audio meant tens of
+ * millions of main-thread reads per remount, over and over. A WeakMap is the
+ * tightest cap available: one entry per buffer, dropped as soon as the buffer
+ * is garbage collected, so the cache can never outlive its key and needs no
+ * eviction policy. Each entry is at most ceil(length / PEAK_BLOCK_SIZE) × 4
+ * bytes (~750 B per second of audio), same per-second cost as the map above.
+ */
+const PEAK_CACHE = new WeakMap<AudioBuffer, Promise<AudioPeaks>>();
+
+/** Cached peak computation for `buffer`. Exported for tests. */
+export function getCachedPeaks(buffer: AudioBuffer): Promise<AudioPeaks> {
+	const cached = PEAK_CACHE.get(buffer);
 	if (cached) return cached;
+	const promise = computePeakBuffer(buffer);
+	PEAK_CACHE.set(buffer, promise);
+	promise.catch(() => {
+		if (PEAK_CACHE.get(buffer) === promise) PEAK_CACHE.delete(buffer);
+	});
+	return promise;
+}
+
+export function getCacheKey(
+	audioUrl?: string,
+	mediaFile?: File,
+	window?: DecodeWindowSeconds | null,
+): string {
+	let key: string;
+	if (mediaFile) {
+		key = `file:${mediaFile.name}:${mediaFile.size}:${mediaFile.lastModified}`;
+	} else if (audioUrl) {
+		key = `url:${audioUrl}`;
+	} else {
+		return "";
+	}
+	// The window is part of the identity: the same file decoded for two
+	// different trim ranges holds two different sets of peaks. Millisecond
+	// precision keeps float tick noise from splitting one clip's key in two.
+	if (window) {
+		key += `|${Math.round(window.startSeconds * 1000)}`;
+		key += `-${Math.round(window.durationSeconds * 1000)}`;
+	}
+	return key;
+}
+
+export async function decodeAndCache({
+	cacheKey,
+	audioUrl,
+	mediaFile,
+	plan,
+}: {
+	cacheKey: string;
+	audioUrl: string | undefined;
+	mediaFile: File | undefined;
+	plan: DecodePlan;
+}): Promise<DecodedPeaks> {
+	const cached = DECODE_CACHE.get(cacheKey);
+	if (cached) {
+		// Re-insert so the map keeps least-recently-used order.
+		DECODE_CACHE.delete(cacheKey);
+		DECODE_CACHE.set(cacheKey, cached);
+		return cached.promise;
+	}
 
 	const promise = (async (): Promise<DecodedPeaks> => {
 		const audioContext = createAudioContext();
 		try {
 			let buffer: AudioBuffer | null = null;
+			let isWindowed = false;
+
+			// 0. Windowed decode — the timeline path. Only the clip's trim
+			// range is materialised. Runs first so the whole-file decodes below
+			// are skipped entirely; if it fails, the fall-through is exactly
+			// the previous behaviour.
+			if (plan.window && mediaFile) {
+				buffer = await decodeMediaFileAudioBuffer({
+					file: mediaFile,
+					audioContext,
+					trimStartSeconds: plan.window.startSeconds,
+					durationSeconds: plan.window.durationSeconds,
+				});
+				isWindowed = buffer !== null;
+			}
 
 			// 1. Native decode for pure audio URLs (not video files).
-			if (audioUrl && !mediaFile?.type.startsWith("video/")) {
+			if (!buffer && audioUrl && !mediaFile?.type.startsWith("video/")) {
 				try {
 					const resp = await fetch(audioUrl);
 					const arrayBuffer = await resp.arrayBuffer();
@@ -113,15 +378,109 @@ export async function decodeAndCache(
 
 			if (!buffer) throw new Error("Could not decode audio");
 
-			return await computePeakBuffer(buffer);
+			// The ratios must describe the buffer that actually came back: a
+			// windowed one *is* the trim range (so they are the padding around
+			// the clip), and anything the fall-through decoded holds the whole
+			// source (so they are the clip's fractions of it). A window can also
+			// be planned for a source with no File, which is always this case.
+			return await computeDecodedPeaks(
+				buffer,
+				isWindowed ? plan.windowRatios : plan.sourceRatios,
+			);
 		} finally {
 			audioContext.close().catch(() => {});
 		}
 	})();
 
-	DECODE_CACHE.set(cacheKey, promise);
-	promise.catch(() => DECODE_CACHE.delete(cacheKey));
+	const entry: DecodeCacheEntry = { promise, bytes: 0 };
+	DECODE_CACHE.set(cacheKey, entry);
+	promise.then(
+		(result) => {
+			// Only the peaks outlive this closure — the decoded AudioBuffer goes
+			// away with its AudioContext above.
+			entry.bytes = result.peakBuffer.byteLength;
+			if (DECODE_CACHE.get(cacheKey) !== entry) return;
+			decodeCacheBytes += entry.bytes;
+			evictDecodeCacheToBudget({ budgetBytes: MAX_DECODE_CACHE_BYTES });
+		},
+		() => {
+			if (DECODE_CACHE.get(cacheKey) === entry) DECODE_CACHE.delete(cacheKey);
+		},
+	);
 	return promise;
+}
+
+// ---------------------------------------------------------------------------
+// Shared scroll ticker
+// ---------------------------------------------------------------------------
+
+/**
+ * The horizontal slice of a scroll parent that is on screen right now, in
+ * viewport coordinates.
+ */
+interface ScrollWindow {
+	left: number;
+	right: number;
+}
+
+interface ScrollTicker {
+	subscribers: Set<(scrollWindow: ScrollWindow) => void>;
+	frame: number | null;
+}
+
+/**
+ * One scroll listener and one animation frame per scroll parent, shared by
+ * every mounted clip.
+ *
+ * Each clip used to install its own listener on the same scroller and coalesce
+ * with its own rAF, so a timeline with 40 visible clips ran 40 rAF callbacks
+ * per frame and every one of them re-measured the *same* scroll parent to get
+ * the same two numbers — 40 wasted `getBoundingClientRect` reads and layout
+ * flushes per frame, which is exactly the kind of read that turns a smooth
+ * scroll into a janky one. The ticker measures the parent once per frame and
+ * hands the result to every subscriber.
+ *
+ * A draw triggered by anything other than scrolling (decode, resize, trim or
+ * style change) measures the parent itself instead, so a panel resize that
+ * produces no scroll event can never repaint from a stale window.
+ */
+const SCROLL_TICKERS = new WeakMap<HTMLElement, ScrollTicker>();
+
+function measureScrollWindow(element: HTMLElement): ScrollWindow {
+	const rect = element.getBoundingClientRect();
+	return { left: rect.left, right: rect.right };
+}
+
+function subscribeScrollWindow(
+	scrollParent: HTMLElement,
+	onWindow: (scrollWindow: ScrollWindow) => void,
+): () => void {
+	let ticker = SCROLL_TICKERS.get(scrollParent);
+	if (!ticker) {
+		ticker = { subscribers: new Set(), frame: null };
+		SCROLL_TICKERS.set(scrollParent, ticker);
+	}
+	const entry = ticker;
+	entry.subscribers.add(onWindow);
+
+	const onScroll = () => {
+		if (entry.frame !== null) return;
+		entry.frame = requestAnimationFrame(() => {
+			entry.frame = null;
+			const scrollWindow = measureScrollWindow(scrollParent);
+			for (const notify of entry.subscribers) notify(scrollWindow);
+		});
+	};
+
+	scrollParent.addEventListener("scroll", onScroll, { passive: true });
+
+	return () => {
+		scrollParent.removeEventListener("scroll", onScroll);
+		entry.subscribers.delete(onWindow);
+		if (entry.subscribers.size > 0) return;
+		if (entry.frame !== null) cancelAnimationFrame(entry.frame);
+		SCROLL_TICKERS.delete(scrollParent);
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -145,13 +504,23 @@ export function AudioWaveform({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const decodedRef = useRef<DecodedPeaks | null>(null);
 	const scrollParentRef = useRef<HTMLElement | null>(null);
+	const publishedWindowRef = useRef<ScrollWindow | null>(null);
 	const heightRef = useRef<number>(0);
 
+	/**
+	 * Paints the visible slice of the clip.
+	 */
 	const drawVisible = useCallback(() => {
 		const container = containerRef.current;
 		const canvas = canvasRef.current;
 		const decoded = decodedRef.current;
 		const height = heightRef.current;
+
+		// Set by the shared scroll ticker for the duration of a scroll-driven
+		// draw only; every other redraw (decode, resize, style change) leaves it
+		// null and measures the scroll parent itself, so a resize that produces
+		// no scroll event can never repaint from a stale window.
+		const publishedWindow = publishedWindowRef.current;
 
 		if (!container || !canvas || !decoded || height <= 0) return;
 
@@ -168,9 +537,12 @@ export function AudioWaveform({
 		let clipRight: number;
 
 		if (scrollParent) {
-			const parentRect = scrollParent.getBoundingClientRect();
-			clipLeft = Math.max(0, parentRect.left - containerRect.left);
-			clipRight = Math.min(elementWidth, parentRect.right - containerRect.left);
+			const scrollWindow = publishedWindow ?? measureScrollWindow(scrollParent);
+			clipLeft = Math.max(0, scrollWindow.left - containerRect.left);
+			clipRight = Math.min(
+				elementWidth,
+				scrollWindow.right - containerRect.left,
+			);
 		} else {
 			clipLeft = Math.max(0, -containerRect.left);
 			clipRight = Math.min(
@@ -202,21 +574,13 @@ export function AudioWaveform({
 		const barCount = Math.max(1, Math.floor(visibleWidth / barStep));
 
 		// Trim-aware source range. The element width maps to the *trimmed* region
-		// of the source, so we offset into the buffer accordingly before applying
-		// the visible-window fractions.
-		const duration =
-			sourceDurationTicks && sourceDurationTicks > 0 ? sourceDurationTicks : 0;
-		const trimStartRatio =
-			duration > 0 && trimStartTicks
-				? Math.min(1, Math.max(0, trimStartTicks / duration))
-				: 0;
-		const trimEndRatio =
-			duration > 0 && trimEndTicks
-				? Math.min(1, Math.max(0, trimEndTicks / duration))
-				: 0;
-		const sourceStart = trimStartRatio * decoded.bufferLength;
+		// of the decoded buffer, so we offset into the buffer accordingly before
+		// applying the visible-window fractions. The ratios come from the decode
+		// (see DecodedPeaks): a whole-source buffer is trimmed by the clip's
+		// fractions of the source, a windowed one by the padding around the clip.
+		const sourceStart = decoded.trimStartRatio * decoded.bufferLength;
 		const sourceEnd =
-			decoded.bufferLength - trimEndRatio * decoded.bufferLength;
+			decoded.bufferLength - decoded.trimEndRatio * decoded.bufferLength;
 		const sourceRange = Math.max(0, sourceEnd - sourceStart);
 
 		const startFraction = clipLeft / elementWidth;
@@ -390,39 +754,50 @@ export function AudioWaveform({
 		}
 
 		ctx.shadowBlur = 0;
-	}, [
-		beatColor,
-		color,
-		symmetric,
-		variant,
-		trimStartTicks,
-		trimEndTicks,
-		sourceDurationTicks,
-		scale,
-	]);
+		// No trim props: the trim range now lives on the decoded record, so a
+		// trim change repaints when its (cached) decode lands rather than
+		// repainting against the previous window's mapping.
+	}, [beatColor, color, symmetric, variant, scale]);
 
 	// Keep a stable reference to the latest draw fn so the decode effect can
 	// trigger a redraw without re-running when only styling / trim changes.
 	const drawVisibleRef = useRef(drawVisible);
 	drawVisibleRef.current = drawVisible;
 
-	// Decode (or read directly) the audio source, then redraw once.
+	// Decode (or read directly) the audio source, then redraw once. The trim
+	// range is a dependency because it selects both the decode window and the
+	// cache key, so a trim edit resolves to (at worst) a windowed re-decode
+	// instead of re-reading the whole source.
 	useEffect(() => {
 		let cancelled = false;
 
 		if (audioBuffer) {
-			computePeakBuffer(audioBuffer).then((peaks) => {
+			// Caller-supplied buffer: peaks are cached on the buffer's identity,
+			// so a remount (culling) no longer re-walks the samples.
+			getCachedPeaks(audioBuffer).then((peaks) => {
 				if (cancelled) return;
-				decodedRef.current = peaks;
+				decodedRef.current = {
+					...peaks,
+					...computeSourceTrimRatios({
+						trimStartTicks,
+						trimEndTicks,
+						sourceDurationTicks,
+					}),
+				};
 				drawVisibleRef.current();
 			});
 			return;
 		}
 
-		const cacheKey = getCacheKey(audioUrl, mediaFile);
+		const plan = resolveDecodePlan({
+			trimStartTicks,
+			trimEndTicks,
+			sourceDurationTicks,
+		});
+		const cacheKey = getCacheKey(audioUrl, mediaFile, plan.window);
 		if (!cacheKey) return;
 
-		decodeAndCache(cacheKey, audioUrl, mediaFile)
+		decodeAndCache({ cacheKey, audioUrl, mediaFile, plan })
 			.then((result) => {
 				if (cancelled) return;
 				decodedRef.current = result;
@@ -433,19 +808,26 @@ export function AudioWaveform({
 		return () => {
 			cancelled = true;
 		};
-	}, [audioBuffer, audioUrl, mediaFile]);
+	}, [
+		audioBuffer,
+		audioUrl,
+		mediaFile,
+		trimStartTicks,
+		trimEndTicks,
+		sourceDurationTicks,
+	]);
 
-	// Redraw when styling / trim changes (drawVisible identity changes).
+	// Redraw when styling changes (drawVisible identity changes).
 	useEffect(() => {
 		drawVisible();
 	}, [drawVisible]);
 
 	// Redraw while scrolling the timeline (virtualized rendering). Scroll events
 	// fire far faster than the display refresh, and each draw reallocates the
-	// canvas + repaints — so coalesce to at most one redraw per frame. With many
-	// audio/video clips mounted this is the difference between smooth and janky
-	// timeline scrolling. Reads the latest draw fn via ref so styling/trim
-	// changes never re-attach the listener.
+	// canvas + repaints — so the shared ticker coalesces them to at most one
+	// redraw per frame *for the whole timeline*, with the scroll parent measured
+	// once instead of once per mounted clip. Reads the latest draw fn via ref so
+	// styling/trim changes never re-subscribe.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -454,20 +836,12 @@ export function AudioWaveform({
 		const scrollParent = scrollParentRef.current;
 		if (!scrollParent) return;
 
-		let rafId: number | null = null;
-		const onScroll = () => {
-			if (rafId !== null) return;
-			rafId = requestAnimationFrame(() => {
-				rafId = null;
-				drawVisibleRef.current();
-			});
-		};
-
-		scrollParent.addEventListener("scroll", onScroll, { passive: true });
-		return () => {
-			scrollParent.removeEventListener("scroll", onScroll);
-			if (rafId !== null) cancelAnimationFrame(rafId);
-		};
+		return subscribeScrollWindow(scrollParent, (scrollWindow) => {
+			publishedWindowRef.current = scrollWindow;
+			drawVisibleRef.current();
+			// Consumed: the next redraw measures the scroll parent for itself.
+			publishedWindowRef.current = null;
+		});
 	}, []);
 
 	const onResize = useCallback(
@@ -490,6 +864,21 @@ export function AudioWaveform({
 // ---------------------------------------------------------------------------
 // Peak computation
 // ---------------------------------------------------------------------------
+
+/**
+ * Stamps a clip's trim range onto a buffer's peaks. Split from
+ * `computePeakBuffer` so the O(samples) part stays cacheable on buffer identity
+ * alone, while the (free) ratios can differ per clip — several clips can share
+ * one decoded AudioBuffer and still trim it differently.
+ */
+async function computeDecodedPeaks(
+	buffer: AudioBuffer,
+	ratios: { trimStartRatio: number; trimEndRatio: number },
+): Promise<DecodedPeaks> {
+	const peaks = await getCachedPeaks(buffer);
+	return { ...peaks, ...ratios };
+}
+
 /**
  * Computes a downsampled peak buffer from an AudioBuffer.
  *
@@ -497,8 +886,11 @@ export function AudioWaveform({
  * stays responsive during large audio files. Without yielding, the
  * triple-nested loop (channels × blocks × samples) blocks the main
  * thread for seconds on files longer than a few minutes.
+ *
+ * Callers must go through `getCachedPeaks` / `decodeAndCache` so the pass runs
+ * once per buffer instead of once per mount.
  */
-async function computePeakBuffer(buffer: AudioBuffer): Promise<DecodedPeaks> {
+async function computePeakBuffer(buffer: AudioBuffer): Promise<AudioPeaks> {
 	const channels = buffer.numberOfChannels;
 	const blockCount = Math.ceil(buffer.length / PEAK_BLOCK_SIZE);
 	const peakBuffer = new Float32Array(blockCount);

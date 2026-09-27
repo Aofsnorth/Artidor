@@ -1,7 +1,7 @@
 "use client";
 
 import type { WheelEvent } from "react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,7 @@ import { getPropertiesConfig, type PropertiesTabDef } from "./registry";
 import { cn } from "@/utils/ui";
 import { ProjectDetailsView } from "./details-view";
 import type { MediaAsset } from "@/lib/media/types";
-import type { TimelineElement } from "@/lib/timeline";
+import type { TimelineElement, TimelineTrack } from "@/lib/timeline";
 import Image from "next/image";
 import { MarqueeText } from "@/components/ui/marquee-text";
 
@@ -60,13 +60,12 @@ function handleHorizontalTabWheel(event: WheelEvent<HTMLDivElement>) {
 	event.preventDefault();
 }
 
-// Wrap the panel in React.memo so re-renders of the editor page
-// (which happen on every playhead tick via useElementPlayhead) don't
-// cascade down through this entire tree when nothing the panel
-// depends on has actually changed. Combined with the narrow Zustand
-// selectors below, the panel now only re-renders when the user
-// switches tabs, favourites a media, or changes the summary size.
-export const PropertiesPanel = memo(function PropertiesPanel() {
+// The panel wrapper is intentionally NOT memoized: it takes no props, so a
+// `memo` here could never block anything. The render boundary that matters
+// lives on <SelectedElementInspector>, which is memoized on the real inputs
+// it reads, and on the per-tab content components in ./registry, which are
+// component boundaries in their own right.
+export function PropertiesPanel() {
 	return (
 		<div
 			data-testid="properties-panel"
@@ -75,28 +74,13 @@ export const PropertiesPanel = memo(function PropertiesPanel() {
 			<InspectorView />
 		</div>
 	);
-});
+}
 
 function InspectorView() {
 	const editor = useEditor();
 	useEditor((e) => e.scenes.getActiveSceneOrNull());
 	useEditor((e) => e.media.getAssets());
 	const { selectedElements } = useElementSelection();
-	// useShallow: the whole-store destructure returned a fresh object every
-	// call; the inspector re-rendered on unrelated properties-store churn
-	// (favourite toggles, scale-lock flips while another tab is active).
-	const { activeTabPerType, setActiveTab } = usePropertiesStore(
-		useShallow((s) => ({
-			activeTabPerType: s.activeTabPerType,
-			setActiveTab: s.setActiveTab,
-		})),
-	);
-	const arePrimaryTabsHidden = usePropertiesStore(
-		(s) => s.arePrimaryTabsHidden,
-	);
-	const setPrimaryTabsHidden = usePropertiesStore(
-		(s) => s.setPrimaryTabsHidden,
-	);
 	const toolMode = useToolModeStore((s) => s.toolMode);
 	const timeline = useEditor((e) => e.timeline, ["timeline"]);
 
@@ -143,8 +127,60 @@ function InspectorView() {
 	// Details instead of a blank panel — matches project-switch behaviour.
 	if (!elementWithTrack) return <ProjectDetailsView />;
 
-	const { element, track } = elementWithTrack;
-	const config = getPropertiesConfig({ element, mediaAssets });
+	return (
+		<SelectedElementInspector
+			element={elementWithTrack.element}
+			track={elementWithTrack.track}
+			mediaAssets={mediaAssets}
+		/>
+	);
+}
+
+/**
+ * Everything the inspector renders for a single selected element.
+ *
+ * Memoized on the three real inputs it reads — the element object, its track
+ * object and the project's media list. All three are stable references owned
+ * by the editor managers, so an unrelated notification (another clip
+ * committing, a scene object being replaced, media metadata churn) re-renders
+ * the thin `InspectorView` above but is blocked here, instead of rebuilding
+ * every tab descriptor and inlining the whole active tab tree.
+ *
+ * The tab *content* is a separate memoized component in ./registry, so a tab
+ * switch only re-renders the tab, not the tab bars around it.
+ */
+const SelectedElementInspector = memo(function SelectedElementInspector({
+	element,
+	track,
+	mediaAssets,
+}: {
+	element: TimelineElement;
+	track: TimelineTrack;
+	mediaAssets: MediaAsset[];
+}) {
+	// useShallow: the whole-store destructure returned a fresh object every
+	// call; the inspector re-rendered on unrelated properties-store churn
+	// (favourite toggles, scale-lock flips while another tab is active).
+	const { activeTabPerType, setActiveTab } = usePropertiesStore(
+		useShallow((s) => ({
+			activeTabPerType: s.activeTabPerType,
+			setActiveTab: s.setActiveTab,
+		})),
+	);
+	const arePrimaryTabsHidden = usePropertiesStore(
+		(s) => s.arePrimaryTabsHidden,
+	);
+	const setPrimaryTabsHidden = usePropertiesStore(
+		(s) => s.setPrimaryTabsHidden,
+	);
+
+	// Tab descriptors depend on nothing but the selected element and the
+	// media list (the only config input is the video asset's `hasAudio`
+	// flag), so this is the exact memo boundary for them.
+	const config = useMemo(
+		() => getPropertiesConfig({ element, mediaAssets }),
+		[element, mediaAssets],
+	);
 	const visibleTabs = config.tabs;
 
 	if (visibleTabs.length === 0) {
@@ -176,6 +212,10 @@ function InspectorView() {
 		activeTabId: activeTab.id,
 		elementType: element.type,
 	});
+
+	// Rendered as a component (not `activeTab.content({ ... })` invoked
+	// inline) so React gets a boundary it can bail out of.
+	const ActiveTabContent = activeTab.content;
 
 	return (
 		<>
@@ -308,19 +348,21 @@ function InspectorView() {
 			}
 
 			<ScrollArea className="min-h-0 flex-1 scrollbar-hidden bg-linear-to-b from-transparent to-black/12">
-				{activeTab.content({
-					trackId: track.id,
-					trackName: track.name,
-					mediaAssets,
-					mediaAsset:
+				<ActiveTabContent
+					element={element}
+					trackId={track.id}
+					trackName={track.name}
+					mediaAssets={mediaAssets}
+					mediaAsset={
 						"mediaId" in element
 							? mediaAssets.find((m) => m.id === element.mediaId)
-							: undefined,
-				})}
+							: undefined
+					}
+				/>
 			</ScrollArea>
 		</>
 	);
-}
+});
 
 function InspectorHeader({ disabled }: { disabled?: boolean }) {
 	return (

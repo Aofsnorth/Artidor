@@ -74,6 +74,44 @@ function estimateTokens(messages: { content: string }[]): number {
 	return Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);
 }
 
+/**
+ * Data URLs above this length are replaced by a size marker before a tool
+ * result is serialized into a `tool`-role message. ≈1.5 KB of raw bytes, so
+ * small thumbnails survive while whole media files do not.
+ */
+const MAX_TOOL_MESSAGE_DATA_URL_CHARS = 2048;
+
+/**
+ * Copy of a tool result's `data` with oversized `data:` URLs replaced by
+ * `[omitted N char data URL]`.
+ *
+ * `view_asset` on a video returns the source file as a base64 data URL plus one
+ * frame per sample point. Serialized into a chat message that payload is both
+ * written to localStorage (a few MB quota — one video blows past it) and sent
+ * to the provider on the next round, where it buys nothing: the media is
+ * already attached as an image/video part from the same tool result. Only
+ * plain objects and arrays are rebuilt; anything else is returned untouched.
+ */
+function redactMediaPayload(value: unknown): unknown {
+	if (typeof value === "string") {
+		return value.startsWith("data:") &&
+			value.length > MAX_TOOL_MESSAGE_DATA_URL_CHARS
+			? `[omitted ${value.length} char data URL]`
+			: value;
+	}
+	if (Array.isArray(value)) return value.map(redactMediaPayload);
+	if (value !== null && typeof value === "object") {
+		const prototype = Object.getPrototypeOf(value) as object | null;
+		if (prototype !== Object.prototype && prototype !== null) return value;
+		const copy: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(value)) {
+			copy[key] = redactMediaPayload(entry);
+		}
+		return copy;
+	}
+	return value;
+}
+
 export interface SendOptions {
 	/** Plain text the user typed. */
 	text: string;
@@ -1585,7 +1623,10 @@ export class AIManager {
 			data?: unknown;
 		}>,
 	): void {
-		// Finalise the assistant message with the tool-call record.
+		// Finalise the assistant message with the tool-call record. The result
+		// keeps its full payload in memory — the panel renders the asset from
+		// it for the rest of the session — but the store's `partialize` trims
+		// the bulk media out of the persisted copy.
 		const finalToolCalls = toolCalls.map((tc) => {
 			const result = results.find((r) => r.name === tc.name);
 			return { id: tc.id, name: tc.name, args: tc.arguments, result };
@@ -1603,11 +1644,18 @@ export class AIManager {
 		for (let i = 0; i < toolCalls.length; i++) {
 			const tc = toolCalls[i];
 			const result = results[i];
+			// `data` is redacted here rather than at the store: a `view_asset`
+			// result carries the whole source video as a base64 data URL (100 MB+
+			// for a real file) plus a frame per sample point. This string is both
+			// PERSISTED (it is a chat message) and sent to the provider on the
+			// next round, so the payload is replaced by size markers. The model
+			// still sees the media itself — it is attached as an image/video part
+			// from the same result (see the pendingImages/pendingVideos queues).
 			const toolContent = result.ok
 				? JSON.stringify({
 						ok: true,
 						message: result.message,
-						data: result.data,
+						data: redactMediaPayload(result.data),
 					})
 				: JSON.stringify({
 						ok: false,

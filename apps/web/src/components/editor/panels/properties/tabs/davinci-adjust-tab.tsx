@@ -640,6 +640,16 @@ function PrimaryBarsSection({
 								<NumberField
 									value={val.toFixed(b.fixed)}
 									scrubClamp={{ min: b.min, max: b.max }}
+									onChange={(event) => {
+										// `allowExpressions` makes this a text input, so a
+										// keystroke can be "" or non-numeric mid-typing. Only a
+										// finite number is committed; the field keeps the raw
+										// text and re-renders the clamped value on blur.
+										const next = Number(event.target.value);
+										if (Number.isFinite(next)) {
+											setNum(b.key as string, next);
+										}
+									}}
 									onScrub={(v) => setNum(b.key as string, v)}
 									onReset={() => setNum(b.key as string, def)}
 									isDefault={Math.abs(val - def) < b.step / 2}

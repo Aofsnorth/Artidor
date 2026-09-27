@@ -170,20 +170,17 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly initializeGpu: () => any;
-    readonly destroyGpu: () => void;
-    readonly applyMaskFeather: (a: any) => [number, number, number];
-    readonly applyEffectPasses: (a: any) => [number, number, number];
     readonly getCompositorCanvas: () => [number, number, number];
     readonly initCompositor: (a: number, b: number) => [number, number];
     readonly initCompositorWithCanvas: (a: any) => [number, number];
+    readonly initializeGpu: () => any;
     readonly releaseTexture: (a: number, b: number) => [number, number];
     readonly renderFrame: (a: any) => [number, number];
     readonly resizeCompositor: (a: number, b: number) => [number, number];
     readonly uploadTexture: (a: any) => [number, number];
-    readonly formatTimecode: (a: any) => [number, number];
-    readonly guessTimecodeFormat: (a: any) => any;
-    readonly parseTimecode: (a: any) => any;
+    readonly destroyGpu: () => void;
+    readonly applyEffectPasses: (a: any) => [number, number, number];
+    readonly applyMaskFeather: (a: any) => [number, number, number];
     readonly TICKS_PER_SECOND: () => number;
     readonly floorToFrame: (a: any) => any;
     readonly isFrameAligned: (a: any) => number;
@@ -199,9 +196,12 @@ export interface InitOutput {
     readonly mediaTimeToSeconds: (a: any) => number;
     readonly roundToFrame: (a: any) => any;
     readonly snappedSeekTime: (a: any) => any;
-    readonly wasm_bindgen__convert__closures_____invoke__h49b96db86b53e7f6: (a: number, b: number, c: any) => [number, number];
-    readonly wasm_bindgen__convert__closures_____invoke__h33bc222f80de2d45: (a: number, b: number, c: any, d: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h7639701990bf035a: (a: number, b: number, c: any) => void;
+    readonly formatTimecode: (a: any) => [number, number];
+    readonly guessTimecodeFormat: (a: any) => any;
+    readonly parseTimecode: (a: any) => any;
+    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue__core_ed718c3d60ebd546___result__Result_____wasm_bindgen_3c33037414290827___JsError___true_: (a: number, b: number, c: any) => [number, number];
+    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___js_sys_4b223c32832ce6bf___Function_fn_wasm_bindgen_3c33037414290827___JsValue_____wasm_bindgen_3c33037414290827___sys__Undefined___js_sys_4b223c32832ce6bf___Function_fn_wasm_bindgen_3c33037414290827___JsValue_____wasm_bindgen_3c33037414290827___sys__Undefined_______true_: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue______true_: (a: number, b: number, c: any) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;

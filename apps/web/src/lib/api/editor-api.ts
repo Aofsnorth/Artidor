@@ -12,11 +12,80 @@
  * It adds the same arg safety the LLM path relies on: every call is
  * validated against the tool's JSON Schema before it touches EditorCore,
  * so external callers (scripts / agents) can't smuggle in bad input.
+ *
+ * The registry + executor it wraps are loaded lazily (see `loadToolRuntime`),
+ * so building the API — which the EditorCore constructor does on every page
+ * load — does not pull the AI toolchain into the editor's initial chunk.
  */
 
 import type { EditorCore } from "@/core";
-import { executeTool, type ToolExecutionResult } from "@/lib/ai/tools/executor";
-import { ALL_TOOLS, TOOLS_BY_NAME } from "@/lib/ai/tools/registry";
+import type { ToolExecutionResult } from "@/lib/ai/tools/executor";
+import type { Effect } from "@/lib/effects/types";
+
+type ToolRegistryModule = typeof import("@/lib/ai/tools/registry");
+type ToolExecutorModule = typeof import("@/lib/ai/tools/executor");
+
+interface ToolRuntime {
+	registry: ToolRegistryModule;
+	executor: ToolExecutorModule;
+}
+
+/**
+ * The command vocabulary — the tool registry (~100 JSON schemas) and the tool
+ * executor — is only needed once something actually drives the editor through
+ * this API: the Scripting tab, the in-tab automation bridge, or the MCP relay.
+ * It is therefore imported on first use instead of at module evaluation, which
+ * keeps it out of the editor's initial chunk for the (common) case where the
+ * user never opens the AI panel or the Scripting tab. The promise is memoized,
+ * so both modules are fetched and evaluated at most once.
+ */
+let toolRuntimePromise: Promise<ToolRuntime> | null = null;
+
+/**
+ * Set as soon as the registry chunk lands. `listCommands` is synchronous (see
+ * `EditorApi`), so it reads the registry from here rather than awaiting.
+ */
+let loadedRegistry: ToolRegistryModule | null = null;
+
+function loadToolRuntime(): Promise<ToolRuntime> {
+	// A rejected load is not memoized, so a later call can retry instead of
+	// failing every command for the rest of the session.
+	toolRuntimePromise ??= Promise.all([
+		import("@/lib/ai/tools/registry"),
+		import("@/lib/ai/tools/executor"),
+	])
+		.then(([registry, executor]) => {
+			loadedRegistry = registry;
+			return { registry, executor };
+		})
+		.catch((error: unknown) => {
+			toolRuntimePromise = null;
+			throw error;
+		});
+	return toolRuntimePromise;
+}
+
+/**
+ * Kick off the load without waiting for it. Used by the synchronous
+ * `listCommands`, which has no way to report a load failure; `run` surfaces
+ * the same failure to its caller.
+ */
+function prefetchToolRuntime(): void {
+	void loadToolRuntime().catch(() => {});
+}
+
+function toCommandInfo(registry: ToolRegistryModule): CommandInfo[] {
+	return registry.ALL_TOOLS.map((t) => ({
+		name: t.def.function.name,
+		description: t.def.function.description,
+		category: t.category,
+		parameters: t.def.function.parameters as Record<string, unknown>,
+	}));
+}
+
+function describeError(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
 
 export interface CommandInfo {
 	name: string;
@@ -27,7 +96,12 @@ export interface CommandInfo {
 }
 
 export interface EditorApi {
-	/** Every command the editor exposes, with its arg schema. */
+	/**
+	 * Every command the editor exposes, with its arg schema. Synchronous by
+	 * contract — the bridge and the Scripting tab post the result straight back
+	 * to their transport without awaiting it — so it reflects the registry once
+	 * it has been loaded (see `loadToolRuntime`) and starts that load otherwise.
+	 */
 	listCommands(): CommandInfo[];
 	/**
 	 * Run a command by name. Args are validated against the command's JSON
@@ -78,6 +152,7 @@ declare global {
 					trackId: string;
 					type: string;
 					name: string;
+					effects: Effect[];
 				}>;
 			};
 			/**
@@ -223,16 +298,28 @@ function validateObject(
 export function createEditorApi(editor: EditorCore): EditorApi {
 	return {
 		listCommands() {
-			return ALL_TOOLS.map((t) => ({
-				name: t.def.function.name,
-				description: t.def.function.description,
-				category: t.category,
-				parameters: t.def.function.parameters as Record<string, unknown>,
-			}));
+			// Synchronous by contract: the in-tab bridge (`bridge.ts`) and the
+			// Scripting tab both post this result straight back to their
+			// transport, so it cannot wait for the chunk. Before the registry
+			// lands this returns an empty list and starts the load, so the next
+			// call is complete — and any caller that ran a command first
+			// (`run` awaits the same load) always sees the full list.
+			if (!loadedRegistry) prefetchToolRuntime();
+			return loadedRegistry ? toCommandInfo(loadedRegistry) : [];
 		},
 
 		async run(name, args = {}, source = "user") {
-			const registered = TOOLS_BY_NAME[name];
+			let runtime: ToolRuntime;
+			try {
+				runtime = await loadToolRuntime();
+			} catch (error) {
+				return {
+					ok: false,
+					message: `Failed to load editor commands: ${describeError(error)}`,
+				};
+			}
+
+			const registered = runtime.registry.TOOLS_BY_NAME[name];
 			if (!registered) {
 				return { ok: false, message: `Unknown command: ${name}` };
 			}
@@ -244,7 +331,7 @@ export function createEditorApi(editor: EditorCore): EditorApi {
 			if (schemaError) {
 				return { ok: false, message: schemaError };
 			}
-			return executeTool({
+			return runtime.executor.executeTool({
 				editor,
 				toolName: registered.executorKey,
 				arguments: args,

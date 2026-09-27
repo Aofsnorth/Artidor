@@ -14,6 +14,16 @@ import type {
 
 const DEFAULT_BROWSE_LIMIT = 12;
 const DEFAULT_SEARCH_LIMIT = 100;
+/**
+ * Cap for the "see all" category browse. Without it the flags provider
+ * returned its whole catalogue — 254 country cards mounted at once, each
+ * with a decoded `resolveStickerId` preview URL. A full-windowed screen of
+ * cards is the practical ceiling here: anything beyond that is reachable by
+ * narrowing with the panel's own search box, which goes through
+ * `searchStickers` (a separate, already-limited code path). Callers that need
+ * more can pass an explicit `limit`.
+ */
+const DEFAULT_CATEGORY_BROWSE_LIMIT = 60;
 
 function mergeSearchResults({
 	results,
@@ -206,8 +216,10 @@ export async function searchAll({
 
 export async function browseCategory({
 	category,
+	limit = DEFAULT_CATEGORY_BROWSE_LIMIT,
 }: {
 	category: StickerCategory;
+	limit?: number;
 }): Promise<StickerBrowseResult> {
 	registerDefaultStickerProviders({});
 
@@ -221,7 +233,7 @@ export async function browseCategory({
 		return getEmptyBrowseResult();
 	}
 
-	return provider.browse({ options: {} });
+	return provider.browse({ options: { limit } });
 }
 
 export async function browseAll({

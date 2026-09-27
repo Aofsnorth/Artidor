@@ -1,5 +1,54 @@
 import { useEditor } from "@/hooks/use-editor";
-import { findTrackInSceneTracks, type TimelineElement } from "@/lib/timeline";
+import type { SceneTracks, TimelineElement } from "@/lib/timeline";
+
+/**
+ * `SceneTracks` → `trackId → (elementId → element)` lookup index.
+ *
+ * `useElementPreview` runs once per timeline clip, so resolving each clip with
+ * `findTrackInSceneTracks(...)` followed by `track.elements.find(...)` costs
+ * O(clips x tracks) per render pass — O(clips²) for a timeline holding one
+ * clip per track, which is the normal case.
+ *
+ * A `SceneTracks` object is replaced wholesale on every track mutation (the
+ * managers are copy-on-write), so keying the index on the object identity makes
+ * it self-invalidating: it is rebuilt once per real change and reused for every
+ * clip afterwards, making a pass O(clips). Weak keys mean the index is
+ * collected together with the tracks it describes.
+ *
+ * Track lookup order mirrors `findTrackInSceneTracks` (main → overlay →
+ * overlayAfter → audio) and keeps the *first* match, so the resolved track is
+ * identical for any duplicated track id.
+ */
+const elementIndexByTracks = new WeakMap<
+	SceneTracks,
+	Map<string, Map<string, TimelineElement>>
+>();
+
+function getElementIndex(tracks: SceneTracks) {
+	const cached = elementIndexByTracks.get(tracks);
+	if (cached) return cached;
+
+	const index = new Map<string, Map<string, TimelineElement>>();
+	const addTrack = (track: {
+		id: string;
+		elements: readonly TimelineElement[];
+	}) => {
+		if (index.has(track.id)) return;
+		const elementsById = new Map<string, TimelineElement>();
+		for (const element of track.elements) {
+			elementsById.set(element.id, element);
+		}
+		index.set(track.id, elementsById);
+	};
+
+	addTrack(tracks.main);
+	for (const track of tracks.overlay) addTrack(track);
+	for (const track of tracks.overlayAfter) addTrack(track);
+	for (const track of tracks.audio) addTrack(track);
+
+	elementIndexByTracks.set(tracks, index);
+	return index;
+}
 
 /**
  * Subscribes to render tracks and returns the live (preview-aware) version of
@@ -26,12 +75,14 @@ export function useElementPreview<T extends TimelineElement>({
 	// timeline during playback (N clip cards × 1 fewer subscription each).
 	useEditor((e) => e.timeline.getPreviewTracks(), ["timeline", "scenes"]);
 
-	const previewTracks = editor.timeline.getPreviewTracks();
+	// `getPreviewTracks()` is the in-progress overlay when a preview is
+	// active and the committed scene tracks otherwise; it throws only when
+	// there is no active scene at all, exactly as the previous
+	// `previewTracks ?? getActiveScene().tracks` fallback did.
+	const previewTracks =
+		editor.timeline.getPreviewTracks() ?? editor.scenes.getActiveScene().tracks;
 	const renderElement =
-		(findTrackInSceneTracks({
-			tracks: previewTracks ?? editor.scenes.getActiveScene().tracks,
-			trackId,
-		})?.elements.find((element) => element.id === elementId) as
+		(getElementIndex(previewTracks).get(trackId)?.get(elementId) as
 			| T
 			| undefined) ?? fallback;
 

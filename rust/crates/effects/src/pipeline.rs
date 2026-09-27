@@ -1,16 +1,24 @@
 use std::collections::HashMap;
+use std::sync::{Mutex, MutexGuard};
 
 use bytemuck::{Pod, Zeroable};
 use gpu::{FULLSCREEN_SHADER_SOURCE, GpuContext};
 use thiserror::Error;
-use wgpu::util::DeviceExt;
 
 use crate::{EffectPass, UniformValue};
+
+use target_pool::TargetPool;
 
 const GAUSSIAN_BLUR_SHADER_ID: &str = "gaussian-blur";
 const GAUSSIAN_BLUR_SHADER_SOURCE: &str = include_str!("shaders/gaussian_blur.wgsl");
 const BRIGHTNESS_SHADER_ID: &str = "brightness";
 const BRIGHTNESS_SHADER_SOURCE: &str = include_str!("shaders/brightness.wgsl");
+
+const EXPOSURE_SHADER_ID: &str = "exposure";
+const EXPOSURE_SHADER_SOURCE: &str = include_str!("shaders/exposure.wgsl");
+
+const TINT_SHIFT_SHADER_ID: &str = "tint-shift";
+const TINT_SHIFT_SHADER_SOURCE: &str = include_str!("shaders/tint-shift.wgsl");
 const CONTRAST_SHADER_ID: &str = "contrast";
 const CONTRAST_SHADER_SOURCE: &str = include_str!("shaders/contrast.wgsl");
 const SATURATION_SHADER_ID: &str = "saturation";
@@ -204,6 +212,16 @@ const SHADER_REGISTRY: &[ShaderEntry] = &[
         id: BRIGHTNESS_SHADER_ID,
         label: "effects-brightness-shader",
         source: BRIGHTNESS_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: EXPOSURE_SHADER_ID,
+        label: "effects-exposure-shader",
+        source: EXPOSURE_SHADER_SOURCE,
+    },
+    ShaderEntry {
+        id: TINT_SHIFT_SHADER_ID,
+        label: "effects-tint-shift-shader",
+        source: TINT_SHIFT_SHADER_SOURCE,
     },
     ShaderEntry {
         id: CONTRAST_SHADER_ID,
@@ -650,7 +668,32 @@ pub struct ApplyEffectsOptions<'a> {
 
 pub struct EffectPipeline {
     uniform_bind_group_layout: wgpu::BindGroupLayout,
-    pipelines: HashMap<String, wgpu::RenderPipeline>,
+    pipeline_layout: wgpu::PipelineLayout,
+    vertex_shader_module: wgpu::ShaderModule,
+    /// Render pipelines built on first use, keyed by shader id.
+    ///
+    /// Behind a [`Mutex`] rather than a plain field so `apply` and
+    /// `apply_with_encoder` can stay `&self`: the `applyEffectPasses` wasm
+    /// export reads this pipeline out of a thread-local `RefCell<GpuRuntime>`
+    /// behind a shared borrow, and taking `&mut self` would force that whole
+    /// runtime behind a `RefCell` for the per-frame render path too. The lock
+    /// is held only for a hash lookup and a `RenderPipeline` clone (a refcount
+    /// bump), never across GPU work.
+    pipelines: Mutex<HashMap<&'static str, wgpu::RenderPipeline>>,
+    /// Free list backing the standalone [`EffectPipeline::apply`] entry point.
+    ///
+    /// The frame path ([`EffectPipeline::apply_with_encoder`]) is handed the
+    /// compositor's own pool instead, so this one is only used by callers that
+    /// have no pool to borrow — today that is the `applyEffectPasses`
+    /// effect-preview export, which runs on every preview update.
+    targets: Mutex<TargetPool<wgpu::Texture>>,
+    /// Reusable per-pass uniform buffers, written with `Queue::write_buffer`
+    /// instead of being reallocated (as a mapped buffer) per pass.
+    ///
+    /// Behind a [`Mutex`] for the same reason as `pipelines`: `apply` and
+    /// `apply_with_encoder` are `&self` because the wasm export reads this
+    /// pipeline out of a shared `RefCell` borrow.
+    uniforms: Mutex<gpu::UniformBufferPool<wgpu::Buffer>>,
 }
 
 #[derive(Debug, Error)]
@@ -684,6 +727,25 @@ struct EffectUniformBuffer {
 }
 
 impl EffectPipeline {
+    /// Creates the shared bind group layout, pipeline layout and vertex stage.
+    ///
+    /// The 89 registered effect pipelines are deliberately **not** built here.
+    /// `EffectPipeline::new` runs inside `initializeGpu` and again inside
+    /// `initCompositor`, both of which complete before the first `render()`,
+    /// so building them eagerly meant ~178 shader modules compiled
+    /// synchronously on the main thread before any frame appeared. Each is now
+    /// built on first use by [`EffectPipeline::pipeline_for`].
+    ///
+    /// Tradeoff: the frame that first uses a given effect shader pays for that
+    /// one shader instead of the whole registry paying up front. That is a
+    /// better place for the cost, not merely a different one. wgpu 29 has no
+    /// `create_render_pipeline_sync` — `create_render_pipeline` returns
+    /// immediately and defers compilation until an encoder that uses the
+    /// pipeline is submitted — and the pass loop resolves the pipeline *before*
+    /// recording the pass into the current frame's encoder. So a pipeline
+    /// needed by the current frame is always created before that frame is
+    /// submitted, and a project that uses three effects now compiles three
+    /// shaders rather than 89.
     pub fn new(context: &GpuContext) -> Self {
         let uniform_bind_group_layout =
             context
@@ -720,65 +782,102 @@ impl EffectPipeline {
                     immediate_size: 0,
                 });
 
-        let build_pipeline = |label: &str, module: &wgpu::ShaderModule| {
-            context
-                .device()
-                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                    label: Some(label),
-                    layout: Some(&pipeline_layout),
-                    vertex: wgpu::VertexState {
-                        module: &vertex_shader_module,
-                        entry_point: Some("vertex_main"),
-                        buffers: &[wgpu::VertexBufferLayout {
-                            array_stride: std::mem::size_of::<[f32; 2]>() as u64,
-                            step_mode: wgpu::VertexStepMode::Vertex,
-                            attributes: &[wgpu::VertexAttribute {
-                                format: wgpu::VertexFormat::Float32x2,
-                                offset: 0,
-                                shader_location: 0,
-                            }],
-                        }],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    },
-                    fragment: Some(wgpu::FragmentState {
-                        module,
-                        entry_point: Some("fragment_main"),
-                        targets: &[Some(wgpu::ColorTargetState {
-                            format: context.texture_format(),
-                            blend: None,
-                            write_mask: wgpu::ColorWrites::ALL,
-                        })],
-                        compilation_options: wgpu::PipelineCompilationOptions::default(),
-                    }),
-                    primitive: wgpu::PrimitiveState::default(),
-                    depth_stencil: None,
-                    multisample: wgpu::MultisampleState::default(),
-                    multiview_mask: None,
-                    cache: None,
-                })
-        };
-
-        let mut pipelines = HashMap::new();
-        for entry in SHADER_REGISTRY {
-            let module = context
-                .device()
-                .create_shader_module(wgpu::ShaderModuleDescriptor {
-                    label: Some(entry.label),
-                    source: wgpu::ShaderSource::Wgsl(entry.source.into()),
-                });
-            let pipeline_label = format!("effects-{}-pipeline", entry.id);
-            pipelines.insert(
-                entry.id.to_string(),
-                build_pipeline(&pipeline_label, &module),
-            );
-        }
-
         Self {
             uniform_bind_group_layout,
-            pipelines,
+            pipeline_layout,
+            vertex_shader_module,
+            pipelines: Mutex::new(HashMap::new()),
+            targets: Mutex::new(TargetPool::default()),
+            uniforms: Mutex::new(gpu::UniformBufferPool::default()),
         }
     }
 
+    /// Compiles one registered shader into a render pipeline.
+    ///
+    /// Split out of [`EffectPipeline::new`] so it can run lazily from
+    /// [`EffectPipeline::pipeline_for`] against the stored pipeline layout and
+    /// vertex stage.
+    fn build_pipeline(
+        &self,
+        context: &GpuContext,
+        entry: &ShaderEntry,
+        module: &wgpu::ShaderModule,
+    ) -> wgpu::RenderPipeline {
+        let pipeline_label = format!("effects-{}-pipeline", entry.id);
+        context
+            .device()
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some(&pipeline_label),
+                layout: Some(&self.pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &self.vertex_shader_module,
+                    entry_point: Some("vertex_main"),
+                    buffers: &[wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<[f32; 2]>() as u64,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        attributes: &[wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        }],
+                    }],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module,
+                    entry_point: Some("fragment_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: context.texture_format(),
+                        blend: None,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            })
+    }
+
+    /// Returns the pipeline for `shader`, compiling it on first use.
+    ///
+    /// Called from inside the pass loop, so a pipeline the current frame needs
+    /// is always built before that frame's encoder is submitted.
+    fn pipeline_for(
+        &self,
+        context: &GpuContext,
+        shader: &str,
+    ) -> Result<wgpu::RenderPipeline, EffectsError> {
+        let mut pipelines = lock(&self.pipelines);
+        if let Some(pipeline) = pipelines.get(shader) {
+            return Ok(pipeline.clone());
+        }
+
+        // An unregistered id is the same error the eager `pipelines.get` used
+        // to report, so callers see no behavioural change.
+        let entry = SHADER_REGISTRY
+            .iter()
+            .find(|entry| entry.id == shader)
+            .ok_or_else(|| EffectsError::UnknownEffectShader {
+                shader: shader.to_string(),
+            })?;
+        let module = context
+            .device()
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(entry.label),
+                source: wgpu::ShaderSource::Wgsl(entry.source.into()),
+            });
+        let pipeline = self.build_pipeline(context, entry, &module);
+        pipelines.insert(entry.id, pipeline.clone());
+        Ok(pipeline)
+    }
+
+    /// Applies `passes` to `source` and submits the work immediately.
+    ///
+    /// The pass targets come from this pipeline's own free list, because this
+    /// entry point has no caller-owned pool to borrow.
     pub fn apply(
         &self,
         context: &GpuContext,
@@ -789,12 +888,20 @@ impl EffectPipeline {
             passes,
         }: ApplyEffectsOptions<'_>,
     ) -> Result<wgpu::Texture, EffectsError> {
+        // This path submits its own encoder below, so for it a call IS the
+        // frame boundary: everything the previous call borrowed was submitted
+        // long before this line runs.
+        self.recycle_frame();
         let mut encoder =
             context
                 .device()
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("effects-command-encoder"),
                 });
+        // Holds the pool lock for the whole chain. The pass loop only ever locks
+        // `self.pipelines` as well, and this is not re-entrant, so the two locks
+        // can never deadlock.
+        let mut targets = lock(&self.targets);
         let output = self.apply_with_encoder(
             context,
             &mut encoder,
@@ -804,11 +911,53 @@ impl EffectPipeline {
                 height,
                 passes,
             },
+            &mut |previous, context, width, height| targets.swap(previous, context, width, height),
         )?;
         context.queue().submit([encoder.finish()]);
         Ok(output)
     }
 
+    /// Returns every uniform buffer the previous frame borrowed to the free
+    /// list.
+    ///
+    /// The frame path records several effect chains into one encoder that the
+    /// compositor submits once at the end of the frame, so this pool may only
+    /// be recycled at the frame boundary. Recycling between acquires of the
+    /// same frame hands a buffer a recorded draw still reads back out, and the
+    /// later `Queue::write_buffer` (staged before the encoder is submitted)
+    /// would clobber the earlier draw's uniforms — every JFA step and every
+    /// pass after the first would render with the last pass's values. The
+    /// compositor calls this next to its own frame-boundary recycles;
+    /// [`EffectPipeline::apply`] recycles itself because it submits its own
+    /// encoder.
+    pub fn recycle_frame(&self) {
+        lock(&self.uniforms).recycle_frame();
+    }
+
+    /// Records one render pass per effect into `encoder` and returns the final
+    /// destination texture.
+    ///
+    /// `next_target` supplies the destination for each pass. It is a parameter
+    /// rather than a field because the frame path wants effects to share the
+    /// compositor's `TexturePool` — one free list for the whole frame, so a
+    /// 16-pass gaussian blur on a layer costs one allocation instead of 16 —
+    /// and this crate cannot name that type. `apply` supplies an equivalent
+    /// free list of its own.
+    ///
+    /// `next_target` is called once per pass as
+    /// `next_target(previous, context, width, height)`, where `previous` is the
+    /// texture that pass will sample, or `None` for the first pass (whose
+    /// source belongs to the caller and is never released). Implementations
+    /// **must** acquire the destination before releasing `previous`: releasing
+    /// first would let a pool holding a single texture hand the same allocation
+    /// back as both the sampled texture and the render target of a single pass,
+    /// which is undefined and surfaces as silent visual corruption rather than
+    /// an error. Acquiring first is still enough, because the pass is recorded
+    /// into `encoder` before any later pass that reuses the allocation and
+    /// command buffers execute in submission order.
+    ///
+    /// The returned texture is not released; the caller owns it and is
+    /// responsible for recycling it.
     pub fn apply_with_encoder(
         &self,
         context: &GpuContext,
@@ -819,14 +968,26 @@ impl EffectPipeline {
             height,
             passes,
         }: ApplyEffectsOptions<'_>,
+        next_target: &mut dyn FnMut(Option<wgpu::Texture>, &GpuContext, u32, u32) -> wgpu::Texture,
     ) -> Result<wgpu::Texture, EffectsError> {
         let mut current_texture: Option<wgpu::Texture> = None;
 
         for pass in passes {
-            let input_texture = current_texture.as_ref().unwrap_or(source);
-            let output_texture =
-                context.create_render_texture(width, height, "effects-pass-output");
-            let input_view = input_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            // Uniform packing runs before the pipeline lookup so a pass with
+            // bad uniforms still reports the uniform error, matching the order
+            // this loop has always used.
+            let uniforms_data = pack_effect_uniforms(pass, width, height)?;
+            let pipeline = self.pipeline_for(context, &pass.shader)?;
+
+            let previous = current_texture.take();
+            // The view is built before `previous` is handed to `next_target`
+            // (which may release the texture), so nothing keeps the texture
+            // borrowed across the hand-off.
+            let input_view = previous
+                .as_ref()
+                .unwrap_or(source)
+                .create_view(&wgpu::TextureViewDescriptor::default());
+            let output_texture = next_target(previous, context, width, height);
             let output_view = output_texture.create_view(&wgpu::TextureViewDescriptor::default());
             let texture_bind_group =
                 context
@@ -845,14 +1006,17 @@ impl EffectPipeline {
                             },
                         ],
                     });
-            let uniform_buffer =
-                context
-                    .device()
-                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                        label: Some("effects-uniform-buffer"),
-                        contents: bytemuck::bytes_of(&pack_effect_uniforms(pass, width, height)?),
-                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                    });
+            let uniform_buffer = {
+                let mut uniforms = lock(&self.uniforms);
+                // No recycle here: within a frame every acquire must resolve
+                // to a distinct buffer (see `recycle_frame`).
+                uniforms.acquire_uniform(
+                    context,
+                    core::mem::size_of::<EffectUniformBuffer>() as u64,
+                    "effects-uniform-buffer",
+                    bytemuck::bytes_of(&uniforms_data),
+                )
+            };
             let uniform_bind_group =
                 context
                     .device()
@@ -864,12 +1028,6 @@ impl EffectPipeline {
                             resource: uniform_buffer.as_entire_binding(),
                         }],
                     });
-            let pipeline = self.pipelines.get(&pass.shader).ok_or_else(|| {
-                EffectsError::UnknownEffectShader {
-                    shader: pass.shader.clone(),
-                }
-            })?;
-
             {
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("effects-render-pass"),
@@ -887,7 +1045,7 @@ impl EffectPipeline {
                     timestamp_writes: None,
                     multiview_mask: None,
                 });
-                render_pass.set_pipeline(pipeline);
+                render_pass.set_pipeline(&pipeline);
                 render_pass.set_vertex_buffer(0, context.fullscreen_quad().slice(..));
                 render_pass.set_bind_group(0, &texture_bind_group, &[]);
                 render_pass.set_bind_group(1, &uniform_bind_group, &[]);
@@ -898,6 +1056,116 @@ impl EffectPipeline {
         }
 
         current_texture.ok_or(EffectsError::MissingEffectPasses)
+    }
+}
+
+/// Locks one of [`EffectPipeline`]'s caches, recovering from poisoning instead
+/// of panicking a second time.
+///
+/// The caches only ever hold wgpu handles and hash-map entries, so a poison flag
+/// carries no correctness meaning here. Re-panicking while unwinding would turn
+/// a recoverable first-paint hiccup into a hard crash in the middle of a frame.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// Free list of full-frame render targets for the effect pass loop.
+///
+/// Generic over the pooled type so the retention policy can be unit-tested
+/// without a live GPU device — the same approach, and the same accounting, as
+/// `compositor::texture_pool`.
+///
+/// Two deliberate differences from the compositor's pool:
+///
+/// * There is no `recycle_frame`. Every target this pool hands out is either
+///   released explicitly by the pass loop or escapes to the caller as the final
+///   output, so nothing needs sweeping at a frame boundary; an `in_use` log
+///   would only grow forever.
+/// * The cap is 2, not 8. A pass chain is strictly linear, so at most two
+///   targets are ever live: the one the current pass samples and the one it
+///   just acquired. Each is released as soon as the next is acquired, so the
+///   free list settles at two retained targets per size no matter how long the
+///   chain is.
+mod target_pool {
+    use std::collections::HashMap;
+
+    use gpu::GpuContext;
+
+    /// Upper bound on free targets retained per size. Two is exactly enough for
+    /// a linear pass chain (see the module docs).
+    pub(super) const MAX_RETAINED_PER_SIZE: usize = 2;
+
+    /// A pool of reusable render targets, keyed by pixel dimensions.
+    pub(super) struct TargetPool<T> {
+        available: HashMap<(u32, u32), Vec<T>>,
+    }
+
+    impl<T> Default for TargetPool<T> {
+        fn default() -> Self {
+            Self {
+                available: HashMap::new(),
+            }
+        }
+    }
+
+    impl<T> TargetPool<T> {
+        /// Takes a pooled target, calling `create` only when the free list for
+        /// this size is empty.
+        pub(super) fn acquire(&mut self, width: u32, height: u32, create: impl FnOnce() -> T) -> T {
+            self.available
+                .get_mut(&(width, height))
+                .and_then(Vec::pop)
+                .unwrap_or_else(create)
+        }
+
+        /// Returns a target to the free list immediately, dropping it once the
+        /// per-size cap is reached.
+        pub(super) fn release(&mut self, width: u32, height: u32, target: T) {
+            let slot = self.available.entry((width, height)).or_default();
+            if slot.len() < MAX_RETAINED_PER_SIZE {
+                slot.push(target);
+            }
+            // Otherwise the value is dropped here, freeing its allocation.
+        }
+    }
+
+    /// Read-only view of the free list, for the retention tests below.
+    #[cfg(test)]
+    impl<T> TargetPool<T> {
+        pub(super) fn retained(&self) -> usize {
+            self.available.values().map(Vec::len).sum()
+        }
+
+        pub(super) fn retained_at(&self, width: u32, height: u32) -> usize {
+            self.available.get(&(width, height)).map_or(0, Vec::len)
+        }
+    }
+
+    impl TargetPool<wgpu::Texture> {
+        /// Acquires the destination for one effect pass and then releases the
+        /// texture that pass samples.
+        ///
+        /// The order is the whole point and must not be swapped: acquiring
+        /// first is what stops a pool with a single entry from handing the
+        /// same allocation back as both the sampled texture and the render
+        /// target of one pass.
+        pub(super) fn swap(
+            &mut self,
+            previous: Option<wgpu::Texture>,
+            context: &GpuContext,
+            width: u32,
+            height: u32,
+        ) -> wgpu::Texture {
+            let next = self.acquire(width, height, || {
+                context.create_render_texture(width, height, "effects-pass-output")
+            });
+            if let Some(previous) = previous {
+                self.release(width, height, previous);
+            }
+            next
+        }
     }
 }
 
@@ -929,6 +1197,8 @@ fn pack_effect_uniforms(
             }
         }
         BRIGHTNESS_SHADER_ID
+        | EXPOSURE_SHADER_ID
+        | TINT_SHIFT_SHADER_ID
         | CONTRAST_SHADER_ID
         | SATURATION_SHADER_ID
         | HUE_ROTATE_SHADER_ID
@@ -1467,6 +1737,198 @@ fn read_vec3_uniform(pass: &EffectPass, uniform: &str) -> Result<[f32; 3], Effec
         });
     }
     Ok([values[0], values[1], values[2]])
+}
+
+/// Tests for the effect pass loop's render-target retention policy.
+///
+/// Targets used to be created fresh per pass, with no recycling at all. A
+/// gaussian blur compiles to up to 16 passes (`buildGaussianBlurPasses` emits
+/// two separable passes per iteration, 8 iterations), so a 50-layer timeline
+/// allocated ~800 full-frame textures every frame — about 6.6 GB of GPU
+/// allocation churn at 1080p BGRA8. Every assertion below is about the pool
+/// absorbing that chain without growing with it.
+///
+/// `wgpu::Texture` cannot be constructed without a live device, so the pool is
+/// generic over the pooled type and these tests pool a `usize` handle instead.
+/// The accounting under test — what is retained, when, and how much — is
+/// identical either way.
+#[cfg(test)]
+mod target_pool_tests {
+    use super::target_pool::{MAX_RETAINED_PER_SIZE, TargetPool};
+
+    type Pool = TargetPool<usize>;
+
+    /// Creates a fresh target, mimicking `GpuContext::create_render_texture`.
+    fn create() -> usize {
+        next_id()
+    }
+
+    fn next_id() -> usize {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static NEXT: AtomicUsize = AtomicUsize::new(1);
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// Replays what one iteration of `apply_with_encoder`'s pass loop does:
+    /// acquire the destination, then release the texture that pass samples.
+    ///
+    /// The order is the invariant under test, so it is written the way the
+    /// production code writes it rather than through a helper that could hide
+    /// a reordering.
+    fn run_pass(pool: &mut Pool, previous: Option<usize>, width: u32, height: u32) -> usize {
+        let next = pool.acquire(width, height, create);
+        if let Some(previous) = previous {
+            pool.release(width, height, previous);
+        }
+        next
+    }
+
+    #[test]
+    fn fresh_pool_retains_nothing() {
+        let pool = Pool::default();
+        assert_eq!(pool.retained(), 0);
+    }
+
+    /// One 16-pass chain (8 iterations x 2 separable passes, the worst case
+    /// `buildGaussianBlurPasses` produces) ending the way a blurred layer
+    /// does: the last target escapes to the caller, which recycles it once it
+    /// has been blended or masked.
+    fn run_blur_chain(pool: &mut Pool, make: &mut impl FnMut() -> usize) {
+        let mut current = pool.acquire(1920, 1080, &mut *make);
+        for _ in 1..16 {
+            // Acquire the destination, then release the one this pass reads.
+            let next = pool.acquire(1920, 1080, &mut *make);
+            pool.release(1920, 1080, current);
+            current = next;
+        }
+        pool.release(1920, 1080, current);
+    }
+
+    #[test]
+    fn repeated_chains_stay_at_the_steady_state_allocation_count() {
+        let mut pool = Pool::default();
+        let created = std::cell::Cell::new(0usize);
+        let mut make = || {
+            created.set(created.get() + 1);
+            created.get()
+        };
+
+        run_blur_chain(&mut pool, &mut make);
+        assert_eq!(
+            created.get(),
+            2,
+            "the first chain must allocate two targets, not sixteen"
+        );
+
+        for _ in 1..50 {
+            run_blur_chain(&mut pool, &mut make);
+        }
+
+        assert_eq!(
+            created.get(),
+            2,
+            "50 sixteen-pass chains must allocate the same two targets"
+        );
+        assert_eq!(pool.retained(), MAX_RETAINED_PER_SIZE);
+    }
+
+    #[test]
+    fn a_single_spare_is_never_handed_back_as_the_texture_being_released() {
+        // The aliasing guard. If the loop released before it acquired, a pool
+        // holding exactly one target would hand the same allocation back as
+        // both the sampled texture and the render target of one pass. That is
+        // undefined and surfaces as silent visual corruption, not an error.
+        let mut pool = Pool::default();
+
+        let first = run_pass(&mut pool, None, 1920, 1080);
+        let second = run_pass(&mut pool, Some(first), 1920, 1080);
+        assert_ne!(first, second, "source and destination must not alias");
+
+        // Repeat it, because the pool now reuses its retained entry rather than
+        // allocating, and that is the case the hazard lives in.
+        let third = run_pass(&mut pool, Some(second), 1920, 1080);
+        assert_ne!(second, third, "source and destination must not alias");
+        // `first` coming back is the point, not a bug: the pass that read it was
+        // already recorded, and command buffers run in submission order.
+        assert_eq!(
+            first, third,
+            "a target released after its read pass was recorded may be reused"
+        );
+    }
+
+    #[test]
+    fn retention_stays_flat_as_the_pass_count_grows() {
+        let retained_after = |passes: usize| {
+            let mut pool = Pool::default();
+            let mut current = run_pass(&mut pool, None, 1920, 1080);
+            for _ in 1..passes {
+                current = run_pass(&mut pool, Some(current), 1920, 1080);
+            }
+            pool.retained()
+        };
+
+        // A chain is linear, so the live working set is two targets whatever the
+        // length. 2-pass and 200-pass chains must retain identically.
+        assert_eq!(
+            retained_after(2),
+            retained_after(200),
+            "retention tracks the constant working set, not the pass count"
+        );
+    }
+
+    #[test]
+    fn free_list_saturates_at_the_cap_instead_of_tracking_the_in_flight_set() {
+        let mut pool = Pool::default();
+
+        // A pathological frame: 200 targets acquired before any of them is
+        // released. Without a cap this would pin 200 full-frame textures
+        // (~1.7 GB at 1080p) for the rest of the session.
+        let mut in_flight = Vec::new();
+        for _ in 0..200 {
+            in_flight.push(pool.acquire(1920, 1080, create));
+        }
+        for target in in_flight {
+            pool.release(1920, 1080, target);
+        }
+
+        assert_eq!(
+            pool.retained(),
+            MAX_RETAINED_PER_SIZE,
+            "free list must saturate at the cap"
+        );
+    }
+
+    #[test]
+    fn the_cap_is_applied_per_size_not_globally() {
+        let mut pool = Pool::default();
+
+        for (width, height) in [(1920, 1080), (1280, 720)] {
+            let mut in_flight = Vec::new();
+            for _ in 0..(MAX_RETAINED_PER_SIZE * 3) {
+                in_flight.push(pool.acquire(width, height, create));
+            }
+            for target in in_flight {
+                pool.release(width, height, target);
+            }
+        }
+
+        assert_eq!(pool.retained_at(1920, 1080), MAX_RETAINED_PER_SIZE);
+        assert_eq!(pool.retained_at(1280, 720), MAX_RETAINED_PER_SIZE);
+    }
+
+    #[test]
+    fn targets_of_different_sizes_are_never_handed_across() {
+        let mut pool = Pool::default();
+
+        let full_hd = run_pass(&mut pool, None, 1920, 1080);
+        pool.release(1920, 1080, full_hd);
+
+        // A different size must not reuse the 1080p allocation.
+        let half_hd = run_pass(&mut pool, None, 1280, 720);
+        assert_ne!(half_hd, full_hd, "size mismatch must not alias");
+        assert_eq!(pool.retained_at(1920, 1080), 1, "1080p stays available");
+        assert_eq!(pool.retained_at(1280, 720), 0, "720p had to allocate");
+    }
 }
 
 #[cfg(test)]

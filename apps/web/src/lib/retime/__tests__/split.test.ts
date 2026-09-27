@@ -77,7 +77,7 @@ describe("retime split", () => {
 				splitClipTime: 50,
 				duration: 100,
 			});
-			// t = 50/100 = 0.5, so the cut rate is 2 — not 50/10 clamped to 1.
+			// t = 50/100 = 0.5, so the cut rate is 2 â€” not 50/10 clamped to 1.
 			const right = result.right as unknown as {
 				keyframes: Array<{ time: number; speed: number }>;
 			};

@@ -25,6 +25,12 @@ export interface SnapResult {
 
 const DEFAULT_SNAP_THRESHOLD_PX = 10;
 
+// Drags from outside the timeline (asset panel tiles, OS file drops) carry
+// no dragged-clip edge under the cursor, so the 10px move/resize threshold
+// feels dead on a zoomed-out timeline. ponytail: fixed value, revisit only
+// if users report drops jumping from too far away.
+export const DROP_SNAP_THRESHOLD_PX = 64;
+
 export function findSnapPoints({
 	tracks,
 	playheadTime,
@@ -286,4 +292,69 @@ export function snapElementEdge({
 	}
 
 	return snapResult;
+}
+
+/**
+ * Snap an imported clip start to a preceding clip end when it lands just to
+ * the right of that end. Unlike move/resize snapping, imports use a wider
+ * radius because the cursor is not attached to the dragged clip's edge.
+ */
+export function snapImportStartToPreviousEnd({
+	targetTime,
+	tracks,
+	zoomLevel,
+	snapThreshold = DROP_SNAP_THRESHOLD_PX,
+}: {
+	targetTime: number;
+	tracks: SceneTracks;
+	zoomLevel: number;
+	snapThreshold?: number;
+}): SnapResult {
+	const orderedTracks = getOrderedTracks(tracks);
+	const isInsideClip = orderedTracks.some((track) =>
+		track.elements.some(
+			(element) =>
+				element.startTime < targetTime &&
+				targetTime < element.startTime + element.duration,
+		),
+	);
+	if (isInsideClip) {
+		return { snappedTime: targetTime, snapPoint: null, snapDistance: Infinity };
+	}
+
+	const thresholdInTicks =
+		(snapThreshold / (BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel)) *
+		TICKS_PER_SECOND;
+	let best: SnapPoint | null = null;
+	let bestDistance = Infinity;
+
+	for (const track of orderedTracks) {
+		for (const element of track.elements) {
+			const endTime = element.startTime + element.duration;
+			const distance = targetTime - endTime;
+			if (distance >= 0 && distance < bestDistance) {
+				bestDistance = distance;
+				best = {
+					time: endTime,
+					type: "element-end",
+					elementId: element.id,
+					trackId: track.id,
+				};
+			}
+		}
+	}
+
+	if (!best || bestDistance > thresholdInTicks) {
+		return {
+			snappedTime: targetTime,
+			snapPoint: null,
+			snapDistance: bestDistance,
+		};
+	}
+
+	return {
+		snappedTime: best.time,
+		snapPoint: best,
+		snapDistance: bestDistance,
+	};
 }

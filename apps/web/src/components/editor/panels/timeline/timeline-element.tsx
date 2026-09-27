@@ -2352,8 +2352,14 @@ function TiledMediaContent({
 						height: "100%",
 						backgroundColor: "rgba(0, 0, 0, 1)",
 						backgroundImage: `url(${imageUrl})`,
-						backgroundRepeat: "repeat",
-						backgroundSize: `${tileWidth}px ${filmstripHeight}px`,
+						// `auto 100%` fits the tile height and derives the width from
+						// the image's own aspect ratio. Forcing the 16:9 filmstrip tile
+						// (below) squashed every non-16:9 source — a square image came
+						// out visibly stretched. `repeat-x` keeps the strip going with
+						// correctly proportioned tiles; the exact tile height means
+					// there is never a vertical repeat.
+						backgroundRepeat: "repeat-x",
+						backgroundSize: "auto 100%",
 						backgroundPosition: "left center",
 						pointerEvents: "none",
 					}}

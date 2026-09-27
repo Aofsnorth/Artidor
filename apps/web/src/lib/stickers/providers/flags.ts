@@ -5,8 +5,10 @@ import type {
 	StickerProvider,
 	StickerSearchResult,
 } from "../types";
-import { REGIONS, REGION_GROUPS } from "./countries-data";
-import type { CountryRecord, RegionId } from "./countries-data";
+import { REGIONS, REGION_GROUPS, type RegionId } from "./countries-regions";
+// Type-only (erased at compile time). The value import of `COUNTRIES` below
+// stays dynamic, so the country dataset never enters the editor chunk.
+import type { CountryRecord } from "./countries-data";
 
 const FLAGS_PROVIDER_ID = "flags";
 const DEFAULT_SEARCH_LIMIT = 100;

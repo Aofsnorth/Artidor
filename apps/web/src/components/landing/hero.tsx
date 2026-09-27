@@ -48,7 +48,11 @@ export function Hero() {
 			>
 				<div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium tracking-wide text-white/70 backdrop-blur">
 					<span className="relative flex size-1.5">
-						<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+						{/* The ping is the page's only animation that runs
+						   unconditionally with no viewport gate, so it is
+						   the one place worth honouring `prefers-reduced-motion`:
+						   the static dot below still reads as "live". */}
+						<span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:animate-none" />
 						<span className="relative inline-flex size-1.5 rounded-full bg-emerald-300" />
 					</span>
 					{t("home.hero.eyebrow.primary")}

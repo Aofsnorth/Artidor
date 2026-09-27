@@ -299,6 +299,32 @@ export function useElementInteraction({
 	const pendingDragRef = useRef<PendingDragState | null>(null);
 	const lastMouseXRef = useRef(0);
 	const mouseDownLocationRef = useRef<{ x: number; y: number } | null>(null);
+	// Document `mousemove` is coalesced to one handler invocation per
+	// animation frame: each invocation runs a snap-index rebuild plus track
+	// scans, and browsers can fire mousemove well above 60Hz.
+	const pendingMouseRef = useRef<{ clientX: number; clientY: number } | null>(
+		null,
+	);
+	const mouseFrameRef = useRef<number | null>(null);
+	// Holds the latest move handler. The document listener is mounted once per
+	// drag and calls through this ref, so the listener is not torn down and
+	// re-added while the drag runs. Takes only the coordinates it reads, so
+	// the coalesced payload can be replayed without synthesising a MouseEvent.
+	const handleMouseMoveRef = useRef<
+		(event: { clientX: number; clientY: number }) => void
+	>(() => {});
+	// Mirrors `dragState.currentTime` for the drop commit. The coalesced move
+	// handler writes it synchronously, so `mouseup` commits the exact released
+	// position instead of the previous frame's.
+	const currentTimeRef = useRef(0);
+
+	const flushPendingMouseMove = useCallback(() => {
+		mouseFrameRef.current = null;
+		const pending = pendingMouseRef.current;
+		pendingMouseRef.current = null;
+		if (!pending) return;
+		handleMouseMoveRef.current(pending);
+	}, []);
 
 	const startDrag = useCallback(
 		({
@@ -313,6 +339,7 @@ export function useElementInteraction({
 			dragElementIds,
 			dragTimeOffsets,
 		}: StartDragParams) => {
+			currentTimeRef.current = initialCurrentTime;
 			setDragState({
 				isDragging: true,
 				elementId,
@@ -406,10 +433,17 @@ export function useElementInteraction({
 		],
 	);
 
+	// Latest drag-move handler, kept in a ref so the document listener below
+	// can be mounted once per drag. Re-running this effect only swaps a
+	// closure; it never re-binds the listener.
 	useEffect(() => {
-		if (!dragState.isDragging && !isPendingDrag) return;
-
-		const handleMouseMove = ({ clientX, clientY }: MouseEvent) => {
+		handleMouseMoveRef.current = ({
+			clientX,
+			clientY,
+		}: {
+			clientX: number;
+			clientY: number;
+		}) => {
 			let startedDragThisEvent = false;
 			const timeline = timelineRef.current;
 			const scrollContainer = tracksScrollRef.current;
@@ -518,6 +552,7 @@ export function useElementInteraction({
 				frameSnappedTime,
 				movingElement,
 			});
+			currentTimeRef.current = snappedTime;
 			setDragState((previousDragState) => ({
 				...previousDragState,
 				currentTime: snappedTime,
@@ -548,11 +583,7 @@ export function useElementInteraction({
 				setDragDropTarget(dropTarget ?? null);
 			}
 		};
-
-		document.addEventListener("mousemove", handleMouseMove);
-		return () => document.removeEventListener("mousemove", handleMouseMove);
 	}, [
-		dragState.isDragging,
 		dragState.clickOffsetTime,
 		dragState.elementId,
 		dragState.startMouseY,
@@ -560,7 +591,7 @@ export function useElementInteraction({
 		zoomLevel,
 		isElementSelected,
 		selectElement,
-		editor.project,
+		editor,
 		timelineRef,
 		tracksScrollRef,
 		tracksContainerRef,
@@ -572,13 +603,43 @@ export function useElementInteraction({
 		trackHeights,
 		extraHeights,
 		selectedElements,
-		editor.scenes.getActiveScene,
 	]);
+
+	// One document `mousemove` listener per drag, coalesced to a single
+	// handler call per animation frame. Same shape as the playhead scrub
+	// coalescing in `use-timeline-playhead`.
+	useEffect(() => {
+		if (!dragState.isDragging && !isPendingDrag) return;
+
+		const handleDocumentMouseMove = ({ clientX, clientY }: MouseEvent) => {
+			pendingMouseRef.current = { clientX, clientY };
+			if (mouseFrameRef.current !== null) return;
+			mouseFrameRef.current = requestAnimationFrame(flushPendingMouseMove);
+		};
+
+		document.addEventListener("mousemove", handleDocumentMouseMove);
+		return () => {
+			document.removeEventListener("mousemove", handleDocumentMouseMove);
+			if (mouseFrameRef.current !== null) {
+				cancelAnimationFrame(mouseFrameRef.current);
+				mouseFrameRef.current = null;
+			}
+			pendingMouseRef.current = null;
+		};
+	}, [dragState.isDragging, isPendingDrag, flushPendingMouseMove]);
 
 	useEffect(() => {
 		if (!dragState.isDragging) return;
 
 		const handleMouseUp = ({ clientX, clientY }: MouseEvent) => {
+			// Apply the coalesced pointer position first, so the committed drop
+			// lands exactly where the clip was released even if the final frame
+			// had not run yet.
+			if (mouseFrameRef.current !== null) {
+				cancelAnimationFrame(mouseFrameRef.current);
+			}
+			flushPendingMouseMove();
+
 			if (!dragState.elementId || !dragState.trackId) return;
 
 			if (mouseDownLocationRef.current) {
@@ -607,7 +668,7 @@ export function useElementInteraction({
 				tracksScrollRef,
 				headerRef,
 				zoomLevel,
-				snappedTime: dragState.currentTime,
+				snappedTime: currentTimeRef.current,
 				verticalDragDirection: getVerticalDragDirection({
 					startMouseY: dragState.startMouseY,
 					currentMouseY: clientY,
@@ -620,7 +681,7 @@ export function useElementInteraction({
 				onSnapPointChange?.(null);
 				return;
 			}
-			const snappedTime = dragState.currentTime;
+			const snappedTime = currentTimeRef.current;
 
 			const sourceTrack = liveTracks.find(({ id }) => id === dragState.trackId);
 			if (!sourceTrack) {
@@ -723,13 +784,12 @@ export function useElementInteraction({
 		dragState.elementId,
 		dragState.startMouseY,
 		dragState.trackId,
-		dragState.currentTime,
 		dragState.dragElementIds,
 		dragState.dragTimeOffsets,
 		zoomLevel,
 		endDrag,
 		onSnapPointChange,
-		editor.timeline,
+		editor,
 		tracksContainerRef,
 		tracksScrollRef,
 		headerRef,
@@ -737,7 +797,7 @@ export function useElementInteraction({
 		selectedElements,
 		trackHeights,
 		extraHeights,
-		editor.scenes.getActiveScene,
+		flushPendingMouseMove,
 	]);
 
 	useEffect(() => {

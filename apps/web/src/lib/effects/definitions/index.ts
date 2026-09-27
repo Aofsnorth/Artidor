@@ -1,6 +1,8 @@
 import { effectsRegistry } from "../registry";
 import { blurEffectDefinition } from "./blur";
 import { brightnessAdjustmentDefinition } from "./adjustments/brightness";
+import { exposureAdjustmentDefinition } from "./adjustments/exposure";
+import { tintShiftAdjustmentDefinition } from "./adjustments/tint-shift";
 import { contrastAdjustmentDefinition } from "./adjustments/contrast";
 import { saturationAdjustmentDefinition } from "./adjustments/saturation";
 import { hueRotateAdjustmentDefinition } from "./adjustments/hue-rotate";
@@ -127,6 +129,8 @@ import {
 const defaultEffects = [
 	blurEffectDefinition,
 	brightnessAdjustmentDefinition,
+	exposureAdjustmentDefinition,
+	tintShiftAdjustmentDefinition,
 	contrastAdjustmentDefinition,
 	saturationAdjustmentDefinition,
 	hueRotateAdjustmentDefinition,

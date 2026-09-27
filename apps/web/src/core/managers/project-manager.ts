@@ -62,6 +62,20 @@ export interface DriveSyncState {
 
 const MAX_EXPORT_HISTORY_ENTRIES = 1;
 
+/**
+ * Idle period after which a pending Google Drive sync is flushed.
+ *
+ * A Drive sync costs a full `JSON.stringify` of the project, a PBKDF2 key
+ * derivation (120k iterations, tens of milliseconds of main-thread CPU) and a
+ * PATCH of the whole encrypted file. Doing that on every autosave put that cost
+ * on the critical path of every timeline drag, so saves now only *schedule* a
+ * sync and the upload happens once the user pauses.
+ */
+const DRIVE_SYNC_DEBOUNCE_MS = 4000;
+
+/** Longest side, in pixels, of a stored project thumbnail. */
+const PROJECT_THUMBNAIL_MAX = 320;
+
 export class ProjectManager {
 	private active: TProject | null = null;
 	private savedProjects: TProjectMetadata[] = [];
@@ -94,8 +108,36 @@ export class ProjectManager {
 	private loadInFlight: Promise<void> | null = null;
 	/** Serializes direct saveCurrentProject calls so snapshots can't interleave writes. */
 	private directSaveChain: Promise<void> = Promise.resolve();
+	/** Newest project snapshot that still has to reach Drive. */
+	private pendingDriveSync: {
+		folderId: string;
+		fileId: string | null;
+		project: TProject;
+	} | null = null;
+	private driveSyncTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Serializes Drive uploads so two never run against the same file at once. */
+	private driveSyncChain: Promise<void> = Promise.resolve();
 
-	constructor(private editor: EditorCore) {}
+	/**
+	 * A debounced Drive sync must not be lost when the tab goes away, so the
+	 * last lifecycle events the browser still runs code for flush it. The upload
+	 * itself is best effort — a `pagehide` handler cannot await the network — but
+	 * arming it here means a backgrounded or reloading tab still pushes the
+	 * pending edit instead of silently dropping it.
+	 */
+	private readonly flushDriveSyncOnPageHide = (): void => {
+		void this.flushDriveSync();
+	};
+
+	private readonly flushDriveSyncOnHidden = (): void => {
+		if (document.visibilityState === "hidden") void this.flushDriveSync();
+	};
+
+	constructor(private editor: EditorCore) {
+		if (typeof window === "undefined") return;
+		window.addEventListener("pagehide", this.flushDriveSyncOnPageHide);
+		document.addEventListener("visibilitychange", this.flushDriveSyncOnHidden);
+	}
 
 	private async ensureStorageMigrations(): Promise<void> {
 		if (this.storageMigrationPromise) {
@@ -391,44 +433,90 @@ export class ProjectManager {
 		}
 		this.updateMetadata(projectToPersist);
 
-		// If linked to Google Drive, save there in the background. Failures only
-		// surface through driveSyncState — the local IndexedDB write above already
-		// succeeded, so this must not fail the whole save.
+		// If linked to Google Drive, remember it for the debounced sync below.
+		// Failures only surface through driveSyncState — the local IndexedDB
+		// write above already succeeded, so this must not fail the whole save.
 		const folderId = projectToPersist.metadata.googleDriveFolderId;
-		const fileId = projectToPersist.metadata.googleDriveFileId;
 		if (folderId) {
-			void (async () => {
-				const token = getGoogleAccessToken();
-				if (!token) return;
+			this.scheduleDriveSync({
+				folderId,
+				fileId: projectToPersist.metadata.googleDriveFileId ?? null,
+				project: projectToPersist,
+			});
+		}
+	}
 
-				try {
-					this.setDriveSyncState("saving", 0, "Saving to Drive...");
-					const newFileId = await saveProjectToDrive(
-						folderId,
-						fileId || null,
-						projectToPersist,
-					);
+	/**
+	 * Queues the newest project snapshot for Drive. Only the last snapshot of an
+	 * idle period is uploaded, so a drag that autosaves a dozen times pays for
+	 * one encryption pass and one PATCH instead of a dozen.
+	 */
+	private scheduleDriveSync({
+		folderId,
+		fileId,
+		project,
+	}: {
+		folderId: string;
+		fileId: string | null;
+		project: TProject;
+	}): void {
+		if (this.driveSyncTimer) clearTimeout(this.driveSyncTimer);
+		this.pendingDriveSync = { folderId, fileId, project };
+		this.driveSyncTimer = setTimeout(() => {
+			this.driveSyncTimer = null;
+			void this.flushDriveSync();
+		}, DRIVE_SYNC_DEBOUNCE_MS);
+	}
 
-					if (
-						newFileId !== fileId &&
-						this.active &&
-						this.active.metadata.id === projectToPersist.metadata.id
-					) {
-						this.active.metadata.googleDriveFileId = newFileId;
-						await storageService.saveProject({ project: this.active });
-					}
+	/**
+	 * Uploads the pending Drive snapshot, if any. Uploads are serialized, so a
+	 * snapshot that arrives mid-upload stays queued for this call to pick up
+	 * rather than racing the one in flight. Resolves once Drive holds the
+	 * newest queued snapshot.
+	 */
+	private flushDriveSync(): Promise<void> {
+		if (this.driveSyncTimer) {
+			clearTimeout(this.driveSyncTimer);
+			this.driveSyncTimer = null;
+		}
 
-					this.setDriveSyncState("saved", 100, "Saved to Drive");
-					setTimeout(() => {
-						if (this.driveSyncState.status === "saved") {
-							this.setDriveSyncState("idle");
-						}
-					}, 2000);
-				} catch (driveErr) {
-					console.error("Failed to save project to Google Drive:", driveErr);
-					this.setDriveSyncState("error", 0, "Save to Drive failed");
+		const run = this.driveSyncChain.then(() => this.uploadPendingDriveSync());
+		// Keep the chain alive across failures; the rejection stays on `run` so
+		// the caller still sees it.
+		this.driveSyncChain = run.catch(() => undefined);
+		return run;
+	}
+
+	private async uploadPendingDriveSync(): Promise<void> {
+		const pending = this.pendingDriveSync;
+		if (!pending) return;
+		if (!getGoogleAccessToken()) return;
+
+		this.pendingDriveSync = null;
+		const { folderId, fileId, project } = pending;
+
+		try {
+			this.setDriveSyncState("saving", 0, "Saving to Drive...");
+			const newFileId = await saveProjectToDrive(folderId, fileId, project);
+
+			if (
+				newFileId !== fileId &&
+				this.active &&
+				this.active.metadata.id === project.metadata.id
+			) {
+				this.active.metadata.googleDriveFileId = newFileId;
+				await storageService.saveProject({ project: this.active });
+			}
+
+			this.setDriveSyncState("saved", 100, "Saved to Drive");
+			setTimeout(() => {
+				if (this.driveSyncState.status === "saved") {
+					this.setDriveSyncState("idle");
 				}
-			})();
+			}, 2000);
+		} catch (driveErr) {
+			console.error("Failed to save project to Google Drive:", driveErr);
+			this.setDriveSyncState("error", 0, "Save to Drive failed");
 		}
 	}
 
@@ -609,6 +697,10 @@ export class ProjectManager {
 	}
 
 	closeProject(): void {
+		// Push any debounced Drive sync before the workspace goes away: the
+		// pending snapshot is already captured, so it can still be uploaded.
+		void this.flushDriveSync();
+
 		// Stop playback BEFORE clearing state to prevent orphaned audio
 		// sources from continuing to play after navigation. Pausing
 		// triggers the AudioManager's handlePlaybackChange which calls
@@ -864,6 +956,10 @@ export class ProjectManager {
 			});
 			throw error;
 		}
+
+		// Last chance for a Drive-linked project: the debounced sync would
+		// otherwise sit on its timer while the workspace is torn down.
+		await this.flushDriveSync();
 	}
 
 	getFilteredAndSortedProjects({
@@ -1030,7 +1126,24 @@ export class ProjectManager {
 			ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 		}
 
-		const thumbnailDataUrl = tempCanvas.toDataURL("image/png");
+		// Downscale to a card-sized thumbnail. A full-canvas 1920x1080 PNG is
+		// 0.5-2 MB of base64 that every projects-list card has to decode, and it
+		// used to be re-encoded and rewritten on every autosave. Mirrors
+		// `renderPresetThumbnail`.
+		const scale = Math.min(
+			1,
+			PROJECT_THUMBNAIL_MAX / Math.max(tempCanvas.width, tempCanvas.height),
+		);
+		const thumbWidth = Math.max(1, Math.round(tempCanvas.width * scale));
+		const thumbHeight = Math.max(1, Math.round(tempCanvas.height * scale));
+		const thumbCanvas = document.createElement("canvas");
+		thumbCanvas.width = thumbWidth;
+		thumbCanvas.height = thumbHeight;
+		const thumbContext = thumbCanvas.getContext("2d");
+		if (!thumbContext) return false;
+		thumbContext.drawImage(tempCanvas, 0, 0, thumbWidth, thumbHeight);
+
+		const thumbnailDataUrl = thumbCanvas.toDataURL("image/png");
 
 		// The render is async; re-check the active project before writing so a
 		// late finish can't overwrite a different project's thumbnail.

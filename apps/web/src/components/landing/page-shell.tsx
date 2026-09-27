@@ -13,11 +13,16 @@
  *
  * Note: this wrapper does NOT have `overflow-hidden` because
  * that would break `position: sticky` on the header.
+ *
+ * This is a Server Component: it used to be `"use client"` with a
+ * `mounted` state that held the whole page at `opacity-0` until
+ * hydration, which meant every visitor stared at an empty page for the
+ * length of the 700ms fade and LCP could not be recorded until hydration
+ * finished. The chrome here is entirely static, so it renders in the
+ * SSR response and is visible on first paint.
  */
 
-"use client";
-
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 
 export function PageShell({
 	children,
@@ -26,9 +31,6 @@ export function PageShell({
 	children: ReactNode;
 	variant?: "default" | "marketing" | "docs";
 }) {
-	const [mounted, setMounted] = useState(false);
-	useEffect(() => setMounted(true), []);
-
 	return (
 		<div
 			className="relative isolate min-h-screen bg-[#0a0a0c] text-white"
@@ -81,13 +83,13 @@ export function PageShell({
 				}}
 			/>
 
-			<div
-				className={`relative transition-opacity duration-700 ${
-					mounted ? "opacity-100" : "opacity-0"
-				}`}
-			>
-				{children}
-			</div>
+			{/* Content is not gated on hydration: the landing tree is
+			    server-rendered, so it paints on the first frame instead of
+			    after a blank 700ms fade. Entrance motion for the sections
+			    that want it is handled per-section (`motion`'s
+			    `whileInView`), which is opt-in rather than a page-wide
+			    `opacity-0` that has to be undone after hydration. */}
+			<div className="relative">{children}</div>
 		</div>
 	);
 }

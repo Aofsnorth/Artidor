@@ -58,3 +58,55 @@ export function getCachedRaster({
 	}
 	return canvas;
 }
+
+/**
+ * Canonical content key for a param bag, used to decide whether a raster can be
+ * reused across frames.
+ *
+ * WHY not `JSON.stringify`: it re-walks, re-escapes and re-type-tags every
+ * value on every frame. For an animated graphic (params change 60x/second) that
+ * showed up as real main-thread time for a key that only has to detect change.
+ * This walks the bag once in sorted key order and emits a type-tagged string:
+ *
+ * - sorted, so key insertion order can never cause a spurious cache miss;
+ * - type-tagged and length-prefixed, so `1` / `"1"` and `["ab"]` / ["a","b"]
+ *   can never collide;
+ * - exact, not a numeric hash: a hit therefore *guarantees* identical pixels,
+ *   so there is no (however unlikely) hash-collision path to a stale raster.
+ */
+export function paramValuesKey(value: unknown): string {
+	if (value === null) return "z";
+	switch (typeof value) {
+		case "number":
+			return `n${value}`;
+		case "string": {
+			const text = value as string;
+			return `s${text.length}:${text}`;
+		}
+		case "boolean":
+			return value ? "b1" : "b0";
+		case "undefined":
+			return "u";
+		case "object":
+			break;
+		default:
+			// bigint / symbol / function: not valid param values, but must not throw.
+			return `x${String(value)}`;
+	}
+
+	if (Array.isArray(value)) {
+		let out = "[";
+		for (const item of value) {
+			out += `${paramValuesKey(item)},`;
+		}
+		return `${out}]`;
+	}
+
+	const record = value as Record<string, unknown>;
+	const keys = Object.keys(record).sort();
+	let out = "{";
+	for (const key of keys) {
+		out += `${key.length}:${key}=${paramValuesKey(record[key])},`;
+	}
+	return `${out}}`;
+}

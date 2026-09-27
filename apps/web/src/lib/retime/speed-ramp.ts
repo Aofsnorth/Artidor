@@ -163,19 +163,48 @@ export const SPEED_RAMP_PRESETS: Array<{
 ];
 
 /**
- * Linear-interpolated speed value at a normalized time t (0..1).
+ * Sorted-curve cache.
+ *
+ * `sampleSpeedCurve` is the innermost call of the 1024-step integration in
+ * `clipTimeToSourceTime`, and that integration runs per video node per render
+ * frame plus once per audio sample during mixdown (~480k times for a 10s
+ * 48kHz clip). Copying and sorting the curve on every one of those steps
+ * allocated and sorted a fresh array ~500 million times for a single clip.
+ *
+ * A speed curve is immutable configuration: every writer
+ * (`buildSpeedRampRetime`, the speed-ramp editor tab) builds a new array
+ * rather than mutating one, so the curve array identity is a valid cache key.
+ * A new array is a new key and is re-sorted. `WeakMap` lets discarded curves
+ * be garbage collected.
  */
-export function sampleSpeedCurve({
-	curve,
-	t,
-}: {
-	curve: SpeedCurve;
-	t: number;
-}): number {
-	if (curve.length === 0) return 1;
-	if (curve.length === 1) return curve[0].speed;
+const sortedSpeedCurveCache = new WeakMap<SpeedCurve, SpeedCurve>();
+
+function getSortedSpeedCurve({ curve }: { curve: SpeedCurve }): SpeedCurve {
+	const cached = sortedSpeedCurveCache.get(curve);
+	if (cached !== undefined) {
+		return cached;
+	}
 
 	const sorted = [...curve].sort((a, b) => a.time - b.time);
+	sortedSpeedCurveCache.set(curve, sorted);
+	return sorted;
+}
+
+/**
+ * `sampleSpeedCurve` against an already-sorted curve. Split out so the
+ * integration loop can resolve the cache once instead of once per step.
+ * Arithmetic is identical to `sampleSpeedCurve`.
+ */
+function sampleSortedSpeedCurve({
+	sorted,
+	t,
+}: {
+	sorted: SpeedCurve;
+	t: number;
+}): number {
+	if (sorted.length === 0) return 1;
+	if (sorted.length === 1) return sorted[0].speed;
+
 	if (t <= sorted[0].time) return sorted[0].speed;
 	if (t >= sorted[sorted.length - 1].time) {
 		return sorted[sorted.length - 1].speed;
@@ -193,9 +222,33 @@ export function sampleSpeedCurve({
 }
 
 /**
+ * Linear-interpolated speed value at a normalized time t (0..1).
+ */
+export function sampleSpeedCurve({
+	curve,
+	t,
+}: {
+	curve: SpeedCurve;
+	t: number;
+}): number {
+	if (curve.length === 0) return 1;
+	if (curve.length === 1) return curve[0].speed;
+
+	return sampleSortedSpeedCurve({ sorted: getSortedSpeedCurve({ curve }), t });
+}
+
+/**
  * Map from clip-time to source-time.
  * Given a curve of playback-rate values and total duration, find the
  * source-time that corresponds to a particular clip-time by integrating speed.
+ *
+ * The integration is deliberately left as a fixed `samples`-step trapezoid
+ * walk over [0, t]. A cumulative lookup table was considered and rejected:
+ * because the step is `t / samples`, the sample positions themselves depend on
+ * the queried `t`, so a table built for one `t` cannot answer a different `t`
+ * to within 1e-6 without re-integrating, and reusing one would silently change
+ * every returned source time (and therefore the export). Reusing the sorted
+ * curve via `getSortedSpeedCurve` removes the per-step allocation instead.
  */
 export function clipTimeToSourceTime({
 	curve,
@@ -212,11 +265,14 @@ export function clipTimeToSourceTime({
 	if (totalDuration <= 0) return 0;
 	const t = Math.max(0, Math.min(1, clipTime / totalDuration));
 	const dt = t / samples;
+	// Resolved once for the whole loop: the sorted copy is cached per curve
+	// array, so every one of the ~1024 steps below is a cheap read.
+	const sorted = getSortedSpeedCurve({ curve });
 	let cumulative = 0;
-	let prevSpeed = sampleSpeedCurve({ curve, t: 0 });
+	let prevSpeed = sampleSortedSpeedCurve({ sorted, t: 0 });
 	for (let i = 1; i <= samples; i++) {
 		const ti = dt * i;
-		const speed = sampleSpeedCurve({ curve, t: ti });
+		const speed = sampleSortedSpeedCurve({ sorted, t: ti });
 		// Average playback rate over the segment.
 		const avgSpeed = (prevSpeed + speed) / 2;
 		// dt of normalized time = dt * totalDuration in clip time.
@@ -256,19 +312,39 @@ export function isSpeedRampRetime(value: unknown): boolean {
 	return v.mode === "curve";
 }
 
+/**
+ * Cache of the derived curve array, keyed on the `retime` config object.
+ *
+ * `getSourceTimeAtClipTime` (used per rendered video node and once per audio
+ * sample during mixdown) re-derived the curve on every call. A brand new
+ * array each time defeated `getSortedSpeedCurve`, because the cache is keyed
+ * on array identity. The mapping from a `RetimeConfig` to its curve is pure,
+ * and a retime config is immutable once stored on an element — a new config
+ * object is a new key — so the derived array can be reused. Callers must treat
+ * the result as read-only, which is what they already did (the previous
+ * per-call array was only ever read, never kept).
+ */
+const speedCurveFromRetimeCache = new WeakMap<RetimeConfig, SpeedCurve>();
+
 export function getSpeedCurveFromRetime(
 	retime: RetimeConfig | undefined,
 ): SpeedCurve {
 	if (!retime || !isSpeedRampRetime(retime)) return [];
+	const cached = speedCurveFromRetimeCache.get(retime);
+	if (cached !== undefined) {
+		return cached;
+	}
 	const keyframes = (retime as { keyframes?: unknown }).keyframes;
 	if (!Array.isArray(keyframes)) return [];
-	return keyframes.map((k) => {
+	const curve = keyframes.map((k) => {
 		const kf = k as { time?: unknown; speed?: unknown };
 		return {
 			time: typeof kf.time === "number" ? kf.time : 0,
 			speed: typeof kf.speed === "number" ? kf.speed : 1,
 		};
 	});
+	speedCurveFromRetimeCache.set(retime, curve);
+	return curve;
 }
 
 /**

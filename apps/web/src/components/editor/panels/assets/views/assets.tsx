@@ -61,7 +61,6 @@ import {
 	type MediaViewMode,
 	useAssetsPanelStore,
 } from "@/stores/assets-panel-store";
-import { MASKABLE_ELEMENT_TYPES } from "@/lib/timeline";
 import type { MediaAsset } from "@/lib/media/types";
 import { cn } from "@/utils/ui";
 import {
@@ -866,9 +865,6 @@ function MediaAssetDraggable({
 				type: "media",
 				mediaType: item.type,
 				name: item.name,
-				...(item.type !== "audio" && {
-					targetElementTypes: [...MASKABLE_ELEMENT_TYPES],
-				}),
 			}}
 			shouldShowPlusOnDrag={false}
 			onClick={() => setPreviewAsset(item.id)}
@@ -1125,17 +1121,24 @@ function MediaPreview({
 	const { t } = useI18n();
 	const shouldShowDurationBadge = variant === "grid";
 
+	// `next/image` force-unoptimizes `data:` and `blob:` sources (see
+	// `get-img-props`: a data:/blob: src sets `unoptimized = true`
+	// internally), so these previews always bypass the optimizer and
+	// `sizes` is inert. That makes the *source* the only thing that
+	// decides decode cost — and a blob: original is full-resolution, so
+	// every grid card used to decode a 4K frame in a ~120px box. The panel
+	// already generates a max-1280x720 thumbnail at import time
+	// (`lib/media/processing`), so prefer it and keep the original only for
+	// assets imported before thumbnails existed.
 	if (item.type === "image") {
 		return (
 			<div className="relative flex size-full items-center justify-center bg-muted">
 				<Image
-					src={item.url ?? ""}
+					src={item.thumbnailUrl ?? item.url ?? ""}
 					alt={item.name}
 					fill
-					sizes="100vw"
 					className="object-cover"
 					loading="lazy"
-					unoptimized
 				/>
 			</div>
 		);
@@ -1149,10 +1152,8 @@ function MediaPreview({
 						src={item.thumbnailUrl}
 						alt={item.name}
 						fill
-						sizes="100vw"
 						className="rounded object-cover"
 						loading="lazy"
-						unoptimized
 					/>
 					{shouldShowDurationBadge ? (
 						<MediaDurationBadge duration={item.duration} />

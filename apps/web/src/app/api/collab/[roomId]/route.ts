@@ -26,8 +26,15 @@ export async function GET(
 		return Response.json({ error: "Missing sessionId" }, { status: 400 });
 	}
 
+	// Optional command-log cursor. When present, the store returns only the
+	// commands appended since that sequence number instead of the whole log;
+	// omitting it (older clients) still returns a full snapshot.
+	const rawFromSeq = url.searchParams.get("fromSeq");
+	const parsedFromSeq = rawFromSeq === null ? Number.NaN : Number(rawFromSeq);
+	const fromSeq = Number.isFinite(parsedFromSeq) ? parsedFromSeq : undefined;
+
 	try {
-		const state = await getRoomState({ roomId, sessionId });
+		const state = await getRoomState({ roomId, sessionId, fromSeq });
 		if (!state) {
 			return Response.json({ error: "Room not found" }, { status: 404 });
 		}

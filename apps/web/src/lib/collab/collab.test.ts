@@ -12,7 +12,7 @@
  * raw-TCP RESP2 adapter so the real store functions run against real Redis.
  */
 
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import {
 	appendCommand,
 	createRoomStore,
@@ -39,32 +39,38 @@ function newRoomId(): string {
 	return id;
 }
 
-let redisAvailable = false;
-let adapter: RawRedisAdapter | null = null;
-
-beforeAll(async () => {
+async function probeRedis(): Promise<{
+	available: boolean;
+	adapter: RawRedisAdapter | null;
+}> {
 	try {
-		adapter = new RawRedisAdapter(REDIS_URL);
-		await adapter.connect();
-		const pong = await adapter.get("__never__");
+		const candidate = new RawRedisAdapter(REDIS_URL);
+		await candidate.connect();
+		const pong = await candidate.get("__never__");
 		// A completed round-trip (null for a missing key) proves the connection.
-		redisAvailable = pong === null;
-		if (redisAvailable) {
-			setCollabRedisOverride(adapter);
+		if (pong === null) {
+			setCollabRedisOverride(candidate);
+			return { available: true, adapter: candidate };
 		}
+		candidate.close();
 	} catch {
-		adapter?.close();
-		adapter = null;
-		redisAvailable = false;
+		// Redis is optional outside a Redis-enabled environment; the suite below
+		// is then skipped (never degraded to a memory fake).
 	}
-});
+	return { available: false, adapter: null };
+}
+
+// The probe runs at module load, not in `beforeAll`: `describe.skipIf` is
+// evaluated when the suite is *registered*, which happens before any hook, so a
+// beforeAll probe would still read `false` here and the suite could never run.
+const { available: redisAvailable, adapter } = await probeRedis();
 
 afterAll(() => {
 	setCollabRedisOverride(null);
 	adapter?.close();
 });
 
-describe("Collaboration Room Store (Redis)", () => {
+describe.skipIf(!redisAvailable)("Collaboration Room Store (Redis)", () => {
 	test("requires real Redis", async () => {
 		expect(redisAvailable).toBe(true);
 	});
@@ -383,3 +389,14 @@ describe("Collaboration Room Store (Redis)", () => {
 		expect(state?.cursors[0]?.x).toBe(3);
 	}, 20000);
 });
+
+// Honest bookkeeping for the no-Redis case: the authoritative suite above is
+// visibly SKIPPED (it must never be reported as passing against a fake), and no
+// store override is left behind that could make memory-only assertions pass.
+test.skipIf(redisAvailable)(
+	"Redis suite is skipped because no real Redis is reachable",
+	() => {
+		expect(redisAvailable).toBe(false);
+		expect(adapter).toBeNull();
+	},
+);

@@ -34,7 +34,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 
 import type { EditorCore } from "@/core";
-import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { VirtualAssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import {
 	CatalogEmptyState,
 	CatalogSearch,
@@ -168,15 +168,17 @@ export function TemplatesView() {
 					placeholder={t("catalog.searchTemplates")}
 				/>
 				{filteredTemplates.length > 0 ? (
-					<AssetGrid gap="gap-2">
-						{filteredTemplates.map((template) => (
+					<VirtualAssetGrid
+						items={filteredTemplates}
+						getKey={(template) => template.id}
+						renderItem={(template) => (
 							<TemplateItem
-								key={template.id}
 								template={template}
 								onApply={() => applyTemplate({ editor, template, t })}
 							/>
-						))}
-					</AssetGrid>
+						)}
+						gap="gap-2"
+					/>
 				) : (
 					<CatalogEmptyState query={query} />
 				)}

@@ -32,6 +32,7 @@ import {
 	CategoryBar,
 } from "@/components/editor/panels/assets/views/category-bar";
 import { useI18n } from "@/lib/i18n";
+import { useSession } from "@/lib/auth/client";
 import { cn } from "@/utils/ui";
 
 /**
@@ -126,6 +127,11 @@ function SoundEffectsView() {
 		})),
 	);
 	const { t } = useI18n();
+	// The sounds API is auth-gated (it proxies Freesound with a server-side
+	// key). Signed out, a fetch can only produce a console 401 — so the auth
+	// state is resolved first and the request is skipped entirely.
+	const { data: sessionData, isPending: isAuthPending } = useSession();
+	const signedIn = Boolean(sessionData?.user);
 
 	const soundCategories = useMemo(
 		() => [
@@ -172,6 +178,22 @@ function SoundEffectsView() {
 	}, [loadSavedSounds]);
 
 	useEffect(() => {
+		// Wait for the auth probe before deciding anything: fetching while
+		// pending would either 401 (signed out) or race the session cookie.
+		if (isAuthPending) return;
+
+		if (!signedIn) {
+			// Signed out: skip the doomed request, keep `hasLoaded` false so a
+			// later sign-in refetches, and leave the empty list to the auth
+			// state rendered below instead of a silent "no sounds".
+			setTopSoundEffects({ sounds: [] });
+			setHasNextPage({ hasNext: false });
+			setTotalCount({ count: 0 });
+			setError({ error: null });
+			setLoading({ loading: false });
+			return;
+		}
+
 		if (hasLoaded) {
 			return;
 		}
@@ -235,6 +257,8 @@ function SoundEffectsView() {
 		};
 	}, [
 		hasLoaded,
+		isAuthPending,
+		signedIn,
 		setTopSoundEffects,
 		setLoading,
 		setError,
@@ -378,12 +402,21 @@ function SoundEffectsView() {
 								onPlay={playSound}
 							/>
 						))}
-						{!isLoading && !isSearching && displayedSounds.length === 0 && (
-							<div className="text-muted-foreground text-sm">
-								{searchQuery
-									? t("sounds.empty.noSearchResults")
-									: t("sounds.empty.noSounds")}
+						{!isAuthPending && !signedIn ? (
+							<div className="text-muted-foreground flex flex-col items-center gap-1 py-8 text-center">
+								<p className="text-sm">{t("sounds.auth.required")}</p>
+								<p className="text-xs">{t("sounds.auth.hint")}</p>
 							</div>
+						) : (
+							!isLoading &&
+							!isSearching &&
+							displayedSounds.length === 0 && (
+								<div className="text-muted-foreground text-sm">
+									{searchQuery
+										? t("sounds.empty.noSearchResults")
+										: t("sounds.empty.noSounds")}
+								</div>
+							)
 						)}
 						{isLoadingMore && (
 							<div className="text-muted-foreground py-4 text-center text-sm">

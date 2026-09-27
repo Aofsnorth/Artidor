@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
 import { EditorCore } from "@/core";
+import { isShallowEqual } from "@/lib/perf/editor-snapshot-equality";
 
 /**
  * Editor subsystem identifiers. Used by {@link useEditor} to limit which
@@ -30,65 +31,48 @@ export type EditorSubsystem =
  * excluded — it fires every frame during playback and most components
  * don't need per-frame updates. Components that DO need playback state
  * pass `["playback"]` (or `["playback", ...]`) explicitly.
+ *
+ * **The default set is deliberately broad.** ~284 of the ~295 `useEditor(`
+ * call sites rely on it and never pass `subsystems`, so narrowing it would
+ * silently freeze state in any call site that reads a subsystem through a
+ * helper the reader cannot see. It is exported frozen so a caller can
+ * compose narrower subscriptions without mutating shared state, e.g.
+ * `useEditor(selector, [...DEFAULT_EDITOR_SUBSYSTEMS, "playback"])`.
  */
-const DEFAULT_SUBSYSTEMS: EditorSubsystem[] = [
-	"timeline",
-	"scenes",
-	"project",
-	"media",
-	"renderer",
-	"selection",
-	"clipboard",
-	"diagnostics",
-];
-
-function isShallowEqual(a: unknown, b: unknown): boolean {
-	if (Object.is(a, b)) return true;
-	// Empty/null short-circuit — both empty `null`/`undefined`
-	// compare as equal regardless of path below.
-	if (a == null || b == null) return false;
-	// Array fast-path: identical lengths + per-index `Object.is`
-	// is the common case for selectors that return `getAssets()`
-	// or `bookmarks` arrays.
-	if (Array.isArray(a) && Array.isArray(b)) {
-		if (a.length !== b.length) return false;
-		return a.every((item, i) => Object.is(item, b[i]));
-	}
-	// Object path: shallow key-by-key comparison. Catches the
-	// most common case of `editor.scenes.getActiveSceneOrNull()`
-	// returning a fresh `Scene` object reference every call but
-	// with the same primitive fields. We avoid `Object.keys` on
-	// either side to keep allocations low.
-	if (typeof a === "object" && typeof b === "object") {
-		const aKeys = Object.keys(a as Record<string, unknown>);
-		const bKeys = Object.keys(b as Record<string, unknown>);
-		if (aKeys.length !== bKeys.length) return false;
-		for (const key of aKeys) {
-			if (
-				!Object.is(
-					(a as Record<string, unknown>)[key],
-					(b as Record<string, unknown>)[key],
-				)
-			) {
-				return false;
-			}
-		}
-		return true;
-	}
-	return false;
-}
+export const DEFAULT_EDITOR_SUBSYSTEMS: readonly EditorSubsystem[] =
+	Object.freeze([
+		"timeline",
+		"scenes",
+		"project",
+		"media",
+		"renderer",
+		"selection",
+		"clipboard",
+		"diagnostics",
+	] as const satisfies EditorSubsystem[]);
 
 const subscribeNone = () => () => {};
 
+/**
+ * @param selector Narrowing function run against the editor core. A selector
+ * that returns a fresh object/array every call still avoids re-renders:
+ * snapshots are compared with {@link isShallowEqual} before React is told
+ * anything changed.
+ * @param subsystems Opt-in narrowing. Defaults to
+ * {@link DEFAULT_EDITOR_SUBSYSTEMS} (everything except `playback`). Pass an
+ * explicit list ONLY when the component provably reads nothing else — the
+ * selector runs on every notify of every listed subsystem, so a broader list
+ * is the safe default and a narrower one is the performance win.
+ */
 export function useEditor(): EditorCore;
 export function useEditor<T>(selector: (editor: EditorCore) => T): T;
 export function useEditor<T>(
 	selector: (editor: EditorCore) => T,
-	subsystems: EditorSubsystem[],
+	subsystems: readonly EditorSubsystem[],
 ): T;
 export function useEditor<T>(
 	selector?: (editor: EditorCore) => T,
-	subsystems?: EditorSubsystem[],
+	subsystems?: readonly EditorSubsystem[],
 ): EditorCore | T {
 	const editor = useMemo(() => EditorCore.getInstance(), []);
 	const selectorRef = useRef(selector);
@@ -106,8 +90,8 @@ export function useEditor<T>(
 		? subsystems.slice().sort().join(",")
 		: "default";
 	// biome-ignore lint/correctness/useExhaustiveDependencies: subsystemsKey is a stable string derived from subsystems; using subsystems directly would create a new array reference every render, defeating the memo.
-	const effectiveSubsystems = useMemo<EditorSubsystem[]>(
-		() => (subsystems ? subsystems.slice().sort() : DEFAULT_SUBSYSTEMS),
+	const effectiveSubsystems = useMemo<readonly EditorSubsystem[]>(
+		() => (subsystems ? subsystems.slice().sort() : DEFAULT_EDITOR_SUBSYSTEMS),
 		[subsystemsKey],
 	);
 

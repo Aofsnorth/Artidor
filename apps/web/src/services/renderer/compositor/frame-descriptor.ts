@@ -3,7 +3,7 @@ import { masksRegistry } from "@/lib/masks";
 import type { AnyBaseNode } from "../nodes/base-node";
 import type { CanvasRenderer } from "../canvas-renderer";
 import { createOffscreenCanvas } from "../canvas-utils";
-import { getCachedRaster } from "./raster-cache";
+import { getCachedRaster, paramValuesKey } from "./raster-cache";
 import { BlurBackgroundNode } from "../nodes/blur-background-node";
 import { ColorNode } from "../nodes/color-node";
 import { EffectLayerNode } from "../nodes/effect-layer-node";
@@ -46,6 +46,82 @@ export type TextureUploadDescriptor = {
 // the worker).
 const pooledTextureMap = new Map<string, TextureUploadDescriptor>();
 
+/**
+ * Folds a per-source content version into a texture id.
+ *
+ * The compositor (`wasm-compositor.syncTextures`) skips a GPU upload when the
+ * texture id AND the source object identity are both unchanged. Rasters that are
+ * re-drawn in place (reused scratch canvases) keep their object identity, so a
+ * stable id would silently freeze the layer on the GPU. Appending the version
+ * forces exactly one upload per frame whose pixels changed — the same upload
+ * count the old "allocate a fresh canvas every frame" code performed — while
+ * the JS side stops allocating.
+ *
+ * Version 0 is the un-reused state and keeps the historical un-suffixed id, so
+ * untouched layers are byte-identical to before.
+ */
+function versionedTextureId(baseId: string, version: number): string {
+	return version === 0 ? baseId : `${baseId}#${version}`;
+}
+
+// ── Animated-text raster scratch pool ─────────────────────────────────
+// Text with an active per-character animator changes pixels every frame, so it
+// can never be served from the content-keyed raster LRU — every frame would be
+// a miss that allocates a full-canvas (~8 MB at 1080p) OffscreenCanvas. Each
+// animated text node instead reuses ONE scratch canvas, and its version is
+// folded into the texture id so the compositor still re-uploads (see
+// versionedTextureId).
+//
+// Cap: 8 nodes ≈ 64 MB of retained full-canvas rasters at 1080p. Evicting the
+// least recently drawn node costs one reallocation when it next draws, so the
+// cap degrades to today's behaviour rather than failing. The pool is swept
+// whenever a build sees fewer live paths than it holds, so deleting text nodes
+// releases their canvases instead of pinning them until eviction.
+const MAX_ANIMATED_TEXT_SCRATCHES = 8;
+
+type AnimatedTextScratch = {
+	canvas: ReturnType<typeof createOffscreenCanvas>;
+	width: number;
+	height: number;
+	version: number;
+};
+
+const animatedTextScratches = new Map<string, AnimatedTextScratch>();
+
+/** Animated-text paths that drew in the current build (sweep bookkeeping). */
+const liveAnimatedTextPaths = new Set<string>();
+
+function getAnimatedTextScratch({
+	path,
+	width,
+	height,
+}: {
+	path: string;
+	width: number;
+	height: number;
+}): AnimatedTextScratch {
+	const cached = animatedTextScratches.get(path);
+	if (cached && cached.width === width && cached.height === height) {
+		// Touch for LRU recency.
+		animatedTextScratches.delete(path);
+		animatedTextScratches.set(path, cached);
+		return cached;
+	}
+
+	const scratch: AnimatedTextScratch = {
+		canvas: createOffscreenCanvas({ width, height }),
+		width,
+		height,
+		version: 0,
+	};
+	animatedTextScratches.set(path, scratch);
+	if (animatedTextScratches.size > MAX_ANIMATED_TEXT_SCRATCHES) {
+		const oldest = animatedTextScratches.keys().next().value;
+		if (oldest !== undefined) animatedTextScratches.delete(oldest);
+	}
+	return scratch;
+}
+
 /** Assemble already-resolved nodes without yielding between layers. */
 export function buildFrameDescriptor({
 	node,
@@ -60,6 +136,8 @@ export function buildFrameDescriptor({
 	const items: FrameItemDescriptor[] = [];
 	const textures = pooledTextureMap;
 	textures.clear();
+	// Scratch-canvas bookkeeping for this build (see getAnimatedTextScratch).
+	liveAnimatedTextPaths.clear();
 
 	collectNode({
 		node,
@@ -68,6 +146,17 @@ export function buildFrameDescriptor({
 		items,
 		textures,
 	});
+
+	// Release scratch canvases for animated text nodes that no longer drew this
+	// frame (deleted layer, or one the playhead is currently outside of). The
+	// path strings are index-based, so a stale entry would otherwise be handed
+	// to an unrelated node later — and would pin a full-canvas raster. Bounded
+	// by MAX_ANIMATED_TEXT_SCRATCHES, so this loop is at most 8 iterations.
+	for (const stalePath of Array.from(animatedTextScratches.keys())) {
+		if (!liveAnimatedTextPaths.has(stalePath)) {
+			animatedTextScratches.delete(stalePath);
+		}
+	}
 
 	// Copy values to an array for the compositor. The Map is cleared on
 	// the next frame, so the array is the stable return value.
@@ -91,32 +180,76 @@ export function buildFrameDescriptor({
 
 // ── Blur background canvas cache ─────────────────────────────────────
 // The blur background draws the backdrop source onto a full-canvas
-// OffscreenCanvas every frame. The result is identical across frames
-// when the source and dimensions don't change, so we cache it keyed by
-// source identity + size. This avoids a ~8MB OffscreenCanvas allocation
-// per frame (1920x1080) and the drawImage call to fill it.
-const blurBackgroundCache = new WeakMap<
-	object, // CanvasImageSource (HTMLVideoElement, HTMLImageElement, etc.)
-	{ canvas: HTMLCanvasElement | OffscreenCanvas; width: number; height: number }
->();
+// OffscreenCanvas every frame. The result is identical across frames when the
+// source and dimensions don't change, so we cache it keyed by the *media id*
+// + output size instead of the source object.
+//
+// Keying by the source object was the bug: video frames come from a
+// round-robin CanvasSink pool of 12, so one logical backdrop retained up to 12
+// full-canvas rasters (~8 MB each at 1080p) and re-blurred every time the pool
+// rotated. One canvas per media id is the true working set.
+//
+// The cached canvas is redrawn every frame, so the compositor would skip the
+// upload on the "unchanged source" path and freeze the blur. `version` bumps
+// exactly when the backdrop source object changes (every video frame, never for
+// a still image) and is folded into the texture id, which preserves the previous
+// upload behaviour exactly while keeping one canvas per media.
+//
+// Cap: one full-canvas raster (~8 MB at 1080p, ~33 MB at 4K) per blurred media;
+// a project realistically blurs one or two, and the LRU keeps a media switch from
+// retaining every backdrop ever shown. Canvases hold no disposable resources, so
+// eviction just drops the reference for GC.
+const BLUR_BACKDROP_CACHE_MAX = 4;
 
-function getOrCreateBlurBackdrop({
+type BlurBackdropEntry = {
+	canvas: HTMLCanvasElement | OffscreenCanvas;
+	width: number;
+	height: number;
+	/** Source object the cached pixels were drawn from. */
+	source: CanvasImageSource | null;
+	/** Bumped when `source` changes; folded into the texture id. */
+	version: number;
+};
+
+const blurBackgroundCache = new Map<string, BlurBackdropEntry>();
+
+function getBlurBackdrop({
+	mediaId,
 	source,
 	width,
 	height,
 }: {
+	mediaId: string;
 	source: CanvasImageSource;
 	width: number;
 	height: number;
-}): HTMLCanvasElement | OffscreenCanvas {
-	const sourceKey = source as object;
-	const cached = blurBackgroundCache.get(sourceKey);
+}): BlurBackdropEntry {
+	const key = `${mediaId}:${width}x${height}`;
+	const cached = blurBackgroundCache.get(key);
 	if (cached && cached.width === width && cached.height === height) {
-		return cached.canvas;
+		// Touch for LRU recency.
+		blurBackgroundCache.delete(key);
+		blurBackgroundCache.set(key, cached);
+		if (cached.source !== source) {
+			cached.source = source;
+			cached.version += 1;
+		}
+		return cached;
 	}
-	const canvas = createOffscreenCanvas({ width, height });
-	blurBackgroundCache.set(sourceKey, { canvas, width, height });
-	return canvas;
+
+	const entry: BlurBackdropEntry = {
+		canvas: createOffscreenCanvas({ width, height }),
+		width,
+		height,
+		source,
+		version: 0,
+	};
+	blurBackgroundCache.set(key, entry);
+	if (blurBackgroundCache.size > BLUR_BACKDROP_CACHE_MAX) {
+		const oldest = blurBackgroundCache.keys().next().value;
+		if (oldest !== undefined) blurBackgroundCache.delete(oldest);
+	}
+	return entry;
 }
 
 function collectNode({
@@ -203,16 +336,21 @@ function collectNode({
 		if (!node.resolved) {
 			return;
 		}
-		const textureId = `${path}:blur-background`;
 		const { backdropSource, passes } = node.resolved;
-		// Reuse the cached backdrop canvas when the source + size haven't
-		// changed — avoids a full-canvas OffscreenCanvas allocation per frame.
-		const backdropCanvas = getOrCreateBlurBackdrop({
+		// Reuse the cached backdrop canvas for this media + size — avoids a
+		// full-canvas OffscreenCanvas allocation per frame. The drawImage below
+		// still runs every frame, and the version bump forces the re-upload.
+		const backdrop = getBlurBackdrop({
+			mediaId: node.params.mediaId,
 			source: backdropSource.source,
 			width: renderer.width,
 			height: renderer.height,
 		});
-		const backdropCtx = backdropCanvas.getContext("2d") as
+		const textureId = versionedTextureId(
+			`${path}:blur-background`,
+			backdrop.version,
+		);
+		const backdropCtx = backdrop.canvas.getContext("2d") as
 			| CanvasRenderingContext2D
 			| OffscreenCanvasRenderingContext2D
 			| null;
@@ -237,7 +375,7 @@ function collectNode({
 		);
 		textures.set(textureId, {
 			id: textureId,
-			source: backdropCanvas,
+			source: backdrop.canvas,
 			width: renderer.width,
 			height: renderer.height,
 		});
@@ -314,7 +452,14 @@ function collectVisualSourceNode({
 			? DEFAULT_GRAPHIC_SOURCE_SIZE
 			: (node.resolved as ResolvedVisualSourceNodeState).sourceHeight;
 
-	const textureId = `${path}:source`;
+	// An animated graphic re-renders into a reused canvas (see GraphicNode), so
+	// the source object identity alone no longer signals "pixels changed" — the
+	// node's source version is folded into the texture id instead. A static
+	// graphic keeps version 0, i.e. the historical un-suffixed id.
+	const textureId =
+		node instanceof GraphicNode
+			? versionedTextureId(`${path}:source`, node.getSourceVersion())
+			: `${path}:source`;
 	textures.set(textureId, {
 		id: textureId,
 		source,
@@ -582,7 +727,6 @@ function collectTextNode({
 		return;
 	}
 
-	const textureId = `${path}:text`;
 	// Static (non-animated) text re-rasterises to identical pixels every frame;
 	// caching by content key lets the compositor's identity-based upload dedupe
 	// skip both the re-raster and the GPU re-upload while the playhead moves.
@@ -594,6 +738,7 @@ function collectTextNode({
 	};
 
 	let canvas: ReturnType<typeof createOffscreenCanvas> | null;
+	let textureId: string;
 	if (cacheKey) {
 		canvas = getCachedRaster({
 			key: cacheKey,
@@ -601,11 +746,19 @@ function collectTextNode({
 			height: renderer.height,
 			draw,
 		});
+		textureId = `${path}:text`;
 	} else {
-		canvas = createOffscreenCanvas({
+		// Animated text: content genuinely differs every frame, so reuse one
+		// scratch canvas per node (instead of allocating a full-canvas
+		// OffscreenCanvas per frame) and bump its version so the compositor
+		// re-uploads the new pixels.
+		liveAnimatedTextPaths.add(path);
+		const scratch = getAnimatedTextScratch({
+			path,
 			width: renderer.width,
 			height: renderer.height,
 		});
+		canvas = scratch.canvas;
 		const ctx = canvas.getContext("2d") as
 			| CanvasRenderingContext2D
 			| OffscreenCanvasRenderingContext2D
@@ -613,7 +766,12 @@ function collectTextNode({
 		if (!ctx) {
 			return;
 		}
+		// A reused scratch canvas must start empty, otherwise the previous
+		// frame's glyphs would show through the new ones.
+		ctx.clearRect(0, 0, renderer.width, renderer.height);
 		draw(ctx);
+		scratch.version += 1;
+		textureId = versionedTextureId(`${path}:text`, scratch.version);
 	}
 	if (!canvas) {
 		return;
@@ -721,68 +879,71 @@ function buildMaskArtifacts({
 	}
 
 	const definition = masksRegistry.get(mask.type);
-	const elementMaskCanvas = createOffscreenCanvas({
-		width: Math.round(transform.width),
-		height: Math.round(transform.height),
+	const canvasWidth = Math.round(transform.width);
+	const canvasHeight = Math.round(transform.height);
+	// The feathered renderer bypasses the filled-path branch, so the branch is
+	// part of the key — otherwise switching strategies would reuse the other
+	// branch's pixels.
+	const usesFeatherRenderer =
+		mask.params.feather > 0 && Boolean(definition.renderer.renderMask);
+	// `inverted`, `strokeColor` and `strokeWidth` are deliberately NOT part of
+	// the key: `inverted` is applied by the GPU at composite time and the stroke
+	// params only reach the separate stroke raster below, so none of them can
+	// change these pixels.
+	const contentKey = [
+		mask.type,
+		paramValuesKey(mask.params),
+		`${transform.centerX},${transform.centerY},${transform.width},${transform.height}`,
+		`${transform.rotationDegrees},${transform.flipX},${transform.flipY},${transform.skewXDegrees},${transform.skewYDegrees}`,
+		usesFeatherRenderer ? "feather" : "fill",
+	].join("|");
+
+	const elementMaskCanvas = getCachedRaster({
+		key: `mask-el:${contentKey}:${canvasWidth}x${canvasHeight}`,
+		width: canvasWidth,
+		height: canvasHeight,
+		draw: (ctx) => {
+			ctx.clearRect(0, 0, transform.width, transform.height);
+			if (usesFeatherRenderer) {
+				definition.renderer.renderMask?.({
+					resolvedParams: mask.params,
+					ctx,
+					width: canvasWidth,
+					height: canvasHeight,
+					feather: mask.params.feather,
+				});
+				return;
+			}
+			ctx.fillStyle = "white";
+			ctx.fill(
+				definition.renderer.buildPath({
+					resolvedParams: mask.params,
+					width: transform.width,
+					height: transform.height,
+				}),
+			);
+		},
 	});
-	const elementMaskCtx = elementMaskCanvas.getContext("2d") as
-		| CanvasRenderingContext2D
-		| OffscreenCanvasRenderingContext2D
-		| null;
-	if (!elementMaskCtx) {
+	if (!elementMaskCanvas) {
 		return { mask: null, strokeLayer: null };
 	}
-	elementMaskCtx.clearRect(0, 0, transform.width, transform.height);
 
-	let strokePath: Path2D | null = null;
-	let feather = mask.params.feather;
-	if (mask.params.feather > 0 && definition.renderer.renderMask) {
-		definition.renderer.renderMask({
-			resolvedParams: mask.params,
-			ctx: elementMaskCtx,
-			width: Math.round(transform.width),
-			height: Math.round(transform.height),
-			feather: mask.params.feather,
-		});
-		feather = 0;
-		strokePath =
-			definition.renderer.buildStrokePath?.({
-				resolvedParams: mask.params,
-				width: transform.width,
-				height: transform.height,
-			}) ?? null;
-	} else {
-		const path2d = definition.renderer.buildPath({
-			resolvedParams: mask.params,
-			width: transform.width,
-			height: transform.height,
-		});
-		elementMaskCtx.fillStyle = "white";
-		elementMaskCtx.fill(path2d);
-		strokePath =
-			definition.renderer.buildStrokePath?.({
-				resolvedParams: mask.params,
-				width: transform.width,
-				height: transform.height,
-			}) ?? path2d;
-	}
-
-	const fullMaskCanvas = createOffscreenCanvas({
+	const fullMaskCanvas = getCachedRaster({
+		key: `mask-full:${contentKey}:${renderer.width}x${renderer.height}`,
 		width: renderer.width,
 		height: renderer.height,
+		draw: (ctx) => {
+			ctx.clearRect(0, 0, renderer.width, renderer.height);
+			drawTransformedCanvas({
+				ctx,
+				source: elementMaskCanvas,
+				transform,
+			});
+		},
 	});
-	const fullMaskCtx = fullMaskCanvas.getContext("2d") as
-		| CanvasRenderingContext2D
-		| OffscreenCanvasRenderingContext2D
-		| null;
-	if (!fullMaskCtx) {
+	if (!fullMaskCanvas) {
 		return { mask: null, strokeLayer: null };
 	}
-	drawTransformedCanvas({
-		ctx: fullMaskCtx,
-		source: elementMaskCanvas,
-		transform,
-	});
 
 	const maskTextureId = `${path}:mask`;
 	textures.set(maskTextureId, {
@@ -793,50 +954,69 @@ function buildMaskArtifacts({
 	});
 
 	let strokeLayer: FrameItemDescriptor | null = null;
-	if (mask.params.strokeWidth > 0 && strokePath) {
-		const strokeCanvas = createOffscreenCanvas({
-			width: Math.round(transform.width),
-			height: Math.round(transform.height),
+	if (mask.params.strokeWidth > 0) {
+		// Rebuilt every frame (cheap: Path2D math, no raster) because the cached
+		// element mask above no longer re-runs the draw that used to produce it.
+		const builtStrokePath = definition.renderer.buildStrokePath?.({
+			resolvedParams: mask.params,
+			width: transform.width,
+			height: transform.height,
 		});
-		const strokeCtx = strokeCanvas.getContext("2d") as
-			| CanvasRenderingContext2D
-			| OffscreenCanvasRenderingContext2D
-			| null;
-		if (strokeCtx) {
-			strokeCtx.strokeStyle = mask.params.strokeColor;
-			strokeCtx.lineWidth = mask.params.strokeWidth;
-			strokeCtx.stroke(strokePath);
-
-			const fullStrokeCanvas = createOffscreenCanvas({
-				width: renderer.width,
-				height: renderer.height,
+		// The filled-path branch falls back to the mask's own outline; the feathered
+		// branch only strokes a dedicated outline (it has nothing else to fall back to).
+		const strokePath =
+			builtStrokePath ??
+			(usesFeatherRenderer
+				? null
+				: definition.renderer.buildPath({
+						resolvedParams: mask.params,
+						width: transform.width,
+						height: transform.height,
+					}));
+		if (strokePath) {
+			const strokeCanvas = getCachedRaster({
+				key: `mask-stroke-el:${contentKey}:${canvasWidth}x${canvasHeight}`,
+				width: canvasWidth,
+				height: canvasHeight,
+				draw: (ctx) => {
+					ctx.clearRect(0, 0, transform.width, transform.height);
+					ctx.strokeStyle = mask.params.strokeColor;
+					ctx.lineWidth = mask.params.strokeWidth;
+					ctx.stroke(strokePath);
+				},
 			});
-			const fullStrokeCtx = fullStrokeCanvas.getContext("2d") as
-				| CanvasRenderingContext2D
-				| OffscreenCanvasRenderingContext2D
-				| null;
-			if (fullStrokeCtx) {
-				drawTransformedCanvas({
-					ctx: fullStrokeCtx,
-					source: strokeCanvas,
-					transform,
-				});
-				const strokeTextureId = `${path}:mask-stroke`;
-				textures.set(strokeTextureId, {
-					id: strokeTextureId,
-					source: fullStrokeCanvas,
+			if (strokeCanvas) {
+				const fullStrokeCanvas = getCachedRaster({
+					key: `mask-stroke-full:${contentKey}:${renderer.width}x${renderer.height}`,
 					width: renderer.width,
 					height: renderer.height,
+					draw: (ctx) => {
+						ctx.clearRect(0, 0, renderer.width, renderer.height);
+						drawTransformedCanvas({
+							ctx,
+							source: strokeCanvas,
+							transform,
+						});
+					},
 				});
-				strokeLayer = {
-					type: "layer",
-					textureId: strokeTextureId,
-					transform: fullCanvasTransform(renderer),
-					opacity: 1,
-					blendMode: "normal",
-					effectPassGroups: [],
-					mask: null,
-				};
+				if (fullStrokeCanvas) {
+					const strokeTextureId = `${path}:mask-stroke`;
+					textures.set(strokeTextureId, {
+						id: strokeTextureId,
+						source: fullStrokeCanvas,
+						width: renderer.width,
+						height: renderer.height,
+					});
+					strokeLayer = {
+						type: "layer",
+						textureId: strokeTextureId,
+						transform: fullCanvasTransform(renderer),
+						opacity: 1,
+						blendMode: "normal",
+						effectPassGroups: [],
+						mask: null,
+					};
+				}
 			}
 		}
 	}
@@ -844,7 +1024,7 @@ function buildMaskArtifacts({
 	return {
 		mask: {
 			textureId: maskTextureId,
-			feather,
+			feather: usesFeatherRenderer ? 0 : mask.params.feather,
 			inverted: mask.params.inverted,
 		},
 		strokeLayer,

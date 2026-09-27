@@ -64,6 +64,113 @@ export function getTextMeasurementContext():
 	throw new Error("Failed to create text measurement context");
 }
 
+// ── Font-shaping memo ────────────────────────────────────────────────
+// `ctx.measureText` runs font shaping, which is the most expensive call in
+// text resolution and used to run once per line, per text node, per frame (60x
+// /second per layer) even when nothing about the text had changed. Only the
+// shaped metrics are memoised — the time-dependent background/visualRect work
+// below is cheap and still runs every call, so the returned object is exactly
+// as fresh as before.
+//
+// Bounded LRU: keys embed the full text content, so an unbounded Map would grow
+// with every keystroke/undo step. 256 entries holds a typical editing session's
+// distinct (text, font, size) triples; a miss only costs one re-measure.
+const MEASUREMENT_CACHE_MAX = 256;
+type ShapedMeasurement = {
+	lineMetrics: TextMetrics[];
+	block: TextBlockMeasurement;
+};
+const measurementCache = new Map<string, ShapedMeasurement>();
+
+/**
+ * Incremented whenever a font finishes loading. `measureText` falls back to a
+ * default font until the real face is ready, so without this a measurement taken
+ * before `document.fonts.load()` resolved would be cached (and kept) with
+ * fallback metrics, leaving text laid out against the wrong font. Webfonts and
+ * user-imported FontFaces both land via this event.
+ */
+let fontEpoch = 0;
+
+function watchFontLoading(): void {
+	if (typeof document === "undefined") {
+		return;
+	}
+	const fontSet = document.fonts;
+	if (!fontSet || typeof fontSet.addEventListener !== "function") {
+		return;
+	}
+	fontSet.addEventListener("loadingdone", () => {
+		fontEpoch += 1;
+	});
+}
+
+watchFontLoading();
+
+/** Distinguishes measurement contexts: a different context may shape differently. */
+const contextIds = new WeakMap<object, number>();
+let nextContextId = 1;
+
+function contextId(
+	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+): number {
+	const existing = contextIds.get(ctx);
+	if (existing !== undefined) {
+		return existing;
+	}
+	const id = nextContextId++;
+	contextIds.set(ctx, id);
+	return id;
+}
+
+function measureShapedText({
+	ctx,
+	fontString,
+	letterSpacing,
+	lines,
+	lineHeightPx,
+}: {
+	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+	fontString: string;
+	letterSpacing: number;
+	lines: string[];
+	lineHeightPx: number;
+}): ShapedMeasurement {
+	// `canvasHeight` is already folded into `fontString` (it scales the font
+	// size), and `content` fully determines `lines`; the epoch guards a font
+	// that finished loading after an earlier measurement.
+	const key = `${fontEpoch}:${contextId(ctx)}|${fontString}|${letterSpacing}|${lineHeightPx}|${lines.join("\n")}`;
+	const cached = measurementCache.get(key);
+	if (cached) {
+		// Touch for LRU recency.
+		measurementCache.delete(key);
+		measurementCache.set(key, cached);
+		return cached;
+	}
+
+	ctx.save();
+	ctx.font = fontString;
+	ctx.textBaseline = "middle";
+	setCanvasLetterSpacing({ ctx, letterSpacingPx: letterSpacing });
+	const lineMetrics = lines.map((line) => ctx.measureText(line));
+	ctx.restore();
+
+	const shaped: ShapedMeasurement = {
+		lineMetrics,
+		block: measureTextBlock({
+			lineMetrics,
+			lineHeightPx,
+		}),
+	};
+
+	measurementCache.set(key, shaped);
+	if (measurementCache.size > MEASUREMENT_CACHE_MAX) {
+		// Evict the least recently used (first-inserted) entry.
+		const oldest = measurementCache.keys().next().value;
+		if (oldest !== undefined) measurementCache.delete(oldest);
+	}
+	return shaped;
+}
+
 export function measureTextElement({
 	element,
 	canvasHeight,
@@ -87,15 +194,11 @@ export function measureTextElement({
 	const fontSizeRatio = element.fontSize / DEFAULTS.text.element.fontSize;
 	const lines = element.content.split("\n");
 
-	ctx.save();
-	ctx.font = fontString;
-	ctx.textBaseline = "middle";
-	setCanvasLetterSpacing({ ctx, letterSpacingPx: letterSpacing });
-	const lineMetrics = lines.map((line) => ctx.measureText(line));
-	ctx.restore();
-
-	const block = measureTextBlock({
-		lineMetrics,
+	const { lineMetrics, block } = measureShapedText({
+		ctx,
+		fontString,
+		letterSpacing,
+		lines,
 		lineHeightPx,
 	});
 

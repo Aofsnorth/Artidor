@@ -12,6 +12,30 @@ export type CanvasRenderTiming = {
 	totalMs: number;
 };
 
+/**
+ * Hard bounds on any dimension handed to the GPU.
+ *
+ * A dimension that reaches the compositor as 0, `NaN`, or a runaway value turns
+ * into a giant texture upload: wgpu then allocates a staging buffer with
+ * `createBuffer(mappedAtCreation: true)`, which throws
+ * `RangeError: ... size is too large for the implementation`. That throw happens
+ * *inside* the compositor's `RefCell` borrow, and because wasm panics do not
+ * unwind Rust destructors, the borrow is never released — every later frame then
+ * dies immediately on `RefCell already borrowed`, so the preview is permanently
+ * black instead of briefly wrong.
+ *
+ * The preview derives its output size from a quality governor, so it is exactly
+ * the kind of input that can go degenerate. Clamping here is the one place every
+ * dimension that reaches the GPU passes through.
+ */
+const MIN_TEXTURE_DIM = 1;
+const MAX_TEXTURE_DIM = 8192;
+
+export function clampTextureDimension(value: number): number {
+	if (!Number.isFinite(value)) return MIN_TEXTURE_DIM;
+	return Math.min(MAX_TEXTURE_DIM, Math.max(MIN_TEXTURE_DIM, Math.round(value)));
+}
+
 export type CanvasRendererParams = {
 	width: number;
 	height: number;
@@ -52,9 +76,14 @@ export class CanvasRenderer {
 		fps,
 		measurePerformance = false,
 	}: CanvasRendererParams) {
-		this.width = width;
-		this.height = height;
-		this.canvasSize = canvasSize ?? { width, height };
+		this.width = clampTextureDimension(width);
+		this.height = clampTextureDimension(height);
+		this.canvasSize = canvasSize
+			? {
+					width: clampTextureDimension(canvasSize.width),
+					height: clampTextureDimension(canvasSize.height),
+				}
+			: { width: this.width, height: this.height };
 		this.fps = fps;
 		this.maxSourceDim = undefined;
 		this.measurePerformance = measurePerformance;
@@ -81,18 +110,28 @@ export class CanvasRenderer {
 		// current quality scale. Reallocating the backing canvas per frame
 		// would defeat the purpose, but the actual output buffer is owned by the
 		// WASM compositor — this renderer just tracks the desired dimensions.
+		// Clamp before comparing: an out-of-range request must not be treated as
+		// "unchanged" just because the bad value was already stored.
+		const nextWidth = clampTextureDimension(width);
+		const nextHeight = clampTextureDimension(height);
+		const nextCanvasWidth = canvasSize
+			? clampTextureDimension(canvasSize.width)
+			: this.canvasSize.width;
+		const nextCanvasHeight = canvasSize
+			? clampTextureDimension(canvasSize.height)
+			: this.canvasSize.height;
+
 		if (
-			this.width === width &&
-			this.height === height &&
-			(!canvasSize ||
-				(this.canvasSize.width === canvasSize.width &&
-					this.canvasSize.height === canvasSize.height))
+			this.width === nextWidth &&
+			this.height === nextHeight &&
+			this.canvasSize.width === nextCanvasWidth &&
+			this.canvasSize.height === nextCanvasHeight
 		) {
 			return;
 		}
-		this.width = width;
-		this.height = height;
-		if (canvasSize) this.canvasSize = canvasSize;
+		this.width = nextWidth;
+		this.height = nextHeight;
+		this.canvasSize = { width: nextCanvasWidth, height: nextCanvasHeight };
 	}
 
 	async render({
@@ -109,6 +148,15 @@ export class CanvasRenderer {
 			node,
 			renderer: this,
 		});
+		// Every dimension below reaches wgpu as a texture allocation. One
+		// degenerate value is enough to brick the compositor (see
+		// clampTextureDimension), so the descriptor is sanitised at the boundary.
+		frame.width = clampTextureDimension(frame.width);
+		frame.height = clampTextureDimension(frame.height);
+		for (const texture of textures) {
+			texture.width = clampTextureDimension(texture.width);
+			texture.height = clampTextureDimension(texture.height);
+		}
 		// The frame descriptor is in canvas coords (canvasSize). Scale to the
 		// output buffer before blitting. Skip the scale pass when the buffer
 		// already matches canvasSize (high-quality preview, exporter,
@@ -119,6 +167,11 @@ export class CanvasRenderer {
 		) {
 			const scaleX = this.width / this.canvasSize.width;
 			const scaleY = this.height / this.canvasSize.height;
+			if (!(Number.isFinite(scaleX) && Number.isFinite(scaleY))) {
+				throw new Error(
+					`Degenerate render scale: ${this.width}x${this.height} over ${this.canvasSize.width}x${this.canvasSize.height}`,
+				);
+			}
 			for (const item of frame.items) {
 				// sceneEffect items carry no transform — they apply to the
 				// whole frame in the compositor. Skip them.

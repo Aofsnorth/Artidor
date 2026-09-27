@@ -1,8 +1,10 @@
 mod context;
+mod uniform_pool;
 
 use thiserror::Error;
 
 pub use context::GpuContext;
+pub use uniform_pool::{MAX_POOLED_UNIFORM_BUFFERS, UniformBufferPool};
 pub use wgpu;
 
 pub const GPU_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;

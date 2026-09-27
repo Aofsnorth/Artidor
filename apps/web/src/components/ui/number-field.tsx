@@ -114,6 +114,23 @@ function scrubAcrossRanges({
 	return clampNumberFieldScrubValue({ value: currentValue, min, max });
 }
 
+/**
+ * A controlled `value` with no `onChange` is a React error: it warns and
+ * renders a dead field the user cannot type into. Callers that only offer
+ * drag-to-scrub are genuinely read-only, so the input is marked readOnly
+ * instead of warning — and a caller that DOES pass `onChange` gets a live,
+ * editable field.
+ */
+export function resolveNumberFieldReadOnly({
+	onChange,
+	readOnly,
+}: {
+	onChange: unknown;
+	readOnly?: boolean;
+}): boolean {
+	return readOnly ?? onChange === undefined;
+}
+
 interface NumberFieldProps
 	extends Omit<ComponentProps<"input">, "size" | "type"> {
 	icon?: React.ReactNode;
@@ -142,6 +159,8 @@ function NumberField({
 	onScrubEnd,
 	value,
 	allowExpressions = true,
+	onChange,
+	readOnly,
 	onKeyDown,
 	onFocus,
 	onBlur,
@@ -159,11 +178,20 @@ function NumberField({
 	const cumulativeDeltaRef = useRef(0);
 	const lastPointerXRef = useRef(0);
 	const [isInputFocused, setIsInputFocused] = useState(false);
+	// While the field has focus the typed text is the source of truth: the parent
+	// echoes a clamped/formatted `value` back (e.g. `val.toFixed(2)`), which
+	// would rewrite the input mid-keystroke and make "0." or "-" impossible to
+	// type. The draft is dropped on blur/focus so the committed value shows again.
+	const [draft, setDraft] = useState<string | null>(null);
 	const [scrubPreview, setScrubPreview] = useState<{
 		value: number;
 		x: number;
 		y: number;
 	} | null>(null);
+	// A `value` with no `onChange` is a React error and renders a dead field.
+	// Callers that only offer drag-to-scrub (no `icon`, no `onChange`) are
+	// genuinely read-only, so say so explicitly instead of warning.
+	const isEditable = !resolveNumberFieldReadOnly({ onChange, readOnly });
 
 	useEffect(() => {
 		return () => {
@@ -234,13 +262,20 @@ function NumberField({
 		scrubValue: scrubPreview?.value ?? null,
 	});
 
+	const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setDraft(event.target.value);
+		onChange?.(event);
+	};
+
 	const inputNode = (
 		<input
 			type={allowExpressions ? "text" : "number"}
 			inputMode={allowExpressions ? "decimal" : undefined}
 			ref={inputRef}
 			disabled={disabled}
-			value={displayValue}
+			readOnly={readOnly ?? !isEditable}
+			value={draft ?? displayValue}
+			onChange={handleInputChange}
 			className="text-sm leading-none bg-transparent outline-none min-w-0 flex-1 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 			onMouseDown={(event) => {
 				const inputElement = event.currentTarget;
@@ -255,6 +290,9 @@ function NumberField({
 			}}
 			onFocus={(event) => {
 				setIsInputFocused(true);
+				// Discard any abandoned draft so the committed value is what the
+				// user starts editing from.
+				setDraft(null);
 				event.currentTarget.select();
 				onFocus?.(event);
 			}}
@@ -265,6 +303,9 @@ function NumberField({
 			}}
 			onBlur={(event) => {
 				setIsInputFocused(false);
+				// Commit-and-reformat: drop the draft so the parent-provided
+				// (clamped, fixed-decimal) value becomes visible again.
+				setDraft(null);
 				onBlur?.(event);
 			}}
 			{...props}

@@ -17,6 +17,20 @@ impl wgpu::rwh::HasDisplayHandle for WebDisplay {
     }
 }
 
+/// 2D scratch canvas used by the `OffscreenCanvas` upload fallback.
+///
+/// Held by [`GpuContext`] so the fallback reuses one canvas instead of
+/// allocating a 2D backing store per layer per frame. Caching the canvas is
+/// enough to cache the context too: `getContext("2d")` returns the *same*
+/// context object for a given canvas, so the repeated lookup is a plain
+/// attribute read rather than a new surface.
+#[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+struct ExternalImageScratch {
+    width: u32,
+    height: u32,
+    canvas: web_sys::OffscreenCanvas,
+}
+
 const BLIT_SHADER_SOURCE: &str = include_str!("shaders/blit.wgsl");
 
 const FULLSCREEN_QUAD_POSITIONS: [[f32; 2]; 6] = [
@@ -41,6 +55,12 @@ pub struct GpuContext {
     blit_pipeline: wgpu::RenderPipeline,
     #[allow(dead_code)] // Read in #[cfg(wasm)] methods
     supports_external_texture_copies: bool,
+    /// Shared 2D scratch surface for the `OffscreenCanvas` upload fallback, so
+    /// a fallback upload reuses one canvas instead of allocating a 2D backing
+    /// store per layer per frame. Web-only: it holds a `web_sys` handle, so on
+    /// native targets `GpuContext` keeps its `Send + Sync` bounds.
+    #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+    external_image_scratch: std::sync::Mutex<Option<ExternalImageScratch>>,
 }
 
 impl GpuContext {
@@ -183,6 +203,8 @@ impl GpuContext {
             texture_sampler_bind_group_layout,
             blit_pipeline,
             supports_external_texture_copies,
+            #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+            external_image_scratch: std::sync::Mutex::new(None),
         })
     }
 
@@ -247,6 +269,21 @@ impl GpuContext {
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
                 label: Some("gpu-device"),
+                // Nothing is requested, and that is deliberate rather than an
+                // oversight. `supports_external_texture_copies` — the flag that
+                // decides whether an `OffscreenCanvas` can be uploaded with a
+                // zero-copy `copy_external_image_to_texture` or has to fall back
+                // to a `getImageData` readback — is a **downlevel capability the
+                // adapter reports**
+                // (`DownlevelFlags::UNRESTRICTED_EXTERNAL_TEXTURE_COPIES`), not a
+                // `wgpu::Features` bit, so it cannot be turned on here. It is
+                // additionally never set on WebGL, which is a first-class path
+                // for this crate (`try_gl_fallback`, and the WebGL2 downlevel
+                // limits requested below). The nearest `Features` bit,
+                // `EXTERNAL_TEXTURE`, is for WebGPU's `GPUExternalTexture` and is
+                // DX12/Metal only, so requesting it would fail device creation
+                // outright on the web. Read the real capability in `new` and
+                // branch on it in `import_external_image` instead.
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::downlevel_webgl2_defaults()
                     .using_resolution(adapter.limits()),
@@ -347,6 +384,16 @@ impl GpuContext {
         Ok(())
     }
 
+    /// Configures `surface` for the given size.
+    ///
+    /// Every call reconfigures. An earlier version skipped this when the
+    /// surface's heap address and size matched the previous frame, on the
+    /// assumption that the surface was cached and therefore stable. It is not:
+    /// the compositor builds a fresh `wgpu::Surface` per frame, and WASM reuses
+    /// freed addresses, so a brand-new surface routinely matches the old
+    /// address and skips `configure()` — presenting nothing at all, i.e. a
+    /// black canvas with no error. Correctness over one swapchain reconfigure
+    /// per frame; the cost is negligible next to the draw itself.
     pub fn configure_surface(
         &self,
         surface: &wgpu::Surface<'_>,
@@ -468,7 +515,7 @@ impl GpuContext {
                 },
             );
         } else {
-            let rgba_bytes = Self::read_external_image_pixels(source, width, height);
+            let rgba_bytes = self.read_external_image_pixels(source, width, height);
 
             let pixel_bytes = if self.texture_format == wgpu::TextureFormat::Bgra8Unorm {
                 let mut bytes = rgba_bytes;
@@ -506,22 +553,32 @@ impl GpuContext {
 
     #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
     fn read_external_image_pixels(
+        &self,
         source: &wgpu::ExternalImageSource,
         width: u32,
         height: u32,
     ) -> Vec<u8> {
         if let wgpu::ExternalImageSource::ImageData(image_data) = source {
-            return image_data.data().to_vec();
+            return image_data.data().0;
         }
 
-        let canvas = web_sys::OffscreenCanvas::new(width, height)
-            .expect("Failed to create fallback texture canvas");
-        let ctx: web_sys::OffscreenCanvasRenderingContext2d = canvas
+        let scratch = self.external_image_scratch(width, height);
+        let ctx: web_sys::OffscreenCanvasRenderingContext2d = scratch
+            .as_ref()
+            .expect("scratch canvas is created on demand")
+            .canvas
             .get_context("2d")
             .ok()
             .flatten()
             .expect("Failed to get 2d context for texture import")
             .unchecked_into();
+
+        // The scratch canvas is reused across layers, so it must start empty.
+        // `draw_image` only writes the destination area it actually covers, so
+        // without this a source with transparent edges would leave the previous
+        // layer's pixels in the region this one does not paint — a smear that
+        // reads as a rendering bug.
+        ctx.clear_rect(0.0, 0.0, width as f64, height as f64);
 
         match source {
             wgpu::ExternalImageSource::ImageBitmap(bitmap) => ctx
@@ -542,10 +599,46 @@ impl GpuContext {
             wgpu::ExternalImageSource::ImageData(_) => unreachable!(),
         };
 
+        // `ImageData::data` already hands back an owned `Vec`, so it is taken by
+        // value rather than copied again: at 1080p that second copy was 8 MB of
+        // pointless memcpy on every canvas layer of every frame.
         ctx.get_image_data(0.0, 0.0, width as f64, height as f64)
             .expect("Failed to read pixel data from fallback canvas")
             .data()
-            .to_vec()
+            .0
+    }
+
+    /// Returns the shared scratch canvas, creating or resizing it as needed.
+    ///
+    /// The fallback runs once per canvas layer per frame, and
+    /// `OffscreenCanvas::new` allocates a fresh 2D backing store every time.
+    /// One cached canvas removes that per-frame churn; the size is re-checked on
+    /// every call so a resized layer or project still reads back at the right
+    /// dimensions.
+    #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+    fn external_image_scratch(
+        &self,
+        width: u32,
+        height: u32,
+    ) -> std::sync::MutexGuard<'_, Option<ExternalImageScratch>> {
+        let mut scratch = self
+            .external_image_scratch
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        let needs_new = scratch
+            .as_ref()
+            .is_none_or(|s| s.width != width || s.height != height);
+        if needs_new {
+            *scratch = Some(ExternalImageScratch {
+                width,
+                height,
+                canvas: web_sys::OffscreenCanvas::new(width, height)
+                    .expect("Failed to create fallback texture canvas"),
+            });
+        }
+
+        scratch
     }
 
     #[cfg(all(feature = "wasm", target_arch = "wasm32"))]

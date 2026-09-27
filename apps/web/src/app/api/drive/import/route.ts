@@ -39,6 +39,94 @@ export type DriveFileImport = {
 
 export type DriveImportResult = DriveFileImport | DriveFolderImport;
 
+/**
+ * Bytes per base64 fragment. Base64 maps 3 input bytes to exactly 4
+ * characters and never pads mid-stream, so a fragment whose length is a
+ * multiple of 3 encodes independently and the fragments concatenate back
+ * to the exact same string as encoding the whole buffer at once.
+ */
+const BASE64_FRAGMENT_BYTES = 3 * 64 * 1024; // 192 KB
+
+const encoder = new TextEncoder();
+
+/**
+ * Base64-encode `buffer` as a sequence of independent fragments.
+ *
+ * The client contract is JSON with a base64 `dataBase64` string
+ * (`components/import-drive-button.tsx` decodes it into a File), so the
+ * payload cannot simply be dropped. What can be avoided is materializing
+ * it twice more: `buffer.toString("base64")` allocates one ~1.33x string
+ * and `NextResponse.json` allocates a second while serializing, on top of
+ * the raw bytes. At the 200 MB cap that is roughly 1 GB of peak memory.
+ * Emitting fragments keeps a single full-size copy in total.
+ */
+function* encodeBase64Fragments(buffer: Buffer): Generator<string> {
+	let offset = 0;
+	while (offset + BASE64_FRAGMENT_BYTES <= buffer.length) {
+		yield buffer.toString("base64", offset, offset + BASE64_FRAGMENT_BYTES);
+		offset += BASE64_FRAGMENT_BYTES;
+	}
+	if (offset < buffer.length) {
+		yield buffer.toString("base64", offset, buffer.length);
+	}
+}
+
+/**
+ * Build the `DriveFileImport` response as a streamed JSON body: a small
+ * metadata prefix, the base64 payload in fragments, then the closing
+ * quote and brace. Byte-for-byte identical to `NextResponse.json` of the
+ * same object, and `res.json()` on the client parses it unchanged.
+ */
+function fileImportJsonStream({
+	fileId,
+	fileName,
+	contentType,
+	sizeBytes,
+	buffer,
+}: {
+	fileId: string;
+	fileName: string;
+	contentType: string;
+	sizeBytes: number;
+	buffer: Buffer;
+}): Response {
+	const meta: Omit<DriveFileImport, "dataBase64"> = {
+		ok: true,
+		kind: "file",
+		fileId,
+		fileName,
+		contentType,
+		sizeBytes,
+	};
+	// Serialize the metadata object, drop its closing brace and reopen the
+	// object with the base64 payload: the client receives exactly the
+	// `DriveFileImport` shape, with the payload streamed in.
+	const prefix = `${JSON.stringify(meta).slice(0, -1)},"dataBase64":"`;
+	const suffix = '"}';
+	const fragments = encodeBase64Fragments(buffer);
+	let prefixSent = false;
+	const body = new ReadableStream<Uint8Array>({
+		pull(controller) {
+			if (!prefixSent) {
+				prefixSent = true;
+				controller.enqueue(encoder.encode(prefix));
+				return;
+			}
+			const next = fragments.next();
+			if (next.done) {
+				controller.enqueue(encoder.encode(suffix));
+				controller.close();
+				return;
+			}
+			controller.enqueue(encoder.encode(next.value));
+		},
+	});
+	return new Response(body, {
+		status: 200,
+		headers: { "content-type": "application/json" },
+	});
+}
+
 export async function POST(request: Request) {
 	const session = await getOptionalSession();
 	if (!session) {
@@ -199,11 +287,11 @@ export async function POST(request: Request) {
 	const contentType =
 		response.headers.get("content-type") ?? "application/octet-stream";
 
-	// Stream the body into chunks instead of buffering the whole file via
-	// `arrayBuffer()` (one copy) then `Buffer.from` (a second copy) before
-	// base64 (a third). We also abort mid-stream the moment the transfer
-	// crosses the safety cap, so a missing or lying `content-length` header
-	// can't force a multi-hundred-MB memory spike on the server.
+	// Read the body once, into a single full-size buffer, and abort the
+	// moment the transfer crosses the safety cap so a missing or lying
+	// `content-length` header can't force a multi-hundred-MB memory spike
+	// on the server. Pre-sizing the buffer when Drive reports the length
+	// avoids a second full-size copy (`chunks` plus `Buffer.concat`).
 	const reader = response.body?.getReader();
 	if (!reader) {
 		return NextResponse.json(
@@ -215,7 +303,13 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const chunks: Uint8Array[] = [];
+	const preallocated =
+		Number.isFinite(contentLength) && contentLength > 0
+			? Buffer.allocUnsafe(contentLength)
+			: null;
+	/** Only used when the declared length was absent or wrong. */
+	const chunks: Buffer[] = [];
+	let filled = 0;
 	let totalBytes = 0;
 	try {
 		for (;;) {
@@ -233,7 +327,16 @@ export async function POST(request: Request) {
 						{ status: 413 },
 					);
 				}
-				chunks.push(value);
+				// A header that understates the size must not write past the
+				// pre-sized buffer; those bytes fall back to `chunks`.
+				if (preallocated && filled + value.byteLength <= preallocated.length) {
+					preallocated.set(value, filled);
+					filled += value.byteLength;
+				} else {
+					chunks.push(
+						Buffer.from(value.buffer, value.byteOffset, value.byteLength),
+					);
+				}
 			}
 		}
 	} catch {
@@ -247,19 +350,27 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const buffer = Buffer.concat(chunks as Buffer[]);
+	const buffer =
+		chunks.length > 0
+			? Buffer.concat(
+					[
+						...(preallocated ? [preallocated.subarray(0, filled)] : []),
+						...chunks,
+					],
+					totalBytes,
+				)
+			: (preallocated?.subarray(0, totalBytes) ??
+				Buffer.alloc(totalBytes));
 	const disposition = response.headers.get("content-disposition");
 	const fileName = extractFileName({ disposition, fileId, contentType });
 
-	return NextResponse.json({
-		ok: true,
-		kind: "file",
+	return fileImportJsonStream({
 		fileId,
 		fileName,
 		contentType,
 		sizeBytes: buffer.byteLength,
-		dataBase64: buffer.toString("base64"),
-	} satisfies DriveFileImport);
+		buffer,
+	});
 }
 
 type ProbeResult = "ok" | "not_public" | "not_found" | "unknown";

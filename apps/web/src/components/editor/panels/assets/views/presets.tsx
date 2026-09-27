@@ -32,8 +32,23 @@ import {
 	CatalogSearch,
 	filterCatalogItems,
 } from "@/components/editor/panels/assets/views/components/catalog-search";
-import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { VirtualAssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { useI18n } from "@/lib/i18n";
+
+/**
+ * 1×1 transparent GIF used to blank out the browser's native drag image so
+ * only the floating ghost below the cursor is visible. Created once at module
+ * load: the previous inline `new window.Image()` ran in `PresetCard`'s render
+ * body, so every preset card allocated a new `Image` on every parent
+ * re-render. Mirrors `EMPTY_DRAG_GHOST` in `panels/assets/draggable-item.tsx`.
+ */
+const EMPTY_DRAG_GHOST = (() => {
+	if (typeof window === "undefined") return null;
+	const img = new window.Image();
+	img.src =
+		"data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+	return img;
+})();
 
 export function PresetsView() {
 	const { t } = useI18n();
@@ -75,11 +90,12 @@ export function PresetsView() {
 				) : filteredPresets.length === 0 ? (
 					<CatalogEmptyState query={query} />
 				) : (
-					<AssetGrid gap="gap-2">
-						{filteredPresets.map((preset) => (
-							<PresetCard key={preset.id} preset={preset} />
-						))}
-					</AssetGrid>
+					<VirtualAssetGrid
+						items={filteredPresets}
+						getKey={(preset) => preset.id}
+						renderItem={(preset) => <PresetCard preset={preset} />}
+						gap="gap-2"
+					/>
 				)}
 			</div>
 		</PanelView>
@@ -164,19 +180,9 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 		setIsRenaming(false);
 	};
 
-	const emptyImg =
-		typeof window !== "undefined"
-			? (() => {
-					const img = new window.Image();
-					img.src =
-						"data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
-					return img;
-				})()
-			: null;
-
 	const handleDragStart = (event: React.DragEvent) => {
-		if (!emptyImg) return;
-		event.dataTransfer.setDragImage(emptyImg, 0, 0);
+		if (!EMPTY_DRAG_GHOST) return;
+		event.dataTransfer.setDragImage(EMPTY_DRAG_GHOST, 0, 0);
 		setDragData({
 			dataTransfer: event.dataTransfer,
 			dragData: {
@@ -332,7 +338,7 @@ function PresetCard({ preset }: { preset: UserPreset }) {
 				</ContextMenuItem>
 			</ContextMenuContent>
 			{/* Floating drag ghost — keeps the preview visible while the
-			    native drag image is hidden via setDragImage(emptyImg). The
+			    native drag image is hidden via setDragImage(EMPTY_DRAG_GHOST). The
 			    ghost tracks the cursor at -40px / -40px so the card centre
 			    lands on the pointer, matching how the other DraggableItem
 			    views feel. */}

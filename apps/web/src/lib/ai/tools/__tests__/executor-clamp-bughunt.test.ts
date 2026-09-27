@@ -20,7 +20,6 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 
 let currentTracks: SceneTracks;
 let transitions: Transition[];
-let inserted: Array<{ elementId: string; trackId: string }>;
 let seekCalls: number[];
 let volumeCalls: number[];
 let playbackTime = 0;
@@ -135,7 +134,6 @@ function installTracks() {
 		}),
 	});
 	transitions = [];
-	inserted = [];
 	seekCalls = [];
 	volumeCalls = [];
 	playbackTime = 0;

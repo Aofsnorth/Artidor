@@ -1,10 +1,28 @@
-import { Input, ALL_FORMATS, BlobSource, VideoSampleSink } from "mediabunny";
 import { toast } from "sonner";
 import { getMediaTypeFromFile } from "@/lib/media/media-utils";
 import { formatStorageBytes } from "@/services/storage/quota";
 import { storageService } from "@/services/storage/service";
 import type { MediaAsset } from "@/lib/media/types";
 import { getVideoInfo, type AudioTrackInfo } from "./mediabunny";
+
+/**
+ * Loads `mediabunny` on demand, memoized so concurrent calls share one import.
+ *
+ * `processing.ts` is pulled into the editor's initial graph by
+ * `project-manager.ts`, so a module-level `import` of `mediabunny` — the
+ * largest third-party payload the editor downloads — landed in the first chunk
+ * even though it is only needed once the user imports a file. A rejected
+ * import is not cached, so a transient failure can be retried.
+ */
+let mediabunnyPromise: Promise<typeof import("mediabunny")> | null = null;
+
+function loadMediabunny(): Promise<typeof import("mediabunny")> {
+	mediabunnyPromise ??= import("mediabunny").catch((error) => {
+		mediabunnyPromise = null;
+		throw error;
+	});
+	return mediabunnyPromise;
+}
 
 export interface ProcessedMediaAsset extends Omit<MediaAsset, "id"> {}
 
@@ -90,6 +108,8 @@ async function generateThumbnail({
 	videoFile: File;
 	timeInSeconds: number;
 }): Promise<string> {
+	const { ALL_FORMATS, BlobSource, Input, VideoSampleSink } = await loadMediabunny();
+
 	const input = new Input({
 		source: new BlobSource(videoFile),
 		formats: ALL_FORMATS,

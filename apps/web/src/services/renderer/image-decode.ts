@@ -45,7 +45,30 @@ function closeBitmapQuietly({ bitmap }: { bitmap: ImageBitmap }): void {
 	try {
 		bitmap.close();
 	} catch {
-		// Already closed by a shared owner — nothing left to free.
+		// Already closed by whoever owned it last — nothing left to free.
+	}
+}
+
+/**
+ * Hands ownership of a decoded bitmap to the caller.
+ *
+ * Callers that retain a bitmap past the current call (the per-node source caches
+ * in `nodes/image-node.ts` and `nodes/sticker-node.ts`) must call this, otherwise
+ * two caches hold the same instance and each may close it:
+ * `decodedBitmapCache` closes on its own LRU eviction, the node cache closes on
+ * its own, and a *closed* `ImageBitmap` uploads as nothing — a black layer in the
+ * preview rather than an error.
+ *
+ * The entry is dropped WITHOUT being closed, so the caller becomes the sole
+ * owner and is responsible for the `close()`. In-flight dedupe is unaffected:
+ * `pendingBitmapDecodes` is keyed separately and is only consulted on a cache
+ * miss, which a detached entry no longer produces.
+ */
+export function detachDecodedBitmap(bitmap: ImageBitmap): void {
+	for (const [key, cached] of decodedBitmapCache) {
+		if (cached === bitmap) {
+			decodedBitmapCache.delete(key);
+		}
 	}
 }
 
@@ -158,16 +181,12 @@ function buildDecodeError(
  * cached — a rejected decode is retried on the next call.
  *
  * Shared-ownership contract: cache hits return the SAME `ImageBitmap`
- * instance. Treat the result as borrowed — do NOT call `close()` on it,
- * or later same-key callers will receive a dead bitmap. Eviction closes the
- * evicted bitmap (best-effort, failures ignored).
- *
- * Known gap (out of scope for this pass): `nodes/image-node.ts` closes the
- * bitmap on its downscale path. A same-key caller after such a close can
- * receive a closed bitmap. The key includes the size hint, so preview vs
- * export variants rarely collide; the residual case is documented in
- * `docs/features/editor-perf-100-pass/export.md` instead of fixed here
- * because the node files are outside this pass's ownership.
+ * instance. The LRU is the owner, so a caller that only uses the bitmap for the
+ * duration of the call must NOT close it. A caller that *retains* the bitmap past
+ * the call must first call [`detachDecodedBitmap`] to take ownership; otherwise
+ * this LRU can close a bitmap the caller is still serving, and a closed
+ * `ImageBitmap` uploads as nothing (a black layer). Eviction closes the evicted
+ * bitmap (best-effort, failures ignored).
  *
  * `createImageBitmap(blob)` fails on SVGs without `width`/`height` or a
  * `viewBox` in some browsers. Passing `resizeWidth` (or falling back to

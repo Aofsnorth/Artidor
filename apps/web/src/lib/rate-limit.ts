@@ -74,19 +74,91 @@ const REDIS_LIMIT_TIMEOUT_MS = 1000;
 let hasWarnedRedisUnavailable = false;
 let hasWarnedRedisCreateUnavailable = false;
 
+/**
+ * Remaining budget for one key inside the limiter's current window,
+ * as reported by the authoritative limiter.
+ */
+interface CachedBudget {
+	/** The authoritative decision, kept so a denial is served fail-closed. */
+	success: boolean;
+	/** Requests still allowed in the current window. */
+	remaining: number;
+	/** Epoch ms at which the authoritative window rolls over. */
+	reset: number;
+}
+
+/** Cap mirrors the local fallback stores so a flood cannot grow memory. */
+const DECISION_CACHE_MAX_ENTRIES = LOCAL_MAX_ENTRIES;
+
+/**
+ * Per-key cache of the authoritative limiter's own budget.
+ *
+ * A collaboration client issues ~11 requests/second (1 Hz state poll +
+ * 10 Hz cursor). Each one used to pay a blocking Upstash round-trip just
+ * to be told "yes", which made the limiter the single largest source of
+ * Redis traffic in the app.
+ *
+ * This cache does NOT re-decide anything and cannot raise the limit: it
+ * stores the `remaining`/`reset` budget that `Ratelimit.limit()`
+ * returned and spends it locally, re-consulting Redis only when the
+ * budget is exhausted or the window rolls over. The enforced ceiling is
+ * therefore still 100 requests/minute per key — a burst is absorbed
+ * sooner, never granted more. A denial is cached for the rest of the
+ * window, so a client that is being throttled stops hammering Redis too.
+ *
+ * Keyed on the resolved client IP, never on a request-supplied session,
+ * room, or resource id: a caller able to pick its own key could mint
+ * unlimited buckets and defeat the limit entirely — the failure mode
+ * `clientIpOf` already guards against for `x-forwarded-for`. Nothing here
+ * disables limiting, for collab or for any other route.
+ */
+const decisionCache = new Map<string, CachedBudget>();
+
+function rememberBudget(key: string, budget: CachedBudget): void {
+	if (decisionCache.size >= DECISION_CACHE_MAX_ENTRIES) {
+		const oldestKey = decisionCache.keys().next().value;
+		if (oldestKey !== undefined) decisionCache.delete(oldestKey);
+	}
+	decisionCache.set(key, budget);
+}
+
 export async function checkRateLimit({ request }: { request: Request }) {
 	const ip = clientIpOf(request);
+
+	// While Redis is in its unreachable cooldown the local limiter is the
+	// authority, so the cache is bypassed entirely rather than spending a
+	// Redis-granted budget on top of the local counter.
 	if (Date.now() > redisLimitDisabledUntil) {
+		// Spend the budget the authoritative limiter already granted, if the
+		// window is still open. Unknown, exhausted, or expired entries fall
+		// through to Redis, which stays the only source of truth.
+		const cached = decisionCache.get(ip);
+		if (cached) {
+			if (Date.now() >= cached.reset) {
+				decisionCache.delete(ip);
+			} else if (!cached.success) {
+				return { success: false, limited: true };
+			} else if (cached.remaining > 0) {
+				cached.remaining -= 1;
+				return { success: true, limited: false };
+			}
+		}
+
 		try {
-			const { success } = await Promise.race([
+			// `Promise<never>` keeps the union from widening the response
+			// type, so `remaining`/`reset` stay available for the cache.
+			const { success, remaining, reset } = await Promise.race([
 				baseRateLimit.limit(ip),
-				new Promise<{ success: boolean }>((_, reject) =>
+				new Promise<never>((_, reject) =>
 					setTimeout(
 						() => reject(new Error("RateLimit timeout")),
 						REDIS_LIMIT_TIMEOUT_MS,
 					),
 				),
 			]);
+			if (Number.isFinite(remaining) && Number.isFinite(reset)) {
+				rememberBudget(ip, { success, remaining, reset });
+			}
 			return { success, limited: !success };
 		} catch (err) {
 			redisLimitDisabledUntil = Date.now() + REDIS_LIMIT_COOLDOWN_MS;

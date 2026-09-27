@@ -8,7 +8,11 @@ import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
 import { TIMELINE_CONTENT_LEFT_INSET_PX } from "@/components/editor/panels/timeline/layout";
 import { roundToFrame } from "artidor-wasm";
-import { snapElementEdge, type SnapPoint } from "@/lib/timeline/snap-utils";
+import {
+	snapElementEdge,
+	snapImportStartToPreviousEnd,
+	type SnapPoint,
+} from "@/lib/timeline/snap-utils";
 import { useTimelineStore } from "@/stores/timeline-store";
 import { toast } from "sonner";
 import { computeTrackExpansionHeight } from "@/components/editor/panels/timeline/expanded-layout";
@@ -40,7 +44,11 @@ import type {
 import { textPresets } from "@/lib/text/presets";
 import { DEFAULTS } from "@/lib/timeline/defaults";
 import { usePresetsStore } from "@/stores/presets-store";
-import { presetToClipboardItems } from "@/lib/presets";
+// Imported from the defining module, not the `@/lib/presets` barrel: the
+// barrel re-exports `thumbnail.ts`, which statically pulls in the whole render
+// pipeline (canvas-renderer + gpu-renderer + scene-builder) into the timeline
+// chunk. `manager.ts` itself only needs `generateUUID`.
+import { presetToClipboardItems } from "@/lib/presets/manager";
 
 /**
  * Sensible defaults applied when a text drag carries only `name`/`content`
@@ -196,13 +204,6 @@ export function useTimelineDragDrop({
 				TIMELINE_CONTENT_LEFT_INSET_PX;
 			const mouseY = e.clientY - referenceRect.top + scrollTop - headerHeight;
 
-			const targetElementTypes =
-				dragData?.type === "effect"
-					? (dragData as EffectDragData).targetElementTypes
-					: dragData?.type === "media"
-						? (dragData as MediaDragData).targetElementTypes
-						: undefined;
-
 			const sceneTracks = editor.scenes.getActiveScene().tracks;
 			const currentTime = editor.playback.getCurrentTime();
 			const orderedTracks = getOrderedTracks(sceneTracks);
@@ -219,10 +220,14 @@ export function useTimelineDragDrop({
 			let snappedTime = frameSnappedTime;
 			let activeSnapPoint: SnapPoint | null = null;
 
-			// Magnet snap for drops (library tiles, OS file drops): when snapping
-			// is enabled, snap the new clip's start OR end edge to the nearest
-			// existing clip edge within the default snap threshold.
+			// Library/file drops use a wider import radius: when the dragged
+			// clip starts just to the right of an existing edge, align to it.
 			if (snappingEnabled) {
+				const importSnap = snapImportStartToPreviousEnd({
+					targetTime: frameSnappedTime,
+					tracks: sceneTracks,
+					zoomLevel,
+				});
 				const startSnap = snapElementEdge({
 					targetTime: frameSnappedTime,
 					elementDuration: duration,
@@ -239,8 +244,9 @@ export function useTimelineDragDrop({
 					zoomLevel,
 					snapToStart: false,
 				});
-				const best =
+				const edgeSnap =
 					startSnap.snapDistance <= endSnap.snapDistance ? startSnap : endSnap;
+				const best = importSnap.snapPoint ? importSnap : edgeSnap;
 				if (best.snapPoint) {
 					snappedTime = best.snappedTime;
 					activeSnapPoint = best.snapPoint;
@@ -249,13 +255,12 @@ export function useTimelineDragDrop({
 
 			onSnapPointChange?.(activeSnapPoint);
 
-			const isMediaEdgeSnap =
-				dragData?.type === "media" &&
-				(activeSnapPoint?.type === "element-start" ||
-					activeSnapPoint?.type === "element-end");
-			const dropTargetElementTypes = isMediaEdgeSnap
-				? undefined
-				: targetElementTypes;
+			// Only effects bind to the hovered element. Media always inserts a
+			// new clip; resolving a target would swap that clip's media instead.
+			const dropTargetElementTypes =
+				dragData?.type === "effect"
+					? (dragData as EffectDragData).targetElementTypes
+					: undefined;
 
 			const target = computeDropTarget({
 				elementType,
@@ -454,27 +459,6 @@ export function useTimelineDragDrop({
 
 	const executeMediaDrop = useCallback(
 		({ target, dragData }: { target: DropTarget; dragData: MediaDragData }) => {
-			if (target.targetElement) {
-				const targetTrack = editor.timeline.getTrackById({
-					trackId: target.targetElement.trackId,
-				});
-				const targetElement = targetTrack?.elements.find(
-					(element) => element.id === target.targetElement?.elementId,
-				);
-				if (targetElement?.type === dragData.mediaType) {
-					editor.timeline.updateElements({
-						updates: [
-							{
-								trackId: target.targetElement.trackId,
-								elementId: target.targetElement.elementId,
-								patch: { mediaId: dragData.id },
-							},
-						],
-					});
-					return;
-				}
-			}
-
 			const mediaAssets = editor.media.getAssets();
 			const mediaAsset = mediaAssets.find((m) => m.id === dragData.id);
 			if (!mediaAsset) return;
@@ -663,6 +647,11 @@ export function useTimelineDragDrop({
 						);
 						let fileDropTime = getSnappedTime({ time: rawX });
 						if (snappingEnabled) {
+							const importSnap = snapImportStartToPreviousEnd({
+								targetTime: fileDropTime,
+								tracks: sceneTracks,
+								zoomLevel,
+							});
 							const startSnap = snapElementEdge({
 								targetTime: fileDropTime,
 								elementDuration: duration,
@@ -679,10 +668,11 @@ export function useTimelineDragDrop({
 								zoomLevel,
 								snapToStart: false,
 							});
-							const best =
+							const edgeSnap =
 								startSnap.snapDistance <= endSnap.snapDistance
 									? startSnap
 									: endSnap;
+							const best = importSnap.snapPoint ? importSnap : edgeSnap;
 							if (best.snapPoint) {
 								fileDropTime = best.snappedTime;
 							}

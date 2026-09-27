@@ -10,8 +10,12 @@ export const hueRotateAdjustmentDefinition: EffectDefinition = {
 			label: "Amount",
 			type: "number",
 			default: 0,
-			min: 0,
-			max: 360,
+			// Symmetric around the neutral 0 so the Adjust tab can expose a
+			// CapCut-style -100..100 Hue slider that rotates -180..+180 degrees.
+			// A rotation stored by an older preset in 0..360 terms still renders
+			// identically (rotation is modular).
+			min: -180,
+			max: 180,
 			step: 1,
 		},
 	],

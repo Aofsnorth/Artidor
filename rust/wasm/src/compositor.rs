@@ -20,6 +20,15 @@ enum CompositorCanvas {
 
 struct CompositorRuntime {
     canvas: CompositorCanvas,
+    // Created ONCE at init and reused for every frame. Creating a fresh
+    // `wgpu::Surface` per `renderFrame` call leaked swapchains: each
+    // `create_surface` + `configure` allocates a new backbuffer set on the
+    // same OffscreenCanvas, and the abandoned ones only return to the driver
+    // after JS GC catches up. A 60fps preview therefore climbed steadily
+    // towards GPU OOM, which surfaces as `createBuffer` failing on a tiny
+    // 48-byte uniform buffer with a misleading "size is too large" error,
+    // which panics inside wgpu and bricks the compositor for good.
+    surface: wgpu::Surface<'static>,
     compositor: Compositor,
 }
 
@@ -48,10 +57,16 @@ pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
             .map_err(|e| JsValue::from_str(&format!("transferControlToOffscreen failed: {e:?}")))?;
 
         let compositor = Compositor::new(&gpu_runtime.context);
+        let surface = gpu_runtime
+            .context
+            .instance()
+            .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas.clone()))
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
 
         COMPOSITOR_RUNTIME.with(|runtime| {
             runtime.replace(Some(CompositorRuntime {
                 canvas: CompositorCanvas::Offscreen(canvas),
+                surface,
                 compositor,
             }));
         });
@@ -66,10 +81,16 @@ pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
 pub fn init_compositor_with_canvas(canvas: web_sys::OffscreenCanvas) -> Result<(), JsValue> {
     with_gpu_runtime(|gpu_runtime| {
         let compositor = Compositor::new(&gpu_runtime.context);
+        let surface = gpu_runtime
+            .context
+            .instance()
+            .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas.clone()))
+            .map_err(|error| JsValue::from_str(&error.to_string()))?;
 
         COMPOSITOR_RUNTIME.with(|runtime| {
             runtime.replace(Some(CompositorRuntime {
                 canvas: CompositorCanvas::Offscreen(canvas),
+                surface,
                 compositor,
             }));
         });
@@ -121,26 +142,37 @@ pub fn upload_texture(options: JsValue) -> Result<(), JsValue> {
         height,
     } = parse_upload_texture_options(options)?;
 
-    with_gpu_runtime(|gpu_runtime| {
-        COMPOSITOR_RUNTIME.with(|runtime| {
-            let mut borrow = runtime.borrow_mut();
-            let Some(runtime) = borrow.as_mut() else {
-                return Err(JsValue::from_str(
-                    "Compositor is not initialized. Call initCompositor() first.",
-                ));
-            };
+    // Take BOTH runtimes out of their cells for the duration of the upload.
+    // wasm panics do not run Rust destructors, so a `borrow_mut()` held across
+    // a panicking `import_external_image` would strand the `RefCell` flag and
+    // turn every later call into `RefCell already borrowed`. With the cells
+    // empty, a panic leaves them EMPTY — the next call reports "not
+    // initialized" and the JS recovery path can rebuild.
+    let Some(gpu_runtime) = crate::gpu::take_gpu_runtime() else {
+        return Err(JsValue::from_str(
+            "GPU context not initialized. Call initializeGpu() first.",
+        ));
+    };
+    let result = COMPOSITOR_RUNTIME.with(|cell| {
+        let Some(mut runtime) = cell.replace(None) else {
+            return Err(JsValue::from_str(
+                "Compositor is not initialized. Call initCompositor() first.",
+            ));
+        };
 
-            let texture = import_external_image(
-                &gpu_runtime.context,
-                &source,
-                width,
-                height,
-                "compositor-upload-texture",
-            );
-            runtime.compositor.upsert_texture(id, texture);
-            Ok(())
-        })
-    })
+        let texture = import_external_image(
+            &gpu_runtime.context,
+            &source,
+            width,
+            height,
+            "compositor-upload-texture",
+        );
+        runtime.compositor.upsert_texture(id, texture);
+        cell.replace(Some(runtime));
+        Ok(())
+    });
+    crate::gpu::restore_gpu_runtime(gpu_runtime);
+    result
 }
 
 #[wasm_bindgen(js_name = releaseTexture)]
@@ -162,36 +194,39 @@ pub fn render_frame(options: JsValue) -> Result<(), JsValue> {
     let frame: FrameDescriptor = serde_wasm_bindgen::from_value(options)
         .map_err(|error| JsValue::from_str(&format!("Invalid frame descriptor: {error}")))?;
 
-    with_gpu_runtime(|gpu_runtime| {
-        COMPOSITOR_RUNTIME.with(|runtime| {
-            let mut borrow = runtime.borrow_mut();
-            let Some(runtime) = borrow.as_mut() else {
-                return Err(JsValue::from_str(
-                    "Compositor is not initialized. Call initCompositor() first.",
-                ));
-            };
+    // Same take/restore pattern as `upload_texture`: a panic anywhere inside
+    // `render_frame` (wgpu `createBuffer` failures, device loss, OOM) leaves
+    // both cells EMPTY instead of stuck-borrowed, so the JS-side recovery
+    // (`markDeviceLost` -> `destroyGpu` -> `initializeGpu` -> re-init) can
+    // actually rebuild instead of panicking forever on `RefCell already
+    // borrowed`.
+    let Some(gpu_runtime) = crate::gpu::take_gpu_runtime() else {
+        return Err(JsValue::from_str(
+            "GPU context not initialized. Call initializeGpu() first.",
+        ));
+    };
+    let result = COMPOSITOR_RUNTIME.with(|cell| {
+        let Some(mut runtime) = cell.replace(None) else {
+            return Err(JsValue::from_str(
+                "Compositor is not initialized. Call initCompositor() first.",
+            ));
+        };
 
-            // Both main-thread and Worker paths use OffscreenCanvas for surface creation
-            let surface = match &runtime.canvas {
-                CompositorCanvas::Offscreen(canvas) => gpu_runtime
-                    .context
-                    .instance()
-                    .create_surface(wgpu::SurfaceTarget::OffscreenCanvas(canvas.clone()))
-                    .map_err(|error| JsValue::from_str(&error.to_string()))?,
-            };
-
-            runtime
-                .compositor
-                .render_frame(
-                    &gpu_runtime.context,
-                    RenderFrameOptions {
-                        frame: &frame,
-                        surface: &surface,
-                    },
-                )
-                .map_err(|error| JsValue::from_str(&error.to_string()))
-        })
-    })
+        let result = runtime
+            .compositor
+            .render_frame(
+                &gpu_runtime.context,
+                RenderFrameOptions {
+                    frame: &frame,
+                    surface: &runtime.surface,
+                },
+            )
+            .map_err(|error| JsValue::from_str(&error.to_string()));
+        cell.replace(Some(runtime));
+        result
+    });
+    crate::gpu::restore_gpu_runtime(gpu_runtime);
+    result
 }
 
 #[derive(Debug)]

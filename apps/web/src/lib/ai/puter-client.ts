@@ -929,13 +929,19 @@ export async function* streamPuterChat(
 	}
 
 	const textBased = isTextBasedToolModel(model);
-	console.log("[puter] chat start", {
-		model,
-		textBased,
-		messageCount: messages.length,
-		hasTools: Boolean(tools && tools.length > 0),
-		toolCount: tools?.length ?? 0,
-	});
+	// Per-request diagnostics only. These used to run unconditionally: the
+	// messages log stringified the whole conversation with indentation on
+	// every request — main-thread work proportional to the conversation,
+	// plus a synchronous console write of the result.
+	if (process.env.NODE_ENV !== "production") {
+		console.log("[puter] chat start", {
+			model,
+			textBased,
+			messageCount: messages.length,
+			hasTools: Boolean(tools && tools.length > 0),
+			toolCount: tools?.length ?? 0,
+		});
+	}
 
 	const options: Record<string, unknown> = {
 		model,
@@ -953,16 +959,21 @@ export async function* streamPuterChat(
 	}
 
 	const puterMessages = toPuterMessages(messages, model);
-	console.log("[puter] messages sent", JSON.stringify(puterMessages, null, 2));
-	console.log(
-		"[puter] options sent",
-		JSON.stringify(
-			options,
-			(key, value) =>
-				key === "tools" ? `[${(value as unknown[]).length} tools]` : value,
-			2,
-		),
-	);
+	if (process.env.NODE_ENV !== "production") {
+		console.log(
+			"[puter] messages sent",
+			JSON.stringify(puterMessages, null, 2),
+		);
+		console.log(
+			"[puter] options sent",
+			JSON.stringify(
+				options,
+				(key, value) =>
+					key === "tools" ? `[${(value as unknown[]).length} tools]` : value,
+				2,
+			),
+		);
+	}
 
 	let response: AsyncIterable<PuterChatChunk>;
 	try {
@@ -991,29 +1002,11 @@ export async function* streamPuterChat(
 			return;
 		}
 
-		// Debug log the full chunk so we can diagnose models that
-		// send tool calls in unexpected formats. Truncate text for
-		// readability.
-		const partForLog: Record<string, unknown> = { type: part.type };
-		if (part.text)
-			partForLog.text =
-				part.text.length > 100 ? `${part.text.slice(0, 100)}…` : part.text;
-		if (part.name) partForLog.name = part.name;
-		if (part.id) partForLog.id = part.id;
-		if (part.input !== undefined) partForLog.input = part.input;
-		if (part.message) partForLog.message = part.message;
-		// Also capture any other fields that might indicate tool calls
-		const partRecord = part as Record<string, unknown>;
-		for (const key of [
-			"arguments",
-			"function",
-			"tool_calls",
-			"function_call",
-			"delta",
-		]) {
-			if (partRecord[key] !== undefined) partForLog[key] = partRecord[key];
-		}
-		console.log("[puter] chunk", JSON.stringify(partForLog));
+		// NOTE: a per-chunk debug log used to live here. This loop runs once
+		// per streamed token, so it built a `partForLog` object and a JSON
+		// string per token and wrote it to the main-thread console. Diagnose
+		// stream shape by logging a bounded slice of the first few chunks
+		// behind `NODE_ENV !== "production"` instead.
 
 		if (part.type === "text" && part.text) {
 			// Feed through the parser to detect and extract text-based

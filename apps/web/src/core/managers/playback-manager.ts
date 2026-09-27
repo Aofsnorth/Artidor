@@ -155,8 +155,12 @@ export class PlaybackManager {
 	}
 
 	private reconcileTimelineScope(): void {
+		// One duration read only: getTotalDuration() walks every element of every
+		// track, and this runs on EVERY timeline/scenes notification (once per
+		// committed command, and per sibling during a multi-select drop). Reading
+		// it twice per notification doubled that scan for no benefit.
 		const maxTime = this.editor.timeline.getTotalDuration();
-		const nextTime = this.clampTimeToTimeline(this.currentTime);
+		const nextTime = this.clampToMax({ time: this.currentTime, maxTime });
 		const shouldPause = this.isPlaying && nextTime >= maxTime;
 		const timeChanged = nextTime !== this.currentTime;
 
@@ -235,7 +239,14 @@ export class PlaybackManager {
 	};
 
 	private clampTimeToTimeline(time: number): number {
-		const maxTime = this.editor.timeline.getTotalDuration();
+		return this.clampToMax({
+			time,
+			maxTime: this.editor.timeline.getTotalDuration(),
+		});
+	}
+
+	/** Clamp into [0, maxTime]; maxTime is passed in so hot callers read it once. */
+	private clampToMax({ time, maxTime }: { time: number; maxTime: number }): number {
 		return Math.max(0, Math.min(maxTime, time));
 	}
 

@@ -66,8 +66,8 @@ describe("isTypableDOMElement coverage", () => {
 describe("default catalog collisions", () => {
 	test("space and k both map to toggle-play (one action, two keys — not a duplicate)", () => {
 		const defaults = getDefaultShortcuts();
-		expect(defaults["space"]).toBe("toggle-play");
-		expect(defaults["k"]).toBe("toggle-play");
+		expect(defaults.space).toBe("toggle-play");
+		expect(defaults.k).toBe("toggle-play");
 	});
 
 	test("undo/redo are ctrl-modified (no bare-key theft from text editing)", () => {

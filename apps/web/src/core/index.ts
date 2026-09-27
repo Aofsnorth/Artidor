@@ -23,6 +23,7 @@ import { createEditorApi, type EditorApi } from "@/lib/api/editor-api";
 import { useSavePresetDialogStore } from "@/stores/save-preset-dialog-store";
 import { useToolModeStore } from "@/stores/tool-mode-store";
 import { generateUUID } from "@/utils/id";
+import type { Effect } from "@/lib/effects/types";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -64,6 +65,9 @@ export class EditorCore {
 		this.teleprompter = new TeleprompterManager(this);
 		this.ai = new AIManager(this);
 		this.collab = new CollabManager(this);
+		// Synchronous by design: the in-tab bridge and the Scripting tab read
+		// `editor.api` directly. `createEditorApi` only builds the facade — the
+		// AI tool registry + executor it drives are imported on first command.
 		this.api = createEditorApi(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
@@ -176,6 +180,7 @@ export class EditorCore {
 							trackId: string;
 							type: string;
 							name: string;
+							effects: Effect[];
 						}>;
 					} => {
 						const scene = this.scenes.getActiveSceneOrNull();
@@ -191,10 +196,16 @@ export class EditorCore {
 							trackId: string;
 							type: string;
 							name: string;
+							effects: Effect[];
 						}> = [];
 						const collect = (track: {
 							id: string;
-							elements: Array<{ id: string; type: string; name: string }>;
+							elements: Array<{
+								id: string;
+								type: string;
+								name: string;
+								effects?: Effect[];
+							}>;
 						}) => {
 							for (const el of track.elements) {
 								allElements.push({
@@ -202,6 +213,11 @@ export class EditorCore {
 									trackId: track.id,
 									type: el.type,
 									name: el.name,
+									// The inspector derives every Adjust slider from
+									// `element.effects`, so an E2E test cannot tell "the
+									// write was dropped" from "the panel did not
+									// re-render" without seeing the stored effects.
+									effects: el.effects ?? [],
 								});
 							}
 						};

@@ -67,6 +67,24 @@ pub(crate) fn with_gpu_runtime<T>(
     })
 }
 
+/// Take the GPU runtime OUT of its cell, leaving it empty.
+///
+/// wasm panics do not run Rust destructors, so any `RefCell` borrow held
+/// across a panicking wgpu call is stranded forever — every later access
+/// panics with `RefCell already borrowed`. Callers that drive panicky GPU
+/// work (`uploadTexture`, `renderFrame`) use this plus
+/// [`restore_gpu_runtime`] instead of [`with_gpu_runtime`]: the cells are
+/// empty while the risky code runs, so a panic leaves them empty (a
+/// recoverable "not initialized" state) rather than stuck-borrowed.
+pub(crate) fn take_gpu_runtime() -> Option<GpuRuntime> {
+    GPU_RUNTIME.with(|runtime| runtime.replace(None))
+}
+
+/// Put a runtime taken by [`take_gpu_runtime`] back into its cell.
+pub(crate) fn restore_gpu_runtime(runtime: GpuRuntime) {
+    GPU_RUNTIME.with(|cell| cell.replace(Some(runtime)));
+}
+
 pub(crate) fn import_external_image(
     context: &GpuContext,
     source: &wgpu::ExternalImageSource,

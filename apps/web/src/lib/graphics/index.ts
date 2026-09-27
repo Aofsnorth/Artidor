@@ -15,6 +15,15 @@ import {
 	type GraphicDefinition,
 } from "./types";
 
+/**
+ * Preview data-URL cache. Keyed by the full param bag + size, so dragging a
+ * parameter slider emits one entry per step; without a cap a long editing
+ * session leaks a base64 PNG (~10-100 KB) per step for the life of the tab.
+ * 200 entries covers far more distinct previews than a project ever shows while
+ * bounding retention to a few MB. An evicted key simply re-renders to the byte
+ * -identical data URL, so a cap can never change what the caller receives.
+ */
+const GRAPHIC_PREVIEW_URL_CACHE_MAX = 200;
 const graphicPreviewUrlCache = new Map<string, string>();
 
 const FALLBACK_CORNER_RADIUS_RATIO = 0.2;
@@ -38,12 +47,29 @@ function buildFallbackPreviewUrl({
 	return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
+/**
+ * `registerDefaultGraphics()` probes ~40 registry entries. `getGraphicDefinition`
+ * runs once per graphic node per frame from the render loop, so the registration
+ * is memoised per module instance. The registry is append-only (plugins only
+ * register/unregister their own namespaced ids, nothing clears it), so this is
+ * behaviourally identical to re-running the loop.
+ */
+let defaultGraphicsRegistered = false;
+
+function ensureDefaultGraphicsRegistered(): void {
+	if (defaultGraphicsRegistered) {
+		return;
+	}
+	registerDefaultGraphics();
+	defaultGraphicsRegistered = true;
+}
+
 export function getGraphicDefinition({
 	definitionId,
 }: {
 	definitionId: string;
 }): GraphicDefinition {
-	registerDefaultGraphics();
+	ensureDefaultGraphicsRegistered();
 	if (graphicsRegistry.has(definitionId)) {
 		return graphicsRegistry.get(definitionId);
 	}
@@ -93,6 +119,9 @@ export function buildGraphicPreviewUrl({
 	const cacheKey = JSON.stringify({ definitionId, resolvedParams, size });
 	const cachedUrl = graphicPreviewUrlCache.get(cacheKey);
 	if (cachedUrl) {
+		// Touch for LRU recency.
+		graphicPreviewUrlCache.delete(cacheKey);
+		graphicPreviewUrlCache.set(cacheKey, cachedUrl);
 		return cachedUrl;
 	}
 
@@ -117,6 +146,12 @@ export function buildGraphicPreviewUrl({
 
 	const previewUrl = canvas.toDataURL("image/png");
 	graphicPreviewUrlCache.set(cacheKey, previewUrl);
+	while (graphicPreviewUrlCache.size > GRAPHIC_PREVIEW_URL_CACHE_MAX) {
+		// Evict the least recently used (first-inserted) entry.
+		const oldest = graphicPreviewUrlCache.keys().next().value;
+		if (oldest === undefined) break;
+		graphicPreviewUrlCache.delete(oldest);
+	}
 	return previewUrl;
 }
 

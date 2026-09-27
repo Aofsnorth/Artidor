@@ -25,7 +25,7 @@ export default defineConfig({
 	retries: 0,
 	workers: 1,
 	use: {
-		baseURL: "http://127.0.0.1:3000",
+		baseURL: "http://127.0.0.1:3005",
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 		video: "off",
@@ -53,7 +53,10 @@ export default defineConfig({
 	webServer: {
 		command: "bun run dev:web",
 		cwd: ".",
-		url: "http://127.0.0.1:3000",
+		// Must match the port hardcoded in apps/web/package.json's dev
+		// script ("next dev ... -p 3005") — a mismatch here makes CI's
+		// webServer poll a port nothing listens on and time out.
+		url: "http://127.0.0.1:3005",
 		timeout: 180_000,
 		reuseExistingServer: true,
 		stdout: "pipe",

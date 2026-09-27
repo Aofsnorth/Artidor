@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSoundsStore } from "@/stores/sounds-store";
+import { useSession } from "@/lib/auth/client";
 import { useShallow } from "zustand/shallow";
 
 export function useSoundSearch({
@@ -9,6 +10,10 @@ export function useSoundSearch({
 	query: string;
 	commercialOnly: boolean;
 }) {
+	// The sounds API is auth-gated; signed out, a search can only 401. Resolve
+	// the session first so the doomed request is never fired.
+	const { data: sessionData } = useSession();
+	const signedIn = Boolean(sessionData?.user);
 	// useShallow: the whole-store destructure previously returned a fresh
 	// object every call, re-rendering the search view on ANY sounds-store
 	// change (scroll position, pagination counters) — including mid-keystroke
@@ -58,7 +63,7 @@ export function useSoundSearch({
 	);
 
 	const loadMore = async () => {
-		if (isLoadingMore || !hasNextPage) return;
+		if (!signedIn || isLoadingMore || !hasNextPage) return;
 
 		try {
 			setLoadingMore({ loading: true });
@@ -108,6 +113,15 @@ export function useSoundSearch({
 	};
 
 	useEffect(() => {
+		if (!signedIn) {
+			// Signed out: no request, no 401 — the view renders its auth state.
+			setSearchResults({ results: [] });
+			setSearchError({ error: null });
+			setHasNextPage({ hasNext: false });
+			setLastSearchQuery({ query: "" });
+			return;
+		}
+
 		if (!query.trim()) {
 			setSearchResults({ results: [] });
 			setSearchError({ error: null });
@@ -170,6 +184,7 @@ export function useSoundSearch({
 			ignore = true;
 		};
 	}, [
+		signedIn,
 		query,
 		lastSearchQuery,
 		searchResults.length,

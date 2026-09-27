@@ -18,7 +18,7 @@ import {
 	CategoryBar,
 	filterByCategory,
 } from "@/components/editor/panels/assets/views/category-bar";
-import { AssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
+import { VirtualAssetGrid } from "@/components/editor/panels/assets/views/asset-grid";
 import { getPreviewBackgroundStyle } from "@/components/editor/panels/assets/views/components/procedural-preview";
 import {
 	CatalogEmptyState,
@@ -158,11 +158,12 @@ export function EffectsView() {
 
 function EffectsGrid({ effects }: { effects: EffectDefinition[] }) {
 	return (
-		<AssetGrid gap="gap-2">
-			{effects.map((effect) => (
-				<EffectItem key={effect.type} effect={effect} />
-			))}
-		</AssetGrid>
+		<VirtualAssetGrid
+			items={effects}
+			getKey={(effect) => effect.type}
+			renderItem={(effect) => <EffectItem effect={effect} />}
+			gap="gap-2"
+		/>
 	);
 }
 

@@ -1,4 +1,5 @@
-import { ALL_FORMATS, BlobSource, CanvasSink, Input } from "mediabunny";
+// Type-only: erased at compile time, so it costs nothing in the bundle.
+import type { CanvasSink, Input } from "mediabunny";
 
 // Shared, virtualized filmstrip frame cache.
 //
@@ -11,6 +12,37 @@ import { ALL_FORMATS, BlobSource, CanvasSink, Input } from "mediabunny";
 // scroll and re-mounts.
 
 type FrameCanvas = HTMLCanvasElement | OffscreenCanvas;
+
+/**
+ * `mediabunny` is the largest third-party payload the editor can pull in, and
+ * this module sits on the critical render path (timeline-element.tsx imports
+ * it to paint clip filmstrips). Loading it here — instead of at module scope —
+ * keeps it out of the editor's initial chunk until a clip actually asks for a
+ * frame. The promise is memoized, so the chunk is fetched and evaluated at
+ * most once per page.
+ *
+ * The lazy boundary is safe for the cache's ordering guarantees: the only new
+ * await sits at the top of `ensureInit`, which `runDecoder` already awaits
+ * before a single frame exists. A lazy load can therefore only *delay* the
+ * moment frames land, never move it earlier, so a subscriber can never miss a
+ * notification the eager import would have delivered — a subscriber that
+ * arrives after frames are cached still reads them synchronously through
+ * `getFilmstripFrame` on its next draw.
+ */
+type MediaBunnyModule = typeof import("mediabunny");
+
+let mediaBunnyPromise: Promise<MediaBunnyModule> | null = null;
+
+function loadMediaBunny(): Promise<MediaBunnyModule> {
+	// A rejected load is not memoized, so a later mount can retry (the caller
+	// treats the rejection like any other decoder failure and falls back to the
+	// clip's poster background).
+	mediaBunnyPromise ??= import("mediabunny").catch((error: unknown) => {
+		mediaBunnyPromise = null;
+		throw error;
+	});
+	return mediaBunnyPromise;
+}
 
 // Fixed decode size (16:9). Tiles blit-scale this to their on-screen size, so
 // the cache stays independent of zoom level and track height.
@@ -25,6 +57,45 @@ const BUCKET_MS = 100;
 // very long clip can't grow the cache without bound.
 const MAX_FRAMES_PER_FILE = 600;
 
+/**
+ * Global ceiling on filmstrip decoders running at once.
+ *
+ * Every mounted clip asks for its own file, so without a cap a timeline with 30
+ * visible clips opens 30 `Input` + `CanvasSink` pipelines that all compete for
+ * the same decode budget the playhead needs — the filmstrip work is what makes
+ * playback stutter. Two keeps filmstrips progressing (both the clips already on
+ * screen and the one being scrolled into view) while leaving the decoder budget
+ * to playback, and it also bounds how many demuxers are open at the same time.
+ * The per-file FIFO frame eviction below is unchanged: this gate only controls
+ * how many files decode concurrently, not what they keep.
+ */
+const MAX_CONCURRENT_FILE_DECODES = 2;
+
+let activeFileDecoders = 0;
+/** FIFO waiters, so clips are served in the order they asked for frames. */
+const decodeSlotWaiters: Array<() => void> = [];
+
+function acquireDecodeSlot(): Promise<void> {
+	if (activeFileDecoders < MAX_CONCURRENT_FILE_DECODES) {
+		activeFileDecoders++;
+		return Promise.resolve();
+	}
+	return new Promise<void>((resolve) => {
+		decodeSlotWaiters.push(resolve);
+	});
+}
+
+function releaseDecodeSlot(): void {
+	const next = decodeSlotWaiters.shift();
+	// Hand the slot straight to the next waiter; it already counts as in use,
+	// so the counter must not dip in between.
+	if (next) {
+		next();
+		return;
+	}
+	activeFileDecoders--;
+}
+
 // Tear down the decoder (and free the OPFS file handle) once no clip has
 // needed a frame from this file for a while.
 const IDLE_DISPOSE_MS = 8000;
@@ -37,6 +108,8 @@ interface FileEntry {
 	durationSec: number | null;
 	initPromise: Promise<boolean> | null;
 	decoding: boolean;
+	/** Set when the entry is torn down; an in-flight decode must stop at once. */
+	disposed: boolean;
 	failed: boolean;
 	listeners: Set<() => void>;
 	idleTimer: ReturnType<typeof setTimeout> | null;
@@ -60,6 +133,7 @@ function getEntry(key: string): FileEntry {
 			durationSec: null,
 			initPromise: null,
 			decoding: false,
+			disposed: false,
 			failed: false,
 			listeners: new Set(),
 			idleTimer: null,
@@ -99,6 +173,12 @@ export function subscribeFilmstrip(
 function disposeEntry(key: string): void {
 	const entry = files.get(key);
 	if (!entry || entry.listeners.size > 0) return;
+	// Flag first: a decoder that is mid-`canvasesAtTimestamps` sees this on its
+	// next frame, stops pulling, and abandons the rest of the batch instead of
+	// decoding frames nothing will ever read. Dropping the pending set stops
+	// the finally-block from re-arming it.
+	entry.disposed = true;
+	entry.pending.clear();
 	entry.input?.dispose();
 	files.delete(key);
 }
@@ -138,9 +218,10 @@ async function ensureInit(entry: FileEntry, file: File): Promise<boolean> {
 
 	entry.initPromise = (async () => {
 		try {
-			const input = new Input({
-				source: new BlobSource(file),
-				formats: ALL_FORMATS,
+			const mediabunny = await loadMediaBunny();
+			const input = new mediabunny.Input({
+				source: new mediabunny.BlobSource(file),
+				formats: mediabunny.ALL_FORMATS,
 			});
 			const track = await input.getPrimaryVideoTrack();
 			if (!track || !(await track.canDecode())) {
@@ -149,10 +230,17 @@ async function ensureInit(entry: FileEntry, file: File): Promise<boolean> {
 				return false;
 			}
 			entry.durationSec = await track.computeDuration();
+			// The entry can be torn down while the demuxer is opening. Release the
+			// Input here rather than parking a live one on an entry nothing will
+			// ever read from again.
+			if (entry.disposed) {
+				input.dispose();
+				return false;
+			}
 			entry.input = input;
 			// poolSize defaults to disabled, so each yielded canvas is a fresh
 			// allocation we can safely retain in the cache.
-			entry.sink = new CanvasSink(track, {
+			entry.sink = new mediabunny.CanvasSink(track, {
 				width: DECODE_WIDTH,
 				height: DECODE_HEIGHT,
 				fit: "cover",
@@ -185,12 +273,19 @@ function evictIfNeeded(entry: FileEntry): void {
 
 async function runDecoder(key: string, file: File): Promise<void> {
 	const entry = files.get(key);
-	if (!entry || entry.decoding) return;
+	if (!entry || entry.decoding || entry.disposed) return;
+	// Claimed before the first await: two draws in the same frame must not both
+	// start a decoder (and must not both queue for a slot) for one file.
 	entry.decoding = true;
 
 	try {
+		// Queued, not run: filmstrip decodes are throttled globally so they
+		// cannot take the decode budget away from playback.
+		await acquireDecodeSlot();
+		if (entry.disposed) return;
+
 		const ready = await ensureInit(entry, file);
-		if (!ready || !entry.sink || entry.durationSec === null) {
+		if (!ready || entry.disposed || !entry.sink || entry.durationSec === null) {
 			entry.pending.clear();
 			return;
 		}
@@ -199,6 +294,7 @@ async function runDecoder(key: string, file: File): Promise<void> {
 		// use its optimized single-forward-decode path. Loop until no new
 		// requests have arrived (scrolling adds buckets while we decode).
 		while (entry.pending.size > 0) {
+			if (entry.disposed) break;
 			const buckets = [...entry.pending].sort((a, b) => a - b);
 			entry.pending.clear();
 
@@ -209,6 +305,11 @@ async function runDecoder(key: string, file: File): Promise<void> {
 
 			let index = 0;
 			for await (const wrapped of entry.sink.canvasesAtTimestamps(timestamps)) {
+				// The entry was evicted mid-decode. `timestamps` is a plain array,
+				// so no pump is waiting on us and breaking is enough to release
+				// the remaining frames; the disposed Input makes the sink throw
+				// if it is still mid-packet, which the catch below absorbs.
+				if (entry.disposed) break;
 				const bucket = buckets[index];
 				index++;
 				if (wrapped && bucket !== undefined) {
@@ -222,8 +323,9 @@ async function runDecoder(key: string, file: File): Promise<void> {
 		// Leave already-decoded frames in place; the clip falls back to the
 		// poster background for anything that didn't decode.
 	} finally {
+		releaseDecodeSlot();
 		entry.decoding = false;
 		// A request may have arrived right as we finished; pick it up.
-		if (entry.pending.size > 0) void runDecoder(key, file);
+		if (!entry.disposed && entry.pending.size > 0) void runDecoder(key, file);
 	}
 }

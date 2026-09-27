@@ -654,7 +654,10 @@ export function Timeline() {
 	const showSnapIndicator =
 		snappingEnabled &&
 		currentSnapPoint !== null &&
-		(dragState.isDragging || bookmarkDragState.isDragging || isResizing);
+		(isDragOver ||
+			dragState.isDragging ||
+			bookmarkDragState.isDragging ||
+			isResizing);
 
 	const {
 		handleTracksMouseDown,

@@ -81,6 +81,34 @@ export function createAudioContext({
 	return new AudioContextConstructor(sampleRate ? { sampleRate } : undefined);
 }
 
+/**
+ * Identifies the audio a timeline clip decodes from: the media asset plus the
+ * selected embedded (dubbing) track, or the element id for library audio.
+ *
+ * Exported so consumers that key a cache on the decoded source (the audio
+ * manager's decoded/prepared buffers) agree with the clips `collectAudioClips`
+ * hands out.
+ */
+export function buildAudioSourceKey({
+	element,
+	mediaId,
+}: {
+	element: AudioCapableElement;
+	/** Media asset id. Omit for library audio, which is keyed by element id. */
+	mediaId?: string;
+}): string {
+	// For video elements with a selected dubbing track, include the
+	// track index so the audio manager creates a separate sink/input per
+	// track. Switching tracks then produces a new cache key rather than
+	// reusing the previous track's sink.
+	if (mediaId === undefined) return element.id;
+	const audioTrackIndex =
+		element.type === "video" ? element.selectedAudioTrackIndex : undefined;
+	return audioTrackIndex !== undefined
+		? `${mediaId}#audio${audioTrackIndex}`
+		: mediaId;
+}
+
 export interface DecodedAudio {
 	samples: Float32Array;
 	sampleRate: number;
@@ -94,25 +122,33 @@ export async function decodeAudioToFloat32({
 	sampleRate?: number;
 }): Promise<DecodedAudio> {
 	const audioContext = createAudioContext({ sampleRate });
-	const arrayBuffer = await audioBlob.arrayBuffer();
-	const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+	try {
+		const arrayBuffer = await audioBlob.arrayBuffer();
+		const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-	// mix down to mono — yield periodically so the main thread stays
-	// responsive on long audio files (millions of samples).
-	const numChannels = audioBuffer.numberOfChannels;
-	const length = audioBuffer.length;
-	const samples = new Float32Array(length);
+		// mix down to mono — yield periodically so the main thread stays
+		// responsive on long audio files (millions of samples).
+		const numChannels = audioBuffer.numberOfChannels;
+		const length = audioBuffer.length;
+		const samples = new Float32Array(length);
 
-	for (let i = 0; i < length; i++) {
-		let sum = 0;
-		for (let channel = 0; channel < numChannels; channel++) {
-			sum += audioBuffer.getChannelData(channel)[i];
+		for (let i = 0; i < length; i++) {
+			let sum = 0;
+			for (let channel = 0; channel < numChannels; channel++) {
+				sum += audioBuffer.getChannelData(channel)[i];
+			}
+			samples[i] = sum / numChannels;
+			if (i % 8192 === 0 && i > 0) await yieldToEventLoop();
 		}
-		samples[i] = sum / numChannels;
-		if (i % 8192 === 0 && i > 0) await yieldToEventLoop();
-	}
 
-	return { samples, sampleRate: audioBuffer.sampleRate };
+		// The mono mix is fully materialized into `samples` above (a copy, so
+		// it outlives the context) — the context only existed to decode, and
+		// browsers cap how many AudioContexts can be live at once (~6), each
+		// holding an output device.
+		return { samples, sampleRate: audioBuffer.sampleRate };
+	} finally {
+		void audioContext.close().catch(() => {});
+	}
 }
 
 export interface AudibleElementCandidate {
@@ -611,10 +647,7 @@ function collectMediaAudioClip({
 	// new cache key rather than reusing the previous track's sink.
 	const audioTrackIndex =
 		element.type === "video" ? element.selectedAudioTrackIndex : undefined;
-	const sourceKey =
-		audioTrackIndex !== undefined
-			? `${mediaAsset.id}#audio${audioTrackIndex}`
-			: mediaAsset.id;
+	const sourceKey = buildAudioSourceKey({ element, mediaId: mediaAsset.id });
 	return {
 		timelineElement: element,
 		id: element.id,
@@ -796,75 +829,93 @@ export async function createTimelineAudioBuffer({
 	audioContext?: AudioContext;
 	onProgress?: (progress: number) => void;
 }): Promise<AudioBuffer | null> {
+	// Only close a context we created: a caller-supplied one outlives this
+	// call (the export mixdown reuses it across segments). Browsers cap live
+	// AudioContexts (~6) and each holds an output device, so leaking one per
+	// export eventually breaks audio output entirely.
+	const ownsContext = audioContext === undefined;
 	const context = audioContext ?? createAudioContext({ sampleRate });
 
-	const audioElements = await collectAudioElements({
-		tracks,
-		mediaAssets,
-		audioContext: context,
-		// Decode phase: 0 → 0.3
-		onProgress: (p) => onProgress?.(Math.min(0.3, p * 0.3)),
-	});
-
-	// Decoding audio from source files is complete; the rest is mixing/mastering.
-	if (audioElements.length === 0) {
-		onProgress?.(1.0);
-		return null;
-	}
-
-	const outputChannels = 2;
-	const durationSeconds = duration / TICKS_PER_SECOND;
-	const outputLength = Math.ceil(durationSeconds * sampleRate);
-	const outputBuffer = context.createBuffer(
-		outputChannels,
-		outputLength,
-		sampleRate,
-	);
-
-	const mixableElements = audioElements.filter((e) => !e.muted);
-	let mixedCount = 0;
-
-	for (const element of audioElements) {
-		if (element.muted) continue;
-
-		const renderedBuffer = shouldMaintainPitch({
-			rate: element.retime?.rate ?? 1,
-			maintainPitch: element.retime?.maintainPitch,
-		})
-			? await renderRetimedBuffer({
-					audioContext: context,
-					sourceBuffer: element.buffer,
-					trimStart: element.trimStart,
-					clipDuration: element.duration,
-					retime: element.retime,
-				})
-			: undefined;
-
-		mixAudioChannels({
-			element,
-			buffer: renderedBuffer ?? element.buffer,
-			trimStart: renderedBuffer ? 0 : element.trimStart,
-			retime: renderedBuffer ? undefined : element.retime,
-			outputBuffer,
-			outputLength,
-			sampleRate,
+	try {
+		const audioElements = await collectAudioElements({
+			tracks,
+			mediaAssets,
+			audioContext: context,
+			// Decode phase: 0 → 0.3
+			onProgress: (p) => onProgress?.(Math.min(0.3, p * 0.3)),
 		});
 
-		mixedCount++;
-		onProgress?.(
-			0.3 + 0.6 * (mixedCount / Math.max(1, mixableElements.length)),
-		);
-	}
+		// Decoding audio from source files is complete; the rest is mixing/mastering.
+		if (audioElements.length === 0) {
+			onProgress?.(1.0);
+			return null;
+		}
 
-	onProgress?.(0.95);
-	const mastered = await applyAudioMasteringToBuffer({
-		audioBuffer: outputBuffer,
-	});
-	onProgress?.(1.0);
-	return mastered;
+		const outputChannels = 2;
+		const durationSeconds = duration / TICKS_PER_SECOND;
+		const outputLength = Math.ceil(durationSeconds * sampleRate);
+		const outputBuffer = context.createBuffer(
+			outputChannels,
+			outputLength,
+			sampleRate,
+		);
+
+		const mixableElements = audioElements.filter((e) => !e.muted);
+		let mixedCount = 0;
+
+		for (const element of audioElements) {
+			if (element.muted) continue;
+
+			const renderedBuffer = shouldMaintainPitch({
+				rate: element.retime?.rate ?? 1,
+				maintainPitch: element.retime?.maintainPitch,
+			})
+				? await renderRetimedBuffer({
+						audioContext: context,
+						sourceBuffer: element.buffer,
+						trimStart: element.trimStart,
+						clipDuration: element.duration,
+						retime: element.retime,
+					})
+				: undefined;
+
+			mixAudioChannels({
+				element,
+				buffer: renderedBuffer ?? element.buffer,
+				trimStart: renderedBuffer ? 0 : element.trimStart,
+				retime: renderedBuffer ? undefined : element.retime,
+				outputBuffer,
+				outputLength,
+				sampleRate,
+			});
+
+			mixedCount++;
+			onProgress?.(
+				0.3 + 0.6 * (mixedCount / Math.max(1, mixableElements.length)),
+			);
+		}
+
+		onProgress?.(0.95);
+		const mastered = await applyAudioMasteringToBuffer({
+			audioBuffer: outputBuffer,
+		});
+		onProgress?.(1.0);
+		// `mastered` is a plain AudioBuffer holding its own sample data, so it
+		// is fully materialized and safe to return after the context closes.
+		return mastered;
+	} finally {
+		if (ownsContext) void context.close().catch(() => {});
+	}
 }
 
-function mixAudioChannels({
+/**
+ * Mix one element's buffer into the stereo output buffer.
+ *
+ * Exported for tests: the mixdown is a per-sample loop, so the only way to
+ * assert that the hoisted loop invariants (see below) did not change a single
+ * output sample is to run this function against a reference implementation.
+ */
+export function mixAudioChannels({
 	element,
 	buffer,
 	trimStart,
@@ -885,6 +936,22 @@ function mixAudioChannels({
 
 	const outputStartSample = Math.floor(startTime * sampleRate);
 	const renderedLength = Math.ceil(elementDuration * sampleRate);
+
+	// Loop invariants. These depend only on the element, but each one used to
+	// be recomputed for every output sample (twice, since the mix runs per
+	// channel) — ~480k redundant keyframe queries per channel for a 10s
+	// 48kHz clip. `hasAnimatedVolume` / `hasAnimatedPan` each walk the
+	// element's animation bindings.
+	const animatedVolume = hasAnimatedVolume({
+		element: element.timelineElement,
+	});
+	const animatedPan = hasAnimatedPan({ element: element.timelineElement });
+	const staticVolume = element.volume;
+	const staticPan = element.pan ?? 0;
+	// `?? 0` preserves the previous `fadeInDuration && fadeInDuration > 0`
+	// guard: missing, 0, negative and NaN all end up as "no fade".
+	const fadeInDuration = element.fadeInDuration ?? 0;
+	const fadeOutDuration = element.fadeOutDuration ?? 0;
 
 	const outputChannels = 2;
 	for (let channel = 0; channel < outputChannels; channel++) {
@@ -912,35 +979,35 @@ function mixAudioChannels({
 			const fraction = sourceIndex - lowerIndex;
 
 			// Resolve volume/gain
-			let gain = hasAnimatedVolume({ element: element.timelineElement })
+			let gain = animatedVolume
 				? resolveEffectiveAudioGain({
 						element: element.timelineElement,
 						localTime: clipTime,
 					})
-				: element.volume;
+				: staticVolume;
 
 			// Apply Fade In
-			if (element.fadeInDuration && element.fadeInDuration > 0) {
-				if (clipTime < element.fadeInDuration) {
-					gain *= clipTime / element.fadeInDuration;
+			if (fadeInDuration > 0) {
+				if (clipTime < fadeInDuration) {
+					gain *= clipTime / fadeInDuration;
 				}
 			}
 
 			// Apply Fade Out
-			if (element.fadeOutDuration && element.fadeOutDuration > 0) {
+			if (fadeOutDuration > 0) {
 				const timeFromEnd = elementDuration - clipTime;
-				if (timeFromEnd < element.fadeOutDuration) {
-					gain *= Math.max(0, timeFromEnd / element.fadeOutDuration);
+				if (timeFromEnd < fadeOutDuration) {
+					gain *= Math.max(0, timeFromEnd / fadeOutDuration);
 				}
 			}
 
 			// Apply Stereo Panning (pan ranges from -100 to 100)
-			const panVal = hasAnimatedPan({ element: element.timelineElement })
+			const panVal = animatedPan
 				? resolveEffectiveAudioPan({
 						element: element.timelineElement,
 						localTime: clipTime,
 					})
-				: (element.pan ?? 0);
+				: staticPan;
 			const p = Math.min(100, Math.max(-100, panVal)) / 100;
 			// Channel 0 is Left, Channel 1 is Right
 			const channelGain =

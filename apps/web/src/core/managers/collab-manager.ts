@@ -43,12 +43,25 @@ import type { Command } from "@/lib/commands";
 const POLL_INTERVAL_MS = 1000;
 /** Cursor throttle interval (ms) — don't send more often than this. */
 const CURSOR_THROTTLE_MS = 100;
+/**
+ * Coalescing window for local-edit notifications (ms). The first edit of a
+ * burst is broadcast immediately; the rest are carried by one ordered batch
+ * when the window closes, instead of each one firing its own request in the
+ * middle of the edits that produced it.
+ */
+const COMMAND_BATCH_WINDOW_MS = 200;
 
 export class CollabManager {
 	private pollTimer: ReturnType<typeof setInterval> | null = null;
 	private cursorThrottle: ReturnType<typeof setTimeout> | null = null;
 	private pendingCursor: { x: number; y: number; elementId?: string } | null =
 		null;
+	/** Local edits broadcast but not yet sent. */
+	private pendingCommands = 0;
+	/** Trailing coalescing window for edit notifications. */
+	private commandWindow: ReturnType<typeof setTimeout> | null = null;
+	/** True while a batch is being replayed, so batches never interleave. */
+	private drainingCommands = false;
 	/** Unsubscribe from CommandManager reactors; null while detached. */
 	private detachReactor: (() => void) | null = null;
 	private lastSeq = 0;
@@ -304,6 +317,11 @@ export class CollabManager {
 			this.cursorThrottle = null;
 		}
 		this.pendingCursor = null;
+		if (this.commandWindow) {
+			clearTimeout(this.commandWindow);
+			this.commandWindow = null;
+		}
+		this.pendingCommands = 0;
 		if (this.detachReactor) {
 			this.detachReactor();
 			this.detachReactor = null;
@@ -338,15 +356,86 @@ export class CollabManager {
 		// never emit a broadcast the server would charge against the room log.
 		if (!store.isHost && store.mode !== "edit") return;
 
-		// A rejected broadcast must never crash the reactor loop or the
-		// command that just executed locally — the local edit already
-		// succeeded, so log the failure and continue.
-		sendCommand({
-			roomId: store.roomId,
-			sessionId: store.sessionId,
-			commandName: LOCAL_EDIT,
-			args: {},
-		}).catch(() => {});
+		// Counted, not sent: a burst is coalesced into one ordered batch
+		// (see scheduleCommandFlush) instead of one request per command.
+		this.pendingCommands += 1;
+		this.scheduleCommandFlush();
+	}
+
+	/**
+	 * Open the coalescing window, or send immediately on the leading edge.
+	 *
+	 * Every executed command used to fire its own `POST /command` the
+	 * moment it ran, so a burst of edits (a drag, a repeated nudge)
+	 * interleaved N requests and N room rewrites with the very input that
+	 * produced them. The first edit still goes out at once — a single edit
+	 * is never delayed — and the rest ride one ordered batch when the
+	 * window closes.
+	 */
+	private scheduleCommandFlush(): void {
+		if (this.commandWindow) return;
+		if (this.pendingCommands > 1) {
+			this.commandWindow = setTimeout(() => {
+				this.commandWindow = null;
+				void this.flushCommandNotifications();
+			}, COMMAND_BATCH_WINDOW_MS);
+			return;
+		}
+		void this.flushCommandNotifications();
+	}
+
+	/**
+	 * Send the coalesced local-edit notifications in execution order.
+	 *
+	 * The command route accepts one notification per request, so a batch
+	 * of N is replayed as N ordered requests and the room log stays
+	 * complete — nothing is deduplicated or dropped. A single request and
+	 * a single room write for a whole batch needs a batch field on
+	 * `POST /api/collab/[roomId]/command` (server-side follow-up).
+	 *
+	 * The outer loop also picks up edits that land while the batch is in
+	 * flight, and `drainingCommands` keeps two batches from interleaving.
+	 */
+	private async flushCommandNotifications(): Promise<void> {
+		if (this.drainingCommands || this.pendingCommands === 0) return;
+		this.drainingCommands = true;
+		// Arm the window unconditionally so a notification queued behind an
+		// in-flight batch still gets a trigger.
+		if (!this.commandWindow) {
+			this.commandWindow = setTimeout(() => {
+				this.commandWindow = null;
+				void this.flushCommandNotifications();
+			}, COMMAND_BATCH_WINDOW_MS);
+		}
+		const flushEpoch = this.sessionEpoch;
+		try {
+			for (;;) {
+				const batch = this.pendingCommands;
+				if (batch === 0) return;
+				this.pendingCommands = 0;
+				// A session change (leave, re-join) invalidates the batch: the
+				// room it belonged to is gone.
+				if (flushEpoch !== this.sessionEpoch) return;
+				const { roomId, sessionId } = useCollabStore.getState();
+				if (!roomId || !sessionId || !this.hasActiveSession()) return;
+				for (let i = 0; i < batch; i++) {
+					if (flushEpoch !== this.sessionEpoch) return;
+					try {
+						await sendCommand({
+							roomId,
+							sessionId,
+							commandName: LOCAL_EDIT,
+							args: {},
+						});
+					} catch {
+						// A rejected broadcast must never crash the reactor
+						// loop or the command that already executed locally.
+					}
+				}
+			}
+		} finally {
+			this.drainingCommands = false;
+		}
 	}
 
 	/** True while a session is active — used by broadcast/lock paths to gate

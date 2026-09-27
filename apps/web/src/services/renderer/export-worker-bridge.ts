@@ -11,6 +11,12 @@
  * init cost (~5-30s) on subsequent exports. The parallel pipeline
  * passes `reuseWorker: false` because it spawns multiple concurrent
  * workers that are terminated after their segment completes.
+ *
+ * Readiness: the worker posts "ready" twice — once after module
+ * evaluation (the only safe moment to post init) and once after its GPU
+ * is initialised. Only the second one is surfaced as `onReady`, so the
+ * parallel launcher can actually stagger adapter requests instead of
+ * firing them all in the same tick.
  */
 
 import type { FrameRate } from "artidor-wasm";
@@ -165,6 +171,7 @@ export async function runExportInWorker({
 	timeoutMs = 0,
 	reuseWorker = true,
 	streamToDisk = false,
+	consumeAudioBuffer = false,
 }: {
 	sceneTree: SerializedNode;
 	files: Array<{ mediaId: string; file: File }>;
@@ -211,13 +218,26 @@ export async function runExportInWorker({
 	reuseWorker?: boolean;
 	/**
 	 * Stream the muxed output to an OPFS temp file (streaming export Part 2).
-	 * Default false preserves the legacy in-RAM buffer behavior; segment
-	 * workers keep buffer mode (deliberate: streamed segments = large
-	 * refactor, documented follow-up). The worker still falls back to buffer
-	 * mode when OPFS is unavailable, so callers must handle both result
-	 * variants.
+	 * Default false preserves the legacy in-RAM buffer behavior. The worker
+	 * still falls back to buffer mode when OPFS is unavailable, so callers
+	 * must handle both result variants.
 	 */
 	streamToDisk?: boolean;
+	/**
+	 * Declare that this call is the last reader of `audioBuffer`.
+	 *
+	 * The PCM channel data is normally copied before it is posted, which is
+	 * safe but costs one full copy of the mixdown (~106 MB for a 5-minute
+	 * stereo track). When the browser exposes real `ArrayBuffer` backing
+	 * storage for the channels, the bridge can instead *transfer* the original
+	 * buffers — no copy at all. Transferring detaches them, so the caller must
+	 * promise not to read the AudioBuffer again (the caller is responsible for
+	 * re-mixing before any later consumer, e.g. the software-encoding retry).
+	 *
+	 * Default false keeps the copy, which is the only safe choice when the
+	 * AudioBuffer is reused across attempts.
+	 */
+	consumeAudioBuffer?: boolean;
 }): Promise<ExportWorkerResult> {
 	return new Promise((resolve) => {
 		// Warm-reuse: if the worker came from the pool, it's already past
@@ -252,12 +272,32 @@ export async function runExportInWorker({
 		if (audioBuffer) {
 			const numberOfChannels = audioBuffer.numberOfChannels;
 			const channels: Float32Array[] = [];
+			// A set so two channel views that share one interleaved backing
+			// buffer transfer it exactly once — posting the same ArrayBuffer
+			// twice in `transferables` is a DataCloneError.
+			const transferredBuffers = new Set<ArrayBuffer>();
 			for (let ch = 0; ch < numberOfChannels; ch++) {
-				// copyToChannel/getChannelData return Float32Array views; we need
-				// to copy because the underlying buffer gets detached on transfer.
-				const data = audioBuffer.getChannelData(ch);
-				channels.push(new Float32Array(data)); // copy
-				transferables.push(channels[ch].buffer);
+				const view = audioBuffer.getChannelData(ch);
+				const backing = view.buffer;
+				// `AudioBuffer.getChannelData()` sometimes returns a view onto
+				// browser-internal storage, in which case there is no
+				// transferable ArrayBuffer and a copy is the only option. When
+				// real backing storage is exposed, transfer it as-is.
+				if (
+					consumeAudioBuffer &&
+					view.byteLength > 0 &&
+					backing instanceof ArrayBuffer &&
+					backing.byteLength >= view.byteLength
+				) {
+					channels.push(view);
+					if (!transferredBuffers.has(backing)) {
+						transferredBuffers.add(backing);
+						transferables.push(backing);
+					}
+				} else {
+					channels.push(new Float32Array(view)); // copy
+					transferables.push(channels[ch].buffer);
+				}
 			}
 			audioData = {
 				channels,
@@ -290,6 +330,7 @@ export async function runExportInWorker({
 					// Terminate the worker immediately. If the worker is stuck in
 					// a blocking operation (e.g. GPU init), it can't process a
 					// "cancel" message — so we must terminate from this side.
+					completed = true;
 					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, cancelled: true });
@@ -324,6 +365,7 @@ export async function runExportInWorker({
 					scheduleTimeout();
 					return;
 				}
+				completed = true;
 				discardPendingStreamedFile();
 				cleanup();
 				resolve({
@@ -338,10 +380,23 @@ export async function runExportInWorker({
 		const cleanup = () => {
 			if (timeout) clearTimeout(timeout);
 			if (cancelInterval) clearInterval(cancelInterval);
+			// Detach the handlers so a settled export stops retaining the scene
+			// tree, the media `File`s and the PCM buffers, and so a late message
+			// from a terminating worker cannot re-arm the activity timer. The
+			// next `runExportInWorker` re-assigns them.
+			worker.onmessage = null;
+			worker.onmessageerror = null;
+			worker.onerror = null;
 			// Warm-reuse: keep the worker alive for the next export.
 			// Parallel/fresh: terminate immediately.
 			releaseWarmWorker(worker, reuseWorker);
 		};
+
+		// Set by the last settle path. The `complete-streamed` path needs one
+		// more turn of the event loop to detach its handlers safely (see below),
+		// so without this a message racing that microtask could re-arm the
+		// activity timer after teardown.
+		let completed = false;
 
 		worker.onmessage = (
 			event: MessageEvent<
@@ -354,22 +409,36 @@ export async function runExportInWorker({
 				| { type: "ready" }
 			>,
 		) => {
+			// Post-settle messages are ignored: the promise is already settled,
+			// so the only thing a late "progress" could still do is re-arm the
+			// activity timer that `cleanup` just cleared.
+			if (completed) return;
 			const data = event.data;
 			resetActivity();
 			scheduleTimeout();
 
 			switch (data.type) {
-				case "ready":
-					onReady?.();
-					// Worker is ready to receive the init message. In ESM workers
-					// (especially under Turbopack/Next.js dev), sending init before
-					// the worker has registered its onmessage handler causes the
-					// message to be silently lost.
+				case "ready": {
+					// The worker emits "ready" at TWO distinct moments, and which
+					// one arrived is the whole point of this branch:
+					//   1. after module evaluation, before any init — the only
+					//      safe moment to post init (an ESM worker that has not
+					//      registered `onmessage` yet silently drops it);
+					//   2. after `initializeGpu()` + compositor init — the genuine
+					//      GPU-ready signal.
+					// Firing `onReady` on (1) is what turned the parallel
+					// launcher's stagger gate into a no-op: every worker opened
+					// its `requestAdapter()` in the same tick, which is the
+					// thundering herd the stagger exists to avoid. So `onReady`
+					// now fires only on (2).
 					if (!initSent) {
 						initSent = true;
 						sendInit();
+						break;
 					}
+					onReady?.();
 					break;
+				}
 
 				case "init-progress":
 					// Forward init-phase progress to the same onProgress callback.
@@ -384,6 +453,7 @@ export async function runExportInWorker({
 					break;
 
 				case "complete":
+					completed = true;
 					cleanup();
 					resolve({ success: true, buffer: data.buffer });
 					break;
@@ -396,6 +466,7 @@ export async function runExportInWorker({
 					void openStreamedExportFile(fileName).then(
 						(file) => {
 							if (file.size !== byteLength) {
+								completed = true;
 								cleanup();
 								void deleteExportTempFileByName(fileName);
 								resolve({
@@ -405,13 +476,23 @@ export async function runExportInWorker({
 								return;
 							}
 							pendingStreamedFileName = fileName;
-							cleanup();
+							// Handlers are detached in a microtask rather than inline:
+							// a message already queued for this worker would find
+							// `onmessage` null and throw "cannot read properties of
+							// null". Until it runs, the `completed` guard below makes
+							// a late message a no-op, and its own `scheduleTimeout()`
+							// is undone by the microtask's `cleanup()`.
+							void Promise.resolve().then(() => {
+								completed = true;
+								cleanup();
+							});
 							resolve({
 								success: true,
 								streamed: { byteLength, fileName },
 							});
 						},
 						() => {
+							completed = true;
 							cleanup();
 							resolve({
 								success: false,
@@ -423,12 +504,14 @@ export async function runExportInWorker({
 				}
 
 				case "error":
+					completed = true;
 					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, error: data.error });
 					break;
 
 				case "cancelled":
+					completed = true;
 					discardPendingStreamedFile();
 					cleanup();
 					resolve({ success: false, cancelled: true });
@@ -437,6 +520,7 @@ export async function runExportInWorker({
 		};
 
 		worker.onmessageerror = () => {
+			completed = true;
 			discardPendingStreamedFile();
 			cleanup();
 			resolve({
@@ -446,6 +530,7 @@ export async function runExportInWorker({
 		};
 
 		worker.onerror = (event) => {
+			completed = true;
 			discardPendingStreamedFile();
 			cleanup();
 			resolve({

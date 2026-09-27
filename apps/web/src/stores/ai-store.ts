@@ -8,8 +8,9 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, type PersistStorage } from "zustand/middleware";
 import { browserStorage } from "@/stores/browser-storage";
+import { createThrottledStorage } from "@/stores/throttled-storage";
 import type { StyleProfile } from "@/lib/ai/style/extractor";
 
 export type ChatRole = "user" | "assistant" | "system" | "tool";
@@ -381,6 +382,174 @@ function generateConversationName(messages: ChatMessage[]): string {
 	return `Chat ${date}`;
 }
 
+/**
+ * Tool results can embed base64 data URLs of whole media files: a single
+ * `view_asset` on a video carries the source file (100 MB+ of base64) plus
+ * sample frames. localStorage is capped at a few MB, so persisting one such
+ * result either throws or evicts unrelated state — and every write
+ * re-serializes the payload.
+ *
+ * The payload stays in the live store (the panel renders the asset from it for
+ * the rest of the session); only the PERSISTED copy is trimmed. Data URLs
+ * longer than this are replaced by a marker that records their size.
+ */
+const MAX_PERSISTED_DATA_URL_CHARS = 2048;
+
+/**
+ * Copies `value` with oversized `data:` URLs replaced. Plain objects and
+ * arrays only — class instances (Date, Map, …) are returned untouched so
+ * nothing that JSON would have serialized differently changes shape.
+ */
+function stripBulkMediaPayload(value: unknown): unknown {
+	if (typeof value === "string") {
+		return value.startsWith("data:") &&
+			value.length > MAX_PERSISTED_DATA_URL_CHARS
+			? `[omitted ${value.length} char data URL]`
+			: value;
+	}
+	if (Array.isArray(value)) return value.map(stripBulkMediaPayload);
+	if (value !== null && typeof value === "object") {
+		const prototype = Object.getPrototypeOf(value) as object | null;
+		if (prototype !== Object.prototype && prototype !== null) return value;
+		const copy: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(value)) {
+			copy[key] = stripBulkMediaPayload(entry);
+		}
+		return copy;
+	}
+	return value;
+}
+
+/**
+ * Persisted view of one message: identical to the live message, except that a
+ * tool result's bulk media payload is trimmed. Returns the same object when
+ * there is nothing to trim, so tool-free messages cost nothing.
+ */
+function stripPersistedMedia(message: ChatMessage): ChatMessage {
+	if (!message.toolCalls?.length) return message;
+	let changed = false;
+	const toolCalls = message.toolCalls.map((toolCall) => {
+		if (toolCall.result?.data === undefined) return toolCall;
+		changed = true;
+		return {
+			...toolCall,
+			result: { ...toolCall.result, data: stripBulkMediaPayload(toolCall.result.data) },
+		};
+	});
+	return changed ? { ...message, toolCalls } : message;
+}
+
+/**
+ * Longest a streaming response may defer its persistence.
+ *
+ * Every SSE delta calls `updateMessage` → `set` → persist, so one answer used
+ * to re-run `partialize` (walking projectChats → conversations → messages
+ * plus `pruneRevertSnapshots`), `JSON.stringify` ~100 KB and write it to
+ * localStorage synchronously — tens of times per second, on the main thread.
+ */
+const STREAM_PERSIST_INTERVAL_MS = 2000;
+
+/** Persist write policy for the current response lifecycle. */
+interface StreamPersistState {
+	/** True while a response is being produced. */
+	inFlight: boolean;
+	/** Write the latest coalesced value now, if there is one. */
+	flush: () => void;
+}
+
+const streamPersist: StreamPersistState = {
+	inFlight: false,
+	flush: () => {},
+};
+
+/** Statuses that mean a response is still being produced. */
+function isInFlightStatus(status: ChatStatus): boolean {
+	return status !== "idle" && status !== "error";
+}
+
+/**
+ * Persist storage that coalesces writes while a response is streaming.
+ *
+ * Outside a response every write is real (project switch, conversation rename,
+ * settings) and goes straight through the shared throttle. During a response
+ * only the latest value is kept and written at most once per
+ * STREAM_PERSIST_INTERVAL_MS, and the value is force-written the moment the
+ * response settles (see `setStatus`) or the page goes away (`pagehide`), so a
+ * reload mid-stream keeps the conversation up to the last flush instead of
+ * losing a whole message. The store itself is never throttled — only the
+ * storage write is.
+ */
+function createStreamingPersistStorage<S>({
+	storage,
+}: {
+	storage: PersistStorage<S> | undefined;
+}): PersistStorage<S> | undefined {
+	if (!storage) return undefined;
+	// Two paths: the shared throttle for ordinary bursts, and a direct write
+	// for the forced flushes that must be durable before the page goes away.
+	const inner = createThrottledStorage({ storage, waitMs: 250 }) ?? storage;
+	type PersistValue = Parameters<PersistStorage<S>["setItem"]>[1];
+	let pending: { name: string; value: PersistValue } | null = null;
+	let lastWriteAt = 0;
+	let timer: ReturnType<typeof setTimeout> | null = null;
+
+	const write = (name: string, value: PersistValue) => {
+		lastWriteAt = Date.now();
+		inner.setItem(name, value);
+	};
+	const flush = () => {
+		if (timer !== null) {
+			clearTimeout(timer);
+			timer = null;
+		}
+		if (!pending) return;
+		const { name, value } = pending;
+		pending = null;
+		// Direct, not through the throttle: a `pagehide` flush has to be in
+		// storage before the document goes away.
+		lastWriteAt = Date.now();
+		storage.setItem(name, value);
+	};
+	streamPersist.flush = flush;
+	// A reload/close mid-stream must not lose the coalesced conversation.
+	if (typeof window !== "undefined") {
+		window.addEventListener("pagehide", flush);
+	}
+
+	return {
+		getItem: (name) => inner.getItem(name),
+		setItem: (name, value) => {
+			if (streamPersist.inFlight) {
+				pending = { name, value };
+				if (timer === null) {
+					const wait = Math.max(
+						0,
+						STREAM_PERSIST_INTERVAL_MS - (Date.now() - lastWriteAt),
+					);
+					timer = setTimeout(flush, wait);
+				}
+				return;
+			}
+			// Not streaming: every write is a real state change, so drop any
+			// coalesced value (it is older) and write through immediately.
+			pending = null;
+			if (timer !== null) {
+				clearTimeout(timer);
+				timer = null;
+			}
+			write(name, value);
+		},
+		removeItem: (name) => {
+			pending = null;
+			if (timer !== null) {
+				clearTimeout(timer);
+				timer = null;
+			}
+			return inner.removeItem(name);
+		},
+	};
+}
+
 export const useAIStore = create<AIState>()(
 	persist(
 		(set, get) => ({
@@ -527,8 +696,22 @@ export const useAIStore = create<AIState>()(
 				});
 			},
 
-			setStatus: (status) => set({ status }),
-			setError: (error) => set({ error }),
+			setStatus: (status) => {
+				set({ status });
+				// Persistence coalescing follows the response lifecycle: while a
+				// response is in flight the per-token writes collapse into one
+				// write per window, and the moment it settles the latest value is
+				// written so a reload right after never loses the answer.
+				const inFlight = isInFlightStatus(status);
+				if (inFlight === streamPersist.inFlight) return;
+				streamPersist.inFlight = inFlight;
+				if (!inFlight) streamPersist.flush();
+			},
+			setError: (error) => {
+				set({ error });
+				// A failed turn must not sit in the coalescing window.
+				streamPersist.flush();
+			},
 
 			setStyleProfile: (profile, name) =>
 				set({ styleProfile: profile, referenceVideoName: name ?? null }),
@@ -678,26 +861,36 @@ export const useAIStore = create<AIState>()(
 		}),
 		{
 			name: "artidor-ai-chat",
-			storage: browserStorage,
+			// Coalesced while a response streams: one write per window instead of
+			// one per SSE delta, plus a forced write when the response settles.
+			storage: createStreamingPersistStorage({ storage: browserStorage }),
 			partialize: (state) => ({
 				projectId: state.projectId,
-				messages: state.messages.slice(-MAX_PERSISTED_MESSAGES),
+				messages: state.messages
+					.slice(-MAX_PERSISTED_MESSAGES)
+					.map(stripPersistedMedia),
 				styleProfile: state.styleProfile,
 				referenceVideoName: state.referenceVideoName,
 				compactedSummary: state.compactedSummary,
 				conversations: state.conversations.map((c) => ({
 					...c,
-					messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
+					messages: c.messages
+						.slice(-MAX_PERSISTED_MESSAGES)
+						.map(stripPersistedMedia),
 				})),
 				projectChats: Object.fromEntries(
 					Object.entries(state.projectChats).map(([id, chat]) => [
 						id,
 						{
 							...chat,
-							messages: chat.messages.slice(-MAX_PERSISTED_MESSAGES),
+							messages: chat.messages
+								.slice(-MAX_PERSISTED_MESSAGES)
+								.map(stripPersistedMedia),
 							conversations: chat.conversations.map((c) => ({
 								...c,
-								messages: c.messages.slice(-MAX_PERSISTED_MESSAGES),
+								messages: c.messages
+									.slice(-MAX_PERSISTED_MESSAGES)
+									.map(stripPersistedMedia),
 							})),
 							revertSnapshots: pruneRevertSnapshots({
 								snapshots: chat.revertSnapshots,

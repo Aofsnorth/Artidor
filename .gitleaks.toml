@@ -1,24 +1,31 @@
 title = "Artidor Gitleaks Config"
 
 [allowlist]
-description = "Allowed example files"
+description = "Allowed placeholder/example values that are not real secrets"
 paths = [
   '''README.*''',
   '''.*\.example$''',
   '''apps/web/\.env\.example'''
 ]
 regexes = [
-  # CI workflow placeholder env values that accidentally match the
-  # generic-api-key rule (e.g. "your-upstash-redis-token"). Real secrets
-  # must never use the "your-*" prefix convention — any secret starting
-  # with "your-" is suspicious and should be investigated.
-  '''["']your-[a-z0-9-]+["']''',
+  # Placeholder env values used by docs, CI, and the Dockerfile (e.g.
+  # "your-upstash-redis-token", "your-generated-secret-here",
+  # "build-time-secret", "ci-only-secret-<hex>"). These regexes are matched
+  # against the captured secret VALUE (secretGroup 2 of the rules below), so
+  # they deliberately omit the surrounding quotes.
+  # Real secrets must never use these prefix conventions — treat these
+  # prefixes as reserved for placeholders only.
+  '''(?i)your-[a-z0-9-]+''',
+  '''(?i)build-time-secret''',
+  '''(?i)ci-only-secret''',
+  '''(?i)example[_-]?token''',
 ]
 
 [[rules]]
 id = "generic-api-key"
 description = "Generic API key"
-regex = '''(?i)(api[_-]?key|secret|token|password|credential)\s*[:=]\s*['"][A-Za-z0-9_\-]{16,}['"]'''
+regex = '''(?i)(api[_-]?key|secret|token|password|credential)\s*[:=]\s*['"]([A-Za-z0-9_\-]{16,})['"]'''
+secretGroup = 2
 tags = ["key", "API", "generic"]
 
 [[rules]]

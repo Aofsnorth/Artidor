@@ -1,0 +1,192 @@
+{
+  "goal": {
+    "id": "g-muflsonprj",
+    "objective": "Fix all reported Artidor issues and maximize measured application performance without regressions.",
+    "stop_condition": "All reported bugs have regression coverage; targeted/full tests, typecheck, lint, UI interaction verification, and before/after performance benchmarks pass with recorded evidence; Dependabot/security alerts and open PRs receive evidence-based best-option actions.",
+    "validation": [
+      "apps/web targeted Bun tests for timeline drag/drop and performance regressions",
+      "cd apps/web && bunx tsc --noEmit",
+      "cd apps/web && bunx biome check on changed files",
+      "Playwright drag-from-assets-to-timeline magnet verification with keyboard/accessibility assertions",
+      "before/after benchmark or profiler evidence for changed hot paths",
+      "GitHub PR checks/reviews plus Dependabot/security alert evidence"
+    ],
+    "constraints": [
+      "Preserve unrelated user changes",
+      "No new dependency unless existing tools cannot cover the measured bottleneck",
+      "No destructive GitHub action without inspectable evidence",
+      "Fix magnet behavior first, then remaining reported UI issues, then measured performance work"
+    ],
+    "status": "done",
+    "created_at": "2026-09-24T14:04:43.093Z",
+    "updated_at": "2026-09-27T10:07:06.363Z",
+    "checkpoints": 5,
+    "max_checkpoints": 30,
+    "progress_log": [
+      {
+        "at": "2026-09-27T07:59:55.705Z",
+        "checkpoint": 1,
+        "summary": "Fixed uniform-pool mid-frame recycle aliasing (effects per-pass, masks per-application, sdf per-JFA-step) by moving recycle to the frame boundary; added regression test; rebuilt wasm; proved the aliasing mechanism and the fix in a real browser via WebGPU readback probes; app runs 3 simultaneous effect passes with 0 errors.",
+        "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 26 pass / 0 fail. Browser probe: shared-buffer case renders pass1 BLUE (mechanism confirmed), distinct-buffer case correct red/blue; app multi-adjust store [exposure -100, tint-shift +100, sharpen +50], bufFail [], consoleErrorCount 0."
+      },
+      {
+        "at": "2026-09-27T08:08:19.829Z",
+        "checkpoint": 2,
+        "summary": "Completed t-9 GPU/Rust performance track: 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md, steady-state benchmark proves 950 acquires → 19 allocations (98% reduction, zero per frame after warm-up), mappedAtCreation eliminated from all draw paths; removed leftover probe counters from 3 source files; fixed 2 stale tests (clamp integration contradiction, missing adjust tab); full web suite 1111/1111 pass, tsc + biome clean, Rust 27/27 pass.",
+        "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 27 pass/0 fail. bun test --isolate src/: 1111 pass/0 fail/11 skip. bunx tsc --noEmit: clean. bunx biome check on touched files: clean. grep: 0 mapped_at_creation:true in draw crates, 6 acquire_uniform sites."
+      },
+      {
+        "at": "2026-09-27T08:32:15.814Z",
+        "checkpoint": 3,
+        "summary": "Verified and fixed t-2/t-3/t-4: transitions+motion render clean with real photos (0 errors, 0 bufFail during playback through a Fade transition), Sound tab no longer fires the auth-gated request when signed out (explicit sign-in state instead of a console 401), Arth AI panel geometry measured sane (inside viewport, clear of rail, composer at bottom). Tasks t-1 through t-4 and t-6 through t-10 all completed.",
+        "validation_result": "Headed Playwright: transition toast + motion toast confirmed, 0 console errors + 0 bufFail across playback; 0 /api/sounds requests fired signed-out (2 runs), auth message rendered (diag probe: hasAuthMessage=true, session 200/null); AI view geometry (89,49,415x539) inside viewport and clear of rail. tsc --noEmit + biome clean on all touched files."
+      },
+      {
+        "at": "2026-09-27T10:05:25.107Z",
+        "checkpoint": 4,
+        "summary": "Fixed the black timeline preview the user reported live: TexturePool/UniformBufferPool release-then-recycle double-stash created duplicate handles, letting one frame acquire the same texture as both attachment and sampled input (WebGPU usage-scope violation invalidating every frame's command buffer). Credit-count accounting fix; regression tests proven to fail on the buggy code and pass on the fix; browser re-run on the user's GPU config shows 0 black pixels and zero validation errors.",
+        "validation_result": "cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail. Browser repro (user GPU config): before 4096/4096 black pixels + per-frame validation errors; after 0 black / 4096 non-black, 0 validation errors, 0 bufFail. bun test --isolate src/ = 1111 pass / 0 fail / 11 skip."
+      },
+      {
+        "at": "2026-09-27T10:07:06.363Z",
+        "checkpoint": 5,
+        "summary": "Completed t-5 security/PR triage: next 16.3.4 bump eliminated both critical RCEs and resolutions cleaned the remaining advisories (bun audit 0/833 packages), gitleaks false-positive root cause fixed (missing secretGroup made the allowlist dead code; full history now scans clean with detection positive control), Playwright CI failure root-caused to a 3000-vs-3005 port mismatch and fixed (smoke 3/3), and all 15 Dependabot PRs triaged into merge-now/redundant/deferred buckets. All goal tasks t-1..t-10 now completed with recorded evidence.",
+        "validation_result": "bun audit: 0 vulnerabilities (833 packages). gitleaks detect full history: 575 commits, 0 leaks, exit 0; positive control detects. Playwright smoke: 3/3 pass on port 3005. bun test --isolate src/: 1111 pass/0 fail/11 skip. tsc --noEmit clean. biome clean on changed files."
+      }
+    ],
+    "evidence": [
+      {
+        "id": "e-muiqgtss8u",
+        "at": "2026-09-26T18:38:46.492Z",
+        "kind": "test",
+        "description": "Renderer unit suite for the ImageBitmap ownership fix. Ran `bun test --isolate apps/web/src/services/renderer` before and after: the two new regression tests (\"keeps a cached source usable after the shared decode LRU overflows\" for image and sticker caches) FAILED before the fix (expected bitmap.closed=false, got true) and PASS after adding detachDecodedBitmap ownership transfer. Full suite 189 pass / 0 fail across 24 files. Proves a bitmap the render path was still serving was being closed by a second cache owner, and a closed ImageBitmap uploads as nothing (a black layer).",
+        "result": "pass"
+      },
+      {
+        "id": "e-muiqh0sp5p",
+        "at": "2026-09-26T18:38:55.561Z",
+        "kind": "benchmark",
+        "description": "Black-preview root cause isolated by controlled browser measurement (headed Chromium, real WebGPU adapter, disposable project). With ZERO elements on the timeline the console recorded createBuffer size failures: 1, followed by 'RefCell already borrowed' at rust/wasm/src/compositor.rs:167: 542. Proves the preview is not black because of the photo (the timeline thumbnail renders the same photo correctly); the compositor bricks itself on the first degenerate texture dimension and every later frame panics. Also established that headless SwiftShader reports navigator.gpu.requestAdapter() === null, so headless runs give a false 'black preview' verdict and cannot be used as evidence for this class of bug.",
+        "result": "pass"
+      },
+      {
+        "id": "e-mujj2yafqm",
+        "at": "2026-09-27T07:59:47.992Z",
+        "kind": "test",
+        "description": "Uniform-pool mid-frame recycle aliasing fixed and proven. Root cause: pipeline.rs called UniformBufferPool::recycle_frame() per pass and masks per application, while the whole frame records into ONE encoder submitted once at frame end — LIFO pop handed pass N+1 the same buffer as pass N, so the later Queue::write_buffer (staged before submit) clobbered the earlier draw's uniforms. Browser mechanism probe (headed Chromium WebGPU, readback via copyTextureToBuffer, no present): distinct-buffer case pass1=(255,0,0,255) red / pass2=(0,0,255,255) blue; shared-buffer case pass1=(0,0,255,255) BLUE despite red written first — mechanism confirmed in this browser. Fix: recycle_frame moved to the frame boundary (compositor render_frame/render_frame_to_bytes call effects.recycle_frame() + masks.recycle_frame(); standalone apply()/apply_mask_feather() recycle themselves once per own-encoder submit). Regression test chains_within_one_frame_never_share_buffers added to uniform_pool.rs; cargo test -p gpu -p compositor -p effects -p masks = 26 pass (gpu 5, compositor 9, effects 12), wasm rebuilt (14:48). App verification with fresh dev server: store holds 3 simultaneous effect passes (exposure -100, tint-shift +100, sharpen +50), 0 console errors, 0 createBuffer failures across a 6s settle. Same probe also proves SwiftShader rasterization works (clear-only readback red) while present-to-canvas reads [0,0,0,0] — the black DOM preview in the test environment is a present limitation, not a render-path defect.",
+        "result": "pass"
+      },
+      {
+        "id": "e-mujjdq93ct",
+        "at": "2026-09-27T08:08:10.791Z",
+        "kind": "benchmark",
+        "description": "t-9 GPU/Rust performance track completed with 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md. Headline benchmark (deterministic, cargo test -p gpu steady_state_frames_allocate_no_buffers): a 3-layer frame with a 2-pass effect chain and a feathered mask = 19 uniform-buffer acquires per frame; before the pool every acquire was a create_buffer_init mapped allocation (19/frame forever = 950 across 50 frames); after the pool 950 acquires produce 19 total allocations and every subsequent frame records ZERO — 98% allocation reduction plus complete elimination of the mappedAtCreation path that caused the panic class. Supporting evidence: grep shows 0 mapped_at_creation:true and 6 acquire_uniform call sites (only remaining create_buffer_init is the one-time fullscreen quad at context init); full Rust suite 27 pass / 0 fail (gpu 6, compositor 9, effects 12); wasm rebuilt 3,111,775 bytes verified newer than all sources; browser run with 3 simultaneous effect passes = 0 console errors, 0 createBuffer failures. Full web suite after fixes: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip; bunx tsc --noEmit clean; biome clean on all touched files. Two stale tests fixed en route: canvas-renderer.clamp.test.ts integration expectation contradicted the file's own unit contract (non-finite contains to MIN) — now uses finite runaway 1e12; registry-render-boundary.test.ts IMAGE tab list was missing the new 'adjust' tab.",
+        "result": "pass"
+      },
+      {
+        "id": "e-mujk8hrxbt",
+        "at": "2026-09-27T08:32:06.141Z",
+        "kind": "test",
+        "description": "t-2/t-3/t-4 verified in one headed Playwright run on the fresh dev server. t-2 Transitions+Motion with real photos: two fixture photos dropped onto two different tracks (full time overlap), both clips multi-selected, Transitions tab card click produced toast \"Fade added / Transition inserted between the two clips.\", Motion tab card click produced \"Fade Up applied\", then Space-playback through the transition region for 4s recorded ZERO console errors and ZERO createBuffer failures — transitions and motion render paths are regression-clean. t-3 Sound 401: root cause was the auth-gated /api/sounds/search being fired while signed out (console 401 + silent empty tab). Fix: SoundsView and useSoundSearch now resolve the better-auth session first (useSession) and skip the doomed request entirely when signed out, rendering an explicit localized \"Sign in to browse the sound library\" state (en+id dictionary keys added). Verified twice: zero /api/sounds network requests fired while signed out, session endpoint returns 200/null, and the auth message renders in the Audio tab (the sounds view is reachable via the Audio tab — \"sounds\" is not in VISIBLE_TAB_KEYS). t-4 Arth AI panel: no positional defect reproduces — measured geometry: AI view at (89,49,415x539) fully inside the 1600x950 viewport, clear of the tab rail (x 89 >= rail right edge 80), composer textarea at bottom of the chat column (y 504/539-height view, 84% down); typing in the composer produced no errors. tsc --noEmit clean, biome check clean on sounds.tsx, use-sound-search.ts, dictionaries.ts.",
+        "result": "pass"
+      },
+      {
+        "id": "e-mujnkewsb8",
+        "at": "2026-09-27T10:05:21.148Z",
+        "kind": "test",
+        "description": "Black preview on real-GPU browsers root-caused and fixed. Reproduced on the user's actual configuration (headed Chromium, NO test GPU flags, NVIDIA lovelace adapter, bgra8unorm preferred): photo dropped on timeline + Space playback → preview canvas fully black (4096/4096 sampled pixels black) with repeating WebGPU validation errors \"[Texture compositor-layer] usage (TextureBinding|RenderAttachment) includes writable usage and another usage in the same synchronization scope\" and every frame's command buffer invalidated. Root cause: TexturePool::release() stashed a handle to the free list without removing it from in_use, so the next recycle_frame() stashed the same handles a SECOND time; the free list accumulated duplicate handles and a frame acquired one texture for two live roles (attachment of one pass + sampled input of another in the same usage scope) — invalid command buffer, empty present, black preview. Same accounting bug existed in UniformBufferPool (latent). Fix: credit-count accounting — release() records a per-key credit, recycle_frame() skips that many in_use entries instead of re-stashing, so every handle enters the free list exactly once. Proof of test validity: the 3 new regression tests were run against the staged buggy texture_pool.rs and FAILED (recycle_never_duplicates_a_released_handle_in_the_free_list: duplicate handles detected; steady_state_frames_hand_out_only_distinct_textures: \"scene and blend target must not alias, left: 13, right: 13\" — the exact black-preview mechanism; a_released_and_reacquired_handle_is_returned_exactly_once: free list 2 vs 1), then PASS with the fix. Two pre-existing tests (free_list_saturates_at_the_cap, the_cap_is_applied_per_size_not_globally) and one uniform-pool test (retention_is_capped) were rewritten because their expectations were artifacts of the duplication bug (an immediate acquire-after-release loop re-pops the same handle, so under correct accounting the free list holds one entry, not 8 duplicate handles); they now hold targets live before releasing, which genuinely exercises the cap. cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail (compositor 12, effects 12, gpu 7). wasm rebuilt (3,124,315 bytes, 17:03) and dev server restarted. Decisive browser verification, same probe same GPU same flow as the failing run: preview canvas 0 black / 4096 non-black pixels, ZERO validation errors (only Chrome's unrelated powerPreference notice), 0 createBuffer failures, element in timeline store. Full web suite unaffected: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip.",
+        "result": "pass"
+      },
+      {
+        "id": "e-mujnmgqziw",
+        "at": "2026-09-27T10:06:56.843Z",
+        "kind": "review",
+        "description": "t-5 GitHub security triage completed with every CI failure on main root-caused and fixed locally. (1) Dependency audit: bun audit on main reported 5 vulnerabilities incl. 2 CRITICAL RCE in next@16.2.11 (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4). Fixed by bumping next to 16.3.4 (root + apps/web) and pinning resolutions adm-zip 0.6.1 + baseline-browser-mapping 2.11.0; bun audit now reports 0 vulnerabilities across 833 packages. Post-bump validation: bun test --isolate src/ 1111 pass/0 fail, tsc --noEmit clean, dev server restarted on next 16.3.4 (log confirms \"Next.js 16.3.4 (Turbopack)\"), headed browser smoke (editor + import + drop photo + 6s render loop) = 0 console errors, 0 createBuffer failures. (2) Secret scan: reproduced the CI failure locally with official gitleaks 8.28.0 — 8 findings across 575 commits, all placeholders (your-*, build-time-secret, ci-only-secret-<hex>). Root cause of the false positives: the custom generic-api-key rule lacked secretGroup so gitleaks matched the key NAME against the allowlist regexes (which were written for values), making the allowlist dead code. Fixed .gitleaks.toml (secretGroup = 2, value-based allowlist regexes without quotes). Verification: full git history scan = 575 commits / 40.47 MB / 0 leaks / exit 0, while a scratch dir with a real-looking key still triggers detection (positive control). (3) Playwright CI failure (all 15 PRs \"unstable\"): root-caused via git history — apps/web dev script has hardcoded port 3005 since commit a36d16b but playwright.config.ts still polled 127.0.0.1:3000, so CI's webServer poll timed out and the whole suite failed on every PR. Fixed config to 3005 (+comment); installed missing chromium build; smoke spec = 3/3 passed locally. Full e2e suite was interrupted by the user and left for a manual run. (4) PR triage (15 Dependabot PRs, read-only via api.github.com): #93 serde 1.0.229, #94 uuid 1.26.0, #96/#97 tauri-plugin-fs/dialog patches, #99/#100 zod 4.5.4 = safe minor/patch bumps, CI green except the base-wide failures now fixed; #98/#101/#104/#105 next = redundant (manual 16.3.4 bump supersedes); #95 syn 3.0.4, #106/#107 motion 13.2.0, #108/#109 better-auth 1.7.3 = major bumps, not security-driven, deferred for dedicated validation. Recommended sequence (needs push rights, not executed per the no-destructive-action constraint): push local fixes first to green the base, then merge the patch/minor PRs, close the redundant next PRs, defer the majors.",
+        "result": "pass"
+      }
+    ]
+  },
+  "tasks": [
+    {
+      "id": "t-1",
+      "subject": "Fix asset-to-timeline magnet end-to-end",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-24T14:04:43.111Z",
+      "updated_at": "2026-09-27T08:00:48.108Z"
+    },
+    {
+      "id": "t-2",
+      "subject": "Verify Transitions and Motion real photos",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-24T14:04:43.114Z",
+      "updated_at": "2026-09-27T08:31:55.391Z"
+    },
+    {
+      "id": "t-3",
+      "subject": "Fix Sound tab 401 error",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-24T14:04:43.117Z",
+      "updated_at": "2026-09-27T08:31:55.401Z"
+    },
+    {
+      "id": "t-4",
+      "subject": "Fix Arth AI panel opening position",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-24T14:04:43.120Z",
+      "updated_at": "2026-09-27T08:31:55.407Z"
+    },
+    {
+      "id": "t-5",
+      "subject": "Triage GitHub PRs and security alerts",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-24T14:04:43.124Z",
+      "updated_at": "2026-09-27T10:06:58.904Z"
+    },
+    {
+      "id": "t-6",
+      "subject": "Verify the GPU dimension clamp stops the createBuffer/RefCell panic cascade",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-26T18:27:31.819Z",
+      "updated_at": "2026-09-27T08:00:48.119Z"
+    },
+    {
+      "id": "t-7",
+      "subject": "Make the Rust compositor panic-safe (RefCell borrow must not strand) and rebuild WASM",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-26T18:28:41.075Z",
+      "updated_at": "2026-09-27T08:00:48.135Z"
+    },
+    {
+      "id": "t-8",
+      "subject": "Fix the Image Adjust slider snap-back (value reverts after scrub)",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-26T18:28:54.342Z",
+      "updated_at": "2026-09-27T08:00:48.137Z"
+    },
+    {
+      "id": "t-9",
+      "subject": "Run the 10-round performance audit and fix every issue found",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-26T18:30:22.434Z",
+      "updated_at": "2026-09-27T08:08:24.813Z"
+    },
+    {
+      "id": "t-10",
+      "subject": "Fix uniform pool mid-frame recycle aliasing (effects/masks/compositor frame boundary)",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T07:45:04.432Z",
+      "updated_at": "2026-09-27T08:00:48.138Z"
+    }
+  ],
+  "archived_goals": []
+}

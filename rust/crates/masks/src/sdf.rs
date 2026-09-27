@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use gpu::{FULLSCREEN_SHADER_SOURCE, GpuContext};
-use wgpu::util::DeviceExt;
+use std::sync::Mutex;
 
 const JFA_INIT_SHADER_SOURCE: &str = include_str!("shaders/jfa_init.wgsl");
 const JFA_STEP_SHADER_SOURCE: &str = include_str!("shaders/jfa_step.wgsl");
@@ -15,6 +15,11 @@ pub struct SdfPipeline {
     uniform_bind_group_layout: wgpu::BindGroupLayout,
     init_pipeline: wgpu::RenderPipeline,
     step_pipeline: wgpu::RenderPipeline,
+    /// Reusable per-pass uniform buffer, written with `Queue::write_buffer`
+    /// instead of being reallocated (as a mapped buffer) per pass.
+    ///
+    /// Behind a [`Mutex`] because the apply entry points are `&self`.
+    uniforms: Mutex<gpu::UniformBufferPool<wgpu::Buffer>>,
 }
 
 #[repr(C)]
@@ -114,6 +119,7 @@ impl SdfPipeline {
             uniform_bind_group_layout,
             init_pipeline,
             step_pipeline,
+            uniforms: Mutex::new(gpu::UniformBufferPool::default()),
         }
     }
 
@@ -216,6 +222,23 @@ impl SdfPipeline {
         }
     }
 
+    /// Returns every uniform buffer the previous frame borrowed to the free
+    /// list.
+    ///
+    /// Frame-boundary recycle only: one SDF computation records a seed pass
+    /// plus `log2(max(w,h))` jump-flood steps into the caller's encoder, and
+    /// those draws are submitted together at the end of the frame, so
+    /// recycling between acquires would let a later step's `write_buffer`
+    /// clobber an earlier step's uniforms before the encoder runs. The
+    /// compositor drives this through
+    /// [`MaskFeatherPipeline::recycle_frame`].
+    pub fn recycle_frame(&self) {
+        self.uniforms
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .recycle_frame();
+    }
+
     fn run_pass(
         &self,
         context: &GpuContext,
@@ -243,14 +266,21 @@ impl SdfPipeline {
                     },
                 ],
             });
-        let uniform_buffer =
-            context
-                .device()
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("gpu-sdf-uniform-buffer"),
-                    contents: uniform_buffer_bytes,
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
+        let uniform_buffer = {
+            let mut uniforms = self
+                .uniforms
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            // No recycle here: one SDF computation runs `log2(max(w,h))` JFA
+            // steps through this method inside a single encoder, so a recycle
+            // would hand step N+1 the buffer step N's draw still reads.
+            uniforms.acquire_uniform(
+                context,
+                uniform_buffer_bytes.len() as u64,
+                "gpu-sdf-uniform-buffer",
+                uniform_buffer_bytes,
+            )
+        };
         let uniform_bind_group = context
             .device()
             .create_bind_group(&wgpu::BindGroupDescriptor {

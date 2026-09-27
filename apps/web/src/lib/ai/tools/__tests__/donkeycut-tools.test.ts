@@ -3,7 +3,7 @@ import { getToolDefinitions, TOOLS_BY_EXECUTOR_KEY } from "../registry";
 
 describe("DonkeyCut-ported AI tools", () => {
 	it("registers detect_silence with DonkeyCut's default thresholds", () => {
-		const tool = TOOLS_BY_EXECUTOR_KEY["detect_silence"];
+		const tool = TOOLS_BY_EXECUTOR_KEY.detect_silence;
 		expect(tool).toBeDefined();
 		expect(tool?.def.function.name).toBe("detect_silence");
 		expect(tool?.category).toBe("audio");
@@ -14,7 +14,7 @@ describe("DonkeyCut-ported AI tools", () => {
 	});
 
 	it("registers apply_grade with the preset catalog in its description", () => {
-		const tool = TOOLS_BY_EXECUTOR_KEY["apply_grade"];
+		const tool = TOOLS_BY_EXECUTOR_KEY.apply_grade;
 		expect(tool).toBeDefined();
 		expect(tool?.def.function.name).toBe("apply_grade");
 		expect(tool?.category).toBe("effect");
