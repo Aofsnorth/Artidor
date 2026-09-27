@@ -30,6 +30,11 @@ struct CompositorRuntime {
     // which panics inside wgpu and bricks the compositor for good.
     surface: wgpu::Surface<'static>,
     compositor: Compositor,
+    // Last (width, height) the surface was configured for. `renderFrame`
+    // runs at export/preview rates (60+/s) and reconfiguring an unchanged
+    // surface churns backbuffers for no benefit; the size comparison is
+    // exact because JS clamps frame dimensions before they reach the GPU.
+    configured_size: Option<(u32, u32)>,
 }
 
 thread_local! {
@@ -68,6 +73,7 @@ pub fn init_compositor(width: u32, height: u32) -> Result<(), JsValue> {
                 canvas: CompositorCanvas::Offscreen(canvas),
                 surface,
                 compositor,
+                configured_size: None,
             }));
         });
 
@@ -92,11 +98,25 @@ pub fn init_compositor_with_canvas(canvas: web_sys::OffscreenCanvas) -> Result<(
                 canvas: CompositorCanvas::Offscreen(canvas),
                 surface,
                 compositor,
+                configured_size: None,
             }));
         });
 
         Ok(())
     })
+}
+
+/// Drop the compositor runtime (canvas handle, surface, textures) without
+/// touching the GPU runtime. Paired with `destroyGpu` by the JS layer when
+/// the main thread deliberately hands the GPU over to an export worker: the
+/// preview's textures and swapchain are released so the export device gets
+/// the full GPU budget, and the next `initCompositor` rebuilds everything.
+#[wasm_bindgen(js_name = destroyCompositor)]
+pub fn destroy_compositor() -> Result<(), JsValue> {
+    COMPOSITOR_RUNTIME.with(|cell| {
+        cell.replace(None);
+    });
+    Ok(())
 }
 
 #[wasm_bindgen(js_name = resizeCompositor)]
@@ -114,6 +134,9 @@ pub fn resize_compositor(width: u32, height: u32) -> Result<(), JsValue> {
                 canvas.set_height(height);
             }
         }
+        // The backing store changed size, so the surface must be reconfigured
+        // on the next render even if the frame descriptor repeats this size.
+        runtime.configured_size = None;
         Ok(())
     })
 }
@@ -212,16 +235,41 @@ pub fn render_frame(options: JsValue) -> Result<(), JsValue> {
             ));
         };
 
-        let result = runtime
-            .compositor
-            .render_frame(
-                &gpu_runtime.context,
-                RenderFrameOptions {
-                    frame: &frame,
-                    surface: &runtime.surface,
-                },
-            )
-            .map_err(|error| JsValue::from_str(&error.to_string()));
+        // Reconfigure only when the size actually changed. configure() on
+        // an unchanged surface is pure backbuffer churn — a 60 fps export
+        // reconfigured 36,000 times over ten minutes for nothing. Errors are
+        // folded into `result` (not `?`) so the runtime is always restored to
+        // the cell below, even when configuration fails.
+        let result = if runtime.configured_size != Some((frame.width, frame.height)) {
+            gpu_runtime
+                .context
+                .configure_surface(&runtime.surface, frame.width, frame.height)
+                .map_err(|error| JsValue::from_str(&error.to_string()))
+                .and_then(|()| {
+                    runtime.configured_size = Some((frame.width, frame.height));
+                    runtime
+                        .compositor
+                        .render_frame(
+                            &gpu_runtime.context,
+                            RenderFrameOptions {
+                                frame: &frame,
+                                surface: &runtime.surface,
+                            },
+                        )
+                        .map_err(|error| JsValue::from_str(&error.to_string()))
+                })
+        } else {
+            runtime
+                .compositor
+                .render_frame(
+                    &gpu_runtime.context,
+                    RenderFrameOptions {
+                        frame: &frame,
+                        surface: &runtime.surface,
+                    },
+                )
+                .map_err(|error| JsValue::from_str(&error.to_string()))
+        };
         cell.replace(Some(runtime));
         result
     });

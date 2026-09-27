@@ -33,6 +33,20 @@ export function applyMaskFeather(options) {
 }
 
 /**
+ * Drop the compositor runtime (canvas handle, surface, textures) without
+ * touching the GPU runtime. Paired with `destroyGpu` by the JS layer when
+ * the main thread deliberately hands the GPU over to an export worker: the
+ * preview's textures and swapchain are released so the export device gets
+ * the full GPU budget, and the next `initCompositor` rebuilds everything.
+ */
+export function destroyCompositor() {
+    const ret = wasm.destroyCompositor();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
  * Drop the current GPU runtime so the next `initializeGpu` call creates a
  * fresh device. Used to recover from device-lost errors.
  */
@@ -2439,12 +2453,12 @@ function __wbg_get_imports() {
             arg0.writeTexture(arg1, getArrayU8FromWasm0(arg2, arg3), arg4, arg5);
         }, arguments); },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2520, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2519, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue__core_ed718c3d60ebd546___result__Result_____wasm_bindgen_3c33037414290827___JsError___true_);
             return ret;
         },
         __wbindgen_cast_0000000000000002: function(arg0, arg1) {
-            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 383, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+            // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 382, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
             const ret = makeMutClosure(arg0, arg1, wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue______true_);
             return ret;
         },

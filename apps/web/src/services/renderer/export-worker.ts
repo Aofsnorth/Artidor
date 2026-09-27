@@ -552,9 +552,41 @@ async function handleExport(msg: WorkerInMessage) {
 	let encodeWaitMs = 0;
 	const loopStart = performance.now();
 
+	// Render one frame, retrying across GPU device-loss recovery. A panicked
+	// wgpu call (driver reset, OOM) is swallowed by the compositor's recovery
+	// path, which drops the frame and leaves the canvas stale — encoding that
+	// stale canvas would bake black/frozen frames into the export. Waiting for
+	// the recovery to rebuild the device and re-rendering the same frame keeps
+	// the encoded output correct; the progress re-post keeps the bridge's
+	// inactivity timeout from killing the run during a slow recovery.
+	const renderWithGpuRecovery = async (
+		globalTimeTicks: number,
+		localFrame: number,
+	) => {
+		for (let attempt = 0; ; attempt++) {
+			await renderer.render({ node: rootNode, time: globalTimeTicks });
+			if (!wasmCompositor.inRecovery) return;
+			if (attempt >= 2) {
+				throw new Error(
+					"GPU device was lost repeatedly during export — the graphics driver or GPU may be overloaded. Try a lower resolution or quality.",
+				);
+			}
+			console.warn(
+				`[export-worker] GPU device lost during render, recovering (attempt ${attempt + 1}/3)`,
+			);
+			await wasmCompositor.whenRecovered();
+			// Keep-alive for the bridge inactivity timer: recovery can take
+			// seconds (adapter re-request), and no frame progress flows meanwhile.
+			self.postMessage({
+				type: "progress",
+				progress: Math.min(1, 0.2 + (localFrame / progressDenominator) * 0.78),
+			} satisfies WorkerOutMessage);
+		}
+	};
+
 	if (staticScene && segmentFrameCount > 0) {
 		const renderStart = performance.now();
-		await renderer.render({ node: rootNode, time: startFrame * ticksPerFrame });
+		await renderWithGpuRecovery(startFrame * ticksPerFrame, 0);
 		renderMs += performance.now() - renderStart;
 		pendingEncodes.push(videoSource.add(0, segmentFrameCount * frameDuration));
 		self.postMessage({
@@ -601,9 +633,11 @@ async function handleExport(msg: WorkerInMessage) {
 
 			// Composite frame (GPU) — runs continuously while encoder processes
 			// the queue in the background. Time spent here = compositor is the
-			// bottleneck.
+			// bottleneck. Retries transparently when the GPU device is lost
+			// mid-export instead of encoding stale canvas pixels.
 			const renderStart = performance.now();
-			await renderer.render({ node: rootNode, time: globalTimeTicks });
+			const localFrame = i - startFrame;
+			await renderWithGpuRecovery(globalTimeTicks, localFrame);
 			renderMs += performance.now() - renderStart;
 
 			// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
@@ -612,7 +646,6 @@ async function handleExport(msg: WorkerInMessage) {
 			// Report progress every 10 frames (reduces postMessage overhead).
 			// The last frame reports (count - 1) / count, so the loop alone can
 			// never reach 1.0 — completion below posts the final 1.0.
-			const localFrame = i - startFrame;
 			if (localFrame % 10 === 0 || localFrame === segmentFrameCount - 1) {
 				self.postMessage({
 					type: "progress",

@@ -307,7 +307,10 @@ impl Compositor {
         // submitted once at the end of the frame.
         self.effects.recycle_frame();
         self.masks.recycle_frame();
-        context.configure_surface(options.surface, frame.width, frame.height)?;
+        // Surface configuration is the caller's responsibility: the wasm
+        // bridge caches the last configured size and skips reconfiguring an
+        // unchanged surface (per-frame configure() churns backbuffers). Native
+        // callers must configure the surface before calling render_frame.
         let surface_texture = context.acquire_surface_texture(options.surface)?;
         let surface_view = surface_texture
             .texture

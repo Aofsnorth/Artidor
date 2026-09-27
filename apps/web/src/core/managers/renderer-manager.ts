@@ -22,6 +22,7 @@ import {
 import { runParallelExport } from "@/services/renderer/parallel-export";
 import { serializeSceneTree } from "@/services/renderer/scene-serializer";
 import { isEncoderConfigError } from "@/services/renderer/export-codec";
+import { wasmCompositor } from "@/services/renderer/compositor/wasm-compositor";
 
 type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
@@ -336,6 +337,13 @@ export class RendererManager {
 
 			// Try Worker path first (OffscreenCanvas + WebCodecs in Worker)
 			if (workerPathAvailable) {
+				// Hand the GPU over to the export workers: the preview device holds
+				// every media texture for the whole session, and each worker creates
+				// its own device — on media-heavy projects that double allocation is
+				// what tips the GPU into OOM mid-export (browser crash / lost device).
+				// Releasing the preview's device frees its textures; the preview
+				// rebuilds lazily on its next render after the export finishes.
+				wasmCompositor.releaseForExport();
 				console.info("[export] worker path supported, serializing scene tree");
 				const { tree, files } = serializeSceneTree(scene);
 				const fileEntries = Array.from(files.entries()).map(
@@ -423,10 +431,10 @@ export class RendererManager {
 						// consumer, so no fallback can end up silently mute.
 						consumeAudioBuffer: !!includeAudio,
 						onProgress: (p) =>
-						onProgress?.({ progress: mapProgress(p.progress) }),
+							onProgress?.({ progress: mapProgress(p.progress) }),
 						getCancelled: onCancel,
-						});
-						if (includeAudio) audioConsumedByWorker = true;
+					});
+					if (includeAudio) audioConsumedByWorker = true;
 
 					if (result.success) {
 						return toExportResult(result);
@@ -447,9 +455,9 @@ export class RendererManager {
 						);
 						const swAudio = await ensureAudio();
 						const swResult = await runExportInWorker({
-						sceneTree: tree,
-						files: fileEntries,
-						audioBuffer: swAudio || null,
+							sceneTree: tree,
+							files: fileEntries,
+							audioBuffer: swAudio || null,
 							width: canvasSize.width,
 							height: canvasSize.height,
 							fps: exportFps,
@@ -494,16 +502,16 @@ export class RendererManager {
 			// any valid resolution).
 			const runMainThreadExport = async (
 				forceSoftwareEncoding: boolean,
-					): Promise<ExportResult> => {
-					const mainThreadAudio = await ensureAudio();
-					const exporter = new SceneExporter({
+			): Promise<ExportResult> => {
+				const mainThreadAudio = await ensureAudio();
+				const exporter = new SceneExporter({
 					width: canvasSize.width,
 					height: canvasSize.height,
 					fps: exportFps,
 					format,
 					quality,
 					shouldIncludeAudio: !!includeAudio,
-						audioBuffer: mainThreadAudio || undefined,
+					audioBuffer: mainThreadAudio || undefined,
 					forceSoftwareEncoding,
 				});
 

@@ -223,6 +223,10 @@ function PreviewCanvas({
 	// second, each of which would do property reads, scale calculations,
 	// and a setSize call before reaching the "nothing changed" early-exit.
 	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
+	const isExporting = useEditor(
+		(e) => e.project.getExportState().isExporting,
+		["project"],
+	);
 	const [needsRender, setNeedsRender] = useState(true); // start true to render the first frame
 	const rafEnabled = isPlaying || needsRender;
 
@@ -231,6 +235,13 @@ function PreviewCanvas({
 		// decide whether to keep the rAF loop alive.
 		const isPlaying = editor.playback.getIsPlaying();
 		try {
+			// Export gate: while an export runs, its workers own the GPU budget —
+			// the preview device was released (renderer-manager.exportProject →
+			// wasmCompositor.releaseForExport). Rendering here would immediately
+			// rebuild the main-thread device and re-upload every media texture,
+			// the exact double allocation the release exists to avoid. The preview
+			// keeps its last painted frame until the export finishes.
+			if (editor.project.getExportState().isExporting) return;
 			if (!canvasRef.current || !renderTree) return;
 
 			// Loading overlay check: if a render is in flight and has exceeded
@@ -479,6 +490,7 @@ function PreviewCanvas({
 		renderer,
 		renderTree,
 		editor.playback,
+		editor.project.getExportState,
 		editor.timeline.getLastFrameTime,
 		previewQuality,
 		gpuDegraded,
@@ -487,6 +499,13 @@ function PreviewCanvas({
 	]);
 
 	useRafLoop(render, rafEnabled);
+
+	// After an export finishes (and released the preview GPU device), force
+	// one re-render so the preview rebuilds its compositor instead of staying
+	// frozen on the last frame painted before the export started.
+	useEffect(() => {
+		if (!isExporting) setNeedsRender(true);
+	}, [isExporting]);
 
 	const performanceContextKey = [
 		activeProject.metadata.id,

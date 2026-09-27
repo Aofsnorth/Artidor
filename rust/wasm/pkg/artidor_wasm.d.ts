@@ -103,6 +103,15 @@ export function applyEffectPasses(options: any): OffscreenCanvas;
 export function applyMaskFeather(options: any): OffscreenCanvas;
 
 /**
+ * Drop the compositor runtime (canvas handle, surface, textures) without
+ * touching the GPU runtime. Paired with `destroyGpu` by the JS layer when
+ * the main thread deliberately hands the GPU over to an export worker: the
+ * preview's textures and swapchain are released so the export device gets
+ * the full GPU budget, and the next `initCompositor` rebuilds everything.
+ */
+export function destroyCompositor(): void;
+
+/**
  * Drop the current GPU runtime so the next `initializeGpu` call creates a
  * fresh device. Used to recover from device-lost errors.
  */
@@ -170,17 +179,18 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly applyMaskFeather: (a: any) => [number, number, number];
+    readonly initializeGpu: () => any;
+    readonly destroyGpu: () => void;
+    readonly applyEffectPasses: (a: any) => [number, number, number];
+    readonly destroyCompositor: () => [number, number];
     readonly getCompositorCanvas: () => [number, number, number];
     readonly initCompositor: (a: number, b: number) => [number, number];
     readonly initCompositorWithCanvas: (a: any) => [number, number];
-    readonly initializeGpu: () => any;
     readonly releaseTexture: (a: number, b: number) => [number, number];
     readonly renderFrame: (a: any) => [number, number];
     readonly resizeCompositor: (a: number, b: number) => [number, number];
     readonly uploadTexture: (a: any) => [number, number];
-    readonly destroyGpu: () => void;
-    readonly applyEffectPasses: (a: any) => [number, number, number];
-    readonly applyMaskFeather: (a: any) => [number, number, number];
     readonly TICKS_PER_SECOND: () => number;
     readonly floorToFrame: (a: any) => any;
     readonly isFrameAligned: (a: any) => number;
