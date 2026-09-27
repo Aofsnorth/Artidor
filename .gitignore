@@ -26,6 +26,7 @@ bun.lockb
 out/
 dist/
 build/
+.tmp*
 
 database.db
 database.db-shm
