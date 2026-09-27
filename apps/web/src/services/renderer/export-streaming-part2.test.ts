@@ -293,7 +293,7 @@ describe("streaming export part 2 — bridge/manager contract (static-only)", ()
 		expect(source).toContain("streamed: {");
 	});
 
-	test("project-manager lifecycle deletes streamed files (new export / dismiss / no cache)", async () => {
+	test("project-manager lifecycle: streamed results cache with OPFS retention", async () => {
 		const { readFileSync } = await import("node:fs");
 		const source = readFileSync(
 			`${import.meta.dir}/../../core/managers/project-manager.ts`,
@@ -303,8 +303,13 @@ describe("streaming export part 2 — bridge/manager contract (static-only)", ()
 		expect(
 			source.match(/discardStreamedExportFile/g)?.length ?? 0,
 		).toBeGreaterThanOrEqual(3);
-		// Streamed results are never cached (file would dangle after delete).
-		expect(source).toContain("if (result.buffer)");
+		// Streamed results ARE cached now, with file retention: cache hits
+		// re-verify the OPFS file exists, and a live history entry is never
+		// discarded behind the cache's back (it would dangle a future hit).
+		expect(source).toContain(
+			"openStreamedExportFile(cached.streamed.fileName)",
+		);
+		expect(source).toContain("isHistoryOwned");
 		// Cache hits still replay either backing.
 		expect(source).toContain("hasExportContent");
 	});
@@ -337,7 +342,9 @@ describe("streaming export part 2 — bridge/manager contract (static-only)", ()
 		expect(source).toContain("reuseWorker: false");
 		// The stitched result is handed over as a file, never read back into an
 		// ArrayBuffer — reading it would re-inflate peak RAM to the file size.
-		expect(source).toContain("streamed: { byteLength, fileName: tempOutput.name }");
+		expect(source).toContain(
+			"streamed: { byteLength, fileName: tempOutput.name }",
+		);
 		expect(source).not.toContain("arrayBuffer()");
 	});
 

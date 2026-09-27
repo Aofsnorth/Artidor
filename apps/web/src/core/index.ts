@@ -187,6 +187,7 @@ export class EditorCore {
 						}>;
 						selectedElements: Array<{ trackId: string; elementId: string }>;
 						editingGroupId: string | null;
+						projectUpdatedAt: string | null;
 					} => {
 						const scene = this.scenes.getActiveSceneOrNull();
 						if (!scene) {
@@ -196,6 +197,7 @@ export class EditorCore {
 								elements: [],
 								selectedElements: [],
 								editingGroupId: null,
+								projectUpdatedAt: null,
 							};
 						}
 						const allElements: Array<{
@@ -265,6 +267,10 @@ export class EditorCore {
 							elements: allElements,
 							selectedElements: this.selection.getSelectedElements(),
 							editingGroupId: this.timeline.getEditingGroupId(),
+							projectUpdatedAt:
+								this.project
+									.getActive()
+									?.metadata.updatedAt?.toISOString?.() ?? null,
 						};
 					},
 					/**

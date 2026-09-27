@@ -20,7 +20,10 @@ import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
 import { processMediaAssets } from "@/lib/media/processing";
 import type { ExportOptions, ExportResult, ExportState } from "@/lib/export";
 import { hasExportContent } from "@/lib/export";
-import { deleteExportTempFileByName } from "@/services/renderer/export-output";
+import {
+	deleteExportTempFileByName,
+	openStreamedExportFile,
+} from "@/services/renderer/export-output";
 import { storageService } from "@/services/storage/service";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
@@ -540,16 +543,36 @@ export class ProjectManager {
 		const cacheKey = this.getExportHistoryKey({ options });
 		const cached = cacheKey ? this.exportHistory.get(cacheKey) : null;
 		if (cached?.success && hasExportContent({ result: cached })) {
-			const result = { ...cached, cached: true };
-			this.exportState = { isExporting: false, progress: 1, result };
-			this.notify();
-			return result;
+			// Streamed entries reference an OPFS file that may have been swept
+			// (storage pressure, boot sweep, manual cleanup). Verify it still
+			// exists before replaying — otherwise fall through to a fresh render.
+			if (cached.streamed) {
+				const alive = await openStreamedExportFile(cached.streamed.fileName)
+					.then((file) => file.size > 0)
+					.catch(() => false);
+				if (!alive) {
+					if (cacheKey) this.exportHistory.delete(cacheKey);
+				} else {
+					const result = { ...cached, cached: true };
+					this.exportState = { isExporting: false, progress: 1, result };
+					this.notify();
+					return result;
+				}
+			} else {
+				const result = { ...cached, cached: true };
+				this.exportState = { isExporting: false, progress: 1, result };
+				this.notify();
+				return result;
+			}
 		}
 
 		// A new export replaces the previous result: delete the handed-over
-		// OPFS file (if any) so it never orphans. Evicted history entries get
-		// the same treatment below.
-		void this.discardStreamedExportFile(this.exportState.result);
+		// OPFS file (if any) so it never orphans — UNLESS the history still
+		// owns it (it is the live cache entry, and evicting below handles its
+		// cleanup). Evicted history entries get the same treatment below.
+		if (!this.isHistoryOwned(this.exportState.result)) {
+			void this.discardStreamedExportFile(this.exportState.result);
+		}
 		this.exportCancelRequested = false;
 		this.exportState = { isExporting: true, progress: 0, result: null };
 		this.notify();
@@ -583,18 +606,17 @@ export class ProjectManager {
 		}
 
 		if (cacheKey && result.success && hasExportContent({ result })) {
-			// History holds at most one entry; a streamed result must NOT be
-			// cached — replaying it after its file was deleted would hand the
-			// UI a dangling fileName. Buffer results keep the old behavior.
-			if (result.buffer) {
-				this.exportHistory.set(cacheKey, result);
-				while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
-					const oldestKey = this.exportHistory.keys().next().value;
-					if (!oldestKey) break;
-					const evicted = this.exportHistory.get(oldestKey);
-					this.exportHistory.delete(oldestKey);
-					void this.discardStreamedExportFile(evicted);
-				}
+			// History holds at most one entry. Streamed results ARE cached now:
+			// the handed-over OPFS file stays on disk and the history entry owns
+			// it until it is evicted or the dialog clears it (both discard the
+			// file). Cache hits re-verify the file's existence first.
+			this.exportHistory.set(cacheKey, result);
+			while (this.exportHistory.size > MAX_EXPORT_HISTORY_ENTRIES) {
+				const oldestKey = this.exportHistory.keys().next().value;
+				if (!oldestKey) break;
+				const evicted = this.exportHistory.get(oldestKey);
+				this.exportHistory.delete(oldestKey);
+				void this.discardStreamedExportFile(evicted);
 			}
 		}
 
@@ -623,10 +645,24 @@ export class ProjectManager {
 		return deleteExportTempFileByName(result.streamed.fileName);
 	}
 
+	/** True when the result object is still a live history entry (its OPFS
+	 * file must not be discarded behind the cache's back). */
+	private isHistoryOwned(result: ExportResult | null | undefined): boolean {
+		if (!result) return false;
+		for (const entry of this.exportHistory.values()) {
+			if (entry === result) return true;
+		}
+		return false;
+	}
+
 	clearExportState(): void {
 		// Dialog dismissed without download (or explicit reset): the handed-over
 		// OPFS file would otherwise orphan — its only reference was this state.
-		void this.discardStreamedExportFile(this.exportState.result);
+		// EXCEPT when the history still owns it (it is the live cache entry and
+		// must survive so an identical export replays from cache).
+		if (!this.isHistoryOwned(this.exportState.result)) {
+			void this.discardStreamedExportFile(this.exportState.result);
+		}
 		this.exportState = { isExporting: false, progress: 0, result: null };
 		this.notify();
 	}
