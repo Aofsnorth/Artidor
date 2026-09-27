@@ -651,3 +651,78 @@ test("interleaved group/ungroup/combine multi-undo restores each layer exactly",
 	expect(findElement("a")).toBeUndefined();
 	expect(findElement("b")).toBeUndefined();
 });
+
+/* ------------------------------------------------------------------ */
+/* 2. Group modes (standard vs locked)                                 */
+/* ------------------------------------------------------------------ */
+
+test("standard mode stamps groupMode and ungroup clears it with the tag", () => {
+	const original = buildSceneTracks({
+		main: buildVideoTrack({
+			elements: [
+				buildVideoElement({ id: "a", startTime: 0, duration: 50_000 }),
+				buildVideoElement({ id: "b", startTime: 60_000, duration: 50_000 }),
+			],
+		}),
+	});
+	resetTracks(original);
+	const manager = new CommandManager(editorMock);
+
+	const command = new GroupElementsCommand({
+		elementRefs: [
+			{ trackId: "main", elementId: "a" },
+			{ trackId: "main", elementId: "b" },
+		],
+		mode: "standard",
+	});
+	const groupId = command.getGroupId();
+	manager.execute({ command });
+
+	expect(findElement("a")).toMatchObject({ groupId, groupMode: "standard" });
+	expect(findElement("b")).toMatchObject({ groupId, groupMode: "standard" });
+
+	const ungroup = new UngroupElementsCommand({ groupId });
+	manager.execute({ command: ungroup });
+	expect(findElement("a")?.groupId).toBeUndefined();
+	expect(findElement("a")?.groupMode).toBeUndefined();
+	expect(findElement("b")?.groupId).toBeUndefined();
+	expect(findElement("b")?.groupMode).toBeUndefined();
+
+	// Undo of ungroup restores BOTH the tag and the mode.
+	manager.undo();
+	expect(findElement("a")).toMatchObject({ groupId, groupMode: "standard" });
+});
+
+test("locked mode stamps groupMode locked (default when mode omitted)", () => {
+	const original = buildSceneTracks({
+		main: buildVideoTrack({
+			elements: [
+				buildVideoElement({ id: "a", startTime: 0, duration: 50_000 }),
+				buildVideoElement({ id: "b", startTime: 60_000, duration: 50_000 }),
+			],
+		}),
+	});
+	resetTracks(original);
+	const manager = new CommandManager(editorMock);
+
+	const locked = new GroupElementsCommand({
+		elementRefs: [
+			{ trackId: "main", elementId: "a" },
+			{ trackId: "main", elementId: "b" },
+		],
+		mode: "locked",
+	});
+	manager.execute({ command: locked });
+	expect(findElement("a")).toMatchObject({ groupMode: "locked" });
+
+	// No mode argument → back-compat default is the locked behavior.
+	resetTracks(original);
+	const implicit = new GroupElementsCommand({
+		elementRefs: [
+			{ trackId: "main", elementId: "a" },
+			{ trackId: "main", elementId: "b" },
+		],
+	});
+	manager.execute({ command: implicit });
+	expect(findElement("a")).toMatchObject({ groupMode: "locked" });
+});

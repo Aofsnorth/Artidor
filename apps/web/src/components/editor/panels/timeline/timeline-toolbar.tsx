@@ -63,6 +63,7 @@ import {
 	VolumeOffIcon,
 	SearchAddIcon,
 	SearchMinusIcon,
+	PencilEdit01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
@@ -73,6 +74,8 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -511,25 +514,9 @@ function ToolbarLeftSection() {
 
 				<SectionDivider />
 
-				{/* Grouping & parenting */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={GroupLayersIcon} />}
-					tooltip={t("timeline.toolbar.groupSelected")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("group-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={GitMergeIcon} />}
-					tooltip={t("timeline.toolbar.combineSelected")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("combine-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Layers01Icon} />}
-					tooltip={t("timeline.toolbar.ungroupSelected")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("ungroup-selected")}
-				/>
+				{/* Grouping (Alight Motion) & parenting — one dropdown instead of
+				    three always-visible buttons. */}
+				<GroupingMenu hasSelection={hasSelection} />
 			</TooltipProvider>
 		</div>
 	);
@@ -537,8 +524,8 @@ function ToolbarLeftSection() {
 
 /**
  * Total element count across every track bucket of a scene, without
- * allocating the intermediate `Object.values(...).flat()` arrays.
- * Equivalent to `Object.values(tracks).flat().flatMap(t => t.elements).length`.
+ * allocating the intermediate `Object.values(...).flat()` arrays. Equivalent
+ * to `Object.values(tracks).flat().flatMap(t => t.elements).length`.
  *
  * Exported so the equivalence with that expression — notably that the
  * single `main` track, which is not a list, is counted too — is covered by a
@@ -550,6 +537,93 @@ export function countSceneElements(tracks: SceneTracks): number {
 	for (const track of tracks.overlayAfter) count += track.elements.length;
 	for (const track of tracks.audio) count += track.elements.length;
 	return count;
+}
+
+/**
+ * Grouping dropdown — replaces the old three always-visible Group / Combine /
+ * Ungroup buttons. Mirrors Alight Motion's grouping:
+ *
+ * - **Group** — Alight Motion's group: members select and move as one unit,
+ *   stay individually editable through the group's edit mode (double-click a
+ *   member, or the Edit-group item).
+ * - **Group Lock** — the pre-existing hard lock: clicking any member always
+ *   selects the whole group; edit individually only after ungrouping.
+ * - **Ungroup** / **Combine** — as before.
+ *
+ * While a group is open for editing, an exit affordance is pinned inside the
+ * menu trigger row so the mode is discoverable and escapable.
+ */
+function GroupingMenu({ hasSelection }: { hasSelection: boolean }) {
+	const { t } = useI18n();
+	const editingGroupId = useEditor((e) => e.timeline.getEditingGroupId());
+
+	return (
+		<div className="flex items-center gap-1">
+			{editingGroupId && (
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							variant="secondary"
+							size="icon"
+							onClick={() => invokeAction("exit-group-edit")}
+							aria-label={t("timeline.toolbar.exitGroupEdit")}
+							className="relative size-6 rounded bg-white text-black hover:bg-white/90 hover:text-black transition"
+						>
+							<HugeiconsIcon icon={PencilEdit01Icon} />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>{t("timeline.toolbar.exitGroupEdit")}</TooltipContent>
+				</Tooltip>
+			)}
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						variant="text"
+						size="icon"
+						disabled={!hasSelection && !editingGroupId}
+						className={cn(
+							"relative size-6 rounded text-white/60 hover:bg-white/[0.08] hover:text-white transition",
+							!hasSelection && !editingGroupId
+								? "cursor-not-allowed opacity-50"
+								: "",
+						)}
+						aria-label={t("timeline.toolbar.groupMenu")}
+					>
+						<HugeiconsIcon icon={GroupLayersIcon} />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="start" className="w-52">
+					<DropdownMenuItem onClick={() => invokeAction("group-selected")}>
+						<HugeiconsIcon icon={GroupLayersIcon} className="mr-2 size-4" />
+						{t("timeline.toolbar.groupSelected")}
+						<DropdownMenuShortcut>Ctrl+G</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => invokeAction("group-selected-locked")}
+					>
+						<HugeiconsIcon icon={Link01Icon} className="mr-2 size-4" />
+						{t("timeline.toolbar.groupLockSelected")}
+						<DropdownMenuShortcut>Ctrl+Alt+G</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => invokeAction("enter-group-edit")}>
+						icon=
+						{<HugeiconsIcon icon={PencilEdit01Icon} className="mr-2 size-4" />}
+						{t("timeline.toolbar.enterGroupEdit")}
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => invokeAction("ungroup-selected")}>
+						<HugeiconsIcon icon={Layers01Icon} className="mr-2 size-4" />
+						{t("timeline.toolbar.ungroupSelected")}
+						<DropdownMenuShortcut>Ctrl+Shift+G</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => invokeAction("combine-selected")}>
+						<HugeiconsIcon icon={GitMergeIcon} className="mr-2 size-4" />
+						{t("timeline.toolbar.combineSelected")}
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</div>
+	);
 }
 
 /**

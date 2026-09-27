@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-27-alight-motion-grouping",
+		date: "2026-09-27",
+		tag: "feature",
+		title: "Alight Motion-style grouping",
+		items: [
+			"The timeline's Group, Combine, and Ungroup buttons are now one dropdown with the full grouping set: Group, Group Lock, Edit Group, Ungroup, and Combine Elements (Ctrl+G / Ctrl+Alt+G / Ctrl+Shift+G).",
+			"Group (Alight Motion style): grouped clips select and move as one unit, but stay editable inside — double-click a member (or use Edit Group) to select and tweak individual clips without ungrouping, and layers you create while editing join the group.",
+			"Group Lock keeps the previous hard-lock behavior: clicking any member always selects the whole group, and only ungrouping frees the clips again. Use whichever fits the edit.",
+		],
+	},
+	{
 		id: "2026-09-27-export-gpu-crash-fix",
 		date: "2026-09-27",
 		tag: "fix",

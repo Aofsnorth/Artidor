@@ -173,7 +173,19 @@ export const ACTIONS = {
 		args: { projectId: "string", assetIds: "string[]" },
 	},
 	"group-selected": {
-		description: "Group selected elements",
+		description: "Group selected elements (Alight Motion group)",
+		category: "editing",
+	},
+	"group-selected-locked": {
+		description: "Group selected elements with a hard selection lock",
+		category: "editing",
+	},
+	"enter-group-edit": {
+		description: "Edit the selected standard group's members individually",
+		category: "editing",
+	},
+	"exit-group-edit": {
+		description: "Leave group editing mode",
 		category: "editing",
 	},
 	"combine-selected": {
@@ -330,6 +342,7 @@ const ACTION_DEFAULT_SHORTCUTS = {
 	undo: ["ctrl+z"],
 	redo: ["ctrl+shift+z", "ctrl+y"],
 	"group-selected": ["ctrl+g"],
+	"group-selected-locked": ["ctrl+alt+g"],
 	"ungroup-selected": ["ctrl+shift+g"],
 	"add-bookmark": ["m"],
 	"toggle-bookmark": ["ctrl+m"],

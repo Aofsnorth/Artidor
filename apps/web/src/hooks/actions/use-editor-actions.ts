@@ -734,7 +734,53 @@ export function useEditorActions() {
 		"group-selected",
 		() => {
 			if (selectedElements.length < 1) return;
-			editor.timeline.groupElements({ elementRefs: [...selectedElements] });
+			// "Group" is the Alight Motion-style group: unit selection/move with
+			// an editable-inside edit mode (double-click a member).
+			editor.timeline.groupElements({
+				elementRefs: [...selectedElements],
+				mode: "standard",
+			});
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"group-selected-locked",
+		() => {
+			if (selectedElements.length < 1) return;
+			// Hard selection lock: members always move together and can only
+			// be edited individually after ungrouping.
+			editor.timeline.groupElements({
+				elementRefs: [...selectedElements],
+				mode: "locked",
+			});
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"enter-group-edit",
+		() => {
+			if (selectedElements.length === 0) return;
+			for (const ref of selectedElements) {
+				const track = editor.timeline.getTrackById({ trackId: ref.trackId });
+				const element = track?.elements.find((el) => el.id === ref.elementId);
+				const candidate = element as
+					| { groupId?: string; groupMode?: "locked" | "standard" }
+					| undefined;
+				if (candidate?.groupId && candidate.groupMode === "standard") {
+					editor.timeline.enterGroupEdit({ groupId: candidate.groupId });
+					break;
+				}
+			}
+		},
+		undefined,
+	);
+
+	useActionHandler(
+		"exit-group-edit",
+		() => {
+			editor.timeline.exitGroupEdit();
 		},
 		undefined,
 	);

@@ -56,11 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes the export GPU crash fix", () => {
+	test("the newest entry describes the Alight Motion grouping feature", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
 		expect(getLatestWhatsNewId()).toBe(
-			"2026-09-27-export-gpu-crash-fix",
+			"2026-09-27-alight-motion-grouping",
 		);
 	});
 });

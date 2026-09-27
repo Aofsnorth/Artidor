@@ -181,7 +181,11 @@ export class EditorCore {
 							type: string;
 							name: string;
 							effects: Effect[];
+							groupId?: string;
+							groupMode?: "locked" | "standard";
 						}>;
+						selectedElements: Array<{ trackId: string; elementId: string }>;
+						editingGroupId: string | null;
 					} => {
 						const scene = this.scenes.getActiveSceneOrNull();
 						if (!scene) {
@@ -189,6 +193,8 @@ export class EditorCore {
 								activeSceneId: null,
 								tracks: null,
 								elements: [],
+								selectedElements: [],
+								editingGroupId: null,
 							};
 						}
 						const allElements: Array<{
@@ -197,6 +203,8 @@ export class EditorCore {
 							type: string;
 							name: string;
 							effects: Effect[];
+							groupId?: string;
+							groupMode?: "locked" | "standard";
 						}> = [];
 						const collect = (track: {
 							id: string;
@@ -205,6 +213,8 @@ export class EditorCore {
 								type: string;
 								name: string;
 								effects?: Effect[];
+								groupId?: string;
+								groupMode?: "locked" | "standard";
 							}>;
 						}) => {
 							for (const el of track.elements) {
@@ -218,6 +228,8 @@ export class EditorCore {
 									// write was dropped" from "the panel did not
 									// re-render" without seeing the stored effects.
 									effects: el.effects ?? [],
+									groupId: el.groupId,
+									groupMode: el.groupMode,
 								});
 							}
 						};
@@ -250,6 +262,8 @@ export class EditorCore {
 								})),
 							},
 							elements: allElements,
+							selectedElements: this.selection.getSelectedElements(),
+							editingGroupId: this.timeline.getEditingGroupId(),
 						};
 					},
 					/**

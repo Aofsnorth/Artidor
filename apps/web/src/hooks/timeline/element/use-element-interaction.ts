@@ -899,6 +899,26 @@ export function useElementInteraction({
 			// modifier keys already handled in mousedown
 			if (event.metaKey || event.ctrlKey || event.shiftKey) return;
 
+			// Double-clicking a member of a standard group opens that group's
+			// edit mode (Alight Motion "edit group"): members become
+			// individually selectable without ungrouping. Checked BEFORE the
+			// select/clear logic because a fully-selected group never reaches
+			// the "sole selection" state below. Locked groups always expand, so
+			// there is nothing to enter — ungroup is the only way out.
+			const candidate = element as {
+				groupId?: string;
+				groupMode?: "locked" | "standard";
+			};
+			if (
+				event.detail === 2 &&
+				candidate.groupId &&
+				candidate.groupMode === "standard" &&
+				editor.timeline.getEditingGroupId() !== candidate.groupId
+			) {
+				editor.timeline.enterGroupEdit({ groupId: candidate.groupId });
+				return;
+			}
+
 			const alreadySelected = isElementSelected({
 				trackId: track.id,
 				elementId: element.id,
@@ -910,7 +930,13 @@ export function useElementInteraction({
 
 			editor.selection.clearKeyframeSelection();
 		},
-		[editor.selection, isElementSelected, selectElement, selectedElements],
+		[
+			editor.selection,
+			editor.timeline,
+			isElementSelected,
+			selectElement,
+			selectedElements,
+		],
 	);
 
 	return {

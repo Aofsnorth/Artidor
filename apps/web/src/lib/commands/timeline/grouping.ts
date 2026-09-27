@@ -67,6 +67,14 @@ function patchElementInTracks({
 }
 
 /**
+ * Group behavior modes. "locked" is the hard selection lock (members can only
+ * be edited individually after ungrouping); "standard" is Alight Motion's
+ * grouping — the group selects/moves as a unit but members stay individually
+ * editable through the group's edit mode.
+ */
+type GroupElementsMode = "locked" | "standard";
+
+/**
  * Group multiple elements together by assigning them a shared groupId.
  * Group operations (move all, transform all) are downstream — the project
  * just needs to know the elements are linked.
@@ -75,10 +83,18 @@ export class GroupElementsCommand extends Command {
 	private savedState: SceneTracks | null = null;
 	private elementRefs: ElementRef[];
 	private readonly groupId: string;
+	private readonly mode: GroupElementsMode;
 
-	constructor({ elementRefs }: { elementRefs: ElementRef[] }) {
+	constructor({
+		elementRefs,
+		mode = "locked",
+	}: {
+		elementRefs: ElementRef[];
+		mode?: GroupElementsMode;
+	}) {
 		super();
 		this.elementRefs = elementRefs;
+		this.mode = mode;
 		// Generated once in the constructor so the group id is stable across
 		// execute/undo/redo cycles (getGroupId callers may chain follow-up
 		// commands against this exact id).
@@ -94,7 +110,7 @@ export class GroupElementsCommand extends Command {
 			updatedTracks = patchElementInTracks({
 				tracks: updatedTracks,
 				ref,
-				patch: { groupId: this.groupId },
+				patch: { groupId: this.groupId, groupMode: this.mode },
 			});
 		}
 
@@ -136,11 +152,19 @@ export class UngroupElementsCommand extends Command {
 			track: TTrack,
 		): TTrack => ({
 			...track,
-			elements: track.elements.map((element) =>
-				(element as { groupId?: string }).groupId === this.groupId
-					? ({ ...element, groupId: undefined } as TimelineElement)
-					: element,
-			),
+			elements: track.elements.map((element) => {
+				const candidate = element as {
+					groupId?: string;
+					groupMode?: "locked" | "standard";
+				};
+				return candidate.groupId === this.groupId
+					? ({
+							...element,
+							groupId: undefined,
+							groupMode: undefined,
+						} as TimelineElement)
+					: element;
+			}),
 		});
 
 		const updatedTracks: SceneTracks = {

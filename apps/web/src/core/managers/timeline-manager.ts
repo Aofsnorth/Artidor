@@ -75,6 +75,13 @@ export class TimelineManager {
 	private listeners = new Set<() => void>();
 	private previewOverlay = new Map<string, Partial<TimelineElement>>();
 	private previewTracks: SceneTracks | null = null;
+	/**
+	 * Group currently open for member-level editing (Alight Motion "edit
+	 * group"). While set, clicking members of that group selects them
+	 * individually instead of expanding to the whole group, and newly created
+	 * elements join the group. Not undoable — it is a view mode, like isolate.
+	 */
+	private editingGroupId: string | null = null;
 
 	constructor(private editor: EditorCore) {}
 
@@ -141,6 +148,13 @@ export class TimelineManager {
 		element,
 		placement,
 	}: InsertElementParams): { elementId: string; trackId: string } | null {
+		// Alight Motion: layers created while editing a group join that group.
+		// Audio is excluded — groups move in the visual preview, audio clips
+		// belong on their track.
+		if (this.editingGroupId && element.type !== "audio") {
+			element.groupId = this.editingGroupId;
+			element.groupMode = "standard";
+		}
 		const command = new InsertElementCommand({ element, placement });
 		this.editor.command.execute({ command });
 		// InsertElementCommand assigns the element id and resolves the
@@ -292,11 +306,26 @@ export class TimelineManager {
 		);
 	}
 
-	groupElements({ elementRefs }: { elementRefs: ElementRef[] }): string | null {
+	groupElements({
+		elementRefs,
+		mode = "locked",
+	}: {
+		elementRefs: ElementRef[];
+		mode?: "locked" | "standard";
+	}): string | null {
 		if (elementRefs.length < 1) return null;
-		const command = new GroupElementsCommand({ elementRefs });
+		const command = new GroupElementsCommand({ elementRefs, mode });
 		this.editor.command.execute({ command });
-		return command.getGroupId();
+		const groupId = command.getGroupId();
+		// Alight Motion drops you straight into the group after creating it —
+		// a standard group's whole point is editing members as a set.
+		if (mode === "standard") {
+			this.enterGroupEdit({ groupId });
+			// Re-select so the expansion skips the group being edited and the
+			// members stay individually selected.
+			this.editor.selection.setSelectedElements({ elements: elementRefs });
+		}
+		return groupId;
 	}
 
 	ungroupElements({ groupId }: { groupId: string }): void {
@@ -457,6 +486,10 @@ export class TimelineManager {
 	 * Given a set of selected refs, expands it to include every other member
 	 * of any group those refs belong to. Idempotent and dedup'd, so it's safe
 	 * to run on every selection change.
+	 *
+	 * Locked groups always expand (hard selection lock). Standard groups stop
+	 * expanding while their edit mode is open — that is the whole point of
+	 * edit mode: members are individually selectable without ungrouping.
 	 */
 	expandSelectionByGroup({ refs }: { refs: ElementRef[] }): ElementRef[] {
 		if (refs.length === 0) return refs;
@@ -466,8 +499,17 @@ export class TimelineManager {
 		for (const ref of refs) {
 			const track = this.getTrackById({ trackId: ref.trackId });
 			const element = track?.elements.find((e) => e.id === ref.elementId);
-			const gid = (element as { groupId?: string } | undefined)?.groupId;
-			if (gid) groupIds.add(gid);
+			const candidate = element as
+				| { groupId?: string; groupMode?: "locked" | "standard" }
+				| undefined;
+			if (!candidate?.groupId) continue;
+			if (
+				candidate.groupMode === "standard" &&
+				this.editingGroupId === candidate.groupId
+			) {
+				continue;
+			}
+			groupIds.add(candidate.groupId);
 		}
 		for (const gid of groupIds) {
 			for (const member of this.getGroupMembers({ groupId: gid })) {
@@ -479,6 +521,25 @@ export class TimelineManager {
 			}
 		}
 		return result;
+	}
+
+	/** The group currently open for member-level editing, if any. */
+	getEditingGroupId(): string | null {
+		return this.editingGroupId;
+	}
+
+	/** Opens a standard group for member-level editing (Alight Motion "edit group"). */
+	enterGroupEdit({ groupId }: { groupId: string }): void {
+		if (this.editingGroupId === groupId) return;
+		this.editingGroupId = groupId;
+		this.notify();
+	}
+
+	/** Closes group edit mode. Members go back to group-unit selection. */
+	exitGroupEdit(): void {
+		if (this.editingGroupId === null) return;
+		this.editingGroupId = null;
+		this.notify();
 	}
 
 	deleteElements({

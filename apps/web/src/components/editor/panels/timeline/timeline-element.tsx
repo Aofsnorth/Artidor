@@ -90,6 +90,9 @@ import {
 	KeyframeIcon,
 	MagicWand05Icon,
 	Layers01Icon,
+	GroupLayersIcon,
+	Link01Icon,
+	PencilEdit01Icon,
 	TextFontIcon,
 	BookmarkAdd02Icon,
 	PaintBrushIcon,
@@ -965,15 +968,30 @@ function TimelineElement({
 					)}
 					{selectedElements.length > 1 && (
 						<ContextMenuItem
-							icon={<HugeiconsIcon icon={Layers01Icon} />}
+							icon={<HugeiconsIcon icon={GroupLayersIcon} />}
 							onClick={(event: React.MouseEvent) => {
 								event.stopPropagation();
 								editor.timeline.groupElements({
 									elementRefs: selectedElements,
+									mode: "standard",
 								});
 							}}
 						>
 							Group elements
+						</ContextMenuItem>
+					)}
+					{selectedElements.length > 1 && (
+						<ContextMenuItem
+							icon={<HugeiconsIcon icon={Link01Icon} />}
+							onClick={(event: React.MouseEvent) => {
+								event.stopPropagation();
+								editor.timeline.groupElements({
+									elementRefs: selectedElements,
+									mode: "locked",
+								});
+							}}
+						>
+							Group lock elements
 						</ContextMenuItem>
 					)}
 					{selectedElements.length > 1 && (
@@ -989,6 +1007,21 @@ function TimelineElement({
 							Combine elements
 						</ContextMenuItem>
 					)}
+					{selectedElements.length === 1 &&
+						element.groupId &&
+						element.groupMode === "standard" && (
+							<ContextMenuItem
+								icon={<HugeiconsIcon icon={PencilEdit01Icon} />}
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									editor.timeline.enterGroupEdit({
+										groupId: element.groupId as string,
+									});
+								}}
+							>
+								Edit group members
+							</ContextMenuItem>
+						)}
 					{element.groupId && (
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={Layers01Icon} />}
@@ -2357,7 +2390,7 @@ function TiledMediaContent({
 						// (below) squashed every non-16:9 source — a square image came
 						// out visibly stretched. `repeat-x` keeps the strip going with
 						// correctly proportioned tiles; the exact tile height means
-					// there is never a vertical repeat.
+						// there is never a vertical repeat.
 						backgroundRepeat: "repeat-x",
 						backgroundSize: "auto 100%",
 						backgroundPosition: "left center",

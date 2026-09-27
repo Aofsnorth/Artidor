@@ -266,6 +266,19 @@ export interface BaseTimelineElement {
 	 */
 	groupId?: string;
 	/**
+	 * How the group behaves on selection. Two types exist, mirroring the two
+	 * grouping models users mix:
+	 *
+	 * - "locked" (default for groups without a mode): clicking any member
+	 *   always selects the whole group and members can only be edited
+	 *   individually after ungrouping. Hard selection lock.
+	 * - "standard": Alight Motion's grouping — clicking a member selects the
+	 *   group as a unit (moves/deletes together), but a double-click enters
+	 *   the group's edit mode, where members are selected individually
+	 *   without ungrouping. New elements created while editing join the group.
+	 */
+	groupMode?: "locked" | "standard";
+	/**
 	 * Marks the element as a null/layer holder. A null element has no
 	 * intrinsic content but is used as a parent or anchor for other layers.
 	 * Matches Blurrr's "Null Object Layers" feature.
