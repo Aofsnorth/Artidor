@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-27-export-gpu-crash-fix",
+		date: "2026-09-27",
+		tag: "fix",
+		title: "Exports survive GPU hiccups",
+		items: [
+			"Fixed long exports stopping part-way (or crashing the browser) when the GPU device was lost mid-render. The export now waits for the graphics device to recover and re-renders the interrupted frame, so a driver hiccup no longer kills the run or bakes black frames into the video.",
+			"The preview now hands its GPU memory over to export workers for the duration of the export — media-heavy projects no longer hold two copies of every texture, which was the pressure that tipped weaker GPUs into crashing.",
+			"The compositor also stops re-configuring its render surface on every frame, removing tens of thousands of redundant GPU allocations on longer exports.",
+		],
+	},
+	{
 		id: "2026-09-27-scrub-layout-thrash-fix",
 		date: "2026-09-27",
 		tag: "performance",
