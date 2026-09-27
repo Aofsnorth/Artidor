@@ -319,3 +319,34 @@ workers than cores.
 - Docs: `docs/features/editor-perf-100-pass/export.md` (this file)
 
 What's New not updated because: internal perf pass, no user-visible change.
+
+## Final round (2026-09-27): export stability under GPU device loss
+
+Measured baseline (real-GPU browser, 4-image 2-track timeline): export of 221
+frames completes in 2.9s wall (startup ~750ms, render loop 1.3s @167.5 fps,
+finalization ~0.9s) - throughput was already healthy, so this pass targeted
+the failure mode users hit on long exports: a GPU device loss (driver reset,
+VRAM exhaustion) aborted the worker render loop with a fatal error and could
+take the tab down.
+
+Root causes fixed (commit 2cf5352):
+
+1. Worker recovery called `initCompositor`, which requires a DOM document the
+   worker does not have - the loop threw and the export stopped part-way.
+   Recovery now rebuilds on the pinned worker OffscreenCanvas so the
+   `CanvasSource` keeps encoding the same surface.
+2. The interrupted frame was encoded from the stale canvas (black/frozen
+   output). The export loop now awaits recovery and re-renders the frame
+   (bounded retries, keep-alive progress posts for the bridge timeout).
+3. The preview device held every media texture for the whole session while
+   each export worker re-uploaded the same media - a 2x VRAM footprint that
+   tipped media-heavy projects into OOM. `releaseForExport()` frees the
+   preview device for the export duration; the preview rebuilds lazily.
+4. `renderFrame` reconfigured the surface on every frame (~36,000 redundant
+   `configure()` calls per ten-minute 60fps export). The wasm bridge now
+   caches the configured size and skips unchanged reconfigures.
+
+Verified: full bun suite 1116 pass, cargo compositor/gpu 19 pass, real-GPU
+probe - export completes 2.7s with smooth progress, zero post-export errors,
+preview pixel ratio 1.0 after device rebuild. What's New entry
+`2026-09-27-export-gpu-crash-fix` added (user-visible stability fix).

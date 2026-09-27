@@ -404,3 +404,35 @@ Round 21 follow-up (2026-09-27): What's New entries
 `2026-09-27-black-preview-and-adjust-fixes` WERE added — round 21 is
 user-visible (scrub smoothness) and the security/fix entries cover the
 shipped 7a204a2 + 6a640c0 changes that had no feed entry yet.
+
+## Final round (2026-09-27): scrub layout-thrash fix - measured results (t-14)
+
+Before (real-GPU probe, six playhead drags across a 4-image 2-track timeline):
+19 long tasks / 1210ms main-thread blocked, max single task 111ms, while the
+underlying preview render measured only 1.4-2.8ms per frame. CPU profiling
+attributed the blockage to layout thrash, not rendering:
+
+- `updatePlayheadLeft` + layout: 412ms self time (DOM scrollLeft reads +
+  `style.left` writes per seek event on two playhead updaters)
+- `handlePlaybackUpdate`: 373ms (clientWidth + scrollWidth reads per playback
+  tick, ~60Hz)
+- `useEdgeAutoScroll` rAF loop: geometry reads (rect/width/scrollWidth) every
+  frame while dragging near the edges
+- `handleScrub`: ruler `getBoundingClientRect()` per scrub event
+- `TimelinePlayhead`: clientHeight read during render
+
+After (commit f558567 + playhead geometry-cache follow-up): playhead positions
+move via composited `transform`, the horizontal scroll offset is shared
+through a `scrollLeftRef` synced by the scroll funnel, `useEdgeAutoScroll`
+caches geometry once per drag, and `handlePlaybackUpdate` reads cached
+viewport geometry refreshed by ResizeObserver. Measured results:
+
+- `updatePlayheadLeft` + forced layout self time: 412ms -> 11ms
+- `handlePlaybackUpdate`: 373ms -> 2.7ms
+- Long tasks during scrubbing: 19/1210ms -> zero-to-few sporadic short tasks
+  (dev-mode React StrictMode + jsxDEV + GC dominate what remains)
+- Playback long tasks: 5/339ms -> 2-8/145-574ms across runs (dev-mode
+  variance); multiple post-fix runs recorded zero long tasks
+
+What's New entry `2026-09-27-scrub-layout-thrash-fix` added (user-visible
+scrub smoothness).

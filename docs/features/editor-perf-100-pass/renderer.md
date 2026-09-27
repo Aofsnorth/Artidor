@@ -318,3 +318,16 @@ Note: the working tree contains pre-existing changes from other tracks
 optimal, unchanged.
 
 What's New not updated because: internal perf pass, no user-visible change.
+
+## Final round (2026-09-27): preview baseline measured healthy, no renderer change
+
+Real-GPU baseline (4-image 2-track timeline): 91.3 FPS over 1111 frames /
+12.2s, 5 long tasks / 339ms total, per-frame render phases resolve 0.08ms +
+composite 0.7ms + blit 0.05ms. The preview render pipeline itself had no
+measured hot spot left to fix, so no renderer code changed in this round.
+
+The only renderer-side changes shipped under this goal were stability-driven
+(see export.md final round): device-loss recovery that rebuilds on the pinned
+canvas, `releaseForExport()` GPU handover during exports, and the per-frame
+surface-reconfigure skip - all verified with zero post-export preview errors
+and a live preview (pixel ratio 1.0) after a full export + rebuild cycle.
