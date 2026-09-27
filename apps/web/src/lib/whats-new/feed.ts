@@ -23,6 +23,39 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-27-scrub-layout-thrash-fix",
+		date: "2026-09-27",
+		tag: "performance",
+		title: "Smoother timeline scrubbing",
+		items: [
+			"Scrubbing the timeline no longer fights the layout engine. The playhead used to re-read scroll and viewport geometry from the DOM on every seek event, forcing a synchronous layout flush each time (measured at up to ~3.6ms per event — 19 long tasks, 1.2 seconds of blocked main thread across six playhead drags).",
+			"The playhead line now moves via a composited transform, the horizontal scroll offset is tracked in a shared ref kept in sync by the scroll funnel, and edge auto-scroll caches its viewport geometry once per drag instead of re-reading it every animation frame.",
+			"Auto-scroll decisions during playback no longer read viewport width/scrollable extent on every playback tick (60x/second); they use a cached geometry that refreshes only on zoom, duration, or panel resize.",
+			"Measured after the fix: playhead-position DOM thrash eliminated (~420ms of forced-layout self time down to ~11ms), and scrub long tasks drop to zero-to-few short ones. Scrubbing near the track edges keeps the viewport follow without per-frame jank.",
+		],
+	},
+	{
+		id: "2026-09-27-security-hardening",
+		date: "2026-09-27",
+		tag: "security",
+		title: "Security pipeline hardened",
+		items: [
+			"Bumped rustls to 0.23.45 to clear RUSTSEC-2026-0285 (TLS 1.3 handshake messages accepted across encryption level boundaries) from the dependency audit — the Security workflow is green again.",
+			"Upgraded Next.js to 16.3.4 (critical build-time RCE fix) and added gitleaks secret scanning to CI.",
+		],
+	},
+	{
+		id: "2026-09-27-black-preview-and-adjust-fixes",
+		date: "2026-09-27",
+		tag: "fix",
+		title: "Black timeline preview and image adjust fixes",
+		items: [
+			"Fixed media turning black when added to the timeline: a GPU texture-pool lifetime bug let the WebGPU compositor allocate oversized buffers (createBuffer RangeError) and drop frames. Textures are now correctly sized and pooled per frame format.",
+			"Image adjust sliders in the inspector now keep their values while you drag — no more snapping back to 0 mid-adjustment.",
+		"Drag-and-drop snapping (magnet) to clip edges and the playhead is more reliable during timeline drags.",
+		],
+	},
+	{
 		id: "2026-09-13-timeline-seek-clip-disappear-fix",
 		date: "2026-09-13",
 		tag: "fix",

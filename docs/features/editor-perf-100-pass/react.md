@@ -276,6 +276,74 @@ Evidence: same file, round 20 (+ existing
 Result: PASS (no fix needed — honest non-improvement: idle-chunking already
 existed; pinned against regression).
 
+### Round 21 — scrub/seek layout-thrash elimination (measured, 2026-09-27)
+
+Scenario: profile 6 playhead drags on real-GPU Chromium with the CDP CPU
+sampler. Baseline: 19 long tasks / 1210ms blocked main thread during scrub;
+self-time hot spots were `updatePlayheadLeft` 251.7ms,
+`TimelinePlayhead.updatePlayheadPosition` 161ms,
+`handlePlaybackUpdate` 33-373ms (event-dependent), plus `getBoundingClientRect`
+29.3ms — all forced synchronous layout flushes: the scrub path re-read
+`scrollLeft`, `clientWidth`, `scrollWidth`, `getBoundingClientRect()` from the
+DOM per event while React commits kept the layout dirty.
+
+Root causes found (code-first, then measured):
+
+1. Both playhead position updaters read `element.scrollLeft` per seek/scroll
+event and wrote `style.left` (dirtying layout for the next read).
+2. `useEdgeAutoScroll`'s rAF loop re-read viewport rect/width/scrollWidth and
+`scrollLeft` every animation frame while scrubbing near an edge.
+3. `handlePlaybackUpdate` read `clientWidth` + `scrollWidth` on every
+`playback-update` event during 60Hz playback (measured ~30ms of forced
+layout per 500ms window, spread across the whole session — not
+scrub-specific).
+4. `handleScrub` re-read the ruler's `getBoundingClientRect()` per scrub event.
+5. `TimelinePlayhead` read `timelineRef.current?.clientHeight` during render
+(only re-rendered while the time bubble is visible — still one forced flush
+per seek while dragging with the bubble shown).
+
+Fixes (all verified before/after):
+
+- Playhead position now writes a composited `transform: translateX()` on a
+`left: 0` base instead of `left`, so our own writes stop dirtying layout.
+- Shared `scrollLeftRef` created in `Timeline`, threaded through
+`useTimelineZoom`, `useTimelinePlayhead`, `useEdgeAutoScroll`,
+`TimelineTrackRows` and `TimelinePlayhead`; kept in sync by the
+`syncFollowers` scroll funnel and every programmatic writer
+(zoom sync/restore, center-follow, edge auto-scroll). Zero `scrollLeft`
+DOM reads remain in the scrub hot path.
+- `useEdgeAutoScroll` caches viewport geometry once per drag activation and
+tracks the offset in the shared ref (sole writer during the drag); its rAF
+loop performs zero DOM reads.
+- `handleScrub` caches the ruler rect at drag start (the ruler's outer box
+cannot move while dragging inside it).
+- `handlePlaybackUpdate` uses cached viewport geometry
+(`useLayoutEffect` + ResizeObserver refresh on zoom/duration/resize) instead
+of per-event `clientWidth`/`scrollWidth` reads.
+- Playhead line height uses CSS `calc(100% …)` instead of a render-time
+`clientHeight` read.
+
+Evidence (same probe, same order, real GPU, dev build):
+
+- `updatePlayheadLeft` + `updatePlayheadPosition` forced-layout self time:
+412ms → ~11ms total.
+- `handlePlaybackUpdate` self time: 373ms → 2.7ms (geometry cache).
+- Scrub long tasks: 19/1210ms (baseline) → 0-7 sporadic tasks of 51-89ms
+  across repeated runs (dev-mode React + GC dominated; run-to-run variance
+  high, several runs fully clean).
+- Playback long tasks: 5/339ms (baseline) → 2-8 tasks (145-574ms) — variance
+  dominated by dev-mode compile/GC; the deterministic per-event forced
+  layout (the 60Hz `clientWidth`/`scrollWidth` reads) is gone.
+
+Honest non-improvements: run-to-run long-task counts swing widely in dev
+mode (React StrictMode double renders, jsxDEV allocation churn, wasm/GPU
+pipeline warmup), so long-task deltas beyond the forced-layout elimination
+are reported as ranges, not single numbers. The remaining
+`document.onpointermove` listeners seen in LoAF data are library-delegated
+(`forcedStyle` 6-11ms, sub-blocking) and were left alone.
+
+Result: PASS.
+
 ## Validation
 
 - `cd apps/web && bunx tsc --noEmit` → clean (0 errors).
@@ -330,3 +398,9 @@ existed; pinned against regression).
   `components/editor/panels/timeline/timeline-element-cull.test.ts` (+round 10)
 
 What's New not updated because: internal perf pass, no user-visible change.
+
+Round 21 follow-up (2026-09-27): What's New entries
+`2026-09-27-scrub-layout-thrash-fix`, `2026-09-27-security-hardening`, and
+`2026-09-27-black-preview-and-adjust-fixes` WERE added — round 21 is
+user-visible (scrub smoothness) and the security/fix entries cover the
+shipped 7a204a2 + 6a640c0 changes that had no feed entry yet.

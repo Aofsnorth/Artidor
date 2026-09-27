@@ -1,6 +1,6 @@
 import { snappedSeekTime } from "artidor-wasm";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useEdgeAutoScroll } from "@/hooks/timeline/use-edge-auto-scroll";
 import { useEditor } from "../use-editor";
 import { useShiftKey } from "@/hooks/use-shift-key";
@@ -33,6 +33,13 @@ interface UseTimelinePlayheadProps {
 	rulerScrollRef: React.RefObject<HTMLDivElement | null>;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
 	playheadRef?: React.RefObject<HTMLDivElement | null>;
+	/**
+	 * Shared, non-reactive horizontal scroll offset (see TimelinePlayhead).
+	 * Updated by the timeline scroll funnel and every programmatic writer so
+	 * the scrub/seek hot path never reads `scrollLeft` from the DOM (each such
+	 * read forces a synchronous layout flush while React commits are pending).
+	 */
+	scrollLeftRef: React.RefObject<number>;
 }
 
 type ScrubPointer = Pick<MouseEvent | React.MouseEvent, "clientX">;
@@ -43,6 +50,7 @@ export function useTimelinePlayhead({
 	rulerScrollRef,
 	tracksScrollRef,
 	playheadRef,
+	scrollLeftRef,
 }: UseTimelinePlayheadProps) {
 	const editor = useEditor();
 	const isScrubbing = useEditor(
@@ -104,6 +112,11 @@ export function useTimelinePlayhead({
 	const isDraggingRulerRef = useRef(false);
 	const hasDraggedRulerRef = useRef(false);
 	const lastMouseXRef = useRef<number>(0);
+	// Ruler bounding rect, cached for the duration of a drag. The ruler's outer
+	// box cannot move while dragging inside it (scrolling moves its content,
+	// not the element), and `getBoundingClientRect()` per scrub event forces a
+	// synchronous layout flush while React commits are pending.
+	const rulerRectRef = useRef<DOMRect | null>(null);
 
 	const handleScrub = useCallback(
 		({
@@ -115,7 +128,7 @@ export function useTimelinePlayhead({
 		}) => {
 			const ruler = rulerRef.current;
 			if (!ruler) return;
-			const rulerRect = ruler.getBoundingClientRect();
+			const rulerRect = rulerRectRef.current ?? ruler.getBoundingClientRect();
 			const relativeMouseX = event.clientX - rulerRect.left;
 
 			const timelineContentWidth = timelineTimeToPixels({
@@ -274,6 +287,8 @@ export function useTimelinePlayhead({
 			event.preventDefault();
 			event.stopPropagation();
 
+			rulerRectRef.current = rulerRef.current?.getBoundingClientRect() ?? null;
+
 			if (scrubDragModeRef.current === "smart") {
 				// Smart mode: preserve current play state. If playing,
 				// stay playing; if paused, stay paused. No action needed.
@@ -287,7 +302,7 @@ export function useTimelinePlayhead({
 			staticScrubSnapPointsRef.current = null;
 			handleScrub({ event });
 		},
-		[handleScrub, editor.playback],
+		[handleScrub, editor.playback, rulerRef],
 	);
 
 	const handleRulerMouseDown = useCallback(
@@ -296,6 +311,7 @@ export function useTimelinePlayhead({
 			if (playheadRef?.current?.contains(event.target as Node)) return;
 
 			event.preventDefault();
+			rulerRectRef.current = rulerRef.current?.getBoundingClientRect() ?? null;
 			isDraggingRulerRef.current = true;
 			hasDraggedRulerRef.current = false;
 
@@ -311,7 +327,7 @@ export function useTimelinePlayhead({
 			staticScrubSnapPointsRef.current = null;
 			handleScrub({ event, snappingEnabled: false });
 		},
-		[handleScrub, playheadRef, editor.playback],
+		[handleScrub, playheadRef, editor.playback, rulerRef],
 	);
 
 	const handlePlayheadMouseDownEvent = useCallback(
@@ -330,6 +346,7 @@ export function useTimelinePlayhead({
 		rulerScrollRef,
 		tracksScrollRef,
 		contentWidth: timelineTimeToPixels({ time: duration, zoomLevel }),
+		scrollLeftRef,
 	});
 
 	useEffect(() => {
@@ -368,6 +385,7 @@ export function useTimelinePlayhead({
 				}
 				hasDraggedRulerRef.current = false;
 			}
+			rulerRectRef.current = null;
 		};
 
 		const onMouseMove = (event: MouseEvent) => handleMouseMove({ event });
@@ -400,10 +418,13 @@ export function useTimelinePlayhead({
 				zoomLevel: zoomLevelRef.current,
 			});
 			const leftPosition = getCenteredLineLeft({ centerPixel: centerPosition });
-			const scrollLeft = rulerScrollRef.current?.scrollLeft ?? 0;
-			playheadEl.style.left = `${leftPosition - scrollLeft + TIMELINE_CONTENT_LEFT_INSET_PX}px`;
+			const left =
+				leftPosition - scrollLeftRef.current + TIMELINE_CONTENT_LEFT_INSET_PX;
+			// Composited transform instead of `left`: does not dirty layout, so
+			// geometry reads elsewhere in the same frame stay cheap.
+			playheadEl.style.transform = `translateX(${left}px)`;
 		},
-		[playheadRef, rulerScrollRef],
+		[playheadRef, scrollLeftRef],
 	);
 
 	useEffect(() => {
@@ -417,6 +438,30 @@ export function useTimelinePlayhead({
 		scrollEl.addEventListener("scroll", handleScroll, { passive: true });
 		return () => scrollEl.removeEventListener("scroll", handleScroll);
 	}, [editor.playback, rulerScrollRef, updatePlayheadLeft]);
+
+	// Viewport geometry cache for the per-event auto-scroll decisions in
+	// handlePlaybackUpdate. That listener fires up to 60x/second during
+	// playback and on every seek while scrubbing; reading `clientWidth` /
+	// `scrollWidth` there forced a synchronous layout flush on every event
+	// (measured ~1ms each, ~6% of main-thread time). Geometry only changes
+	// with zoom, timeline duration or a panel resize, so it is cached and
+	// refreshed on exactly those triggers.
+	const viewportGeomRef = useRef({ width: 0, max: 0 });
+	// biome-ignore lint/correctness/useExhaustiveDependencies: zoomLevel and duration are intentionally not read inside the effect — they are refresh TRIGGERS: changing either resizes the scrollable content (scrollWidth), so the cached geometry must be recomputed even though the effect body does not use them directly.
+	useLayoutEffect(() => {
+		const el = rulerScrollRef.current;
+		if (!el) return;
+		const refresh = () => {
+			viewportGeomRef.current = {
+				width: el.clientWidth,
+				max: Math.max(0, el.scrollWidth - el.clientWidth),
+			};
+		};
+		refresh();
+		const observer = new ResizeObserver(refresh);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [rulerScrollRef, zoomLevel, duration]);
 
 	useEffect(() => {
 		const handlePlaybackUpdate = (e: Event) => {
@@ -449,9 +494,10 @@ export function useTimelinePlayhead({
 				time,
 				zoomLevel: zoomLevelRef.current,
 			});
-			const viewportWidth = rulerViewport.clientWidth;
+			const scrollLeft = scrollLeftRef.current;
+			const { width: viewportWidth, max: scrollMaximum } =
+				viewportGeomRef.current;
 			const scrollMinimum = 0;
-			const scrollMaximum = rulerViewport.scrollWidth - viewportWidth;
 
 			// Centre-following is a playback affordance: while paused it would
 			// yank the viewport on every seek, so paused seeks fall through to
@@ -469,11 +515,12 @@ export function useTimelinePlayhead({
 					),
 				);
 				rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+				scrollLeftRef.current = desiredScroll;
 			} else {
 				// Otherwise only scroll if the playhead actually leaves the screen
 				const needsScroll =
-					playheadPixels < rulerViewport.scrollLeft ||
-					playheadPixels > rulerViewport.scrollLeft + viewportWidth;
+					playheadPixels < scrollLeft ||
+					playheadPixels > scrollLeft + viewportWidth;
 
 				if (needsScroll) {
 					const desiredScroll = Math.max(
@@ -484,6 +531,7 @@ export function useTimelinePlayhead({
 						),
 					);
 					rulerViewport.scrollLeft = tracksViewport.scrollLeft = desiredScroll;
+					scrollLeftRef.current = desiredScroll;
 				}
 			}
 		};
@@ -506,6 +554,7 @@ export function useTimelinePlayhead({
 		tracksScrollRef,
 		updatePlayheadLeft,
 		getSelectedKeyframeTimes,
+		scrollLeftRef,
 	]);
 
 	return {

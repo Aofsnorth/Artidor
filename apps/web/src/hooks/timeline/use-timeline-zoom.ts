@@ -22,6 +22,8 @@ interface UseTimelineZoomProps {
 	initialPlayheadTime?: number;
 	tracksScrollRef: RefObject<HTMLDivElement | null>;
 	rulerScrollRef: RefObject<HTMLDivElement | null>;
+	/** Shared, non-reactive horizontal scroll offset (see TimelinePlayhead). */
+	scrollLeftRef: RefObject<number>;
 }
 
 interface UseTimelineZoomReturn {
@@ -39,6 +41,7 @@ export function useTimelineZoom({
 	initialPlayheadTime,
 	tracksScrollRef,
 	rulerScrollRef,
+	scrollLeftRef,
 }: UseTimelineZoomProps): UseTimelineZoomReturn {
 	const editor = useEditor();
 	const hasInitializedRef = useRef(false);
@@ -185,6 +188,7 @@ export function useTimelineZoom({
 			if (rulerScrollRef.current) {
 				rulerScrollRef.current.scrollLeft = scrollLeft;
 			}
+			scrollLeftRef.current = scrollLeft;
 		};
 
 		const clampScrollLeft = (scrollLeft: number) => {
@@ -226,7 +230,14 @@ export function useTimelineZoom({
 				playheadTime,
 			},
 		});
-	}, [zoomLevel, editor, tracksScrollRef, rulerScrollRef, minZoom]);
+	}, [
+		zoomLevel,
+		editor,
+		tracksScrollRef,
+		rulerScrollRef,
+		minZoom,
+		scrollLeftRef,
+	]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: tracksScrollRef is a stable ref
 	const saveScrollPosition = useCallback(() => {
@@ -259,6 +270,7 @@ export function useTimelineZoom({
 			if (rulerScrollRef.current) {
 				rulerScrollRef.current.scrollLeft = initialScrollLeft;
 			}
+			scrollLeftRef.current = initialScrollLeft;
 			hasRestoredScrollRef.current = true;
 		};
 

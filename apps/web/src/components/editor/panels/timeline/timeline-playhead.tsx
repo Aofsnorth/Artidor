@@ -53,9 +53,16 @@ interface TimelinePlayheadProps {
 	rulerRef: React.RefObject<HTMLDivElement | null>;
 	rulerScrollRef: React.RefObject<HTMLDivElement | null>;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
-	timelineRef: React.RefObject<HTMLDivElement | null>;
 	playheadRef?: React.RefObject<HTMLDivElement | null>;
 	isSnappingToPlayhead?: boolean;
+	/**
+	 * Shared, non-reactive horizontal scroll offset for the timeline tracks.
+	 * Reading `scrollLeft` from the DOM inside render or the per-event
+	 * playhead position updates forces a synchronous layout flush on every
+	 * seek while scrubbing; the shared ref is kept in sync by the timeline's
+	 * scroll funnel and programmatic writers instead.
+	 */
+	scrollLeftRef: React.RefObject<number>;
 }
 
 export function TimelinePlayhead({
@@ -64,9 +71,9 @@ export function TimelinePlayhead({
 	rulerRef,
 	rulerScrollRef,
 	tracksScrollRef,
-	timelineRef,
 	playheadRef: externalPlayheadRef,
 	isSnappingToPlayhead = false,
+	scrollLeftRef,
 }: TimelinePlayheadProps) {
 	const editor = useEditor();
 	const duration = editor.timeline.getTotalDuration();
@@ -90,6 +97,7 @@ export function TimelinePlayhead({
 		rulerScrollRef,
 		tracksScrollRef,
 		playheadRef,
+		scrollLeftRef,
 	});
 
 	const fpsFloat = frameRateToFloat(editor.project.getActive().settings.fps);
@@ -178,22 +186,22 @@ export function TimelinePlayhead({
 		return () => document.removeEventListener("keydown", onKeyDown, true);
 	}, [showTimeBubble, editor.scenes, editor.playback]);
 
-	const timelineContainerHeight =
-		timelineRef.current?.clientHeight ??
-		tracksScrollRef.current?.clientHeight ??
-		400;
-	const totalHeight = Math.max(
-		0,
-		timelineContainerHeight -
-			(hasHorizontalScrollbar ? TIMELINE_SCROLLBAR_SIZE_PX - 5 : 0),
-	);
+	// The playhead line is sized with CSS percentages instead of reading
+	// `clientHeight` during render: a DOM geometry read inside React's render
+	// path forces a synchronous layout flush on every re-render (which happens
+	// per seek while the time bubble is visible), and the container height only
+	// actually changes when the panel is resized.
+	const totalHeight = hasHorizontalScrollbar
+		? `calc(100% - ${TIMELINE_SCROLLBAR_SIZE_PX - 5}px)`
+		: "100%";
 
 	// Playhead position is updated via direct DOM manipulation in a rAF loop
 	// instead of React re-renders. This avoids a full React reconciliation
-	// (5-16ms jank) every frame during playback — the playhead just sets
-	// `style.left` directly on the DOM element, which is <0.1ms. The initial
-	// position is set in the render for the first frame, then the rAF loop
-	// takes over.
+	// (5-16ms jank) every frame during playback — the playhead just sets a
+	// composited `transform` directly on the DOM element, which is <0.1ms and,
+	// unlike `left`, does not dirty layout for the next geometry read. The
+	// initial position is set in the render for the first frame, then the rAF
+	// loop takes over.
 
 	// Compute the current playhead position (used for initial render + rAF).
 	const updatePlayheadPosition = useCallback(() => {
@@ -201,13 +209,12 @@ export function TimelinePlayhead({
 		if (!el) return;
 		const time = editor.playback.getCurrentTime();
 		const center = timelineTimeToSnappedPixels({ time, zoomLevel });
-		const scrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
 		const left =
 			getCenteredLineLeft({ centerPixel: center }) -
-			scrollLeft +
+			scrollLeftRef.current +
 			TIMELINE_CONTENT_LEFT_INSET_PX;
-		el.style.left = `${left}px`;
-	}, [editor.playback, zoomLevel, tracksScrollRef, playheadRef]);
+		el.style.transform = `translateX(${left}px)`;
+	}, [editor.playback, zoomLevel, scrollLeftRef, playheadRef]);
 
 	// rAF loop to update playhead position directly on the DOM element.
 	// Only runs during playback (enabled flag) — when paused, position
@@ -248,10 +255,9 @@ export function TimelinePlayhead({
 		time: currentTime,
 		zoomLevel,
 	});
-	const initialScrollLeft = tracksScrollRef.current?.scrollLeft ?? 0;
 	const initialLeft =
 		getCenteredLineLeft({ centerPixel: initialCenter }) -
-		initialScrollLeft +
+		scrollLeftRef.current +
 		TIMELINE_CONTENT_LEFT_INSET_PX;
 
 	const handlePlayheadKeyDown = (
@@ -277,9 +283,10 @@ export function TimelinePlayhead({
 			tabIndex={0}
 			className="pointer-events-none absolute"
 			style={{
-				left: `${initialLeft}px`,
+				left: 0,
+				transform: `translateX(${initialLeft}px)`,
 				top: 0,
-				height: `${totalHeight}px`,
+				height: totalHeight,
 				width: `${TIMELINE_INDICATOR_LINE_WIDTH_PX}px`,
 				zIndex: TIMELINE_LAYERS.playhead,
 			}}

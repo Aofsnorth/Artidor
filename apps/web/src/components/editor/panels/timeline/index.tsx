@@ -373,6 +373,13 @@ export function Timeline() {
 	const trackLabelsRef = useRef<HTMLDivElement>(null);
 	const playheadRef = useRef<HTMLDivElement>(null);
 	const trackLabelsScrollRef = useRef<HTMLDivElement>(null);
+	// Shared, non-reactive horizontal scroll offset for the timeline. The
+	// playhead position updaters and edge auto-scroll read this instead of
+	// `element.scrollLeft` — DOM geometry reads during scrub/seek force a
+	// synchronous layout flush on every event while React commits are pending
+	// (see TimelinePlayhead / useEdgeAutoScroll). Kept in sync by the scroll
+	// funnel below and every programmatic writer.
+	const scrollLeftRef = useRef(0);
 	const { width: tracksViewportWidth } = useContainerSize({
 		containerRef: tracksScrollRef,
 	});
@@ -412,6 +419,7 @@ export function Timeline() {
 			initialPlayheadTime: savedViewState?.playheadTime,
 			tracksScrollRef,
 			rulerScrollRef,
+			scrollLeftRef,
 		});
 
 	// Listen for the `timeline-fit-to-screen` window event dispatched
@@ -467,11 +475,15 @@ export function Timeline() {
 	// Pushes tracks scroll position to the two overflow:hidden followers
 	// (ruler and track labels). Called from the wheel handler (before paint,
 	// zero lag) and from onScroll on the tracks area (covers scrollbar drag).
+	// Also feeds the shared scrollLeftRef so per-event consumers never have to
+	// read geometry from the DOM.
 	const syncFollowers = useCallback(() => {
 		const tracks = tracksScrollRef.current;
 		if (!tracks) return;
+		const scrollLeft = tracks.scrollLeft;
+		scrollLeftRef.current = scrollLeft;
 		if (rulerScrollRef.current) {
-			rulerScrollRef.current.scrollLeft = tracks.scrollLeft;
+			rulerScrollRef.current.scrollLeft = scrollLeft;
 		}
 		if (trackLabelsScrollRef.current) {
 			trackLabelsScrollRef.current.scrollTop = tracks.scrollTop;
@@ -582,6 +594,7 @@ export function Timeline() {
 			rulerScrollRef,
 			tracksScrollRef,
 			playheadRef,
+			scrollLeftRef,
 		});
 
 	const { isDragOver, dropTarget, dragElementType, dragProps } =
@@ -649,6 +662,7 @@ export function Timeline() {
 		rulerScrollRef,
 		tracksScrollRef,
 		contentWidth: dynamicTimelineWidth,
+		scrollLeftRef,
 	});
 
 	const showSnapIndicator =
@@ -819,6 +833,7 @@ export function Timeline() {
 										dragState={dragState}
 										tracksScrollRef={tracksScrollRef}
 										lastMouseXRef={lastMouseXRef}
+										scrollLeftRef={scrollLeftRef}
 										onSnapPointChange={handleSnapPointChange}
 										onResizeStateChange={handleResizeStateChange}
 										onElementMouseDown={handleElementMouseDown}
@@ -865,8 +880,8 @@ export function Timeline() {
 						rulerRef={rulerRef}
 						rulerScrollRef={rulerScrollRef}
 						tracksScrollRef={tracksScrollRef}
-						timelineRef={timelineRef}
 						playheadRef={playheadRef}
+						scrollLeftRef={scrollLeftRef}
 						isSnappingToPlayhead={
 							showSnapIndicator && currentSnapPoint?.type === "playhead"
 						}
@@ -1469,6 +1484,7 @@ function TimelineTrackRowsInner({
 	dragState,
 	tracksScrollRef,
 	lastMouseXRef,
+	scrollLeftRef,
 	onSnapPointChange,
 	onResizeStateChange,
 	onElementMouseDown,
@@ -1485,6 +1501,7 @@ function TimelineTrackRowsInner({
 	dragState: ElementDragState;
 	tracksScrollRef: React.RefObject<HTMLDivElement | null>;
 	lastMouseXRef: React.RefObject<number>;
+	scrollLeftRef: React.RefObject<number>;
 	onSnapPointChange: (snapPoint: SnapPoint | null) => void;
 	onResizeStateChange: (params: { isResizing: boolean }) => void;
 	onElementMouseDown: React.ComponentProps<
@@ -1574,6 +1591,7 @@ function TimelineTrackRowsInner({
 		rulerScrollRef: tracksScrollRef,
 		tracksScrollRef,
 		contentWidth: duration * BASE_TIMELINE_PIXELS_PER_SECOND * zoomLevel,
+		scrollLeftRef,
 	});
 
 	// Filter to only visible tracks (during non-drag operations)
@@ -1764,6 +1782,7 @@ function timelineTrackRowsAreEqual(
 	if (prev.zoomLevel !== next.zoomLevel) return false;
 	if (prev.tracksScrollRef !== next.tracksScrollRef) return false;
 	if (prev.lastMouseXRef !== next.lastMouseXRef) return false;
+	if (prev.scrollLeftRef !== next.scrollLeftRef) return false;
 	if (prev.tracks !== next.tracks) return false;
 	if (prev.isDragOver !== next.isDragOver) return false;
 	if (prev.dropTarget !== next.dropTarget) return false;
