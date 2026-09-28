@@ -170,6 +170,15 @@ declare global {
 				opts?: { durationSeconds?: number },
 			) => void;
 			/**
+			 * Test-only: insert a synthetic IMAGE element on the main
+			 * track. The Adjust panel and the DaVinci grading viewer are
+			 * registered for image elements only, so driving those tabs
+			 * needs one. The `mediaId` is dangling on purpose — the scene
+			 * builder skips elements whose asset is missing, so the preview
+			 * stays empty while the inspector renders its full controls.
+			 */
+			insertMockImage: (opts?: { durationSeconds?: number }) => string;
+			/**
 			 * Test-only: open the "Save to preset" dialog with the
 			 * given elements. The right-click context menu's "Save
 			 * as preset" item funnels into the same dialog store.

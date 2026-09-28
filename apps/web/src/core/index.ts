@@ -163,6 +163,45 @@ export class EditorCore {
 					const placed = afterTracks.main.elements.at(-1);
 					return placed?.id ?? element.id;
 				};
+				// The Adjust panel (and the DaVinci grading viewer) are
+				// registered for IMAGE elements only, so a test that has to
+				// drive those tabs needs a cheap image element. The media id
+				// is dangling on purpose: the scene builder skips elements
+				// whose asset is missing, so the preview stays empty while
+				// the inspector renders its full control set.
+				const insertMockImage = (opts?: {
+					durationSeconds?: number;
+					startTime?: number;
+				}): string => {
+					const TICKS_PER_SECOND = 120_000;
+					const duration = (opts?.durationSeconds ?? 5) * TICKS_PER_SECOND;
+					const element = {
+						id: generateUUID(),
+						type: "image" as const,
+						name: "Mock Image",
+						mediaId: `mock-image-${generateUUID()}`,
+						startTime: (opts?.startTime ?? 0) * TICKS_PER_SECOND,
+						duration,
+						trimStart: 0,
+						trimEnd: 0,
+						hidden: false,
+						transform: {
+							scaleX: 1,
+							scaleY: 1,
+							position: { x: 0, y: 0 },
+							rotate: 0,
+						},
+						opacity: 1,
+					};
+					const tracks = this.scenes.getActiveScene().tracks;
+					this.timeline.insertElement({
+						element: element as never,
+						placement: { mode: "explicit", trackId: tracks.main.id },
+					});
+					const afterTracks = this.scenes.getActiveScene().tracks;
+					const placed = afterTracks.main.elements.at(-1);
+					return placed?.id ?? element.id;
+				};
 				window.__ARTIDOR_DEBUG__ = {
 					getState: (): {
 						activeSceneId: string | null;
@@ -268,9 +307,8 @@ export class EditorCore {
 							selectedElements: this.selection.getSelectedElements(),
 							editingGroupId: this.timeline.getEditingGroupId(),
 							projectUpdatedAt:
-								this.project
-									.getActive()
-									?.metadata.updatedAt?.toISOString?.() ?? null,
+								this.project.getActive()?.metadata.updatedAt?.toISOString?.() ??
+								null,
 						};
 					},
 					/**
@@ -291,6 +329,17 @@ export class EditorCore {
 							insertMockVideo(opts);
 						}
 					},
+					/**
+					 * Test-only helper. Inserts a synthetic IMAGE element on
+					 * the main track. The Adjust panel and the DaVinci grading
+					 * viewer are registered for image elements only, so
+					 * driving those tabs needs one. The `mediaId` is dangling
+					 * on purpose: the scene builder skips elements whose asset
+					 * is missing, so the preview stays empty while the
+					 * inspector renders its full control set. Returns the new
+					 * element id.
+					 */
+					insertMockImage,
 					/**
 					 * Test-only: open the "Save to preset" dialog with
 					 * the given elements pre-selected. The timeline

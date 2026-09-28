@@ -55,8 +55,8 @@ const LazyTextTab = lazy(() =>
 const LazyImageTab = lazy(() =>
 	import("./tabs/image-tab").then((m) => ({ default: m.ImageTab })),
 );
-const LazyBasicAdjustTab = lazy(() =>
-	import("./tabs/basic-adjust-tab").then((m) => ({ default: m.BasicAdjustTab })),
+const LazyAdjustTab = lazy(() =>
+	import("./tabs/adjust-tab").then((m) => ({ default: m.AdjustTab })),
 );
 const LazyGraphicsStyleTab = lazy(() =>
 	import("./tabs/graphics-style-tab").then((m) => ({
@@ -188,7 +188,10 @@ const AudioTabContent = memo(function AudioTabContent({
 	trackId,
 }: TabContentProps) {
 	return (
-		<AudioTab element={element as AudioElement | VideoElement} trackId={trackId} />
+		<AudioTab
+			element={element as AudioElement | VideoElement}
+			trackId={trackId}
+		/>
 	);
 });
 
@@ -215,9 +218,7 @@ const SpeedTabContent = memo(function SpeedTabContent({
 	element,
 	trackId,
 }: TabContentProps) {
-	return (
-		<SpeedTab element={element as RetimableElement} trackId={trackId} />
-	);
+	return <SpeedTab element={element as RetimableElement} trackId={trackId} />;
 });
 
 const SpeedRampTabContent = memo(function SpeedRampTabContent({
@@ -226,7 +227,10 @@ const SpeedRampTabContent = memo(function SpeedRampTabContent({
 }: TabContentProps) {
 	return (
 		<Suspense fallback={<TabSkeleton />}>
-			<LazySpeedRampTab element={element as RetimableElement} trackId={trackId} />
+			<LazySpeedRampTab
+				element={element as RetimableElement}
+				trackId={trackId}
+			/>
 		</Suspense>
 	);
 });
@@ -262,7 +266,10 @@ const ClipEffectsTabContent = memo(function ClipEffectsTabContent({
 }: TabContentProps) {
 	return (
 		<Suspense fallback={<TabSkeleton />}>
-			<LazyClipEffectsTab element={element as VisualElement} trackId={trackId} />
+			<LazyClipEffectsTab
+				element={element as VisualElement}
+				trackId={trackId}
+			/>
 		</Suspense>
 	);
 });
@@ -304,9 +311,7 @@ const GraphicTabContent = memo(function GraphicTabContent({
 	element,
 	trackId,
 }: TabContentProps) {
-	return (
-		<GraphicTab element={element as GraphicElement} trackId={trackId} />
-	);
+	return <GraphicTab element={element as GraphicElement} trackId={trackId} />;
 });
 
 const GraphicsStyleTabContent = memo(function GraphicsStyleTabContent({
@@ -323,13 +328,13 @@ const GraphicsStyleTabContent = memo(function GraphicsStyleTabContent({
 	);
 });
 
-const BasicAdjustTabContent = memo(function BasicAdjustTabContent({
+const AdjustTabContent = memo(function AdjustTabContent({
 	element,
 	trackId,
 }: TabContentProps) {
 	return (
 		<Suspense fallback={<TabSkeleton />}>
-			<LazyBasicAdjustTab element={element as VisualElement} trackId={trackId} />
+			<LazyAdjustTab element={element as VisualElement} trackId={trackId} />
 		</Suspense>
 	);
 });
@@ -340,7 +345,10 @@ const StandaloneEffectTabContent = memo(function StandaloneEffectTabContent({
 }: TabContentProps) {
 	return (
 		<Suspense fallback={<TabSkeleton />}>
-			<LazyStandaloneEffectTab element={element as EffectElement} trackId={trackId} />
+			<LazyStandaloneEffectTab
+				element={element as EffectElement}
+				trackId={trackId}
+			/>
 		</Suspense>
 	);
 });
@@ -378,7 +386,10 @@ const CameraInspectTabContent = memo(function CameraInspectTabContent({
 }: TabContentProps) {
 	return (
 		<Suspense fallback={<TabSkeleton />}>
-			<LazyCameraInspectTab element={element as CameraElement} trackId={trackId} />
+			<LazyCameraInspectTab
+				element={element as CameraElement}
+				trackId={trackId}
+			/>
 		</Suspense>
 	);
 });
@@ -513,7 +524,7 @@ function buildAdjustTab(): PropertiesTabDef {
 		id: "adjust",
 		label: "Adjust",
 		icon: <HugeiconsIcon icon={SlidersVerticalIcon} size={16} />,
-		content: BasicAdjustTabContent,
+		content: AdjustTabContent,
 	};
 }
 
@@ -590,6 +601,7 @@ function getTextConfig(): ElementPropertiesConfig {
 			// string, font, size, etc.) and we don't want to mix generic
 			// metadata into a text-focused inspector.
 			buildTextTab(),
+			buildAdjustTab(),
 			buildGraphicsStyleTab(),
 			buildTransformTab(),
 			buildParentingTab(),
@@ -605,6 +617,7 @@ function getNullLayerConfig(): ElementPropertiesConfig {
 		tabs: [
 			buildElementTab(),
 			buildTransformTab(),
+			buildAdjustTab(),
 			buildParentingTab(),
 			buildAnimationsTab(),
 		],
@@ -630,6 +643,7 @@ function getVideoConfig({
 		tabs: [
 			buildElementTab(),
 			buildTransformTab(),
+			buildAdjustTab(),
 			buildGraphicsStyleTab(),
 			...(hideAudioTab ? [] : [buildAudioTab()]),
 			buildSpeedTab(),
@@ -653,6 +667,7 @@ function getStickerConfig(): ElementPropertiesConfig {
 		tabs: [
 			buildElementTab(),
 			buildTransformTab(),
+			buildAdjustTab(),
 			buildParentingTab(),
 			buildCameraTab(),
 			buildAnimationsTab(),
@@ -667,6 +682,7 @@ function getGraphicConfig(): ElementPropertiesConfig {
 		tabs: [
 			buildElementTab(),
 			buildGraphicTab(),
+			buildAdjustTab(),
 			buildTransformTab(),
 			buildParentingTab(),
 			buildCameraTab(),
@@ -710,10 +726,7 @@ function getImageConfig(): ElementPropertiesConfig {
 function getEffectConfig(): ElementPropertiesConfig {
 	return {
 		defaultTab: "effects",
-		tabs: [
-			buildElementTab(),
-			buildStandaloneEffectTab(),
-		],
+		tabs: [buildElementTab(), buildStandaloneEffectTab()],
 	};
 }
 

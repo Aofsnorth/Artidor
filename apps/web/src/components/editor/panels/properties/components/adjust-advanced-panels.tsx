@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import {
+	useMemo,
+	useRef,
+	useState,
+	type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { VisualElement } from "@/lib/timeline";
 import { useElementPreview } from "@/hooks/use-element-preview";
 import {
 	Section,
 	SectionContent,
-	SectionField,
 	SectionFields,
 	SectionHeader,
 	SectionTitle,
 } from "@/components/section";
-import { Switch } from "@/components/ui/switch";
-import { AdjustSlider } from "../components/adjust-slider";
+import { AdjustSlider } from "./adjust-slider";
 import { cn } from "@/utils/ui";
 
 const DAVINCI_EFFECT_TYPE = "davinci-adjust";
@@ -20,6 +23,10 @@ const DAVINCI_EFFECT_TYPE = "davinci-adjust";
 type ParamValue = number | string;
 type ParamRecord = Record<string, ParamValue>;
 
+/**
+ * Only the params these three panels touch. Values mirror the defaults in
+ * `davinci-adjust-tab.tsx` so both readers agree on what "untouched" means.
+ */
 const DEFAULTS: ParamRecord = {
 	lift_x: 0,
 	lift_y: 0,
@@ -33,17 +40,6 @@ const DEFAULTS: ParamRecord = {
 	offset_x: 0,
 	offset_y: 0,
 	offset_luma: 0,
-	contrast: 0,
-	pivot: 0.435,
-	midtone_detail: 0,
-	highlights: 0,
-	shadows: 0,
-	whites: 0,
-	blacks: 0,
-	saturation: 1,
-	hue: 0,
-	lum_mix: 1,
-	chroma_mix: 1,
 	temperature: 0,
 	tint: 0,
 	y_only: 0,
@@ -57,54 +53,7 @@ const DEFAULTS: ParamRecord = {
 	qual_low: 0,
 	qual_mid: 0.5,
 	qual_high: 1,
-	qual_hsl_enabled: 1,
-	qual_lum_enabled: 1,
-	qual_sat_enabled: 1,
-	qual_range: 0.1,
-	qual_high_softness: 0.1,
-	qual_low_softness: 0.1,
-	vig_offset: 0,
-	vig_softness: 0.5,
-	vig_roundness: 0,
-	vig_highlight: 0,
-	vig_midtone: 0,
-	vig_shadow: 0,
-	sharpen: 0,
-	blur: 0,
-	defog: 0,
-	glow_size: 1,
-	glow_intensity: 0,
-	halation_radius: 0,
-	grain_amount: 0,
-	lut: "none",
-	lut_intensity: 100,
 };
-
-const BUILTIN_LUTS = [
-	"none",
-	"Cinematic Warm",
-	"Cinematic Cool",
-	"Teal & Orange",
-	"Bleach Bypass",
-	"Faded Film",
-	"Vintage Sepia",
-	"Kodak 2383",
-	"Kodak 2393",
-	"Fuji Eterna",
-	"ARRI K1S1",
-	"Rec.709 to LogC",
-	"LogC to Rec.709",
-	"Slog3 to Rec.709",
-	"Cyberpunk",
-	"Noir",
-	"Pastel Dream",
-	"Sunset Glow",
-	"Moody Blue",
-	"Forest Green",
-	"Desert Heat",
-	"Anamorphic",
-	"Filmic Contrast",
-];
 
 const DEFAULT_CURVE_POINTS = [
 	{ x: 0, y: 0 },
@@ -132,25 +81,30 @@ function num(value: ParamValue | undefined, fallback: number): number {
 	return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+type AdjustEffectApi = {
+	get: (key: keyof typeof DEFAULTS) => ParamValue;
+	previewParams: (patch: ParamRecord) => void;
+	commitParams: (patch: ParamRecord) => void;
+	previewNum: (key: string, value: number) => void;
+	commitNum: (key: string, value: number) => void;
+	commit: () => void;
+};
+
 /**
- * DaVinci-style grading panel: one monolithic `davinci-adjust` effect whose
- * params are a flat record. Wheels and curves are SVG drags, every other
- * control is a slider row.
- *
- * Writes go through `useElementPreview`: continuous interactions preview into
- * the overlay and commit ONCE per gesture (pointer release / blur / key
- * release), so dragging a bar produces a single undo entry instead of one
- * per pointer tick, and discrete controls (toggles, selects, resets) commit
- * immediately. Every numeric control is a real draggable track rather than a
- * scrub-only text field.
+ * Read/write plumbing for the `davinci-adjust` effect, shared by every panel in
+ * this file. Params are a flat record living on one effect, and writes go
+ * through `useElementPreview`: continuous interactions preview into the overlay
+ * and commit ONCE per gesture (pointer release / blur / key release), so
+ * dragging a wheel or curve produces a single undo entry instead of one per
+ * pointer tick, while discrete controls (toggles, resets) commit immediately.
  */
-export function DavinciAdjustTab({
-	element,
+function useAdjustEffect({
 	trackId,
+	element,
 }: {
-	element: VisualElement;
 	trackId: string;
-}) {
+	element: VisualElement;
+}): AdjustEffectApi {
 	const { renderElement, previewUpdates, commit } = useElementPreview({
 		trackId,
 		elementId: element.id,
@@ -176,8 +130,6 @@ export function DavinciAdjustTab({
 					},
 				];
 
-	// Continuous drags preview into the overlay; `commit()` promotes the
-	// whole gesture to ONE history entry when the pointer/key is released.
 	const previewParams = (patch: ParamRecord) => {
 		previewUpdates({ effects: buildEffects({ ...stored, ...patch }) });
 	};
@@ -193,95 +145,25 @@ export function DavinciAdjustTab({
 	const commitNum = (key: string, value: number) =>
 		commitParams({ [key]: value });
 
-	return (
-		<div className="flex flex-col gap-3 px-3.5 py-3">
-			<PrimaryWheelsSection
-				element={element}
-				get={get}
-				previewParams={previewParams}
-				commitParams={commitParams}
-				commit={commit}
-			/>
-			<PrimaryBarsSection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<CurvesSection
-				element={element}
-				get={get}
-				previewParams={previewParams}
-				commitParams={commitParams}
-				commit={commit}
-			/>
-			<HslSecondarySection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<QualifierSection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<VignetteSection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<SharpenBlurSection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<GlowGrainSection
-				element={element}
-				get={get}
-				previewNum={previewNum}
-				commit={commit}
-				commitNum={commitNum}
-			/>
-			<LutSection
-				element={element}
-				get={get}
-				previewParams={previewParams}
-				commitParams={commitParams}
-				commit={commit}
-			/>
-		</div>
-	);
+	return { get, previewParams, commitParams, previewNum, commitNum, commit };
 }
 
-type GetFn = (key: keyof typeof DEFAULTS) => ParamValue;
-type PreviewNumFn = (key: string, value: number) => void;
-type CommitNumFn = (key: string, value: number) => void;
-type PreviewParamsFn = (patch: ParamRecord) => void;
-type CommitParamsFn = (patch: ParamRecord) => void;
-type CommitFn = () => void;
-
-function PrimaryWheelsSection({
+/**
+ * Primary wheels: the four colour wheels (Lift / Gamma / Gain / Offset) plus the
+ * global Temp/Tint sliders and the "Y only" master that switches the grade
+ * between luma+chroma and luma-only.
+ */
+export function AdjustWheelsPanel({
 	element,
-	get,
-	previewParams,
-	commitParams,
-	commit,
+	trackId,
 }: {
 	element: VisualElement;
-	get: GetFn;
-	previewParams: PreviewParamsFn;
-	commitParams: CommitParamsFn;
-	commit: CommitFn;
+	trackId: string;
 }) {
+	const { get, previewParams, commitParams, commit } = useAdjustEffect({
+		trackId,
+		element,
+	});
 	const wheels = [
 		{ id: "lift", label: "Lift" },
 		{ id: "gamma", label: "Gamma" },
@@ -302,7 +184,7 @@ function PrimaryWheelsSection({
 			card
 			collapsible
 			defaultOpen
-			sectionKey={`${element.id}:dv:wheels`}
+			sectionKey={`${element.id}:adjust:wheels`}
 		>
 			<SectionHeader
 				trailing={
@@ -331,9 +213,9 @@ function PrimaryWheelsSection({
 						<ColorWheel
 							key={w.id}
 							label={w.label}
-							x={num(get(`${w.id}_x` as keyof typeof DEFAULTS), 0)}
-							y={num(get(`${w.id}_y` as keyof typeof DEFAULTS), 0)}
-							luma={num(get(`${w.id}_luma` as keyof typeof DEFAULTS), 0)}
+							x={num(get(`${w.id}_x`), 0)}
+							y={num(get(`${w.id}_y`), 0)}
+							luma={num(get(`${w.id}_luma`), 0)}
 							onChange={(x, y) =>
 								previewParams({ [`${w.id}_x`]: x, [`${w.id}_y`]: y })
 							}
@@ -658,121 +540,21 @@ function ColorWheel({
 	);
 }
 
-function PrimaryBarsSection({
+/**
+ * Custom curves: the Master (Y) / Red / Green / Blue channels, each an
+ * independently draggable tone curve with its own reset.
+ */
+export function AdjustCurvesPanel({
 	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
+	trackId,
 }: {
 	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
+	trackId: string;
 }) {
-	const bars: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-		step: number;
-		fixed: number;
-	}> = [
-		{
-			key: "contrast",
-			label: "Contrast",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "pivot", label: "Pivot", min: 0, max: 1, step: 0.001, fixed: 3 },
-		{
-			key: "midtone_detail",
-			label: "Midtone Detail",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{
-			key: "highlights",
-			label: "Highlights",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "shadows", label: "Shadows", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{ key: "whites", label: "Whites", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{ key: "blacks", label: "Blacks", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{
-			key: "saturation",
-			label: "Saturation",
-			min: 0,
-			max: 2,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "hue", label: "Hue", min: -180, max: 180, step: 1, fixed: 0 },
-		{ key: "lum_mix", label: "Lum Mix", min: 0, max: 1, step: 0.01, fixed: 2 },
-		{
-			key: "chroma_mix",
-			label: "Chroma Mix",
-			min: 0,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-	];
-	return (
-		<Section card collapsible defaultOpen sectionKey={`${element.id}:dv:bars`}>
-			<SectionHeader>
-				<SectionTitle>Primary Bars</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{bars.map((b) => {
-						const val = num(get(b.key), DEFAULTS[b.key] as number);
-						const def = DEFAULTS[b.key] as number;
-						return (
-							<AdjustSlider
-								key={b.key as string}
-								testId={`dv-${b.key as string}`}
-								label={b.label}
-								value={val}
-								min={b.min}
-								max={b.max}
-								step={b.step}
-								neutral={def}
-								format={(v) => v.toFixed(b.fixed)}
-								isDefault={Math.abs(val - def) < b.step / 2}
-								onChange={(v) => previewNum(b.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(b.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function CurvesSection({
-	element,
-	get,
-	previewParams,
-	commitParams,
-	commit,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewParams: PreviewParamsFn;
-	commitParams: CommitParamsFn;
-	commit: CommitFn;
-}) {
+	const { get, previewParams, commitParams, commit } = useAdjustEffect({
+		trackId,
+		element,
+	});
 	const channels = [
 		{
 			key: "curve_master",
@@ -784,7 +566,7 @@ function CurvesSection({
 		{ key: "curve_b", label: "Blue", color: "rgba(59,130,246,0.9)" },
 	] as const;
 	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:curves`}>
+		<Section card collapsible sectionKey={`${element.id}:adjust:curves`}>
 			<SectionHeader>
 				<SectionTitle>Curves</SectionTitle>
 			</SectionHeader>
@@ -832,7 +614,7 @@ function CurveEditor({
 		cx: (p.x / 255) * 240,
 		cy: 240 - (p.y / 255) * 240,
 	});
-	const fromPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+	const fromPointer = (e: ReactPointerEvent<SVGSVGElement>) => {
 		const svg = svgRef.current;
 		if (!svg) return { x: 0, y: 0 };
 		const rect = svg.getBoundingClientRect();
@@ -952,41 +734,34 @@ function CurveEditor({
 	);
 }
 
-function HslSecondarySection({
+/**
+ * HSL secondary: the Hue / Sat / Lum sliders for the selected colour range,
+ * plus the Low / Mid / High qualifier range inputs that pick which luma band
+ * the secondary targets.
+ */
+export function AdjustHslPanel({
 	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
+	trackId,
 }: {
 	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
+	trackId: string;
 }) {
-	const sliders: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-		step: number;
-		fixed: number;
-	}> = [
+	const { get, previewNum, commitNum, commit } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const sliders = [
 		{ key: "hsl_hue", label: "Hue", min: -180, max: 180, step: 1, fixed: 0 },
 		{ key: "hsl_sat", label: "Sat", min: -1, max: 1, step: 0.01, fixed: 2 },
 		{ key: "hsl_lum", label: "Lum", min: -1, max: 1, step: 0.01, fixed: 2 },
-	];
-	const ranges: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-	}> = [
+	] as const;
+	const ranges = [
 		{ key: "qual_low", label: "Low" },
 		{ key: "qual_mid", label: "Mid" },
 		{ key: "qual_high", label: "High" },
-	];
+	] as const;
 	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:hsl`}>
+		<Section card collapsible sectionKey={`${element.id}:adjust:hsl`}>
 			<SectionHeader>
 				<SectionTitle>HSL Secondary</SectionTitle>
 			</SectionHeader>
@@ -997,8 +772,8 @@ function HslSecondarySection({
 						const def = DEFAULTS[s.key] as number;
 						return (
 							<AdjustSlider
-								key={s.key as string}
-								testId={`dv-${s.key as string}`}
+								key={s.key}
+								testId={`dv-${s.key}`}
 								label={s.label}
 								value={val}
 								min={s.min}
@@ -1007,9 +782,9 @@ function HslSecondarySection({
 								neutral={def}
 								format={(v) => v.toFixed(s.fixed)}
 								isDefault={Math.abs(val - def) < s.step / 2}
-								onChange={(v) => previewNum(s.key as string, v)}
+								onChange={(v) => previewNum(s.key, v)}
 								onCommit={commit}
-								onReset={() => commitNum(s.key as string, def)}
+								onReset={() => commitNum(s.key, def)}
 							/>
 						);
 					})}
@@ -1020,7 +795,7 @@ function HslSecondarySection({
 						{ranges.map((r) => {
 							const val = num(get(r.key), DEFAULTS[r.key] as number);
 							return (
-								<div key={r.key as string} className="flex flex-col gap-1">
+								<div key={r.key} className="flex flex-col gap-1">
 									<div className="flex items-center justify-between text-[0.65rem] text-white/60">
 										<span>{r.label}</span>
 										<span className="font-mono">{val.toFixed(2)}</span>
@@ -1032,10 +807,7 @@ function HslSecondarySection({
 										step={0.01}
 										value={val}
 										onChange={(e) =>
-											previewNum(
-												r.key as string,
-												Number.parseFloat(e.target.value),
-											)
+											previewNum(r.key, Number.parseFloat(e.target.value))
 										}
 										onPointerUp={commit}
 										onKeyUp={commit}
@@ -1047,326 +819,6 @@ function HslSecondarySection({
 							);
 						})}
 					</div>
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function QualifierSection({
-	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
-}) {
-	const toggles: Array<{ key: keyof typeof DEFAULTS; label: string }> = [
-		{ key: "qual_hsl_enabled", label: "HSL" },
-		{ key: "qual_lum_enabled", label: "Lum" },
-		{ key: "qual_sat_enabled", label: "Sat" },
-	];
-	const sliders: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-	}> = [
-		{ key: "qual_range", label: "Range" },
-		{ key: "qual_high_softness", label: "High Softness" },
-		{ key: "qual_low_softness", label: "Low Softness" },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:qualifier`}>
-			<SectionHeader>
-				<SectionTitle>Qualifier</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					<div className="grid grid-cols-3 gap-2">
-						{toggles.map((t) => {
-							const checked = num(get(t.key), 1) > 0.5;
-							return (
-								<div
-									key={t.key as string}
-									className="flex items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
-								>
-									<span className="text-[0.7rem] text-white/70">{t.label}</span>
-									<Switch
-										checked={checked}
-										onCheckedChange={(v) =>
-											commitNum(t.key as string, v ? 1 : 0)
-										}
-									/>
-								</div>
-							);
-						})}
-					</div>
-					{sliders.map((s) => {
-						const val = num(get(s.key), DEFAULTS[s.key] as number);
-						const def = DEFAULTS[s.key] as number;
-						return (
-							<AdjustSlider
-								key={s.key as string}
-								testId={`dv-${s.key as string}`}
-								label={s.label}
-								value={val}
-								min={0}
-								max={1}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(s.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(s.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function VignetteSection({
-	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
-}) {
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "vig_offset", label: "Offset", min: -1, max: 1 },
-		{ key: "vig_softness", label: "Softness", min: 0, max: 1 },
-		{ key: "vig_roundness", label: "Roundness", min: -1, max: 1 },
-		{ key: "vig_highlight", label: "Highlight", min: -1, max: 1 },
-		{ key: "vig_midtone", label: "Midtone", min: -1, max: 1 },
-		{ key: "vig_shadow", label: "Shadow", min: -1, max: 1 },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:vignette`}>
-			<SectionHeader>
-				<SectionTitle>Vignette</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function SharpenBlurSection({
-	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
-}) {
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "sharpen", label: "Sharpen (Peaking)", min: -1, max: 5 },
-		{ key: "blur", label: "Blur (Spatial)", min: 0, max: 5 },
-		{ key: "defog", label: "Defog", min: 0, max: 1 },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:sharpen-blur`}>
-			<SectionHeader>
-				<SectionTitle>Sharpening & Blur</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function GlowGrainSection({
-	element,
-	get,
-	previewNum,
-	commit,
-	commitNum,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewNum: PreviewNumFn;
-	commit: CommitFn;
-	commitNum: CommitNumFn;
-}) {
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "glow_size", label: "Glow Size", min: 0, max: 10 },
-		{ key: "glow_intensity", label: "Glow Intensity", min: 0, max: 1 },
-		{ key: "halation_radius", label: "Halation Radius", min: 0, max: 5 },
-		{ key: "grain_amount", label: "Grain Amount", min: 0, max: 1 },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:glow-grain`}>
-			<SectionHeader>
-				<SectionTitle>Glow / Halation / Grain</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function LutSection({
-	element,
-	get,
-	previewParams,
-	commitParams,
-	commit,
-}: {
-	element: VisualElement;
-	get: GetFn;
-	previewParams: PreviewParamsFn;
-	commitParams: CommitParamsFn;
-	commit: CommitFn;
-}) {
-	const lut = String(get("lut") ?? "none");
-	const intensity = num(get("lut_intensity"), 100);
-	return (
-		<Section card collapsible sectionKey={`${element.id}:dv:lut`}>
-			<SectionHeader>
-				<SectionTitle>LUTs</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					<SectionField label="Preset">
-						<select
-							value={lut}
-							onChange={(e) => commitParams({ lut: e.target.value })}
-							className="border-border bg-accent flex h-7 w-full items-center rounded-md border px-2 text-sm outline-none focus:border-primary"
-						>
-							{BUILTIN_LUTS.map((name) => (
-								<option key={name} value={name}>
-									{name === "none" ? "— None —" : name}
-								</option>
-							))}
-						</select>
-					</SectionField>
-					<SectionField label="Intensity">
-						<div className="flex items-center gap-2">
-							<input
-								type="range"
-								min={0}
-								max={100}
-								step={1}
-								value={intensity}
-								disabled={lut === "none"}
-								onChange={(e) =>
-									previewParams({
-										lut_intensity: Number.parseFloat(e.target.value),
-									})
-								}
-								onPointerUp={commit}
-								onKeyUp={commit}
-								onBlur={commit}
-								aria-label="LUT intensity"
-								className="flex-1 accent-white/80 disabled:opacity-40"
-							/>
-							<span className="w-10 text-right text-[0.7rem] font-mono text-white/60">
-								{intensity.toFixed(0)}%
-							</span>
-						</div>
-					</SectionField>
 				</SectionFields>
 			</SectionContent>
 		</Section>

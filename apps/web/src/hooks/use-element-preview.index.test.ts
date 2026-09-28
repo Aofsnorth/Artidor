@@ -40,8 +40,14 @@ const sceneState: {
 	preview: null,
 };
 
+// The hook subscribes through the SELECTOR overload of `useEditor` (it
+// needs a snapshot that changes when the clip's own data changes), so the
+// mock has to apply the selector the way the real hook does.
 mock.module("@/hooks/use-editor", () => ({
-	useEditor: () => editorMock,
+	useEditor: ((selector?: (editor: unknown) => unknown) =>
+		selector
+			? selector(editorMock)
+			: editorMock) as unknown as () => typeof editorMock,
 }));
 
 const { useElementPreview } = await import("./use-element-preview");
@@ -51,7 +57,12 @@ afterAll(() => {
 });
 
 function element(id: string): TimelineElement {
-	return { id, type: "video", startTime: 0, duration: 1 } as unknown as TimelineElement;
+	return {
+		id,
+		type: "video",
+		startTime: 0,
+		duration: 1,
+	} as unknown as TimelineElement;
 }
 
 /** Tracks whose `elements` arrays count reads, so index reuse is observable. */
@@ -116,7 +127,9 @@ function useScene(next: {
 	committed?: SceneTracks;
 	preview?: SceneTracks | null;
 }) {
-	sceneState.committed = { tracks: next.committed ?? sceneState.committed.tracks };
+	sceneState.committed = {
+		tracks: next.committed ?? sceneState.committed.tracks,
+	};
 	sceneState.preview = next.preview ?? null;
 }
 
@@ -128,9 +141,9 @@ describe("useElementPreview element index", () => {
 		expect(resolve({ trackId: "main-track", elementId: "video" }).id).toBe(
 			"video",
 		);
-		expect(
-			resolve({ trackId: "overlay-track", elementId: "overlay" }).id,
-		).toBe("overlay");
+		expect(resolve({ trackId: "overlay-track", elementId: "overlay" }).id).toBe(
+			"overlay",
+		);
 	});
 
 	test("builds the index once per tracks revision, not once per clip", () => {

@@ -73,18 +73,29 @@ export function useElementPreview<T extends TimelineElement>({
 	// even though preview tracks don't change during normal playback.
 	// This is the single biggest re-render overhead reduction for the
 	// timeline during playback (N clip cards × 1 fewer subscription each).
-	useEditor((e) => e.timeline.getPreviewTracks(), ["timeline", "scenes"]);
-
-	// `getPreviewTracks()` is the in-progress overlay when a preview is
-	// active and the committed scene tracks otherwise; it throws only when
-	// there is no active scene at all, exactly as the previous
-	// `previewTracks ?? getActiveScene().tracks` fallback did.
-	const previewTracks =
-		editor.timeline.getPreviewTracks() ?? editor.scenes.getActiveScene().tracks;
-	const renderElement =
-		(getElementIndex(previewTracks).get(trackId)?.get(elementId) as
-			| T
-			| undefined) ?? fallback;
+	//
+	// The selector returns THIS CLIP, not the track set, and that matters:
+	// `commitPreview()` promotes the very object the preview produced
+	// (`afterTracks = this.previewTracks`), so a track-set selector sees a
+	// referentially IDENTICAL snapshot before and after the commit and
+	// `useEditor` skips the re-render — leaving the field showing the
+	// value from before the gesture. Selecting the element makes the
+	// snapshot change exactly when the clip's data changes.
+	const renderElement = useEditor<T>(
+		(e) => {
+			const tracks =
+				e.timeline.getPreviewTracks() ??
+				e.scenes.getActiveSceneOrNull()?.tracks ??
+				null;
+			const found = tracks
+				? (getElementIndex(tracks).get(trackId)?.get(elementId) as
+						| T
+						| undefined)
+				: undefined;
+			return found ?? fallback;
+		},
+		["timeline", "scenes"],
+	);
 
 	const previewUpdates = (updates: Partial<TimelineElement>) =>
 		editor.timeline.previewElements({

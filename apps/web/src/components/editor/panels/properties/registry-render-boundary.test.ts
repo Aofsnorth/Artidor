@@ -46,7 +46,12 @@ function element(
 }
 
 const TEXT = element({ id: "t1", type: "text", content: "hi" });
-const NULL_LAYER = element({ id: "t2", type: "text", content: "", nullLayer: true });
+const NULL_LAYER = element({
+	id: "t2",
+	type: "text",
+	content: "",
+	nullLayer: true,
+});
 const VIDEO_WITH_AUDIO = element({ id: "v1", type: "video", mediaId: "a1" });
 const IMAGE = element({ id: "i1", type: "image", mediaId: "a1" });
 const STICKER = element({ id: "s1", type: "sticker" });
@@ -70,6 +75,7 @@ describe("properties registry: tab table", () => {
 		expect(config.defaultTab).toBe("text");
 		expect(config.tabs.map((tab) => tab.id)).toEqual([
 			"text",
+			"adjust",
 			"graphics-style",
 			"transform",
 			"parenting",
@@ -87,6 +93,7 @@ describe("properties registry: tab table", () => {
 		expect(config.tabs.map((tab) => tab.id)).toEqual([
 			"element-info",
 			"transform",
+			"adjust",
 			"parenting",
 			"animations",
 		]);
@@ -114,6 +121,7 @@ describe("properties registry: tab table", () => {
 		expect(config.tabs.map((tab) => tab.id)).toEqual([
 			"element-info",
 			"transform",
+			"adjust",
 			"graphics-style",
 			"audio",
 			"speed",
@@ -155,6 +163,7 @@ describe("properties registry: tab table", () => {
 		expect(tabIds(STICKER)).toEqual([
 			"element-info",
 			"transform",
+			"adjust",
 			"parenting",
 			"camera",
 			"animations",
@@ -169,6 +178,7 @@ describe("properties registry: tab table", () => {
 		expect(tabIds(GRAPHIC)).toEqual([
 			"element-info",
 			"graphic",
+			"adjust",
 			"transform",
 			"parenting",
 			"camera",
