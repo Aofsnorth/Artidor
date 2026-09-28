@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { invokeAction } from "@/lib/actions";
 import { useEditor } from "@/hooks/use-editor";
 import { useKeybindingsStore } from "@/stores/keybindings-store";
-import { isTypableDOMElement } from "@/utils/browser";
+import { isArrowKeyNativeControl, isTypableDOMElement } from "@/utils/browser";
 import { useShallow } from "zustand/shallow";
 
 /**
@@ -93,6 +93,18 @@ export function useKeybindingsListener() {
 						].includes(activeElement.type)));
 
 			if (isGenuineTextEntry) return;
+
+			// Arrow keys are the NATIVE interaction for range / checkbox / radio
+			// controls, exactly as they are for text entry. `left`/`right` are
+			// bound to frame-step-backward/forward, so without this guard the
+			// editor shortcuts consumed every arrow press and no inspector
+			// slider could be operated from the keyboard at all.
+			if (
+				activeElement instanceof HTMLElement &&
+				isArrowKeyNativeControl({ element: activeElement, key: normalizedKey })
+			) {
+				return;
+			}
 
 			// Double-space adds a timeline mark. Only fire it when the
 			// first space would have toggled play, so typing/menu space

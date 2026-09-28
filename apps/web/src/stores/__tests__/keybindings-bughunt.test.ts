@@ -14,7 +14,7 @@
  *   reports the occupant so resetOne can refuse instead of stealing the key.
  */
 import { describe, expect, test } from "bun:test";
-import { isTypableDOMElement } from "@/utils/browser";
+import { isArrowKeyNativeControl, isTypableDOMElement } from "@/utils/browser";
 import { getDefaultShortcuts } from "@/lib/actions";
 
 function fakeInput(type: string): HTMLInputElement {
@@ -45,7 +45,16 @@ describe("isTypableDOMElement coverage", () => {
 	});
 
 	test("non-text inputs are not typable (checkbox, radio, range, color, file, submit)", () => {
-		for (const type of ["checkbox", "radio", "range", "color", "file", "submit", "button", "hidden"]) {
+		for (const type of [
+			"checkbox",
+			"radio",
+			"range",
+			"color",
+			"file",
+			"submit",
+			"button",
+			"hidden",
+		]) {
 			expect(
 				isTypableDOMElement({ element: fakeInput(type) as never }),
 				`input[type=${type}] should NOT be typable`,
@@ -60,6 +69,66 @@ describe("isTypableDOMElement coverage", () => {
 			disabled: true,
 		} as unknown as HTMLInputElement;
 		expect(isTypableDOMElement({ element: el as never })).toBe(false);
+	});
+});
+
+describe("isArrowKeyNativeControl — arrow keys stay with the control", () => {
+	test("range / checkbox / radio keep every arrow key", () => {
+		for (const type of ["range", "checkbox", "radio"]) {
+			for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
+				expect(
+					isArrowKeyNativeControl({
+						element: fakeInput(type) as never,
+						key,
+					}),
+					`input[type=${type}] should keep ${key}`,
+				).toBe(true);
+			}
+		}
+	});
+
+	test("key matching is case-insensitive (the listener passes a normalized key)", () => {
+		expect(
+			isArrowKeyNativeControl({
+				element: fakeInput("range") as never,
+				key: "arrowleft",
+			}),
+		).toBe(true);
+	});
+
+	test("non-arrow keys never yield to the control", () => {
+		for (const key of ["a", "Enter", "Escape", " ", "Tab"]) {
+			expect(
+				isArrowKeyNativeControl({
+					element: fakeInput("range") as never,
+					key,
+				}),
+				`${key} is not an arrow key`,
+			).toBe(false);
+		}
+	});
+
+	test("text inputs and other types do not claim arrows (shortcuts still work)", () => {
+		for (const type of ["text", "number", "button", "submit"]) {
+			expect(
+				isArrowKeyNativeControl({
+					element: fakeInput(type) as never,
+					key: "ArrowLeft",
+				}),
+				`input[type=${type}] should not claim arrows`,
+			).toBe(false);
+		}
+	});
+
+	test("disabled controls never claim arrows", () => {
+		const el = {
+			tagName: "INPUT",
+			type: "range",
+			disabled: true,
+		} as unknown as HTMLInputElement;
+		expect(
+			isArrowKeyNativeControl({ element: el as never, key: "ArrowLeft" }),
+		).toBe(false);
 	});
 });
 
@@ -99,9 +168,7 @@ describe("default catalog collisions", () => {
 
 describe("store-level conflict reporting (resetOne contract)", () => {
 	test("validateKeybinding reports the occupant for a taken key", async () => {
-		const { useKeybindingsStore } = await import(
-			"@/stores/keybindings-store"
-		);
+		const { useKeybindingsStore } = await import("@/stores/keybindings-store");
 		const conflict = useKeybindingsStore
 			.getState()
 			.validateKeybinding("space", "split" as never);
@@ -111,18 +178,14 @@ describe("store-level conflict reporting (resetOne contract)", () => {
 	});
 
 	test("validateKeybinding returns null when rebinding the same action", async () => {
-		const { useKeybindingsStore } = await import(
-			"@/stores/keybindings-store"
-		);
+		const { useKeybindingsStore } = await import("@/stores/keybindings-store");
 		expect(
 			useKeybindingsStore.getState().validateKeybinding("space", "toggle-play"),
 		).toBeNull();
 	});
 
 	test("getKeybindingsForAction round-trips an update/remove cycle (persist path)", async () => {
-		const { useKeybindingsStore } = await import(
-			"@/stores/keybindings-store"
-		);
+		const { useKeybindingsStore } = await import("@/stores/keybindings-store");
 		const store = useKeybindingsStore.getState();
 		const before = store.getKeybindingsForAction("split" as never);
 		store.updateKeybinding("f7" as never, "split" as never);
