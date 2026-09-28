@@ -30,6 +30,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
 		items: [
 			"The editor now adapts to your window: on smaller windows the Assets and Properties panels keep a minimum usable width (pixel floors) instead of shrinking into unusable slivers, and the audio-meter column tucks away on the tightest layouts.",
 			"Resizing across screen sizes no longer drifts your saved layout — the preset you saved stays intact when you shrink the window and is restored when you widen it again.",
+			"The timeline toolbar stays tidy at every width: buttons keep their size and the row scrolls horizontally instead of squashing together, and on narrow toolbars the secondary controls fold into a More menu so everything stays reachable.",
 		],
 	},
 	{

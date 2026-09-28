@@ -67,8 +67,16 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
-import { Plus, Pencil, Trash2, StretchHorizontal } from "lucide-react";
+import {
+	MoreHorizontal,
+	Plus,
+	Pencil,
+	Trash2,
+	StretchHorizontal,
+} from "lucide-react";
 import { useGraphEditorController } from "./graph-editor/use-controller";
+import { toolbarFoldTier, type ToolbarFoldTier } from "./timeline-toolbar-fold";
+import { useContainerSize } from "@/hooks/use-container-size";
 import { GraphEditorPopover } from "./graph-editor/popover";
 import {
 	DropdownMenu,
@@ -96,34 +104,56 @@ export function TimelineToolbar({
 		setZoomLevel({ zoom: newZoomLevel });
 	};
 
+	// "Compatible with different screen sizes": measure the *available* width
+	// (this wrapper, constrained by the timeline panel) so secondary controls
+	// fold into the overflow menu before the three sections can collide.
+	// Measuring the grid row itself would be circular — it grows with its
+	// content inside the ScrollArea. The `minmax(min-content,1fr)` columns keep
+	// every button at its natural width; whatever still no longer fits scrolls
+	// horizontally via the ScrollArea instead of squashing or overlapping.
+	const rowRef = useRef<HTMLDivElement>(null);
+	const { width: rowWidth } = useContainerSize({ containerRef: rowRef });
+	const foldTier = toolbarFoldTier(rowWidth);
+
 	return (
-		<ScrollArea className="scrollbar-hidden overflow-x-auto overflow-y-hidden">
-			<div className="grid h-10 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-white/10 bg-transparent px-2 py-0.5 z-20">
-				{/* Left Section: + Track, Separator, Action Buttons */}
-				<div className="flex min-w-0 items-center gap-1 justify-start">
-					<AddSceneButton />
-					<div className="h-5 w-px bg-white/10 mx-0.5" />
-					<TimelineToolToggle />
-					<div className="h-5 w-px bg-white/10 mx-0.5" />
-					<ToolbarLeftSection />
-				</div>
+		<div ref={rowRef} className="min-w-0">
+			<ScrollArea className="scrollbar-hidden overflow-x-auto overflow-y-hidden">
+				<div className="grid h-10 grid-cols-[minmax(min-content,1fr)_auto_minmax(min-content,1fr)] items-center border-b border-white/10 bg-transparent px-2 py-0.5 z-20">
+					{/* Left Section: + Track, Separator, Action Buttons */}
+					<div
+						data-testid="toolbar-left"
+						className="flex min-w-max items-center gap-1 justify-start"
+					>
+						<AddSceneButton />
+						<div className="h-5 w-px bg-white/10 mx-0.5" />
+						<TimelineToolToggle />
+						<div className="h-5 w-px bg-white/10 mx-0.5" />
+						<ToolbarLeftSection foldTier={foldTier} />
+					</div>
 
-				{/* Center Section: Scene Selector */}
-				<div className="-translate-x-6">
-					<SceneSelector />
-				</div>
+					{/* Center Section: Scene Selector. No optical nudge: once the
+				    row overflows, the columns sit at min-content and any
+				    translate would collide with the left section. */}
+					<div data-testid="toolbar-center">
+						<SceneSelector />
+					</div>
 
-				{/* Right Section: Snapping, Ripple, Zoom controls */}
-				<div className="flex min-w-0 items-center justify-end">
-					<ToolbarRightSection
-						zoomLevel={zoomLevel}
-						minZoom={minZoom}
-						onZoomChange={(zoom) => setZoomLevel({ zoom })}
-						onZoom={handleZoom}
-					/>
+					{/* Right Section: Snapping, Ripple, Zoom controls */}
+					<div
+						data-testid="toolbar-right"
+						className="flex min-w-max items-center justify-end"
+					>
+						<ToolbarRightSection
+							foldTier={foldTier}
+							zoomLevel={zoomLevel}
+							minZoom={minZoom}
+							onZoomChange={(zoom) => setZoomLevel({ zoom })}
+							onZoom={handleZoom}
+						/>
+					</div>
 				</div>
-			</div>
-		</ScrollArea>
+			</ScrollArea>
+		</div>
 	);
 }
 
@@ -411,7 +441,7 @@ function SceneItem({
 	);
 }
 
-function ToolbarLeftSection() {
+function ToolbarLeftSection({ foldTier }: { foldTier: ToolbarFoldTier }) {
 	const { t } = useI18n();
 	const freezeFrame = useFreezeFrame();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
@@ -449,21 +479,25 @@ function ToolbarLeftSection() {
 
 				<SectionDivider />
 
-				{/* Selection */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={TickDouble01Icon} />}
-					tooltip={t("timeline.toolbar.selectAll")}
-					disabled={!canSelectAll}
-					onClick={() => invokeAction("select-all")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Tick01Icon} />}
-					tooltip={t("timeline.toolbar.deselectAll")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("deselect-all")}
-				/>
+				{foldTier < 2 && (
+					<>
+						{/* Selection */}
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={TickDouble01Icon} />}
+							tooltip={t("timeline.toolbar.selectAll")}
+							disabled={!canSelectAll}
+							onClick={() => invokeAction("select-all")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={Tick01Icon} />}
+							tooltip={t("timeline.toolbar.deselectAll")}
+							disabled={!hasSelection}
+							onClick={() => invokeAction("deselect-all")}
+						/>
 
-				<SectionDivider />
+						<SectionDivider />
+					</>
+				)}
 
 				{/* Edit operations */}
 				<ToolbarButton
@@ -494,18 +528,22 @@ function ToolbarLeftSection() {
 					disabled={!hasSelection}
 					onClick={() => invokeAction("duplicate-selected")}
 				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={AlignLeftIcon} />}
-					tooltip={t("timeline.toolbar.splitLeft")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("split-left")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={AlignRightIcon} />}
-					tooltip={t("timeline.toolbar.splitRight")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("split-right")}
-				/>
+				{foldTier < 2 && (
+					<>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={AlignLeftIcon} />}
+							tooltip={t("timeline.toolbar.splitLeft")}
+							disabled={!hasSelection}
+							onClick={() => invokeAction("split-left")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={AlignRightIcon} />}
+							tooltip={t("timeline.toolbar.splitRight")}
+							disabled={!hasSelection}
+							onClick={() => invokeAction("split-right")}
+						/>
+					</>
+				)}
 				{/* The only two playhead-dependent buttons. Isolated in a
 				    leaf so the per-frame `playback` subscription below
 				    stops re-rendering the ~15 buttons and tooltips around
@@ -849,11 +887,13 @@ function SceneSelector() {
 }
 
 function ToolbarRightSection({
+	foldTier,
 	zoomLevel,
 	minZoom,
 	onZoomChange,
 	onZoom,
 }: {
+	foldTier: ToolbarFoldTier;
 	zoomLevel: number;
 	minZoom: number;
 	onZoomChange: (zoom: number) => void;
@@ -882,6 +922,10 @@ function ToolbarRightSection({
 	const editor = useEditor();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 	const hasSelection = selectedElements.length > 0;
+	const totalTimelineElementCount = useEditor((e) =>
+		countSceneElements(e.scenes.getActiveScene().tracks),
+	);
+	const canSelectAll = totalTimelineElementCount > selectedElements.length;
 	const canLinkParent = selectedElements.length === 2;
 	const canAddBeatMarkers =
 		selectedElements.length === 1 &&
@@ -912,6 +956,116 @@ function ToolbarRightSection({
 	const canUnlinkParent = selectedTimelineElements.some(
 		(element) => (element as { parentId?: string }).parentId,
 	);
+
+	// Folded controls stay reachable through the overflow menu: tier 2 also
+	// folds the left section's selection/split helpers, so their entries are
+	// listed here even though they render on the other side of the bar.
+	const overflowItems: Array<{
+		key: string;
+		icon: React.ReactNode;
+		label: string;
+		disabled: boolean;
+		onClick: () => void;
+	}> = [];
+	if (foldTier >= 2) {
+		overflowItems.push(
+			{
+				key: "select-all",
+				icon: <HugeiconsIcon icon={TickDouble01Icon} />,
+				label: t("timeline.toolbar.selectAll"),
+				disabled: !canSelectAll,
+				onClick: () => invokeAction("select-all"),
+			},
+			{
+				key: "deselect-all",
+				icon: <HugeiconsIcon icon={Tick01Icon} />,
+				label: t("timeline.toolbar.deselectAll"),
+				disabled: !hasSelection,
+				onClick: () => invokeAction("deselect-all"),
+			},
+			{
+				key: "split-left",
+				icon: <HugeiconsIcon icon={AlignLeftIcon} />,
+				label: t("timeline.toolbar.splitLeft"),
+				disabled: !hasSelection,
+				onClick: () => invokeAction("split-left"),
+			},
+			{
+				key: "split-right",
+				icon: <HugeiconsIcon icon={AlignRightIcon} />,
+				label: t("timeline.toolbar.splitRight"),
+				disabled: !hasSelection,
+				onClick: () => invokeAction("split-right"),
+			},
+		);
+	}
+	if (foldTier >= 1) {
+		overflowItems.push(
+			{
+				key: "copy",
+				icon: <HugeiconsIcon icon={Copy01Icon} />,
+				label: t("timeline.toolbar.copyLayer"),
+				disabled: !hasSelection,
+				onClick: () => invokeAction("copy-selected"),
+			},
+			{
+				key: "paste",
+				icon: <HugeiconsIcon icon={ClipboardIcon} />,
+				label: t("timeline.toolbar.pasteLayer"),
+				disabled: !hasClipboardEntry,
+				onClick: () => invokeAction("paste-copied"),
+			},
+			{
+				key: "source-audio",
+				icon: <HugeiconsIcon icon={VolumeOffIcon} />,
+				label: t("timeline.toolbar.toggleSourceAudio"),
+				disabled: false,
+				onClick: () => invokeAction("toggle-source-audio"),
+			},
+			{
+				key: "mute",
+				icon: <HugeiconsIcon icon={VolumeMute02Icon} />,
+				label: t("timeline.toolbar.toggleElementsMuted"),
+				disabled: false,
+				onClick: () => invokeAction("toggle-elements-muted-selected"),
+			},
+			{
+				key: "visibility",
+				icon: <HugeiconsIcon icon={EyeIcon} />,
+				label: t("timeline.toolbar.toggleElementsVisibility"),
+				disabled: false,
+				onClick: () => invokeAction("toggle-elements-visibility-selected"),
+			},
+			{
+				key: "beat-markers",
+				icon: <HugeiconsIcon icon={MusicNote03Icon} />,
+				label: t("timeline.toolbar.addBeatMarkers"),
+				disabled: !canAddBeatMarkers,
+				onClick: () => invokeAction("add-beat-markers"),
+			},
+			{
+				key: "fit",
+				icon: <HugeiconsIcon icon={Maximize01Icon} />,
+				label: t("timeline.toolbar.fitToScreen"),
+				disabled: false,
+				onClick: () => invokeAction("fit-to-screen"),
+			},
+			{
+				key: "camera",
+				icon: <HugeiconsIcon icon={Camera01Icon} />,
+				label: t("timeline.toolbar.addCameraLayer"),
+				disabled: false,
+				onClick: () => invokeAction("add-camera"),
+			},
+			{
+				key: "null-layer",
+				icon: <HugeiconsIcon icon={Square01Icon} />,
+				label: t("timeline.toolbar.addNullLayer"),
+				disabled: false,
+				onClick: () => invokeAction("add-null-layer"),
+			},
+		);
+	}
 
 	return (
 		<div className="flex items-center gap-1 z-20">
@@ -1054,70 +1208,113 @@ function ToolbarRightSection({
 					onClick={() => toggleRippleEditing()}
 				/>
 
-				<SectionDivider />
+				{foldTier === 0 && (
+					<>
+						<SectionDivider />
 
-				{/* Audio */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={VolumeOffIcon} />}
-					tooltip={t("timeline.toolbar.toggleSourceAudio")}
-					onClick={() => invokeAction("toggle-source-audio")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={VolumeMute02Icon} />}
-					tooltip={t("timeline.toolbar.toggleElementsMuted")}
-					onClick={() => invokeAction("toggle-elements-muted-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={EyeIcon} />}
-					tooltip={t("timeline.toolbar.toggleElementsVisibility")}
-					onClick={() => invokeAction("toggle-elements-visibility-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={MusicNote03Icon} />}
-					tooltip={t("timeline.toolbar.addBeatMarkers")}
-					disabled={!canAddBeatMarkers}
-					onClick={() => invokeAction("add-beat-markers")}
-				/>
+						{/* Audio */}
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={VolumeOffIcon} />}
+							tooltip={t("timeline.toolbar.toggleSourceAudio")}
+							onClick={() => invokeAction("toggle-source-audio")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={VolumeMute02Icon} />}
+							tooltip={t("timeline.toolbar.toggleElementsMuted")}
+							onClick={() => invokeAction("toggle-elements-muted-selected")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={EyeIcon} />}
+							tooltip={t("timeline.toolbar.toggleElementsVisibility")}
+							onClick={() =>
+								invokeAction("toggle-elements-visibility-selected")
+							}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={MusicNote03Icon} />}
+							tooltip={t("timeline.toolbar.addBeatMarkers")}
+							disabled={!canAddBeatMarkers}
+							onClick={() => invokeAction("add-beat-markers")}
+						/>
 
-				<SectionDivider />
+						<SectionDivider />
 
-				{/* View */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Maximize01Icon} />}
-					tooltip={t("timeline.toolbar.fitToScreen")}
-					onClick={() => invokeAction("fit-to-screen")}
-				/>
+						{/* View */}
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={Maximize01Icon} />}
+							tooltip={t("timeline.toolbar.fitToScreen")}
+							onClick={() => invokeAction("fit-to-screen")}
+						/>
 
-				<SectionDivider />
+						<SectionDivider />
 
-				{/* Insert */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Camera01Icon} />}
-					tooltip={t("timeline.toolbar.addCameraLayer")}
-					onClick={() => invokeAction("add-camera")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Square01Icon} />}
-					tooltip={t("timeline.toolbar.addNullLayer")}
-					onClick={() => invokeAction("add-null-layer")}
-				/>
+						{/* Insert */}
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={Camera01Icon} />}
+							tooltip={t("timeline.toolbar.addCameraLayer")}
+							onClick={() => invokeAction("add-camera")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={Square01Icon} />}
+							tooltip={t("timeline.toolbar.addNullLayer")}
+							onClick={() => invokeAction("add-null-layer")}
+						/>
 
-				<SectionDivider />
+						<SectionDivider />
 
-				{/* Clipboard */}
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={Copy01Icon} />}
-					tooltip={t("timeline.toolbar.copyLayer")}
-					disabled={!hasSelection}
-					onClick={() => invokeAction("copy-selected")}
-				/>
-				<ToolbarButton
-					icon={<HugeiconsIcon icon={ClipboardIcon} />}
-					tooltip={t("timeline.toolbar.pasteLayer")}
-					disabled={!hasClipboardEntry}
-					onClick={() => invokeAction("paste-copied")}
-				/>
+						{/* Clipboard */}
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={Copy01Icon} />}
+							tooltip={t("timeline.toolbar.copyLayer")}
+							disabled={!hasSelection}
+							onClick={() => invokeAction("copy-selected")}
+						/>
+						<ToolbarButton
+							icon={<HugeiconsIcon icon={ClipboardIcon} />}
+							tooltip={t("timeline.toolbar.pasteLayer")}
+							disabled={!hasClipboardEntry}
+							onClick={() => invokeAction("paste-copied")}
+						/>
+					</>
+				)}
 			</TooltipProvider>
+
+			{foldTier >= 1 && (
+				<>
+					<SectionDivider />
+					<DropdownMenu>
+						<Tooltip delayDuration={200}>
+							<TooltipTrigger asChild>
+								<DropdownMenuTrigger asChild>
+									<Button
+										variant="text"
+										size="icon"
+										data-testid="timeline-toolbar-overflow"
+										aria-label={t("timeline.toolbar.moreTools")}
+										className="relative size-6 rounded text-white/60 hover:bg-white/[0.08] hover:text-white transition"
+									>
+										<MoreHorizontal className="size-4" />
+									</Button>
+								</DropdownMenuTrigger>
+							</TooltipTrigger>
+							<TooltipContent>{t("timeline.toolbar.moreTools")}</TooltipContent>
+						</Tooltip>
+						<DropdownMenuContent align="end" className="z-100 w-52">
+							{overflowItems.map((item) => (
+								<DropdownMenuItem
+									key={item.key}
+									disabled={item.disabled}
+									onClick={item.onClick}
+									className="gap-2"
+								>
+									{item.icon}
+									<span className="text-xs font-medium">{item.label}</span>
+								</DropdownMenuItem>
+							))}
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</>
+			)}
 
 			<SectionDivider />
 

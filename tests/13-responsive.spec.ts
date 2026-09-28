@@ -125,6 +125,26 @@ for (const viewport of VIEWPORTS) {
 						if (el.matches(".select-none, [class*='select-none']")) {
 							continue;
 						}
+						// Skip content inside an intentional horizontal
+						// scroll region (timeline toolbar, asset lists):
+						// such children legitimately extend past the
+						// viewport while the scroll container itself —
+						// and therefore the page layout — stays within
+						// it. Page-level overflow still fails below.
+						let scrollParent = el.parentElement;
+						let inScrollRegion = false;
+						while (scrollParent) {
+							const ps = window.getComputedStyle(scrollParent);
+							if (
+								(ps.overflowX === "auto" || ps.overflowX === "scroll") &&
+								scrollParent.getBoundingClientRect().right <= vw + 20
+							) {
+								inScrollRegion = true;
+								break;
+							}
+							scrollParent = scrollParent.parentElement;
+						}
+						if (inScrollRegion) continue;
 						// Only flag elements that physically extend
 						// past the right viewport edge by more than
 						// 20px — small overflows are usually OK and
@@ -196,6 +216,40 @@ for (const viewport of VIEWPORTS) {
 			).toBeGreaterThanOrEqual(floor.properties);
 			// The preview must never be squeezed to nothing by the floors.
 			expect(widths.preview).toBeGreaterThan(150);
+		});
+
+		test("timeline toolbar sections never overlap", async ({ page }) => {
+			await bootEditor(page);
+			const left = await page.getByTestId("toolbar-left").boundingBox();
+			const center = await page.getByTestId("toolbar-center").boundingBox();
+			const right = await page.getByTestId("toolbar-right").boundingBox();
+			expect(left, "toolbar-left mounted").not.toBeNull();
+			expect(center, "toolbar-center mounted").not.toBeNull();
+			expect(right, "toolbar-right mounted").not.toBeNull();
+			if (!left || !center || !right) return;
+			expect(
+				left.x + left.width,
+				"left section must not overlap the scene selector",
+			).toBeLessThanOrEqual(center.x + 1);
+			expect(
+				center.x + center.width,
+				"scene selector must not overlap the right section",
+			).toBeLessThanOrEqual(right.x + 1);
+		});
+
+		test("toolbar folds secondary controls on narrow toolbars", async ({
+			page,
+		}) => {
+			await bootEditor(page);
+			const overflow = page.getByTestId("timeline-toolbar-overflow");
+			// Toolbar width ≈ viewport − tab rail − paddings: tier 2 below
+			// ~1140px (compact), tier 1 below ~1440px (laptop), unfolded at
+			// desktop widths.
+			if (viewport.width < 1400) {
+				await expect(overflow).toBeVisible();
+			} else {
+				expect(await overflow.count()).toBe(0);
+			}
 		});
 	});
 }
