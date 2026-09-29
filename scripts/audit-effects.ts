@@ -108,11 +108,9 @@ function scanWrittenTypes(
 
 			// Pass 1 — any literal naming a registered effect.
 			for (const type of known) {
-				const pattern = new RegExp(`"${type}"`, "g");
-				for (const match of text.matchAll(pattern)) {
-					record(type, `${rel}:${lineNumberOf(text, match.index)}`);
-					break;
-				}
+				const at = text.indexOf(`"${type}"`);
+				if (at === -1) continue;
+				record(type, `${rel}:${lineNumberOf(text, at)}`);
 			}
 
 			// Pass 2 — `type: "<x>"` in a file that writes effects.
