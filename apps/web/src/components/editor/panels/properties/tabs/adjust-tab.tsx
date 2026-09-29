@@ -1,46 +1,79 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { type ComponentType, useCallback, useState } from "react";
 import type { VisualElement } from "@/lib/timeline";
 import { useEditor } from "@/hooks/use-editor";
 import { BasicAdjustTab } from "./basic-adjust-tab";
 import {
+	AdjustBarsPanel,
 	AdjustCurvesPanel,
+	AdjustGlowGrainPanel,
 	AdjustHslPanel,
+	AdjustLutPanel,
+	AdjustQualifierPanel,
+	AdjustSharpenBlurPanel,
+	AdjustVignettePanel,
 	AdjustWheelsPanel,
 } from "../components/adjust-advanced-panels";
 import { cn } from "@/utils/ui";
 
-const SUB_TABS = [
-	{ id: "basic", label: "Basic" },
-	{ id: "wheels", label: "Wheels" },
-	{ id: "curves", label: "Curves" },
-	{ id: "hsl", label: "HSL" },
+type PanelProps = { element: VisualElement; trackId: string };
+type PanelComponent = ComponentType<PanelProps>;
+
+/**
+ * The grading suite, in workflow order: shape the image with the wheels, dial
+ * the tone bars, reshape it with curves, then the secondaries, then the
+ * finishing passes.
+ *
+ * This array is the single definition of the suite. `layout="stacked"` renders
+ * every entry at once and `layout="tabs"` turns each into a sub-tab, so the
+ * two entry points cannot drift apart.
+ */
+const GRADE_PANELS = [
+	{ id: "wheels", label: "Wheels", Panel: AdjustWheelsPanel },
+	{ id: "bars", label: "Bars", Panel: AdjustBarsPanel },
+	{ id: "curves", label: "Curves", Panel: AdjustCurvesPanel },
+	{ id: "hsl", label: "HSL", Panel: AdjustHslPanel },
+	{ id: "qualifier", label: "Qualifier", Panel: AdjustQualifierPanel },
+	{ id: "vignette", label: "Vignette", Panel: AdjustVignettePanel },
+	{ id: "sharpen", label: "Sharpen", Panel: AdjustSharpenBlurPanel },
+	{ id: "glow", label: "Glow", Panel: AdjustGlowGrainPanel },
+	{ id: "lut", label: "LUT", Panel: AdjustLutPanel },
 ] as const;
+
+const SUB_TABS = [{ id: "basic", label: "Basic" }, ...GRADE_PANELS] as const;
 
 type SubTabId = (typeof SUB_TABS)[number]["id"];
 
 /**
- * Adjust tab shell.
+ * Adjust tab shell — the one home for the colour suite, rendered two ways.
  *
- * CapCut's colour panel is tabbed rather than one long list (Basic / HSL /
- * Curves / Colour wheel), and the same split is used here. "Basic" owns the
- * primitive-effect sliders; the other three sub-tabs drive the single
- * `davinci-adjust` effect, which already carries the colour wheels, tone
- * curves and HSL controls as real GPU parameters.
+ * CapCut's colour panel is tabbed rather than one long list, and the inspector
+ * is narrow, so `layout="tabs"` (the default) gives each panel its own
+ * sub-tab behind a wrapping strip. "Basic" owns the primitive-effect sliders;
+ * the rest drive the single `davinci-adjust` effect, which carries the wheels,
+ * bars, curves, HSL, qualifier and finishing controls as real GPU parameters.
+ *
+ * `layout="stacked"` is the Advanced Viewers panel's wide variant: no sub-tab
+ * strip, the whole suite in a multi-column grid so a grade can be read and
+ * adjusted at a glance.
  *
  * Keeping the two storage models apart matters: the Basic sliders stay
- * individually copy/pasteable and individually resettable, while the
- * advanced panels are one coherent grade.
+ * individually copy/pasteable and individually resettable, while the advanced
+ * panels are one coherent grade.
  */
 export function AdjustTab({
 	element,
 	trackId,
+	layout = "tabs",
 }: {
 	element: VisualElement;
 	trackId: string;
+	layout?: "tabs" | "stacked";
 }) {
 	const editor = useEditor();
+	// Declared above the layout branch: switching layout keeps the sub-tab you
+	// were last on rather than resetting the panel to Basic.
 	const [activeSubTab, setActiveSubTab] = useState<SubTabId>("basic");
 
 	/**
@@ -68,10 +101,28 @@ export function AdjustTab({
 		}
 	}, [editor, element.id]);
 
+	const ActivePanel: PanelComponent | undefined = GRADE_PANELS.find(
+		(panel) => panel.id === activeSubTab,
+	)?.Panel;
+
+	if (layout === "stacked") {
+		return (
+			<div className="flex h-full flex-col">
+				<div className="min-h-0 flex-1 overflow-y-auto scrollbar-hidden">
+					<div className="grid grid-cols-1 gap-3 px-3.5 py-3 xl:grid-cols-2">
+						{GRADE_PANELS.map(({ id, Panel: GradePanel }) => (
+							<GradePanel key={id} element={element} trackId={trackId} />
+						))}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex h-full flex-col">
 			<div
-				className="flex shrink-0 gap-1 border-b border-white/8 px-2.5 py-2"
+				className="flex shrink-0 flex-wrap gap-1 border-b border-white/8 px-2.5 py-2"
 				role="tablist"
 				aria-label="Adjust sections"
 			>
@@ -84,7 +135,7 @@ export function AdjustTab({
 						data-testid={`adjust-subtab-${tab.id}`}
 						onClick={() => setActiveSubTab(tab.id)}
 						className={cn(
-							"flex-1 rounded-md border px-2 py-1 text-[0.68rem] transition",
+							"shrink-0 rounded-md border px-2 py-1 text-[0.68rem] transition",
 							activeSubTab === tab.id
 								? "border-white/25 bg-white/12 text-foreground"
 								: "border-white/6 bg-white/2.5 text-muted-foreground hover:border-white/15 hover:text-foreground",
@@ -95,27 +146,16 @@ export function AdjustTab({
 				))}
 			</div>
 			<div className="min-h-0 flex-1 overflow-y-auto scrollbar-hidden">
-				{activeSubTab === "basic" && (
+				{ActivePanel ? (
+					<div className="px-3.5 py-3">
+						<ActivePanel element={element} trackId={trackId} />
+					</div>
+				) : (
 					<BasicAdjustTab
 						element={element}
 						trackId={trackId}
 						onApplyAll={handleApplyAll}
 					/>
-				)}
-				{activeSubTab === "wheels" && (
-					<div className="px-3.5 py-3">
-						<AdjustWheelsPanel element={element} trackId={trackId} />
-					</div>
-				)}
-				{activeSubTab === "curves" && (
-					<div className="px-3.5 py-3">
-						<AdjustCurvesPanel element={element} trackId={trackId} />
-					</div>
-				)}
-				{activeSubTab === "hsl" && (
-					<div className="px-3.5 py-3">
-						<AdjustHslPanel element={element} trackId={trackId} />
-					</div>
 				)}
 			</div>
 		</div>

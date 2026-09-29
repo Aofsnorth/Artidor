@@ -13,7 +13,7 @@ import {
 	PerBandHslSection,
 	LutSection,
 } from "@/components/editor/panels/properties/tabs/color-grading-tab";
-import { DavinciAdjustTab } from "@/components/editor/panels/properties/tabs/davinci-adjust-tab";
+import { AdjustTab } from "@/components/editor/panels/properties/tabs/adjust-tab";
 import { DEFAULT_CURVE, type CurvePoint } from "@/lib/colors/curves";
 import type { VisualElement } from "@/lib/timeline";
 import { cn } from "@/utils/ui";
@@ -48,8 +48,10 @@ const SUB_TABS: Array<{ id: SubTabId; labelKey: string }> = [
  * surfaced inside the Adjust tab. Eight facets in the order a
  * colourist would walk through a grade:
  *
- *   1. Wheels     — Lift / Gamma / Gain / Offset colour wheels
- *                   + DaVinci Bars (contrast, pivot, hue, …).
+ *   1. Wheels     — the full Artidor grade: Lift / Gamma / Gain / Offset
+ *                   colour wheels, DaVinci Bars (contrast, pivot, hue, …),
+ *                   curves, HSL secondary, qualifier and the finishing
+ *                   passes, all at once.
  *   2. HSL        — master + 8-band HSL sliders.
  *   3. Qualifier  — HSL key with center / range / softness.
  *   4. Vignette   — shape + per-zone amount.
@@ -142,7 +144,11 @@ export function AdvancedView({
 			<ScrollArea className="flex-1 scrollbar-hidden">
 				<div className="flex flex-col gap-3 px-2 py-2">
 					{activeSubTab === "wheels" && (
-						<DavinciAdjustTab element={element} trackId={ref.trackId} />
+						<AdjustTab
+							element={element}
+							trackId={ref.trackId}
+							layout="stacked"
+						/>
 					)}
 					{activeSubTab === "hsl" && (
 						<>

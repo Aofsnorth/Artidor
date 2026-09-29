@@ -3,11 +3,6 @@
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import dynamic from "next/dynamic";
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
-import { useEditor } from "@/hooks/use-editor";
-import { isVisualElement } from "@/lib/timeline/element-utils";
 import { useUiOverlayStore } from "@/stores/ui-overlay-store";
 
 function ViewerLoading() {
@@ -19,70 +14,21 @@ const ScopesCard = dynamic(
 		import("./panels/assets/views/components/scopes").then((m) => m.ScopesCard),
 	{ ssr: false, loading: ViewerLoading },
 );
-const ColorWheelsTab = dynamic(
-	() =>
-		import("./panels/properties/tabs/color-wheels-tab").then(
-			(m) => m.ColorWheelsTab,
-		),
-	{ ssr: false, loading: ViewerLoading },
-);
-const ArtidorAdjustTab = dynamic(
-	() =>
-		import("./panels/properties/tabs/davinci-adjust-tab").then(
-			(m) => m.DavinciAdjustTab,
-		),
-	{ ssr: false, loading: ViewerLoading },
-);
 
-const VIEWERS = [
-	{ id: "scopes", label: "Scopes" },
-	{ id: "color-wheels", label: "Color Wheels" },
-	{ id: "davinci-adjust", label: "Artidor Adjust" },
-] as const;
-
-function SelectedElementViewer({
-	viewer,
-}: {
-	viewer: "color-wheels" | "davinci-adjust";
-}) {
-	const { selectedElements } = useElementSelection();
-	const selected = useEditor(
-		(editor) =>
-			selectedElements.length === 1
-				? editor.timeline
-						.getElementsWithTracks({ elements: selectedElements })
-						.at(0)
-				: undefined,
-		["timeline", "scenes", "selection"],
-	);
-
-	if (!selected || !isVisualElement(selected.element)) {
-		return (
-			<p className="p-4 text-sm leading-relaxed text-muted-foreground">
-				Select a single visual element to use{" "}
-				{viewer === "color-wheels" ? "Color Wheels" : "Artidor Adjust"}.
-			</p>
-		);
-	}
-
-	return viewer === "color-wheels" ? (
-		<ColorWheelsTab
-			key={selected.element.id}
-			element={selected.element}
-			trackId={selected.track.id}
-		/>
-	) : (
-		<ArtidorAdjustTab
-			key={selected.element.id}
-			element={selected.element}
-			trackId={selected.track.id}
-		/>
-	);
-}
-
-/** Inline viewers alongside Details. Only the selected tool is mounted. */
+/**
+ * Advanced viewers — diagnostics only.
+ *
+ * This panel used to host an "Artidor Adjust" grading surface alongside the
+ * scopes, which duplicated the inspector's Adjust tab control for control:
+ * the same panels, the same effects, in a second place, free to drift out of
+ * sync. Grading lives in the inspector, where it is one tab among the other
+ * per-element tools; what is genuinely useful HERE is the layer you cannot
+ * fit into a narrow inspector column — full-width signal analysis.
+ *
+ * The scope card carries waveform, vectorscope, RGB parade and histogram,
+ * all fed by the same downsampled preview frame.
+ */
 export function AdvancedViewersPanel() {
-	const [activeViewer, setActiveViewer] = useState("scopes");
 	const setOpen = useUiOverlayStore((state) => state.setAdvancedViewersOpen);
 	const close = () => {
 		setOpen(false);
@@ -115,43 +61,9 @@ export function AdvancedViewersPanel() {
 					/>
 				</button>
 			</header>
-			<Tabs
-				value={activeViewer}
-				onValueChange={setActiveViewer}
-				className="flex min-h-0 flex-1 flex-col"
-			>
-				<TabsList
-					aria-label="Advanced viewer tools"
-					className="flex w-full shrink-0 flex-wrap gap-1 border-b border-white/8 bg-black/10 p-2"
-				>
-					{VIEWERS.map((viewer) => (
-						<TabsTrigger
-							key={viewer.id}
-							value={viewer.id}
-							className="h-8 flex-1 px-2 text-xs text-white/50 hover:bg-white/4 hover:text-white/75 data-[state=active]:border-white/10 data-[state=active]:bg-white/[0.07] data-[state=active]:text-white pointer-coarse:min-h-11"
-						>
-							{viewer.label}
-						</TabsTrigger>
-					))}
-				</TabsList>
-				{VIEWERS.map((viewer) => (
-					<TabsContent
-						key={viewer.id}
-						value={viewer.id}
-						className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-linear-to-b from-transparent to-black/12"
-					>
-						{activeViewer === viewer.id ? (
-							viewer.id === "scopes" ? (
-								<div className="p-3">
-									<ScopesCard />
-								</div>
-							) : (
-								<SelectedElementViewer viewer={viewer.id} />
-							)
-						) : null}
-					</TabsContent>
-				))}
-			</Tabs>
+			<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-linear-to-b from-transparent to-black/12 p-3">
+				<ScopesCard />
+			</div>
 		</section>
 	);
 }

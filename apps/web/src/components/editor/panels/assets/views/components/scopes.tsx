@@ -15,7 +15,7 @@ import {
 	type ScopeStatistics,
 } from "./scope-analysis";
 
-type ScopeMode = "waveform" | "vectorscope" | "parade";
+type ScopeMode = "waveform" | "vectorscope" | "parade" | "histogram";
 
 interface ScopeOption {
 	id: ScopeMode;
@@ -33,6 +33,7 @@ const SCOPE_OPTIONS: ScopeOption[] = [
 	{ id: "waveform", labelKey: "scopes.waveform", shortLabel: "WFM" },
 	{ id: "vectorscope", labelKey: "scopes.vectorscope", shortLabel: "VEC" },
 	{ id: "parade", labelKey: "scopes.parade", shortLabel: "RGB" },
+	{ id: "histogram", labelKey: "scopes.histogram", shortLabel: "HIST" },
 ];
 const SAMPLE_RATE_FPS = 12;
 const STATISTICS_RATE_FPS = 3;
@@ -412,6 +413,7 @@ function getScopeAriaLabel(
 ): string {
 	if (active === "waveform") return t("scopes.waveformAria");
 	if (active === "vectorscope") return t("scopes.vectorscopeAria");
+	if (active === "histogram") return t("scopes.histogramAria");
 	return t("scopes.rgbParadeAria");
 }
 
@@ -421,6 +423,7 @@ function getScopeFormatLabel(
 ): string {
 	if (active === "waveform") return t("scopes.label.waveform");
 	if (active === "vectorscope") return t("scopes.label.vectorscope");
+	if (active === "histogram") return t("scopes.label.histogram");
 	return t("scopes.label.parade");
 }
 
@@ -430,6 +433,7 @@ function getScopeInterpretation(
 ): string {
 	if (active === "waveform") return t("scopes.help.waveform");
 	if (active === "vectorscope") return t("scopes.help.vectorscope");
+	if (active === "histogram") return t("scopes.help.histogram");
 	return t("scopes.help.parade");
 }
 
@@ -466,6 +470,10 @@ function drawActiveScope({
 		drawVectorscope({ canvas, sample });
 		return;
 	}
+	if (mode === "histogram") {
+		drawHistogram({ canvas, sample });
+		return;
+	}
 	drawParade({ canvas, sample });
 }
 
@@ -488,6 +496,10 @@ function drawEmptyScope({
 	}
 	if (mode === "parade") {
 		drawParadeGrid(context, canvas.width, canvas.height);
+		return;
+	}
+	if (mode === "histogram") {
+		drawHistogramGrid(context, canvas.width, canvas.height);
 		return;
 	}
 	drawWaveformGrid(context, canvas.width, canvas.height);
@@ -561,6 +573,167 @@ function drawWaveform({
 			);
 		}
 	}
+}
+
+const HISTOGRAM_BINS = 256;
+const HISTOGRAM_CHANNELS = [
+	{ offset: 0, color: "rgba(248,113,113,0.75)" },
+	{ offset: 1, color: "rgba(74,222,128,0.75)" },
+	{ offset: 2, color: "rgba(96,165,250,0.75)" },
+	{ offset: 3, color: "rgba(226,232,240,0.55)" },
+] as const;
+
+/**
+ * RGB + luma histogram.
+ *
+ * The waveform and the parade both answer "where is this picture right
+ * now"; the histogram answers the different and very common question "how
+ * much of the frame is sitting at a given level" — which is what tells you
+ * whether blacks are crushed or highlights are blown. It costs nothing
+ * extra: the same downsampled frame the other scopes already receive is
+ * binned here.
+ *
+ * The vertical scale is normalised to the tallest bin so a low-contrast
+ * frame still reads clearly; a per-channel count would flatten a graded
+ * image into an unreadable line.
+ */
+function drawHistogram({
+	canvas,
+	sample,
+}: {
+	canvas: HTMLCanvasElement;
+	sample: ScopeSampleData;
+}): void {
+	const context = canvas.getContext("2d");
+	if (!context) return;
+	const { width, height } = canvas;
+	clearScopeCanvas(context, width, height);
+	drawHistogramGrid(context, width, height);
+
+	const plotLeft = SCOPE_PADDING;
+	const plotTop = SCOPE_PADDING;
+	const plotWidth = width - SCOPE_PADDING * 2;
+	const plotHeight = height - SCOPE_PADDING * 2;
+	const counts = new Uint32Array(HISTOGRAM_BINS * HISTOGRAM_CHANNELS.length);
+
+	for (let row = 0; row < sample.rows; row += 1) {
+		for (let column = 0; column < sample.columns; column += 1) {
+			const dataIndex = (row * sample.columns + column) * 4;
+			const red = sample.pixels[dataIndex] ?? 0;
+			const green = sample.pixels[dataIndex + 1] ?? 0;
+			const blue = sample.pixels[dataIndex + 2] ?? 0;
+			const values = [red, green, blue, getLuma(red, green, blue)];
+			for (let channel = 0; channel < values.length; channel += 1) {
+				const value = values[channel] ?? 0;
+				counts[channel * HISTOGRAM_BINS + value] += 1;
+			}
+		}
+	}
+
+	let peak = 1;
+	for (const count of counts) {
+		if (count > peak) peak = count;
+	}
+
+	const binWidth = plotWidth / HISTOGRAM_BINS;
+	for (let channel = 0; channel < HISTOGRAM_CHANNELS.length; channel += 1) {
+		const definition = HISTOGRAM_CHANNELS[channel];
+		if (!definition) continue;
+		context.fillStyle = definition.color;
+		context.beginPath();
+		context.moveTo(plotLeft, plotTop + plotHeight);
+		for (let bin = 0; bin < HISTOGRAM_BINS; bin += 1) {
+			const count = counts[channel * HISTOGRAM_BINS + bin] ?? 0;
+			// sqrt keeps a single dominant spike from flattening everything
+			// else into the baseline, the same trick the waveform uses.
+			const magnitude = Math.sqrt(count / peak);
+			const x = plotLeft + (bin + 0.5) * binWidth;
+			const y = plotTop + plotHeight - magnitude * plotHeight;
+			if (bin === 0) context.lineTo(x, y);
+			else context.lineTo(x, y);
+		}
+		context.lineTo(plotLeft + plotWidth, plotTop + plotHeight);
+		context.closePath();
+		context.fill();
+	}
+
+	// Clipping flags: a visible pile-up in the outermost bins is the
+	// clearest possible warning that the image is losing information.
+	drawClippingFlag({
+		context,
+		count: counts[0] ?? 0,
+		x: plotLeft,
+		y: plotTop,
+		peak,
+	});
+	drawClippingFlag({
+		context,
+		count: counts[HISTOGRAM_BINS - 1] ?? 0,
+		x: plotLeft + plotWidth,
+		y: plotTop,
+		peak,
+	});
+}
+
+function drawClippingFlag({
+	context,
+	count,
+	x,
+	y,
+	peak,
+}: {
+	context: CanvasRenderingContext2D;
+	count: number;
+	x: number;
+	y: number;
+	peak: number;
+}): void {
+	if (Math.sqrt(count / peak) < 0.35) return;
+	context.fillStyle = "rgba(248,113,113,0.95)";
+	context.fillRect(x - 3, y - 3, 6, 6);
+}
+
+function drawHistogramGrid(
+	context: CanvasRenderingContext2D,
+	width: number,
+	height: number,
+): void {
+	const plotLeft = SCOPE_PADDING;
+	const plotTop = SCOPE_PADDING;
+	const plotWidth = width - SCOPE_PADDING * 2;
+	const plotHeight = height - SCOPE_PADDING * 2;
+
+	context.font = `${Math.max(9, Math.round(height * 0.035))}px ui-monospace, monospace`;
+	context.textAlign = "left";
+	context.textBaseline = "middle";
+	for (const level of GRID_LEVELS) {
+		const y = plotTop + (1 - level) * plotHeight;
+		context.strokeStyle =
+			level === 0.5 ? "rgba(255,255,255,0.11)" : "rgba(255,255,255,0.065)";
+		context.lineWidth = 1;
+		context.beginPath();
+		context.moveTo(plotLeft, Math.round(y) + 0.5);
+		context.lineTo(plotLeft + plotWidth, Math.round(y) + 0.5);
+		context.stroke();
+		context.fillStyle = "rgba(255,255,255,0.28)";
+		context.fillText(String(Math.round(level * 100)), 3, y);
+	}
+	for (const level of [0.25, 0.5, 0.75]) {
+		const x = plotLeft + level * plotWidth;
+		context.strokeStyle = "rgba(255,255,255,0.035)";
+		context.beginPath();
+		context.moveTo(Math.round(x) + 0.5, plotTop);
+		context.lineTo(Math.round(x) + 0.5, plotTop + plotHeight);
+		context.stroke();
+		context.fillStyle = "rgba(255,255,255,0.28)";
+		context.textAlign = "center";
+		context.fillText(
+			String(Math.round(level * 255)),
+			x,
+			plotTop + plotHeight + 9,
+		);
+	}
+	context.textAlign = "left";
 }
 
 function drawWaveformGrid(

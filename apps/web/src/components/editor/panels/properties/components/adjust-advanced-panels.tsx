@@ -11,10 +11,12 @@ import { useElementPreview } from "@/hooks/use-element-preview";
 import {
 	Section,
 	SectionContent,
+	SectionField,
 	SectionFields,
 	SectionHeader,
 	SectionTitle,
 } from "@/components/section";
+import { Switch } from "@/components/ui/switch";
 import { AdjustSlider } from "./adjust-slider";
 import { cn } from "@/utils/ui";
 
@@ -24,8 +26,10 @@ type ParamValue = number | string;
 type ParamRecord = Record<string, ParamValue>;
 
 /**
- * Only the params these three panels touch. Values mirror the defaults in
- * `davinci-adjust-tab.tsx` so both readers agree on what "untouched" means.
+ * The full `davinci-adjust` param set — every key any panel in this file
+ * touches, so a single source of truth decides what "untouched" means for
+ * the neutral marker, the reset target and the "is this slider at default"
+ * check. These are the GPU effect's own defaults; do not drift them.
  */
 const DEFAULTS: ParamRecord = {
 	lift_x: 0,
@@ -40,6 +44,17 @@ const DEFAULTS: ParamRecord = {
 	offset_x: 0,
 	offset_y: 0,
 	offset_luma: 0,
+	contrast: 0,
+	pivot: 0.435,
+	midtone_detail: 0,
+	highlights: 0,
+	shadows: 0,
+	whites: 0,
+	blacks: 0,
+	saturation: 1,
+	hue: 0,
+	lum_mix: 1,
+	chroma_mix: 1,
 	temperature: 0,
 	tint: 0,
 	y_only: 0,
@@ -53,7 +68,54 @@ const DEFAULTS: ParamRecord = {
 	qual_low: 0,
 	qual_mid: 0.5,
 	qual_high: 1,
+	qual_hsl_enabled: 1,
+	qual_lum_enabled: 1,
+	qual_sat_enabled: 1,
+	qual_range: 0.1,
+	qual_high_softness: 0.1,
+	qual_low_softness: 0.1,
+	vig_offset: 0,
+	vig_softness: 0.5,
+	vig_roundness: 0,
+	vig_highlight: 0,
+	vig_midtone: 0,
+	vig_shadow: 0,
+	sharpen: 0,
+	blur: 0,
+	defog: 0,
+	glow_size: 1,
+	glow_intensity: 0,
+	halation_radius: 0,
+	grain_amount: 0,
+	lut: "none",
+	lut_intensity: 100,
 };
+
+const BUILTIN_LUTS = [
+	"none",
+	"Cinematic Warm",
+	"Cinematic Cool",
+	"Teal & Orange",
+	"Bleach Bypass",
+	"Faded Film",
+	"Vintage Sepia",
+	"Kodak 2383",
+	"Kodak 2393",
+	"Fuji Eterna",
+	"ARRI K1S1",
+	"Rec.709 to LogC",
+	"LogC to Rec.709",
+	"Slog3 to Rec.709",
+	"Cyberpunk",
+	"Noir",
+	"Pastel Dream",
+	"Sunset Glow",
+	"Moody Blue",
+	"Forest Green",
+	"Desert Heat",
+	"Anamorphic",
+	"Filmic Contrast",
+];
 
 const DEFAULT_CURVE_POINTS = [
 	{ x: 0, y: 0 },
@@ -819,6 +881,448 @@ export function AdjustHslPanel({
 							);
 						})}
 					</div>
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Primary bars: the eleven tone sliders that sit between the wheels and the
+ * curves — contrast, pivot, midtone detail, highlights, shadows, whites,
+ * blacks, saturation, hue, and the lum/chroma mix pair.
+ */
+export function AdjustBarsPanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewNum, commit, commitNum } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const bars: Array<{
+		key: keyof typeof DEFAULTS;
+		label: string;
+		min: number;
+		max: number;
+		step: number;
+		fixed: number;
+	}> = [
+		{
+			key: "contrast",
+			label: "Contrast",
+			min: -1,
+			max: 1,
+			step: 0.01,
+			fixed: 2,
+		},
+		{ key: "pivot", label: "Pivot", min: 0, max: 1, step: 0.001, fixed: 3 },
+		{
+			key: "midtone_detail",
+			label: "Midtone Detail",
+			min: -1,
+			max: 1,
+			step: 0.01,
+			fixed: 2,
+		},
+		{
+			key: "highlights",
+			label: "Highlights",
+			min: -1,
+			max: 1,
+			step: 0.01,
+			fixed: 2,
+		},
+		{ key: "shadows", label: "Shadows", min: -1, max: 1, step: 0.01, fixed: 2 },
+		{ key: "whites", label: "Whites", min: -1, max: 1, step: 0.01, fixed: 2 },
+		{ key: "blacks", label: "Blacks", min: -1, max: 1, step: 0.01, fixed: 2 },
+		{
+			key: "saturation",
+			label: "Saturation",
+			min: 0,
+			max: 2,
+			step: 0.01,
+			fixed: 2,
+		},
+		{ key: "hue", label: "Hue", min: -180, max: 180, step: 1, fixed: 0 },
+		{ key: "lum_mix", label: "Lum Mix", min: 0, max: 1, step: 0.01, fixed: 2 },
+		{
+			key: "chroma_mix",
+			label: "Chroma Mix",
+			min: 0,
+			max: 1,
+			step: 0.01,
+			fixed: 2,
+		},
+	];
+	return (
+		<Section
+			card
+			collapsible
+			defaultOpen
+			sectionKey={`${element.id}:adjust:bars`}
+		>
+			<SectionHeader>
+				<SectionTitle>Primary Bars</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					{bars.map((b) => {
+						const val = num(get(b.key), DEFAULTS[b.key] as number);
+						const def = DEFAULTS[b.key] as number;
+						return (
+							<AdjustSlider
+								key={b.key as string}
+								testId={`dv-${b.key as string}`}
+								label={b.label}
+								value={val}
+								min={b.min}
+								max={b.max}
+								step={b.step}
+								neutral={def}
+								format={(v) => v.toFixed(b.fixed)}
+								isDefault={Math.abs(val - def) < b.step / 2}
+								onChange={(v) => previewNum(b.key as string, v)}
+								onCommit={commit}
+								onReset={() => commitNum(b.key as string, def)}
+							/>
+						);
+					})}
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Qualifier: the HSL / Lum / Sat channel switches plus the range and the
+ * high / low softness that shape the key. The band pickers that choose *which*
+ * luma the secondary targets live in the HSL panel, next to the sliders they
+ * scope.
+ */
+export function AdjustQualifierPanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewNum, commit, commitNum } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const toggles: Array<{ key: keyof typeof DEFAULTS; label: string }> = [
+		{ key: "qual_hsl_enabled", label: "HSL" },
+		{ key: "qual_lum_enabled", label: "Lum" },
+		{ key: "qual_sat_enabled", label: "Sat" },
+	];
+	const sliders: Array<{
+		key: keyof typeof DEFAULTS;
+		label: string;
+	}> = [
+		{ key: "qual_range", label: "Range" },
+		{ key: "qual_high_softness", label: "High Softness" },
+		{ key: "qual_low_softness", label: "Low Softness" },
+	];
+	return (
+		<Section card collapsible sectionKey={`${element.id}:adjust:qualifier`}>
+			<SectionHeader>
+				<SectionTitle>Qualifier</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					<div className="grid grid-cols-3 gap-2">
+						{toggles.map((t) => {
+							const checked = num(get(t.key), 1) > 0.5;
+							return (
+								<div
+									key={t.key as string}
+									className="flex items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
+								>
+									<span className="text-[0.7rem] text-white/70">{t.label}</span>
+									<Switch
+										checked={checked}
+										onCheckedChange={(v) =>
+											commitNum(t.key as string, v ? 1 : 0)
+										}
+									/>
+								</div>
+							);
+						})}
+					</div>
+					{sliders.map((s) => {
+						const val = num(get(s.key), DEFAULTS[s.key] as number);
+						const def = DEFAULTS[s.key] as number;
+						return (
+							<AdjustSlider
+								key={s.key as string}
+								testId={`dv-${s.key as string}`}
+								label={s.label}
+								value={val}
+								min={0}
+								max={1}
+								step={0.01}
+								neutral={def}
+								format={(v) => v.toFixed(2)}
+								isDefault={Math.abs(val - def) < 0.005}
+								onChange={(v) => previewNum(s.key as string, v)}
+								onCommit={commit}
+								onReset={() => commitNum(s.key as string, def)}
+							/>
+						);
+					})}
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Vignette: offset / softness / roundness plus the three tone weights that
+ * decide how the falloff darkens or lightens.
+ */
+export function AdjustVignettePanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewNum, commit, commitNum } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const fields: Array<{
+		key: keyof typeof DEFAULTS;
+		label: string;
+		min: number;
+		max: number;
+	}> = [
+		{ key: "vig_offset", label: "Offset", min: -1, max: 1 },
+		{ key: "vig_softness", label: "Softness", min: 0, max: 1 },
+		{ key: "vig_roundness", label: "Roundness", min: -1, max: 1 },
+		{ key: "vig_highlight", label: "Highlight", min: -1, max: 1 },
+		{ key: "vig_midtone", label: "Midtone", min: -1, max: 1 },
+		{ key: "vig_shadow", label: "Shadow", min: -1, max: 1 },
+	];
+	return (
+		<Section card collapsible sectionKey={`${element.id}:adjust:vignette`}>
+			<SectionHeader>
+				<SectionTitle>Vignette</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					{fields.map((f) => {
+						const val = num(get(f.key), DEFAULTS[f.key] as number);
+						const def = DEFAULTS[f.key] as number;
+						return (
+							<AdjustSlider
+								key={f.key as string}
+								testId={`dv-${f.key as string}`}
+								label={f.label}
+								value={val}
+								min={f.min}
+								max={f.max}
+								step={0.01}
+								neutral={def}
+								format={(v) => v.toFixed(2)}
+								isDefault={Math.abs(val - def) < 0.005}
+								onChange={(v) => previewNum(f.key as string, v)}
+								onCommit={commit}
+								onReset={() => commitNum(f.key as string, def)}
+							/>
+						);
+					})}
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Detail: peaking sharpen, spatial blur and defog — the three frequency-domain
+ * controls.
+ */
+export function AdjustSharpenBlurPanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewNum, commit, commitNum } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const fields: Array<{
+		key: keyof typeof DEFAULTS;
+		label: string;
+		min: number;
+		max: number;
+	}> = [
+		{ key: "sharpen", label: "Sharpen (Peaking)", min: -1, max: 5 },
+		{ key: "blur", label: "Blur (Spatial)", min: 0, max: 5 },
+		{ key: "defog", label: "Defog", min: 0, max: 1 },
+	];
+	return (
+		<Section card collapsible sectionKey={`${element.id}:adjust:sharpen-blur`}>
+			<SectionHeader>
+				<SectionTitle>Sharpening & Blur</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					{fields.map((f) => {
+						const val = num(get(f.key), DEFAULTS[f.key] as number);
+						const def = DEFAULTS[f.key] as number;
+						return (
+							<AdjustSlider
+								key={f.key as string}
+								testId={`dv-${f.key as string}`}
+								label={f.label}
+								value={val}
+								min={f.min}
+								max={f.max}
+								step={0.01}
+								neutral={def}
+								format={(v) => v.toFixed(2)}
+								isDefault={Math.abs(val - def) < 0.005}
+								onChange={(v) => previewNum(f.key as string, v)}
+								onCommit={commit}
+								onReset={() => commitNum(f.key as string, def)}
+							/>
+						);
+					})}
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Bloom and film texture: glow size / intensity, halation radius and grain.
+ */
+export function AdjustGlowGrainPanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewNum, commit, commitNum } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const fields: Array<{
+		key: keyof typeof DEFAULTS;
+		label: string;
+		min: number;
+		max: number;
+	}> = [
+		{ key: "glow_size", label: "Glow Size", min: 0, max: 10 },
+		{ key: "glow_intensity", label: "Glow Intensity", min: 0, max: 1 },
+		{ key: "halation_radius", label: "Halation Radius", min: 0, max: 5 },
+		{ key: "grain_amount", label: "Grain Amount", min: 0, max: 1 },
+	];
+	return (
+		<Section card collapsible sectionKey={`${element.id}:adjust:glow-grain`}>
+			<SectionHeader>
+				<SectionTitle>Glow / Halation / Grain</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					{fields.map((f) => {
+						const val = num(get(f.key), DEFAULTS[f.key] as number);
+						const def = DEFAULTS[f.key] as number;
+						return (
+							<AdjustSlider
+								key={f.key as string}
+								testId={`dv-${f.key as string}`}
+								label={f.label}
+								value={val}
+								min={f.min}
+								max={f.max}
+								step={0.01}
+								neutral={def}
+								format={(v) => v.toFixed(2)}
+								isDefault={Math.abs(val - def) < 0.005}
+								onChange={(v) => previewNum(f.key as string, v)}
+								onCommit={commit}
+								onReset={() => commitNum(f.key as string, def)}
+							/>
+						);
+					})}
+				</SectionFields>
+			</SectionContent>
+		</Section>
+	);
+}
+
+/**
+ * Look-up tables: the built-in preset list and the blend amount. The blend is
+ * a continuous drag, so it previews and commits on release; picking a preset
+ * is discrete and commits immediately.
+ */
+export function AdjustLutPanel({
+	element,
+	trackId,
+}: {
+	element: VisualElement;
+	trackId: string;
+}) {
+	const { get, previewParams, commitParams, commit } = useAdjustEffect({
+		trackId,
+		element,
+	});
+	const lut = String(get("lut") ?? "none");
+	const intensity = num(get("lut_intensity"), 100);
+	return (
+		<Section card collapsible sectionKey={`${element.id}:adjust:lut`}>
+			<SectionHeader>
+				<SectionTitle>LUTs</SectionTitle>
+			</SectionHeader>
+			<SectionContent>
+				<SectionFields>
+					<SectionField label="Preset">
+						<select
+							value={lut}
+							onChange={(e) => commitParams({ lut: e.target.value })}
+							className="border-border bg-accent flex h-7 w-full items-center rounded-md border px-2 text-sm outline-none focus:border-primary"
+						>
+							{BUILTIN_LUTS.map((name) => (
+								<option key={name} value={name}>
+									{name === "none" ? "— None —" : name}
+								</option>
+							))}
+						</select>
+					</SectionField>
+					<SectionField label="Intensity">
+						<div className="flex items-center gap-2">
+							<input
+								type="range"
+								min={0}
+								max={100}
+								step={1}
+								value={intensity}
+								disabled={lut === "none"}
+								onChange={(e) =>
+									previewParams({
+										lut_intensity: Number.parseFloat(e.target.value),
+									})
+								}
+								onPointerUp={commit}
+								onKeyUp={commit}
+								onBlur={commit}
+								aria-label="LUT intensity"
+								className="flex-1 accent-white/80 disabled:opacity-40"
+							/>
+							<span className="w-10 text-right text-[0.7rem] font-mono text-white/60">
+								{intensity.toFixed(0)}%
+							</span>
+						</div>
+					</SectionField>
 				</SectionFields>
 			</SectionContent>
 		</Section>
