@@ -30,6 +30,7 @@ const WRITTEN_EFFECT_TYPES = [
 	"blacks",
 	"temperature",
 	"tint-shift",
+	"tint",
 	"hue-rotate",
 	"saturation",
 	"vibrance",
@@ -39,16 +40,16 @@ const WRITTEN_EFFECT_TYPES = [
 	"fade",
 	"vignette",
 	"grain",
-	// Adjust -> master intensity and every advanced grading panel.
-	"davinci-adjust",
-	// Registered, but these declare zero render passes.
+	// Adjust -> advanced grading panels, each on its own registered primitive.
+	"glow",
+	"box-blur",
+	"color-wheels",
+	// Advanced asset card: master + per-band HSL and the tone curves.
 	"curves",
 	"hsl",
 	"lut",
 	// The HSL-curves panel in the advanced asset card.
 	"hsl-curve",
-	// The qualifier component in the advanced asset card.
-	"qualifier",
 ];
 
 /**
@@ -59,16 +60,14 @@ const WRITTEN_EFFECT_TYPES = [
  * CI stays green and the debt stays visible, and so that FIXING one is a
  * deliberate commit that has to update this list — which is the point.
  *
+ * `davinci-adjust` used to lead this list. It is gone: the nine advanced
+ * panels that all wrote to that one unregistered effect now write registered
+ * primitives (see `grade-controls.ts`), and the two Advanced-card components
+ * that did the same were removed.
+ *
  * `bun scripts/audit-effects.ts` prints the sites for each.
  */
-const KNOWN_NON_RENDERING = [
-	"curves",
-	"davinci-adjust",
-	"hsl",
-	"hsl-curve",
-	"lut",
-	"qualifier",
-].sort();
+const KNOWN_NON_RENDERING = ["curves", "hsl", "hsl-curve", "lut"].sort();
 
 const unregistered = WRITTEN_EFFECT_TYPES.filter(
 	(type) => !effectsRegistry.has(type),

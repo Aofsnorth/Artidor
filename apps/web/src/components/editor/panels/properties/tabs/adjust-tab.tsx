@@ -6,11 +6,7 @@ import { useEditor } from "@/hooks/use-editor";
 import { BasicAdjustTab } from "./basic-adjust-tab";
 import {
 	AdjustBarsPanel,
-	AdjustCurvesPanel,
 	AdjustGlowGrainPanel,
-	AdjustHslPanel,
-	AdjustLutPanel,
-	AdjustQualifierPanel,
 	AdjustSharpenBlurPanel,
 	AdjustVignettePanel,
 	AdjustWheelsPanel,
@@ -22,8 +18,15 @@ type PanelComponent = ComponentType<PanelProps>;
 
 /**
  * The grading suite, in workflow order: shape the image with the wheels, dial
- * the tone bars, reshape it with curves, then the secondaries, then the
- * finishing passes.
+ * the tone bars, then the finishing passes.
+ *
+ * The Curves, HSL, Qualifier and LUT panels were REMOVED. Their targets
+ * (`curves`, `hsl`, `lut`) are registered but declare ZERO render passes, so
+ * every control persisted params no GPU pass ever read. There is no registered
+ * primitive to rewire them to, and inventing a shader is out of scope, so the
+ * honest move is to remove the dead UI rather than leave sliders that only
+ * move numbers nobody reads. `bun run audit:effects` is the tool that measures
+ * this.
  *
  * This array is the single definition of the suite. `layout="stacked"` renders
  * every entry at once and `layout="tabs"` turns each into a sub-tab, so the
@@ -32,13 +35,9 @@ type PanelComponent = ComponentType<PanelProps>;
 const GRADE_PANELS = [
 	{ id: "wheels", label: "Wheels", Panel: AdjustWheelsPanel },
 	{ id: "bars", label: "Bars", Panel: AdjustBarsPanel },
-	{ id: "curves", label: "Curves", Panel: AdjustCurvesPanel },
-	{ id: "hsl", label: "HSL", Panel: AdjustHslPanel },
-	{ id: "qualifier", label: "Qualifier", Panel: AdjustQualifierPanel },
 	{ id: "vignette", label: "Vignette", Panel: AdjustVignettePanel },
 	{ id: "sharpen", label: "Sharpen", Panel: AdjustSharpenBlurPanel },
 	{ id: "glow", label: "Glow", Panel: AdjustGlowGrainPanel },
-	{ id: "lut", label: "LUT", Panel: AdjustLutPanel },
 ] as const;
 
 const SUB_TABS = [{ id: "basic", label: "Basic" }, ...GRADE_PANELS] as const;
@@ -51,8 +50,8 @@ type SubTabId = (typeof SUB_TABS)[number]["id"];
  * CapCut's colour panel is tabbed rather than one long list, and the inspector
  * is narrow, so `layout="tabs"` (the default) gives each panel its own
  * sub-tab behind a wrapping strip. "Basic" owns the primitive-effect sliders;
- * the rest drive the single `davinci-adjust` effect, which carries the wheels,
- * bars, curves, HSL, qualifier and finishing controls as real GPU parameters.
+ * the rest drive registered primitive effects too, so every control in the
+ * suite changes the picture.
  *
  * `layout="stacked"` is the Advanced Viewers panel's wide variant: no sub-tab
  * strip, the whole suite in a multi-column grid so a grade can be read and
@@ -122,7 +121,7 @@ export function AdjustTab({
 	return (
 		<div className="flex h-full flex-col">
 			<div
-				className="flex shrink-0 flex-wrap gap-1 border-b border-white/8 px-2.5 py-2"
+				className="flex shrink-0 flex-nowrap gap-1 overflow-x-auto border-b border-white/8 px-2.5 py-2 scrollbar-hidden"
 				role="tablist"
 				aria-label="Adjust sections"
 			>
