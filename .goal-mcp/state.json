@@ -1,107 +1,49 @@
 {
   "goal": {
-    "id": "g-muflsonprj",
-    "objective": "Fix all reported Artidor issues and maximize measured application performance without regressions.",
-    "stop_condition": "All reported bugs have regression coverage; targeted/full tests, typecheck, lint, UI interaction verification, and before/after performance benchmarks pass with recorded evidence; Dependabot/security alerts and open PRs receive evidence-based best-option actions.",
+    "id": "g-mulyq3sj38",
+    "objective": "Deliver the full colour/grading roadmap: make every existing grading panel actually render, then ship the researched gap features (.cube LUT import, Compare view, Colour Balance/Split Tone/Channel Mixer, Hue-vs-Sat curves, matte isolation, qualifier modes, cross-clip match, colour management).",
+    "stop_condition": "PHASE 1 FOUNDATION (this goal's first verifiable milestone): zero effect types written by the UI that the renderer skips (guard test `written-effects-are-renderable` passes with an EMPTY debt list); the 9 non-rendering types are each either rewired to a rendering effect or have their UI removed with an explicit note; bun test + tsc + biome + E2E (16/17/18 + regression batch) green; no user-facing colour control remains that silently does nothing. Later checkpoints extend the objective per phase and must each define their own verifiable bar before work starts.",
     "validation": [
-      "apps/web targeted Bun tests for timeline drag/drop and performance regressions",
+      "bun run audit:effects  (0 non-rendering effect types)",
+      "cd apps/web && bun test --isolate src/",
       "cd apps/web && bunx tsc --noEmit",
-      "cd apps/web && bunx biome check on changed files",
-      "Playwright drag-from-assets-to-timeline magnet verification with keyboard/accessibility assertions",
-      "before/after benchmark or profiler evidence for changed hot paths",
-      "GitHub PR checks/reviews plus Dependabot/security alert evidence"
+      "bunx biome check <files>",
+      "bunx playwright test tests/16-adjust-sliders.spec.ts tests/17-adjust-features.spec.ts tests/18-advanced-viewers.spec.ts + 02-tabs + 15-click-all-buttons",
+      "git push origin main && CI hijau"
     ],
     "constraints": [
-      "Preserve unrelated user changes",
-      "No new dependency unless existing tools cannot cover the measured bottleneck",
-      "No destructive GitHub action without inspectable evidence",
-      "Fix magnet behavior first, then remaining reported UI issues, then measured performance work"
+      "Jangan tulis WGSL/Rust baru yang tak bisa diverifikasi di env ini (WebGPU dimatikan di Playwright) tanpa向东 mengatakannya eksplisit ke user lebih dulu",
+      "Jangan Arbeiten di pipeline GPU 8-bit pada fase ini",
+      "Performa: histogram 12fps; hindari re-render per frame; jangan tambah draw call per tick",
+      "Jangan campur .goal-mcp/tauri gen schemas/turbo bump ke commit fitur",
+      "Setiap fix harus dismantle debt list di written-effects-are-renderable.test.ts, bukan loosen assertion"
     ],
-    "status": "done",
-    "created_at": "2026-09-24T14:04:43.093Z",
-    "updated_at": "2026-09-27T10:07:06.363Z",
-    "checkpoints": 5,
-    "max_checkpoints": 30,
+    "status": "paused",
+    "created_at": "2026-09-29T00:53:14.804Z",
+    "updated_at": "2026-09-29T07:10:56.087Z",
+    "checkpoints": 0,
+    "max_checkpoints": 40,
     "progress_log": [
       {
-        "at": "2026-09-27T07:59:55.705Z",
-        "checkpoint": 1,
-        "summary": "Fixed uniform-pool mid-frame recycle aliasing (effects per-pass, masks per-application, sdf per-JFA-step) by moving recycle to the frame boundary; added regression test; rebuilt wasm; proved the aliasing mechanism and the fix in a real browser via WebGPU readback probes; app runs 3 simultaneous effect passes with 0 errors.",
-        "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 26 pass / 0 fail. Browser probe: shared-buffer case renders pass1 BLUE (mechanism confirmed), distinct-buffer case correct red/blue; app multi-adjust store [exposure -100, tint-shift +100, sharpen +50], bufFail [], consoleErrorCount 0."
-      },
-      {
-        "at": "2026-09-27T08:08:19.829Z",
-        "checkpoint": 2,
-        "summary": "Completed t-9 GPU/Rust performance track: 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md, steady-state benchmark proves 950 acquires → 19 allocations (98% reduction, zero per frame after warm-up), mappedAtCreation eliminated from all draw paths; removed leftover probe counters from 3 source files; fixed 2 stale tests (clamp integration contradiction, missing adjust tab); full web suite 1111/1111 pass, tsc + biome clean, Rust 27/27 pass.",
-        "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 27 pass/0 fail. bun test --isolate src/: 1111 pass/0 fail/11 skip. bunx tsc --noEmit: clean. bunx biome check on touched files: clean. grep: 0 mapped_at_creation:true in draw crates, 6 acquire_uniform sites."
-      },
-      {
-        "at": "2026-09-27T08:32:15.814Z",
-        "checkpoint": 3,
-        "summary": "Verified and fixed t-2/t-3/t-4: transitions+motion render clean with real photos (0 errors, 0 bufFail during playback through a Fade transition), Sound tab no longer fires the auth-gated request when signed out (explicit sign-in state instead of a console 401), Arth AI panel geometry measured sane (inside viewport, clear of rail, composer at bottom). Tasks t-1 through t-4 and t-6 through t-10 all completed.",
-        "validation_result": "Headed Playwright: transition toast + motion toast confirmed, 0 console errors + 0 bufFail across playback; 0 /api/sounds requests fired signed-out (2 runs), auth message rendered (diag probe: hasAuthMessage=true, session 200/null); AI view geometry (89,49,415x539) inside viewport and clear of rail. tsc --noEmit + biome clean on all touched files."
-      },
-      {
-        "at": "2026-09-27T10:05:25.107Z",
-        "checkpoint": 4,
-        "summary": "Fixed the black timeline preview the user reported live: TexturePool/UniformBufferPool release-then-recycle double-stash created duplicate handles, letting one frame acquire the same texture as both attachment and sampled input (WebGPU usage-scope violation invalidating every frame's command buffer). Credit-count accounting fix; regression tests proven to fail on the buggy code and pass on the fix; browser re-run on the user's GPU config shows 0 black pixels and zero validation errors.",
-        "validation_result": "cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail. Browser repro (user GPU config): before 4096/4096 black pixels + per-frame validation errors; after 0 black / 4096 non-black, 0 validation errors, 0 bufFail. bun test --isolate src/ = 1111 pass / 0 fail / 11 skip."
-      },
-      {
-        "at": "2026-09-27T10:07:06.363Z",
-        "checkpoint": 5,
-        "summary": "Completed t-5 security/PR triage: next 16.3.4 bump eliminated both critical RCEs and resolutions cleaned the remaining advisories (bun audit 0/833 packages), gitleaks false-positive root cause fixed (missing secretGroup made the allowlist dead code; full history now scans clean with detection positive control), Playwright CI failure root-caused to a 3000-vs-3005 port mismatch and fixed (smoke 3/3), and all 15 Dependabot PRs triaged into merge-now/redundant/deferred buckets. All goal tasks t-1..t-10 now completed with recorded evidence.",
-        "validation_result": "bun audit: 0 vulnerabilities (833 packages). gitleaks detect full history: 575 commits, 0 leaks, exit 0; positive control detects. Playwright smoke: 3/3 pass on port 3005. bun test --isolate src/: 1111 pass/0 fail/11 skip. tsc --noEmit clean. biome clean on changed files."
+        "at": "2026-09-29T05:04:32.021Z",
+        "checkpoint": 0,
+        "summary": "goal_control:pause — User interrupted with a blocking cross-clip adjust bleed bug; pausing colour roadmap to fix it first.",
+        "validation_result": "-"
       }
     ],
     "evidence": [
       {
-        "id": "e-muiqgtss8u",
-        "at": "2026-09-26T18:38:46.492Z",
+        "id": "e-mumc7tc9p4",
+        "at": "2026-09-29T07:10:56.075Z",
         "kind": "test",
-        "description": "Renderer unit suite for the ImageBitmap ownership fix. Ran `bun test --isolate apps/web/src/services/renderer` before and after: the two new regression tests (\"keeps a cached source usable after the shared decode LRU overflows\" for image and sticker caches) FAILED before the fix (expected bitmap.closed=false, got true) and PASS after adding detachDecodedBitmap ownership transfer. Full suite 189 pass / 0 fail across 24 files. Proves a bitmap the render path was still serving was being closed by a second cache owner, and a closed ImageBitmap uploads as nothing (a black layer).",
+        "description": "Fixed the cross-clip adjust bleed. Root cause: `TimelineManager.previewOverlay` was a scene-wide `Map<elementId, patch>` and `commitPreview()` promoted EVERY staged entry in one TracksSnapshotCommand, so a gesture staged on clip 1 and interrupted (panel unmounted mid-drag) was promoted inside clip 2's commit. Fixes: (1) overlay keyed by `trackId:elementId` (collisions across tracks impossible), (2) new `commitPreviewForElement`/`discardPreviewForElement` promote only the caller's own entry, (3) `resolveStalePreviews()` wired to selection changes in `EditorCore` so a stranded entry is resolved BEFORE the new clip can stage/commit, (4) `useElementPreview` tracks its own staged write and commits it on unmount/target change, (5) all single-element commit sites scoped (image/audio/blending/masks/graphic tabs, 3 keyframed property hooks, transform/mask canvas handles, text-edit commit) — scene-wide commit kept only for the genuine multi-element group drag in use-preview-interaction, (6) `commitPreview` now recomputes from current committed tracks instead of promoting the possibly-stale `previewTracks` snapshot, (7) `Apply all` in adjust-tab was a no-op (main track only, patch undefined) and now writes the real adjustment values to every selected target in one undo step. New regression suite `preview-overlay-bleed.test.ts` (6 tests) covers clip-2 commit not promoting clip 1, stale resolution on selection change, same-id-different-track isolation, and committed-write supersession.",
         "result": "pass"
       },
       {
-        "id": "e-muiqh0sp5p",
-        "at": "2026-09-26T18:38:55.561Z",
-        "kind": "benchmark",
-        "description": "Black-preview root cause isolated by controlled browser measurement (headed Chromium, real WebGPU adapter, disposable project). With ZERO elements on the timeline the console recorded createBuffer size failures: 1, followed by 'RefCell already borrowed' at rust/wasm/src/compositor.rs:167: 542. Proves the preview is not black because of the photo (the timeline thumbnail renders the same photo correctly); the compositor bricks itself on the first degenerate texture dimension and every later frame panics. Also established that headless SwiftShader reports navigator.gpu.requestAdapter() === null, so headless runs give a false 'black preview' verdict and cannot be used as evidence for this class of bug.",
-        "result": "pass"
-      },
-      {
-        "id": "e-mujj2yafqm",
-        "at": "2026-09-27T07:59:47.992Z",
+        "id": "e-mumc7tcnaj",
+        "at": "2026-09-29T07:10:56.087Z",
         "kind": "test",
-        "description": "Uniform-pool mid-frame recycle aliasing fixed and proven. Root cause: pipeline.rs called UniformBufferPool::recycle_frame() per pass and masks per application, while the whole frame records into ONE encoder submitted once at frame end — LIFO pop handed pass N+1 the same buffer as pass N, so the later Queue::write_buffer (staged before submit) clobbered the earlier draw's uniforms. Browser mechanism probe (headed Chromium WebGPU, readback via copyTextureToBuffer, no present): distinct-buffer case pass1=(255,0,0,255) red / pass2=(0,0,255,255) blue; shared-buffer case pass1=(0,0,255,255) BLUE despite red written first — mechanism confirmed in this browser. Fix: recycle_frame moved to the frame boundary (compositor render_frame/render_frame_to_bytes call effects.recycle_frame() + masks.recycle_frame(); standalone apply()/apply_mask_feather() recycle themselves once per own-encoder submit). Regression test chains_within_one_frame_never_share_buffers added to uniform_pool.rs; cargo test -p gpu -p compositor -p effects -p masks = 26 pass (gpu 5, compositor 9, effects 12), wasm rebuilt (14:48). App verification with fresh dev server: store holds 3 simultaneous effect passes (exposure -100, tint-shift +100, sharpen +50), 0 console errors, 0 createBuffer failures across a 6s settle. Same probe also proves SwiftShader rasterization works (clear-only readback red) while present-to-canvas reads [0,0,0,0] — the black DOM preview in the test environment is a present limitation, not a render-path defect.",
-        "result": "pass"
-      },
-      {
-        "id": "e-mujjdq93ct",
-        "at": "2026-09-27T08:08:10.791Z",
-        "kind": "benchmark",
-        "description": "t-9 GPU/Rust performance track completed with 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md. Headline benchmark (deterministic, cargo test -p gpu steady_state_frames_allocate_no_buffers): a 3-layer frame with a 2-pass effect chain and a feathered mask = 19 uniform-buffer acquires per frame; before the pool every acquire was a create_buffer_init mapped allocation (19/frame forever = 950 across 50 frames); after the pool 950 acquires produce 19 total allocations and every subsequent frame records ZERO — 98% allocation reduction plus complete elimination of the mappedAtCreation path that caused the panic class. Supporting evidence: grep shows 0 mapped_at_creation:true and 6 acquire_uniform call sites (only remaining create_buffer_init is the one-time fullscreen quad at context init); full Rust suite 27 pass / 0 fail (gpu 6, compositor 9, effects 12); wasm rebuilt 3,111,775 bytes verified newer than all sources; browser run with 3 simultaneous effect passes = 0 console errors, 0 createBuffer failures. Full web suite after fixes: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip; bunx tsc --noEmit clean; biome clean on all touched files. Two stale tests fixed en route: canvas-renderer.clamp.test.ts integration expectation contradicted the file's own unit contract (non-finite contains to MIN) — now uses finite runaway 1e12; registry-render-boundary.test.ts IMAGE tab list was missing the new 'adjust' tab.",
-        "result": "pass"
-      },
-      {
-        "id": "e-mujk8hrxbt",
-        "at": "2026-09-27T08:32:06.141Z",
-        "kind": "test",
-        "description": "t-2/t-3/t-4 verified in one headed Playwright run on the fresh dev server. t-2 Transitions+Motion with real photos: two fixture photos dropped onto two different tracks (full time overlap), both clips multi-selected, Transitions tab card click produced toast \"Fade added / Transition inserted between the two clips.\", Motion tab card click produced \"Fade Up applied\", then Space-playback through the transition region for 4s recorded ZERO console errors and ZERO createBuffer failures — transitions and motion render paths are regression-clean. t-3 Sound 401: root cause was the auth-gated /api/sounds/search being fired while signed out (console 401 + silent empty tab). Fix: SoundsView and useSoundSearch now resolve the better-auth session first (useSession) and skip the doomed request entirely when signed out, rendering an explicit localized \"Sign in to browse the sound library\" state (en+id dictionary keys added). Verified twice: zero /api/sounds network requests fired while signed out, session endpoint returns 200/null, and the auth message renders in the Audio tab (the sounds view is reachable via the Audio tab — \"sounds\" is not in VISIBLE_TAB_KEYS). t-4 Arth AI panel: no positional defect reproduces — measured geometry: AI view at (89,49,415x539) fully inside the 1600x950 viewport, clear of the tab rail (x 89 >= rail right edge 80), composer textarea at bottom of the chat column (y 504/539-height view, 84% down); typing in the composer produced no errors. tsc --noEmit clean, biome check clean on sounds.tsx, use-sound-search.ts, dictionaries.ts.",
-        "result": "pass"
-      },
-      {
-        "id": "e-mujnkewsb8",
-        "at": "2026-09-27T10:05:21.148Z",
-        "kind": "test",
-        "description": "Black preview on real-GPU browsers root-caused and fixed. Reproduced on the user's actual configuration (headed Chromium, NO test GPU flags, NVIDIA lovelace adapter, bgra8unorm preferred): photo dropped on timeline + Space playback → preview canvas fully black (4096/4096 sampled pixels black) with repeating WebGPU validation errors \"[Texture compositor-layer] usage (TextureBinding|RenderAttachment) includes writable usage and another usage in the same synchronization scope\" and every frame's command buffer invalidated. Root cause: TexturePool::release() stashed a handle to the free list without removing it from in_use, so the next recycle_frame() stashed the same handles a SECOND time; the free list accumulated duplicate handles and a frame acquired one texture for two live roles (attachment of one pass + sampled input of another in the same usage scope) — invalid command buffer, empty present, black preview. Same accounting bug existed in UniformBufferPool (latent). Fix: credit-count accounting — release() records a per-key credit, recycle_frame() skips that many in_use entries instead of re-stashing, so every handle enters the free list exactly once. Proof of test validity: the 3 new regression tests were run against the staged buggy texture_pool.rs and FAILED (recycle_never_duplicates_a_released_handle_in_the_free_list: duplicate handles detected; steady_state_frames_hand_out_only_distinct_textures: \"scene and blend target must not alias, left: 13, right: 13\" — the exact black-preview mechanism; a_released_and_reacquired_handle_is_returned_exactly_once: free list 2 vs 1), then PASS with the fix. Two pre-existing tests (free_list_saturates_at_the_cap, the_cap_is_applied_per_size_not_globally) and one uniform-pool test (retention_is_capped) were rewritten because their expectations were artifacts of the duplication bug (an immediate acquire-after-release loop re-pops the same handle, so under correct accounting the free list holds one entry, not 8 duplicate handles); they now hold targets live before releasing, which genuinely exercises the cap. cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail (compositor 12, effects 12, gpu 7). wasm rebuilt (3,124,315 bytes, 17:03) and dev server restarted. Decisive browser verification, same probe same GPU same flow as the failing run: preview canvas 0 black / 4096 non-black pixels, ZERO validation errors (only Chrome's unrelated powerPreference notice), 0 createBuffer failures, element in timeline store. Full web suite unaffected: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip.",
-        "result": "pass"
-      },
-      {
-        "id": "e-mujnmgqziw",
-        "at": "2026-09-27T10:06:56.843Z",
-        "kind": "review",
-        "description": "t-5 GitHub security triage completed with every CI failure on main root-caused and fixed locally. (1) Dependency audit: bun audit on main reported 5 vulnerabilities incl. 2 CRITICAL RCE in next@16.2.11 (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4). Fixed by bumping next to 16.3.4 (root + apps/web) and pinning resolutions adm-zip 0.6.1 + baseline-browser-mapping 2.11.0; bun audit now reports 0 vulnerabilities across 833 packages. Post-bump validation: bun test --isolate src/ 1111 pass/0 fail, tsc --noEmit clean, dev server restarted on next 16.3.4 (log confirms \"Next.js 16.3.4 (Turbopack)\"), headed browser smoke (editor + import + drop photo + 6s render loop) = 0 console errors, 0 createBuffer failures. (2) Secret scan: reproduced the CI failure locally with official gitleaks 8.28.0 — 8 findings across 575 commits, all placeholders (your-*, build-time-secret, ci-only-secret-<hex>). Root cause of the false positives: the custom generic-api-key rule lacked secretGroup so gitleaks matched the key NAME against the allowlist regexes (which were written for values), making the allowlist dead code. Fixed .gitleaks.toml (secretGroup = 2, value-based allowlist regexes without quotes). Verification: full git history scan = 575 commits / 40.47 MB / 0 leaks / exit 0, while a scratch dir with a real-looking key still triggers detection (positive control). (3) Playwright CI failure (all 15 PRs \"unstable\"): root-caused via git history — apps/web dev script has hardcoded port 3005 since commit a36d16b but playwright.config.ts still polled 127.0.0.1:3000, so CI's webServer poll timed out and the whole suite failed on every PR. Fixed config to 3005 (+comment); installed missing chromium build; smoke spec = 3/3 passed locally. Full e2e suite was interrupted by the user and left for a manual run. (4) PR triage (15 Dependabot PRs, read-only via api.github.com): #93 serde 1.0.229, #94 uuid 1.26.0, #96/#97 tauri-plugin-fs/dialog patches, #99/#100 zod 4.5.4 = safe minor/patch bumps, CI green except the base-wide failures now fixed; #98/#101/#104/#105 next = redundant (manual 16.3.4 bump supersedes); #95 syn 3.0.4, #106/#107 motion 13.2.0, #108/#109 better-auth 1.7.3 = major bumps, not security-driven, deferred for dedicated validation. Recommended sequence (needs push rights, not executed per the no-destructive-action constraint): push local fixes first to green the base, then merge the patch/minor PRs, close the redundant next PRs, defer the majors.",
+        "description": "Full unit suite + typecheck + lint after the cross-clip bleed fix. `bun test --isolate src/` in apps/web: 1256 pass, 11 skip (Redis-only), 0 fail across 206 files. `bunx tsc --noEmit`: clean. `biome check` on all 16 touched files: no fixes needed. New tests: 6/6 pass.",
         "result": "pass"
       }
     ]
@@ -186,7 +128,436 @@
       "blocked_by": [],
       "created_at": "2026-09-27T07:45:04.432Z",
       "updated_at": "2026-09-27T08:00:48.138Z"
+    },
+    {
+      "id": "t-11",
+      "subject": "Run full Playwright E2E suite locally on final main",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T17:51:53.111Z",
+      "updated_at": "2026-09-27T18:40:52.315Z"
+    },
+    {
+      "id": "t-12",
+      "subject": "Verify production build on final main",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T17:51:53.121Z",
+      "updated_at": "2026-09-27T17:53:12.527Z"
+    },
+    {
+      "id": "t-13",
+      "subject": "Verify Vercel production deployment of latest main",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T17:52:03.131Z",
+      "updated_at": "2026-09-27T17:53:26.314Z"
+    },
+    {
+      "id": "t-14",
+      "subject": "Capture wasm-boundary debugging skill in .agents/skills",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T17:52:03.141Z",
+      "updated_at": "2026-09-27T22:05:54.713Z"
+    },
+    {
+      "id": "t-15",
+      "subject": "Hook useEditorViewport + unit test",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T22:57:56.181Z",
+      "updated_at": "2026-09-27T22:59:19.281Z"
+    },
+    {
+      "id": "t-16",
+      "subject": "EditorPanels adaptif (px floor, persist guard, meter hide)",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T22:57:56.187Z",
+      "updated_at": "2026-09-27T23:00:08.993Z"
+    },
+    {
+      "id": "t-17",
+      "subject": "E2E responsive extend (compact viewport + px floor assert)",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T22:57:56.189Z",
+      "updated_at": "2026-09-27T23:10:16.543Z"
+    },
+    {
+      "id": "t-18",
+      "subject": "Whats New entry + pin test + harness",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-27T22:57:56.191Z",
+      "updated_at": "2026-09-27T23:17:33.952Z"
+    },
+    {
+      "id": "t-19",
+      "subject": "Validasi penuh, commit, push, CI hijau",
+      "status": "in_progress",
+      "blocked_by": [],
+      "created_at": "2026-09-27T22:57:56.192Z",
+      "updated_at": "2026-09-27T23:17:33.958Z"
+    },
+    {
+      "id": "t-20",
+      "subject": "Register Adjust tab for every visual element type",
+      "status": "in_progress",
+      "blocked_by": [],
+      "created_at": "2026-09-28T23:23:25.531Z",
+      "updated_at": "2026-09-28T23:28:01.571Z"
+    },
+    {
+      "id": "t-21",
+      "subject": "Add CapCut-style intensity, auto, presets, compare, reset-all to Adjust",
+      "status": "pending",
+      "blocked_by": [],
+      "created_at": "2026-09-28T23:23:41.088Z",
+      "updated_at": "2026-09-28T23:23:41.088Z"
+    },
+    {
+      "id": "t-22",
+      "subject": "Add per-adjustment copy/paste of values",
+      "status": "pending",
+      "blocked_by": [],
+      "created_at": "2026-09-28T23:23:41.101Z",
+      "updated_at": "2026-09-28T23:23:41.101Z"
+    },
+    {
+      "id": "t-23",
+      "subject": "Surface curves, HSL and colour wheels inside the Adjust tab",
+      "status": "pending",
+      "blocked_by": [],
+      "created_at": "2026-09-28T23:23:41.157Z",
+      "updated_at": "2026-09-28T23:23:41.157Z"
+    },
+    {
+      "id": "t-24",
+      "subject": "Rewire panels yang bisa dipetakan ke primitive yang sudah render",
+      "status": "completed",
+      "blocked_by": [],
+      "created_at": "2026-09-29T00:53:31.730Z",
+      "updated_at": "2026-09-29T04:03:47.425Z"
+    },
+    {
+      "id": "t-25",
+      "subject": "Putuskan Curves/HSL/LUT: shader baru atau hapus UI-nya",
+      "status": "in_progress",
+      "blocked_by": [],
+      "created_at": "2026-09-29T00:53:31.738Z",
+      "updated_at": "2026-09-29T04:03:47.437Z"
+    },
+    {
+      "id": "t-26",
+      "subject": "Audit colour: apakah perlu jalur verifikasi GPU (headless WebGPU/CI)",
+      "status": "pending",
+      "blocked_by": [],
+      "created_at": "2026-09-29T00:53:31.758Z",
+      "updated_at": "2026-09-29T00:53:31.758Z"
     }
   ],
-  "archived_goals": []
+  "archived_goals": [
+    {
+      "id": "g-muflsonprj",
+      "objective": "Fix all reported Artidor issues and maximize measured application performance without regressions.",
+      "stop_condition": "All reported bugs have regression coverage; targeted/full tests, typecheck, lint, UI interaction verification, and before/after performance benchmarks pass with recorded evidence; Dependabot/security alerts and open PRs receive evidence-based best-option actions.",
+      "validation": [
+        "apps/web targeted Bun tests for timeline drag/drop and performance regressions",
+        "cd apps/web && bunx tsc --noEmit",
+        "cd apps/web && bunx biome check on changed files",
+        "Playwright drag-from-assets-to-timeline magnet verification with keyboard/accessibility assertions",
+        "before/after benchmark or profiler evidence for changed hot paths",
+        "GitHub PR checks/reviews plus Dependabot/security alert evidence"
+      ],
+      "constraints": [
+        "Preserve unrelated user changes",
+        "No new dependency unless existing tools cannot cover the measured bottleneck",
+        "No destructive GitHub action without inspectable evidence",
+        "Fix magnet behavior first, then remaining reported UI issues, then measured performance work"
+      ],
+      "status": "done",
+      "created_at": "2026-09-24T14:04:43.093Z",
+      "updated_at": "2026-09-27T10:07:06.363Z",
+      "checkpoints": 5,
+      "max_checkpoints": 30,
+      "progress_log": [
+        {
+          "at": "2026-09-27T07:59:55.705Z",
+          "checkpoint": 1,
+          "summary": "Fixed uniform-pool mid-frame recycle aliasing (effects per-pass, masks per-application, sdf per-JFA-step) by moving recycle to the frame boundary; added regression test; rebuilt wasm; proved the aliasing mechanism and the fix in a real browser via WebGPU readback probes; app runs 3 simultaneous effect passes with 0 errors.",
+          "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 26 pass / 0 fail. Browser probe: shared-buffer case renders pass1 BLUE (mechanism confirmed), distinct-buffer case correct red/blue; app multi-adjust store [exposure -100, tint-shift +100, sharpen +50], bufFail [], consoleErrorCount 0."
+        },
+        {
+          "at": "2026-09-27T08:08:19.829Z",
+          "checkpoint": 2,
+          "summary": "Completed t-9 GPU/Rust performance track: 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md, steady-state benchmark proves 950 acquires → 19 allocations (98% reduction, zero per frame after warm-up), mappedAtCreation eliminated from all draw paths; removed leftover probe counters from 3 source files; fixed 2 stale tests (clamp integration contradiction, missing adjust tab); full web suite 1111/1111 pass, tsc + biome clean, Rust 27/27 pass.",
+          "validation_result": "cargo test -p gpu -p compositor -p effects -p masks: 27 pass/0 fail. bun test --isolate src/: 1111 pass/0 fail/11 skip. bunx tsc --noEmit: clean. bunx biome check on touched files: clean. grep: 0 mapped_at_creation:true in draw crates, 6 acquire_uniform sites."
+        },
+        {
+          "at": "2026-09-27T08:32:15.814Z",
+          "checkpoint": 3,
+          "summary": "Verified and fixed t-2/t-3/t-4: transitions+motion render clean with real photos (0 errors, 0 bufFail during playback through a Fade transition), Sound tab no longer fires the auth-gated request when signed out (explicit sign-in state instead of a console 401), Arth AI panel geometry measured sane (inside viewport, clear of rail, composer at bottom). Tasks t-1 through t-4 and t-6 through t-10 all completed.",
+          "validation_result": "Headed Playwright: transition toast + motion toast confirmed, 0 console errors + 0 bufFail across playback; 0 /api/sounds requests fired signed-out (2 runs), auth message rendered (diag probe: hasAuthMessage=true, session 200/null); AI view geometry (89,49,415x539) inside viewport and clear of rail. tsc --noEmit + biome clean on all touched files."
+        },
+        {
+          "at": "2026-09-27T10:05:25.107Z",
+          "checkpoint": 4,
+          "summary": "Fixed the black timeline preview the user reported live: TexturePool/UniformBufferPool release-then-recycle double-stash created duplicate handles, letting one frame acquire the same texture as both attachment and sampled input (WebGPU usage-scope violation invalidating every frame's command buffer). Credit-count accounting fix; regression tests proven to fail on the buggy code and pass on the fix; browser re-run on the user's GPU config shows 0 black pixels and zero validation errors.",
+          "validation_result": "cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail. Browser repro (user GPU config): before 4096/4096 black pixels + per-frame validation errors; after 0 black / 4096 non-black, 0 validation errors, 0 bufFail. bun test --isolate src/ = 1111 pass / 0 fail / 11 skip."
+        },
+        {
+          "at": "2026-09-27T10:07:06.363Z",
+          "checkpoint": 5,
+          "summary": "Completed t-5 security/PR triage: next 16.3.4 bump eliminated both critical RCEs and resolutions cleaned the remaining advisories (bun audit 0/833 packages), gitleaks false-positive root cause fixed (missing secretGroup made the allowlist dead code; full history now scans clean with detection positive control), Playwright CI failure root-caused to a 3000-vs-3005 port mismatch and fixed (smoke 3/3), and all 15 Dependabot PRs triaged into merge-now/redundant/deferred buckets. All goal tasks t-1..t-10 now completed with recorded evidence.",
+          "validation_result": "bun audit: 0 vulnerabilities (833 packages). gitleaks detect full history: 575 commits, 0 leaks, exit 0; positive control detects. Playwright smoke: 3/3 pass on port 3005. bun test --isolate src/: 1111 pass/0 fail/11 skip. tsc --noEmit clean. biome clean on changed files."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e-muiqgtss8u",
+          "at": "2026-09-26T18:38:46.492Z",
+          "kind": "test",
+          "description": "Renderer unit suite for the ImageBitmap ownership fix. Ran `bun test --isolate apps/web/src/services/renderer` before and after: the two new regression tests (\"keeps a cached source usable after the shared decode LRU overflows\" for image and sticker caches) FAILED before the fix (expected bitmap.closed=false, got true) and PASS after adding detachDecodedBitmap ownership transfer. Full suite 189 pass / 0 fail across 24 files. Proves a bitmap the render path was still serving was being closed by a second cache owner, and a closed ImageBitmap uploads as nothing (a black layer).",
+          "result": "pass"
+        },
+        {
+          "id": "e-muiqh0sp5p",
+          "at": "2026-09-26T18:38:55.561Z",
+          "kind": "benchmark",
+          "description": "Black-preview root cause isolated by controlled browser measurement (headed Chromium, real WebGPU adapter, disposable project). With ZERO elements on the timeline the console recorded createBuffer size failures: 1, followed by 'RefCell already borrowed' at rust/wasm/src/compositor.rs:167: 542. Proves the preview is not black because of the photo (the timeline thumbnail renders the same photo correctly); the compositor bricks itself on the first degenerate texture dimension and every later frame panics. Also established that headless SwiftShader reports navigator.gpu.requestAdapter() === null, so headless runs give a false 'black preview' verdict and cannot be used as evidence for this class of bug.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mujj2yafqm",
+          "at": "2026-09-27T07:59:47.992Z",
+          "kind": "test",
+          "description": "Uniform-pool mid-frame recycle aliasing fixed and proven. Root cause: pipeline.rs called UniformBufferPool::recycle_frame() per pass and masks per application, while the whole frame records into ONE encoder submitted once at frame end — LIFO pop handed pass N+1 the same buffer as pass N, so the later Queue::write_buffer (staged before submit) clobbered the earlier draw's uniforms. Browser mechanism probe (headed Chromium WebGPU, readback via copyTextureToBuffer, no present): distinct-buffer case pass1=(255,0,0,255) red / pass2=(0,0,255,255) blue; shared-buffer case pass1=(0,0,255,255) BLUE despite red written first — mechanism confirmed in this browser. Fix: recycle_frame moved to the frame boundary (compositor render_frame/render_frame_to_bytes call effects.recycle_frame() + masks.recycle_frame(); standalone apply()/apply_mask_feather() recycle themselves once per own-encoder submit). Regression test chains_within_one_frame_never_share_buffers added to uniform_pool.rs; cargo test -p gpu -p compositor -p effects -p masks = 26 pass (gpu 5, compositor 9, effects 12), wasm rebuilt (14:48). App verification with fresh dev server: store holds 3 simultaneous effect passes (exposure -100, tint-shift +100, sharpen +50), 0 console errors, 0 createBuffer failures across a 6s settle. Same probe also proves SwiftShader rasterization works (clear-only readback red) while present-to-canvas reads [0,0,0,0] — the black DOM preview in the test environment is a present limitation, not a render-path defect.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mujjdq93ct",
+          "at": "2026-09-27T08:08:10.791Z",
+          "kind": "benchmark",
+          "description": "t-9 GPU/Rust performance track completed with 10 documented rounds in docs/features/editor-perf-100-pass/gpu.md. Headline benchmark (deterministic, cargo test -p gpu steady_state_frames_allocate_no_buffers): a 3-layer frame with a 2-pass effect chain and a feathered mask = 19 uniform-buffer acquires per frame; before the pool every acquire was a create_buffer_init mapped allocation (19/frame forever = 950 across 50 frames); after the pool 950 acquires produce 19 total allocations and every subsequent frame records ZERO — 98% allocation reduction plus complete elimination of the mappedAtCreation path that caused the panic class. Supporting evidence: grep shows 0 mapped_at_creation:true and 6 acquire_uniform call sites (only remaining create_buffer_init is the one-time fullscreen quad at context init); full Rust suite 27 pass / 0 fail (gpu 6, compositor 9, effects 12); wasm rebuilt 3,111,775 bytes verified newer than all sources; browser run with 3 simultaneous effect passes = 0 console errors, 0 createBuffer failures. Full web suite after fixes: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip; bunx tsc --noEmit clean; biome clean on all touched files. Two stale tests fixed en route: canvas-renderer.clamp.test.ts integration expectation contradicted the file's own unit contract (non-finite contains to MIN) — now uses finite runaway 1e12; registry-render-boundary.test.ts IMAGE tab list was missing the new 'adjust' tab.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mujk8hrxbt",
+          "at": "2026-09-27T08:32:06.141Z",
+          "kind": "test",
+          "description": "t-2/t-3/t-4 verified in one headed Playwright run on the fresh dev server. t-2 Transitions+Motion with real photos: two fixture photos dropped onto two different tracks (full time overlap), both clips multi-selected, Transitions tab card click produced toast \"Fade added / Transition inserted between the two clips.\", Motion tab card click produced \"Fade Up applied\", then Space-playback through the transition region for 4s recorded ZERO console errors and ZERO createBuffer failures — transitions and motion render paths are regression-clean. t-3 Sound 401: root cause was the auth-gated /api/sounds/search being fired while signed out (console 401 + silent empty tab). Fix: SoundsView and useSoundSearch now resolve the better-auth session first (useSession) and skip the doomed request entirely when signed out, rendering an explicit localized \"Sign in to browse the sound library\" state (en+id dictionary keys added). Verified twice: zero /api/sounds network requests fired while signed out, session endpoint returns 200/null, and the auth message renders in the Audio tab (the sounds view is reachable via the Audio tab — \"sounds\" is not in VISIBLE_TAB_KEYS). t-4 Arth AI panel: no positional defect reproduces — measured geometry: AI view at (89,49,415x539) fully inside the 1600x950 viewport, clear of the tab rail (x 89 >= rail right edge 80), composer textarea at bottom of the chat column (y 504/539-height view, 84% down); typing in the composer produced no errors. tsc --noEmit clean, biome check clean on sounds.tsx, use-sound-search.ts, dictionaries.ts.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mujnkewsb8",
+          "at": "2026-09-27T10:05:21.148Z",
+          "kind": "test",
+          "description": "Black preview on real-GPU browsers root-caused and fixed. Reproduced on the user's actual configuration (headed Chromium, NO test GPU flags, NVIDIA lovelace adapter, bgra8unorm preferred): photo dropped on timeline + Space playback → preview canvas fully black (4096/4096 sampled pixels black) with repeating WebGPU validation errors \"[Texture compositor-layer] usage (TextureBinding|RenderAttachment) includes writable usage and another usage in the same synchronization scope\" and every frame's command buffer invalidated. Root cause: TexturePool::release() stashed a handle to the free list without removing it from in_use, so the next recycle_frame() stashed the same handles a SECOND time; the free list accumulated duplicate handles and a frame acquired one texture for two live roles (attachment of one pass + sampled input of another in the same usage scope) — invalid command buffer, empty present, black preview. Same accounting bug existed in UniformBufferPool (latent). Fix: credit-count accounting — release() records a per-key credit, recycle_frame() skips that many in_use entries instead of re-stashing, so every handle enters the free list exactly once. Proof of test validity: the 3 new regression tests were run against the staged buggy texture_pool.rs and FAILED (recycle_never_duplicates_a_released_handle_in_the_free_list: duplicate handles detected; steady_state_frames_hand_out_only_distinct_textures: \"scene and blend target must not alias, left: 13, right: 13\" — the exact black-preview mechanism; a_released_and_reacquired_handle_is_returned_exactly_once: free list 2 vs 1), then PASS with the fix. Two pre-existing tests (free_list_saturates_at_the_cap, the_cap_is_applied_per_size_not_globally) and one uniform-pool test (retention_is_capped) were rewritten because their expectations were artifacts of the duplication bug (an immediate acquire-after-release loop re-pops the same handle, so under correct accounting the free list holds one entry, not 8 duplicate handles); they now hold targets live before releasing, which genuinely exercises the cap. cargo test -p compositor -p gpu -p effects -p masks = 31 pass / 0 fail (compositor 12, effects 12, gpu 7). wasm rebuilt (3,124,315 bytes, 17:03) and dev server restarted. Decisive browser verification, same probe same GPU same flow as the failing run: preview canvas 0 black / 4096 non-black pixels, ZERO validation errors (only Chrome's unrelated powerPreference notice), 0 createBuffer failures, element in timeline store. Full web suite unaffected: bun test --isolate src/ = 1111 pass / 0 fail / 11 skip.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mujnmgqziw",
+          "at": "2026-09-27T10:06:56.843Z",
+          "kind": "review",
+          "description": "t-5 GitHub security triage completed with every CI failure on main root-caused and fixed locally. (1) Dependency audit: bun audit on main reported 5 vulnerabilities incl. 2 CRITICAL RCE in next@16.2.11 (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4). Fixed by bumping next to 16.3.4 (root + apps/web) and pinning resolutions adm-zip 0.6.1 + baseline-browser-mapping 2.11.0; bun audit now reports 0 vulnerabilities across 833 packages. Post-bump validation: bun test --isolate src/ 1111 pass/0 fail, tsc --noEmit clean, dev server restarted on next 16.3.4 (log confirms \"Next.js 16.3.4 (Turbopack)\"), headed browser smoke (editor + import + drop photo + 6s render loop) = 0 console errors, 0 createBuffer failures. (2) Secret scan: reproduced the CI failure locally with official gitleaks 8.28.0 — 8 findings across 575 commits, all placeholders (your-*, build-time-secret, ci-only-secret-<hex>). Root cause of the false positives: the custom generic-api-key rule lacked secretGroup so gitleaks matched the key NAME against the allowlist regexes (which were written for values), making the allowlist dead code. Fixed .gitleaks.toml (secretGroup = 2, value-based allowlist regexes without quotes). Verification: full git history scan = 575 commits / 40.47 MB / 0 leaks / exit 0, while a scratch dir with a real-looking key still triggers detection (positive control). (3) Playwright CI failure (all 15 PRs \"unstable\"): root-caused via git history — apps/web dev script has hardcoded port 3005 since commit a36d16b but playwright.config.ts still polled 127.0.0.1:3000, so CI's webServer poll timed out and the whole suite failed on every PR. Fixed config to 3005 (+comment); installed missing chromium build; smoke spec = 3/3 passed locally. Full e2e suite was interrupted by the user and left for a manual run. (4) PR triage (15 Dependabot PRs, read-only via api.github.com): #93 serde 1.0.229, #94 uuid 1.26.0, #96/#97 tauri-plugin-fs/dialog patches, #99/#100 zod 4.5.4 = safe minor/patch bumps, CI green except the base-wide failures now fixed; #98/#101/#104/#105 next = redundant (manual 16.3.4 bump supersedes); #95 syn 3.0.4, #106/#107 motion 13.2.0, #108/#109 better-auth 1.7.3 = major bumps, not security-driven, deferred for dedicated validation. Recommended sequence (needs push rights, not executed per the no-destructive-action constraint): push local fixes first to green the base, then merge the patch/minor PRs, close the redundant next PRs, defer the majors.",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": "g-muk487vpi3",
+      "objective": "Close out all remaining items from the Artidor session: full E2E suite green locally, production build verified on final main, Vercel production deployment confirmed, and debugging knowledge captured as a reusable skill.",
+      "stop_condition": "Playwright E2E suite passes locally on final main (or every remaining failure is root-caused and fixed), production build succeeds, the latest-main Vercel deployment responds HTTP 200, no uncommitted work remains in tracked files, and the wasm-boundary debugging skill exists in .agents/skills/.",
+      "validation": [
+        "bunx playwright test (full E2E suite from repo root)",
+        "cd apps/web && bun run build (production build)",
+        "curl -s -o /dev/null -w %{http_code} https://artidor.vercel.app",
+        "git status --short clean except .goal-mcp and tauri gen schemas",
+        "ls .agents/skills/ contains the new skill with SKILL.md"
+      ],
+      "constraints": [
+        "No new dependencies",
+        "Preserve all shipped fixes from this session (export stability, grouping, wasm crash fix)",
+        "Do not force-push or rewrite history on main",
+        "E2E failures must be root-caused, not skipped"
+      ],
+      "status": "done",
+      "created_at": "2026-09-27T17:51:45.637Z",
+      "updated_at": "2026-09-27T22:06:54.908Z",
+      "checkpoints": 1,
+      "max_checkpoints": 12,
+      "progress_log": [
+        {
+          "at": "2026-09-27T22:06:54.908Z",
+          "checkpoint": 1,
+          "summary": "Closing-out complete: full E2E suite 84/84 passed after refreshing six stale test expectations (commit 602792f3), production build verified, Vercel deployment HTTP 200, wasm-boundary debugging skill committed (edefd9cf), repo clean. All pushed to main; CI green on prior runs.",
+          "validation_result": "bunx playwright test: 84 passed/0 failed (10.7m); bun run build: success; curl https://artidor.vercel.app: HTTP 200; git status clean except .goal-mcp + tauri gen schemas; skill file committed and pushed."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e-mukdc2qh42",
+          "at": "2026-09-27T22:06:42.137Z",
+          "kind": "test",
+          "description": "Closing-out verification on final main (edefd9cf): full Playwright E2E suite 84 passed / 0 failed (10.7m) after refreshing six stale test expectations (AI tab renamed Arth per d9acedd6, AI feature switch defaults on, effects catalog threshold >=30, tailwind-merge display class on marquee wrapper, preset card div[role=button] + Apply {name} aria button, insertMockVideo startTime option to satisfy the no-overlap policy); production `bun run build` succeeds; Vercel production deployment of latest main responds HTTP 200; repo clean except .goal-mcp state and tauri gen schemas; reusable skill .agents/skills/wasm-boundary-panic-debug/SKILL.md committed documenting the tsify >2^53 conversion-panic debugging procedure.",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": "g-mukez39yps",
+      "objective": "Tambahkan fitur \"Compatible with different screen sizes\" ke editor Artidor: layout panel yang adaptif terhadap lebar window (compact/medium/wide) tanpa mengubah perilaku desktop maupun mobile gate.",
+      "stop_condition": "Hook viewport breakpoint terpasang di EditorPanels, perilaku compact/medium/wide terverifikasi via unit test + E2E multi-viewport (1366/1920/2560), bun test + tsc + biome + E2E affected pass, whats-new terisi, commit ter-push dan CI hijau.",
+      "validation": [
+        "cd apps/web && bun test --isolate src/",
+        "cd apps/web && bunx tsc --noEmit",
+        "cd apps/web && bunx biome check src/",
+        "bunx playwright test (dari root, specs terdampak)",
+        "git push origin main && CI hijau"
+      ],
+      "constraints": [
+        "Jangan ubah perilaku MobileGate untuk mobile/desktop",
+        "Jangan ubah store panel yang sudah persisted secara breaking",
+        "Jangan campur .goal-mcp/tauri gen schemas ke commit fitur",
+        "Jangan jalankan build produksi bareng dev server/E2E"
+      ],
+      "status": "done",
+      "created_at": "2026-09-27T22:52:35.543Z",
+      "updated_at": "2026-09-27T23:29:48.135Z",
+      "checkpoints": 2,
+      "max_checkpoints": 20,
+      "progress_log": [
+        {
+          "at": "2026-09-27T23:19:12.147Z",
+          "checkpoint": 1,
+          "summary": "Fitur \"Compatible with different screen sizes\" selesai diimplementasi, divalidasi (unit 1125 pass, tsc/biome clean, E2E 13/13 + batch 20/20), whats-new terisi, 3 commit ter-push (e41bf7cd, 1aff4921, 09edb753). CI sedang berjalan.",
+          "validation_result": "bun test 1125 pass/0 fail; tsc clean; biome clean (files touched); playwright 13-responsive 13/13; batch smoke+02+10+11+15 20/20; CI in progress (Rust checks + Secret scan + Harness policy sudah success)"
+        },
+        {
+          "at": "2026-09-27T23:29:48.135Z",
+          "checkpoint": 2,
+          "summary": "Selesai: fitur responsive ter-push (e41bf7cd + whats-new 1aff4921 + chore 09edb753), seluruh validasi lokal pass, CI 10/10 hijau. Dev server web sudah dimatikan (port 3005 bebas, tidak ada proses nyangkut).",
+          "validation_result": "CI 10/10 check-runs success pada 09edb753; bun test 1125/0; tsc+biome clean; E2E 13-responsive 13/13 + batch 20/20; port 3005 tidak ada listener"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e-mukfx7q2am",
+          "at": "2026-09-27T23:19:07.610Z",
+          "kind": "test",
+          "description": "Unit suite: bun test --isolate src/ → 1125 pass, 0 fail (incl. 7 new use-editor-viewport tests + updated whats-new pin test). Harness whats-new check passed.",
+          "result": "pass"
+        },
+        {
+          "id": "e-mukfx7quui",
+          "at": "2026-09-27T23:19:07.638Z",
+          "kind": "build",
+          "description": "bunx tsc --noEmit clean; biome check clean on all touched files (page.tsx, use-editor-viewport.{ts,test.ts}, feed.ts, feed.test.ts, tests/13-responsive.spec.ts). Pre-existing CRLF formatter noise on untouched src/app/api files ignored (not in scope, green in CI).",
+          "result": "pass"
+        },
+        {
+          "id": "e-mukfx7qxlw",
+          "at": "2026-09-27T23:19:07.641Z",
+          "kind": "test",
+          "description": "E2E: tests/13-responsive.spec.ts 13/13 pass (new compact-960x700 viewport, seeded narrow-preset pixel-floor assertions at 3 breakpoints, breakpoint-crossing preset-restore test). Affected batch smoke+02+10+11+15 = 20/20 pass. Live probe verified: floors bind exactly (176/160px) at compact, storage preset untouched during compact, restore to saved % on widen (rAF-deferred resize).",
+          "result": "pass"
+        },
+        {
+          "id": "e-mukgaugd2",
+          "at": "2026-09-27T23:29:43.598Z",
+          "kind": "build",
+          "description": "CI on pushed commit 09edb753: all 10 check-runs completed success (build windows/macos/ubuntu, Web checks, Rust checks, CodeQL, Semgrep SAST, Dependency audit, Secret scan, Harness policy). Dev server on port 3005 confirmed dead (no listener, no stray bun/node processes).",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": "g-mukgf4w91t",
+      "objective": "Perbaiki timeline toolbar agar rapi di semua ukuran layar: tombol tidak lagi terjepit/overlap, konten melimpah di-scroll dengan benar, dan kontrol sekunder dilipat otomatis di layar sempit.",
+      "stop_condition": "Toolbar tidak squash di 960/1366/1920/2560 (lebar tiap tombol >= ukuran nominal, tidak ada overlap), melimpah dengan benar via scroll horizontal, fold compact terverifikasi E2E, bun test + tsc + biome + E2E affected pass, CI hijau.",
+      "validation": [
+        "cd apps/web && bun test --isolate src/",
+        "cd apps/web && bunx tsc --noEmit",
+        "bunx biome check <files>",
+        "bunx playwright test tests/13-responsive.spec.ts + batch terdampak",
+        "git push origin main && CI hijau"
+      ],
+      "constraints": [
+        "Jangan ganti ikon/shortcut/urutan yang ada — hanya responsivitas",
+        "Jangan buat kontrol hilang permanen; kontrol yang dilipat harus tetap bisa diakses (tooltip/dropdown)",
+        "Jangan campur .goal-mcp/tauri gen schemas ke commit fitur",
+        "Jangan jalankan build produksi bareng dev server/E2E"
+      ],
+      "status": "done",
+      "created_at": "2026-09-27T23:33:03.753Z",
+      "updated_at": "2026-09-28T17:30:35.114Z",
+      "checkpoints": 1,
+      "max_checkpoints": 15,
+      "progress_log": [
+        {
+          "at": "2026-09-28T17:30:35.114Z",
+          "checkpoint": 1,
+          "summary": "Timeline toolbar responsiveness selesai: fold dua tier berbasis lebar tersedia (wrapper diukur, bukan row yang tumbuh), overflow menu \"More tools\", scroll horizontal sebagai fallback, threshold 1440/1140px; commit 96132054 pushed, CI 10/10 hijau, dev server 3005 mati.",
+          "validation_result": "bun test --isolate src/: 1128 pass / 0 fail; tsc --noEmit clean; biome clean; E2E 13-responsive 19/19 pass; 02-tabs+15-click-all-buttons+smoke 15/15 pass; harness:whats-new pass; GitHub Actions 10/10 success untuk 96132054; port 3005 PORT_FREE."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e-muliwl7pct",
+          "at": "2026-09-28T17:30:23.461Z",
+          "kind": "other",
+          "description": "Toolbar responsiveness validated end-to-end: bun test --isolate src/ = 1128 pass / 0 fail (incl. 3 toolbarFoldTier unit tests); bunx tsc --noEmit clean; biome check clean; E2E tests/13-responsive.spec.ts 19/19 pass (sections never overlap + overflow fold at 960/1366/1920); affected batches tests/02-tabs + tests/15-click-all-buttons + tests/smoke 15/15 pass; harness:whats-new passed; commit 96132054 pushed to origin/main with all 10 GitHub Actions check-runs success; dev server on port 3005 killed (PORT_FREE confirmed).",
+          "result": "pass"
+        }
+      ]
+    },
+    {
+      "id": "g-mulvilexew",
+      "objective": "Parity fitur Adjust CapCut: tab Adjust untuk semua elemen visual, kontrol varied (intensity/auto/presets/compare/curves/HSL/wheels), dan copy-paste per efek.",
+      "stop_condition": "Tab Adjust muncul di image/video/text/graphic/sticker; intensity+auto+presets+compare+reset-all berfungsi; copy & paste nilai per adjustment terverifikasi E2E; curves/HSL/wheels reachable dari Adjust; bun test + tsc + biome + E2E affected pass; CI hijau.",
+      "validation": [
+        "cd apps/web && bun test --isolate src/",
+        "cd apps/web && bunx tsc --noEmit",
+        "bunx biome check <files>",
+        "bunx playwright test tests/16-adjust-sliders.spec.ts + tests/02-tabs + tests/15-click-all-buttons",
+        "git push origin main && CI hijau"
+      ],
+      "constraints": [
+        "Jangan rusak roundtrip contract basic-adjust-*.test.ts",
+        "Jangan campur .goal-mcp/tauri gen schemas/turbo version bump ke commit fitur",
+        "Mapping slider↔param di lib/effects/basic-adjust.ts harus tetap konsisten",
+        "Jangan jalankan build produksi bareng dev/E2E"
+      ],
+      "status": "done",
+      "created_at": "2026-09-28T23:23:25.545Z",
+      "updated_at": "2026-09-29T00:43:27.982Z",
+      "checkpoints": 1,
+      "max_checkpoints": 15,
+      "progress_log": [
+        {
+          "at": "2026-09-28T23:56:00.667Z",
+          "checkpoint": 1,
+          "summary": "Adjust rebuilt to CapCut parity: tab on all visual elements, Basic/Wheels/Curves/HSL sub-tabs, Auto/Copy/Paste/Apply-all/Reset toolbar, presets, stateless master intensity, per-adjustment copy-paste+reset, and the slider snap-back bug fixed at two levels (per-tick commands in the panel, and the referentially-stable preview snapshot in useElementPreview). Arrow keys no longer hijacked by frame-step shortcuts. Two commits pushed: d467de10, dd981a4c.",
+          "validation_result": "bun test --isolate src/: 1147 pass / 0 fail; tsc --noEmit clean; biome clean; E2E 16-adjust-sliders 3/3, 17-adjust-features 9/9, regression 02-tabs+15+smoke 18/18; commits d467de10 + dd981a4c pushed to origin/main."
+        },
+        {
+          "at": "2026-09-29T00:43:27.982Z",
+          "checkpoint": 1,
+          "summary": "goal_control:complete — Adjust parity delivered: tab on all visual elements, Basic/Wheels/Curves/HSL sub-tabs, Auto/Copy/Paste/Apply-all/Reset toolbar, presets, stateless intensity, per-adjustment copy/paste, snap-back bug fixed, colour UIs collapsed 2575->1629 lines, histogram scope added. 1147 unit tests, 24 E2E across 4 specs, CI green on dd981a4c and 0d2225ab.",
+          "validation_result": "-"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "e-mulwohz31r",
+          "at": "2026-09-28T23:56:00.640Z",
+          "kind": "test",
+          "description": "Adjust work validated: bun test --isolate src/ = 1147 pass / 0 fail (baseline 1128, +19 new); bunx tsc --noEmit clean; biome clean on all touched files; Playwright tests/16-adjust-sliders.spec.ts 3/3, tests/17-adjust-features.spec.ts 9/9, and regression batch 02-tabs + 15-click-all-buttons + smoke 18/18. Slider snap-back proven fixed by asserting the STORED effect amount after a real mouse drag (175) and the slider input retaining 75 after release.",
+          "result": "pass"
+        }
+      ]
+    }
+  ]
 }

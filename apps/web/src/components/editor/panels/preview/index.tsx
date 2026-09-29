@@ -16,7 +16,6 @@ import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
 import { MediaAssetPreview } from "./media-asset-preview";
-import { useSelectedElementCssFilter } from "@/hooks/use-selected-element-css-filter";
 import { FullScreenIcon, MoreHorizontalIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -215,7 +214,10 @@ function PreviewCanvas({
 		activeProject.settings.fps,
 	]);
 
-	const cssFilter = useSelectedElementCssFilter();
+	// Adjustments render per-clip through the compositor's effect passes
+	// (resolveEffectPassGroups). A scene-wide CSS filter here would re-apply
+	// the selected clip's grade to the WHOLE composited frame — double-apply
+	// plus the cross-clip bleed (adjust clip 1, clip 2 visibly changes).
 
 	// Track whether a render is needed when paused. The rAF loop is only
 	// enabled when playing OR when a render is pending — stopping it when
@@ -701,7 +703,6 @@ function PreviewCanvas({
 										top: viewport.sceneTop,
 										width: viewport.sceneWidth,
 										height: viewport.sceneHeight,
-										filter: cssFilter === "none" ? undefined : cssFilter,
 										background:
 											activeProject.settings.background.type === "blur"
 												? "transparent"
