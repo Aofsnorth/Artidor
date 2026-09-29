@@ -102,7 +102,10 @@ export function BlendingTab({
 
 	const commitBlendMode = (value: BlendMode) => {
 		if (editor.timeline.isPreviewActive()) {
-			editor.timeline.commitPreview();
+			editor.timeline.commitPreviewForElement({
+				trackId,
+				elementId: element.id,
+			});
 		} else {
 			editor.timeline.updateElements({
 				updates: [

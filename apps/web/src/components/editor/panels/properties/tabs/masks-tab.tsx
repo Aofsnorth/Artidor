@@ -165,7 +165,10 @@ export function MasksTab({ element, trackId }: MasksTabProps) {
 
 	const commitMask = ({ maskType }: { maskType: MaskType }) => {
 		if (editor.timeline.isPreviewActive()) {
-			editor.timeline.commitPreview();
+			editor.timeline.commitPreviewForElement({
+				trackId,
+				elementId: element.id,
+			});
 		} else {
 			editor.timeline.updateElements({
 				updates: [

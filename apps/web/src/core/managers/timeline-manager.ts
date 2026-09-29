@@ -71,9 +71,20 @@ import {
 } from "@/lib/commands/timeline/grouping";
 import type { InsertElementParams } from "@/lib/commands/timeline/element/insert-element";
 
+/**
+ * One staged write: the clip it targets plus the patch waiting to be promoted.
+ * Keyed by `trackId:elementId`, so two clips that happen to share an element id
+ * can never overwrite (or promote) each other's staged write.
+ */
+type PreviewOverlayEntry = {
+	trackId: string;
+	elementId: string;
+	updates: Partial<TimelineElement>;
+};
+
 export class TimelineManager {
 	private listeners = new Set<() => void>();
-	private previewOverlay = new Map<string, Partial<TimelineElement>>();
+	private previewOverlay = new Map<string, PreviewOverlayEntry>();
 	private previewTracks: SceneTracks | null = null;
 	/**
 	 * Group currently open for member-level editing (Alight Motion "edit
@@ -1045,6 +1056,10 @@ export class TimelineManager {
 		return this.previewOverlay.size > 0;
 	}
 
+	/**
+	 * Stage writes. Nothing is persisted until a commit runs; the staged patch
+	 * is rendered so the user sees the value they are dragging.
+	 */
 	previewElements({
 		updates,
 	}: {
@@ -1054,35 +1069,113 @@ export class TimelineManager {
 			updates: Partial<TimelineElement>;
 		}>;
 	}): void {
-		for (const { elementId, updates: elementUpdates } of updates) {
-			const existingOverlay = this.previewOverlay.get(elementId);
-			const mergedOverlay = {
-				...existingOverlay,
-				...elementUpdates,
-			} as Partial<TimelineElement>;
-			this.previewOverlay.set(elementId, mergedOverlay);
+		for (const { trackId, elementId, updates: elementUpdates } of updates) {
+			const key = this.overlayKey({ trackId, elementId });
+			const existing = this.previewOverlay.get(key);
+			this.previewOverlay.set(key, {
+				trackId,
+				elementId,
+				updates: {
+					...existing?.updates,
+					...elementUpdates,
+				} as Partial<TimelineElement>,
+			});
 		}
 		const committedTracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
 		if (!committedTracks) {
 			return;
 		}
-		this.previewTracks = this.applyPreviewOverlay(committedTracks);
+		this.prunePreviewOverlay(committedTracks);
+		this.previewTracks = this.applyOverlay(
+			committedTracks,
+			this.previewOverlay,
+		);
 		this.notify();
 	}
 
+	/**
+	 * Promote EVERY staged write as one history entry.
+	 *
+	 * `afterTracks` is recomputed from the CURRENT committed tracks rather than
+	 * from the cached `previewTracks` snapshot: that snapshot was produced
+	 * against whatever was committed when the gesture started, so a scene switch
+	 * (or any direct `updateSceneTracks`) in between would promote a whole stale
+	 * timeline.
+	 *
+	 * Callers that stage a single clip should prefer
+	 * {@link commitPreviewForElement}: this promotes everything staged, which is
+	 * what made one clip's interrupted gesture land inside another's commit.
+	 */
 	commitPreview(): void {
 		if (this.previewOverlay.size === 0) return;
 		const committedTracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
 		if (!committedTracks) {
 			return;
 		}
-		const afterTracks =
-			this.previewTracks ?? this.applyPreviewOverlay(committedTracks);
-		const command = new TracksSnapshotCommand(committedTracks, afterTracks);
-		this.editor.command.push({ command });
+		const afterTracks = this.applyOverlay(committedTracks, this.previewOverlay);
 		this.previewOverlay.clear();
 		this.previewTracks = null;
+		if (afterTracks === committedTracks) {
+			// Everything staged pointed at clips that no longer exist.
+			return;
+		}
+		const command = new TracksSnapshotCommand(committedTracks, afterTracks);
+		this.editor.command.push({ command });
 		this.updateTracks(afterTracks);
+	}
+
+	/**
+	 * Promote ONE clip's staged write and leave every other entry staged.
+	 *
+	 * Panels commit through this, not through the scene-wide `commitPreview`,
+	 * because a gesture can be interrupted before it commits (the panel
+	 * unmounting, the selection moving to another clip). Resolving only its own
+	 * entry is what stops a half-finished write on clip 1 from riding along
+	 * inside clip 2's commit — the cross-clip bleed: adjusting clip 2 moved
+	 * clip 1 too, because the old scene-wide commit promoted every staged entry
+	 * at once.
+	 */
+	commitPreviewForElement({
+		trackId,
+		elementId,
+	}: {
+		trackId: string;
+		elementId: string;
+	}): void {
+		const key = this.overlayKey({ trackId, elementId });
+		const entry = this.previewOverlay.get(key);
+		if (!entry) return;
+		this.previewOverlay.delete(key);
+		const committedTracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
+		if (!committedTracks) {
+			this.refreshPreviewTracks();
+			return;
+		}
+		const afterTracks = this.applyOverlay(
+			committedTracks,
+			new Map([[key, entry]]),
+		);
+		if (afterTracks !== committedTracks) {
+			this.editor.command.push({
+				command: new TracksSnapshotCommand(committedTracks, afterTracks),
+			});
+			this.editor.scenes.updateSceneTracks({ tracks: afterTracks });
+		}
+		this.refreshPreviewTracks(afterTracks);
+	}
+
+	/** Drop ONE clip's staged write without persisting anything. */
+	discardPreviewForElement({
+		trackId,
+		elementId,
+	}: {
+		trackId: string;
+		elementId: string;
+	}): void {
+		if (!this.previewOverlay.delete(this.overlayKey({ trackId, elementId }))) {
+			return;
+		}
+		this.refreshPreviewTracks();
 	}
 
 	discardPreview(): void {
@@ -1092,25 +1185,98 @@ export class TimelineManager {
 		this.notify();
 	}
 
-	private applyPreviewOverlay(tracks: SceneTracks): SceneTracks {
-		if (this.previewOverlay.size === 0) return tracks;
+	/**
+	 * Resolve staged writes whose clip is no longer selected.
+	 *
+	 * The write was already on screen (the preview rendered while the user
+	 * dragged), so it is promoted rather than reverted — what you saw is what
+	 * you keep. This runs on every selection change, i.e. BEFORE the newly
+	 * selected clip can stage or commit anything, so a stranded entry can never
+	 * be swallowed by another clip's commit.
+	 */
+	resolveStalePreviews(): void {
+		if (this.previewOverlay.size === 0) return;
+		const selected = new Set(
+			this.editor.selection
+				.getSelectedElements()
+				.map((ref) => this.overlayKey(ref)),
+		);
+		for (const { trackId, elementId } of [...this.previewOverlay.values()]) {
+			if (selected.has(this.overlayKey({ trackId, elementId }))) continue;
+			this.commitPreviewForElement({ trackId, elementId });
+		}
+	}
+
+	private overlayKey({
+		trackId,
+		elementId,
+	}: {
+		trackId: string;
+		elementId: string;
+	}): string {
+		return `${trackId}:${elementId}`;
+	}
+
+	/**
+	 * Drop staged writes whose clip no longer exists in these tracks (deleted,
+	 * or the active scene was switched while a preview was live). They can never
+	 * be applied, and one left in the map would be promoted by the next
+	 * scene-wide commit.
+	 */
+	private prunePreviewOverlay(tracks: SceneTracks): void {
+		const live = new Set<string>();
+		for (const track of [
+			tracks.main,
+			...tracks.overlay,
+			...tracks.overlayAfter,
+			...tracks.audio,
+		]) {
+			for (const element of track.elements) {
+				live.add(this.overlayKey({ trackId: track.id, elementId: element.id }));
+			}
+		}
+		for (const key of [...this.previewOverlay.keys()]) {
+			if (!live.has(key)) {
+				this.previewOverlay.delete(key);
+			}
+		}
+	}
+
+	private refreshPreviewTracks(baseTracks?: SceneTracks): void {
+		if (this.previewOverlay.size === 0) {
+			this.previewTracks = null;
+			this.notify();
+			return;
+		}
+		const tracks =
+			baseTracks ?? this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null;
+		this.previewTracks = tracks
+			? this.applyOverlay(tracks, this.previewOverlay)
+			: null;
+		this.notify();
+	}
+
+	private applyOverlay(
+		tracks: SceneTracks,
+		overlay: Map<string, PreviewOverlayEntry>,
+	): SceneTracks {
+		if (overlay.size === 0) return tracks;
 
 		const applyTrackOverlay = <TTrack extends TimelineTrack>(
 			track: TTrack,
 		): TTrack => {
-			const hasOverlay = track.elements.some((element) =>
-				this.previewOverlay.has(element.id),
-			);
-			if (!hasOverlay) {
-				return track;
-			}
-
-			const nextElements = track.elements.map((element) => {
-				const overlay = this.previewOverlay.get(element.id);
-				return overlay
-					? ({ ...element, ...overlay } as TimelineElement)
+			const elements = track.elements;
+			const nextElements = elements.map((element) => {
+				const staged = overlay.get(
+					this.overlayKey({ trackId: track.id, elementId: element.id }),
+				);
+				return staged
+					? ({ ...element, ...staged.updates } as TimelineElement)
 					: element;
 			});
+			if (nextElements.every((element, index) => element === elements[index])) {
+				return track;
+			}
 
 			return { ...track, elements: nextElements } as TTrack;
 		};

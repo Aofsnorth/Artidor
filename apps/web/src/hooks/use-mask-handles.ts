@@ -242,8 +242,14 @@ export function useMaskHandles({
 	);
 
 	const handlePointerUp = useCallback(() => {
-		if (dragStateRef.current) {
-			editor.timeline.commitPreview();
+		const drag = dragStateRef.current;
+		if (drag) {
+			// Scoped: this handle drag stages ONE clip, so it must never promote a
+			// staged entry another clip left behind.
+			editor.timeline.commitPreviewForElement({
+				trackId: drag.trackId,
+				elementId: drag.elementId,
+			});
 			clearMaskHandleState();
 		}
 		releaseCapturedPointer();

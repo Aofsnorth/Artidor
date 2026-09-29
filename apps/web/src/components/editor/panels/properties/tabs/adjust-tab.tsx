@@ -1,8 +1,12 @@
 "use client";
 
 import { type ComponentType, useCallback, useState } from "react";
-import type { VisualElement } from "@/lib/timeline";
+import { findTrackInSceneTracks, type VisualElement } from "@/lib/timeline";
 import { useEditor } from "@/hooks/use-editor";
+import {
+	applyAdjustmentValues,
+	readAdjustmentValues,
+} from "@/lib/effects/basic-adjust-actions";
 import { BasicAdjustTab } from "./basic-adjust-tab";
 import {
 	AdjustBarsPanel,
@@ -76,29 +80,55 @@ export function AdjustTab({
 	const [activeSubTab, setActiveSubTab] = useState<SubTabId>("basic");
 
 	/**
-	 * CapCut's "Apply all": push the grade tuned here onto every other
-	 * selected clip. Each target needs its own command, so this writes them
-	 * one at a time rather than through a single preview.
+	 * CapCut's "Apply all": push the adjustment grade tuned here onto every
+	 * other selected clip. The source grade is read from the live (preview-aware)
+	 * tracks, so an in-progress drag is included, and the lookup spans every
+	 * track bucket — the graded clip can sit on an overlay lane. One command
+	 * for all targets (a single undo step) that leaves each target's own
+	 * non-adjustment effects intact.
 	 */
 	const handleApplyAll = useCallback(() => {
-		const selected = editor.selection.getSelectedElements();
-		const targets = selected.filter((sel) => sel.elementId !== element.id);
-		for (const target of targets) {
-			const current = editor.timeline
-				.getPreviewTracks()
-				?.main?.elements?.find((e) => e.id === target.elementId);
-			if (!current) continue;
-			editor.timeline.updateElements({
-				updates: [
+		const tracks =
+			editor.timeline.getPreviewTracks() ??
+			editor.scenes.getActiveSceneOrNull()?.tracks;
+		if (!tracks) return;
+
+		const findInTracks = (ref: { trackId: string; elementId: string }) =>
+			findTrackInSceneTracks({
+				tracks,
+				trackId: ref.trackId,
+			})?.elements.find((candidate) => candidate.id === ref.elementId);
+
+		const source = findInTracks({ trackId, elementId: element.id }) as
+			| VisualElement
+			| undefined;
+		if (!source) return;
+		const values = readAdjustmentValues(source.effects);
+		if (Object.keys(values).length === 0) return;
+
+		const updates = editor.selection
+			.getSelectedElements()
+			.filter((ref) => ref.elementId !== element.id)
+			.flatMap((ref) => {
+				const target = findInTracks(ref) as VisualElement | undefined;
+				if (!target) return [];
+				return [
 					{
-						trackId: target.trackId,
-						elementId: target.elementId,
-						patch: { effects: current.effects },
+						trackId: ref.trackId,
+						elementId: ref.elementId,
+						patch: {
+							effects: applyAdjustmentValues({
+								effects: target.effects,
+								values,
+							}),
+						},
 					},
-				],
+				];
 			});
-		}
-	}, [editor, element.id]);
+		if (updates.length === 0) return;
+
+		editor.timeline.updateElements({ updates });
+	}, [editor, element.id, trackId]);
 
 	const ActivePanel: PanelComponent | undefined = GRADE_PANELS.find(
 		(panel) => panel.id === activeSubTab,

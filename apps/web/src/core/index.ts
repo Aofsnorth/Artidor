@@ -71,6 +71,11 @@ export class EditorCore {
 		this.api = createEditorApi(this);
 		registerTranscriptionDiagnostics({ diagnostics: this.diagnostics });
 		this.playback.bindTimelineScope();
+		// A staged preview belongs to the clip that was selected when the
+		// gesture started. Resolve anything left behind the moment the selection
+		// moves on, BEFORE the newly selected clip can stage or commit, so one
+		// clip's interrupted write can never be promoted inside another's commit.
+		this.selection.subscribe(() => this.timeline.resolveStalePreviews());
 		// Tracks that have held at least one element at some point. An empty
 		// lane is only "dead" (safe to prune) if it once had a clip and then
 		// lost it — e.g. the user dragged the last element out. A track the
@@ -221,8 +226,9 @@ export class EditorCore {
 							type: string;
 							name: string;
 							effects: Effect[];
+							opacity?: number;
 							groupId?: string;
-							groupMode?: "locked" | "standard";
+							groupMode?: string;
 						}>;
 						selectedElements: Array<{ trackId: string; elementId: string }>;
 						editingGroupId: string | null;
@@ -245,8 +251,9 @@ export class EditorCore {
 							type: string;
 							name: string;
 							effects: Effect[];
+							opacity?: number;
 							groupId?: string;
-							groupMode?: "locked" | "standard";
+							groupMode?: string;
 						}> = [];
 						const collect = (track: {
 							id: string;
@@ -255,8 +262,9 @@ export class EditorCore {
 								type: string;
 								name: string;
 								effects?: Effect[];
+								opacity?: number;
 								groupId?: string;
-								groupMode?: "locked" | "standard";
+								groupMode?: string;
 							}>;
 						}) => {
 							for (const el of track.elements) {
@@ -266,10 +274,14 @@ export class EditorCore {
 									type: el.type,
 									name: el.name,
 									// The inspector derives every Adjust slider from
-									// `element.effects`, so an E2E test cannot tell "the
-									// write was dropped" from "the panel did not
+									// `element.effects`, so an E2E test cannot tell
+									// "the write was dropped" from "the panel did not
 									// re-render" without seeing the stored effects.
 									effects: el.effects ?? [],
+									// Opacity is previewed through the same overlay as the
+									// grade effects, so a leaked cross-clip preview shows
+									// up here too.
+									opacity: el.opacity,
 									groupId: el.groupId,
 									groupMode: el.groupMode,
 								});

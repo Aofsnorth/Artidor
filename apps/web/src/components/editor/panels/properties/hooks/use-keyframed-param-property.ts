@@ -146,7 +146,8 @@ export function useKeyframedParamProperty({
 		isKeyframedAtTime,
 		keyframeIdAtTime,
 		onPreview: previewValue,
-		onCommit: () => editor.timeline.commitPreview(),
+		onCommit: () =>
+			editor.timeline.commitPreviewForElement({ trackId, elementId }),
 		toggleKeyframe,
 	};
 }

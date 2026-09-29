@@ -187,7 +187,11 @@ export function AudioTab({
 				],
 			});
 		},
-		onCommit: () => editor.timeline.commitPreview(),
+		onCommit: () =>
+			editor.timeline.commitPreviewForElement({
+				trackId,
+				elementId: element.id,
+			}),
 	});
 
 	// FADE OUT PROPERTY (Static, non-keyframed)
@@ -220,7 +224,11 @@ export function AudioTab({
 				],
 			});
 		},
-		onCommit: () => editor.timeline.commitPreview(),
+		onCommit: () =>
+			editor.timeline.commitPreviewForElement({
+				trackId,
+				elementId: element.id,
+			}),
 	});
 
 	const isSeparated =

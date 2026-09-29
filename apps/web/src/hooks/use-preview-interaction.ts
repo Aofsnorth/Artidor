@@ -134,7 +134,12 @@ export function usePreviewInteraction({
 		const current = editingTextRef.current;
 		if (!current) return;
 		editingTextRef.current = null;
-		editor.timeline.commitPreview();
+		// Scoped to the clip being edited: a scene-wide commit would also
+		// promote any staged entry another clip left behind.
+		editor.timeline.commitPreviewForElement({
+			trackId: current.trackId,
+			elementId: current.elementId,
+		});
 		setEditingText(null);
 	}, [editor.timeline]);
 

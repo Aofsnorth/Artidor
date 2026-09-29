@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import type { SceneTracks, TimelineElement } from "@/lib/timeline";
 
@@ -97,12 +98,35 @@ export function useElementPreview<T extends TimelineElement>({
 		["timeline", "scenes"],
 	);
 
-	const previewUpdates = (updates: Partial<TimelineElement>) =>
+	// Staged-write ownership. A panel that stages a write and then goes away —
+	// unmounting, or the selection moving to another clip — must resolve ONLY
+	// its own entry. Resolving the scene-wide overlay is what made one clip's
+	// interrupted gesture get promoted by the next clip's commit.
+	const stagedRef = useRef(false);
+
+	const previewUpdates = (updates: Partial<TimelineElement>) => {
+		stagedRef.current = true;
 		editor.timeline.previewElements({
 			updates: [{ trackId, elementId, updates }],
 		});
+	};
 
-	const commit = () => editor.timeline.commitPreview();
+	const commit = () => {
+		if (!stagedRef.current) return;
+		stagedRef.current = false;
+		editor.timeline.commitPreviewForElement({ trackId, elementId });
+	};
+
+	// Cleanup runs both on unmount and when this hook is re-pointed at another
+	// clip. The staged value was already rendered, so promoting it keeps what
+	// the user saw; leaving it staged would let the next clip's commit carry it.
+	useEffect(() => {
+		return () => {
+			if (!stagedRef.current) return;
+			stagedRef.current = false;
+			editor.timeline.commitPreviewForElement({ trackId, elementId });
+		};
+	}, [editor, trackId, elementId]);
 
 	return { renderElement, previewUpdates, commit };
 }

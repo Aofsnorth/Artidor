@@ -108,7 +108,8 @@ export function useKeyframedNumberProperty({
 			return parsedValue === null ? null : snapValue(parsedValue);
 		},
 		onPreview: (value) => previewValue({ value }),
-		onCommit: () => editor.timeline.commitPreview(),
+		onCommit: () =>
+			editor.timeline.commitPreviewForElement({ trackId, elementId }),
 	});
 
 	const toggleKeyframe = () => {

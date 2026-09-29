@@ -72,7 +72,8 @@ export function useKeyframedColorProperty({
 		});
 	};
 
-	const onChangeEnd = () => editor.timeline.commitPreview();
+	const onChangeEnd = () =>
+		editor.timeline.commitPreviewForElement({ trackId, elementId });
 
 	const toggleKeyframe = () => {
 		if (!isPlayheadWithinElementRange) {

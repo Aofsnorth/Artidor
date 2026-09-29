@@ -630,12 +630,18 @@ export function useTransformHandles({
 	);
 
 	const handlePointerUp = useCallback(() => {
-		if (
-			scaleStateRef.current ||
-			rotationStateRef.current ||
-			edgeScaleStateRef.current
-		) {
-			editor.timeline.commitPreview();
+		// The three gesture kinds are mutually exclusive, so the first non-null
+		// ref is the clip this drag staged. Scoping the commit to it keeps the
+		// gesture from promoting a staged entry another clip left behind.
+		const staged =
+			scaleStateRef.current ??
+			rotationStateRef.current ??
+			edgeScaleStateRef.current;
+		if (staged) {
+			editor.timeline.commitPreviewForElement({
+				trackId: staged.trackId,
+				elementId: staged.elementId,
+			});
 			clearActiveHandleState();
 		}
 		releaseCapturedPointer();

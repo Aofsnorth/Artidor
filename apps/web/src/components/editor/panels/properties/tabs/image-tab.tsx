@@ -69,7 +69,11 @@ export function ImageTab({
 					{ trackId, elementId: element.id, updates: { opacity: value } },
 				],
 			}),
-		onCommit: () => editor.timeline.commitPreview(),
+		onCommit: () =>
+			editor.timeline.commitPreviewForElement({
+				trackId,
+				elementId: element.id,
+			}),
 	});
 
 	const handleReplaceFile = async ({ file }: { file: File }) => {
@@ -192,34 +196,43 @@ export function ImageTab({
 					<SectionTitle>Opacity</SectionTitle>
 				</SectionHeader>
 				<SectionContent>
-					<NumberField
-						value={opacity.displayValue}
-						onFocus={opacity.onFocus}
-						onChange={opacity.onChange}
-						onBlur={opacity.onBlur}
-						onScrub={opacity.scrubTo}
-						onScrubEnd={opacity.commitScrub}
-						onReset={() =>
-							editor.timeline.updateElements({
-								updates: [
-									{
-										trackId,
-										elementId: element.id,
-										patch: { opacity: DEFAULT_OPACITY },
-									},
-								],
-							})
-						}
-						isDefault={
-							(renderElement.opacity ?? DEFAULT_OPACITY ?? 1) ===
-							(DEFAULT_OPACITY ?? 1)
-						}
-						step={0.05}
-						min={0}
-						max={1}
-						dragSensitivity="slow"
-						suffix="×"
-					/>
+					{/* Stable E2E hook. The testid lives on this wrapper, NOT on
+					    NumberField: NumberField forwards unknown props to its inner
+					    <input>, so a testid placed there would match the input and
+					    `.locator("input")` would then search inside an input and find
+					    nothing. The Opacity field is the one inspector control that
+					    previews on change and commits on blur, so it is how a test
+					    stages an uncommitted preview on purpose. */}
+					<div data-testid="image-opacity">
+						<NumberField
+							value={opacity.displayValue}
+							onFocus={opacity.onFocus}
+							onChange={opacity.onChange}
+							onBlur={opacity.onBlur}
+							onScrub={opacity.scrubTo}
+							onScrubEnd={opacity.commitScrub}
+							onReset={() =>
+								editor.timeline.updateElements({
+									updates: [
+										{
+											trackId,
+											elementId: element.id,
+											patch: { opacity: DEFAULT_OPACITY },
+										},
+									],
+								})
+							}
+							isDefault={
+								(renderElement.opacity ?? DEFAULT_OPACITY ?? 1) ===
+								(DEFAULT_OPACITY ?? 1)
+							}
+							step={0.05}
+							min={0}
+							max={1}
+							dragSensitivity="slow"
+							suffix="×"
+						/>
+					</div>
 				</SectionContent>
 			</Section>
 

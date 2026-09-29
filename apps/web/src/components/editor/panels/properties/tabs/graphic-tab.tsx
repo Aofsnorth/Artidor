@@ -548,7 +548,12 @@ function ShadowNumberField({
 							],
 						});
 					}}
-					onBlur={() => editor.timeline.commitPreview()}
+					onBlur={() =>
+						editor.timeline.commitPreviewForElement({
+							trackId,
+							elementId: element.id,
+						})
+					}
 				/>
 			)}
 		</div>
