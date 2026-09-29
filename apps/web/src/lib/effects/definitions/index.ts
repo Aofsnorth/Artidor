@@ -22,11 +22,7 @@ import { fadeAdjustmentDefinition } from "./adjustments/fade";
 import { whitesAdjustmentDefinition } from "./adjustments/whites";
 import { blacksAdjustmentDefinition } from "./adjustments/blacks";
 import { colorWheelsAdjustmentDefinition } from "./adjustments/color-wheels";
-import {
-	hslAdjustmentDefinition,
-	curvesAdjustmentDefinition,
-	lutAdjustmentDefinition,
-} from "./adjustments/color-grading";
+
 import { chromaticAberrationEffectDefinition } from "./video/chromatic-aberration";
 import { chromaKeyEffectDefinition } from "./video/chroma-key";
 import { removeBackgroundEffectDefinition } from "./video/remove-background";
@@ -150,9 +146,6 @@ const defaultEffects = [
 	whitesAdjustmentDefinition,
 	blacksAdjustmentDefinition,
 	colorWheelsAdjustmentDefinition,
-	hslAdjustmentDefinition,
-	curvesAdjustmentDefinition,
-	lutAdjustmentDefinition,
 	chromaticAberrationEffectDefinition,
 	chromaKeyEffectDefinition,
 	removeBackgroundEffectDefinition,

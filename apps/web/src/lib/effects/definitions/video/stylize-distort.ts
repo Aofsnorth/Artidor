@@ -296,7 +296,11 @@ export const bokehEffectDefinition: EffectDefinition = {
 	renderer: {
 		passes: [
 			{
-				shader: "blur",
+				// `lens-blur` is the bokeh-style blur the Rust pipeline actually
+				// registers. The previous `shader: "blur"` id has no WGSL file and
+				// no SHADER_REGISTRY entry, so applying Bokeh from the gallery hit
+				// `UnknownEffectShader` and the whole chain errored out.
+				shader: "lens-blur",
 				uniforms: ({ effectParams }) => ({
 					u_amount: asAmount01(effectParams.amount) * 0.6,
 				}),

@@ -3,12 +3,19 @@
  *
  * Covers the toolbar (Auto / Copy / Paste / Reset / Apply all), the master
  * intensity, the preset cards, per-adjustment copy/paste of a single value,
- * the Basic/Wheels/Curves/HSL sub-tabs, and — importantly — that the Adjust
- * tab is reachable on a VIDEO element as well as an image, not just images.
+ * the surviving Basic/Wheels/Bars/Vignette/Sharpen/Glow sub-tabs, and —
+ * importantly — that the Adjust tab is reachable on a VIDEO element as well as
+ * an image, not just images.
+ *
+ * The Curves, HSL, Qualifier and LUT sub-tabs were removed: they wrote
+ * `curves` / `hsl` / `lut`, which are registered but declare zero render
+ * passes, so every control in them moved a number the renderer ignored. The
+ * advanced sub-tab suite below now asserts that each SURVIVING panel writes a
+ * registered, rendering primitive instead.
  *
  * Assertions read the STORED effects from `__ARTIDOR_DEBUG__.getState()`
  * rather than the DOM, so a value that only paints but never persists is
- * caught.
+ * caught — and, just as importantly, a value that persists but never paints.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { bootEditor, clickInspectorTab, runCommand } from "./helpers";
@@ -106,6 +113,16 @@ async function dragTo(
 	await page.mouse.up();
 	await page.waitForTimeout(350);
 }
+
+/** Every effect type the renderer will actually run. */
+const NON_RENDERING = new Set([
+	"curves",
+	"davinci-adjust",
+	"hsl",
+	"hsl-curve",
+	"lut",
+	"qualifier",
+]);
 
 async function openAdjust(page: Page): Promise<void> {
 	await clickInspectorTab(page, /^Adjust$/i);
@@ -208,14 +225,17 @@ test.describe("Adjust panel — CapCut toolbar", () => {
 		}
 		await page.waitForTimeout(500);
 
-		// Intensity is stored separately from the grade, so the BASE contrast
-		// must be untouched while the DISPLAYED value moves back toward
-		// neutral. That split is what keeps the slider drift-free.
+		// Intensity is NOT stored on the element: no registered effect means
+		// "scale the whole grade", so writing one (as this panel used to, as
+		// `davinci-adjust`) would only persist a param the renderer skips.
+		// The BASE contrast must therefore be untouched while the DISPLAYED
+		// value moves back toward neutral — that split is what keeps the
+		// slider drift-free.
 		const effects = await effectsOf(page, elementId);
-		const gradeEffect = effects.find((e) => e.type === "davinci-adjust");
-		expect(gradeEffect?.params?.intensity, "intensity persisted").toBeLessThan(
-			100,
-		);
+		expect(
+			effects.some((e) => NON_RENDERING.has(e.type)),
+			`no non-rendering effect is written: ${JSON.stringify(effects.map((e) => e.type))}`,
+		).toBe(false);
 
 		const baseAfter = amountOf(effects, "contrast");
 		expect(
@@ -277,7 +297,6 @@ test.describe("Adjust panel — CapCut toolbar", () => {
 
 		// Copy the grade BEFORE clearing it, then paste it back.
 		await page.getByTestId("adjust-copy-grade").click();
-		await page.waitForTimeout(200);
 
 		await page.getByTestId("adjust-reset-all").click();
 		await page.waitForTimeout(300);
@@ -286,7 +305,15 @@ test.describe("Adjust panel — CapCut toolbar", () => {
 			"reset cleared the grade",
 		).toBeUndefined();
 
-		await page.getByTestId("adjust-paste-grade").click();
+		// The clipboard lives in a module-level variable, so React only
+		// re-reads it on the next store-driven render — the reset above. Wait
+		// for that render explicitly instead of relying on the click that
+		// follows, which otherwise races the panel's re-render.
+		const pasteGrade = page.getByTestId("adjust-paste-grade");
+		await expect(pasteGrade, "paste enabled by the copied grade").toBeEnabled({
+			timeout: 15_000,
+		});
+		await pasteGrade.click();
 		await page.waitForTimeout(400);
 
 		const restored = amountOf(await effectsOf(page, elementId), "saturation");
@@ -296,7 +323,7 @@ test.describe("Adjust panel — CapCut toolbar", () => {
 });
 
 test.describe("Adjust panel — advanced sub-tabs", () => {
-	test("Wheels, Curves and HSL sub-tabs all render", async ({ page }) => {
+	test("every surviving sub-tab renders", async ({ page }) => {
 		await bootEditor(page);
 		await insertAndSelect(page, "image");
 		await openAdjust(page);
@@ -307,44 +334,147 @@ test.describe("Adjust panel — advanced sub-tabs", () => {
 			"wheels panel",
 		).toBeVisible({ timeout: 10_000 });
 
-		await page.getByTestId("adjust-subtab-curves").click();
-		await expect(page.getByText(/curves/i).first(), "curves panel").toBeVisible(
-			{ timeout: 10_000 },
-		);
-
-		await page.getByTestId("adjust-subtab-hsl").click();
+		await page.getByTestId("adjust-subtab-bars").click();
 		await expect(
-			page.getByText(/hsl secondary/i).first(),
-			"hsl panel",
+			page.getByText(/primary bars/i).first(),
+			"bars panel",
 		).toBeVisible({ timeout: 10_000 });
+
+		await page.getByTestId("adjust-subtab-vignette").click();
+		await expect(
+			page.getByTestId("vig-vignette"),
+			"vignette panel",
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.getByTestId("adjust-subtab-sharpen").click();
+		await expect(
+			page.getByTestId("detail-sharpen"),
+			"sharpen panel",
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.getByTestId("adjust-subtab-glow").click();
+		await expect(page.getByTestId("glow-glow"), "glow panel").toBeVisible({
+			timeout: 10_000,
+		});
 
 		// Back to Basic still works — sub-tab state is local, not destructive.
 		await page.getByTestId("adjust-subtab-basic").click();
 		await expect(page.getByTestId("adjust-intensity")).toBeVisible();
 	});
 
-	test("an HSL slider writes into the grading effect", async ({ page }) => {
+	test("the sub-tabs that wrote zero-pass effects are gone", async ({
+		page,
+	}) => {
+		await bootEditor(page);
+		await insertAndSelect(page, "image");
+		await openAdjust(page);
+
+		// `curves` / `hsl` / `lut` declare no render passes, so leaving the
+		// sub-tabs in place would keep dead UI in front of the user.
+		for (const removed of ["curves", "hsl", "qualifier", "lut"]) {
+			await expect(
+				page.getByTestId(`adjust-subtab-${removed}`),
+				`${removed} sub-tab removed`,
+			).toHaveCount(0);
+		}
+	});
+
+	test("every advanced panel writes a registered, rendering effect", async ({
+		page,
+	}) => {
 		await bootEditor(page);
 		const elementId = await insertAndSelect(page, "image");
 		await openAdjust(page);
-		await page.getByTestId("adjust-subtab-hsl").click();
 
-		const sat = page.getByTestId("dv-hsl_sat").locator('input[type="range"]');
-		await sat.waitFor({ state: "visible", timeout: 10_000 });
-		await sat.scrollIntoViewIfNeeded();
-		await sat.focus();
-		for (let i = 0; i < 6; i++) {
-			await page.keyboard.press("ArrowRight");
+		// Bars: the tone sliders each own one registered primitive.
+		await page.getByTestId("adjust-subtab-bars").click();
+		await dragTo(page, "bars-contrast", 0.95);
+		await dragTo(page, "bars-hue-rotate", 0.9);
+
+		// Detail: sharpen / blur / defog.
+		await page.getByTestId("adjust-subtab-sharpen").click();
+		await dragTo(page, "detail-sharpen", 0.8);
+		await dragTo(page, "detail-box-blur", 0.6);
+
+		// Creative: glow / grain / vignette.
+		await page.getByTestId("adjust-subtab-glow").click();
+		await dragTo(page, "glow-glow", 0.7);
+		await page.getByTestId("adjust-subtab-vignette").click();
+		await dragTo(page, "vig-vignette", 0.6);
+
+		const effects = await effectsOf(page, elementId);
+		const written = effects.map((e) => e.type);
+		for (const expected of [
+			"contrast",
+			"hue-rotate",
+			"sharpen",
+			"box-blur",
+			"glow",
+			"vignette",
+		]) {
+			expect(written, `${expected} written by its panel`).toContain(expected);
 		}
+		for (const type of written) {
+			expect(
+				NON_RENDERING.has(type),
+				`the Adjust tab wrote the non-rendering effect "${type}"`,
+			).toBe(false);
+		}
+	});
+
+	test("a colour wheel writes the color-wheels effect as a hex colour", async ({
+		page,
+	}) => {
+		await bootEditor(page);
+		const elementId = await insertAndSelect(page, "image");
+		await openAdjust(page);
+		await page.getByTestId("adjust-subtab-wheels").click();
+
+		const wheel = page.getByLabel("Lift color wheel");
+		await wheel.waitFor({ state: "visible", timeout: 10_000 });
+		await wheel.scrollIntoViewIfNeeded();
+		const box = await wheel.boundingBox();
+		if (!box) throw new Error("no bounding box for the Lift wheel");
+		const cy = box.y + box.height / 2;
+		await page.mouse.move(box.x + box.width / 2, cy);
+		await page.mouse.down();
+		await page.mouse.move(box.x + box.width * 0.78, cy, { steps: 5 });
+		await page.mouse.up();
 		await page.waitForTimeout(400);
 
 		const effect = (await effectsOf(page, elementId)).find(
-			(e) => e.type === "davinci-adjust",
+			(e) => e.type === "color-wheels",
 		);
+		expect(effect, "color-wheels created by the Lift wheel").toBeDefined();
+		expect(effect?.params?.lift, "lift stored as a hex colour").toMatch(
+			/^#[0-9a-f]{6}$/i,
+		);
+		expect(effect?.params?.lift).not.toBe("#000000");
+	});
+
+	test("a Bars slider stores nothing when it is back at neutral", async ({
+		page,
+	}) => {
+		await bootEditor(page);
+		const elementId = await insertAndSelect(page, "image");
+		await openAdjust(page);
+		await page.getByTestId("adjust-subtab-bars").click();
+
+		await dragTo(page, "bars-contrast", 0.95);
+		const graded = await effectsOf(page, elementId);
+		expect(amountOf(graded, "contrast"), "contrast graded").toBeDefined();
+
+		// Contrast's neutral is the slider midpoint (its param defaults to
+		// 100 in 0..200), so the reset button must REMOVE the effect rather
+		// than store a no-op.
+		await page
+			.getByTestId("bars-contrast")
+			.getByRole("button", { name: /^Reset Contrast$/i })
+			.click();
+		await page.waitForTimeout(400);
 		expect(
-			effect,
-			"davinci-adjust effect created by the HSL panel",
-		).toBeDefined();
-		expect(effect?.params?.hsl_sat, "hsl_sat written").toBeGreaterThan(0);
+			amountOf(await effectsOf(page, elementId), "contrast"),
+			"neutral stores no effect",
+		).toBeUndefined();
 	});
 });

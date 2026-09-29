@@ -1,219 +1,179 @@
 "use client";
 
-import {
-	useMemo,
-	useRef,
-	useState,
-	type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useRef, useState } from "react";
 import type { VisualElement } from "@/lib/timeline";
 import { useElementPreview } from "@/hooks/use-element-preview";
 import {
 	Section,
 	SectionContent,
-	SectionField,
 	SectionFields,
 	SectionHeader,
 	SectionTitle,
 } from "@/components/section";
-import { Switch } from "@/components/ui/switch";
 import { AdjustSlider } from "./adjust-slider";
+import {
+	BARS_CONTROLS,
+	DETAIL_CONTROLS,
+	GLOW_GRAIN_CONTROLS,
+	readGradeControlValue,
+	readGradeNeutral,
+	readWheelBiases,
+	setGradeControlValue,
+	setWheelBiases,
+	TEMPERATURE_CONTROL,
+	TINT_CONTROL,
+	VIGNETTE_CONTROLS,
+	WHEEL_IDS,
+	WHEEL_LABELS,
+	type GradeControl,
+	type WheelBias,
+	type WheelId,
+} from "@/lib/effects/grade-controls";
+import type { Effect } from "@/lib/effects/types";
 import { cn } from "@/utils/ui";
 
-const DAVINCI_EFFECT_TYPE = "davinci-adjust";
-
-type ParamValue = number | string;
-type ParamRecord = Record<string, ParamValue>;
-
-/**
- * The full `davinci-adjust` param set — every key any panel in this file
- * touches, so a single source of truth decides what "untouched" means for
- * the neutral marker, the reset target and the "is this slider at default"
- * check. These are the GPU effect's own defaults; do not drift them.
- */
-const DEFAULTS: ParamRecord = {
-	lift_x: 0,
-	lift_y: 0,
-	lift_luma: 0,
-	gamma_x: 0,
-	gamma_y: 0,
-	gamma_luma: 0,
-	gain_x: 0,
-	gain_y: 0,
-	gain_luma: 0,
-	offset_x: 0,
-	offset_y: 0,
-	offset_luma: 0,
-	contrast: 0,
-	pivot: 0.435,
-	midtone_detail: 0,
-	highlights: 0,
-	shadows: 0,
-	whites: 0,
-	blacks: 0,
-	saturation: 1,
-	hue: 0,
-	lum_mix: 1,
-	chroma_mix: 1,
-	temperature: 0,
-	tint: 0,
-	y_only: 0,
-	curve_master: "",
-	curve_r: "",
-	curve_g: "",
-	curve_b: "",
-	hsl_hue: 0,
-	hsl_sat: 0,
-	hsl_lum: 0,
-	qual_low: 0,
-	qual_mid: 0.5,
-	qual_high: 1,
-	qual_hsl_enabled: 1,
-	qual_lum_enabled: 1,
-	qual_sat_enabled: 1,
-	qual_range: 0.1,
-	qual_high_softness: 0.1,
-	qual_low_softness: 0.1,
-	vig_offset: 0,
-	vig_softness: 0.5,
-	vig_roundness: 0,
-	vig_highlight: 0,
-	vig_midtone: 0,
-	vig_shadow: 0,
-	sharpen: 0,
-	blur: 0,
-	defog: 0,
-	glow_size: 1,
-	glow_intensity: 0,
-	halation_radius: 0,
-	grain_amount: 0,
-	lut: "none",
-	lut_intensity: 100,
-};
-
-const BUILTIN_LUTS = [
-	"none",
-	"Cinematic Warm",
-	"Cinematic Cool",
-	"Teal & Orange",
-	"Bleach Bypass",
-	"Faded Film",
-	"Vintage Sepia",
-	"Kodak 2383",
-	"Kodak 2393",
-	"Fuji Eterna",
-	"ARRI K1S1",
-	"Rec.709 to LogC",
-	"LogC to Rec.709",
-	"Slog3 to Rec.709",
-	"Cyberpunk",
-	"Noir",
-	"Pastel Dream",
-	"Sunset Glow",
-	"Moody Blue",
-	"Forest Green",
-	"Desert Heat",
-	"Anamorphic",
-	"Filmic Contrast",
-];
-
-const DEFAULT_CURVE_POINTS = [
-	{ x: 0, y: 0 },
-	{ x: 64, y: 64 },
-	{ x: 192, y: 192 },
-	{ x: 255, y: 255 },
-];
-
-type CurvePoint = { x: number; y: number };
-
-function parseCurve(raw: ParamValue | undefined): CurvePoint[] {
-	if (typeof raw !== "string" || !raw) return [...DEFAULT_CURVE_POINTS];
-	try {
-		const parsed = JSON.parse(raw);
-		if (Array.isArray(parsed) && parsed.every((p) => "x" in p && "y" in p)) {
-			return parsed as CurvePoint[];
-		}
-	} catch {}
-	return [...DEFAULT_CURVE_POINTS];
-}
-
-function num(value: ParamValue | undefined, fallback: number): number {
-	if (typeof value === "number") return value;
-	const parsed = typeof value === "string" ? Number.parseFloat(value) : NaN;
-	return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-type AdjustEffectApi = {
-	get: (key: keyof typeof DEFAULTS) => ParamValue;
-	previewParams: (patch: ParamRecord) => void;
-	commitParams: (patch: ParamRecord) => void;
-	previewNum: (key: string, value: number) => void;
-	commitNum: (key: string, value: number) => void;
+type GradeEffectsApi = {
+	effects: Effect[];
+	/** Promote the preview overlay: ONE undo entry per gesture. */
 	commit: () => void;
+	readControl: (control: GradeControl) => number;
+	previewControl: (control: GradeControl, sliderValue: number) => void;
+	commitControl: (control: GradeControl, sliderValue: number) => void;
+	previewEffects: (next: Effect[]) => void;
+	commitEffects: (next: Effect[]) => void;
+	readWheels: () => Record<WheelId, WheelBias>;
+	previewWheels: (biases: Record<WheelId, WheelBias>) => void;
 };
 
 /**
- * Read/write plumbing for the `davinci-adjust` effect, shared by every panel in
- * this file. Params are a flat record living on one effect, and writes go
- * through `useElementPreview`: continuous interactions preview into the overlay
- * and commit ONCE per gesture (pointer release / blur / key release), so
- * dragging a wheel or curve produces a single undo entry instead of one per
- * pointer tick, while discrete controls (toggles, resets) commit immediately.
+ * Read/write plumbing for the advanced grading panels, shared by every panel
+ * in this file.
+ *
+ * Every control writes a REGISTERED primitive effect that declares at least
+ * one render pass, so moving a slider here changes the picture. The previous
+ * implementation funnelled all nine panels into a single `davinci-adjust`
+ * effect that was never registered: the params persisted, the inspector showed
+ * them, and `resolveEffectPassGroups` filtered the effect out because
+ * `effectsRegistry.has("davinci-adjust")` is false.
+ *
+ * Writes go through `useElementPreview`: continuous interactions preview into
+ * the overlay and commit ONCE per gesture (pointer release / blur / key
+ * release), so dragging a wheel or a bar produces a single undo entry instead
+ * of one per pointer tick, while discrete controls (resets) commit
+ * immediately.
  */
-function useAdjustEffect({
+function useGradeEffects({
 	trackId,
 	element,
 }: {
 	trackId: string;
 	element: VisualElement;
-}): AdjustEffectApi {
+}): GradeEffectsApi {
 	const { renderElement, previewUpdates, commit } = useElementPreview({
 		trackId,
 		elementId: element.id,
 		fallback: element,
 	});
 	const effects = (renderElement as VisualElement).effects ?? [];
-	const effect = effects.find((e) => e.type === DAVINCI_EFFECT_TYPE);
-	const stored = (effect?.params as ParamRecord | undefined) ?? {};
 
-	const get = (key: keyof typeof DEFAULTS): ParamValue =>
-		stored[key] ?? DEFAULTS[key] ?? 0;
-
-	const buildEffects = (nextParams: ParamRecord) =>
-		effect
-			? effects.map((e) => (e === effect ? { ...e, params: nextParams } : e))
-			: [
-					...effects,
-					{
-						id: crypto.randomUUID(),
-						type: DAVINCI_EFFECT_TYPE,
-						params: nextParams,
-						enabled: true,
-					},
-				];
-
-	const previewParams = (patch: ParamRecord) => {
-		previewUpdates({ effects: buildEffects({ ...stored, ...patch }) });
-	};
-
-	const commitParams = (patch: ParamRecord) => {
-		previewUpdates({ effects: buildEffects({ ...stored, ...patch }) });
+	const previewEffects = (next: Effect[]) => previewUpdates({ effects: next });
+	// Discrete action: stage the change, then promote the whole overlay as ONE
+	// history command. `commitPreview` is a no-op when nothing is staged.
+	const commitEffects = (next: Effect[]) => {
+		previewUpdates({ effects: next });
 		commit();
 	};
 
-	const previewNum = (key: string, value: number) =>
-		previewParams({ [key]: value });
+	const writeControl = (
+		control: GradeControl,
+		sliderValue: number,
+		now: boolean,
+	) => {
+		const next = setGradeControlValue({ effects, control, sliderValue });
+		previewEffects(next);
+		if (now) commitEffects(next);
+	};
 
-	const commitNum = (key: string, value: number) =>
-		commitParams({ [key]: value });
-
-	return { get, previewParams, commitParams, previewNum, commitNum, commit };
+	return {
+		effects,
+		commit,
+		previewEffects,
+		commitEffects,
+		readControl: (control) => readGradeControlValue(effects, control),
+		previewControl: (control, sliderValue) =>
+			writeControl(control, sliderValue, false),
+		commitControl: (control, sliderValue) =>
+			writeControl(control, sliderValue, true),
+		readWheels: () => readWheelBiases(effects),
+		previewWheels: (biases) =>
+			previewEffects(setWheelBiases({ effects, biases })),
+	};
 }
 
 /**
- * Primary wheels: the four colour wheels (Lift / Gamma / Gain / Offset) plus the
- * global Temp/Tint sliders and the "Y only" master that switches the grade
- * between luma+chroma and luma-only.
+ * Render a table of controls as the inspector's slider rows.
+ *
+ * The neutral marker and the "is this at default" test both come from the
+ * primitive's own declared default, so a control never looks modified while
+ * storing nothing.
+ */
+function ControlRows({
+	testIdPrefix,
+	controls,
+	read,
+	preview,
+	commitControl,
+	commit,
+}: {
+	testIdPrefix: string;
+	controls: readonly GradeControl[];
+	read: (control: GradeControl) => number;
+	preview: (control: GradeControl, sliderValue: number) => void;
+	commitControl: (control: GradeControl, sliderValue: number) => void;
+	commit: () => void;
+}) {
+	return (
+		<SectionFields>
+			{controls.map((control) => {
+				const value = read(control);
+				const neutral = readGradeNeutral(control);
+				return (
+					<AdjustSlider
+						key={control.effectType}
+						testId={`${testIdPrefix}-${control.effectType}`}
+						label={control.label}
+						value={value}
+						min={control.sliderMin}
+						max={control.sliderMax}
+						step={control.step ?? 1}
+						neutral={neutral}
+						gradient={control.gradient}
+						format={(v) => v.toFixed(control.decimals ?? 0)}
+						isDefault={Math.abs(value - neutral) < 1e-6}
+						onChange={(v) => preview(control, v)}
+						onCommit={commit}
+						onReset={() => commitControl(control, neutral)}
+					/>
+				);
+			})}
+		</SectionFields>
+	);
+}
+
+/**
+ * Primary wheels: the Lift / Gamma / Gain colour wheels plus the global
+ * Temp / Tint sliders.
+ *
+ * The wheels write the `color-wheels` effect, whose three params are hex
+ * colours; `wheelBiasToHex` does the conversion (see `grade-controls.ts`).
+ * The fourth "Offset" wheel and the "Y only" master were REMOVED: neither has
+ * a rendering home — `color-wheels` has no offset param, and no registered
+ * primitive exposes a luma-only grade switch.
+ *
+ * `color-wheels`' current WGSL only uploads LIFT (see
+ * `rust/crates/effects/src/pipeline.rs`), so Gamma and Gain persist and read
+ * back correctly but do not yet reach the GPU. That is a shader-side gap in a
+ * registered, rendering effect — not another dead control.
  */
 export function AdjustWheelsPanel({
 	element,
@@ -222,25 +182,31 @@ export function AdjustWheelsPanel({
 	element: VisualElement;
 	trackId: string;
 }) {
-	const { get, previewParams, commitParams, commit } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const wheels = [
-		{ id: "lift", label: "Lift" },
-		{ id: "gamma", label: "Gamma" },
-		{ id: "gain", label: "Gain" },
-		{ id: "offset", label: "Offset" },
-	] as const;
+	const grade = useGradeEffects({ trackId, element });
+	const biases = grade.readWheels();
+	const globalControls = [TEMPERATURE_CONTROL, TINT_CONTROL];
+
+	// One gesture, one undo entry: build the whole reset in memory and commit
+	// it once rather than writing the wheels and the sliders separately.
 	const resetAll = () => {
-		const patch: ParamRecord = { temperature: 0, tint: 0, y_only: 0 };
-		for (const w of wheels) {
-			patch[`${w.id}_x`] = 0;
-			patch[`${w.id}_y`] = 0;
-			patch[`${w.id}_luma`] = 0;
+		let next = setWheelBiases({
+			effects: grade.effects,
+			biases: {
+				lift: { x: 0, y: 0, luma: 0 },
+				gamma: { x: 0, y: 0, luma: 0 },
+				gain: { x: 0, y: 0, luma: 0 },
+			},
+		});
+		for (const control of globalControls) {
+			next = setGradeControlValue({
+				effects: next,
+				control,
+				sliderValue: readGradeNeutral(control),
+			});
 		}
-		commitParams(patch);
+		grade.commitEffects(next);
 	};
+
 	return (
 		<Section
 			card
@@ -262,27 +228,38 @@ export function AdjustWheelsPanel({
 				<SectionTitle>Primary Wheels</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
-				<GlobalTempTint
-					temperature={num(get("temperature"), 0)}
-					tint={num(get("tint"), 0)}
-					yOnly={num(get("y_only"), 0) > 0.5}
-					onPreview={(key, value) => previewParams({ [key]: value })}
-					onCommit={commit}
-					onApply={(key, value) => commitParams({ [key]: value })}
-				/>
+				<div className="mb-3 rounded-md border border-white/[0.06] bg-white/[0.02] p-2.5">
+					<div className="mb-1.5 flex items-center justify-between">
+						<div className="flex items-center gap-1">
+							<span className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white/65">
+								Global
+							</span>
+						</div>
+					</div>
+					<div className="flex items-center gap-3">
+						{globalControls.map((control) => (
+							<ControlRows
+								key={control.effectType}
+								testIdPrefix="wheels"
+								controls={[control]}
+								read={grade.readControl}
+								preview={grade.previewControl}
+								commitControl={grade.commitControl}
+								commit={grade.commit}
+							/>
+						))}
+					</div>
+				</div>
 				<div className="grid grid-cols-2 gap-3">
-					{wheels.map((w) => (
+					{WHEEL_IDS.map((id) => (
 						<ColorWheel
-							key={w.id}
-							label={w.label}
-							x={num(get(`${w.id}_x`), 0)}
-							y={num(get(`${w.id}_y`), 0)}
-							luma={num(get(`${w.id}_luma`), 0)}
-							onChange={(x, y) =>
-								previewParams({ [`${w.id}_x`]: x, [`${w.id}_y`]: y })
+							key={id}
+							label={WHEEL_LABELS[id]}
+							bias={biases[id]}
+							onChange={(next) =>
+								grade.previewWheels({ ...biases, [id]: next })
 							}
-							onLumaChange={(v) => previewParams({ [`${w.id}_luma`]: v })}
-							onCommit={commit}
+							onCommit={grade.commit}
 						/>
 					))}
 				</div>
@@ -291,206 +268,26 @@ export function AdjustWheelsPanel({
 	);
 }
 
-/**
- * Top-of-wheels global temp/tint + Y-only toggle. Mirrors
- * DaVinci Resolve's "Temp / Tint" row + the "Y Only" master
- * that switches the wheel/bars grade between luma+chroma and
- * luma-only.
- */
-function GlobalTempTint({
-	temperature,
-	tint,
-	yOnly,
-	onPreview,
-	onCommit,
-	onApply,
-}: {
-	temperature: number;
-	tint: number;
-	yOnly: boolean;
-	onPreview: (key: string, value: number) => void;
-	onCommit: () => void;
-	onApply: (key: string, value: number) => void;
-}) {
-	return (
-		<div className="mb-3 rounded-md border border-white/[0.06] bg-white/[0.02] p-2.5">
-			<div className="mb-1.5 flex items-center justify-between">
-				<div className="flex items-center gap-1.5">
-					<span className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-white/65">
-						Global
-					</span>
-				</div>
-				<button
-					type="button"
-					aria-pressed={yOnly}
-					onClick={() => onApply("y_only", yOnly ? 0 : 1)}
-					className={`flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider transition ${
-						yOnly
-							? "border-cyan-300/40 bg-cyan-400/10 text-cyan-100"
-							: "border-white/[0.08] bg-white/[0.02] text-white/45 hover:border-white/20 hover:text-white/80"
-					}`}
-				>
-					<span
-						aria-hidden
-						className="size-1.5 rounded-full"
-						style={{ background: yOnly ? "#67e8f9" : "rgba(255,255,255,0.3)" }}
-					/>
-					Y only
-				</button>
-			</div>
-			<div className="flex items-center gap-3">
-				<TempTintSlider
-					label="Temp"
-					value={temperature}
-					min={-100}
-					max={100}
-					gradient="linear-gradient(to right, #4d9aff 0%, #ffffff 50%, #ffb84d 100%)"
-					hint="Cool ↔ Warm"
-					onChange={(v) => onPreview("temperature", v)}
-					onCommit={onCommit}
-					onReset={() => onApply("temperature", 0)}
-				/>
-				<TempTintSlider
-					label="Tint"
-					value={tint}
-					min={-100}
-					max={100}
-					gradient="linear-gradient(to right, #22c55e 0%, #ffffff 50%, #ec4899 100%)"
-					hint="Green ↔ Magenta"
-					onChange={(v) => onPreview("tint", v)}
-					onCommit={onCommit}
-					onReset={() => onApply("tint", 0)}
-				/>
-			</div>
-		</div>
-	);
-}
-
-function TempTintSlider({
-	label,
-	value,
-	min,
-	max,
-	gradient,
-	hint,
-	onChange,
-	onCommit,
-	onReset,
-}: {
-	label: string;
-	value: number;
-	min: number;
-	max: number;
-	gradient: string;
-	hint: string;
-	onChange: (v: number) => void;
-	onCommit: () => void;
-	onReset: () => void;
-}) {
-	const isModified = value !== 0;
-	return (
-		<div className="flex flex-1 flex-col gap-1">
-			<div className="flex items-center justify-between text-[0.6rem]">
-				<span className="font-semibold uppercase tracking-wider text-white/65">
-					{label}
-				</span>
-				<div className="flex items-center gap-1">
-					<span
-						className={`font-mono ${
-							isModified ? "text-cyan-200" : "text-white/35"
-						}`}
-					>
-						{value > 0 ? "+" : ""}
-						{value.toFixed(0)}
-					</span>
-					{isModified && (
-						<button
-							type="button"
-							onClick={onReset}
-							className="text-[0.55rem] text-white/40 hover:text-white/80 transition"
-							title={`Reset ${label}`}
-							aria-label={`Reset ${label}`}
-						>
-							↺
-						</button>
-					)}
-				</div>
-			</div>
-			<div className="relative h-3">
-				<div
-					aria-hidden
-					className="pointer-events-none absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full border border-white/10"
-					style={{ background: gradient }}
-				/>
-				{min < 0 && (
-					<div
-						aria-hidden
-						className="pointer-events-none absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/10"
-						style={{
-							left: `${((0 - min) / (max - min)) * 100}%`,
-							right:
-								value < 0
-									? `${100 - ((value - min) / (max - min)) * 100}%`
-									: "50%",
-						}}
-					/>
-				)}
-				<input
-					type="range"
-					min={min}
-					max={max}
-					step={1}
-					value={value}
-					onChange={(e) => onChange(Number.parseFloat(e.target.value))}
-					onPointerUp={onCommit}
-					onKeyUp={onCommit}
-					onBlur={onCommit}
-					aria-label={label}
-					title={hint}
-					className="absolute inset-0 h-3 w-full cursor-pointer appearance-none bg-transparent
-						[&::-webkit-slider-thumb]:appearance-none
-						[&::-webkit-slider-thumb]:size-3.5
-						[&::-webkit-slider-thumb]:rounded-full
-						[&::-webkit-slider-thumb]:bg-white
-						[&::-webkit-slider-thumb]:shadow-[0_0_0_1.5px_rgba(0,0,0,0.55),0_0_8px_rgba(255,255,255,0.45)]
-						[&::-moz-range-thumb]:size-3.5
-						[&::-moz-range-thumb]:rounded-full
-						[&::-moz-range-thumb]:bg-white
-						[&::-moz-range-thumb]:border-0
-						[&::-moz-range-thumb]:shadow-[0_0_0_1.5px_rgba(0,0,0,0.55),0_0_8px_rgba(255,255,255,0.45)]
-						focus:outline-none"
-				/>
-			</div>
-		</div>
-	);
-}
-
 function ColorWheel({
 	label,
-	x,
-	y,
-	luma,
+	bias,
 	onChange,
-	onLumaChange,
 	onCommit,
 }: {
 	label: string;
-	x: number;
-	y: number;
-	luma: number;
-	onChange: (x: number, y: number) => void;
-	onLumaChange: (luma: number) => void;
+	bias: WheelBias;
+	onChange: (bias: WheelBias) => void;
 	onCommit: () => void;
 }) {
 	const svgRef = useRef<SVGSVGElement>(null);
 	const [dragging, setDragging] = useState(false);
 
 	const radius = 100;
-	const handleX = 120 + x * radius;
-	const handleY = 120 + y * radius;
-	const r = Math.round(((-x + 1) / 2) * 255);
-	const g = Math.round(((x - y) / 2 + 0.5) * 255);
-	const b = Math.round(((y + 1) / 2) * 255);
+	const handleX = 120 + bias.x * radius;
+	const handleY = 120 + bias.y * radius;
+	const r = Math.round(((-bias.x + 1) / 2) * 255);
+	const g = Math.round(((bias.x - bias.y) / 2 + 0.5) * 255);
+	const b = Math.round(((bias.y + 1) / 2) * 255);
 	const handleFill = `rgb(${r},${g},${b})`;
 
 	const updateFromPointer = (clientX: number, clientY: number) => {
@@ -504,10 +301,14 @@ function ColorWheel({
 		let nx = px / max;
 		let ny = py / max;
 		if (dist > max) {
-			nx = (px / dist) * (max / max);
-			ny = (py / dist) * (max / max);
+			nx = px / dist;
+			ny = py / dist;
 		}
-		onChange(Math.max(-1, Math.min(1, nx)), Math.max(-1, Math.min(1, ny)));
+		onChange({
+			...bias,
+			x: Math.max(-1, Math.min(1, nx)),
+			y: Math.max(-1, Math.min(1, ny)),
+		});
 	};
 
 	return (
@@ -540,7 +341,7 @@ function ColorWheel({
 					onCommit();
 				}}
 				onDoubleClick={() => {
-					onChange(0, 0);
+					onChange({ ...bias, x: 0, y: 0 });
 					onCommit();
 				}}
 			>
@@ -587,8 +388,10 @@ function ColorWheel({
 				min={-1}
 				max={1}
 				step={0.01}
-				value={luma}
-				onChange={(e) => onLumaChange(Number.parseFloat(e.target.value))}
+				value={bias.luma}
+				onChange={(e) =>
+					onChange({ ...bias, luma: Number.parseFloat(e.target.value) })
+				}
 				onPointerUp={onCommit}
 				onKeyUp={onCommit}
 				onBlur={onCommit}
@@ -596,301 +399,19 @@ function ColorWheel({
 				className="w-full max-w-[240px] accent-white/80"
 			/>
 			<div className="text-[0.6rem] text-white/40 font-mono">
-				{x.toFixed(2)} / {y.toFixed(2)} · Y {luma.toFixed(2)}
+				{bias.x.toFixed(2)} / {bias.y.toFixed(2)} · Y {bias.luma.toFixed(2)}
 			</div>
 		</div>
 	);
 }
 
 /**
- * Custom curves: the Master (Y) / Red / Green / Blue channels, each an
- * independently draggable tone curve with its own reset.
- */
-export function AdjustCurvesPanel({
-	element,
-	trackId,
-}: {
-	element: VisualElement;
-	trackId: string;
-}) {
-	const { get, previewParams, commitParams, commit } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const channels = [
-		{
-			key: "curve_master",
-			label: "Master (Y)",
-			color: "rgba(255,255,255,0.9)",
-		},
-		{ key: "curve_r", label: "Red", color: "rgba(239,68,68,0.9)" },
-		{ key: "curve_g", label: "Green", color: "rgba(34,197,94,0.9)" },
-		{ key: "curve_b", label: "Blue", color: "rgba(59,130,246,0.9)" },
-	] as const;
-	return (
-		<Section card collapsible sectionKey={`${element.id}:adjust:curves`}>
-			<SectionHeader>
-				<SectionTitle>Curves</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<div className="flex flex-col gap-3">
-					{channels.map((c) => (
-						<CurveEditor
-							key={c.key}
-							label={c.label}
-							color={c.color}
-							points={parseCurve(get(c.key))}
-							onChange={(pts) =>
-								previewParams({ [c.key]: JSON.stringify(pts) })
-							}
-							onReset={() => commitParams({ [c.key]: "" })}
-							onCommit={commit}
-						/>
-					))}
-				</div>
-			</SectionContent>
-		</Section>
-	);
-}
-
-function CurveEditor({
-	label,
-	color,
-	points,
-	onChange,
-	onReset,
-	onCommit,
-}: {
-	label: string;
-	color: string;
-	points: CurvePoint[];
-	onChange: (pts: CurvePoint[]) => void;
-	onReset: () => void;
-	onCommit: () => void;
-}) {
-	const svgRef = useRef<SVGSVGElement>(null);
-	const [dragIndex, setDragIndex] = useState<number | null>(null);
-	const sorted = useMemo(() => [...points].sort((a, b) => a.x - b.x), [points]);
-
-	const toView = (p: CurvePoint) => ({
-		cx: (p.x / 255) * 240,
-		cy: 240 - (p.y / 255) * 240,
-	});
-	const fromPointer = (e: ReactPointerEvent<SVGSVGElement>) => {
-		const svg = svgRef.current;
-		if (!svg) return { x: 0, y: 0 };
-		const rect = svg.getBoundingClientRect();
-		const x = ((e.clientX - rect.left) / rect.width) * 255;
-		const y = 255 - ((e.clientY - rect.top) / rect.height) * 255;
-		return {
-			x: Math.max(0, Math.min(255, x)),
-			y: Math.max(0, Math.min(255, y)),
-		};
-	};
-
-	return (
-		<div className="rounded-md border border-white/[0.06] bg-white/[0.02] p-2">
-			<div className="flex items-center justify-between mb-1.5">
-				<div className="text-[0.62rem] uppercase tracking-wider text-white/60 font-semibold">
-					{label}
-				</div>
-				<button
-					type="button"
-					onClick={onReset}
-					className="text-[0.6rem] text-white/40 hover:text-white/70"
-				>
-					Reset
-				</button>
-			</div>
-			<svg
-				ref={svgRef}
-				viewBox="0 0 240 240"
-				aria-label={`${label} curve`}
-				className="w-full aspect-square touch-none cursor-crosshair"
-				onPointerDown={(e) => {
-					const { x } = fromPointer(e);
-					const idx = sorted.findIndex(
-						(p, i) => Math.abs(p.x - x) < 12 || i === sorted.length - 1,
-					);
-					if (idx !== -1) {
-						setDragIndex(idx);
-						e.currentTarget.setPointerCapture(e.pointerId);
-					}
-				}}
-				onPointerMove={(e) => {
-					if (dragIndex === null) return;
-					const pt = fromPointer(e);
-					const next = [...sorted];
-					next[dragIndex] = pt;
-					onChange(next);
-				}}
-				onPointerUp={(e) => {
-					try {
-						e.currentTarget.releasePointerCapture(e.pointerId);
-					} catch {}
-					setDragIndex(null);
-					onCommit();
-				}}
-			>
-				<rect
-					x={0}
-					y={0}
-					width={240}
-					height={240}
-					fill="rgba(0,0,0,0.2)"
-					stroke="rgba(255,255,255,0.08)"
-				/>
-				{[60, 120, 180].map((v) => (
-					<g key={v}>
-						<line
-							x1={v}
-							y1={0}
-							x2={v}
-							y2={240}
-							stroke="rgba(255,255,255,0.04)"
-						/>
-						<line
-							x1={0}
-							y1={v}
-							x2={240}
-							y2={v}
-							stroke="rgba(255,255,255,0.04)"
-						/>
-					</g>
-				))}
-				<line
-					x1={0}
-					y1={240}
-					x2={240}
-					y2={0}
-					stroke="rgba(255,255,255,0.12)"
-					strokeDasharray="3 4"
-				/>
-				<polyline
-					points={sorted
-						.map((p) => {
-							const v = toView(p);
-							return `${v.cx},${v.cy}`;
-						})
-						.join(" ")}
-					fill="none"
-					stroke={color}
-					strokeWidth={2}
-				/>
-				{sorted.map((p) => {
-					const v = toView(p);
-					return (
-						<circle
-							key={`${p.x}-${p.y}`}
-							cx={v.cx}
-							cy={v.cy}
-							r={5}
-							fill={color}
-							stroke="white"
-							strokeWidth={1.5}
-						/>
-					);
-				})}
-			</svg>
-		</div>
-	);
-}
-
-/**
- * HSL secondary: the Hue / Sat / Lum sliders for the selected colour range,
- * plus the Low / Mid / High qualifier range inputs that pick which luma band
- * the secondary targets.
- */
-export function AdjustHslPanel({
-	element,
-	trackId,
-}: {
-	element: VisualElement;
-	trackId: string;
-}) {
-	const { get, previewNum, commitNum, commit } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const sliders = [
-		{ key: "hsl_hue", label: "Hue", min: -180, max: 180, step: 1, fixed: 0 },
-		{ key: "hsl_sat", label: "Sat", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{ key: "hsl_lum", label: "Lum", min: -1, max: 1, step: 0.01, fixed: 2 },
-	] as const;
-	const ranges = [
-		{ key: "qual_low", label: "Low" },
-		{ key: "qual_mid", label: "Mid" },
-		{ key: "qual_high", label: "High" },
-	] as const;
-	return (
-		<Section card collapsible sectionKey={`${element.id}:adjust:hsl`}>
-			<SectionHeader>
-				<SectionTitle>HSL Secondary</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{sliders.map((s) => {
-						const val = num(get(s.key), DEFAULTS[s.key] as number);
-						const def = DEFAULTS[s.key] as number;
-						return (
-							<AdjustSlider
-								key={s.key}
-								testId={`dv-${s.key}`}
-								label={s.label}
-								value={val}
-								min={s.min}
-								max={s.max}
-								step={s.step}
-								neutral={def}
-								format={(v) => v.toFixed(s.fixed)}
-								isDefault={Math.abs(val - def) < s.step / 2}
-								onChange={(v) => previewNum(s.key, v)}
-								onCommit={commit}
-								onReset={() => commitNum(s.key, def)}
-							/>
-						);
-					})}
-					<div className="mt-1 flex flex-col gap-2">
-						<div className="text-[0.62rem] uppercase tracking-wider text-white/55 font-semibold">
-							Qualifier Ranges
-						</div>
-						{ranges.map((r) => {
-							const val = num(get(r.key), DEFAULTS[r.key] as number);
-							return (
-								<div key={r.key} className="flex flex-col gap-1">
-									<div className="flex items-center justify-between text-[0.65rem] text-white/60">
-										<span>{r.label}</span>
-										<span className="font-mono">{val.toFixed(2)}</span>
-									</div>
-									<input
-										type="range"
-										min={0}
-										max={1}
-										step={0.01}
-										value={val}
-										onChange={(e) =>
-											previewNum(r.key, Number.parseFloat(e.target.value))
-										}
-										onPointerUp={commit}
-										onKeyUp={commit}
-										onBlur={commit}
-										aria-label={`${r.label} range`}
-										className="w-full accent-white/80"
-									/>
-								</div>
-							);
-						})}
-					</div>
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-/**
- * Primary bars: the eleven tone sliders that sit between the wheels and the
- * curves — contrast, pivot, midtone detail, highlights, shadows, whites,
- * blacks, saturation, hue, and the lum/chroma mix pair.
+ * Primary bars: contrast, highlights, shadows, whites, blacks, saturation and
+ * hue, each on its own registered primitive.
+ *
+ * Pivot, midtone detail and the luma/chroma mix pair were REMOVED — no
+ * registered primitive exposes a tonal pivot, a local-detail control or a
+ * luma/chroma separator, so they had nowhere to go but a dead param.
  */
 export function AdjustBarsPanel({
 	element,
@@ -899,65 +420,7 @@ export function AdjustBarsPanel({
 	element: VisualElement;
 	trackId: string;
 }) {
-	const { get, previewNum, commit, commitNum } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const bars: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-		step: number;
-		fixed: number;
-	}> = [
-		{
-			key: "contrast",
-			label: "Contrast",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "pivot", label: "Pivot", min: 0, max: 1, step: 0.001, fixed: 3 },
-		{
-			key: "midtone_detail",
-			label: "Midtone Detail",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{
-			key: "highlights",
-			label: "Highlights",
-			min: -1,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "shadows", label: "Shadows", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{ key: "whites", label: "Whites", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{ key: "blacks", label: "Blacks", min: -1, max: 1, step: 0.01, fixed: 2 },
-		{
-			key: "saturation",
-			label: "Saturation",
-			min: 0,
-			max: 2,
-			step: 0.01,
-			fixed: 2,
-		},
-		{ key: "hue", label: "Hue", min: -180, max: 180, step: 1, fixed: 0 },
-		{ key: "lum_mix", label: "Lum Mix", min: 0, max: 1, step: 0.01, fixed: 2 },
-		{
-			key: "chroma_mix",
-			label: "Chroma Mix",
-			min: 0,
-			max: 1,
-			step: 0.01,
-			fixed: 2,
-		},
-	];
+	const grade = useGradeEffects({ trackId, element });
 	return (
 		<Section
 			card
@@ -969,182 +432,22 @@ export function AdjustBarsPanel({
 				<SectionTitle>Primary Bars</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
-				<SectionFields>
-					{bars.map((b) => {
-						const val = num(get(b.key), DEFAULTS[b.key] as number);
-						const def = DEFAULTS[b.key] as number;
-						return (
-							<AdjustSlider
-								key={b.key as string}
-								testId={`dv-${b.key as string}`}
-								label={b.label}
-								value={val}
-								min={b.min}
-								max={b.max}
-								step={b.step}
-								neutral={def}
-								format={(v) => v.toFixed(b.fixed)}
-								isDefault={Math.abs(val - def) < b.step / 2}
-								onChange={(v) => previewNum(b.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(b.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
+				<ControlRows
+					testIdPrefix="bars"
+					controls={BARS_CONTROLS}
+					read={grade.readControl}
+					preview={grade.previewControl}
+					commitControl={grade.commitControl}
+					commit={grade.commit}
+				/>
 			</SectionContent>
 		</Section>
 	);
 }
 
 /**
- * Qualifier: the HSL / Lum / Sat channel switches plus the range and the
- * high / low softness that shape the key. The band pickers that choose *which*
- * luma the secondary targets live in the HSL panel, next to the sliders they
- * scope.
- */
-export function AdjustQualifierPanel({
-	element,
-	trackId,
-}: {
-	element: VisualElement;
-	trackId: string;
-}) {
-	const { get, previewNum, commit, commitNum } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const toggles: Array<{ key: keyof typeof DEFAULTS; label: string }> = [
-		{ key: "qual_hsl_enabled", label: "HSL" },
-		{ key: "qual_lum_enabled", label: "Lum" },
-		{ key: "qual_sat_enabled", label: "Sat" },
-	];
-	const sliders: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-	}> = [
-		{ key: "qual_range", label: "Range" },
-		{ key: "qual_high_softness", label: "High Softness" },
-		{ key: "qual_low_softness", label: "Low Softness" },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:adjust:qualifier`}>
-			<SectionHeader>
-				<SectionTitle>Qualifier</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					<div className="grid grid-cols-3 gap-2">
-						{toggles.map((t) => {
-							const checked = num(get(t.key), 1) > 0.5;
-							return (
-								<div
-									key={t.key as string}
-									className="flex items-center justify-between gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5"
-								>
-									<span className="text-[0.7rem] text-white/70">{t.label}</span>
-									<Switch
-										checked={checked}
-										onCheckedChange={(v) =>
-											commitNum(t.key as string, v ? 1 : 0)
-										}
-									/>
-								</div>
-							);
-						})}
-					</div>
-					{sliders.map((s) => {
-						const val = num(get(s.key), DEFAULTS[s.key] as number);
-						const def = DEFAULTS[s.key] as number;
-						return (
-							<AdjustSlider
-								key={s.key as string}
-								testId={`dv-${s.key as string}`}
-								label={s.label}
-								value={val}
-								min={0}
-								max={1}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(s.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(s.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-/**
- * Vignette: offset / softness / roundness plus the three tone weights that
- * decide how the falloff darkens or lightens.
- */
-export function AdjustVignettePanel({
-	element,
-	trackId,
-}: {
-	element: VisualElement;
-	trackId: string;
-}) {
-	const { get, previewNum, commit, commitNum } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "vig_offset", label: "Offset", min: -1, max: 1 },
-		{ key: "vig_softness", label: "Softness", min: 0, max: 1 },
-		{ key: "vig_roundness", label: "Roundness", min: -1, max: 1 },
-		{ key: "vig_highlight", label: "Highlight", min: -1, max: 1 },
-		{ key: "vig_midtone", label: "Midtone", min: -1, max: 1 },
-		{ key: "vig_shadow", label: "Shadow", min: -1, max: 1 },
-	];
-	return (
-		<Section card collapsible sectionKey={`${element.id}:adjust:vignette`}>
-			<SectionHeader>
-				<SectionTitle>Vignette</SectionTitle>
-			</SectionHeader>
-			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
-			</SectionContent>
-		</Section>
-	);
-}
-
-/**
- * Detail: peaking sharpen, spatial blur and defog — the three frequency-domain
- * controls.
+ * Detail: peaking sharpen (`sharpen`), spatial blur (`box-blur`) and defog
+ * (`dehaze`).
  */
 export function AdjustSharpenBlurPanel({
 	element,
@@ -1153,56 +456,31 @@ export function AdjustSharpenBlurPanel({
 	element: VisualElement;
 	trackId: string;
 }) {
-	const { get, previewNum, commit, commitNum } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "sharpen", label: "Sharpen (Peaking)", min: -1, max: 5 },
-		{ key: "blur", label: "Blur (Spatial)", min: 0, max: 5 },
-		{ key: "defog", label: "Defog", min: 0, max: 1 },
-	];
+	const grade = useGradeEffects({ trackId, element });
 	return (
 		<Section card collapsible sectionKey={`${element.id}:adjust:sharpen-blur`}>
 			<SectionHeader>
 				<SectionTitle>Sharpening & Blur</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
+				<ControlRows
+					testIdPrefix="detail"
+					controls={DETAIL_CONTROLS}
+					read={grade.readControl}
+					preview={grade.previewControl}
+					commitControl={grade.commitControl}
+					commit={grade.commit}
+				/>
 			</SectionContent>
 		</Section>
 	);
 }
 
 /**
- * Bloom and film texture: glow size / intensity, halation radius and grain.
+ * Bloom and film texture.
+ *
+ * Halation radius was REMOVED: `glow` takes a single `amount` and no
+ * registered primitive exposes a halation radius.
  */
 export function AdjustGlowGrainPanel({
 	element,
@@ -1211,119 +489,53 @@ export function AdjustGlowGrainPanel({
 	element: VisualElement;
 	trackId: string;
 }) {
-	const { get, previewNum, commit, commitNum } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const fields: Array<{
-		key: keyof typeof DEFAULTS;
-		label: string;
-		min: number;
-		max: number;
-	}> = [
-		{ key: "glow_size", label: "Glow Size", min: 0, max: 10 },
-		{ key: "glow_intensity", label: "Glow Intensity", min: 0, max: 1 },
-		{ key: "halation_radius", label: "Halation Radius", min: 0, max: 5 },
-		{ key: "grain_amount", label: "Grain Amount", min: 0, max: 1 },
-	];
+	const grade = useGradeEffects({ trackId, element });
 	return (
 		<Section card collapsible sectionKey={`${element.id}:adjust:glow-grain`}>
 			<SectionHeader>
-				<SectionTitle>Glow / Halation / Grain</SectionTitle>
+				<SectionTitle>Glow / Grain</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
-				<SectionFields>
-					{fields.map((f) => {
-						const val = num(get(f.key), DEFAULTS[f.key] as number);
-						const def = DEFAULTS[f.key] as number;
-						return (
-							<AdjustSlider
-								key={f.key as string}
-								testId={`dv-${f.key as string}`}
-								label={f.label}
-								value={val}
-								min={f.min}
-								max={f.max}
-								step={0.01}
-								neutral={def}
-								format={(v) => v.toFixed(2)}
-								isDefault={Math.abs(val - def) < 0.005}
-								onChange={(v) => previewNum(f.key as string, v)}
-								onCommit={commit}
-								onReset={() => commitNum(f.key as string, def)}
-							/>
-						);
-					})}
-				</SectionFields>
+				<ControlRows
+					testIdPrefix="glow"
+					controls={GLOW_GRAIN_CONTROLS}
+					read={grade.readControl}
+					preview={grade.previewControl}
+					commitControl={grade.commitControl}
+					commit={grade.commit}
+				/>
 			</SectionContent>
 		</Section>
 	);
 }
 
 /**
- * Look-up tables: the built-in preset list and the blend amount. The blend is
- * a continuous drag, so it previews and commits on release; picking a preset
- * is discrete and commits immediately.
+ * Vignette. The `vignette` primitive reads a single `amount`, so the old
+ * offset / softness / roundness / per-zone controls — none of which had a
+ * rendering home — are folded into this single slider.
  */
-export function AdjustLutPanel({
+export function AdjustVignettePanel({
 	element,
 	trackId,
 }: {
 	element: VisualElement;
 	trackId: string;
 }) {
-	const { get, previewParams, commitParams, commit } = useAdjustEffect({
-		trackId,
-		element,
-	});
-	const lut = String(get("lut") ?? "none");
-	const intensity = num(get("lut_intensity"), 100);
+	const grade = useGradeEffects({ trackId, element });
 	return (
-		<Section card collapsible sectionKey={`${element.id}:adjust:lut`}>
+		<Section card collapsible sectionKey={`${element.id}:adjust:vignette`}>
 			<SectionHeader>
-				<SectionTitle>LUTs</SectionTitle>
+				<SectionTitle>Vignette</SectionTitle>
 			</SectionHeader>
 			<SectionContent>
-				<SectionFields>
-					<SectionField label="Preset">
-						<select
-							value={lut}
-							onChange={(e) => commitParams({ lut: e.target.value })}
-							className="border-border bg-accent flex h-7 w-full items-center rounded-md border px-2 text-sm outline-none focus:border-primary"
-						>
-							{BUILTIN_LUTS.map((name) => (
-								<option key={name} value={name}>
-									{name === "none" ? "— None —" : name}
-								</option>
-							))}
-						</select>
-					</SectionField>
-					<SectionField label="Intensity">
-						<div className="flex items-center gap-2">
-							<input
-								type="range"
-								min={0}
-								max={100}
-								step={1}
-								value={intensity}
-								disabled={lut === "none"}
-								onChange={(e) =>
-									previewParams({
-										lut_intensity: Number.parseFloat(e.target.value),
-									})
-								}
-								onPointerUp={commit}
-								onKeyUp={commit}
-								onBlur={commit}
-								aria-label="LUT intensity"
-								className="flex-1 accent-white/80 disabled:opacity-40"
-							/>
-							<span className="w-10 text-right text-[0.7rem] font-mono text-white/60">
-								{intensity.toFixed(0)}%
-							</span>
-						</div>
-					</SectionField>
-				</SectionFields>
+				<ControlRows
+					testIdPrefix="vig"
+					controls={VIGNETTE_CONTROLS}
+					read={grade.readControl}
+					preview={grade.previewControl}
+					commitControl={grade.commitControl}
+					commit={grade.commit}
+				/>
 			</SectionContent>
 		</Section>
 	);

@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-29-honest-colour-controls",
+		date: "2026-09-29",
+		tag: "fix",
+		title: "Colour controls that actually colour",
+		items: [
+			"The Advanced colour card now ships only what renders: Wheels and Scopes. The HSL, HSL Curves, Curves and LUT panels were removed because their sliders saved values the renderer silently ignored — the controls moved, the picture never did. Real GPU passes for those tools are on the roadmap and will return with working previews.",
+			"Fixed the Bokeh effect: it pointed at a blur shader that doesn't exist in the renderer, so applying it errored instead of blurring. It now runs the real lens-blur pass.",
+			"A new guard test keeps it honest: every effect type the UI writes must declare a real render pass, and nothing in the effect registry may ship with zero passes — so a control that only moves a number can't slip back in unnoticed.",
+		],
+	},
+	{
 		id: "2026-09-28-responsive-editor-layout",
 		date: "2026-09-28",
 		tag: "feature",

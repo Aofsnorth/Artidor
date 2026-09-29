@@ -56,9 +56,9 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes the responsive editor layout feature", () => {
+	test("the newest entry describes the honest colour controls fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-09-28-responsive-editor-layout");
+		expect(getLatestWhatsNewId()).toBe("2026-09-29-honest-colour-controls");
 	});
 });

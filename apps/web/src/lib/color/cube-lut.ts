@@ -20,9 +20,10 @@
  * ```
  *
  * which maps 1:1 onto a `TEXTURE_3D` whose axes are `x = red`, `y = green`,
- * `z = blue` with hardware linear filtering. It is also the same layout used by
- * `sampleLut` in `@/lib/colors/lut.ts`, so a LUT parsed here can be sampled by
- * the existing CPU path without a transposition step.
+ * `z = blue` with hardware linear filtering — no transposition step between
+ * the parsed array and a GPU upload. (A predecessor CPU sampler lived in
+ * `@/lib/colors/lut.ts`; it was removed together with the zero-pass LUT
+ * panel it served.)
  *
  * `kind === "1d"` holds exactly `size` RGB triples, index `n` being input
  * level `n / (size - 1)` within the domain.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { VisualElement } from "@/lib/timeline";
 import { useEditor } from "@/hooks/use-editor";
 import { useElementPreview } from "@/hooks/use-element-preview";
@@ -72,7 +72,6 @@ const CREATIVE_PRESETS = [
 const formatSigned = (value: number) =>
 	`${value > 0 ? "+" : ""}${Math.round(value)}`;
 
-const INTENSITY_EFFECT = "davinci-adjust";
 const INTENSITY_DEFAULT = 100;
 
 /**
@@ -91,7 +90,10 @@ const INTENSITY_DEFAULT = 100;
  *
  * The master Intensity slider is stateless by construction: the element only
  * stores the BASE grade, and the displayed value is derived by scaling it, so
- * moving intensity can never drift the underlying adjustments.
+ * moving intensity can never drift the underlying adjustments. It is session
+ * state rather than a stored effect on purpose — no registered effect means
+ * "scale the whole grade", and writing one (as this panel used to, as
+ * `davinci-adjust`) just persisted a param the renderer skips.
  */
 export function BasicAdjustTab({
 	element,
@@ -110,17 +112,10 @@ export function BasicAdjustTab({
 		fallback: element,
 	});
 	const [copiedTick, setCopiedTick] = useState(0);
+	const [intensity, setIntensity] = useState(INTENSITY_DEFAULT);
 
 	const effects = (renderElement as VisualElement).effects ?? [];
 	const baseValues = readAdjustmentValues(effects);
-
-	const readIntensity = useCallback((): number => {
-		const effect = effects.find((e) => e.type === INTENSITY_EFFECT);
-		const raw = (effect?.params as { intensity?: unknown } | undefined)
-			?.intensity;
-		return typeof raw === "number" ? raw : INTENSITY_DEFAULT;
-	}, [effects]);
-	const intensity = readIntensity();
 	const displayed = scaleAdjustments({
 		values: baseValues,
 		intensity: intensity / 100,
@@ -167,27 +162,6 @@ export function BasicAdjustTab({
 		);
 	};
 
-	const setIntensity = (next: number, commitNow: boolean) => {
-		const clamped = Math.max(0, Math.min(200, Math.round(next)));
-		const effect = effects.find((e) => e.type === INTENSITY_EFFECT);
-		const params = {
-			...(effect?.params as Record<string, unknown> | undefined),
-			intensity: clamped,
-		};
-		const nextEffects = effect
-			? effects.map((e) => (e === effect ? { ...e, params } : e))
-			: [
-					...effects,
-					{
-						id: crypto.randomUUID(),
-						type: INTENSITY_EFFECT,
-						params,
-						enabled: true,
-					},
-				];
-		writeEffects(nextEffects, commitNow);
-	};
-
 	const resetAll = () => {
 		writeEffects(clearAdjustments(effects), true);
 	};
@@ -200,6 +174,22 @@ export function BasicAdjustTab({
 			return;
 		}
 		writeValues(preset.values, true);
+	};
+
+	const handleCopyGrade = () => {
+		copyWholeGrade(displayed);
+		// The grade clipboard is module state, and React only re-reads it on the
+		// next render. A render already in flight when Copy is clicked can
+		// therefore commit with the PRE-copy value, leaving Paste disabled
+		// until some unrelated update happens to re-render the panel. Bumping
+		// the tick forces a fresh render that reads the current slot.
+		setCopiedTick((n) => n + 1);
+	};
+
+	const handlePasteGrade = () => {
+		const grade = readWholeGrade();
+		if (!grade) return;
+		writeValues(grade, true);
 	};
 
 	const handleCopyValue = (effectType: string, label: string) => {
@@ -245,7 +235,7 @@ export function BasicAdjustTab({
 					className="h-7 px-2 text-[0.68rem]"
 					data-testid="adjust-copy-grade"
 					disabled={!hasGrade}
-					onClick={() => copyWholeGrade(displayed)}
+					onClick={handleCopyGrade}
 				>
 					<HugeiconsIcon icon={Copy01Icon} className="mr-1 size-3" />
 					Copy
@@ -255,11 +245,8 @@ export function BasicAdjustTab({
 					size="sm"
 					className="h-7 px-2 text-[0.68rem]"
 					data-testid="adjust-paste-grade"
-					disabled={!readWholeGrade()}
-					onClick={() => {
-						const grade = readWholeGrade();
-						if (grade) writeValues(grade, true);
-					}}
+					disabled={!copiedTick || !readWholeGrade()}
+					onClick={handlePasteGrade}
 				>
 					<HugeiconsIcon icon={ClipboardIcon} className="mr-1 size-3" />
 					Paste
@@ -300,9 +287,11 @@ export function BasicAdjustTab({
 				neutral={INTENSITY_DEFAULT}
 				format={(v) => `${Math.round(v)}%`}
 				isDefault={intensity === INTENSITY_DEFAULT}
-				onChange={(v) => setIntensity(v, false)}
+				onChange={setIntensity}
+				// Intensity never touches the element, so a gesture has nothing
+				// to commit — `commitPreview` is a no-op with an empty overlay.
 				onCommit={commit}
-				onReset={() => setIntensity(INTENSITY_DEFAULT, true)}
+				onReset={() => setIntensity(INTENSITY_DEFAULT)}
 			/>
 
 			<div className="flex flex-col gap-1.5">

@@ -67,6 +67,15 @@ function listShaders(): Set<string> {
  * 2. A `type: "<x>"` literal inside a file that also writes an `effects`
  *    array — catches effects whose type is not registered, which is exactly
  *    the case we care about finding.
+ *
+ * Pass 2 only counts literals that sit in an EFFECT-SHAPED object: one that
+ * carries `params:`, `enabled:` or `effectType` within a ±200-char window,
+ * and none of the non-effect markers (`dragData`, motion `transition`
+ * springs, project `background`/`bg` presets, `as const` element types).
+ * Without that window the report drowned in false positives — element
+ * types (`type: "text" as const`), drag payloads (`dragData={{ type:
+ * "effect" }}`) and framer-motion springs (`type: "spring"`) were all
+ * listed as "UI writes a non-rendering effect".
  */
 function scanWrittenTypes(
 	registeredTypes: readonly string[],
@@ -113,12 +122,23 @@ function scanWrittenTypes(
 				record(type, `${rel}:${lineNumberOf(text, at)}`);
 			}
 
-			// Pass 2 — `type: "<x>"` in a file that writes effects.
+			// Pass 2 — `type: "<x>"` in a file that writes effects, restricted to
+			// effect-shaped objects (see the window rules in the header comment).
 			if (!/effects\s*[:=]/.test(text)) continue;
 			for (const match of text.matchAll(/type:\s*"([a-z0-9-]+)"/g)) {
 				const type = match[1];
 				if (!type || known.has(type)) continue;
-				record(type, `${rel}:${lineNumberOf(text, match.index)}`);
+				const at = match.index ?? 0;
+				const around = text.slice(Math.max(0, at - 200), at + 200);
+				if (!/(params\s*:|enabled\s*:|effectType)/.test(around)) continue;
+				if (
+					/dragData|transition\s*[={]|stiffness|damping|blurIntensity|bg\s*:|background\s*:|as const/.test(
+						around,
+					)
+				) {
+					continue;
+				}
+				record(type, `${rel}:${lineNumberOf(text, at)}`);
 			}
 		}
 	};
