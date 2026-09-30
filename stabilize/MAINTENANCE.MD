@@ -877,13 +877,14 @@ File ini adalah log maintenance kronologis untuk branch `stabilize`. Setiap entr
   Perbaiki GitHub Actions yang gagal dan tangani semua pull request sesuai rekomendasi `stabilize/improvement-tracks/CI-CD.md`.
 * **Tindakan yang diambil:**
   * Menghapus 6 advisory `bun audit` (brace-expansion 5.0.9→5.0.12, fast-uri 3.1.7→3.1.8, ip-address 10.7.0→10.7.2) sehingga job Dependency audit pada workflow Security kembali hijau.
-  * Menambahkan placeholder `env` pada `.github/workflows/e2e.yml` (mencerminkan `ci.yml`) dan mengunggah `test-results/` bersama `playwright-report/` (rekomendasi CI-CD §3).
+  * Menambahkan placeholder `env` pada `.github/workflows/e2e.yml` (mencerminkan `ci.yml`), mengunggah `test-results/` bersama `playwright-report/` (rekomendasi CI-CD §3), dan menaikkan `timeout-minutes` 30→45 berdasarkan pengukuran suite penuh 16,4 menit.
   * Mendiagnosis kegagalan semua PR npm di `bun install --frozen-lockfile`: Dependabot hanya mengedit `package.json` tanpa meregenerasi `bun.lock`.
   * Menetapkan disposition 9 PR sesuai pilihan pengguna: #110–#117 di-merge individual (rebase + regenerasi lockfile per PR, klik merge oleh pengguna); #118 (dotenv 18 major) ditahan sesuai rekomendasi grouping minor+patch.
 * **Verifikasi:**
   * `bun audit` — No vulnerabilities found (833 packages).
   * `bun install --frozen-lockfile` — no changes.
   * `bun run lint:web` lulus; `cd apps/web && bunx tsc --noEmit` lulus; `bun run test` — 1260 pass, 11 skip, 0 fail.
+  * `bunx playwright test` penuh — 119 pass, 0 fail (16,4 menit).
 * **File yang diperbarui:**
   * `package.json`, `bun.lock`, `.github/workflows/e2e.yml`, `stabilize/MAINTENANCE.MD`
 * **Persetujuan pengguna:** Sudah diberikan — merge bump better-auth 1.7.5 (#117, area auth) disetujui; PR #118 ditahan; eksekusi klik merge/tutup dilakukan pengguna sendiri.
