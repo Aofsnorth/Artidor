@@ -53,18 +53,26 @@ pub fn destroy_gpu() {
     });
 }
 
+/// Run `action` against the GPU runtime.
+///
+/// Uses the same take/restore pattern as [`take_gpu_runtime`]'s other
+/// callers rather than holding a `RefCell` borrow across `action`: wasm
+/// panics do not run Rust destructors, so a borrow left held across a
+/// panicking wgpu call is stranded forever and every later access panics
+/// with `RefCell already borrowed`. Taking the value OUT means a panic
+/// leaves the cell empty — a recoverable "not initialized" state that the
+/// JS-side recovery already handles — instead of permanently poisoned.
 pub(crate) fn with_gpu_runtime<T>(
     action: impl FnOnce(&GpuRuntime) -> Result<T, JsValue>,
 ) -> Result<T, JsValue> {
-    GPU_RUNTIME.with(|runtime| {
-        let borrow = runtime.borrow();
-        let Some(gpu_runtime) = borrow.as_ref() else {
-            return Err(JsValue::from_str(
-                "GPU context not initialized. Call initializeGpu() first.",
-            ));
-        };
-        action(gpu_runtime)
-    })
+    let Some(gpu_runtime) = take_gpu_runtime() else {
+        return Err(JsValue::from_str(
+            "GPU context not initialized. Call initializeGpu() first.",
+        ));
+    };
+    let result = action(&gpu_runtime);
+    restore_gpu_runtime(gpu_runtime);
+    result
 }
 
 /// Take the GPU runtime OUT of its cell, leaving it empty.

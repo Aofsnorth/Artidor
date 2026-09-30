@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-09-30-editor-freezes-after-gpu-panic",
+		date: "2026-09-30",
+		tag: "fix",
+		title: "The editor recovers instead of freezing after a GPU hiccup",
+		items: [
+			"If the graphics driver hiccuped mid-session (driver reset, out of memory, or the tab being backgrounded), the preview could freeze on its last frame for the rest of that session and every panel would stop responding until you reloaded. A panic inside the renderer held a lock that was never released, so every later frame was rejected and the automatic recovery could never rebuild the GPU. The lock is now taken and released around the risky work, so a failed frame costs you one frame instead of the whole session.",
+			"The automatic recovery also missed the failure it was built for: a crashed GPU pass surfaces in the browser as a generic 'unreachable' error, not the 'panicked' text the recovery was matching, so it never rebuilt. It now recognises the real error and restores the preview on its own.",
+			"Fixed the Delay / Echo preset dropdown in the audio effects panel. It was pinned to always display 'Echo' no matter which preset you picked — choose 'Ping Pong' or 'Slapback' and the dropdown snapped straight back to 'Echo'. It now shows the preset you actually applied, matching how Reverb and Voice Changer already behave.",
+		],
+	},
+	{
 		id: "2026-09-29-honest-colour-controls",
 		date: "2026-09-29",
 		tag: "fix",

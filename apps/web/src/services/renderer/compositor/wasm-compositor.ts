@@ -24,6 +24,14 @@ export type TextureUploadDescriptor = {
  * died (driver reset, OOM, tab backgrounded) rather than a logic bug. Such
  * errors are recoverable: the compositor tears itself down and rebuilds on a
  * fresh device. Anything else must propagate.
+ *
+ * `unreachable` matters as much as the `panicked at ...` text: wasm-bindgen
+ * cannot unwind a Rust panic, so the value that actually THROWN into JS is a
+ * bare `RuntimeError: unreachable`. The "panicked at" string only ever
+ * appears on the console via `console_error_panic_hook` and is not part of
+ * the error object. Matching on "panicked" alone therefore missed every real
+ * wasm panic, so the device was never rebuilt and the preview stayed frozen
+ * until a full page reload.
  */
 function isGpuDeviceLostError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
@@ -32,6 +40,7 @@ function isGpuDeviceLostError(error: unknown): boolean {
 		message.includes("device is lost") ||
 		message.includes("GPUDevice") ||
 		message.includes("panicked") ||
+		message.includes("unreachable") ||
 		message.includes("GPU context not initialized") ||
 		message.includes("Compositor is not initialized")
 	);

@@ -195,11 +195,17 @@ export class CanvasRenderer {
 			compositor.render(frame);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
+			// `unreachable` is what a Rust panic actually THROWS in JS —
+			// wasm-bindgen cannot unwind, so the "panicked at ..." text only
+			// reaches the console via console_error_panic_hook and is never
+			// part of the error object. Matching "panicked" alone let every
+			// real wasm trap escape this guard and break the render loop.
 			if (
 				msg.includes("createBuffer") ||
 				msg.includes("device is lost") ||
 				msg.includes("GPUDevice") ||
-				msg.includes("panicked")
+				msg.includes("panicked") ||
+				msg.includes("unreachable")
 			) {
 				console.warn(
 					"[renderer] GPU device lost, preview frozen until reload:",

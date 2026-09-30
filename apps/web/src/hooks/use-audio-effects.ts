@@ -5,7 +5,7 @@ import { useEditor } from "@/hooks/use-editor";
 import type { AudioEffectsChain } from "@/hooks/audio-effects-engine";
 import { EQ_PRESETS, defaultEqGains } from "@/lib/audio/equalizer";
 import { REVERB_PRESETS } from "@/lib/audio/reverb";
-import { DELAY_PRESETS } from "@/lib/audio/delay";
+import { DEFAULT_DELAY_PARAMS, DELAY_PRESETS } from "@/lib/audio/delay";
 import { MODULATION_PRESETS } from "@/lib/audio/modulation";
 import { DISTORTION_PRESETS } from "@/lib/audio/distortion";
 import { COMPRESSOR_PRESETS } from "@/lib/audio/compressor";
@@ -22,13 +22,7 @@ export interface AudioEffectsState {
 const DEFAULT_CHAIN: AudioEffectsChain = {
 	eq: { enabled: false, gains: defaultEqGains() },
 	reverb: { enabled: false, presetId: "hall", mix: 0.3 },
-	delay: {
-		enabled: false,
-		time: 0.3,
-		feedback: 0.35,
-		mix: 0.3,
-		pingPong: false,
-	},
+	delay: { ...DEFAULT_DELAY_PARAMS },
 	modulation: {
 		enabled: false,
 		type: "chorus",

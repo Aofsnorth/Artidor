@@ -480,6 +480,7 @@ function DelaySection({
 }: {
 	params: {
 		enabled: boolean;
+		presetId: string;
 		time: number;
 		feedback: number;
 		mix: number;
@@ -487,6 +488,7 @@ function DelaySection({
 	};
 	onChange: (p: {
 		enabled?: boolean;
+		presetId?: string;
 		time?: number;
 		feedback?: number;
 		mix?: number;
@@ -495,7 +497,14 @@ function DelaySection({
 	presets: {
 		id: string;
 		name: string;
-		params: { time: number; feedback: number; mix: number; pingPong: boolean };
+		params: {
+			enabled?: boolean;
+			presetId: string;
+			time: number;
+			feedback: number;
+			mix: number;
+			pingPong: boolean;
+		};
 	}[];
 }) {
 	return (
@@ -521,7 +530,7 @@ function DelaySection({
 				<SectionFields>
 					<SectionField label="Preset">
 						<Select
-							value={presets[0]?.id ?? "echo"}
+							value={params.presetId}
 							onValueChange={(v) => {
 								const preset = presets.find((p) => p.id === v);
 								if (preset) {

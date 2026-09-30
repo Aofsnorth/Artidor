@@ -44,11 +44,24 @@ const calls: CallRecorder = {
 	getCompositorCanvas: 0,
 };
 
+let failRenderTrap = false;
 let failRenderPanic = false;
 let failRenderPlain = false;
 let failUploadPanic = false;
 let failUploadPlain = false;
 let failInitialize = false;
+
+/**
+ * Models the real WASM failure mode that used to brick rendering for good.
+ *
+ * A Rust panic surfaces in JS as `RuntimeError: unreachable` (wasm-bindgen
+ * cannot unwind), NOT as a message containing "panicked" — the "panicked at"
+ * text in the console comes from `console_error_panic_hook`, which is
+ * separate from the thrown value. So the recovery classifier has to treat a
+ * bare `unreachable` as device loss too, or the compositor tears down and
+ * never rebuilds and the preview stays frozen forever.
+ */
+const WASM_TRAP = new Error("unreachable");
 
 const PANIC = new Error(
 	"panicked at wgpu-29.0.4\\src\\backend\\webgpu.rs:2331:63:\ncalled `Result::unwrap()` on an `Err` value: JsValue(RangeError: Failed to execute 'createBuffer' on 'GPUDevice': createBuffer failed, size is too large for the implementation when mappedAtCreation == true",
@@ -82,6 +95,7 @@ mock.module("artidor-wasm", () => ({
 	},
 	renderFrame: (frame: { time: number }) => {
 		calls.renderFrame.push(frame.time);
+		if (failRenderTrap) throw WASM_TRAP;
 		if (failRenderPanic) throw PANIC;
 		if (failRenderPlain) throw new Error("Invalid frame descriptor: bad field");
 	},
@@ -113,6 +127,7 @@ function resetCalls() {
 	calls.uploadTexture.length = 0;
 	calls.releaseTexture.length = 0;
 	calls.getCompositorCanvas = 0;
+	failRenderTrap = false;
 	failRenderPanic = false;
 	failRenderPlain = false;
 	failUploadPanic = false;
@@ -206,6 +221,36 @@ describe("wasm compositor GPU recovery", () => {
 			{ id: "tex-a", source, width: 320, height: 200 },
 		]);
 		expect(calls.uploadTexture.filter((id) => id === "tex-a").length).toBe(2);
+	});
+
+	test("bare wasm trap (RuntimeError: unreachable) recovers and keeps rendering", async () => {
+		// Regression: a Rust panic reaches JS as `RuntimeError: unreachable`.
+		// The classifier used to miss it (it only matched the "panicked at"
+		// console text), so the device was never rebuilt and the preview
+		// stayed frozen for the rest of the session.
+		const canvas = makeCanvas(1280, 720);
+		wasmCompositor.ensureInitializedWithCanvas({
+			canvas,
+			width: 1280,
+			height: 720,
+		});
+		wasmCompositor.render({ time: 0, width: 1280, height: 720 } as never);
+
+		failRenderTrap = true;
+		expect(() =>
+			wasmCompositor.render({ time: 1, width: 1280, height: 720 } as never),
+		).not.toThrow();
+		expect(wasmCompositor.inRecovery).toBe(true);
+		expect(calls.destroyGpu).toBe(1);
+
+		await wasmCompositor.whenRecovered();
+		expect(wasmCompositor.inRecovery).toBe(false);
+
+		// Renders resume against the rebuilt device — the preview recovers
+		// instead of staying frozen until a full page reload.
+		failRenderTrap = false;
+		wasmCompositor.render({ time: 2, width: 1280, height: 720 } as never);
+		expect(calls.renderFrame.length).toBe(3);
 	});
 
 	test("plain (non-GPU) errors propagate and never trigger recovery", () => {
