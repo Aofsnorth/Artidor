@@ -23,6 +23,15 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-10-01-audio-tab-crash-fix",
+		date: "2026-10-01",
+		tag: "fix",
+		title: "Audio tab no longer crashes the editor",
+		items: [
+			"Opening the Audio tab in a deployed build crashed the whole editor ('Editor hit a snag'). The browser bundle validated server secrets that are never exposed to it; the Audio tab was the only panel loading that code. Public settings are now read separately, so the tab opens normally.",
+		],
+	},
+	{
 		id: "2026-09-30-editor-freezes-after-gpu-panic",
 		date: "2026-09-30",
 		tag: "fix",

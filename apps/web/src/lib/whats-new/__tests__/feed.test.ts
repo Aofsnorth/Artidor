@@ -56,9 +56,9 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes the GPU freeze recovery fix", () => {
+	test("the newest entry describes the Audio tab crash fix", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-09-30-editor-freezes-after-gpu-panic");
+		expect(getLatestWhatsNewId()).toBe("2026-10-01-audio-tab-crash-fix");
 	});
 });
