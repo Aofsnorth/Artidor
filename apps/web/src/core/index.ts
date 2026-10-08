@@ -13,6 +13,7 @@ import { DiagnosticsManager } from "./managers/diagnostics-manager";
 import { TeleprompterManager } from "./managers/teleprompter-manager";
 import { AIManager } from "./managers/ai-manager";
 import { CollabManager } from "./managers/collab-manager";
+import { videoCache } from "@/services/video-cache/service";
 import { registerDefaultEffects } from "@/lib/effects";
 import { registerDefaultMasks } from "@/lib/masks";
 import { registerDefaultTransitions } from "@/lib/transitions";
@@ -320,7 +321,7 @@ export class EditorCore {
 							editingGroupId: this.timeline.getEditingGroupId(),
 							projectUpdatedAt:
 								this.project.getActive()?.metadata.updatedAt?.toISOString?.() ??
-								null,
+							null,
 						};
 					},
 					/**
@@ -333,6 +334,8 @@ export class EditorCore {
 					 * treats it like any other retimable element.
 					 */
 					insertMockVideo,
+					/** Live video-cache stats for dev diagnostics / Playwright probes. */
+					videoCacheStats: () => videoCache.getStats(),
 					insertMockVideos: (
 						count: number,
 						opts?: { durationSeconds?: number },

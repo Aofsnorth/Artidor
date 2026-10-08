@@ -473,9 +473,12 @@ export class AudioManager {
 	}
 
 	private restartPlayback(): void {
-		this.disposeSinks();
-		this.preparedClipBuffers.clear();
-		this.decodedBuffers.clear();
+		// Content-addressed caches (decodedBuffers keyed by source, prepared
+		// clips keyed by id + geometry) survive a structural edit: prune only
+		// entries no live clip can hit instead of clearing everything. A full
+		// clear forced complete re-decode of every clip on the very next play
+		// — an audible gap after each edit while playing.
+		this.pruneAudioCachesToTimeline();
 		void this.startPlayback();
 	}
 

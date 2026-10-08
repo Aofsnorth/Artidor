@@ -101,7 +101,9 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 					const waveMod = 0.08 * Math.sin(now * 7 + i * 1.15);
 					targetScales[i] = Math.min(
 						1.0,
-						Math.max(0.18, level * 1.35 + waveMod),
+						// Floor high enough that a bar never collapses to a
+						// speck (2-3 px reads as a dot at this size).
+						Math.max(0.3, level * 1.35 + waveMod),
 					);
 				}
 				hasAudioSignal = totalEnergy > 0.03;
@@ -111,8 +113,8 @@ export const MiniAudioVisualizer = memo(function MiniAudioVisualizer() {
 			// drive a fluid travelling wave so the button visibly animates during playback.
 			if (!hasAudioSignal) {
 				for (let i = 0; i < MINI_BARS.length; i++) {
-					const wave = 0.2 + 0.65 * (0.5 + 0.5 * Math.sin(now * 6.5 + i * 1.1));
-					targetScales[i] = Math.min(1.0, Math.max(0.15, wave));
+					const wave = 0.35 + 0.5 * (0.5 + 0.5 * Math.sin(now * 6.5 + i * 1.1));
+					targetScales[i] = Math.min(1.0, Math.max(0.3, wave));
 				}
 			}
 

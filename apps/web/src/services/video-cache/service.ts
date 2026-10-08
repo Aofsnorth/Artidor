@@ -5,26 +5,32 @@ import {
 	CanvasSink,
 	type WrappedCanvas,
 } from "mediabunny";
-import { buildGOPIndex, type GOPIndex } from "./gop-index";
+import {
+	buildGOPIndex,
+	findNearestKeyframe,
+	type GOPIndex,
+} from "./gop-index";
+
+/**
+ * Scrub settle window: while the playhead is being dragged, seek requests
+ * flood in faster than any decode. Hold the picture (no decodes) until the
+ * requests pause for this long, then fetch once for the final position —
+ * chasing every intermediate position made frames land late in bursts
+ * (fast-forward / repeat / freeze artifacts during a fast drag).
+ */
+const SCRUB_SETTLE_MS = 120;
 
 /**
  * Number of frames to prefetch ahead of the playhead during forward
  * playback. The original value of 1 gave only ~16 ms of buffer at 60 fps.
- * 6 frames gives ~100 ms of buffer — enough to absorb decode spikes on
- * long/high-GOP clips while keeping the prefetch batch small. A smaller
- * batch completes sooner, so `iterateToTime` waits less for the prefetch
- * promise and the playhead reaches the next frame faster.
+ * 10 frames gives ~333 ms of runway at 30 fps — deep enough to absorb a
+ * GC pause or a WebCodecs decode spike without the compositor ever
+ * awaiting a decode, which is what keeps playback spinner-free.
  */
-const PREFETCH_BUFFER_SIZE = 6;
+const PREFETCH_BUFFER_SIZE = 10;
 
-/**
- * Upper bound on project-frame times the prefetch pipeline may be working on
- * at once (see `createProjectFrameGrid`). Equals the prefetch buffer so the
- * sink holds the same number of in-flight decoded frames as the plain
- * sequential iterator did — mediabunny caps its own decoded-sample queue, and
- * the grid never asks for more frames than the buffer can hold.
- */
-const MAX_GRID_POINTS_IN_FLIGHT = PREFETCH_BUFFER_SIZE;
+/** Exposed for the prefetch-grid performance tests. */
+export const PREFETCH_BUFFER = PREFETCH_BUFFER_SIZE;
 
 /**
  * Bounds on the project frame step learned from `getFrameAt` calls, in
@@ -38,14 +44,14 @@ const MAX_FRAME_STEP_SECONDS = 0.25;
 /**
  * CanvasSink pool size. Must comfortably exceed the prefetch buffer plus the
  * current frame plus any frame the compositor is still holding a reference to.
- * With a prefetch buffer of 6 + current + compositor hold, 12 gives
+ * With a prefetch buffer of 10 + current + compositor holds, 14 gives
  * headroom for the next batch to decode without churn.
  *
  * Pooled canvases are reused round-robin. Never retain raw WrappedCanvas
  * objects beyond the current frame / short prefetch window — old canvas
  * references silently flip to newer pixels.
  */
-const SINK_POOL_SIZE = 12;
+const SINK_POOL_SIZE = 14;
 
 /**
  * Maximum number of live video sinks (one `Input` + one video decoder +
@@ -151,11 +157,26 @@ interface VideoSinkData {
 	/** Duration of the last source frame seen, used to keep the grid spacing
 	 * at least one source frame so it never clones the same frame twice. */
 	sourceFrameDuration: number;
-	/** Monotonic counter: higher means this sink was used more recently. */
-	lastUsedAt: number;
-	/** In-flight `getFrameAt` / `prewarm` calls. LRU eviction skips these. */
-	activeRequests: number;
-}
+		/** Monotonic counter: higher means this sink was used more recently. */
+		lastUsedAt: number;
+			/** In-flight `getFrameAt` / `prewarm` calls. LRU eviction skips these. */
+		activeRequests: number;
+		/**
+		 * Running background catch-up decode (stale-serve playback). Null when
+		 * idle; rapid scrub requests only record `pendingExactTime` while this
+		 * runs, and the trailing fetch targets the newest position.
+		 */
+		backgroundTask: Promise<void> | null;
+		/**
+		 * Newest requested frame time while a background fetch is running.
+		 * Debounces rapid scrubbing into one trailing fetch per settle.
+		 */
+		pendingExactTime: number | null;
+		/** performance.now() of the most recent getFrameAt (scrub-settle input). */
+		lastRequestAt: number;
+		/** Whether the most recent getFrameAt was a forward playback step. */
+		lastRequestForward: boolean;
+	}
 
 /**
  * Frame source used by the prefetch pipeline. `canvasesAtTimestamps` yields
@@ -168,28 +189,21 @@ type PrefetchIterator = AsyncGenerator<
 	unknown
 >;
 
-/** Backpressure counters for one project-frame grid. */
+/** Backpressure state for one project-frame grid. */
 interface GridState {
-	/** Grid times handed to the sink whose frame has not been delivered yet. */
-	inFlight: number;
-	/** Resolvers waiting for `inFlight` to drop. */
-	waiters: Array<() => void>;
 	/** Set when the prefetch pipeline abandons this grid. */
 	done: boolean;
 }
 
 /**
- * Ends a grid and wakes everything waiting on it. A sink whose frame source is
- * discarded is blocked inside the grid waiting for a time that will never come
- * (mediabunny does not forward `return()` to the timestamp iterable), so this
- * is what lets its decoder pump finish and close instead of hanging.
+ * Ends a grid. The sink's decoder pump is parked inside the timestamp
+ * iterator (mediabunny pulls times one at a time); marking the grid done
+ * makes the next `next()` return done, which ends the pump's `for await`
+ * and lets it flush and close.
  */
 function closeGrid(grid: GridState | null): void {
 	if (!grid || grid.done) return;
 	grid.done = true;
-	const waiters = grid.waiters;
-	grid.waiters = [];
-	for (const resolve of waiters) resolve();
 }
 
 /**
@@ -315,10 +329,25 @@ export class VideoCache {
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
 
-		// Increment seek generation to invalidate stale seeks.
-		// When a new seek comes in while an old one is still processing,
-		// the old one checks `seekGeneration` and bails out early.
-		sinkData.seekGeneration++;
+		// Invalidate in-flight work only when the playhead jumped or moved
+		// backwards (a scrub or seek): those decodes would serve a position the
+		// user already left. Steady forward playback must NOT invalidate — the
+		// chained request runs right after the in-flight one anyway, and
+		// aborting it makes slow decodes (4K, software codecs) livelock: every
+		// tick kills the previous decode, nothing ever completes, and the
+		// preview freezes on the last frame while the decoder churns.
+		const previousTime = sinkData.lastRequestedTime;
+		const isForwardStep =
+			Number.isFinite(previousTime) &&
+			time >= previousTime &&
+			time - previousTime <= MAX_FRAME_STEP_SECONDS;
+		// Scrub-settle inputs: the background fetch waits out the drag and
+		// decodes once for the final position instead of chasing each tick.
+		sinkData.lastRequestAt = performance.now();
+		sinkData.lastRequestForward = isForwardStep;
+		if (!isForwardStep) {
+			sinkData.seekGeneration++;
+		}
 		const myGeneration = sinkData.seekGeneration;
 
 		// Learn the project frame grid from the present path. Consecutive
@@ -392,10 +421,6 @@ export class VideoCache {
 		sinkData: VideoSinkData;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
-		// Check if this seek is still the latest one — bail out if a newer seek
-		// has been requested while we were waiting in the queue.
-		const myGeneration = sinkData.seekGeneration;
-
 		// 1. Consume from the prefetch buffer if the next frame is at or
 		// before the requested time. Shift frames that are before the
 		// target time (they're past their display window).
@@ -426,42 +451,103 @@ export class VideoCache {
 			return sinkData.currentFrame;
 		}
 
-		// 3. Try forward iteration (cheaper than a full seek).
-		if (
-			sinkData.iterator &&
-			sinkData.currentFrame &&
-			time >= sinkData.lastTime &&
-			time < sinkData.lastTime + FORWARD_ITERATE_WINDOW_SECONDS
-		) {
-			const frame = await this.iterateToTime({
+		// 3. Miss. Never block the caller on a decode: the playhead runs on a
+		// real-time clock, so a slow decode would death-spiral the preview
+		// into a freeze (and a big jump would hold the OLD frame on screen
+		// for the whole GOP-walk decode — reads as the clip "restarting").
+		//
+		// Rapid scrubbing is debounced: while a fetch is running, newer
+		// requests only record their position (`pendingExactTime`) and one
+		// trailing fetch targets the newest position. Chasing every
+		// intermediate position made frames land late in bursts (fast-forward
+		// / repeat artifacts during a fast drag).
+		if (!sinkData.backgroundTask) {
+			this.startBackgroundFetch({
 				sinkData,
-				targetTime: time,
-				generation: myGeneration,
+				time,
 			});
-			// Bail out if stale
-			if (sinkData.seekGeneration !== myGeneration) return null;
-			if (frame) {
-				if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
-					this.startPrefetch({ sinkData });
-				}
-				return frame;
-			}
+		} else {
+			sinkData.pendingExactTime = time;
 		}
 
-		// 4. Fall back to a full seek.
-		const frame = await this.seekToTime({
-			sinkData,
-			time,
-			generation: myGeneration,
-		});
-		// Bail out if stale
-		if (sinkData.seekGeneration !== myGeneration) return null;
-		if (frame) {
-			if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
-				this.startPrefetch({ sinkData });
+		return sinkData.currentFrame;
+	}
+
+	/**
+	 * Background fetch for the frame at `time`: a nearest-keyframe hop first
+	 * (a single-frame decode that lands within ~10-30 ms even for a jump of
+	 * minutes), then the exact frame. When it settles, any newer recorded
+	 * target (`pendingExactTime`) is fetched in turn — one trailing fetch
+	 * per settle instead of one per scrub tick.
+	 */
+	private startBackgroundFetch({
+		sinkData,
+		time,
+	}: {
+		sinkData: VideoSinkData;
+		time: number;
+	}): void {
+		const fetchTarget = async (target: number, gen: number): Promise<void> => {
+			try {
+				const keyframeFrame = await this.nearestKeyframeFrame({
+					sinkData,
+					time: target,
+					generation: gen,
+				});
+				if (keyframeFrame) {
+					sinkData.currentFrame = keyframeFrame;
+					sinkData.lastTime = keyframeFrame.timestamp;
+					// The old iterator/buffer point at the previous position —
+					// the jump invalidates them, and the exact fetch below
+					// rebuilds both from the new anchor.
+					this.releasePrefetchIterator(sinkData);
+					sinkData.prefetchBuffer = [];
+				}
+				await this.catchUpExact({
+					sinkData,
+					time: target,
+					generation: gen,
+				});
+			} catch {
+				// The next request re-runs the ladder via its own path.
 			}
-		}
-		return frame;
+		};
+
+		sinkData.pendingExactTime = null;
+		const task = (async () => {
+			let target = time;
+			for (;;) {
+				// Scrub settle: while the playhead is still being dragged
+				// (non-forward requests flooding in), hold off decoding and
+				// keep tracking the newest recorded position. One fetch per
+				// settle instead of per tick.
+				while (
+					!sinkData.lastRequestForward &&
+					performance.now() - sinkData.lastRequestAt < SCRUB_SETTLE_MS
+				) {
+					await new Promise((resolve) => setTimeout(resolve, 30));
+					const pending = sinkData.pendingExactTime;
+					if (pending !== null) {
+						sinkData.pendingExactTime = null;
+						target = pending;
+					}
+					if (sinkData.lastRequestForward) break; // playback resumed
+				}
+
+				await fetchTarget(target, sinkData.seekGeneration);
+				const pending = sinkData.pendingExactTime;
+				sinkData.pendingExactTime = null;
+				if (pending === null) break;
+				target = pending;
+			}
+		})();
+
+		sinkData.backgroundTask = task.finally(() => {
+			sinkData.backgroundTask = null;
+			if (typeof window !== "undefined") {
+				window.dispatchEvent(new CustomEvent("artidor:video-frame-updated"));
+			}
+		});
 	}
 
 	private isFrameValid({
@@ -550,7 +636,6 @@ export class VideoCache {
 			if (sinkData.seekGeneration !== generation) return null;
 
 			this.releasePrefetchIterator(sinkData);
-
 			sinkData.prefetchBuffer = [];
 
 			// Use getCanvas() for single-frame retrieval instead of
@@ -675,6 +760,18 @@ export class VideoCache {
 	 * delivered frame frees a slot, so a blocked sink always has an in-flight
 	 * frame to hand to whoever is pulling and the gate can never deadlock.
 	 */
+	/**
+	 * Lazily produces the source times of the upcoming project frames, anchored
+	 * at the playhead and advancing by one grid step.
+	 *
+	 * Deliberately ungated: mediabunny's decoder pump applies its own
+	 * end-to-end backpressure (it parks once ~8 decoded samples or 40 encoded
+	 * packets are queued, and only pulls the next timestamp after the consumer
+	 * drains one), so adding an in-flight counter here would create a wait
+	 * cycle — pump waits for the gate, gate waits for deliveries, deliveries
+	 * wait for the pump. The consumer-side buffer cap (prefetchNextFrame stops
+	 * pulling at PREFETCH_BUFFER_SIZE) is the real throttle.
+	 */
 	private createProjectFrameGrid({
 		sinkData,
 		from,
@@ -682,28 +779,29 @@ export class VideoCache {
 		sinkData: VideoSinkData;
 		from: number;
 	}): AsyncIterable<number> {
-		const grid: GridState = { inFlight: 0, waiters: [], done: false };
+		const grid: GridState = { done: false };
 		sinkData.grid = grid;
 		let cursor = from;
 		return {
 			[Symbol.asyncIterator]: () => ({
+				// mediabunny's `toAsyncIterator` unwraps the iterable with
+				// `yield* source[Symbol.asyncIterator]()`, which requires the
+				// returned iterator to be async-iterable itself (a raw
+				// `{ next, return }` object throws "not async iterable").
+				[Symbol.asyncIterator]() {
+					return this;
+				},
 				next: async (): Promise<IteratorResult<number>> => {
-					while (grid.inFlight >= MAX_GRID_POINTS_IN_FLIGHT && !grid.done) {
-						await new Promise<void>((resolve) => {
-							grid.waiters.push(resolve);
-						});
-					}
 					// The prefetch pipeline dropped this frame source.
 					if (grid.done) return { value: undefined, done: true };
 					const step = this.resolveGridStep({ sinkData });
 					// Stay ahead of the playhead even if it moved on while the
 					// sink was working through the previous point.
 					cursor = Math.max(cursor + step, sinkData.lastRequestedTime + step);
-					grid.inFlight++;
 					return { value: cursor, done: false };
 				},
 				return: async (): Promise<IteratorResult<number>> => {
-					closeGrid(grid);
+					grid.done = true;
 					return { value: undefined, done: true };
 				},
 			}),
@@ -725,13 +823,6 @@ export class VideoCache {
 		const iterator = sinkData.iterator;
 		if (!iterator) return null;
 		const { value, done } = await iterator.next();
-		const grid = sinkData.grid;
-		if (grid && grid.inFlight > 0) {
-			grid.inFlight--;
-			const waiters = grid.waiters;
-			grid.waiters = [];
-			for (const resolve of waiters) resolve();
-		}
 		if (done) return null;
 		// A project-frame time with no frame behind it (past the last frame of
 		// the clip) yields null; the caller keeps walking the grid.
@@ -750,7 +841,7 @@ export class VideoCache {
 		}
 
 		sinkData.prefetching = true;
-		sinkData.prefetchPromise = this.prefetchNextFrame({ sinkData });
+	sinkData.prefetchPromise = this.prefetchNextFrame({ sinkData });
 	}
 
 	/** Source time the next grid should start from. */
@@ -816,6 +907,90 @@ export class VideoCache {
 			sinkData.iterator = null;
 		}
 	}
+	/**
+	 * Catch the sink up to `time` without blocking the caller. Runs the same
+	 * iterate → seek ladder as the blocking path, updating `currentFrame` as
+	 * frames land; the next forward request serves whatever it produced.
+	 */
+	/**
+	 * Fetch the frame at the nearest keyframe at-or-before `time` — a
+	 * single-frame decode that lands within ~10-30 ms even for a jump of
+	 * minutes (the exact frame may need a full GOP walk). Returns null when
+	 * the GOP index isn't ready, the hop wouldn't improve the picture, or
+	 * the sink moved on.
+	 */
+	private async nearestKeyframeFrame({
+		sinkData,
+		time,
+		generation,
+	}: {
+		sinkData: VideoSinkData;
+		time: number;
+		generation: number;
+	}): Promise<WrappedCanvas | null> {
+		const gop = sinkData.gopIndex;
+		if (!gop) return null;
+		const keyframeTime = findNearestKeyframe(time, gop);
+		if (keyframeTime === null) return null;
+		// Practically on target — the exact fetch below is cheap enough.
+		if (time - keyframeTime < 1 / 1000) return null;
+		// Only hop when it actually moves the picture closer to the target
+		// than the frame already on screen (works for forward and backward
+		// jumps alike).
+		const currentTs = sinkData.currentFrame?.timestamp;
+		if (
+			currentTs !== undefined &&
+			Math.abs(time - currentTs) <= Math.abs(time - keyframeTime)
+		) {
+			return null;
+		}
+		try {
+			const frame = await sinkData.sink.getCanvas(keyframeTime);
+			if (sinkData.seekGeneration !== generation) return null;
+			return frame;
+		} catch {
+			return null;
+		}
+	}
+
+	private async catchUpExact({
+		sinkData,
+		time,
+		generation,
+	}: {
+		sinkData: VideoSinkData;
+		time: number;
+		generation: number;
+	}): Promise<void> {
+		try {
+			let frame: WrappedCanvas | null = null;
+			if (
+				sinkData.iterator &&
+				sinkData.currentFrame &&
+				time >= sinkData.lastTime &&
+				time < sinkData.lastTime + FORWARD_ITERATE_WINDOW_SECONDS
+			) {
+				frame = await this.iterateToTime({
+					sinkData,
+					targetTime: time,
+					generation,
+				});
+			}
+			if (!frame) {
+				frame = await this.seekToTime({
+					sinkData,
+					time,
+					generation,
+				});
+			}
+			if (frame && sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
+				this.startPrefetch({ sinkData });
+			}
+		} catch {
+			// The next request re-runs the ladder via its own path.
+		}
+	}
+
 	private async ensureSink({
 		mediaId,
 		file,
@@ -905,6 +1080,10 @@ export class VideoCache {
 				sourceFrameDuration: 0,
 				lastUsedAt: ++this.useCounter,
 				activeRequests: 0,
+				backgroundTask: null,
+				pendingExactTime: null,
+				lastRequestAt: 0,
+				lastRequestForward: true,
 			});
 
 			// Build the GOP index in the BACKGROUND (do NOT await it here).
@@ -1008,6 +1187,19 @@ export class VideoCache {
 				(sum, s) => sum + s.prefetchBuffer.length,
 				0,
 			),
+			/** Per-sink debug detail (dev diagnostics / Playwright probes). */
+			sinks: sinks.map((s) => ({
+				currentFrameTs: s.currentFrame?.timestamp ?? null,
+				bufferLength: s.prefetchBuffer.length,
+				bufferFirstTs: s.prefetchBuffer[0]?.timestamp ?? null,
+				bufferLastTs: s.prefetchBuffer.at(-1)?.timestamp ?? null,
+				hasIterator: s.iterator !== null,
+				frameStepSeconds: s.frameStepSeconds,
+				lastRequestedTime: s.lastRequestedTime,
+				lastTime: s.lastTime,
+				backgroundActive: s.backgroundTask !== null,
+				seekGeneration: s.seekGeneration,
+			})),
 		};
 	}
 }

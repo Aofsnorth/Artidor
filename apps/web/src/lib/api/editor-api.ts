@@ -21,6 +21,7 @@
 import type { EditorCore } from "@/core";
 import type { ToolExecutionResult } from "@/lib/ai/tools/executor";
 import type { Effect } from "@/lib/effects/types";
+import type { VideoCache } from "@/services/video-cache/service";
 
 type ToolRegistryModule = typeof import("@/lib/ai/tools/registry");
 type ToolExecutorModule = typeof import("@/lib/ai/tools/executor");
@@ -165,6 +166,8 @@ declare global {
 			 * preset flows.
 			 */
 			insertMockVideo: (opts?: { durationSeconds?: number }) => string;
+			/** Live video-cache stats for dev diagnostics / Playwright probes. */
+			videoCacheStats: () => ReturnType<VideoCache["getStats"]>;
 			insertMockVideos: (
 				count: number,
 				opts?: { durationSeconds?: number },

@@ -152,9 +152,6 @@ function PreviewCanvas({
 	const activeRenderScaleInputsRef = useRef("");
 	const renderTokenRef = useRef(0);
 	const renderStartRef = useRef(0);
-	// Track whether playback was playing before a render froze it,
-	// so we can resume after the render completes.
-	const wasPlayingBeforeRenderRef = useRef(false);
 	const perfTrackerRef = useRef(new RenderPerfTracker());
 	const qualityGovernorRef = useRef(new PreviewQualityGovernor());
 	const performanceContextRef = useRef("");
@@ -247,10 +244,14 @@ function PreviewCanvas({
 			if (!canvasRef.current || !renderTree) return;
 
 			// Loading overlay check: if a render is in flight and has exceeded
-			// the 80 ms threshold, show the overlay via direct DOM manipulation
+			// the threshold, show the overlay via direct DOM manipulation
 			// (NOT React state — setState inside rAF causes re-render jank).
-			const LOADING_THRESHOLD_MS = 80;
+			// Paused-scrub only: during playback a slow frame reads as a brief
+			// freeze (the last frame stays on screen), which is far less
+			// disruptive than a spinner flashing over moving video.
+			const LOADING_THRESHOLD_MS = 200;
 			if (
+				!isPlaying &&
 				renderingRef.current &&
 				renderStartRef.current > 0 &&
 				performance.now() - renderStartRef.current > LOADING_THRESHOLD_MS
@@ -410,19 +411,7 @@ function PreviewCanvas({
 				renderStartRef.current = performance.now();
 				const token = ++renderTokenRef.current;
 
-				// Freeze: if playback is playing AND the scene/project definition
-				// changed (e.g. clip split, track edit), pause playback so the
-				// video stays on the current frame instead of advancing with a
-				// stale visual. Resume after.
-				//
-				// Only freeze for renderTree scene changes — NOT for scale changes.
-				// Freezing on scale changes causes rapid pause/play cycles that
-				// stutter audio and drop frames whenever the preview quality governor adjusts.
-				const isSceneChange = renderTree !== lastSceneRef.current;
-				if (isPlaying && isSceneChange) {
-					wasPlayingBeforeRenderRef.current = true;
-					editor.playback.pause();
-				}
+
 
 				renderer
 					.renderToCanvas({
@@ -475,11 +464,6 @@ function PreviewCanvas({
 						if (isLoadingRef.current && loadingOverlayRef.current) {
 							isLoadingRef.current = false;
 							loadingOverlayRef.current.style.opacity = "0";
-						}
-						// Resume playback if we froze it for this render.
-						if (wasPlayingBeforeRenderRef.current) {
-							wasPlayingBeforeRenderRef.current = false;
-							editor.playback.play();
 						}
 					});
 			}
@@ -564,6 +548,26 @@ function PreviewCanvas({
 			window.removeEventListener("playback-update", onSeek);
 		};
 	}, [isPlaying]);
+
+	// When the video cache lands the exact frame for a seek (background
+	// fetch), re-render once so paused scrubbing shows the refined frame
+	// instead of the keyframe placeholder. During playback the rAF loop is
+	// already running and picks the frame up on its own.
+	useEffect(() => {
+		const onFrameUpdated = () => {
+			// Bypass the delta-frame skip: the timeline frame number did not
+			// change, but the source pixels did.
+			lastFrameRef.current = -1;
+			setNeedsRender(true);
+		};
+		window.addEventListener("artidor:video-frame-updated", onFrameUpdated);
+		return () => {
+			window.removeEventListener(
+				"artidor:video-frame-updated",
+				onFrameUpdated,
+			);
+		};
+	}, []);
 
 	// Loading overlay threshold check is now merged into the main render
 	// callback (see the LOADING_THRESHOLD_MS check below). This eliminates

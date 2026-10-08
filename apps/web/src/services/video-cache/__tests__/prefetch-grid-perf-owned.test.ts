@@ -14,7 +14,11 @@
  */
 import { describe, expect, mock, test } from "bun:test";
 import type { WrappedCanvas } from "mediabunny";
-import { VideoCache } from "../service";
+import {
+	PREFETCH_BUFFER,
+	isFrameValid,
+	VideoCache,
+} from "../service";
 
 type PrefetchIterator = AsyncGenerator<WrappedCanvas | null, void, unknown>;
 
@@ -31,17 +35,11 @@ interface SinkStats {
 	canvasesAtTimestampsCalls: number;
 }
 
-interface GridState {
-	inFlight: number;
-	waiters: Array<() => void>;
-	done: boolean;
-}
-
 interface SinkData {
 	input: { dispose: () => void };
 	sink: ReturnType<typeof createFakeSink>["sink"];
 	iterator: PrefetchIterator | null;
-	grid: GridState | null;
+	grid: { done: boolean } | null;
 	currentFrame: WrappedCanvas | null;
 	prefetchBuffer: WrappedCanvas[];
 	lastTime: number;
@@ -55,6 +53,10 @@ interface SinkData {
 	sourceFrameDuration: number;
 	lastUsedAt: number;
 	activeRequests: number;
+	backgroundTask: Promise<void> | null;
+	pendingExactTime: number | null;
+	lastRequestAt: number;
+	lastRequestForward: boolean;
 }
 
 interface VideoCacheInternals {
@@ -64,6 +66,15 @@ interface VideoCacheInternals {
 	prewarmPromises: Map<string, Promise<void>>;
 	useCounter: number;
 	observeFrameStep(args: { sinkData: SinkData; time: number }): void;
+	resolveFrame(args: {
+		sinkData: SinkData;
+		time: number;
+	}): Promise<WrappedCanvas | null>;
+	nearestKeyframeFrame(args: {
+		sinkData: SinkData;
+		time: number;
+		generation: number;
+	}): Promise<WrappedCanvas | null>;
 	resolveGridStep(args: { sinkData: SinkData }): number;
 	createProjectFrameGrid(args: {
 		sinkData: SinkData;
@@ -149,13 +160,23 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 			stats.canvasesAtTimestampsCalls++;
 			const queue: Array<WrappedCanvas | null> = [];
 			let wake: (() => void) | null = null;
+			let drained: (() => void) | null = null;
 			let finished = false;
 			let previousIndex = 0;
-			// Eager pump: pulls the next time as soon as the previous one has
-			// been answered, exactly like mediabunny's decoder pump.
+			// Models mediabunny's decoder pump: it only pulls the next timestamp
+			// once its internal queue has room (maxQueueSize is 8 once decoded
+			// samples exist). This bounded pull is what makes the grid's
+			// ungated timestamp stream safe to consume.
+			const MAX_DECODE_AHEAD = 8;
 			void (async () => {
 				try {
 					for await (const time of toAsyncIterable(times)) {
+						while (queue.length >= MAX_DECODE_AHEAD && !finished) {
+							await new Promise<void>((resolve) => {
+								drained = resolve;
+							});
+						}
+						if (finished) break;
 						stats.requestedTimestamps.push(time);
 						const index = indexOf(time);
 						stats.walkedSourceFrames += Math.max(1, index - previousIndex);
@@ -183,13 +204,20 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 							wake = resolve;
 						});
 					}
-					return { value: queue.shift() ?? null, done: false };
+					const value = queue.shift() ?? null;
+					const resume = drained;
+					drained = null;
+					resume?.();
+					return { value, done: false };
 				},
 				async return() {
 					finished = true;
-					const resume = wake;
-					wake = null;
+					const resume = drained;
+					drained = null;
 					resume?.();
+					const resumeWake = wake;
+					wake = null;
+					resumeWake?.();
 					return { value: undefined, done: true };
 				},
 				[Symbol.asyncIterator]() {
@@ -199,19 +227,6 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 		},
 	};
 	return { sink, stats, pumpDone };
-}
-
-/** Waits until the eager pump is blocked inside the grid's gate. */
-async function waitForGate(
-	grid: GridState,
-	timeoutMs = 1000,
-): Promise<boolean> {
-	const deadline = Date.now() + timeoutMs;
-	while (Date.now() < deadline) {
-		if (grid.waiters.length > 0) return true;
-		await new Promise((resolve) => setTimeout(resolve, 1));
-	}
-	return false;
 }
 
 function makeSinkData(sink: SinkData["sink"]): SinkData {
@@ -233,6 +248,10 @@ function makeSinkData(sink: SinkData["sink"]): SinkData {
 		sourceFrameDuration: 0,
 		lastUsedAt: 0,
 		activeRequests: 0,
+		backgroundTask: null,
+		pendingExactTime: null,
+		lastRequestAt: 0,
+		lastRequestForward: true,
 	};
 }
 
@@ -276,6 +295,9 @@ describe("video cache: project-frame prefetch grid", () => {
 			file: fakeFile(),
 			time: projectStep,
 		});
+		// Frame fetches resolve immediately (stale-serve); the seek + prefetch
+		// run in the background task.
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
 		await settle(sinkData);
 
 		expect(stats.canvasesAtTimestampsCalls).toBeGreaterThan(0);
@@ -291,6 +313,7 @@ describe("video cache: project-frame prefetch grid", () => {
 				time: frame * projectStep,
 			});
 		}
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
 		await settle(sinkData);
 
 		const times = stats.requestedTimestamps.slice(timesBefore);
@@ -310,7 +333,7 @@ describe("video cache: project-frame prefetch grid", () => {
 		expect(stats.sequentialRenders).toBe(sequentialBefore);
 		// ~8 project frames of playback cannot ask for more grid points than
 		// the buffer plus the in-flight cap: the walk stays bounded.
-		expect(times.length).toBeLessThanOrEqual(8 + 6);
+		expect(times.length).toBeLessThanOrEqual(8 + PREFETCH_BUFFER);
 	});
 
 	test("the grid hands out no more times than the prefetch can absorb", async () => {
@@ -324,13 +347,19 @@ describe("video cache: project-frame prefetch grid", () => {
 			file: fakeFile(),
 			time: 1 / 30,
 		});
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
 		await settle(sinkData);
 
 		// Without backpressure the eager pump would decode the whole 100 s clip
-		// (6000 frames) into memory. The grid is capped at the buffer size plus
-		// the in-flight points, so it stays in the low tens of frames.
-		expect(stats.requestedTimestamps.length).toBeLessThanOrEqual(12);
-		expect(sinkData.prefetchBuffer.length).toBeLessThanOrEqual(6);
+		// (6000 frames) into memory. Two caps hold it in the low tens: the
+		// consumer stops pulling once the buffer is full, and the pump parks
+		// once its internal decode-ahead queue (8) is full.
+		expect(stats.requestedTimestamps.length).toBeLessThanOrEqual(
+			PREFETCH_BUFFER + 8 + 2,
+		);
+		expect(sinkData.prefetchBuffer.length).toBeLessThanOrEqual(
+			PREFETCH_BUFFER,
+		);
 	});
 
 	test("falls back to consecutive source frames until the project step is known", async () => {
@@ -339,6 +368,8 @@ describe("video cache: project-frame prefetch grid", () => {
 		install(cache, "cold", makeSinkData(sink));
 
 		await cache.getFrameAt({ mediaId: "cold", file: fakeFile(), time: 0 });
+		const cold = internalsOf(cache).sinks.get("cold");
+		if (cold?.backgroundTask) await cold.backgroundTask;
 
 		expect(stats.canvasesCalls).toBe(1);
 		expect(stats.canvasesAtTimestampsCalls).toBe(0);
@@ -384,7 +415,7 @@ describe("video cache: project frame step learning", () => {
 		expect(sinkData.frameStepSeconds).toBeCloseTo(1 / 30, 6);
 	});
 
-	test("the grid advances one project frame per point and blocks at the in-flight cap", async () => {
+	test("the grid hands out strictly advancing times that follow the playhead", async () => {
 		const { sink } = createFakeSink({ fps: 60, frames: 600 });
 		const cache = new VideoCache();
 		const internals = internalsOf(cache);
@@ -399,39 +430,241 @@ describe("video cache: project frame step learning", () => {
 		const iterator = iterable[Symbol.asyncIterator]();
 
 		const pulled: number[] = [];
-		for (let i = 0; i < 6; i++) {
+		for (let i = 0; i < 3; i++) {
 			const next = await iterator.next();
 			expect(next.done).toBe(false);
 			pulled.push(next.value as number);
 		}
-		// Six points = six project frames, anchored at the playhead.
+		// Each point is one project frame, anchored at the playhead.
 		expect(pulled[0]).toBeCloseTo(2 + 1 / 30, 6);
-		expect(pulled[5]).toBeCloseTo(2 + 6 / 30, 6);
-		expect(sinkData.grid?.inFlight).toBe(6);
+		expect(pulled[2]).toBeCloseTo(2 + 3 / 30, 6);
 
-		// The seventh time blocks: the sink may not run ahead of the buffer.
-		let seventh: Promise<IteratorResult<number>> | null = null;
-		seventh = iterator.next();
-		let settled = false;
-		void seventh.then(() => {
-			settled = true;
-		});
-		await Promise.resolve();
-		await Promise.resolve();
-		expect(settled).toBe(false);
+		// The grid never runs out (no in-flight cap) — backpressure lives in
+		// mediabunny's decoder pump and the consumer-side buffer cap.
+		const next = await iterator.next();
+		expect(next.done).toBe(false);
 
-		// Delivering a frame frees a slot, which unblocks the sink.
-		const grid = sinkData.grid;
-		expect(grid).not.toBeNull();
-		if (!grid) return;
-		grid.inFlight = 5;
-		for (const resume of grid.waiters.splice(0)) resume();
-		const result = await seventh;
-		expect(result.done).toBe(false);
-		expect(result.value).toBeCloseTo(2 + 7 / 30, 6);
+		// And it stays anchored to the playhead: after a big seek, the next
+		// point jumps ahead of the new position instead of catching up.
+		sinkData.lastRequestedTime = 10;
+		const afterSeek = await iterator.next();
+		expect(afterSeek.value as number).toBeCloseTo(10 + 1 / 30, 6);
 	});
 
-	test("abandoning a sink unblocks the time the sink is waiting on", async () => {
+	test("the grid survives mediabunny's toAsyncIterator unwrap", async () => {
+		// mediabunny's toAsyncIterator unwraps the iterable with
+		// `yield* source[Symbol.asyncIterator]()`, so the object the grid's
+		// @@asyncIterator method returns must itself be async-iterable. A raw
+		// `{ next, return }` object throws "yield* ... is not async iterable"
+		// inside the sink, killing every prefetch cycle.
+		const { sink } = createFakeSink({ fps: 60, frames: 600 });
+		const cache = new VideoCache();
+		const internals = internalsOf(cache);
+		const sinkData = makeSinkData(sink);
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 60;
+		sinkData.lastRequestedTime = 2;
+		const iterable = internals.createProjectFrameGrid({
+			sinkData,
+			from: 2,
+		});
+
+		const inner = iterable[Symbol.asyncIterator]();
+		expect(typeof inner[Symbol.asyncIterator]).toBe("function");
+
+		// Reproduce the exact unwrap mediabunny performs.
+		async function* toAsyncIterator(source: AsyncIterable<number>) {
+			yield* source[Symbol.asyncIterator]();
+		}
+
+		const times: number[] = [];
+		for await (const time of toAsyncIterator(iterable)) {
+			times.push(time);
+			if (times.length >= 3) break;
+		}
+		expect(times).toHaveLength(3);
+		expect(times[0]).toBeCloseTo(2 + 1 / 30, 6);
+		expect(times[2]).toBeCloseTo(2 + 3 / 30, 6);
+	});
+
+	test("a big jump hops to the nearest keyframe, then refines exactly", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 900 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "jump", makeSinkData(sink));
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 30;
+		sinkData.lastRequestedTime = 1;
+		sinkData.lastTime = 1;
+		const frames = makeSourceFrames({ fps: 30, count: 900 });
+		const stale = frameCovering(frames, 1);
+		if (!stale) throw new Error("fixture frame missing");
+		sinkData.currentFrame = stale;
+		// GOP index with keyframes every 2 s (typical screen recording).
+		const keyframeTimes: number[] = [];
+		for (let t = 0; t <= 120; t += 2) keyframeTimes.push(t);
+		sinkData.gopIndex = {
+			mediaId: "jump",
+			keyframeTimes,
+			duration: 30,
+		};
+
+		const target = 1 + 24; // a 24 s jump
+		const frame = await internalsOf(cache).resolveFrame({
+			sinkData,
+			time: target,
+		});
+
+		// The caller never blocks on a decode: the stale frame comes back
+		// immediately, the keyframe hop + exact frame land in the background.
+		expect(frame?.timestamp).toBe(1);
+
+		// And the exact-frame fetch is in flight; it lands on the target.
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeGreaterThanOrEqual(
+			target - 1 / 30,
+		);
+	});
+
+	test("nearestKeyframeFrame hops only when it improves the picture", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = new VideoCache();
+		const internals = internalsOf(cache);
+		const sinkData = makeSinkData(sink);
+		const frames = makeSourceFrames({ fps: 30, count: 1200 });
+		const keyframeTimes: number[] = [];
+		for (let t = 0; t <= 40; t += 2) keyframeTimes.push(t);
+		sinkData.gopIndex = {
+			mediaId: "hop",
+			keyframeTimes,
+			duration: 40,
+		};
+
+		// Forward jump from 1 → 25: hop to the keyframe at 24.
+		sinkData.currentFrame = frameCovering(frames, 1);
+		const forward = await internals.nearestKeyframeFrame({
+			sinkData,
+			time: 25,
+			generation: 0,
+		});
+		expect(forward?.timestamp).toBeCloseTo(24, 3);
+
+		// Backward jump from 24 → 5: hop to the keyframe at 4 (closer than 24).
+		sinkData.currentFrame = frameCovering(frames, 24);
+		const backward = await internals.nearestKeyframeFrame({
+			sinkData,
+			time: 5,
+			generation: 0,
+		});
+		expect(backward?.timestamp).toBeCloseTo(4, 3);
+
+		// Already closer than any keyframe would get us: no hop.
+		sinkData.currentFrame = frameCovering(frames, 25);
+		expect(
+			await internals.nearestKeyframeFrame({
+				sinkData,
+				time: 25,
+				generation: 0,
+			}),
+		).toBeNull();
+	});
+
+	test("rapid scrub requests collapse into one trailing fetch", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "scrub", makeSinkData(sink));
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 30;
+		sinkData.lastRequestedTime = 1;
+		sinkData.lastTime = 1;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			1,
+		);
+		// GOP index with keyframes every 2 s.
+		const keyframeTimes: number[] = [];
+		for (let t = 0; t <= 40; t += 2) keyframeTimes.push(t);
+		sinkData.gopIndex = {
+			mediaId: "scrub",
+			keyframeTimes,
+			duration: 40,
+		};
+		const internals = internalsOf(cache);
+
+		// A fast drag: three requests without awaiting between them.
+		void internals.resolveFrame({ sinkData, time: 10 });
+		void internals.resolveFrame({ sinkData, time: 20 });
+		void internals.resolveFrame({ sinkData, time: 30 });
+
+		// The running fetch records the newest target and lands there.
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		expect(sinkData.backgroundTask).toBeNull();
+		expect(sinkData.pendingExactTime).toBeNull();
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeGreaterThanOrEqual(
+			30 - 1 / 30,
+		);
+	});
+
+	test("steady forward playback does not invalidate in-flight work", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 60 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "live", makeSinkData(sink));
+
+		await cache.getFrameAt({ mediaId: "live", file: fakeFile(), time: 0 });
+		const generation = sinkData.seekGeneration;
+
+		// The next project frame is a continuation, not a seek — the decode
+		// that is already running must stay valid, or slow decodes livelock.
+		await cache.getFrameAt({
+			mediaId: "live",
+			file: fakeFile(),
+			time: 1 / 30,
+		});
+		expect(sinkData.seekGeneration).toBe(generation);
+
+		// A backward move (scrub) still invalidates.
+		await cache.getFrameAt({ mediaId: "live", file: fakeFile(), time: 0 });
+		expect(sinkData.seekGeneration).toBe(generation + 1);
+	});
+
+	test("a dry buffer serves the stale frame and catches up in the background", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 600 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "live", makeSinkData(sink));
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 30;
+		sinkData.lastRequestedTime = 1;
+		sinkData.lastTime = 1;
+		const stale = frameCovering(makeSourceFrames({ fps: 30, count: 600 }), 1);
+		if (!stale) throw new Error("fixture frame missing");
+		sinkData.currentFrame = stale;
+		sinkData.iterator = sink.canvasesAtTimestamps(
+			internalsOf(cache).createProjectFrameGrid({ sinkData, from: 1 }),
+		);
+
+		const target = 1 + 3 / 30;
+		const frame = await internalsOf(cache).resolveFrame({
+			sinkData,
+			time: target,
+		});
+		// Non-blocking: the closest decoded frame comes back immediately.
+		expect(frame).toBe(stale);
+
+		// The background catch-up then lands on a frame the service considers
+		// valid for the target time (within its jitter tolerance).
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		const served = sinkData.currentFrame;
+		expect(served).not.toBeNull();
+		expect(
+			isFrameValid({
+				frameTimestamp: served?.timestamp ?? -1,
+				frameDuration: served?.duration ?? 0,
+				time: target,
+			}),
+		).toBe(true);
+		expect(served?.timestamp ?? -1).toBeGreaterThan(stale.timestamp);
+	});
+
+	test("abandoning a sink ends the decoder pump instead of hanging it", async () => {
 		const { sink, pumpDone } = createFakeSink({ fps: 60, frames: 600 });
 		const cache = new VideoCache();
 		const sinkData = makeSinkData(sink);
@@ -446,17 +679,17 @@ describe("video cache: project frame step learning", () => {
 		expect(grid).not.toBeNull();
 		if (!grid) return;
 
-		// The pump pulls until the in-flight cap and then blocks inside the
-		// grid, waiting for a project-frame time that never comes.
-		expect(await waitForGate(grid)).toBe(true);
+		// Give the pump a moment to pull its first timestamps. Without a
+		// consumer it parks once its decode-ahead queue is full.
+		await new Promise((resolve) => setTimeout(resolve, 20));
 
-		// Seeking away (or evicting/clearing the sink) must release it, or the
-		// decoder pump would hang and its decoder would never be closed.
+		// Seeking away (or evicting/clearing the sink) must end the timestamp
+		// stream, or the decoder pump would never finish and its decoder would
+		// never be closed.
 		cache.clearVideo({ mediaId: "abandoned" });
 		await pumpDone;
 
 		expect(grid.done).toBe(true);
-		expect(grid.waiters).toHaveLength(0);
 	});
 });
 
@@ -521,7 +754,7 @@ describe("video cache: sink LRU cap", () => {
 		];
 		data.prefetching = true;
 		data.iterator = sink.canvases(0);
-		data.grid = { inFlight: 2, waiters: [], done: false };
+		data.grid = { done: false };
 		install(cache, "purge", data);
 		internals.frameChain.set("purge", Promise.resolve());
 		internals.initPromises.set("purge", Promise.resolve());

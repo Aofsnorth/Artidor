@@ -154,6 +154,13 @@ const nextConfig: NextConfig = {
 		];
 	},
 	experimental: {
+		// Turbopack's persistent FS cache materializes node_modules under
+		// .next/dev (dev) / .next (build) using NTFS junction points. This
+		// project lives on an exFAT drive (E:) where junctions cannot be
+		// created ("os error 1: Incorrect function") and Turbopack panics, so
+		// the cache is disabled on Windows. Linux/CI keeps the default.
+		turbopackFileSystemCacheForDev: process.platform !== "win32",
+		turbopackFileSystemCacheForBuild: process.platform !== "win32",
 		// Keep client-router cache entries warm longer so panel/tab navigation
 		// and back/forward in the editor don't refetch JS/data unnecessarily.
 		staleTimes: {

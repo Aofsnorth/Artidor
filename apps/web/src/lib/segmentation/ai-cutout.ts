@@ -9,44 +9,64 @@
  *  - Lazy dynamic import: zero initial bundle cost. transformers.js
  *    + the RMBG-1.4 ONNX model are only fetched when the user first
  *    invokes "AI cutout".
- *  - Inference runs on WASM/WebGPU at 1024px (capped), taking ~1-3s
- *    on a typical laptop. Heavier than person segmentation but
- *    handles any subject.
- *  - All processing is non-blocking (WASM yields to the event loop).
+ *  - Inference runs in a dedicated worker (`ai-cutout.worker.ts`), so
+ *    WASM/WebGPU execution never blocks the editor UI. Pixels cross the
+ *    boundary as transferable ImageBitmaps (zero-copy).
+ *
+ * NOTE: the transformers.js import must stay inside the worker. A dynamic
+ * import from this module would land in the SSR graph and make Turbopack
+ * create a Windows junction under `.next/dev/node_modules`, which panics
+ * on exFAT drives (see ai-cutout.worker.ts).
  */
 
 import type {
 	SegmentationResult,
 	SegmentationSource,
 } from "./person-segmenter";
+import type {
+	AiCutoutWorkerRequest,
+	AiCutoutWorkerResponse,
+} from "./ai-cutout.worker";
 
-const MAX_LONG_EDGE = 1024;
+let worker: Worker | null = null;
+let requestId = 0;
+const pending = new Map<
+	number,
+	{ resolve: (bitmap: ImageBitmap) => void; reject: (error: Error) => void }
+>();
 
-let pipelineInstance: unknown | null = null;
-let pipelinePromise: Promise<unknown> | null = null;
+function getWorker(): Worker {
+	if (worker) return worker;
 
-/**
- * Lazily load and initialise the RMBG-1.4 background removal pipeline.
- * The ONNX runtime and model are fetched on first call and cached.
- */
-async function getPipeline(): Promise<unknown> {
-	if (pipelineInstance) return pipelineInstance;
-	if (pipelinePromise) return pipelinePromise;
-
-	pipelinePromise = (async () => {
-		const transformers = await import("@xenova/transformers");
-		// The RMBG/MODNet model produces a soft alpha matte. transformers.js
-		// exposes it via the "image-segmentation" pipeline with the
-		// Xenova/modnet model, which returns an array of masks.
-		const pipeline = await transformers.pipeline(
-			"image-segmentation",
-			"Xenova/modnet",
+	worker = new Worker(new URL("./ai-cutout.worker.ts", import.meta.url), {
+		type: "module",
+	});
+	worker.onmessage = (event: MessageEvent<AiCutoutWorkerResponse>) => {
+		const message = event.data;
+		const entry = pending.get(message.requestId);
+		if (!entry) return;
+		pending.delete(message.requestId);
+		if (message.type === "cutout-complete") {
+			entry.resolve(message.bitmap);
+		} else {
+			entry.reject(new Error(message.error));
+		}
+	};
+	worker.onerror = (event) => {
+		const error = new Error(
+			event.message || "AI cutout worker crashed before completing",
 		);
-		pipelineInstance = pipeline;
-		return pipeline;
-	})();
-
-	return pipelinePromise;
+		for (const entry of pending.values()) {
+			entry.reject(error);
+		}
+		pending.clear();
+	};
+	if (typeof window !== "undefined") {
+		window.addEventListener("pagehide", () => releaseAiCutout(), {
+			once: true,
+		});
+	}
+	return worker;
 }
 
 /**
@@ -62,17 +82,6 @@ export async function removeBackground({
 }: {
 	source: SegmentationSource;
 }): Promise<SegmentationResult> {
-	const pipeline = (await getPipeline()) as (
-		input: SegmentationSource,
-	) => Promise<{
-		toCanvas?: () => HTMLCanvasElement;
-		data?: Uint8ClampedArray;
-		width?: number;
-		height?: number;
-	}>;
-
-	// Cap the input resolution for performance. The model works at
-	// 1024px internally; larger inputs are downscaled before inference.
 	const srcWidth =
 		(source as HTMLImageElement).naturalWidth ??
 		(source as HTMLCanvasElement).width ??
@@ -84,81 +93,48 @@ export async function removeBackground({
 		(source as HTMLVideoElement).videoHeight ??
 		256;
 
-	const longEdge = Math.max(srcWidth, srcHeight);
-	const scale = longEdge > MAX_LONG_EDGE ? MAX_LONG_EDGE / longEdge : 1;
-	const targetWidth = Math.round(srcWidth * scale);
-	const targetHeight = Math.round(srcHeight * scale);
+	// The worker owns inference; hand it the pixels as a transferable
+	// ImageBitmap so nothing is copied.
+	const bitmap = await createImageBitmap(source as ImageBitmapSource);
+	const activeWorker = getWorker();
+	requestId += 1;
+	const id = requestId;
 
-	// Pre-scale the source to the target resolution.
-	const inputCanvas = document.createElement("canvas");
-	inputCanvas.width = targetWidth;
-	inputCanvas.height = targetHeight;
-	const inputCtx = inputCanvas.getContext("2d");
-	if (!inputCtx)
-		throw new Error("Failed to get 2d context for AI cutout input");
-	inputCtx.drawImage(
-		source as CanvasImageSource,
-		0,
-		0,
-		targetWidth,
-		targetHeight,
-	);
-
-	// Run the model.
-	const result = await pipeline(inputCanvas);
-
-	// The pipeline returns a canvas with transparency.
-	if (result.toCanvas) {
-		const outputCanvas = result.toCanvas();
-		// Scale back to original resolution.
-		if (scale < 1) {
-			const fullCanvas = document.createElement("canvas");
-			fullCanvas.width = srcWidth;
-			fullCanvas.height = srcHeight;
-			const ctx = fullCanvas.getContext("2d");
-			if (!ctx)
-				throw new Error("Failed to get 2d context for AI cutout output");
-			ctx.drawImage(outputCanvas, 0, 0, srcWidth, srcHeight);
-			return { canvas: fullCanvas, width: srcWidth, height: srcHeight };
-		}
-		return {
-			canvas: outputCanvas,
-			width: outputCanvas.width,
-			height: outputCanvas.height,
+	const resultBitmap = await new Promise<ImageBitmap>((resolve, reject) => {
+		pending.set(id, { resolve, reject });
+		const request: AiCutoutWorkerRequest = {
+			type: "cutout",
+			requestId: id,
+			bitmap,
 		};
-	}
+		activeWorker.postMessage(request, { transfer: [bitmap] });
+	});
 
-	// Fallback: construct canvas from raw data.
-	if (result.data && result.width && result.height) {
-		const canvas = document.createElement("canvas");
-		canvas.width = result.width;
-		canvas.height = result.height;
-		const ctx = canvas.getContext("2d");
-		if (!ctx)
-			throw new Error("Failed to get 2d context for AI cutout fallback");
-		const imageData = new ImageData(
-			new Uint8ClampedArray(result.data),
-			result.width,
-			result.height,
-		);
-		ctx.putImageData(imageData, 0, 0);
-		return {
-			canvas,
-			width: result.width,
-			height: result.height,
-		};
+	// Scale back to the original resolution. The model runs at
+	// 1024px internally; larger inputs were downscaled before inference.
+	const canvas = document.createElement("canvas");
+	canvas.width = srcWidth;
+	canvas.height = srcHeight;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		throw new Error("Failed to get 2d context for AI cutout output");
 	}
+	ctx.drawImage(resultBitmap, 0, 0, srcWidth, srcHeight);
+	resultBitmap.close();
 
-	throw new Error("AI cutout pipeline returned unexpected result format");
+	return { canvas, width: srcWidth, height: srcHeight };
 }
 
 /**
- * Release the pipeline instance and free ONNX memory.
+ * Terminate the worker and free ONNX memory.
  * Call this when background removal is no longer needed.
  */
 export function releaseAiCutout(): void {
-	if (pipelineInstance) {
-		pipelineInstance = null;
-		pipelinePromise = null;
+	if (!worker) return;
+	for (const entry of pending.values()) {
+		entry.reject(new Error("AI cutout worker released"));
 	}
+	pending.clear();
+	worker.terminate();
+	worker = null;
 }
