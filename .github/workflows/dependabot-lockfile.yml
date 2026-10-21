@@ -1,0 +1,93 @@
+name: Dependabot lockfile sync
+
+# Dependabot's npm updater only edits `package.json`; it does not regenerate
+# this repo's authoritative `bun.lock`. CI installs with
+# `bun install --frozen-lockfile`, so every dependabot PR fails on
+# "lockfile had changes, but lockfile is frozen" until the lockfile is
+# regenerated and committed to the PR branch.
+#
+# This workflow closes that loop. It never checks the PR branch out into the
+# workspace and never executes anything from it:
+#
+#   1. The workspace is the BASE branch (trusted code, the workflow file comes
+#      from there anyway).
+#   2. Only the PR's *manifests* (package.json files) are copied over. They are
+#      read as data with `git show`, never built or run.
+#   3. `bun install --lockfile-only` regenerates the lockfile. It resolves the
+#      dependency graph and installs nothing, so no dependency lifecycle script
+#      from the PR is ever executed.
+#   4. The new lockfile is committed on top of the PR head with `git
+#      read-tree` / `commit-tree`, so the PR branch keeps its own history and
+#      the PR's code is never materialised in the workspace.
+#
+# It only ever writes `bun.lock`. It never touches source files, never pushes
+# to `main`, and it only runs for PRs opened by `dependabot[bot]`.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-lockfile:
+    name: Sync bun.lock
+    runs-on: ubuntu-latest
+    # Dependabot PRs are excluded from repository workflows by default, so the
+    # job runs on pull_request_target with an explicit actor check.
+    if: github.actor == 'dependabot[bot]'
+    env:
+      # Passed through the environment instead of interpolated into `run:`
+      # blocks: a branch name is attacker-controllable text and must never be
+      # pasted straight into a shell command.
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+    steps:
+      # The base branch is the default checkout: trusted code, and the only
+      # code that runs in this job.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Copy the PR manifests into the workspace
+        run: |
+          set -eu
+          git fetch --no-tags --depth=1 origin "+pull/${PR_NUMBER}/head:pr-head"
+          for manifest in package.json apps/web/package.json packages/mcp-server/package.json; do
+            if git cat-file -e "pr-head:${manifest}" 2>/dev/null; then
+              git show "pr-head:${manifest}" > "${manifest}"
+            fi
+          done
+          echo "Manifests copied from the PR branch (data only, nothing built)."
+
+      - name: Regenerate bun.lock
+        # Not --frozen-lockfile: regenerating the lockfile is the whole point.
+        # --lockfile-only resolves the graph and installs nothing, so no
+        # dependency script from the PR runs.
+        run: bun install --lockfile-only
+
+      - name: Commit the regenerated lockfile
+        run: |
+          set -eu
+          if git diff --quiet -- bun.lock; then
+            echo "bun.lock is already in sync - nothing to commit."
+            exit 0
+          fi
+          # Build the commit on top of the PR head without checking the PR's
+          # code out: take its tree, replace only bun.lock, and commit.
+          git read-tree "pr-head^{tree}"
+          blob=$(git hash-object -w bun.lock)
+          git update-index --cacheinfo "100644,${blob},bun.lock"
+          tree=$(git write-tree)
+          commit=$(git commit-tree "${tree}" -p pr-head \
+            -m "chore: sync bun.lock with package.json")
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git push origin "${commit}:refs/heads/${PR_BRANCH}"
