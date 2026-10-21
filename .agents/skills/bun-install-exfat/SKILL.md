@@ -47,6 +47,53 @@ Procedure:
 3. `bun install --linker=hoisted` — restores only the deleted package (~30s).
 4. Verify exhaustively: `bun -e` script that extracts every `from './icons/...'` path from the barrel and asserts exists + size>0. Also confirm workspace copies (`node_modules/@artidor/*`, `artidor-wasm`) survived the reinstall.
 
+## D: is a USB SSD that corrupts data transiently (read this before blaming the code)
+
+`D:\Artidor` is a **USB-attached SSD** (`Get-Disk` shows BusType USB; C: is the
+internal NVMe). It returns *plausible but wrong* bytes for large files, and the
+damage is **transient** - re-reading the file, or copying it to a new path,
+usually yields the correct bytes again. NTFS reports the volume as healthy
+(NTFS event 98: "Volume D: is healthy"), so nothing in the event log points at
+it.
+
+Signature: **4-byte-aligned damage** (one or a few 32-bit words changed), in
+files that were recently written or read.
+
+What it looks like in practice:
+
+- `bun install` copies a package out of the C: cache onto D: and the copy is
+  corrupt even though the cache copy is byte-identical to the npm tarball.
+  Compare with the tarball, not with the cache, to see the difference.
+- A `next dev` / `turbo.exe` / `node` process **segfaults or exits with code 5
+  right after it starts**, with no error message. The same binary, byte-identical,
+  runs fine when copied to a different path.
+- A file that was correct a minute ago differs from the published package by a
+  handful of bytes.
+- Git objects go bad: `git fsck` reports CRC mismatches, `pack has bad object`,
+  `corrupt loose object`.
+
+Procedure:
+
+1. **Confirm the volume**: `Get-Disk | Format-Table Number,FriendlyName,BusType,HealthStatus`.
+   A USB bus type explains all of it.
+2. **Verify `node_modules` against the C: cache** (the cache is on C: and is
+   healthy). Compare every file of every materialised package; the ones that
+   differ are the damaged ones. Repair by writing the cache copy to a **new
+   path** and swapping it into place, then **re-read and verify** - an in-place
+   rewrite keeps the damaged copy, and a single write can be damaged too, so
+   retry until the read-back matches.
+3. **Re-verify after every `bun install`.** The install itself is what damages
+   the copies. A repair that is not followed by a re-verify will look like it
+   worked and then fail again later.
+4. **For git**: rebuild the object store from `origin` (a fresh mirror fetch
+   gives clean packs) and keep the corrupt pack as a backup **off D:**. See the
+   `artidor-git-bitrot-recovery` skill.
+5. **A segfaulting binary is a symptom, not a bug in the binary.** Check the
+   bytes against the published package first; if they match, the file on disk is
+   fine and the damage is in transit.
+
+Keep the bun cache and any backups on C:. D: is the source of the damage.
+
 ## Verification
 
 - `bun install --linker=hoisted` ends with `(no changes)`.
