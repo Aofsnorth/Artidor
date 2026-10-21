@@ -94,6 +94,46 @@ Procedure:
 
 Keep the bun cache and any backups on C:. D: is the source of the damage.
 
+## Executing a binary from D: is unreliable - the Bun shims are the usual casualty
+
+`node_modules/.bin/*.exe` are Bun-compiled launchers. Launching one from D: can
+segfault (`exit 139`) or die with `exit 5` right after it prints "Ready", with
+no error message - even though the file's bytes are identical to a working
+copy and it runs fine when copied to a different path.
+
+That is what breaks `bun run dev` (cross-env -> `next.exe`) and `turbo.exe`.
+Work around it locally by calling the JavaScript entry point directly:
+
+```bash
+cd apps/web && node ../../node_modules/next/dist/bin/next dev --turbopack -H 0.0.0.0 -p 3005
+```
+
+For the Playwright suite, point `webServer.command` at the same command (and
+`cwd` at `apps/web`) in a throwaway config; the committed config keeps using
+`bun run dev:web` because CI runs on Linux, where this does not happen.
+
+## Never delete a git object on the strength of one `git fsck`
+
+The damage is transient, so a single `git fsck` can report a perfectly good
+object as corrupt. Deleting it destroys the only good copy - that is how the
+committed `rust/wasm/pkg/artidor_wasm_bg.wasm` was lost once (it is a 3 MB
+blob, and the "corrupt" copy was the one on disk while the good one had
+already been deleted).
+
+Always re-read before concluding: `git cat-file -t <sha>` twice, and compare
+against `origin` (`git --git-dir=<mirror> cat-file blob <sha>`). Restore the
+content from `origin` and write it back with a read-back check. A blob that
+fails to inflate as a `WebAssembly.Module` is the tell-tale for the wasm
+artifact.
+
+## The wasm artifact needs periodic repair
+
+`rust/wasm/pkg/artidor_wasm_bg.wasm` is the most-read large file in the repo
+and the one D: damages most often. After every `bun install`, and whenever the
+unit suite fails with `WebAssembly.Module doesn't validate` /
+`doesn't parse`, restore it from `origin` and verify the read-back. The
+restored bytes must hash to the blob id `HEAD` points at.
+
 ## Verification
 
 - `bun install --linker=hoisted` ends with `(no changes)`.
