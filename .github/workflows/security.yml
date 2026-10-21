@@ -48,7 +48,11 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - run: bun audit
+      # GHSA-hp3w-g68c-fv3c (sprintf-js) has no fixed release yet (all <=1.1.3
+      # affected). It is a transitive dep of onnxruntime-node → global-agent →
+      # roarr and is not reachable from our code paths. Remove this ignore once
+      # upstream ships a patched version.
+      - run: bun audit --ignore GHSA-hp3w-g68c-fv3c
         continue-on-error: false
 
       - run: cargo install cargo-audit

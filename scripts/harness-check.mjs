@@ -78,10 +78,27 @@ function isExternalOrAnchor(target) {
   );
 }
 
+/**
+ * Strip blocks that are managed by an external tool, not by us.
+ *
+ * `turbo` re-adds a `<!-- BEGIN:turborepo-agent-rules -->` block to AGENTS.md
+ * before repository-scoped commands, and AGENTS.md explicitly asks for that
+ * block to be committed. The paths it mentions (`docs/README.md`,
+ * `crates/turborepo-cli/src/cli/agent_guidance.rs`) live inside the installed
+ * turbo package, NOT in this repository, so they can never resolve here and
+ * must not be treated as broken cross-references.
+ */
+function stripManagedBlocks(content) {
+  return content.replace(
+    /<!--\s*BEGIN:turborepo-agent-rules\s*-->[\s\S]*?<!--\s*END:turborepo-agent-rules\s*-->/g,
+    "",
+  );
+}
+
 let checkedLinks = 0;
 for (const source of linkSources) {
   if (!fs.existsSync(source)) continue;
-  const content = fs.readFileSync(source, "utf8");
+  const content = stripManagedBlocks(fs.readFileSync(source, "utf8"));
   for (const ref of extractReferences(content)) {
     if (isExternalOrAnchor(ref)) continue;
     // Skip template/placeholder paths like `features/<slug>/FEATURE.md`.

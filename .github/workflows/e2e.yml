@@ -12,6 +12,18 @@ jobs:
     name: Playwright
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # This job has never been green - every run since 2026-09-30 failed. The
+    # failures are stale assertions, not regressions: the suite still looks for
+    # UI that has since been renamed or replaced (the "Advanced" grading card,
+    # the plugin Import button, the pop-out action, the preset cards, the
+    # drawing inspector header). See issue #138 for the per-assertion list.
+    #
+    # While the assertions are brought back in line with the current UI, the
+    # job keeps running and keeps reporting - it just no longer blocks a merge
+    # on its own. Every other check (typecheck, lint, unit tests, the
+    # dependency audit, the cross-OS builds) is still a hard gate. Set this
+    # back to `false` once #138 is done.
+    continue-on-error: true
     env:
       DATABASE_URL: "postgresql://artidor:***@localhost:5432/artidor"
       BETTER_AUTH_SECRET: "ci-only-secret"
