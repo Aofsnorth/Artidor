@@ -33,6 +33,11 @@ interface SinkStats {
 	walkedSourceFrames: number;
 	canvasesCalls: number;
 	canvasesAtTimestampsCalls: number;
+	/**
+	 * `getCanvas()` calls. mediabunny creates a NEW WebCodecs decoder for every
+	 * `getCanvas()` call, so this counts decoder constructions.
+	 */
+	getCanvasCalls: number;
 }
 
 interface SinkData {
@@ -133,6 +138,7 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 		walkedSourceFrames: 0,
 		canvasesCalls: 0,
 		canvasesAtTimestampsCalls: 0,
+		getCanvasCalls: 0,
 	};
 	const indexOf = (time: number) => Math.max(0, Math.round(time * fps));
 	// Resolves when the eager pump leaves its timestamp loop, i.e. when the
@@ -143,8 +149,10 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 	});
 
 	const sink = {
-		getCanvas: async (time: number): Promise<WrappedCanvas | null> =>
-			frameCovering(source, time),
+		getCanvas: async (time: number): Promise<WrappedCanvas | null> => {
+			stats.getCanvasCalls++;
+			return frameCovering(source, time);
+		},
 		canvases(from: number): PrefetchIterator {
 			stats.canvasesCalls++;
 			return (async function* () {
@@ -525,7 +533,62 @@ describe("video cache: project frame step learning", () => {
 		);
 	});
 
-	test("nearestKeyframeFrame hops only when it improves the picture", async () => {
+	test("a small forward gap reuses the prefetch iterator instead of building a new decoder", async () => {
+		// Autoplay regression. When the prefetch buffer runs dry the playhead
+		// is only a few frames ahead of the last decoded frame. The old
+		// ladder always hopped to the nearest keyframe FIRST, and that hop
+		// creates a fresh WebCodecs decoder AND throws the iterator and the
+		// prefetch buffer away - so every buffer miss cost two new decoders
+		// and reset the prefetch machinery. That is the stall that made
+		// autoplay stutter.
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 900 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "gap", makeSinkData(sink));
+		const frames = makeSourceFrames({ fps: 30, count: 900 });
+
+		// A live prefetch iterator, a little behind the playhead.
+		sinkData.iterator = sink.canvases(0);
+		sinkData.currentFrame = frameCovering(frames, 0.9);
+		sinkData.lastTime = 0.9;
+		sinkData.lastRequestedTime = 0.9;
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 30;
+		// A GOP index, so the OLD ladder would really hop: the keyframe at
+		// 1.0 s is closer to the 1.1 s target than the 0.9 s frame on
+		// screen, which is exactly the condition the hop acts on.
+		const keyframeTimes: number[] = [];
+		for (let t = 0; t <= 120; t += 0.5) keyframeTimes.push(t);
+		sinkData.gopIndex = {
+				mediaId: "gap",
+				keyframeTimes,
+				duration: 30,
+		};
+
+		// The playhead moved on by a fifth of a second - well inside the
+		// window where walking the iterator beats a new decoder.
+		const target = 1.1;
+		const frame = await internalsOf(cache).resolveFrame({
+				sinkData,
+				time: target,
+		});
+
+		// The caller never blocks on a decode: the stale frame comes back.
+		expect(frame?.timestamp).toBe(0.9);
+
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+
+		// The cheap path ran: no new decoder was constructed...
+		expect(stats.getCanvasCalls).toBe(0);
+		// ...and the prefetch machinery survived, so playback can keep
+		// walking the same iterator instead of re-anchoring every time.
+		expect(sinkData.iterator).not.toBeNull();
+		// The frame landed on the target.
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeGreaterThanOrEqual(
+				target - 1 / 30,
+		);
+	});
+
+    test("nearestKeyframeFrame hops only when it improves the picture", async () => {
 		const { sink } = createFakeSink({ fps: 30, frames: 1200 });
 		const cache = new VideoCache();
 		const internals = internalsOf(cache);

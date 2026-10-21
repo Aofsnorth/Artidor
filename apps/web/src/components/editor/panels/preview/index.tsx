@@ -431,7 +431,22 @@ function PreviewCanvas({
 							// Cache only settled paused/scrubbed frames. During playback the
 							// sequential video cache already handles nearby frames; snapshotting
 							// every composited frame adds GPU copies and memory pressure.
-							if (!isPlaying && typeof createImageBitmap === "function") {
+							//
+							// While the playhead is being DRAGGED the frame on screen is a
+							// stale hold: the decode is debounced until the drag settles, so
+							// the picture does not change even though the frame index does.
+							// Snapshotting it copies a full canvas (4-8 MB of GPU readback)
+							// on every animation frame - hundreds of MB/s for a picture that
+							// is replaced on the next rAF - and it thrashes the cache LRU
+							// with entries no one will ever read, because the cache key is
+							// the frame index and that changes on every tick. The frame the
+							// user settles on is snapshotted when the drag ends.
+							const isScrubbing = editor.playback.getIsScrubbing();
+							if (
+								!isPlaying &&
+								!isScrubbing &&
+								typeof createImageBitmap === "function"
+							) {
 								const sourceCanvas = renderer.getOutputCanvas();
 								const key = `${frame}:${scale.toFixed(3)}`;
 								createImageBitmap(sourceCanvas)
