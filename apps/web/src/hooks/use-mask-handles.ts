@@ -58,12 +58,19 @@ export function useMaskHandles({
 	);
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 
-	const elementsWithBounds = getVisibleElementsWithBounds({
-		tracks,
-		currentTime,
-		canvasSize,
-		mediaAssets,
-	});
+	// The bounds scan walks every visible element of every track and allocates a
+	// media-asset map, and this hook re-renders on every playback tick. Only the
+	// SELECTED element's bounds are used, so the scan only runs when there is
+	// exactly one element to look up.
+	const elementsWithBounds =
+		selectedElements.length === 1
+			? getVisibleElementsWithBounds({
+					tracks,
+					currentTime,
+					canvasSize,
+					mediaAssets,
+				})
+			: [];
 
 	const selectedWithMask =
 		selectedElements.length === 1

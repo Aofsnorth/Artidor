@@ -227,6 +227,20 @@ function resolveDecodeSize({
 
 const FORWARD_ITERATE_WINDOW_SECONDS = 8;
 
+/**
+ * Largest forward gap that is cheaper to close with the existing prefetch
+ * iterator than with a fresh decode.
+ *
+ * A new WebCodecs decoder plus a GOP walk costs ~10-30 ms; walking the
+ * iterator costs roughly a millisecond per frame. So the break-even point is a
+ * few dozen frames — a gap of a few hundred milliseconds. Beyond that the
+ * exact seek (or the keyframe hop) wins, and the iterator is the wrong tool.
+ *
+ * This is the window in which the prefetch path is *preferred*; the iterator
+ * stays valid for the whole FORWARD_ITERATE_WINDOW_SECONDS.
+ */
+const PREFER_ITERATE_GAP_SECONDS = 0.5;
+
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
@@ -489,6 +503,28 @@ export class VideoCache {
 	}): void {
 		const fetchTarget = async (target: number, gen: number): Promise<void> => {
 			try {
+				// Cheap path first. The prefetch iterator can usually walk
+				// forward to the target without a new decoder. The keyframe hop
+				// below creates a fresh WebCodecs decoder AND throws the
+				// iterator and the prefetch buffer away, so running it first
+				// turned every prefetch-buffer miss into two new decoders and
+				// reset the prefetch machinery — the exact stall that made
+				// autoplay stutter whenever the buffer ran dry. Hop only when
+				// the cheap path does not apply (a genuine jump) or fails.
+				if (this.canPreferIterate(sinkData, target)) {
+					const frame = await this.iterateToTime({
+						sinkData,
+						targetTime: target,
+						generation: gen,
+					});
+					if (frame) {
+						if (sinkData.prefetchBuffer.length < PREFETCH_BUFFER_SIZE) {
+							this.startPrefetch({ sinkData });
+						}
+						return;
+					}
+					// The iterator ran dry — fall through to the jump path.
+				}
 				const keyframeFrame = await this.nearestKeyframeFrame({
 					sinkData,
 					time: target,
@@ -951,6 +987,21 @@ export class VideoCache {
 		} catch {
 			return null;
 		}
+	}
+
+	/**
+	 * True when the prefetch iterator can close the gap to `time` cheaply
+	 * enough to be preferred over a fresh decode.
+	 *
+	 * The iterator walks the source frames it already has open, so it costs
+	 * about a millisecond per frame and needs no new decoder. It is only the
+	 * right tool for a SMALL forward gap: a big jump has to re-anchor the
+	 * decoder, and the keyframe hop is what makes that land quickly.
+	 */
+	private canPreferIterate(sinkData: VideoSinkData, time: number): boolean {
+		if (!sinkData.iterator || !sinkData.currentFrame) return false;
+		const gap = time - sinkData.lastTime;
+		return gap >= 0 && gap <= PREFER_ITERATE_GAP_SECONDS;
 	}
 
 	private async catchUpExact({
