@@ -92,7 +92,9 @@ export function Hero() {
 								fill="none"
 								xmlns="http://www.w3.org/2000/svg"
 								className="text-[#141413]"
+								aria-hidden="true"
 							>
+								<title>Artidor globe emblem</title>
 								<circle
 									cx="18"
 									cy="18"
@@ -224,8 +226,7 @@ export function Hero() {
 			{/* Architectural Telemetry Ledger Strip */}
 			<div className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-[4px] border border-[#141413]/20 bg-[#141413]/15 shadow-beautiful-sm md:grid-cols-4">
 				{STATS.map((s, idx) => {
-					const isStars = "key" in s && s.key === "stars";
-					const display = isStars ? starsLabel : s.value;
+					const display = "value" in s ? s.value : starsLabel;
 					return (
 						<div
 							key={s.labelKey}
@@ -298,7 +299,7 @@ function HeroWorkbenchPreview() {
 					</div>
 
 					<div
-						role="group"
+						role="toolbar"
 						aria-label="Preview display mode"
 						className="inline-flex items-center gap-1 rounded-[3px] border border-[#F4F1EA]/20 bg-[#282725] p-0.5"
 					>

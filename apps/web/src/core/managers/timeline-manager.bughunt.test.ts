@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { afterAll, expect, mock, test } from "bun:test";
 import type { EditorCore } from "@/core";
 import type { SceneTracks } from "@/lib/timeline/types";
 import type { TimelineElement } from "@/lib/timeline";
@@ -7,7 +7,29 @@ import {
 	buildVideoElement,
 	buildVideoTrack,
 } from "@/tests/factories/editor";
-import { TimelineManager } from "./timeline-manager";
+
+mock.module("artidor-wasm", () => ({
+	TICKS_PER_SECOND: 120_000,
+	roundToFrame: ({
+		time,
+		rate,
+	}: {
+		time: number;
+		rate?: { numerator: number; denominator: number };
+	}) => {
+		const fps = rate ? rate.numerator / rate.denominator : 30;
+		const ticksPerFrame = 120_000 / fps;
+		return Math.round(time / ticksPerFrame) * ticksPerFrame;
+	},
+	lastFrameTime: ({ time }: { time: number }) => time,
+	snappedSeekTime: ({ time }: { time: number }) => time,
+}));
+
+const { TimelineManager } = await import("./timeline-manager");
+
+afterAll(() => {
+	mock.restore();
+});
 
 const cameraTrack = {
 	id: "camera-track",
