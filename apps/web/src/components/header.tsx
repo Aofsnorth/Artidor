@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "motion/react";
-import { ArrowRight, Sparkles, Menu } from "lucide-react";
+import { ArrowUpRight, Menu } from "lucide-react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { GithubIcon } from "@hugeicons/core-free-icons";
 import { Button } from "./ui/button";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+	SheetTrigger,
+} from "./ui/sheet";
+import { Separator } from "./ui/separator";
 import { cn } from "@/utils/ui";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
@@ -23,67 +31,79 @@ const NAV_LINKS = [
 	{ labelKey: "home.nav.blog", href: "/blog" },
 ];
 
-export function Header() {
+export function Header({
+	variant = "default",
+}: {
+	variant?: "default" | "editorial";
+}) {
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
-	const closeMenu = () => setIsMenuOpen(false);
 	const { t } = useI18n();
 	const { data: repoData, formatted: repoStats } = useGitHubRepo();
-	// While the data is loading, fall back to a placeholder that
-	// matches the visual width of the eventual number. This keeps
-	// the header from shifting once the real count lands.
 	const hasStars = (repoData?.stars ?? 0) > 0;
-	const starsLabel = hasStars ? (repoStats?.stars ?? "···") : "★";
+	const starsLabel = hasStars ? (repoStats?.stars ?? "···") : "GIT";
+	const isEditorial = variant === "editorial";
 
 	return (
 		<header
-			className="sticky top-0 z-30 w-full border-b border-white/[0.06] bg-black/35 backdrop-blur-xl"
-			style={{
-				// Smooth fade at the bottom edge so the glassmorphism
-				// blends into the page content instead of having a
-				// hard 1px border line. The gradient mask makes the
-				// bottom 30% of the header gradually transparent.
-				maskImage:
-					"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-				WebkitMaskImage:
-					"linear-gradient(to bottom, black 0%, black 70%, transparent 100%)",
-			}}
+			className={cn(
+				"sticky top-0 z-30 w-full",
+				isEditorial
+					? "border-b border-[#141413]/15 bg-[#D2CEC5]/95 backdrop-blur-sm"
+					: "border-b border-white/[0.08] bg-[#0a0a0c]/90 backdrop-blur-md",
+			)}
 		>
-			{/* Inner container — full-bleed bar, content centred inside.
-			   `max-w-7xl` lines the header up with the rest of the page
-			   content (hero, features, footer all use the same width). */}
-			<div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 md:h-16">
-				<Link
-					href="/"
-					className="flex items-center gap-2.5"
-					aria-label="Artidor home"
-				>
-					{/* Plain <img> is intentional — the logo is a local
-					   asset and we want it to render before hydration. */}
-					{/* biome-ignore lint/performance/noImgElement: logo, see comment above */}
-					<img
-						src={DEFAULT_LOGO_URL}
-						alt="Artidor Logo"
-						width={28}
-						height={28}
-						className="size-7 rounded-md"
-					/>
-					<span className="text-[15px] font-semibold tracking-[-0.01em] text-white">
-						Artidor
-					</span>
-				</Link>
+			<div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+				<div className="flex items-center gap-4">
+					<Link
+						href="/"
+						className={cn(
+							"inline-flex min-h-11 items-center gap-2.5 px-1 py-1",
+							isEditorial ? "text-[#141413]" : "text-white",
+						)}
+						aria-label="Artidor home"
+					>
+						{/* biome-ignore lint/performance/noImgElement: local SVG/PNG brand mark */}
+						<img
+							src={DEFAULT_LOGO_URL}
+							alt=""
+							width={26}
+							height={26}
+							className={cn(
+								"size-6.5 rounded-[3px]",
+								isEditorial && "border border-[#141413]/20 bg-[#141413] p-0.5",
+							)}
+						/>
+						<span className="font-serif text-[19px] font-medium tracking-[-0.02em]">
+							Artidor
+						</span>
+					</Link>
+
+					{isEditorial && (
+						<span
+							aria-hidden="true"
+							className="hidden border-l border-[#141413]/20 pl-4 font-mono text-[10.5px] uppercase tracking-[0.16em] text-[#4A4741] xl:inline-block"
+						>
+							NLE / WEBGPU / MIT
+						</span>
+					)}
+				</div>
 
 				<nav
-					className="hidden flex-1 items-center justify-center gap-1 md:flex"
+					className="hidden items-center gap-0.5 lg:flex"
 					aria-label={t("home.nav.primaryAria")}
 				>
 					{NAV_LINKS.map((link) => (
-						<Link key={link.href} href={link.href}>
-							<Button
-								variant="text"
-								className="h-8 px-3 text-[13px] text-white/65 hover:text-white"
-							>
-								{t(link.labelKey)}
-							</Button>
+						<Link
+							key={link.href}
+							href={link.href}
+							className={cn(
+								"inline-flex min-h-11 items-center rounded-[3px] px-3 text-[12.5px] font-medium transition-colors duration-150",
+								isEditorial
+									? "text-[#4A4741] hover:bg-[#DFDCD4] hover:text-[#141413]"
+									: "text-white/70 hover:bg-white/[0.06] hover:text-white",
+							)}
+						>
+							{t(link.labelKey)}
 						</Link>
 					))}
 				</nav>
@@ -92,98 +112,176 @@ export function Header() {
 					<Link
 						href={SOCIAL_LINKS.github}
 						prefetch={false}
-						className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] text-white/80 transition-colors hover:bg-white/[0.08] md:flex"
+						target="_blank"
+						rel="noopener noreferrer"
+						className={cn(
+							"hidden min-h-11 items-center gap-2 rounded-[3px] border px-3.5 text-[11.5px] font-medium tabular-nums transition-[transform,background-color,border-color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] sm:inline-flex",
+							isEditorial
+								? "border-[#141413]/25 bg-[#DFDCD4] font-mono text-[#141413] shadow-beautiful-sm hover:border-[#141413] hover:bg-[#EAE7DF]"
+								: "border-white/15 bg-white/[0.04] text-white/85 hover:bg-white/[0.08]",
+						)}
 						aria-label={t("home.nav.githubStars", {
-							stars: repoStats?.stars ?? "",
+							stars: repoStats?.stars ?? "open source",
 						})}
 					>
-						<HugeiconsIcon icon={GithubIcon} className="size-3" />
-						{starsLabel}
+						<HugeiconsIcon icon={GithubIcon} className="size-3.5" />
+						<span>{starsLabel}</span>
 					</Link>
 
-					<Link href="/projects" prefetch className="hidden md:inline-flex">
-						<Button
-							size="sm"
-							className="h-8 rounded-full bg-white px-3.5 text-[12.5px] font-medium text-[#0a0a0c] hover:bg-white/90"
-						>
-							<Sparkles className="mr-1.5 size-3.5" />
-							{t("home.nav.openEditor")}
-							<ArrowRight className="ml-1 size-3.5" />
-						</Button>
-					</Link>
-
-					<button
-						type="button"
-						className="rounded-md p-1.5 text-white/85 hover:bg-white/[0.06] hover:text-white md:hidden"
-						aria-label={t("home.nav.menuOpen")}
-						aria-expanded={isMenuOpen}
-						onClick={() => setIsMenuOpen(!isMenuOpen)}
+					<Button
+						asChild
+						variant={isEditorial ? "editorial" : "default"}
+						size={isEditorial ? "editorial-sm" : "sm"}
+						className={cn(
+							"hidden md:inline-flex",
+							!isEditorial &&
+								"min-h-11 rounded-md bg-white px-4 text-[12.5px] font-medium text-[#0a0a0c] hover:bg-white/90",
+						)}
 					>
-						<Menu className="size-5" />
-					</button>
-				</div>
-			</div>
-
-			{/* Mobile menu — full-screen overlay, same dark luxury backdrop. */}
-			<div
-				className={cn(
-					"pointer-events-none fixed inset-0 z-40 bg-black/65 opacity-0 backdrop-blur-3xl transition-opacity duration-200",
-					isMenuOpen && "pointer-events-auto opacity-100",
-				)}
-			>
-				<div className="relative h-full">
-					<button
-						type="button"
-						aria-label={t("home.nav.menuClose")}
-						className="absolute inset-0"
-						onClick={closeMenu}
-						onKeyDown={(event) => {
-							if (
-								event.key === "Enter" ||
-								event.key === " " ||
-								event.key === "Escape"
-							) {
-								event.preventDefault();
-								closeMenu();
-							}
-						}}
-					/>
-					<nav
-						className="mx-auto flex h-full w-full max-w-7xl flex-col gap-2 px-6 pt-24"
-						aria-label={t("home.nav.mobileAria")}
-					>
-						{NAV_LINKS.map((link, index) => (
-							<motion.div
-								key={link.href}
-								initial={{ scale: 0.98, opacity: 0 }}
-								animate={{
-									scale: isMenuOpen ? 1 : 0.98,
-									opacity: isMenuOpen ? 1 : 0,
-								}}
-								transition={{
-									duration: 0.35,
-									delay: isMenuOpen ? index * 0.07 : 0,
-									ease: [0.25, 0.46, 0.45, 0.94],
-								}}
-							>
-								<Link
-									href={link.href}
-									className="text-2xl font-semibold text-white"
-									onClick={() => setIsMenuOpen(false)}
-								>
-									{t(link.labelKey)}
-								</Link>
-							</motion.div>
-						))}
-						<Link
-							href="/projects"
-							className="mt-6 inline-flex w-fit items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[14px] font-medium text-[#0a0a0c]"
-							onClick={() => setIsMenuOpen(false)}
-						>
-							{t("home.nav.openEditor")}
-							<ArrowRight className="size-4" />
+						<Link href="/projects" prefetch>
+							<span>{t("home.nav.openEditor")}</span>
+							<ArrowUpRight className="size-3.5" aria-hidden="true" />
 						</Link>
-					</nav>
+					</Button>
+
+					{/* Accessible Mobile Navigation Drawer using shadcn Sheet */}
+					<Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+						<SheetTrigger asChild>
+							<button
+								type="button"
+								className={cn(
+									"inline-flex size-11 cursor-pointer items-center justify-center rounded-[3px] border transition-[transform,background-color] duration-150 active:scale-[0.97] lg:hidden",
+									isEditorial
+										? "border-[#141413]/25 bg-[#DFDCD4] text-[#141413] hover:bg-[#EAE7DF]"
+										: "border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08]",
+								)}
+								aria-label={t("home.nav.menuOpen")}
+								aria-expanded={isMenuOpen}
+							>
+								<Menu className="size-5" aria-hidden="true" />
+							</button>
+						</SheetTrigger>
+						<SheetContent
+							side="right"
+							className={cn(
+								"flex w-[min(88vw,22rem)] flex-col justify-between p-6",
+								isEditorial
+									? " editorial-landing border-l border-[#141413]/20 bg-[#D2CEC5] text-[#141413] shadow-beautiful-lg"
+									: "border-l border-white/10 bg-[#0d0d10] text-white",
+							)}
+						>
+							<div className="flex flex-col gap-6">
+								<SheetHeader className="text-left">
+									<div className="flex items-center gap-2.5">
+										<span
+											className={cn(
+												"ed-rule",
+												!isEditorial && "bg-white/60",
+											)}
+											aria-hidden="true"
+										/>
+										<span
+											className={cn(
+												"font-mono text-[10.5px] uppercase tracking-[0.16em]",
+												isEditorial ? "text-[#4A4741]" : "text-white/60",
+											)}
+										>
+											INDEX / NAVIGATION
+										</span>
+									</div>
+									<SheetTitle
+										className={cn(
+											"mt-1 font-serif text-2xl font-medium tracking-[-0.02em]",
+											isEditorial ? "text-[#141413]" : "text-white",
+										)}
+									>
+										Artidor
+									</SheetTitle>
+									<SheetDescription
+										className={cn(
+											"text-xs",
+											isEditorial ? "text-[#4A4741]" : "text-white/60",
+										)}
+									>
+										{t("home.hero.eyebrow.primary")}
+									</SheetDescription>
+								</SheetHeader>
+
+								<Separator
+									className={
+										isEditorial ? "bg-[#141413]/15" : "bg-white/10"
+									}
+								/>
+
+								<nav
+									aria-label={t("home.nav.mobileAria")}
+									className="flex flex-col gap-1"
+								>
+									{NAV_LINKS.map((link, idx) => (
+										<Link
+											key={link.href}
+											href={link.href}
+											onClick={() => setIsMenuOpen(false)}
+											className={cn(
+												"flex min-h-11 items-center justify-between rounded-[3px] px-3 py-2.5 text-[15px] font-medium transition-colors",
+												isEditorial
+													? "text-[#141413] hover:bg-[#DFDCD4]"
+													: "text-white/90 hover:bg-white/[0.06]",
+											)}
+										>
+											<span>{t(link.labelKey)}</span>
+											<span
+												className={cn(
+													"font-mono text-[11px]",
+													isEditorial ? "text-[#4A4741]" : "text-white/40",
+												)}
+											>
+												0{idx + 1}
+											</span>
+										</Link>
+									))}
+								</nav>
+							</div>
+
+							<div className="flex flex-col gap-3 pt-6">
+								<Button
+									asChild
+									variant={isEditorial ? "editorial" : "default"}
+									size={isEditorial ? "editorial-default" : "lg"}
+									className="w-full justify-between"
+								>
+									<Link
+										href="/projects"
+										onClick={() => setIsMenuOpen(false)}
+									>
+										<span>{t("home.nav.openEditor")}</span>
+										<ArrowUpRight className="size-4" aria-hidden="true" />
+									</Link>
+								</Button>
+								<Button
+									asChild
+									variant={isEditorial ? "editorial-outline" : "outline"}
+									size={isEditorial ? "editorial-default" : "lg"}
+									className="w-full justify-between"
+								>
+									<Link
+										href={SOCIAL_LINKS.github}
+										target="_blank"
+										rel="noopener noreferrer"
+										onClick={() => setIsMenuOpen(false)}
+									>
+										<span className="inline-flex items-center gap-2">
+											<HugeiconsIcon icon={GithubIcon} className="size-4" />
+											<span>GitHub</span>
+										</span>
+										<span className="font-mono text-xs tabular-nums">
+											{starsLabel}
+										</span>
+									</Link>
+								</Button>
+							</div>
+						</SheetContent>
+					</Sheet>
 				</div>
 			</div>
 		</header>

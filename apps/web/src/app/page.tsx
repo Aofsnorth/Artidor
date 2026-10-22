@@ -22,9 +22,16 @@ export const metadata: Metadata = {
 export default async function Home() {
 	return (
 		<PageShell variant="marketing">
+			{/* WCAG 2.4.1 Skip Link: first focusable element on the page */}
+			<a
+				href="#main-content"
+				className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-[3px] focus:border focus:border-[#141413] focus:bg-[#F4F1EA] focus:px-4 focus:py-2 focus:font-mono focus:text-xs focus:font-semibold focus:uppercase focus:tracking-[0.14em] focus:text-[#141413] focus:shadow-beautiful-md"
+			>
+				Skip to main content
+			</a>
 			<AiDisclaimerBanner />
-			<Header />
-			<main className="flex flex-col">
+			<Header variant="editorial" />
+			<main id="main-content" tabIndex={-1} className="flex flex-col focus:outline-hidden">
 				<Hero />
 				<AIShowcaseSection />
 				<FeaturesSection />
@@ -32,9 +39,9 @@ export default async function Home() {
 				<PledgeSection />
 				<CtaSection />
 			</main>
-			<Footer />
+			<Footer variant="editorial" />
 			<WhatsNewCard />
-			<div className="fixed bottom-4 right-4 z-50">
+			<div className="fixed bottom-4 right-4 z-40">
 				<LanguageSwitcher />
 			</div>
 		</PageShell>
