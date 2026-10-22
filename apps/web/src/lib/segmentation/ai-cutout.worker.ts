@@ -36,10 +36,22 @@ let transformersModule: typeof import("@xenova/transformers") | null = null;
 let pipelineInstance: unknown | null = null;
 let pipelinePromise: Promise<unknown> | null = null;
 
-type CutoutPipeline = (input: RawImage) => Promise<RawImageLike>;
+type CutoutPipeline = (
+	input: RawImage,
+) => Promise<RawImageLike | SegmentationOutput[]>;
 
 type RawImageLike = RawImage & {
 	toCanvas?: () => OffscreenCanvas | HTMLCanvasElement;
+};
+
+/**
+ * One entry of an `image-segmentation` pipeline result: the label, its score
+ * and the alpha matte the pipeline produced.
+ */
+type SegmentationOutput = {
+	label?: string;
+	score?: number;
+	mask?: RawImageLike;
 };
 
 async function loadTransformers(): Promise<
@@ -140,7 +152,16 @@ async function handleCutout({
 			4,
 		);
 
-		const result = await pipeline(input);
+		const pipelineResult = await pipeline(input);
+		// image-segmentation pipelines return `[{ label, score, mask }]`; the
+		// mask is the RawImage that toImageBitmap can consume. Passing the
+		// array itself threw "unexpected result format".
+		const result = Array.isArray(pipelineResult)
+			? pipelineResult[0]?.mask
+			: pipelineResult;
+		if (!result) {
+			throw new Error("AI cutout pipeline returned no mask");
+		}
 		const outputBitmap = await toImageBitmap(result);
 
 		self.postMessage(

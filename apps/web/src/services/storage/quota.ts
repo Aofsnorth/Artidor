@@ -60,9 +60,19 @@ export async function readStorageQuotaStatus(): Promise<StorageQuotaStatus> {
 	// instead of a best-effort (often tiny) eviction-prone budget. Fire and
 	// forget — a rejection just leaves us on best-effort, which still works.
 	if (typeof navigator.storage.persist === "function") {
-		navigator.storage.persisted?.().then((already) => {
-			if (!already) navigator.storage.persist?.().catch(() => {});
-		});
+		const persisted = navigator.storage.persisted;
+		if (typeof persisted === "function") {
+			persisted.call(navigator.storage).then(
+				(already) => {
+					if (!already) navigator.storage.persist?.().catch(() => {});
+				},
+				() => {
+					// Best-effort only; estimate below still works.
+				},
+			);
+		} else {
+			navigator.storage.persist().catch(() => {});
+		}
 	}
 
 	const estimate = await navigator.storage.estimate();

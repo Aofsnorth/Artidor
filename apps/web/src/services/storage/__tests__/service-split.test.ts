@@ -14,7 +14,8 @@
  * and counts writes so the "only what changed" claim is measured rather than
  * assumed.
  */
-import { beforeEach, expect, test } from "bun:test";
+import { beforeEach, expect, mock, test } from "bun:test";
+import type { SoundEffect } from "@/lib/sounds/types";
 import type { SceneTracks, TScene } from "@/lib/timeline";
 import type { SerializedProject } from "@/services/storage/types";
 import { buildProject } from "@/tests/factories/project";
@@ -23,6 +24,13 @@ import {
 	buildVideoElement,
 	buildVideoTrack,
 } from "@/tests/factories/editor";
+
+// The Rust WASM runtime is unavailable under bun:test in this workspace; the
+// storage layer only reaches it through the timeline barrel's duration helpers.
+mock.module("artidor-wasm", () => ({
+	TICKS_PER_SECOND: 120_000,
+	roundToFrame: ({ time }: { time: number }) => time,
+}));
 
 /* ------------------------------------------------------------------ *
  * Minimal in-memory IndexedDB
@@ -51,6 +59,36 @@ function fail(request: FakeRequest, error: Error): void {
 	queueMicrotask(() => request.onerror?.());
 }
 
+interface FakeTransaction {
+	error: Error | null;
+	oncomplete: (() => void) | null;
+	onerror: (() => void) | null;
+	onabort: (() => void) | null;
+	objectStore: (storeName: string) => unknown;
+	storeNames: string[];
+	completed: boolean;
+}
+
+/**
+ * Completes a fake transaction after its request's `onsuccess`. The real
+ * adapter resolves on this event, so the shim must fire it (or its abort
+ * counterpart) for every write.
+ */
+function completeTransaction(transaction: FakeTransaction | undefined): void {
+	if (!transaction || transaction.completed) return;
+	transaction.completed = true;
+	queueMicrotask(async () => {
+		if (transactionCompletionGate) {
+			await transactionCompletionGate;
+		}
+		if (transaction.error) {
+			transaction.onabort?.();
+			return;
+		}
+		transaction.oncomplete?.();
+	});
+}
+
 interface FakeStore {
 	records: Map<string, unknown>;
 	keyPath: string;
@@ -68,6 +106,15 @@ const databases = new Map<string, FakeDatabase>();
 
 /** Counts every write the storage layer issues, keyed by `db/store`. */
 const writeCounts = new Map<string, number>();
+
+/** `db/store` keys whose next read/write should fail. */
+const failingReads = new Set<string>();
+const failingWrites = new Set<string>();
+
+/** When set, the next transaction aborts after its request succeeds. */
+let transactionError: Error | null = null;
+/** When set, transaction completion waits for this promise. */
+let transactionCompletionGate: Promise<void> | null = null;
 
 function countWrite({ storeName }: { storeName: string }): void {
 	writeCounts.set(storeName, (writeCounts.get(storeName) ?? 0) + 1);
@@ -96,10 +143,12 @@ function makeObjectStore({
 	db,
 	dbName,
 	name,
+	transaction,
 }: {
 	db: FakeDatabase;
 	dbName: string;
 	name: string;
+	transaction?: FakeTransaction;
 }) {
 	const store: FakeStore = db.stores.get(name) ?? {
 		records: new Map(),
@@ -116,6 +165,10 @@ function makeObjectStore({
 	return {
 		get: (key: string) => {
 			const request = createRequest();
+			if (failingReads.has(writeKey)) {
+				fail(request, new Error(`read failed: ${writeKey}`));
+				return request;
+			}
 			const value = store.records.get(key);
 			complete(request, value === undefined ? undefined : readValue({ value }));
 			return request;
@@ -142,13 +195,24 @@ function makeObjectStore({
 			if (typeof value?.id !== "string") {
 				throw new Error("record is missing its id");
 			}
+			if (failingWrites.has(writeKey)) {
+				fail(request, new Error(`write failed: ${writeKey}`));
+				completeTransaction(transaction);
+				return request;
+			}
 			countWrite({ storeName: writeKey });
 			store.records.set(value.id, structuredClone(value));
 			complete(request, value.id);
+			completeTransaction(transaction);
 			return request;
 		},
 		delete: (key: string | FakeRange) => {
 			const request = createRequest();
+			if (failingWrites.has(writeKey)) {
+				fail(request, new Error(`write failed: ${writeKey}`));
+				completeTransaction(transaction);
+				return request;
+			}
 			const doomed =
 				typeof key === "string"
 					? [key]
@@ -160,13 +224,20 @@ function makeObjectStore({
 				store.records.delete(recordKey);
 			}
 			complete(request, undefined);
+			completeTransaction(transaction);
 			return request;
 		},
 		clear: () => {
 			const request = createRequest();
+			if (failingWrites.has(writeKey)) {
+				fail(request, new Error(`write failed: ${writeKey}`));
+				completeTransaction(transaction);
+				return request;
+			}
 			countWrite({ storeName: writeKey });
 			store.records.clear();
 			complete(request, undefined);
+			completeTransaction(transaction);
 			return request;
 		},
 	};
@@ -193,11 +264,25 @@ function createFakeDatabase({
 		},
 		createObjectStore: (storeName: string) =>
 			makeObjectStore({ db, dbName: name, name: storeName }),
-		transaction: (storeNames: string[]) => ({
-			objectStore: (storeName: string) =>
-				makeObjectStore({ db, dbName: name, name: storeName }),
-			storeNames,
-		}),
+		transaction: (storeNames: string[]) => {
+			const transaction = {
+				error: transactionError,
+				oncomplete: null,
+				onerror: null,
+				onabort: null,
+				storeNames,
+				completed: false,
+			} as FakeTransaction;
+			transactionError = null;
+			transaction.objectStore = (storeName: string) =>
+				makeObjectStore({
+					db,
+					dbName: name,
+					name: storeName,
+					transaction,
+				});
+			return transaction;
+		},
 		close: () => {
 			db.closed = true;
 		},
@@ -250,6 +335,9 @@ const { StorageService } = await import("@/services/storage/service");
 const { planSceneWrites, getProjectSceneKey } = await import(
 	"@/services/storage/service"
 );
+const { IndexedDBAdapter } = await import(
+	"@/services/storage/indexeddb-adapter"
+);
 
 const LEGACY_DB = "video-editor-projects";
 const LEGACY_STORE = `${LEGACY_DB}/projects`;
@@ -259,6 +347,8 @@ const THUMBNAILS_STORE = "video-editor-project-thumbnails/project-thumbnails";
 const SCENES_DB = "video-editor-project-scenes";
 const HEADERS_DB = "video-editor-project-headers";
 const THUMBNAILS_DB = "video-editor-project-thumbnails";
+const SAVED_SOUNDS_DB = "video-editor-saved-sounds";
+const SAVED_SOUNDS_STORE = `${SAVED_SOUNDS_DB}/saved-sounds`;
 
 function makeScene({
 	id,
@@ -349,6 +439,10 @@ let service: InstanceType<typeof StorageService>;
 beforeEach(() => {
 	databases.clear();
 	resetWrites();
+	failingReads.clear();
+	failingWrites.clear();
+	transactionError = null;
+	transactionCompletionGate = null;
 	service = new StorageService();
 });
 
@@ -908,4 +1002,169 @@ test("storage info counts split and pre-split projects without double counting",
 	writeLegacyDocument({ serialized: buildLegacyProject() });
 
 	expect((await service.getStorageInfo()).projects).toBe(2);
+});
+
+/* ------------------------------------------------------------------ *
+ * Write durability (transaction commit, not request success)
+ * ------------------------------------------------------------------ */
+
+test("a write resolves only after its transaction commits", async () => {
+	const gate = Promise.withResolvers<void>();
+	transactionCompletionGate = gate.promise;
+	const adapter = new IndexedDBAdapter<{ value: number }>(
+		"write-gate-db",
+		"write-gate-store",
+	);
+
+	let settled = false;
+	const write = adapter.set("key", { value: 1 }).finally(() => {
+		settled = true;
+	});
+
+	// Let the open request and the put request complete, but hold the commit.
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(settled).toBe(false);
+
+	gate.resolve();
+	await write;
+	expect(settled).toBe(true);
+});
+
+test("a write rejects when its transaction aborts after the request succeeds", async () => {
+	transactionError = new Error("quota exceeded");
+	const adapter = new IndexedDBAdapter<{ value: number }>(
+		"abort-db",
+		"abort-store",
+	);
+
+	await expect(adapter.set("key", { value: 1 })).rejects.toThrow(
+		"quota exceeded",
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * Saved sounds: read failures must abort a merge write
+ * ------------------------------------------------------------------ */
+
+const SOUND_EFFECT = {
+	id: 1,
+	name: "Beep",
+	username: "fixture",
+	previewUrl: "https://example.test/beep.mp3",
+	downloadUrl: "https://example.test/beep.mp3",
+	duration: 5,
+	tags: [],
+	license: "cc",
+} as unknown as SoundEffect;
+
+test("a saved-sounds read failure throws instead of reporting an empty list", async () => {
+	failingReads.add(SAVED_SOUNDS_STORE);
+
+	await expect(service.loadSavedSounds()).rejects.toThrow("read failed");
+});
+
+test("saving a sound aborts when the existing list cannot be read", async () => {
+	failingReads.add(SAVED_SOUNDS_STORE);
+
+	await expect(
+		service.saveSoundEffect({ soundEffect: SOUND_EFFECT }),
+	).rejects.toThrow("read failed");
+
+	failingReads.delete(SAVED_SOUNDS_STORE);
+	expect(writeCounts.get(SAVED_SOUNDS_STORE)).toBeUndefined();
+});
+
+/* ------------------------------------------------------------------ *
+ * Thumbnails
+ * ------------------------------------------------------------------ */
+
+function buildThumbnailProject({ id }: { id: string }) {
+	return buildProject({
+		metadata: {
+			id,
+			name: "Thumb",
+			duration: 0,
+			createdAt: new Date("2026-01-01T00:00:00Z"),
+			updatedAt: new Date("2026-01-01T00:00:00Z"),
+			thumbnail: TINY_PNG,
+		},
+		scenes: [makeScene({ id: "s1" })],
+		currentSceneId: "s1",
+	});
+}
+
+test("a failed thumbnail write is retried by the next save", async () => {
+	const project = buildThumbnailProject({ id: "thumb-retry" });
+	failingWrites.add(THUMBNAILS_STORE);
+
+	await expect(service.saveProject({ project })).rejects.toThrow(
+		"write failed",
+	);
+	expect(
+		readRecord({
+			dbName: THUMBNAILS_DB,
+			storeName: "project-thumbnails",
+			key: "thumb-retry",
+		}),
+	).toBeUndefined();
+
+	failingWrites.delete(THUMBNAILS_STORE);
+	await service.saveProject({ project });
+	expect(
+		readRecord({
+			dbName: THUMBNAILS_DB,
+			storeName: "project-thumbnails",
+			key: "thumb-retry",
+		}),
+	).toBeDefined();
+});
+
+test("saving without a thumbnail removes the stored record after a reload", async () => {
+	const project = buildThumbnailProject({ id: "thumb-remove" });
+	await service.saveProject({ project });
+	expect(
+		readRecord({
+			dbName: THUMBNAILS_DB,
+			storeName: "project-thumbnails",
+			key: "thumb-remove",
+		}),
+	).toBeDefined();
+
+	// A fresh service has an empty in-memory tracking map, like a page reload.
+	const reloadedService = new StorageService();
+	await reloadedService.saveProject({
+		project: {
+			...project,
+			metadata: {
+				...project.metadata,
+				thumbnail: undefined,
+				updatedAt: new Date("2026-01-01T00:00:05Z"),
+			},
+		},
+	});
+
+	expect(
+		readRecord({
+			dbName: THUMBNAILS_DB,
+			storeName: "project-thumbnails",
+			key: "thumb-remove",
+		}),
+	).toBeUndefined();
+});
+
+/* ------------------------------------------------------------------ *
+ * Project deletion closes cached media connections
+ * ------------------------------------------------------------------ */
+
+test("deleting a project closes its cached media database connection", async () => {
+	await service.getProjectStorageInfo({ projectId: "p-close" });
+	const mediaDb = databases.get("video-editor-media-p-close");
+	expect(mediaDb).toBeDefined();
+	expect(mediaDb?.closed).toBe(false);
+
+	await service.deleteProject({ id: "p-close" });
+	// `close()` waits for the open promise before closing.
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	expect(mediaDb?.closed).toBe(true);
 });

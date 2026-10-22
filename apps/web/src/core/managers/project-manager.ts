@@ -17,6 +17,7 @@ import {
 	uploadMediaToDrive,
 } from "@/lib/drive/api";
 import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
+import { reviveProjectDates } from "@/lib/project/dates";
 import { processMediaAssets } from "@/lib/media/processing";
 import type { ExportOptions, ExportResult, ExportState } from "@/lib/export";
 import { hasExportContent } from "@/lib/export";
@@ -195,6 +196,10 @@ export class ProjectManager {
 		// panel try to inspect non-existent elements.
 		this.editor.selection.clearSelection();
 
+		// Command history belongs to the previous project. Undoing an old
+		// project's entry here would write its tracks into this scene.
+		this.editor.command.clear();
+
 		this.editor.media.clearAllAssets();
 		this.editor.scenes.initializeScenes({
 			scenes: newProject.scenes,
@@ -281,6 +286,12 @@ export class ProjectManager {
 
 				this.active = project;
 				this.notify();
+
+				// History entries hold snapshots of the OUTGOING project. Undoing
+				// one after the switch would restore its tracks into this scene
+				// (and autosave them under this project id), so drop them the
+				// moment the new project becomes active.
+				this.editor.command.clear();
 
 				// Switching projects is a fresh context; clear any selection carried
 				// over from the previous project so the Properties panel lands on
@@ -495,12 +506,18 @@ export class ProjectManager {
 		if (!pending) return;
 		if (!getGoogleAccessToken()) return;
 
-		this.pendingDriveSync = null;
 		const { folderId, fileId, project } = pending;
 
 		try {
 			this.setDriveSyncState("saving", 0, "Saving to Drive...");
 			const newFileId = await saveProjectToDrive(folderId, fileId, project);
+
+			// Only the snapshot we just uploaded leaves the queue; a newer save
+			// may have replaced it while the upload was in flight and must stay
+			// pending.
+			if (this.pendingDriveSync === pending) {
+				this.pendingDriveSync = null;
+			}
 
 			if (
 				newFileId !== fileId &&
@@ -518,6 +535,12 @@ export class ProjectManager {
 				}
 			}, 2000);
 		} catch (driveErr) {
+			// Keep the snapshot queued for the next flush instead of dropping it:
+			// the local save succeeded, but Drive still needs this edit. A newer
+			// snapshot queued during the upload wins over this failed one.
+			if (!this.pendingDriveSync) {
+				this.pendingDriveSync = pending;
+			}
 			console.error("Failed to save project to Google Drive:", driveErr);
 			this.setDriveSyncState("error", 0, "Save to Drive failed");
 		}
@@ -733,6 +756,19 @@ export class ProjectManager {
 	}
 
 	closeProject(): void {
+		if (!this.active) return;
+
+		// Refuse to tear the workspace down while a write is still pending.
+		// The exit flow only reaches this method after prepareExit() flushed the
+		// project; calling it from a failure path (the old `finally`) must not
+		// discard the only copy of the edits. Throwing keeps the editor mounted
+		// so the debounced retry can still persist them.
+		if (this.editor.save.getIsDirty()) {
+			throw new Error(
+				"Refusing to close the project while changes are unsaved",
+			);
+		}
+
 		// Push any debounced Drive sync before the workspace goes away: the
 		// pending snapshot is already captured, so it can still be uploaded.
 		void this.flushDriveSync();
@@ -748,6 +784,9 @@ export class ProjectManager {
 
 		this.editor.media.clearAllAssets();
 		this.editor.scenes.clearScenes();
+		// Closing is a lifecycle boundary: the history references the workspace
+		// that no longer exists.
+		this.editor.command.clear();
 	}
 
 	async renameProject({
@@ -766,19 +805,43 @@ export class ProjectManager {
 				return;
 			}
 
-			const updatedProject: TProject = {
-				...result.project,
-				metadata: {
-					...result.project.metadata,
-					name,
-					updatedAt: new Date(),
-				},
-			};
+			// The stored copy may be older than the live workspace (unsaved
+			// settings, fps ratchet, current scene, timeline view). When this is
+			// the active project, rename the LIVE snapshot instead of replacing it
+			// with the loaded copy — only the name is meant to change.
+			const liveProject = this.active;
+			const updatedProject: TProject =
+				liveProject?.metadata.id === id
+					? {
+							...liveProject,
+							metadata: {
+								...liveProject.metadata,
+								name,
+								updatedAt: new Date(),
+							},
+						}
+					: {
+							...result.project,
+							metadata: {
+								...result.project.metadata,
+								name,
+								updatedAt: new Date(),
+							},
+						};
 
 			await storageService.saveProject({ project: updatedProject });
 
 			if (this.active?.metadata.id === id) {
-				this.active = updatedProject;
+				// Merge the rename onto the live project as it exists AFTER the
+				// await: edits made during the storage write must survive.
+				this.active = {
+					...this.active,
+					metadata: {
+						...this.active.metadata,
+						name,
+						updatedAt: updatedProject.metadata.updatedAt,
+					},
+				};
 				this.notify();
 			}
 
@@ -1263,9 +1326,11 @@ export class ProjectManager {
 				);
 				const blob = await downloadFileBlob(artidorFile.id);
 				const text = await blob.text();
-				projectData = isArtprFileName(artidorFile.name)
-					? await decodeArtprProject<TProject>(text)
-					: (JSON.parse(text) as TProject);
+				projectData = reviveProjectDates(
+					isArtprFileName(artidorFile.name)
+						? await decodeArtprProject<TProject>(text)
+						: (JSON.parse(text) as TProject),
+				);
 			}
 
 			if (projectData) {

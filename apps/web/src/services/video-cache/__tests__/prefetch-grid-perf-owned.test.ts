@@ -62,6 +62,8 @@ interface SinkData {
 	pendingExactTime: number | null;
 	lastRequestAt: number;
 	lastRequestForward: boolean;
+	backgroundTaskStartedAt: number;
+	backgroundTaskId: number;
 }
 
 interface VideoCacheInternals {
@@ -257,6 +259,8 @@ function makeSinkData(sink: SinkData["sink"]): SinkData {
 		lastUsedAt: 0,
 		activeRequests: 0,
 		backgroundTask: null,
+		backgroundTaskStartedAt: 0,
+		backgroundTaskId: 0,
 		pendingExactTime: null,
 		lastRequestAt: 0,
 		lastRequestForward: true,
@@ -665,6 +669,71 @@ describe("video cache: project frame step learning", () => {
 		expect(sinkData.currentFrame?.timestamp ?? -1).toBeGreaterThanOrEqual(
 			30 - 1 / 30,
 		);
+	});
+
+	test("a hung background fetch is abandoned instead of freezing the preview", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "stall", makeSinkData(sink));
+		sinkData.frameStepSeconds = 1 / 30;
+		sinkData.sourceFrameDuration = 1 / 30;
+		sinkData.lastRequestedTime = 1;
+		sinkData.lastTime = 1;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			1,
+		);
+
+		// A fetch whose decode never comes back (the decoder is parked on a seek
+		// that cannot land). Before the watchdog this left `backgroundTask` set
+		// for the rest of the session: every later request only recorded its
+		// position, so the preview stayed on this frame while the audio played.
+		sinkData.backgroundTask = new Promise<void>(() => {});
+		sinkData.backgroundTaskStartedAt = performance.now() - 60_000;
+		const callsBefore = stats.getCanvasCalls;
+
+		const served = await cache.getFrameAt({
+			mediaId: "stall",
+			file: fakeFile(),
+			time: 30,
+		});
+
+		// The stale frame is served at once — the compositor must never block.
+		expect(served?.timestamp ?? -1).toBeLessThan(30);
+
+		// The dead fetch is dropped and a fresh one decodes the new position.
+		await sinkData.backgroundTask;
+		expect(sinkData.backgroundTask).toBeNull();
+		expect(sinkData.backgroundTaskStartedAt).toBe(0);
+		expect(stats.getCanvasCalls).toBeGreaterThan(callsBefore);
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeGreaterThanOrEqual(
+			30 - 1 / 30,
+		);
+	});
+
+	test("a background fetch still inside the stall budget is left alone", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "fresh", makeSinkData(sink));
+		sinkData.lastRequestedTime = 1;
+		sinkData.lastTime = 1;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			1,
+		);
+
+		// In flight and healthy: 50 ms in, far below the stall budget.
+		sinkData.backgroundTask = new Promise<void>(() => {});
+		sinkData.backgroundTaskStartedAt = performance.now() - 50;
+		const callsBefore = stats.getCanvasCalls;
+
+		await cache.getFrameAt({ mediaId: "fresh", file: fakeFile(), time: 5 });
+
+		// Not abandoned — the healthy decode keeps its decoder, and the request
+		// is only recorded for the trailing fetch.
+		expect(stats.getCanvasCalls).toBe(callsBefore);
+		expect(sinkData.pendingExactTime).toBe(5);
+		expect(sinkData.backgroundTaskStartedAt).toBeGreaterThan(0);
 	});
 
 	test("steady forward playback does not invalidate in-flight work", async () => {

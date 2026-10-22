@@ -17,6 +17,15 @@ type TextureKey = (u32, u32);
 /// grew with timeline length rather than staying flat.
 pub(crate) const MAX_POOLED_PER_SIZE: usize = 8;
 
+/// Global upper bound on free textures across every size.
+///
+/// The per-size cap alone let stale sizes accumulate forever: each distinct
+/// preview/export size that ever appeared retained up to
+/// [`MAX_POOLED_PER_SIZE`] textures. The active size is protected by evicting
+/// from *other* sizes first, so a size change drains the old sizes instead of
+/// pinning both working sets for the rest of the session.
+pub(crate) const MAX_POOLED_TOTAL: usize = MAX_POOLED_PER_SIZE * 2;
+
 /// A pool of reusable render targets, keyed by pixel dimensions.
 ///
 /// Generic over the pooled type so the retention policy can be unit-tested
@@ -97,22 +106,57 @@ impl<T: Clone> TexturePool<T> {
     }
 
     fn stash(&mut self, key: TextureKey, texture: T) {
-        let slot = self.available.entry(key).or_default();
-        if slot.len() < MAX_POOLED_PER_SIZE {
-            slot.push(texture);
+        if self
+            .available
+            .get(&key)
+            .is_some_and(|slot| slot.len() >= MAX_POOLED_PER_SIZE)
+        {
+            return;
         }
-        // Otherwise the value is dropped here, freeing its allocation.
+
+        // Make room under the global bound by evicting from the other sizes,
+        // never from the size currently being released into. This keeps the
+        // active size's steady-state reuse intact while old sizes drain.
+        while self.free_count() >= MAX_POOLED_TOTAL {
+            let evict_key = self
+                .available
+                .iter()
+                .filter(|(candidate, slot)| **candidate != key && !slot.is_empty())
+                .max_by_key(|(candidate, slot)| (slot.len(), std::cmp::Reverse(**candidate)))
+                .map(|(candidate, _)| *candidate);
+
+            let Some(evict_key) = evict_key else {
+                // Everything pooled belongs to the active size, which the
+                // per-size cap already bounds. Drop the incoming texture.
+                return;
+            };
+
+            if let Some(slot) = self.available.get_mut(&evict_key) {
+                slot.pop();
+                if slot.is_empty() {
+                    self.available.remove(&evict_key);
+                }
+            }
+        }
+
+        self.available.entry(key).or_default().push(texture);
     }
 
     /// Takes a pooled target, calling `create` only when the free list for this
     /// size is empty.
     pub fn acquire(&mut self, width: u32, height: u32, create: impl FnOnce() -> T) -> T {
         let key = (width, height);
-        let texture = self
-            .available
-            .get_mut(&key)
-            .and_then(Vec::pop)
-            .unwrap_or_else(create);
+        let texture = match self.available.get_mut(&key) {
+            Some(slot) => {
+                let texture = slot.pop();
+                if slot.is_empty() {
+                    self.available.remove(&key);
+                }
+                texture
+            }
+            None => None,
+        }
+        .unwrap_or_else(create);
         self.in_use.push((key, texture.clone()));
         texture
     }

@@ -132,13 +132,9 @@ export function TimelineRuler({
 	}
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: canvas seek surface; keyboard seeking is handled by the global keybindings system
+		// biome-ignore lint/a11y/useKeyWithClickEvents: canvas seek surface; keyboard seeking is handled by the global keybindings system
 		<div
-			role="slider"
-			tabIndex={0}
-			aria-label="Timeline ruler"
-			aria-valuemin={0}
-			aria-valuemax={effectiveDurationSeconds}
-			aria-valuenow={0}
 			className="relative flex-1 overflow-x-visible"
 			style={{ height: TIMELINE_RULER_HEIGHT_PX }}
 			onWheel={handleWheel}
@@ -150,7 +146,6 @@ export function TimelineRuler({
 				}
 			}}
 			onMouseDown={handleRulerTrackingMouseDown}
-			onKeyDown={() => {}}
 		>
 			<div
 				role="none"

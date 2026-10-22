@@ -45,12 +45,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 			priority: 0.5,
 		},
 		{
-			url: `${SITE_URL}/why-not-capcut`,
-			lastModified: new Date(),
-			changeFrequency: "yearly",
-			priority: 1,
-		},
-		{
 			url: `${SITE_URL}/blog`,
 			lastModified: new Date(),
 			changeFrequency: "weekly",

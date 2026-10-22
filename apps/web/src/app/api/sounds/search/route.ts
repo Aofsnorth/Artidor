@@ -4,6 +4,18 @@ import { z } from "zod";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getOptionalSession } from "@/lib/auth/require-auth";
 
+/**
+ * Explicit boolean query parsing. `z.coerce.boolean()` treats the string
+ * "false" as truthy, so a request for `commercial_only=false` silently
+ * enabled the filter. Accept only the documented spellings.
+ */
+export const commercialOnlySchema = z
+	.enum(["true", "false", "1", "0"])
+	.optional()
+	.transform(
+		(value) => value === undefined || value === "true" || value === "1",
+	);
+
 const searchParamsSchema = z.object({
 	q: z.string().max(500, "Query too long").optional(),
 	type: z.enum(["songs", "effects"]).optional(),
@@ -13,7 +25,7 @@ const searchParamsSchema = z.object({
 		.enum(["downloads", "rating", "created", "score"])
 		.default("downloads"),
 	min_rating: z.coerce.number().min(0).max(5).default(3),
-	commercial_only: z.coerce.boolean().default(true),
+	commercial_only: commercialOnlySchema,
 });
 
 const freesoundResultSchema = z.object({
@@ -172,6 +184,7 @@ export async function GET(request: NextRequest) {
 			page_size: searchParams.get("page_size") || undefined,
 			sort: searchParams.get("sort") || undefined,
 			min_rating: searchParams.get("min_rating") || undefined,
+			commercial_only: searchParams.get("commercial_only") || undefined,
 		});
 
 		if (!validationResult.success) {

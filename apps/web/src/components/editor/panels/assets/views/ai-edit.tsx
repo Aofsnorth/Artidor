@@ -350,7 +350,8 @@ export function AIEditView() {
 		const el = messagesContainerRef.current;
 		if (!el) return;
 		const threshold = 32; // px from edge to count as "at bottom/top"
-		const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+		const atBottom =
+			el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
 		// Fitting at scrollTop=0 is not consent to follow later content.
 		isFollowingRef.current =
 			atBottom && (el.scrollTop > 0 || isFollowingRef.current);
@@ -434,6 +435,11 @@ export function AIEditView() {
 	};
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+		// Ignore keys that are part of an IME composition. Enter/Escape are
+		// used to confirm/cancel candidate selection, not to send or close.
+		if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
+			return;
+		}
 		if (event.key === "Enter" && !event.shiftKey) {
 			event.preventDefault();
 			void handleSend(draft);
@@ -2290,7 +2296,9 @@ function OverflowRow({
 						{children.slice(1).map((child, i) => (
 							<button
 								type="button"
-								key={/* biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position */ i}
+								key={
+									/* biome-ignore lint/suspicious/noArrayIndexKey: children are stable by position */ i
+								}
 								onClick={() => setDropdownOpen(false)}
 								className="text-left"
 							>
@@ -3186,7 +3194,7 @@ function getToolVisual(toolName: string): ToolVisual {
 		rename_scene: Edit01Icon,
 		add_bookmark: Bookmark01Icon,
 		remove_bookmark: Bookmark02Icon,
-		delete_scene: Delete01Icon,
+		delete_scene: Delete02Icon,
 		switch_scene: FilmIcon,
 		// track
 		add_track: LayersIcon,

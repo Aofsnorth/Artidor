@@ -35,12 +35,23 @@ interface Harness {
 	getTracks: () => SceneTracks;
 	pushed: Command[];
 	select: (refs: ElementRef[]) => void;
+	setReadOnly: (value: boolean) => void;
 }
 
 function buildHarness(initialTracks: SceneTracks): Harness {
 	let sceneTracks = initialTracks;
 	let selected: ElementRef[] = [];
 	const pushed: Command[] = [];
+	const commandState = {
+		readOnly: false,
+		push: ({ command }: { command: Command }) => {
+			pushed.push(command);
+		},
+		execute: ({ command }: { command: Command }) => {
+			pushed.push(command);
+			command.execute();
+		},
+	};
 	const editor = {
 		scenes: {
 			getActiveScene: () => ({ id: "scene", tracks: sceneTracks }),
@@ -49,15 +60,7 @@ function buildHarness(initialTracks: SceneTracks): Harness {
 				sceneTracks = tracks;
 			},
 		},
-		command: {
-			push: ({ command }: { command: Command }) => {
-				pushed.push(command);
-			},
-			execute: ({ command }: { command: Command }) => {
-				pushed.push(command);
-				command.execute();
-			},
-		},
+		command: commandState,
 		selection: {
 			getSelectedElements: () => [...selected],
 			setSelectedElements: ({ elements }: { elements: ElementRef[] }) => {
@@ -72,6 +75,9 @@ function buildHarness(initialTracks: SceneTracks): Harness {
 		pushed,
 		select: (refs) => {
 			selected = refs;
+		},
+		setReadOnly: (value) => {
+			commandState.readOnly = value;
 		},
 	};
 }
@@ -268,6 +274,50 @@ describe("preview overlay isolation", () => {
 		});
 
 		expect(previewAmount(manager, "clip-1")).toBe(20);
+	});
+
+	test("CORE-03 read-only commit drops the preview without mutating", () => {
+		const { manager, getTracks, pushed, setReadOnly } = buildHarness(
+			twoClipTracks(),
+		);
+		manager.previewElements({
+			updates: [
+				{
+					trackId: "main",
+					elementId: "clip-1",
+					updates: { effects: brightness(40) },
+				},
+			],
+		});
+
+		setReadOnly(true);
+		manager.commitPreview();
+
+		expect(amountOf(getTracks(), "clip-1")).toBeUndefined();
+		expect(pushed).toHaveLength(0);
+		expect(manager.isPreviewActive()).toBe(false);
+	});
+
+	test("CORE-03 read-only per-element commit drops the preview without mutating", () => {
+		const { manager, getTracks, pushed, setReadOnly } = buildHarness(
+			twoClipTracks(),
+		);
+		manager.previewElements({
+			updates: [
+				{
+					trackId: "main",
+					elementId: "clip-1",
+					updates: { effects: brightness(40) },
+				},
+			],
+		});
+
+		setReadOnly(true);
+		manager.commitPreviewForElement(REF_1);
+
+		expect(amountOf(getTracks(), "clip-1")).toBeUndefined();
+		expect(pushed).toHaveLength(0);
+		expect(manager.isPreviewActive()).toBe(false);
 	});
 
 	test("resolveStalePreviews leaves a still-selected clip's drag alone", () => {

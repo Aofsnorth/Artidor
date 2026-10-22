@@ -14,11 +14,19 @@ export function cancelInteraction(): boolean {
 	if (cancellers.size === 0) return false;
 
 	const activeCancellers = Array.from(cancellers);
-	cancellers.clear();
 
 	for (const cancel of activeCancellers) {
-		cancel();
+		// Remove before invoking so a canceller that registers a new handler
+		// during cleanup isn't wiped out by the final clear. One throwing
+		// canceller must not prevent the rest from running.
+		cancellers.delete(cancel);
+		try {
+			cancel();
+		} catch (err) {
+			console.error("Interaction canceller threw:", err);
+		}
 	}
+	cancellers.clear();
 
 	return true;
 }

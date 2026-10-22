@@ -12,6 +12,8 @@ export class MediaManager {
 	private isLoading = false;
 	private listeners = new Set<() => void>();
 	private notifyScheduled = false;
+	/** Identifies the newest media load so a stale one can't replace it. */
+	private loadMediaSeq = 0;
 
 	constructor(private editor: EditorCore) {}
 
@@ -111,6 +113,9 @@ export class MediaManager {
 		} catch (error) {
 			console.error("Failed to save media asset:", error);
 			this.assets = this.assets.filter((asset) => asset.id !== newAsset.id);
+			// Rollback: the asset never became part of the project, so release
+			// the object URLs minted while processing it.
+			this.revokeAssetUrls([newAsset]);
 			this.notify();
 
 			if (storageService.isQuotaExceededError({ error })) {
@@ -151,6 +156,7 @@ export class MediaManager {
 	}
 
 	async loadProjectMedia({ projectId }: { projectId: string }): Promise<void> {
+		const seq = ++this.loadMediaSeq;
 		this.isLoading = true;
 		this.notify();
 
@@ -158,25 +164,31 @@ export class MediaManager {
 			const mediaAssets = await storageService.loadAllMediaAssets({
 				projectId,
 			});
+			if (this.loadMediaSeq !== seq) {
+				// A newer load (or clear) won while this one was in flight. Never
+				// overwrite it, and release the URLs minted for the stale batch.
+				this.revokeAssetUrls(mediaAssets);
+				return;
+			}
+			const previousAssets = this.assets;
 			this.assets = mediaAssets;
+			this.revokeAssetUrls(previousAssets);
 			this.notify();
 		} catch (error) {
 			console.error("Failed to load media assets:", error);
 		} finally {
-			this.isLoading = false;
-			this.notify();
+			if (this.loadMediaSeq === seq) {
+				this.isLoading = false;
+				this.notify();
+			}
 		}
 	}
 
 	async clearProjectMedia({ projectId }: { projectId: string }): Promise<void> {
-		this.assets.forEach((asset) => {
-			if (asset.url) {
-				URL.revokeObjectURL(asset.url);
-			}
-			if (asset.thumbnailUrl) {
-				URL.revokeObjectURL(asset.thumbnailUrl);
-			}
-		});
+		// Invalidate an in-flight load so it cannot repopulate a cleared project.
+		this.loadMediaSeq += 1;
+		this.isLoading = false;
+		this.revokeAssetUrls(this.assets);
 
 		const mediaIds = this.assets.map((asset) => asset.id);
 		this.assets = [];
@@ -196,18 +208,25 @@ export class MediaManager {
 
 	clearAllAssets(): void {
 		videoCache.clearAll();
+		// Invalidate an in-flight load so it cannot repopulate cleared assets.
+		this.loadMediaSeq += 1;
+		this.isLoading = false;
+		this.revokeAssetUrls(this.assets);
 
-		this.assets.forEach((asset) => {
+		this.assets = [];
+		this.notify();
+	}
+
+	/** Release every object URL owned by these assets. */
+	private revokeAssetUrls(assets: MediaAsset[]): void {
+		for (const asset of assets) {
 			if (asset.url) {
 				URL.revokeObjectURL(asset.url);
 			}
 			if (asset.thumbnailUrl) {
 				URL.revokeObjectURL(asset.thumbnailUrl);
 			}
-		});
-
-		this.assets = [];
-		this.notify();
+		}
 	}
 
 	getAssets(): MediaAsset[] {

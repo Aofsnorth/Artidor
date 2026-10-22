@@ -9,10 +9,10 @@ import {
 	useState,
 } from "react";
 import { TIMELINE_ZOOM_ANCHOR_PLAYHEAD_THRESHOLD } from "@/components/editor/panels/timeline/interaction";
-import { TIMELINE_ZOOM_MAX, TIMELINE_ZOOM_MIN } from "@/lib/timeline/scale";
+import { TIMELINE_ZOOM_MIN } from "@/lib/timeline/scale";
 import { timelineTimeToPixels } from "@/lib/timeline/pixel-utils";
 import { useEditor } from "@/hooks/use-editor";
-import { zoomToSlider } from "@/lib/timeline/zoom-utils";
+import { zoomToSlider, clampTimelineZoom } from "@/lib/timeline/zoom-utils";
 
 interface UseTimelineZoomProps {
 	containerRef: RefObject<HTMLDivElement | null>;
@@ -53,7 +53,7 @@ export function useTimelineZoom({
 	const [zoomLevel, setZoomLevelRaw] = useState(() => {
 		if (initialZoom !== undefined) {
 			hasInitializedRef.current = true;
-			return Math.max(minZoom, Math.min(TIMELINE_ZOOM_MAX, initialZoom));
+			return clampTimelineZoom({ zoomLevel: initialZoom, minZoom });
 		}
 		return minZoom;
 	});
@@ -105,11 +105,10 @@ export function useTimelineZoom({
 						pendingZoomDeltaRef.current = 0;
 						const zoomFactor = Math.exp(-cappedDelta / 300);
 						setZoomLevel((prev) => {
-							const nextZoom = Math.max(
+							return clampTimelineZoom({
+								zoomLevel: prev * zoomFactor,
 								minZoom,
-								Math.min(TIMELINE_ZOOM_MAX, prev * zoomFactor),
-							);
-							return nextZoom;
+							});
 						});
 					});
 				}
@@ -131,14 +130,16 @@ export function useTimelineZoom({
 	useEffect(() => {
 		if (initialZoom !== undefined && !hasInitializedRef.current) {
 			hasInitializedRef.current = true;
-			setZoomLevel(Math.max(minZoom, Math.min(TIMELINE_ZOOM_MAX, initialZoom)));
+			setZoomLevel(clampTimelineZoom({ zoomLevel: initialZoom, minZoom }));
 			return;
 		}
+		// `minZoom` moves when the project duration or container width changes.
+		// Re-clamp so the current zoom can neither fall below the new minimum
+		// nor exceed the maximum. Returning `prev` unchanged makes React bail
+		// out, so this cannot loop.
 		setZoomLevel((prev) => {
-			if (prev < minZoom) {
-				return minZoom;
-			}
-			return prev;
+			const clampedZoom = clampTimelineZoom({ zoomLevel: prev, minZoom });
+			return clampedZoom === prev ? prev : clampedZoom;
 		});
 	}, [minZoom, initialZoom, setZoomLevel]);
 
@@ -149,10 +150,10 @@ export function useTimelineZoom({
 					typeof zoomLevelOrUpdater === "function"
 						? zoomLevelOrUpdater(prev)
 						: zoomLevelOrUpdater;
-				const clampedZoom = Math.max(
+				const clampedZoom = clampTimelineZoom({
+					zoomLevel: nextZoom,
 					minZoom,
-					Math.min(TIMELINE_ZOOM_MAX, nextZoom),
-				);
+				});
 				return clampedZoom;
 			});
 		},
@@ -238,6 +239,17 @@ export function useTimelineZoom({
 		minZoom,
 		scrollLeftRef,
 	]);
+
+	// The debounced save must not fire after the timeline unmounts: it reads
+	// scroll refs and writes editor state that no longer has a visible owner.
+	useEffect(() => {
+		return () => {
+			if (scrollSaveTimeoutRef.current) {
+				clearTimeout(scrollSaveTimeoutRef.current);
+				scrollSaveTimeoutRef.current = null;
+			}
+		};
+	}, []);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: tracksScrollRef is a stable ref
 	const saveScrollPosition = useCallback(() => {

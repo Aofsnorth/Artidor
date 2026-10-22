@@ -67,14 +67,33 @@ export function ScriptingView() {
 			switch (msg.type) {
 				case "call": {
 					let result: unknown;
-					if (msg.method === "list") {
-						result = editor.api.listCommands();
-					} else {
-						const { name, args } = msg.payload as {
-							name: string;
-							args: Record<string, unknown>;
+					try {
+						if (msg.method === "list") {
+							result = editor.api.listCommands();
+						} else {
+							const payload = msg.payload as {
+								name?: unknown;
+								args?: unknown;
+							} | null;
+							if (!payload || typeof payload.name !== "string") {
+								throw new Error("Invalid scripting bridge payload");
+							}
+							const args =
+								payload.args &&
+								typeof payload.args === "object" &&
+								!Array.isArray(payload.args)
+									? (payload.args as Record<string, unknown>)
+									: {};
+							result = await editor.api.run(payload.name, args, "user");
+						}
+					} catch (err) {
+						// Always reply — an unanswered call hangs the worker until its
+						// timeout, and the user only sees "running" forever.
+						result = {
+							ok: false,
+							message:
+								err instanceof Error ? err.message : "Scripting bridge error",
 						};
-						result = await editor.api.run(name, args, "user");
 					}
 					worker.postMessage({
 						type: "result",

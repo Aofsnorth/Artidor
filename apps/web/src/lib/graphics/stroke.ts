@@ -59,6 +59,9 @@ function applyStroke({
 	strokeDash?: GraphicStrokeDash;
 	strokeTaper?: GraphicStrokeTaper;
 }) {
+	// Every draw-time style change is scoped to this stroke. Without the
+	// restore, lineCap/lineDash/lineWidth leak into the next element's draw.
+	ctx.save();
 	ctx.strokeStyle = strokeColor;
 	ctx.lineWidth =
 		strokeTaper && strokeTaper !== "none"
@@ -68,13 +71,10 @@ function applyStroke({
 	ctx.setLineDash(getStrokeDash({ strokeDash, strokeWidth }));
 
 	if (strokeOpacity !== undefined && strokeOpacity < 1) {
-		ctx.save();
 		ctx.globalAlpha = Math.max(0, Math.min(1, strokeOpacity));
-		ctx.stroke(path);
-		ctx.restore();
-		return;
 	}
 	ctx.stroke(path);
+	ctx.restore();
 }
 
 export function applyAlignedStroke({

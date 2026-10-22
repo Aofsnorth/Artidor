@@ -7,6 +7,12 @@
  *
  * Persisted to localStorage so server configs survive reloads.
  * Connections are re-established on mount.
+ *
+ * SECURITY: bearer tokens are deliberately NOT persisted. `partialize`
+ * strips `token` before the store is serialized to localStorage, so an XSS
+ * or a shared machine cannot read credentials out of storage. Tokens stay
+ * in memory for the current page lifetime and must be re-entered after a
+ * reload (or supplied again through `updateServer`).
  */
 
 import { create } from "zustand";
@@ -33,6 +39,19 @@ interface McpState {
 	updateConnection: (conn: McpConnection) => void;
 	/** Get all tools from all connected servers. */
 	getAllTools: () => Array<McpTool & { serverId: string; serverName: string }>;
+}
+
+/**
+ * Remove bearer tokens before persisting server configs.
+ *
+ * The token remains in the in-memory `servers` array so active connections
+ * keep working, but it never reaches localStorage. Callers that rehydrate
+ * the store must ask the user to re-enter the token.
+ */
+export function serversForPersistence(
+	servers: McpServerConfig[],
+): McpServerConfig[] {
+	return servers.map(({ token: _token, ...server }) => server);
 }
 
 export const useMcpStore = create<McpState>()(
@@ -100,7 +119,10 @@ export const useMcpStore = create<McpState>()(
 				storage: browserStorage,
 				waitMs: 500,
 			}),
-			partialize: (state) => ({ servers: state.servers }),
+			partialize: (state) => ({
+				// Never serialize bearer tokens — see serversForPersistence.
+				servers: serversForPersistence(state.servers),
+			}),
 		},
 	),
 );

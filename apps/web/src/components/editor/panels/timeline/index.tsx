@@ -312,6 +312,9 @@ export function Timeline() {
 				"input, textarea, select, [contenteditable='true']",
 			);
 			if (isTyping) return;
+			// Never hijack browser/OS chords such as Ctrl/Cmd+A (select all)
+			// or Ctrl/Cmd+B (bookmarks).
+			if (event.ctrlKey || event.metaKey || event.altKey) return;
 
 			if (event.key.toLowerCase() === "a") {
 				event.preventDefault();

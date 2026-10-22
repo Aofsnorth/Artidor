@@ -10,6 +10,7 @@ import {
 	setAdjustmentValue,
 } from "@/lib/effects/basic-adjust-actions";
 import { effectsRegistry, registerDefaultEffects } from "@/lib/effects";
+import { BASIC_ADJUST_CONTROLS } from "@/lib/effects/basic-adjust";
 import type { Effect } from "@/lib/effects/types";
 
 // The registry is populated by EditorCore at init, not by import side effect.
@@ -104,6 +105,9 @@ describe("applyAdjustmentValues", () => {
 	});
 
 	test("every built-in preset is applicable and produces real values", () => {
+		const controlTypes = new Set(
+			BASIC_ADJUST_CONTROLS.map((control) => control.effectType),
+		);
 		for (const preset of ADJUSTMENT_PRESETS) {
 			const next = applyAdjustmentValues({
 				effects: [],
@@ -113,6 +117,13 @@ describe("applyAdjustmentValues", () => {
 				expect(
 					effectsRegistry.has(effectType),
 					`preset "${preset.id}" names unregistered ${effectType}`,
+				).toBe(true);
+				// A registered primitive that no Adjust control exposes (the old
+				// `tint` vs `tint-shift` mismatch) is silently dropped by
+				// setAdjustmentValue, so assert the control key, not just the type.
+				expect(
+					controlTypes.has(effectType),
+					`preset "${preset.id}" names ${effectType}, which is not an Adjust control`,
 				).toBe(true);
 			}
 			if (preset.id === "none") {

@@ -17,6 +17,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+	disposeWarmWorker,
 	runExportInWorker,
 	type ExportWorkerResult,
 } from "./export-worker-bridge";
@@ -62,9 +63,11 @@ const originalNavigator = globals.navigator;
 beforeEach(() => {
 	workers = [];
 	globals.Worker = FakeWorker;
+	disposeWarmWorker();
 });
 
 afterEach(() => {
+	disposeWarmWorker();
 	globals.Worker = originalWorker;
 	globals.navigator = originalNavigator;
 });
@@ -194,6 +197,76 @@ describe("bridge gpu-ready gating", () => {
 		} finally {
 			disposeWarmWorker();
 		}
+	});
+});
+
+describe("bridge warm-worker retirement", () => {
+	test("cancel terminates the worker and never returns it to the pool", async () => {
+		let cancelled = false;
+		const first = runExportInWorker({
+			...baseArgs(),
+			reuseWorker: true,
+			getCancelled: () => cancelled,
+		});
+		const firstWorker = latest();
+		firstWorker.emit({ type: "ready" });
+
+		cancelled = true;
+		await expect(first).resolves.toEqual({
+			success: false,
+			cancelled: true,
+		});
+		expect(firstWorker.terminateCalls).toBe(1);
+
+		// The next export must spawn a fresh worker instead of sending init to
+		// the busy cancelled one (whose old run could settle the new promise).
+		const second = runExportInWorker({ ...baseArgs(), reuseWorker: true });
+		expect(workers).toHaveLength(2);
+		const secondWorker = latest();
+		expect(secondWorker).not.toBe(firstWorker);
+		expect(secondWorker.posted).toHaveLength(0);
+
+		secondWorker.emit({ type: "ready" });
+		expect(secondWorker.posted[0]?.message.type).toBe("init");
+		secondWorker.emit({ type: "complete", buffer: new ArrayBuffer(1) });
+		await second;
+	});
+
+	test("timeout terminates the worker and clears the warm pool slot", async () => {
+		const first = runExportInWorker({
+			...baseArgs(),
+			reuseWorker: true,
+			timeoutMs: 1,
+		});
+		const firstWorker = latest();
+		await expect(first).resolves.toMatchObject({ success: false });
+		expect(firstWorker.terminateCalls).toBe(1);
+
+		const second = runExportInWorker({ ...baseArgs(), reuseWorker: true });
+		expect(workers).toHaveLength(2);
+		const secondWorker = latest();
+		expect(secondWorker).not.toBe(firstWorker);
+
+		secondWorker.emit({ type: "ready" });
+		secondWorker.emit({ type: "complete", buffer: new ArrayBuffer(1) });
+		await second;
+	});
+});
+
+describe("bridge negotiated hardware hint", () => {
+	test("forwards the caller's hardware acceleration decision in init", async () => {
+		const promise = runExportInWorker({
+			...baseArgs(),
+			hardwareAcceleration: "prefer-software",
+		});
+		const worker = latest();
+		worker.emit({ type: "ready" });
+
+		const init = worker.posted[0]?.message as Record<string, unknown>;
+		expect(init.hardwareAcceleration).toBe("prefer-software");
+
+		worker.emit({ type: "complete", buffer: new ArrayBuffer(1) });
+		await promise;
 	});
 });
 

@@ -3,6 +3,13 @@ import type { StorageAdapter } from "./types";
 /** Highest code point a string key can sort on — the prefix range upper bound. */
 const MAX_CODE_POINT = String.fromCharCode(0xffff);
 
+/**
+ * How long `deleteDatabase` waits after `onblocked` before rejecting. Another
+ * tab may hold the database open and close it shortly after; blocking forever
+ * would hang every caller (including the migration runner).
+ */
+const DELETE_DATABASE_BLOCKED_TIMEOUT_MS = 5_000;
+
 function getPrefixRange(prefix: string): IDBKeyRange {
 	return IDBKeyRange.bound(prefix, prefix + MAX_CODE_POINT);
 }
@@ -61,28 +68,57 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 		});
 	}
 
-	async set(key: string, value: T): Promise<void> {
-		const db = await this.getDB();
+	/**
+	 * Runs one read/write request and settles only when the transaction
+	 * commits. `request.onsuccess` fires before the transaction is durable: a
+	 * quota failure or an abort afterwards would otherwise leave the caller
+	 * believing the write landed. Request errors still reject immediately; the
+	 * abort that usually follows is ignored by the settled guard.
+	 */
+	private runWrite(
+		db: IDBDatabase,
+		operation: (store: IDBObjectStore) => IDBRequest,
+	): Promise<void> {
 		const transaction = db.transaction([this.storeName], "readwrite");
 		const store = transaction.objectStore(this.storeName);
 
 		return new Promise((resolve, reject) => {
-			const request = store.put({ id: key, ...value });
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
+			let settled = false;
+			const settle = (callback: () => void) => {
+				if (settled) return;
+				settled = true;
+				callback();
+			};
+
+			const request = operation(store);
+			request.onerror = () =>
+				settle(() =>
+					reject(request.error ?? new Error("IndexedDB write request failed")),
+				);
+			transaction.oncomplete = () => settle(resolve);
+			transaction.onerror = () =>
+				settle(() =>
+					reject(
+						transaction.error ?? new Error("IndexedDB transaction failed"),
+					),
+				);
+			transaction.onabort = () =>
+				settle(() =>
+					reject(
+						transaction.error ?? new Error("IndexedDB transaction aborted"),
+					),
+				);
 		});
+	}
+
+	async set(key: string, value: T): Promise<void> {
+		const db = await this.getDB();
+		await this.runWrite(db, (store) => store.put({ id: key, ...value }));
 	}
 
 	async remove(key: string): Promise<void> {
 		const db = await this.getDB();
-		const transaction = db.transaction([this.storeName], "readwrite");
-		const store = transaction.objectStore(this.storeName);
-
-		return new Promise((resolve, reject) => {
-			const request = store.delete(key);
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
-		});
+		await this.runWrite(db, (store) => store.delete(key));
 	}
 
 	async list(): Promise<string[]> {
@@ -111,14 +147,7 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 
 	async clear(): Promise<void> {
 		const db = await this.getDB();
-		const transaction = db.transaction([this.storeName], "readwrite");
-		const store = transaction.objectStore(this.storeName);
-
-		return new Promise((resolve, reject) => {
-			const request = store.clear();
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
-		});
+		await this.runWrite(db, (store) => store.clear());
 	}
 
 	/**
@@ -146,15 +175,8 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 	/** Deletes every record whose key starts with `prefix`, in one transaction. */
 	async removeByPrefix(prefix: string): Promise<void> {
 		const db = await this.getDB();
-		const transaction = db.transaction([this.storeName], "readwrite");
-		const store = transaction.objectStore(this.storeName);
 		const range = getPrefixRange(prefix);
-
-		return new Promise((resolve, reject) => {
-			const request = store.delete(range);
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
-		});
+		await this.runWrite(db, (store) => store.delete(range));
 	}
 
 	/**
@@ -175,12 +197,48 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 
 export async function deleteDatabase({
 	dbName,
+	blockedTimeoutMs = DELETE_DATABASE_BLOCKED_TIMEOUT_MS,
 }: {
 	dbName: string;
+	/** Test/override hook; production callers use the default. */
+	blockedTimeoutMs?: number;
 }): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.deleteDatabase(dbName);
-		request.onsuccess = () => resolve();
-		request.onerror = () => reject(request.error);
+		let settled = false;
+		let blockedTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const settle = (callback: () => void) => {
+			if (settled) return;
+			settled = true;
+			if (blockedTimer !== null) {
+				clearTimeout(blockedTimer);
+				blockedTimer = null;
+			}
+			callback();
+		};
+
+		request.onsuccess = () => settle(resolve);
+		request.onerror = () =>
+			settle(() =>
+				reject(
+					request.error ?? new Error(`Failed to delete database "${dbName}"`),
+				),
+			);
+		// `onblocked` means another connection keeps the database open. Give it
+		// a bounded window to close rather than hanging the caller forever.
+		request.onblocked = () => {
+			if (blockedTimer !== null || settled) return;
+			blockedTimer = setTimeout(() => {
+				blockedTimer = null;
+				settle(() =>
+					reject(
+						new Error(
+							`Deleting database "${dbName}" is blocked by another open connection.`,
+						),
+					),
+				);
+			}, blockedTimeoutMs);
+		};
 	});
 }

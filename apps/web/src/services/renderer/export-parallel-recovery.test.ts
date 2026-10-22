@@ -117,6 +117,27 @@ describe("parallel export segment recovery (static-only)", () => {
 			/\} finally \{\s*\n\s*\/\/[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*discardOwnedFiles\(\);/,
 		);
 	});
+
+	test("segments inherit the negotiated container and hardware hint", () => {
+		// A VP9 fallback negotiates webm; segments must not keep muxing into the
+		// originally requested mp4 container.
+		expect(source).toContain("format: negotiatedFormat,");
+		expect(source).toContain(
+			"hardwareAcceleration: negotiatedHardwareAcceleration,",
+		);
+	});
+
+	test("cancellation stops the remaining segment workers from spawning", () => {
+		expect(source).toContain("if (getCancelled?.()) break;");
+		// Unlaunched slots are cancelled rather than left sparse (the caller
+		// indexes the result array for every plan).
+		expect(source).toContain("plans.map(() => ({");
+		expect(source).toContain("cancelled: true,");
+		// The launcher receives the caller's cancellation poll.
+		expect(source).toMatch(
+			/launchSegments\(\s*targets,[\s\S]*?getCancelled,\s*\);/,
+		);
+	});
 });
 
 describe("parallel export main-thread discipline (static-only)", () => {
@@ -153,7 +174,9 @@ describe("parallel export main-thread discipline (static-only)", () => {
 		// The ready signal must actually reach the worker: a gate that is never
 		// opened just waits out the fallback delay for every worker.
 		expect(source).toContain("run(plan, () => signalGpuReady?.())");
-		expect(source).toContain("launchSegments(targets, (plan, onGpuReady) => {");
+		expect(source).toMatch(
+			/launchSegments\(\s*targets,\s*\(plan, onGpuReady\) => \{/,
+		);
 		expect(source).toContain(
 			"runSegment(plan, { forceSoftwareEncoding: force, onGpuReady })",
 		);

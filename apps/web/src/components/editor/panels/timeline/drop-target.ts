@@ -14,7 +14,7 @@ import {
 	TIMELINE_CONTENT_TOP_PADDING_PX,
 } from "./layout";
 import { getTrackHeight } from "./track-layout";
-import { TICKS_PER_SECOND } from "@/lib/wasm";
+import { getTimelineTimeFromPixels } from "@/lib/timeline/drag-utils";
 
 function findElementAtPosition({
 	mouseX,
@@ -31,9 +31,11 @@ function findElementAtPosition({
 	pixelsPerSecond: number;
 	zoomLevel: number;
 }): { elementId: string; trackId: string } | null {
-	const time = Math.round(
-		(mouseX / (pixelsPerSecond * zoomLevel)) * TICKS_PER_SECOND,
-	);
+	const time = getTimelineTimeFromPixels({
+		pixelX: mouseX,
+		pixelsPerSecond,
+		zoomLevel,
+	});
 	const track = tracks[trackIndex];
 	if (!track || !("elements" in track)) return null;
 
@@ -138,10 +140,11 @@ export function computeDropTarget({
 			? startTimeOverride
 			: isExternalDrop
 				? playheadTime
-				: Math.round(
-						Math.max(0, mouseX / (pixelsPerSecond * zoomLevel)) *
-							TICKS_PER_SECOND,
-					);
+				: getTimelineTimeFromPixels({
+						pixelX: mouseX,
+						pixelsPerSecond,
+						zoomLevel,
+					});
 
 	// Track rows are rendered with a small top padding inside the scroll
 	// container, so the Y used for hit-testing must be shifted to align

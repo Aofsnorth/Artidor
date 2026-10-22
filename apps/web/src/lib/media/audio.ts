@@ -68,6 +68,29 @@ export interface CollectedAudioElement {
 	fadeOutDuration?: number;
 }
 
+/**
+ * Trim offset to carry on a collected element.
+ *
+ * Some decode paths (video/embedded tracks, and audio elements backed by a
+ * non-audio asset) start decoding at the element's `trimStart`, so sample 0 of
+ * the returned buffer is already the trimmed source position. Carrying the
+ * original `trimStart` on the collected element would then apply that offset a
+ * second time in the mixdown (`mixAudioChannels` adds `trimStart` to the source
+ * time), producing shifted or silent audio. Paths that decode the whole file
+ * must keep the offset so the mix reads the right source region exactly once.
+ */
+export function resolveCollectedTrimStartSeconds({
+	elementTrimStartSeconds,
+	bufferStartsAtTrimStart,
+}: {
+	elementTrimStartSeconds: number;
+	/** True when decoding began at `elementTrimStartSeconds`. */
+	bufferStartsAtTrimStart: boolean;
+}): number {
+	if (bufferStartsAtTrimStart) return 0;
+	return Math.max(0, elementTrimStartSeconds);
+}
+
 export function createAudioContext({
 	sampleRate,
 }: {
@@ -231,6 +254,12 @@ export async function collectAudioElements({
 
 	for (const { element, mediaAsset } of candidates) {
 		if (element.type === "audio") {
+			// An audio element backed by a video asset is decoded through the
+			// trimmed mediabunny path (`resolveAudioBufferForElement`), so its
+			// buffer already starts at trimStart. Native audio uploads and
+			// library audio decode the whole file and keep the offset.
+			const bufferStartsAtTrimStart =
+				element.sourceType === "upload" && mediaAsset?.type !== "audio";
 			pendingElements.push(() =>
 				resolveAudioBufferForElement({
 					element,
@@ -244,7 +273,10 @@ export async function collectAudioElements({
 						buffer: audioBuffer,
 						startTime: element.startTime / TICKS_PER_SECOND,
 						duration: element.duration / TICKS_PER_SECOND,
-						trimStart: element.trimStart / TICKS_PER_SECOND,
+						trimStart: resolveCollectedTrimStartSeconds({
+							elementTrimStartSeconds: element.trimStart / TICKS_PER_SECOND,
+							bufferStartsAtTrimStart,
+						}),
 						trimEnd: element.trimEnd / TICKS_PER_SECOND,
 						volume: resolveEffectiveAudioGain({
 							element,
@@ -281,7 +313,12 @@ export async function collectAudioElements({
 						buffer: audioBuffer,
 						startTime: element.startTime / TICKS_PER_SECOND,
 						duration: element.duration / TICKS_PER_SECOND,
-						trimStart: element.trimStart / TICKS_PER_SECOND,
+						// The video audio buffer was decoded from trimStart, so its
+						// sample 0 already is the trimmed source position.
+						trimStart: resolveCollectedTrimStartSeconds({
+							elementTrimStartSeconds: element.trimStart / TICKS_PER_SECOND,
+							bufferStartsAtTrimStart: true,
+						}),
 						trimEnd: element.trimEnd / TICKS_PER_SECOND,
 						volume: resolveEffectiveAudioGain({
 							element,

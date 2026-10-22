@@ -85,4 +85,60 @@ describe("react perf: throttled persist storage", () => {
 		throttled?.getItem("editor-ui");
 		expect(spy.storage.getItem).toHaveBeenCalledTimes(1);
 	});
+
+	test("round 10: a failed flush keeps the pending value and retries", async () => {
+		const writes: Array<{ name: string; value: unknown }> = [];
+		const errors: unknown[] = [];
+		let callCount = 0;
+		const setItem = mock((name: string, value: unknown) => {
+			callCount += 1;
+			if (callCount === 2) {
+				throw new DOMException("quota exceeded", "QuotaExceededError");
+			}
+			writes.push({ name, value });
+		});
+		const throttled = createThrottledStorage({
+			storage: {
+				getItem: mock(() => null),
+				setItem,
+				removeItem: mock(() => undefined),
+			},
+			waitMs: 250,
+			onError: (error) => errors.push(error),
+		});
+
+		// First write lands immediately; the second is coalesced and flushed
+		// later, where the fake storage fails once.
+		throttled?.setItem("editor-ui", { pos: 1 } as never);
+		throttled?.setItem("editor-ui", { pos: 2 } as never);
+
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(errors).toHaveLength(1);
+		expect((errors[0] as Error).name).toBe("QuotaExceededError");
+		expect(writes.at(-1)?.value).toEqual({ pos: 1 });
+
+		// The retry persists the value that the failed flush would have lost.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(writes.at(-1)?.value).toEqual({ pos: 2 });
+	});
+
+	test("round 11: an immediate write failure is surfaced, not thrown", async () => {
+		const errors: unknown[] = [];
+		const throttled = createThrottledStorage({
+			storage: {
+				getItem: mock(() => null),
+				setItem: mock(() => {
+					throw new DOMException("quota exceeded", "QuotaExceededError");
+				}),
+				removeItem: mock(() => undefined),
+			},
+			waitMs: 250,
+			onError: (error) => errors.push(error),
+		});
+
+		expect(() =>
+			throttled?.setItem("editor-ui", { focusMode: true } as never),
+		).not.toThrow();
+		expect(errors).toHaveLength(1);
+	});
 });

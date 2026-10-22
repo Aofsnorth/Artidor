@@ -60,6 +60,22 @@ class NoOpCommand extends Command {
 	execute() {
 		return undefined;
 	}
+
+	undo(): void {}
+
+	redo() {
+		return undefined;
+	}
+}
+
+class ThrowingUndoCommand extends Command {
+	execute() {
+		return undefined;
+	}
+
+	undo(): void {
+		throw new Error("undo failed");
+	}
 }
 
 function resetTracks(tracks: SceneTracks) {
@@ -81,6 +97,45 @@ test("round 01: reactor subscriptions dispose independently and idempotently", (
 	unsubscribe(); // idempotent disposal
 	manager.execute({ command: new NoOpCommand() });
 	expect(calls).toBe(3);
+});
+
+test("CORE-14: undo runs reactors like redo", () => {
+	resetTracks(buildSceneTracks());
+	const manager = new CommandManager(editorMock);
+	const seen: string[] = [];
+	manager.registerReactor((command) => seen.push(command.constructor.name));
+
+	const command = new NoOpCommand();
+	manager.execute({ command });
+	expect(seen).toEqual(["NoOpCommand"]);
+	manager.undo();
+	expect(seen).toEqual(["NoOpCommand", "NoOpCommand"]);
+});
+
+test("CORE-02: a throwing undo keeps the entry on the history stack", () => {
+	resetTracks(buildSceneTracks());
+	const manager = new CommandManager(editorMock);
+	manager.execute({ command: new ThrowingUndoCommand() });
+	expect(manager.canUndo()).toBe(true);
+	expect(manager.canRedo()).toBe(false);
+
+	expect(() => manager.undo()).toThrow("undo failed");
+
+	// Not silently lost: the entry is still undoable and was not moved to redo.
+	expect(manager.canUndo()).toBe(true);
+	expect(manager.canRedo()).toBe(false);
+});
+
+test("CORE-02: readOnly undo never pops an entry", () => {
+	resetTracks(buildSceneTracks());
+	const manager = new CommandManager(editorMock);
+	manager.execute({ command: new NoOpCommand() });
+	manager.readOnly = true;
+
+	manager.undo();
+
+	expect(manager.canUndo()).toBe(true);
+	expect(manager.canRedo()).toBe(false);
 });
 
 test("round 02: move command pushes past a single blocker when placement allows", () => {

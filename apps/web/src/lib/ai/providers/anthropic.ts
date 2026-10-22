@@ -39,6 +39,30 @@ export class AnthropicProvider implements LLMProvider {
 		return "anthropic";
 	}
 
+	/**
+	 * Anthropic takes `system` as one top-level string, but our conversation
+	 * can carry several system messages (the base prompt plus an auto-compaction
+	 * summary). `.find()` kept only the first and silently dropped the rest —
+	 * combine every system message, preserving order.
+	 */
+	private buildSystemPrompt(
+		messages: ChatRequest["messages"],
+	): string | undefined {
+		const parts: string[] = [];
+		for (const m of messages) {
+			if (m.role !== "system") continue;
+			const text =
+				typeof m.content === "string"
+					? m.content
+					: m.content
+							.filter((p) => p.type === "text")
+							.map((p) => (p as { type: "text"; text: string }).text)
+							.join("\n");
+			if (text.trim()) parts.push(text);
+		}
+		return parts.length > 0 ? parts.join("\n\n") : undefined;
+	}
+
 	async chat(request: ChatRequest): Promise<ChatResponse> {
 		if (!this.config.apiKey) {
 			throw new Error(
@@ -49,16 +73,7 @@ export class AnthropicProvider implements LLMProvider {
 			this.config.baseUrl ?? "https://api.anthropic.com"
 		).replace(/\/$/, "");
 
-		const systemMsg = request.messages.find((m) => m.role === "system");
-		const system =
-			typeof systemMsg?.content === "string"
-				? systemMsg.content
-				: Array.isArray(systemMsg?.content)
-					? systemMsg.content
-							.filter((p) => p.type === "text")
-							.map((p) => (p as { type: "text"; text: string }).text)
-							.join("\n")
-					: undefined;
+		const system = this.buildSystemPrompt(request.messages);
 		const messages = request.messages
 			.filter((m) => m.role !== "system")
 			.map((m) => this.toAnthropicMessage(m));

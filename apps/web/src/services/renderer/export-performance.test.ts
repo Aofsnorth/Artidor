@@ -269,6 +269,37 @@ describe("planExportMemory", () => {
 		expect(plan.insufficient).toBe(false);
 	});
 
+	test("charges buffer-mode output once, not twice", () => {
+		// The output is part of `estimatedPeakBytes`; counting it again pushed
+		// a 40-minute 1080p RAM export over the 8 GB device budget even though
+		// the actual peak fits.
+		const fit = planExportMemory({
+			...HD_5MIN,
+			durationSeconds: 2400,
+			diskCopies: 0,
+			requestedWorkerCount: 1,
+			deviceMemoryGb: 8,
+			storageQuotaBytes: 10,
+			storageUsageBytes: 10,
+		});
+		expect(fit.insufficient).toBe(false);
+		expect(fit.estimatedPeakBytes).toBeGreaterThan(fit.estimatedOutputBytes);
+		expect(fit.estimatedPeakBytes).toBeLessThan(8 * 1024 ** 3 * 0.5);
+
+		// A genuinely oversized buffer export is still refused.
+		const tooBig = planExportMemory({
+			...HD_5MIN,
+			durationSeconds: 3000,
+			diskCopies: 0,
+			requestedWorkerCount: 1,
+			deviceMemoryGb: 8,
+			storageQuotaBytes: 10,
+			storageUsageBytes: 10,
+		});
+		expect(tooBig.insufficient).toBe(true);
+		expect(tooBig.reason).toContain("rendered output alone");
+	});
+
 	test("never proposes fewer than one worker and ignores NaN inputs", () => {
 		const plan = planExportMemory({
 			...HD_5MIN,

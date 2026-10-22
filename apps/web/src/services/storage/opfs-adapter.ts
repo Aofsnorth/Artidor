@@ -15,7 +15,14 @@ export class OPFSAdapter implements StorageAdapter<File> {
 				return await opfsRoot.getDirectoryHandle(this.directoryName, {
 					create: true,
 				});
-			})();
+			})().catch((error) => {
+				// Do not cache a rejected promise: one transient failure
+				// (aborted request, temporary quota error) would otherwise
+				// poison every later read/write until the page reloads, and
+				// all subsequent project saves would fail.
+				this.directoryPromise = null;
+				throw error;
+			});
 		}
 		return this.directoryPromise;
 	}

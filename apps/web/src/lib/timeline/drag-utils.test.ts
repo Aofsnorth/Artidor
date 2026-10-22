@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { getMouseTimeFromClientX } from "./drag-utils";
+import {
+	getMouseTimeFromClientX,
+	getTimelineTimeFromPixels,
+} from "./drag-utils";
 import { BASE_TIMELINE_PIXELS_PER_SECOND } from "./scale";
 import { TICKS_PER_SECOND } from "../wasm";
 
@@ -22,8 +25,7 @@ describe("getMouseTimeFromClientX", () => {
 		// 8.5 ticks at the current base scale sits just below the half-tick
 		// boundary in floating-point, so without a small epsilon the result
 		// rounds down to 8 instead of the expected 9.
-		const clientX =
-			(8.5 * BASE_TIMELINE_PIXELS_PER_SECOND) / TICKS_PER_SECOND;
+		const clientX = (8.5 * BASE_TIMELINE_PIXELS_PER_SECOND) / TICKS_PER_SECOND;
 
 		const result = getMouseTimeFromClientX({
 			clientX,
@@ -33,5 +35,44 @@ describe("getMouseTimeFromClientX", () => {
 		});
 
 		expect(result).toBe(9);
+	});
+
+	it("clamps pointer positions left of the timeline to tick 0", () => {
+		// Negative padding/inset used to produce negative times, which then
+		// missed clips starting at exactly 0.
+		expect(
+			getMouseTimeFromClientX({
+				clientX: -50,
+				containerRect: rect(),
+				zoomLevel: 1,
+				scrollLeft: 0,
+			}),
+		).toBe(0);
+		expect(
+			getMouseTimeFromClientX({
+				clientX: 4,
+				containerRect: rect(),
+				zoomLevel: 1,
+				scrollLeft: 0,
+				contentInset: 8,
+			}),
+		).toBe(0);
+	});
+
+	it("honours an explicit pixels-per-second scale", () => {
+		expect(
+			getTimelineTimeFromPixels({
+				pixelX: 200,
+				pixelsPerSecond: 100,
+				zoomLevel: 2,
+			}),
+		).toBe(TICKS_PER_SECOND);
+	});
+
+	it("returns 0 for a degenerate zoom instead of Infinity/NaN", () => {
+		expect(getTimelineTimeFromPixels({ pixelX: 100, zoomLevel: 0 })).toBe(0);
+		expect(
+			getTimelineTimeFromPixels({ pixelX: 100, zoomLevel: Number.NaN }),
+		).toBe(0);
 	});
 });

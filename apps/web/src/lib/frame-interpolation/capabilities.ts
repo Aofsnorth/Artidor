@@ -35,7 +35,9 @@ async function detectHardware(): Promise<FrameInterpolationCapabilities> {
 
 	return {
 		blend: true,
-		opticalFlow: webgl2 || webgpu,
+		// The optical-flow implementation is CPU-only, so it is available
+		// whenever the module is — no WebGL2/WebGPU requirement.
+		opticalFlow: true,
 		ai: webgpu,
 		hardware,
 	};

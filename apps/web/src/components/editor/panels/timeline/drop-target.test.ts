@@ -230,3 +230,74 @@ test("video dragged over an audio track snaps to main track", () => {
 	expect(target.isNewTrack).toBe(false);
 	expect(target.trackIndex).toBe(0); // main track
 });
+
+test("negative pointer X clamps to tick 0 instead of a negative time", () => {
+	const target = computeDropTarget({
+		elementType: "video",
+		mouseX: -120,
+		mouseY: 10,
+		tracks: {
+			overlay: [],
+			main: {
+				id: "main",
+				name: "Main",
+				type: "video",
+				elements: [],
+				muted: false,
+				hidden: false,
+			},
+			overlayAfter: [],
+			audio: [],
+		},
+		playheadTime: 0,
+		isExternalDrop: false,
+		elementDuration: ONE_SECOND_TICKS,
+		pixelsPerSecond: 100,
+		zoomLevel: 1,
+	});
+
+	expect(target.xPosition).toBe(0);
+});
+
+test("negative pointer X still hit-tests a clip starting at 0", () => {
+	const clip = {
+		id: "at-zero",
+		type: "video",
+		name: "At zero",
+		startTime: 0,
+		duration: 10 * ONE_SECOND_TICKS,
+		mediaId: "m1",
+		trimStart: 0,
+		trimEnd: 0,
+	} as never;
+
+	const target = computeDropTarget({
+		elementType: "effect",
+		mouseX: -40,
+		mouseY: 10,
+		tracks: {
+			overlay: [],
+			main: {
+				id: "main",
+				name: "Main",
+				type: "video",
+				elements: [clip],
+				muted: false,
+				hidden: false,
+			},
+			overlayAfter: [],
+			audio: [],
+		},
+		playheadTime: 0,
+		isExternalDrop: false,
+		elementDuration: ONE_SECOND_TICKS,
+		pixelsPerSecond: 100,
+		zoomLevel: 1,
+		targetElementTypes: ["video", "image", "text", "sticker", "graphic"],
+	});
+
+	expect(target.targetElement).toEqual({
+		elementId: "at-zero",
+		trackId: "main",
+	});
+});

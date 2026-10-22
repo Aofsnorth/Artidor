@@ -1,5 +1,27 @@
 import type { EffectDefinition } from "@/lib/effects/types";
 
+/** Neutral wheel value: subtracting 0.5 yields a zero shift. */
+const NEUTRAL_RGB: [number, number, number] = [0.5, 0.5, 0.5];
+
+/**
+ * Parse a 3- or 6-digit hex colour into normalised RGB. Invalid, short or
+ * non-hex input falls back to neutral instead of producing NaN uniforms.
+ */
+function hexToRgb(value: unknown): [number, number, number] {
+	if (typeof value !== "string") return NEUTRAL_RGB;
+	const match = value.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+	if (!match) return NEUTRAL_RGB;
+	const hex =
+		match[1].length === 3
+			? [...match[1]].map((char) => char + char).join("")
+			: match[1];
+	const channel = (start: number): number => {
+		const parsed = Number.parseInt(hex.slice(start, start + 2), 16) / 255;
+		return Number.isFinite(parsed) ? Math.min(1, Math.max(0, parsed)) : 0.5;
+	};
+	return [channel(0), channel(2), channel(4)];
+}
+
 export const colorWheelsAdjustmentDefinition: EffectDefinition = {
 	type: "color-wheels",
 	name: "Color Wheels",
@@ -29,13 +51,6 @@ export const colorWheelsAdjustmentDefinition: EffectDefinition = {
 			{
 				shader: "color-wheels",
 				uniforms: ({ effectParams }) => {
-					const hexToRgb = (v: unknown): [number, number, number] => {
-						const s = typeof v === "string" ? v.replace("#", "") : "000000";
-						const r = Number.parseInt(s.slice(0, 2), 16) / 255;
-						const g = Number.parseInt(s.slice(2, 4), 16) / 255;
-						const b = Number.parseInt(s.slice(4, 6), 16) / 255;
-						return [r, g, b];
-					};
 					const lift = hexToRgb(effectParams.lift);
 					const gamma = hexToRgb(effectParams.gamma);
 					const gain = hexToRgb(effectParams.gain);

@@ -233,8 +233,15 @@ const matchLinearOrientation = (): LinearOrientation | undefined => {
 	return matchAngle();
 };
 
-const matchSideOrCorner = (): DirectionalOrientation | undefined =>
-	match({ type: "directional", pattern: tokens.sideOrCorner, captureIndex: 1 });
+const matchSideOrCorner = (): DirectionalOrientation | undefined => {
+	// Keep the leading "to " so the renderer can tell modern `to right` from
+	// the legacy start-side keyword `right` (which points the other way).
+	return match({
+		type: "directional",
+		pattern: tokens.sideOrCorner,
+		captureIndex: 0,
+	});
+};
 
 const matchAngle = (): AngularOrientation | undefined =>
 	match({ type: "angular", pattern: tokens.angleValue, captureIndex: 1 }) ||

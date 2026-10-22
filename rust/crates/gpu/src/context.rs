@@ -64,6 +64,68 @@ pub struct GpuContext {
 }
 
 impl GpuContext {
+    /// WebGPU requires `bytes_per_row` in `copy_texture_to_buffer` to be a
+    /// multiple of this value.
+    pub const COPY_BYTES_PER_ROW_ALIGNMENT: u32 = 256;
+
+    /// Rounds `width * 4` (RGBA8) up to the 256-byte row pitch required by
+    /// `copy_texture_to_buffer`.
+    ///
+    /// Returns `None` when `width * 4` itself would overflow.
+    pub fn padded_bytes_per_row(width: u32) -> Option<u32> {
+        let alignment = Self::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let unpadded = width.checked_mul(4)?;
+        unpadded
+            .checked_add(alignment - 1)
+            .map(|padded| padded & !(alignment - 1))
+    }
+
+    /// Size of the readback buffer for `width` x `height` RGBA8 pixels,
+    /// including the per-row padding.
+    ///
+    /// The multiplication is done in `u64` so a 32-bit `usize` cannot wrap it.
+    pub fn readback_buffer_size(width: u32, height: u32) -> Option<u64> {
+        let padded_bytes_per_row = Self::padded_bytes_per_row(width)?;
+        u64::from(padded_bytes_per_row).checked_mul(u64::from(height))
+    }
+
+    /// Copies `height` rows out of a padded readback buffer, dropping the
+    /// per-row padding bytes.
+    ///
+    /// Returns `None` when the buffer is too small for the requested size.
+    pub fn unpad_rows(padded: &[u8], width: u32, height: u32) -> Option<Vec<u8>> {
+        let padded_row_bytes = usize::try_from(Self::padded_bytes_per_row(width)?).ok()?;
+        let row_bytes = usize::try_from(width).ok()?.checked_mul(4)?;
+        let rows = usize::try_from(height).ok()?;
+        let needed = padded_row_bytes.checked_mul(rows)?;
+        if padded.len() < needed {
+            return None;
+        }
+
+        let mut unpadded = Vec::with_capacity(row_bytes.checked_mul(rows)?);
+        for row in 0..rows {
+            let start = row * padded_row_bytes;
+            unpadded.extend_from_slice(&padded[start..start + row_bytes]);
+        }
+        Some(unpadded)
+    }
+
+    /// Validates a JS-supplied texture dimension.
+    ///
+    /// Only finite whole numbers in `1..=max` are accepted. Casting a JS
+    /// number with `as u32` silently maps `NaN` and negatives to `0` and huge
+    /// values to `u32::MAX`, which then fails deep inside texture creation
+    /// (or panics) instead of surfacing as a clear error at the boundary.
+    pub fn validate_texture_dimension(value: f64, max: u32) -> Option<u32> {
+        if !value.is_finite() || value.fract() != 0.0 {
+            return None;
+        }
+        if value < 1.0 || value > f64::from(max) {
+            return None;
+        }
+        Some(value as u32)
+    }
+
     pub async fn new() -> Result<Self, GpuError> {
         let (instance, adapter, device, queue) = Self::acquire_device().await?;
         #[allow(unused_mut)]
@@ -667,7 +729,17 @@ impl GpuContext {
         width: u32,
         height: u32,
     ) -> Result<(), GpuError> {
-        let buffer_size = (width * height * 4) as u64;
+        let padded_bytes_per_row = Self::padded_bytes_per_row(width)
+            .ok_or(GpuError::InvalidTextureSize { width, height })?;
+        let buffer_size = Self::readback_buffer_size(width, height)
+            .ok_or(GpuError::InvalidTextureSize { width, height })?;
+        let max_buffer_size = self.device.limits().max_buffer_size;
+        if buffer_size > max_buffer_size {
+            return Err(GpuError::ReadbackBufferTooLarge {
+                size: buffer_size,
+                max: max_buffer_size,
+            });
+        }
         let buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("gpu-readback-buffer"),
             size: buffer_size,
@@ -691,7 +763,8 @@ impl GpuContext {
                 buffer: &buffer,
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
-                    bytes_per_row: Some(width * 4),
+                    // `copy_texture_to_buffer` requires a 256-byte row pitch.
+                    bytes_per_row: Some(padded_bytes_per_row),
                     rows_per_image: Some(height),
                 },
             },
@@ -703,14 +776,30 @@ impl GpuContext {
         );
         self.queue.submit([encoder.finish()]);
 
-        let slice = buffer.slice(..);
-        slice.map_async(wgpu::MapMode::Read, |_| {});
+        // Block until the copy has completed, then ask for the mapping.
         let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
 
-        let data = slice.get_mapped_range();
-        let mut rgba_bytes = data.to_vec();
-        drop(data);
+        let slice = buffer.slice(..);
+        let (tx, rx) = std::sync::mpsc::channel();
+        slice.map_async(wgpu::MapMode::Read, move |result| {
+            // Capture the result instead of discarding it: `get_mapped_range`
+            // panics when mapping failed (e.g. device loss), and a wasm panic
+            // leaves no recoverable error for JS.
+            let _ = tx.send(result);
+        });
+        let _ = self.device.poll(wgpu::PollType::wait_indefinitely());
+
+        rx.recv()
+            .map_err(|_| GpuError::BufferMapFailed)?
+            .map_err(|_| GpuError::BufferMapFailed)?;
+
+        let mapped = slice.get_mapped_range();
+        // Unpad row by row before handing the pixels to `ImageData`.
+        let rgba_bytes = Self::unpad_rows(&mapped, width, height)
+            .ok_or(GpuError::InvalidTextureSize { width, height });
+        drop(mapped);
         buffer.unmap();
+        let mut rgba_bytes = rgba_bytes?;
 
         if self.texture_format == wgpu::TextureFormat::Bgra8Unorm {
             for pixel in rgba_bytes.chunks_exact_mut(4) {
@@ -733,5 +822,89 @@ impl GpuContext {
             .map_err(|_| GpuError::AdapterUnavailable)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GpuContext;
+
+    #[test]
+    fn readback_rows_are_aligned_to_256_bytes() {
+        assert_eq!(GpuContext::padded_bytes_per_row(64), Some(256));
+        // 160 * 4 = 640, not a multiple of 256; the next multiple is 768.
+        assert_eq!(GpuContext::padded_bytes_per_row(160), Some(768));
+        assert_eq!(GpuContext::padded_bytes_per_row(1920), Some(7680));
+        // 1080 * 4 = 4320; the next multiple is 4352 (17 * 256).
+        assert_eq!(GpuContext::padded_bytes_per_row(1080), Some(4352));
+    }
+
+    #[test]
+    fn readback_buffer_size_is_padded_and_does_not_wrap() {
+        assert_eq!(GpuContext::readback_buffer_size(160, 90), Some(768 * 90));
+        assert_eq!(
+            GpuContext::readback_buffer_size(1080, 1920),
+            Some(4352 * 1920)
+        );
+        assert_eq!(GpuContext::padded_bytes_per_row(u32::MAX), None);
+        assert_eq!(GpuContext::readback_buffer_size(u32::MAX, 2), None);
+    }
+
+    #[test]
+    fn unpad_rows_strips_the_padded_row_pitch() {
+        for (width, height) in [(160, 3), (1080, 2)] {
+            let padded_row = GpuContext::padded_bytes_per_row(width).unwrap() as usize;
+            let row_bytes = width as usize * 4;
+            let mut padded = vec![0xAA_u8; padded_row * height as usize];
+            for row in 0..height as usize {
+                for byte in 0..row_bytes {
+                    padded[row * padded_row + byte] = (row * 17 + byte % 251) as u8;
+                }
+            }
+
+            let unpadded = GpuContext::unpad_rows(&padded, width, height).unwrap();
+            assert_eq!(unpadded.len(), row_bytes * height as usize);
+            for row in 0..height as usize {
+                let start = row * row_bytes;
+                assert_eq!(
+                    &unpadded[start..start + row_bytes],
+                    &padded[row * padded_row..row * padded_row + row_bytes],
+                    "row {row} of width {width} was not copied verbatim"
+                );
+            }
+        }
+
+        // A buffer shorter than the padded layout is rejected, not sliced out
+        // of bounds.
+        assert_eq!(GpuContext::unpad_rows(&[0; 10], 160, 1), None);
+    }
+
+    #[test]
+    fn validates_texture_dimensions() {
+        assert_eq!(
+            GpuContext::validate_texture_dimension(160.0, 8192),
+            Some(160)
+        );
+        assert_eq!(GpuContext::validate_texture_dimension(1.0, 8192), Some(1));
+        assert_eq!(
+            GpuContext::validate_texture_dimension(8192.0, 8192),
+            Some(8192)
+        );
+
+        for invalid in [
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            0.0,
+            -1.0,
+            1.5,
+            8193.0,
+        ] {
+            assert_eq!(
+                GpuContext::validate_texture_dimension(invalid, 8192),
+                None,
+                "{invalid} should be rejected"
+            );
+        }
     }
 }

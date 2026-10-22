@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { buildDriveDirectUrl, parseDriveUrl } from "@/lib/drive/parse";
+import {
+	buildDriveDirectUrl,
+	isValidDriveFileId,
+	parseDriveUrl,
+	sanitizeDriveFileName,
+} from "@/lib/drive/parse";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getOptionalSession } from "@/lib/auth/require-auth";
 
@@ -214,6 +219,18 @@ export async function POST(request: Request) {
 	// File link: stream the bytes and return them base64-encoded so the
 	// client can rehydrate a File without further round-trips.
 	const fileId = parsed.id;
+	// The ID is interpolated into the upstream URL. Restrict it to Drive's
+	// actual alphabet so a crafted link cannot inject extra query params.
+	if (!isValidDriveFileId(fileId)) {
+		return NextResponse.json(
+			{
+				code: "invalid_url",
+				message:
+					"That Google Drive file ID looks invalid. Re-copy the share link.",
+			} satisfies DriveImportError,
+			{ status: 400 },
+		);
+	}
 	const directUrl = buildDriveDirectUrl({ fileId });
 
 	const controller = new AbortController();
@@ -359,8 +376,7 @@ export async function POST(request: Request) {
 					],
 					totalBytes,
 				)
-			: (preallocated?.subarray(0, totalBytes) ??
-				Buffer.alloc(totalBytes));
+			: (preallocated?.subarray(0, totalBytes) ?? Buffer.alloc(totalBytes));
 	const disposition = response.headers.get("content-disposition");
 	const fileName = extractFileName({ disposition, fileId, contentType });
 
@@ -422,18 +438,26 @@ function extractFileName({
 	fileId: string;
 	contentType: string;
 }): string {
+	// Never trust the upstream header: sanitize whatever name Drive sent and
+	// fall back to a generated one when nothing safe remains.
+	let candidate: string | undefined;
 	if (disposition) {
 		const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
 		if (utf8?.[1]) {
 			try {
-				return decodeURIComponent(utf8[1]);
+				candidate = decodeURIComponent(utf8[1]);
 			} catch {
 				// fall through
 			}
 		}
-		const quoted = /filename="?([^";]+)"?/i.exec(disposition);
-		if (quoted?.[1]) return quoted[1];
+		if (!candidate) {
+			const quoted = /filename="?([^";]+)"?/i.exec(disposition);
+			if (quoted?.[1]) candidate = quoted[1];
+		}
 	}
+	const safe = candidate ? sanitizeDriveFileName(candidate) : null;
+	if (safe) return safe;
+
 	const ext = contentType.split("/")[1]?.split(";")[0]?.trim() ?? "bin";
 	return `drive-${fileId}.${ext}`;
 }

@@ -84,9 +84,13 @@ export function clampTransitionToOverlap({
 	}
 	const definition = transitionsRegistry.get(transitionType);
 	const overlapLength = window.overlapEnd - window.overlapStart;
-	const clampedDuration = Math.max(
-		definition.minDuration,
-		Math.min(duration, overlapLength, definition.maxDuration),
+	// The definition's minimum cannot win over the physical overlap: a
+	// minDuration longer than the window used to produce a transition that
+	// extended past the clips. Clamp the minimum down to the overlap instead.
+	const minDuration = Math.min(definition.minDuration, overlapLength);
+	const clampedDuration = Math.min(
+		overlapLength,
+		Math.max(minDuration, Math.min(duration, definition.maxDuration)),
 	);
 	const clampedStartTime = Math.max(
 		window.overlapStart,

@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JoinCollabDialog } from "@/components/editor/collab/collab-dialogs";
 import { useCollabStore } from "@/stores/collab-store";
@@ -19,15 +19,11 @@ export default function CollabJoinPage({
 	params: Promise<{ roomId: string }>;
 }) {
 	const router = useRouter();
-	const [roomId, setRoomId] = useState<string>("");
-	const [open, setOpen] = useState(false);
-
-	useEffect(() => {
-		void params.then((p) => {
-			setRoomId(p.roomId);
-			setOpen(true);
-		});
-	}, [params]);
+	// `use()` unwraps the route params during render. The previous floating
+	// `params.then(...)` had no rejection handler, so a failed param resolution
+	// surfaced as an unhandled promise rejection with the dialog closed.
+	const { roomId } = use(params);
+	const [open, setOpen] = useState(true);
 
 	// If the user joined successfully, take them straight into the editor
 	// with the collab session active; otherwise return to home.

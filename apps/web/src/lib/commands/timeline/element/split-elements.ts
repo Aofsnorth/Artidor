@@ -5,6 +5,7 @@ import { EditorCore } from "@/core";
 import { isRetimableElement } from "@/lib/timeline";
 import { splitAnimationsAtTime } from "@/lib/animation";
 import { getSourceSpanAtClipTime, splitRetimeAtClipTime } from "@/lib/retime";
+import { ticksPerFrame } from "@/lib/timeline/frame-step";
 import { roundToFrame, type FrameRate } from "artidor-wasm";
 
 /** Minimum split half-width: a side must hold at least one full frame. */
@@ -19,25 +20,16 @@ function isSplitTooSmall({
 	elementEnd: number;
 	fps: FrameRate;
 }): boolean {
-	const perFrame = ticksPerFrameFor(fps);
+	const perFrame = ticksPerFrame({ fps });
+	if (perFrame === null) {
+		// The frame rate has no exact tick-grid representation, so the
+		// one-frame minimum cannot be verified. Reject the cut explicitly
+		// instead of guessing with a float frame size.
+		return true;
+	}
 	const left = splitTime - elementStart;
 	const right = elementEnd - splitTime;
 	return left < perFrame || right < perFrame;
-}
-
-// Ticks per frame from the fps ratio (120_000 * denominator / numerator);
-// clamped to a sane fallback for malformed rates.
-const TICKS_PER_SECOND = 120_000;
-function ticksPerFrameFor(fps: FrameRate): number {
-	if (
-		!Number.isFinite(fps.numerator) ||
-		!Number.isFinite(fps.denominator) ||
-		fps.numerator <= 0 ||
-		fps.denominator <= 0
-	) {
-		return 4_000; // 30fps default
-	}
-	return Math.max(1, (TICKS_PER_SECOND * fps.denominator) / fps.numerator);
 }
 
 export class SplitElementsCommand extends Command {

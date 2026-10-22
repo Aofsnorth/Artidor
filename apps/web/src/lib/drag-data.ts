@@ -21,7 +21,15 @@ export function getDragData({
 	dataTransfer: DataTransfer;
 }): TimelineDragData | null {
 	const data = dataTransfer.getData(MIME_TYPE);
-	if (data) return JSON.parse(data) as TimelineDragData;
+	if (data) {
+		try {
+			return JSON.parse(data) as TimelineDragData;
+		} catch {
+			// A drag payload can come from another app or a stale build; never
+			// let a malformed payload escape as an exception. Try the plain-text
+			// fallback below, then the last in-memory payload.
+		}
+	}
 
 	const textData = dataTransfer.getData("text/plain");
 	if (textData) {
