@@ -236,12 +236,18 @@ pub struct KeyframeSequence<T> {
 }
 
 impl<T: Interpolate + Clone> KeyframeSequence<T> {
-    pub fn new(mut keyframes: Vec<Keyframe<T>>) -> Self {
-        keyframes.sort_by(|a, b| {
-            a.time
-                .partial_cmp(&b.time)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+    /// Builds a sequence, discarding keyframes with non-finite times.
+    ///
+    /// A `NaN` time breaks the ordering invariant the binary search relies on
+    /// (`partial_cmp` has no answer, so the old comparator fell back to
+    /// `Equal`) and could make `evaluate` index past the end of the vector.
+    /// Dropping those keyframes keeps every stored time finite and ordered.
+    pub fn new(keyframes: Vec<Keyframe<T>>) -> Self {
+        let mut keyframes: Vec<_> = keyframes
+            .into_iter()
+            .filter(|keyframe| keyframe.time.is_finite())
+            .collect();
+        keyframes.sort_by(|a, b| a.time.total_cmp(&b.time));
         Self { keyframes }
     }
 
@@ -269,11 +275,16 @@ impl<T: Interpolate + Clone> KeyframeSequence<T> {
                 .unwrap_or(std::cmp::Ordering::Equal)
         }) {
             Ok(i) => i,
-            Err(i) => i - 1,
+            Err(i) => i.saturating_sub(1),
         };
 
         let start_kf = &self.keyframes[idx];
-        let end_kf = &self.keyframes[idx + 1];
+        // `idx + 1` can only be out of bounds when `time` is `NaN` (every
+        // comparison is `Equal`) or otherwise fails the ordered search; fall
+        // back to the segment start instead of panicking.
+        let Some(end_kf) = self.keyframes.get(idx + 1) else {
+            return Some(start_kf.value.clone());
+        };
 
         let duration = end_kf.time - start_kf.time;
         if duration <= 0.0 {
@@ -332,6 +343,56 @@ mod tests {
         assert_eq!(seq.evaluate(5.0), Some(10.0));
         assert_eq!(seq.evaluate(9.99), Some(10.0));
         assert_eq!(seq.evaluate(10.0), Some(20.0));
+    }
+
+    #[test]
+    fn ignores_non_finite_keyframe_times() {
+        let seq = KeyframeSequence::new(vec![
+            Keyframe {
+                time: f64::NAN,
+                value: 999.0,
+                easing: Easing::Linear,
+            },
+            Keyframe {
+                time: 0.0,
+                value: 10.0,
+                easing: Easing::Linear,
+            },
+            Keyframe {
+                time: f64::INFINITY,
+                value: -1.0,
+                easing: Easing::Linear,
+            },
+            Keyframe {
+                time: 10.0,
+                value: 20.0,
+                easing: Easing::Linear,
+            },
+        ]);
+
+        assert_eq!(seq.keyframes.len(), 2);
+        assert_eq!(seq.evaluate(0.0), Some(10.0));
+        assert_eq!(seq.evaluate(5.0), Some(15.0));
+        assert_eq!(seq.evaluate(10.0), Some(20.0));
+    }
+
+    #[test]
+    fn evaluating_with_a_nan_time_does_not_index_out_of_bounds() {
+        let seq = KeyframeSequence::new(vec![
+            Keyframe {
+                time: 0.0,
+                value: 10.0,
+                easing: Easing::Linear,
+            },
+            Keyframe {
+                time: 10.0,
+                value: 20.0,
+                easing: Easing::Linear,
+            },
+        ]);
+
+        // Must return something (or `None`) rather than panicking.
+        let _ = seq.evaluate(f64::NAN);
     }
 
     #[test]

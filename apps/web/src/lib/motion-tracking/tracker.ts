@@ -103,20 +103,23 @@ export async function trackObject({
 
 		const prevBox =
 			results.length > 0 ? results[results.length - 1]?.box : initialBox;
-		const newBox = searchTemplate({
+		const searchResult = searchTemplate({
 			image: gray,
 			imageWidth: width,
 			imageHeight: height,
 			template,
 			searchBox: expandBox(prevBox, opts.searchPadding, width, height),
 			templateSize: opts.templateSize,
+			templateWidth: clampBox(prevBox, width, height).width,
+			templateHeight: clampBox(prevBox, width, height).height,
 		});
+		const newBox = searchResult.box;
 
 		results.push({
 			frameIndex: i,
 			timeSeconds: t,
 			box: newBox,
-			confidence: 0,
+			confidence: searchResult.confidence,
 		});
 
 		// Update template
@@ -234,13 +237,24 @@ function extractSubImage(
 	return out;
 }
 
-function searchTemplate({
+/**
+ * Find the best match for `template` inside `searchBox`.
+ *
+ * The previous implementation returned `searchBox.width / templateSize` scaled
+ * dimensions, i.e. the padding-expanded search region, so the tracked box grew
+ * every frame. It also reported a hardcoded confidence of 0. The returned box
+ * keeps the template's dimensions and the score is the best normalized
+ * correlation.
+ */
+export function searchTemplate({
 	image,
 	imageWidth,
 	imageHeight,
 	template,
 	searchBox,
 	templateSize,
+	templateWidth,
+	templateHeight,
 }: {
 	image: Float32Array;
 	imageWidth: number;
@@ -248,16 +262,24 @@ function searchTemplate({
 	template: Float32Array;
 	searchBox: TrackingBox;
 	templateSize: number;
-}): TrackingBox {
+	templateWidth: number;
+	templateHeight: number;
+}): { box: TrackingBox; confidence: number } {
 	let bestX = 0;
 	let bestY = 0;
 	let bestScore = -1;
 	const stride = 2;
-	for (
-		let y = 0;
-		y <= searchBox.height - (templateSize / searchBox.width) * searchBox.width;
-		y += stride
-	) {
+
+	let templateSq = 0;
+	let templateSum = 0;
+	for (let i = 0; i < template.length; i++) {
+		const value = template[i] ?? 0;
+		templateSq += value * value;
+		templateSum += value;
+	}
+	const templateNorm = Math.sqrt(templateSq);
+
+	for (let y = 0; y <= searchBox.height - templateSize; y += stride) {
 		for (let x = 0; x <= searchBox.width - templateSize; x += stride) {
 			const score = correlationAt({
 				image,
@@ -267,6 +289,8 @@ function searchTemplate({
 				boxX: searchBox.x + x,
 				boxY: searchBox.y + y,
 				templateSize,
+				templateNorm,
+				templateSum,
 			});
 			if (score > bestScore) {
 				bestScore = score;
@@ -275,14 +299,15 @@ function searchTemplate({
 			}
 		}
 	}
-	// Map back to original box dimensions
-	const scaleX = searchBox.width / templateSize;
-	const scaleY = searchBox.height / templateSize;
+
 	return {
-		x: searchBox.x + bestX * scaleX,
-		y: searchBox.y + bestY * scaleY,
-		width: templateSize * scaleX,
-		height: templateSize * scaleY,
+		box: {
+			x: searchBox.x + bestX,
+			y: searchBox.y + bestY,
+			width: templateWidth,
+			height: templateHeight,
+		},
+		confidence: templateNorm > 0 ? Math.max(0, Math.min(1, bestScore)) : 0,
 	};
 }
 
@@ -293,6 +318,8 @@ function correlationAt({
 	boxX,
 	boxY,
 	templateSize,
+	templateNorm,
+	templateSum,
 }: {
 	image: Float32Array;
 	imageWidth: number;
@@ -301,9 +328,12 @@ function correlationAt({
 	boxX: number;
 	boxY: number;
 	templateSize: number;
+	templateNorm: number;
+	templateSum: number;
 }): number {
-	let sum = 0;
-	let sumSq = 0;
+	let covariance = 0;
+	let imageSum = 0;
+	let imageSq = 0;
 	for (let y = 0; y < templateSize; y++) {
 		for (let x = 0; x < templateSize; x++) {
 			const srcX = Math.floor(boxX + x);
@@ -313,9 +343,19 @@ function correlationAt({
 				Math.min(image.length - 1, srcY * imageWidth + srcX),
 			);
 			const v = image[idx] ?? 0;
-			sum += v * (template[y * templateSize + x] ?? 0);
-			sumSq += v * v;
+			covariance += v * (template[y * templateSize + x] ?? 0);
+			imageSum += v;
+			imageSq += v * v;
 		}
 	}
-	return sum / Math.max(1, Math.sqrt(sumSq));
+	const count = templateSize * templateSize;
+	const mean = imageSum / count;
+	// Zero-mean normalized cross-correlation: the image patch's mean is
+	// removed too, so an exact template match scores 1. The template is
+	// already mean-centred by `extractSubImage`.
+	const centeredCovariance = covariance - mean * templateSum;
+	const variance = Math.max(0, imageSq - count * mean * mean);
+	return (
+		centeredCovariance / Math.max(1e-6, Math.sqrt(variance) * templateNorm)
+	);
 }

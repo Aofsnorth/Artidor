@@ -95,11 +95,17 @@ class TranscriptionService {
 
 			this.worker.addEventListener("message", handleMessage);
 
-			this.worker.postMessage({
-				type: "transcribe",
-				audio: audioData,
-				language,
-			} satisfies WorkerMessage);
+			// Transfer the PCM buffer instead of structured-cloning it: a
+			// 30-minute 16 kHz mono clip is ~115 MB and cloning it doubles
+			// peak memory. Callers relinquish the array after transcription.
+			this.worker.postMessage(
+				{
+					type: "transcribe",
+					audio: audioData,
+					language,
+				} satisfies WorkerMessage,
+				[audioData.buffer as ArrayBuffer],
+			);
 		});
 	}
 

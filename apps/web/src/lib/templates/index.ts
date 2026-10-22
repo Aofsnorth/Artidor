@@ -764,6 +764,14 @@ export function getTemplateById(id: string): ProjectTemplate | undefined {
 	return PROJECT_TEMPLATES.find((t) => t.id === id);
 }
 
+/**
+ * Build a project from a template.
+ *
+ * Every required media placeholder must resolve to a non-empty media id;
+ * otherwise applying the template would create elements with `mediaId: ""`
+ * that can neither render nor be recovered. The error names the missing
+ * placeholders so the caller can prompt for them.
+ */
 export function applyTemplateToProject({
 	template,
 	mediaIdsByPlaceholder,
@@ -771,6 +779,19 @@ export function applyTemplateToProject({
 	template: ProjectTemplate;
 	mediaIdsByPlaceholder: Record<string, string>;
 }): TProject {
+	const missing = template.placeholders
+		.filter((placeholder) => placeholder.required && placeholder.type !== "text")
+		.filter(
+			(placeholder) => !mediaIdsByPlaceholder[placeholder.id]?.trim(),
+		);
+	if (missing.length > 0) {
+		throw new Error(
+			`Template "${template.name}" requires media for: ${missing
+				.map((placeholder) => `"${placeholder.label}"`)
+				.join(", ")}.`,
+		);
+	}
+
 	const tracksByType: Record<
 		"main" | "overlay" | "audio",
 		Array<{ id: string; name: string; elements: TimelineElement[] }>

@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { analyzeBeats } from "@/lib/media/beat-analysis";
+import {
+	findNearestBeatTicks,
+	offsetBeatsToTimeline,
+} from "@/lib/media/beat-sync";
 import { toast } from "sonner";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { hasMediaId } from "@/lib/timeline/element-utils";
@@ -74,14 +78,18 @@ export function useBeatSync(): {
 					toast.loading(`Detecting beats… ${pct}%`, { id });
 				},
 			});
+			const timelineBeats = offsetBeatsToTimeline({
+				beats,
+				offsetTicks: element.startTime,
+			});
 			setState({
 				isAnalyzing: false,
-				beats,
+				beats: timelineBeats,
 				sourceElementId: element.id,
 			});
 			toast.success(
-				beats.length > 0
-					? `Detected ${beats.length} beats`
+				timelineBeats.length > 0
+					? `Detected ${timelineBeats.length} beats`
 					: "No beats detected",
 				{ id },
 			);
@@ -118,21 +126,29 @@ export function useBeatSync(): {
 
 		const beatTimes = state.beats.map((b) => b.ticks);
 		const sortedBeats = [...beatTimes].sort((a, b) => a - b);
-		const firstBeat = sortedBeats[0];
-		if (firstBeat === undefined) {
+		if (sortedBeats.length === 0) {
 			toast.info("No beats detected");
 			return false;
 		}
 
+		let excludedSource = false;
 		for (const ref of selected) {
 			const track = orderedTracks.find((t) => t.id === ref.trackId);
 			const element = track?.elements.find((el) => el.id === ref.elementId);
 			if (!element) continue;
 
-			const target =
-				element.startTime >= firstBeat
-					? (sortedBeats.find((b) => b >= element.startTime) ?? firstBeat)
-					: firstBeat;
+			// Beats were measured from this clip, so snapping it would just
+			// move the reference (and shift every offset with it).
+			if (element.id === state.sourceElementId) {
+				excludedSource = true;
+				continue;
+			}
+
+			const target = findNearestBeatTicks({
+				beats: sortedBeats,
+				targetTicks: element.startTime,
+			});
+			if (target === null) continue;
 			updates.push({
 				trackId: ref.trackId,
 				elementId: ref.elementId,
@@ -141,13 +157,17 @@ export function useBeatSync(): {
 		}
 
 		if (updates.length === 0) {
-			toast.info("No elements needed snapping");
+			toast.info(
+				excludedSource
+					? "Select other clips to snap (the beat source stays in place)"
+					: "No elements needed snapping",
+			);
 			return false;
 		}
 		editor.timeline.updateElements({ updates });
 		toast.success(`Snapped ${updates.length} element(s) to beats`);
 		return true;
-	}, [editor, state.beats]);
+	}, [editor, state.beats, state.sourceElementId]);
 
 	return { state, analyze, clear, apply };
 }

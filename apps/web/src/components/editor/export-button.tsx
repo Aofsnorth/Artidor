@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	ArrowRight01Icon,
@@ -51,6 +51,19 @@ import {
 } from "@/components/section";
 import { useEditor } from "@/hooks/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/lib/export/defaults";
+
+/**
+ * Shape of the handoff the /project page export dialog leaves in
+ * localStorage. Every field is a plain string/boolean because the value comes
+ * from JSON.parse of untrusted storage — the `isExportFormat` /
+ * `isExportQuality` guards narrow it back to the typed unions.
+ */
+type StoredExportPrefs = {
+	format?: string;
+	quality?: string;
+	includeAudio?: boolean;
+	saveToDrive?: boolean;
+};
 
 function isExportFormat(value: string): value is ExportFormat {
 	return EXPORT_FORMAT_VALUES.some((formatValue) => formatValue === value);
@@ -364,38 +377,44 @@ function ExportPopover({
 	const exportState = useEditor((e) => e.project.getExportState());
 	const { result: exportResult } = exportState;
 
-	// Read stored preferences from /project page export dialog
-	const storedPrefs = (() => {
-		try {
-			const raw = localStorage.getItem("artidor-export-prefs");
-			if (raw) {
-				localStorage.removeItem("artidor-export-prefs");
-				return JSON.parse(raw) as {
-					format?: ExportFormat;
-					quality?: ExportQuality;
-					includeAudio?: boolean;
-					saveToDrive?: boolean;
-				};
-			}
-		} catch {}
-		return null;
-	})();
-
 	const [format, setFormat] = useState<ExportFormat>(
-		storedPrefs?.format && isExportFormat(storedPrefs.format)
-			? storedPrefs.format
-			: DEFAULT_EXPORT_OPTIONS.format,
+		DEFAULT_EXPORT_OPTIONS.format,
 	);
 	const [quality, setQuality] = useState<ExportQuality>(
-		storedPrefs?.quality && isExportQuality(storedPrefs.quality)
-			? storedPrefs.quality
-			: DEFAULT_EXPORT_OPTIONS.quality,
+		DEFAULT_EXPORT_OPTIONS.quality,
 	);
 	const [shouldIncludeAudio, setShouldIncludeAudio] = useState<boolean>(
-		storedPrefs?.includeAudio ?? DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
+		DEFAULT_EXPORT_OPTIONS.includeAudio ?? true,
 	);
 	const filename = `${activeProject.metadata.name}${getExportFileExtension({ format })}`;
 	const mimeType = getExportMimeType({ format });
+
+	// Preferences handed over from the /project page export dialog are
+	// consumed when the popover opens. Doing this in an effect (instead of
+	// during render) keeps render pure and avoids mutating localStorage on
+	// every re-render.
+	useEffect(() => {
+		if (!isOpen) return;
+		let parsed: StoredExportPrefs | null = null;
+		try {
+			const raw = localStorage.getItem("artidor-export-prefs");
+			if (!raw) return;
+			localStorage.removeItem("artidor-export-prefs");
+			parsed = JSON.parse(raw) as StoredExportPrefs;
+		} catch {
+			return;
+		}
+		if (!parsed) return;
+		if (parsed.format && isExportFormat(parsed.format)) {
+			setFormat(parsed.format);
+		}
+		if (parsed.quality && isExportQuality(parsed.quality)) {
+			setQuality(parsed.quality);
+		}
+		if (typeof parsed.includeAudio === "boolean") {
+			setShouldIncludeAudio(parsed.includeAudio);
+		}
+	}, [isOpen]);
 
 	const handleExport = async () => {
 		if (!activeProject) return;
@@ -405,24 +424,35 @@ function ExportPopover({
 			editor.playback.pause();
 		}
 
-		const result = await editor.project.export({
-			options: {
-				format,
-				quality,
-				fps: activeProject.settings.fps,
-				includeAudio: shouldIncludeAudio,
-			},
-		});
+		try {
+			const result = await editor.project.export({
+				options: {
+					format,
+					quality,
+					fps: activeProject.settings.fps,
+					includeAudio: shouldIncludeAudio,
+				},
+			});
 
-		if (result.cancelled) {
+			if (result.cancelled) {
+				editor.project.clearExportState();
+				return;
+			}
+
+			if (isPlayableExportResult(result)) {
+				toast.success(
+					result.cached ? "Export restored from history" : "Export ready",
+				);
+			}
+		} catch (error) {
+			// A rejected pipeline never reached the manager's final state
+			// reset, so isExporting would stay true and keep the blocking
+			// modal up forever. Reset it and surface the failure.
 			editor.project.clearExportState();
-			return;
-		}
-
-		if (isPlayableExportResult(result)) {
-			toast.success(
-				result.cached ? "Export restored from history" : "Export ready",
-			);
+			toast.error("Export failed", {
+				description:
+					error instanceof Error ? error.message : "Please try again",
+			});
 		}
 	};
 
@@ -761,6 +791,7 @@ function ExportCompletionOverlay({
 }) {
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 	const [isVisible, setIsVisible] = useState(false);
+	const closeTimeoutRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (!hasExportContent({ result })) return;
@@ -784,9 +815,23 @@ function ExportCompletionOverlay({
 		};
 	}, [result, mimeType]);
 
+	useEffect(() => {
+		return () => {
+			if (closeTimeoutRef.current !== null) {
+				window.clearTimeout(closeTimeoutRef.current);
+			}
+		};
+	}, []);
+
 	const handleClose = () => {
 		setIsVisible(false);
-		setTimeout(onClose, 300);
+		if (closeTimeoutRef.current !== null) {
+			window.clearTimeout(closeTimeoutRef.current);
+		}
+		closeTimeoutRef.current = window.setTimeout(() => {
+			closeTimeoutRef.current = null;
+			onClose();
+		}, 300);
 	};
 
 	return (
@@ -1013,11 +1058,30 @@ function ExportError({
 	onRetry: () => void;
 }) {
 	const [copied, setCopied] = useState(false);
+	const resetTimerRef = useRef<number | null>(null);
+
+	useEffect(() => {
+		return () => {
+			if (resetTimerRef.current !== null) {
+				window.clearTimeout(resetTimerRef.current);
+			}
+		};
+	}, []);
 
 	const handleCopy = async () => {
-		await navigator.clipboard.writeText(error);
-		setCopied(true);
-		setTimeout(() => setCopied(false), 1000);
+		try {
+			await navigator.clipboard.writeText(error);
+			setCopied(true);
+			if (resetTimerRef.current !== null) {
+				window.clearTimeout(resetTimerRef.current);
+			}
+			resetTimerRef.current = window.setTimeout(() => {
+				resetTimerRef.current = null;
+				setCopied(false);
+			}, 1000);
+		} catch {
+			toast.error("Could not copy error details");
+		}
 	};
 
 	return (

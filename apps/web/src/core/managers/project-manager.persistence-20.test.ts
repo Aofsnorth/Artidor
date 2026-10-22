@@ -127,6 +127,7 @@ function buildEditor() {
 
 	const save = new SaveManager({} as unknown as EditorCore, { debounceMs: 5 });
 	const manager = new ProjectManager({} as unknown as EditorCore);
+	const commandClear = mock(() => {});
 	const editor = {
 		scenes: {
 			subscribe: (fn: () => void) => {
@@ -161,6 +162,7 @@ function buildEditor() {
 		},
 		selection: { clearSelection: () => {} },
 		playback: { pause: () => {} },
+		command: { clear: commandClear },
 		save,
 		project: manager,
 	} as unknown as EditorCore;
@@ -173,7 +175,17 @@ function buildEditor() {
 	Object.defineProperties(manager, {
 		editor: { value: editor, configurable: true },
 	});
-	return { editor, manager, save };
+	return { editor, manager, save, commandClear };
+}
+
+function projectMeta({ id, name }: { id: string; name: string }) {
+	return {
+		id,
+		name,
+		duration: 0,
+		createdAt: new Date(),
+		updatedAt: new Date(),
+	};
 }
 
 test("R07 loadProject flushes outgoing dirty edits before clearing scenes", async () => {
@@ -372,6 +384,9 @@ test("R20 closeProject stops saving and clears the workspace", async () => {
 		}),
 	);
 	await manager.loadProject({ id: "p" });
+	// Close is only allowed after a successful flush (the exit flow does this
+	// through prepareExit()); otherwise edits would be discarded.
+	await editor.save.flush();
 
 	manager.closeProject();
 	expect(manager.getActiveOrNull()).toBeNull();
@@ -427,4 +442,97 @@ test("R10 loadProject aborts switch when outgoing flush fails", async () => {
 	expect(beforeScenes).not.toEqual(afterScenes);
 	// And the failed flush kept the outgoing project dirty for retry.
 	expect(editor.save.getIsDirty()).toBe(true);
+});
+
+test("CORE-01 loadProject clears the previous project's command history", async () => {
+	const { manager, commandClear } = buildEditor();
+	savedProjects.set(
+		"hist-a",
+		buildProject({ metadata: projectMeta({ id: "hist-a", name: "A" }) }),
+	);
+	savedProjects.set(
+		"hist-b",
+		buildProject({ metadata: projectMeta({ id: "hist-b", name: "B" }) }),
+	);
+
+	await manager.loadProject({ id: "hist-a" });
+	commandClear.mockClear();
+	await manager.loadProject({ id: "hist-b" });
+
+	expect(commandClear).toHaveBeenCalledTimes(1);
+});
+
+test("CORE-01 createNewProject clears the previous project's command history", async () => {
+	const { manager, commandClear } = buildEditor();
+	commandClear.mockClear();
+
+	await manager.createNewProject({ name: "Fresh" });
+
+	expect(commandClear).toHaveBeenCalledTimes(1);
+});
+
+test("CORE-01 closeProject clears the command history", async () => {
+	const { editor, manager, commandClear } = buildEditor();
+	savedProjects.set(
+		"hist-close",
+		buildProject({
+			metadata: projectMeta({ id: "hist-close", name: "Close" }),
+		}),
+	);
+	await manager.loadProject({ id: "hist-close" });
+	await editor.save.flush();
+	commandClear.mockClear();
+
+	manager.closeProject();
+
+	expect(commandClear).toHaveBeenCalledTimes(1);
+});
+
+test("CORE-09 renameProject preserves live settings and current scene", async () => {
+	const { manager } = buildEditor();
+	savedProjects.set(
+		"rename-live",
+		buildProject({
+			metadata: projectMeta({ id: "rename-live", name: "Old" }),
+		}),
+	);
+	await manager.loadProject({ id: "rename-live" });
+
+	const live = manager.getActiveOrNull();
+	if (!live) throw new Error("expected an active project");
+	live.settings.fps = { numerator: 60, denominator: 1 };
+	live.currentSceneId = "live-scene";
+
+	// The storage copy is stale (simulates unsaved edits the write never saw).
+	savedProjects.set(
+		"rename-live",
+		buildProject({
+			metadata: projectMeta({ id: "rename-live", name: "Old" }),
+			currentSceneId: "stale-scene",
+		}),
+	);
+
+	await manager.renameProject({ id: "rename-live", name: "Renamed" });
+
+	const after = manager.getActiveOrNull();
+	expect(after?.metadata.name).toBe("Renamed");
+	expect(after?.settings.fps).toEqual({ numerator: 60, denominator: 1 });
+	expect(after?.currentSceneId).toBe("live-scene");
+	expect(savedProjects.get("rename-live")?.metadata.name).toBe("Renamed");
+});
+
+test("CORE-10 closeProject refuses to discard dirty work", async () => {
+	const { editor, manager } = buildEditor();
+	savedProjects.set(
+		"dirty-close",
+		buildProject({
+			metadata: projectMeta({ id: "dirty-close", name: "Dirty" }),
+		}),
+	);
+	await manager.loadProject({ id: "dirty-close" });
+	editor.save.markDirty();
+
+	expect(() => manager.closeProject()).toThrow(/unsaved/);
+	expect(manager.getActiveOrNull()?.metadata.id).toBe("dirty-close");
+	expect(editor.scenes.getScenes()).not.toEqual([]);
 });

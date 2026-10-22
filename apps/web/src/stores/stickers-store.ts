@@ -16,6 +16,7 @@ import { parseStickerId } from "@/lib/stickers/sticker-id";
 
 const MAX_RECENT_STICKERS = 50;
 let browseRequestVersion = 0;
+let searchRequestVersion = 0;
 
 function isValidStickerId(value: unknown): value is string {
 	if (typeof value !== "string") {
@@ -110,6 +111,10 @@ export const useStickersStore = create<StickersStore>()(
 			},
 
 			searchStickers: async ({ query }: { query: string }) => {
+				// Each search supersedes the previous one. Without this guard a slow
+				// response from an older query could overwrite the newer results.
+				const version = ++searchRequestVersion;
+
 				const trimmedQuery = query.trim();
 				if (!trimmedQuery) {
 					set({ searchResults: null, viewMode: "browse" });
@@ -125,6 +130,7 @@ export const useStickersStore = create<StickersStore>()(
 				try {
 					if (selectedCategory === "all") {
 						const browseContent = await searchAll({ query: trimmedQuery });
+						if (version !== searchRequestVersion) return;
 						set({ browseContent, searchResults: null });
 					} else {
 						const results = await searchStickersFromProviders({
@@ -132,13 +138,17 @@ export const useStickersStore = create<StickersStore>()(
 							category: selectedCategory,
 							limit: 100,
 						});
+						if (version !== searchRequestVersion) return;
 						set({ searchResults: results });
 					}
 				} catch (error) {
+					if (version !== searchRequestVersion) return;
 					console.error("Search failed:", error);
 					set({ searchResults: null });
 				} finally {
-					set({ isSearching: false });
+					if (version === searchRequestVersion) {
+						set({ isSearching: false });
+					}
 				}
 			},
 

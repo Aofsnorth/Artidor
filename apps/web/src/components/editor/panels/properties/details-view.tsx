@@ -17,7 +17,7 @@
  * duration, etc.) reflects here without a manual refresh.
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 import {
@@ -202,6 +202,7 @@ function ProjectHero({
 	onResetAll: () => void;
 	onRegenerate: () => void | Promise<void>;
 }) {
+	// `onResetAll` is still used by the inline "Reset all" control below.
 	return (
 		<div className="rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 shadow-inner shadow-white/[0.02]">
 			{/* Thumbnail is a compact `h-20` (80px) strip — the user
@@ -257,14 +258,6 @@ function ProjectHero({
 					Project
 				</span>
 			</div>
-			<button
-				type="button"
-				onClick={onResetAll}
-				title="Reveal in the Projects page"
-				className="mt-2 w-full rounded-md border border-white/[0.06] bg-white/[0.025] px-2 py-1 text-[0.62rem] text-white/55 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
-			>
-				View full project info
-			</button>
 		</div>
 	);
 }
@@ -307,14 +300,29 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
  */
 function ProjectIdChip({ id }: { id: string }) {
 	const [copied, setCopied] = useState(false);
+	const resetTimerRef = useRef<number | null>(null);
 	const short = id.slice(0, 8);
+
+	useEffect(() => {
+		return () => {
+			if (resetTimerRef.current !== null) {
+				window.clearTimeout(resetTimerRef.current);
+			}
+		};
+	}, []);
 
 	const onCopy = async () => {
 		try {
 			await navigator.clipboard.writeText(id);
 			setCopied(true);
 			toast.success("Project ID copied to clipboard");
-			window.setTimeout(() => setCopied(false), 1200);
+			if (resetTimerRef.current !== null) {
+				window.clearTimeout(resetTimerRef.current);
+			}
+			resetTimerRef.current = window.setTimeout(() => {
+				resetTimerRef.current = null;
+				setCopied(false);
+			}, 1200);
 		} catch (err) {
 			toast.error("Could not copy project ID", {
 				description: err instanceof Error ? err.message : "Unknown error",

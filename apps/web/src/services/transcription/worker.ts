@@ -2,7 +2,10 @@ import type {
 	AutomaticSpeechRecognitionPipeline,
 	AutomaticSpeechRecognitionOutput,
 } from "@huggingface/transformers";
-import type { TranscriptionSegment } from "@/lib/transcription/types";
+import type {
+	TranscriptionSegment,
+	TranscriptionWord,
+} from "@/lib/transcription/types";
 import {
 	DEFAULT_CHUNK_LENGTH_SECONDS,
 	DEFAULT_STRIDE_SECONDS,
@@ -156,6 +159,56 @@ async function handleInit({ modelId }: { modelId: string }) {
 	}
 }
 
+/**
+ * In `return_timestamps: "word"` mode transformers.js flattens the transcript
+ * into one chunk per word. Collapse those chunks into a single segment whose
+ * `words` array preserves real start/end times. If the backend ignored word
+ * mode (chunks still contain spaces), keep the sentence-level fallback.
+ */
+function withWordTimestamps({
+	result,
+	fallbackSegments,
+}: {
+	result: AutomaticSpeechRecognitionOutput;
+	fallbackSegments: TranscriptionSegment[];
+}): TranscriptionSegment[] {
+	const chunks = result.chunks ?? [];
+	if (chunks.length === 0) return fallbackSegments;
+	if (chunks.some((chunk) => /\s/.test(chunk.text.trim()))) {
+		return fallbackSegments;
+	}
+
+	const words: TranscriptionWord[] = [];
+	for (const chunk of chunks) {
+		const [start, end] = chunk.timestamp;
+		const word = chunk.text.trim();
+		if (
+			!word ||
+			!Number.isFinite(start) ||
+			!Number.isFinite(end) ||
+			end < start
+		) {
+			continue;
+		}
+		words.push({ word, start, end });
+	}
+
+	if (words.length === 0) return fallbackSegments;
+
+	const first = words[0];
+	const last = words[words.length - 1];
+	if (!first || !last) return fallbackSegments;
+
+	return [
+		{
+			text: result.text.trim(),
+			start: first.start,
+			end: last.end,
+			words,
+		},
+	];
+}
+
 async function handleTranscribe({
 	audio,
 	language,
@@ -178,7 +231,10 @@ async function handleTranscribe({
 			chunk_length_s: DEFAULT_CHUNK_LENGTH_SECONDS,
 			stride_length_s: DEFAULT_STRIDE_SECONDS,
 			language: language === "auto" ? undefined : language,
-			return_timestamps: true,
+			// "word" (not `true`) asks Whisper for token-level timestamps so
+			// `chunk.words` exists and buildCaptionChunks can cut on real word
+			// boundaries. With `true` only sentence chunks are returned.
+			return_timestamps: "word",
 		});
 
 		if (cancelled) return;
@@ -186,9 +242,13 @@ async function handleTranscribe({
 		const result: AutomaticSpeechRecognitionOutput = Array.isArray(rawResult)
 			? rawResult[0]
 			: rawResult;
-		const segments = toTranscriptionSegments({
+		const fallbackSegments = toTranscriptionSegments({
 			result,
 			durationSeconds: audio.length / DEFAULT_TRANSCRIPTION_SAMPLE_RATE,
+		});
+		const segments = withWordTimestamps({
+			result,
+			fallbackSegments,
 		});
 
 		self.postMessage({

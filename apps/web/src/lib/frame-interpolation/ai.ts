@@ -63,9 +63,15 @@ async function loadRuntime(): Promise<RifeRuntime> {
 			create: async () => {
 				if (!sessionPromise) {
 					const providers = ["webgpu", "wasm"];
-					sessionPromise = ort.createSession(RIFE_MODEL_URL, {
-						executionProviders: providers,
-					});
+					// A rejected session must not stay cached, otherwise one
+					// transient failure (offline, model not deployed yet) poisons
+					// every later attempt for the rest of the session.
+					sessionPromise = ort
+						.createSession(RIFE_MODEL_URL, { executionProviders: providers })
+						.catch((error) => {
+							sessionPromise = null;
+							throw error;
+						});
 				}
 				const session = (await sessionPromise) as {
 					inputNames: readonly string[];

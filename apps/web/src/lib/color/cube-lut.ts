@@ -91,6 +91,8 @@ export type CubeLutErrorReason =
 	| "malformed-row"
 	/** Row count does not match the declared size. */
 	| "size-mismatch"
+	/** `DOMAIN_MAX` is not greater than `DOMAIN_MIN` on at least one channel. */
+	| "invalid-domain"
 	/** Input exceeded the byte cap. `limit` is set. */
 	| "too-large";
 
@@ -615,7 +617,7 @@ const earliestLine = (a: number | null, b: number | null): number | null => {
  *
  * Error precedence, most fundamental first:
  * `too-large` → `conflicting-size` → `size-out-of-range` → `empty` →
- * `missing-size` → `malformed-row` → `size-mismatch`.
+ * `missing-size` → `invalid-domain` → `malformed-row` → `size-mismatch`.
  */
 export const parseCubeLut = (
 	source: string,
@@ -671,6 +673,18 @@ export const parseCubeLut = (
 			"missing-size",
 			"Data rows are present but neither LUT_1D_SIZE nor LUT_3D_SIZE was declared.",
 		);
+	}
+
+	// The shader divides by (DOMAIN_MAX - DOMAIN_MIN), so an empty or inverted
+	// range would produce a division by zero / negative scale.
+	for (const channel of ["R", "G", "B"] as const) {
+		const index = channel === "R" ? 0 : channel === "G" ? 1 : 2;
+		if (header.domainMax[index] <= header.domainMin[index]) {
+			return fail(
+				"invalid-domain",
+				`DOMAIN_MAX must be greater than DOMAIN_MIN on every channel; ${channel} is ${header.domainMin[index]}..${header.domainMax[index]}.`,
+			);
+		}
 	}
 
 	const expectedEntries = kind === "1d" ? size : size * size * size;

@@ -13,8 +13,8 @@ import type {
  * the plugin's manifest does not declare the corresponding permission.
  *
  * Keep the map tiny — anything not listed here is unrestricted (just
- * `log()` and storage get/set, which the user already opted into by
- * installing the plugin).
+ * `log()`, which the user already opted into by installing the plugin).
+ * Storage reads and writes are both gated by `storage`.
  */
 const PERMISSION_GATES: Record<string, PluginPermission> = {
 	registerEffect: "effects",
@@ -85,7 +85,15 @@ export function createPluginSandbox({
 	let state = { ...(plugin.state ?? {}) };
 
 	const storage: PluginStorage = {
-		get: <T>(key: string) => (state[key] as T) ?? null,
+		get: <T>(key: string) => {
+			// Reads are gated too: otherwise a plugin could exfiltrate another
+			// install's persisted state by reading it without the permission.
+			if (!requirePermission(PERMISSION_GATES.storage)) return null;
+			// Own-property check only — `state["constructor"]` and other
+			// prototype keys must never resolve to host functions.
+			if (!Object.hasOwn(state, key)) return null;
+			return (state[key] as T) ?? null;
+		},
 		set: <T>(key: string, value: T) => {
 			if (!requirePermission(PERMISSION_GATES.storage)) return;
 			state = { ...state, [key]: value };
@@ -98,7 +106,10 @@ export function createPluginSandbox({
 			state = next;
 			onStateChange(state);
 		},
-		keys: () => Object.keys(state),
+		keys: () => {
+			if (!requirePermission(PERMISSION_GATES.storage)) return [];
+			return Object.keys(state);
+		},
 	};
 
 	const logPrefix = `[plugin:${plugin.id}]`;

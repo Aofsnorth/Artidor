@@ -44,7 +44,18 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         has_outside,
     );
     let signed_distance = distance_to_outside - distance_to_inside;
-    let alpha = smoothstep(-uniforms.feather_half, uniforms.feather_half, signed_distance);
+
+    // `smoothstep` is undefined when its two edges are equal, which is exactly
+    // what a zero or negative feather width produces (division by zero / NaN).
+    // Clamp the edges used by the interpolation to a positive epsilon, and use
+    // a hard edge whenever feathering is disabled.
+    let feather_half = max(uniforms.feather_half, 1e-4);
+    let hard_alpha = select(0.0, 1.0, signed_distance >= 0.0);
+    let alpha = select(
+        smoothstep(-feather_half, feather_half, signed_distance),
+        hard_alpha,
+        uniforms.feather_half <= 0.0,
+    );
 
     return vec4f(alpha, alpha, alpha, alpha);
 }

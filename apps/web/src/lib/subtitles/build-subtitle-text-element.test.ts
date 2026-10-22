@@ -44,4 +44,38 @@ describe("buildSubtitleTextElement", () => {
 		expect(element.color).toBe("#ffffff");
 		expect(element.fontFamily).toBe("Impact");
 	});
+
+	it("reuses one small measurement canvas for every cue", () => {
+		let created = 0;
+		const context = {
+			letterSpacing: "",
+			font: "",
+			measureText: (text: string) => ({ width: text.length * 10 }),
+		};
+		(globalThis as unknown as { document: Document }).document = {
+			createElement: () => {
+				created += 1;
+				return {
+					width: 0,
+					height: 0,
+					getContext: () => context,
+				};
+			},
+		} as unknown as Document;
+
+		const caption = { text: "Hello world", startTime: 0, duration: 1 };
+		buildSubtitleTextElement({
+			index: 0,
+			caption,
+			canvasSize: { width: 1920, height: 1080 },
+		});
+		buildSubtitleTextElement({
+			index: 1,
+			caption,
+			canvasSize: { width: 1920, height: 1080 },
+		});
+
+		// One canvas at module scope, not one 4096×4096 canvas per cue.
+		expect(created).toBe(1);
+	});
 });

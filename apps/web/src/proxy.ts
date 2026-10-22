@@ -142,9 +142,13 @@ export function proxy(request: NextRequest) {
 	response.headers.set("X-Frame-Options", "DENY");
 	response.headers.set("X-Content-Type-Options", "nosniff");
 	response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+	// `camera`/`microphone` must be allowed for same-origin documents: the
+	// editor's voiceover recorder calls getUserMedia({ audio: true }) and
+	// camera capture needs the same permission. Denying them here overrode
+	// the browser prompt and made both features fail unconditionally.
 	response.headers.set(
 		"Permissions-Policy",
-		"camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
+		"camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), serial=()",
 	);
 	response.headers.set(
 		"Cross-Origin-Opener-Policy",

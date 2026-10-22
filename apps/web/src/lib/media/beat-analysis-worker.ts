@@ -178,7 +178,10 @@ function detectBeats(
 
 	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
 	const hopSize = Math.max(64, Math.floor(windowSize / 2));
-	const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
+	const totalHops = Math.max(
+		0,
+		Math.ceil((samples.length - windowSize) / hopSize),
+	);
 	const energies = new Float32Array(totalHops);
 
 	// Phase 3a: Energy computation (30% → 80%)

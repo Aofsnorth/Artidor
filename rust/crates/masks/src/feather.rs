@@ -278,7 +278,10 @@ impl MaskFeatherPipeline {
                 "gpu-mask-distance-uniform-buffer",
                 bytemuck::bytes_of(&DistanceUniformBuffer {
                     resolution: [width as f32, height as f32],
-                    feather_half: feather / 2.0,
+                    // `f32::max` also turns a NaN feather into 0.0, so the
+                    // shader never receives a NaN edge and the `<= 0`
+                    // hard-edge branch is reachable.
+                    feather_half: (feather / 2.0).max(0.0),
                     _padding: 0.0,
                 }),
             )
@@ -318,5 +321,22 @@ impl MaskFeatherPipeline {
             render_pass.draw(0..6, 0..1);
         }
         output_texture
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::JFA_DISTANCE_SHADER_SOURCE;
+
+    #[test]
+    fn distance_shader_guards_a_non_positive_feather_width() {
+        assert!(
+            JFA_DISTANCE_SHADER_SOURCE.contains("max(uniforms.feather_half, 1e-4)"),
+            "smoothstep edges must be clamped away from zero"
+        );
+        assert!(
+            JFA_DISTANCE_SHADER_SOURCE.contains("uniforms.feather_half <= 0.0"),
+            "a disabled feather must take the hard-edge branch"
+        );
     }
 }

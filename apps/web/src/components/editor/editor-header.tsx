@@ -255,7 +255,7 @@ function ProjectDropdown() {
 						type="button"
 						className="relative size-10 shrink-0 cursor-pointer bg-[#0d0d0e] transition rounded-full [mask-image:radial-gradient(circle_at_center,black_45%,transparent_75%)] hover:scale-105 hover:ring-1 hover:ring-white/30 focus:outline-none flex items-center justify-center"
 						aria-label="Project menu"
-												title="Project menu"
+						title="Project menu"
 					>
 						<Image
 							src={DEFAULT_LOGO_URL}
@@ -332,14 +332,29 @@ function EditableProjectName() {
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
 	const [isEditing, setIsEditing] = useState(false);
+	const [draft, setDraft] = useState("");
 	const inputRef = useRef<HTMLInputElement>(null);
 	const originalNameRef = useRef("");
+	const cancelEditRef = useRef(false);
 
 	const projectName = activeProject?.metadata.name || "";
+	const projectId = activeProject?.metadata.id ?? null;
+
+	// Follow external renames and, critically, reset the draft when the
+	// active project changes. Otherwise an uncontrolled input keeps the
+	// previous project's name and Enter renames the new project with it.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: projectId resets the draft even when two projects share a name
+	useEffect(() => {
+		setIsEditing(false);
+		setDraft(projectName);
+		cancelEditRef.current = false;
+	}, [projectId, projectName]);
 
 	const startEditing = () => {
 		if (isEditing) return;
 		originalNameRef.current = projectName;
+		cancelEditRef.current = false;
+		setDraft(projectName);
 		setIsEditing(true);
 
 		requestAnimationFrame(() => {
@@ -348,12 +363,18 @@ function EditableProjectName() {
 	};
 
 	const saveEdit = async () => {
-		if (!inputRef.current || !activeProject) return;
-		const newName = inputRef.current.value.trim();
+		if (!activeProject) return;
+		// Escape already restored the original name; the blur that follows
+		// must not commit the abandoned edit.
+		if (cancelEditRef.current) {
+			cancelEditRef.current = false;
+			return;
+		}
+		const newName = draft.trim();
 		setIsEditing(false);
 
 		if (!newName) {
-			inputRef.current.value = originalNameRef.current;
+			setDraft(originalNameRef.current);
 			return;
 		}
 
@@ -378,10 +399,8 @@ function EditableProjectName() {
 			inputRef.current?.blur();
 		} else if (event.key === "Escape") {
 			event.preventDefault();
-			if (inputRef.current) {
-				inputRef.current.value = originalNameRef.current;
-				inputRef.current.setSelectionRange(0, 0);
-			}
+			cancelEditRef.current = true;
+			setDraft(originalNameRef.current);
 			setIsEditing(false);
 			inputRef.current?.blur();
 		}
@@ -393,8 +412,9 @@ function EditableProjectName() {
 			type="text"
 			aria-label="Project title"
 			title={projectName}
-			defaultValue={projectName}
+			value={isEditing ? draft : projectName}
 			readOnly={!isEditing}
+			onChange={(event) => setDraft(event.target.value)}
 			onClick={startEditing}
 			onBlur={saveEdit}
 			onKeyDown={handleKeyDown}

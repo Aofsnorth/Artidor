@@ -93,6 +93,14 @@ export class TimelineManager {
 	 * elements join the group. Not undoable — it is a view mode, like isolate.
 	 */
 	private editingGroupId: string | null = null;
+	/**
+	 * Memoized total duration for the CURRENT tracks object. Playback reads
+	 * `getTotalDuration()` every animation frame; rescanning every element each
+	 * frame was pure waste. Tracks are replaced immutably on every edit, so a
+	 * reference match is a safe invalidation check.
+	 */
+	private durationCache: { tracks: SceneTracks; duration: number } | null =
+		null;
 
 	constructor(private editor: EditorCore) {}
 
@@ -303,7 +311,14 @@ export class TimelineManager {
 			return 0;
 		}
 
-		return calculateTotalDuration({ tracks: activeScene.tracks });
+		const cached = this.durationCache;
+		if (cached?.tracks === activeScene.tracks) {
+			return cached.duration;
+		}
+
+		const duration = calculateTotalDuration({ tracks: activeScene.tracks });
+		this.durationCache = { tracks: activeScene.tracks, duration };
+		return duration;
 	}
 
 	getLastFrameTime(): number {
@@ -375,6 +390,10 @@ export class TimelineManager {
 		const { buildCameraElement } =
 			require("@/lib/camera") as typeof import("@/lib/camera");
 		const playhead = this.editor.playback.getCurrentTime();
+		const fps = this.editor.project.getActiveOrNull()?.settings.fps;
+		const startTime =
+			(fps ? roundToFrame({ time: playhead, rate: fps }) : undefined) ??
+			playhead;
 		const tracks = this.editor.scenes.getActiveScene().tracks;
 		const cameraTrack = getOrderedTracks(tracks).find(
 			(t) => t.type === "camera",
@@ -384,7 +403,7 @@ export class TimelineManager {
 			: this.addTrack({ type: "camera" });
 		const camera = buildCameraElement({
 			trackId,
-			startTime: playhead,
+			startTime,
 			duration: Math.round(5 * TICKS_PER_SECOND),
 		});
 		return this.insertElement({
@@ -1107,6 +1126,12 @@ export class TimelineManager {
 	 * what made one clip's interrupted gesture land inside another's commit.
 	 */
 	commitPreview(): void {
+		// Shared-viewer sessions must not mutate or autosave. Staged previews
+		// are visual only, so drop them instead of pushing a history entry.
+		if (this.editor.command.readOnly) {
+			this.discardPreview();
+			return;
+		}
 		if (this.previewOverlay.size === 0) return;
 		const committedTracks = this.editor.scenes.getActiveSceneOrNull()?.tracks;
 		if (!committedTracks) {
@@ -1142,6 +1167,12 @@ export class TimelineManager {
 		trackId: string;
 		elementId: string;
 	}): void {
+		// Same read-only gate as commitPreview: a viewer's staged write must
+		// never reach the committed tracks or the undo stack.
+		if (this.editor.command.readOnly) {
+			this.discardPreviewForElement({ trackId, elementId });
+			return;
+		}
 		const key = this.overlayKey({ trackId, elementId });
 		const entry = this.previewOverlay.get(key);
 		if (!entry) return;

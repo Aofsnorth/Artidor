@@ -443,7 +443,10 @@ export function getElementsAtTime({
 			const elementStart = element.startTime;
 			const elementEnd = element.startTime + element.duration;
 
-			if (time > elementStart && time < elementEnd) {
+			// Half-open interval, matching drop-target hit-testing: a clip owns
+			// its start instant but not its end. This is what makes a split at
+			// `element.startTime` target the clip instead of silently missing it.
+			if (time >= elementStart && time < elementEnd) {
 				result.push({ trackId: track.id, elementId: element.id });
 			}
 		}

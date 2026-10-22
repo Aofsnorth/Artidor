@@ -104,13 +104,18 @@ export function computeReframeFrames({
  */
 export function reframeFramesToKeyframes({
 	reframes,
+	canvasWidth,
 	canvasHeight,
 }: {
 	reframes: ReframeFrame[];
+	canvasWidth: number;
 	canvasHeight: number;
 }): Array<{ timeSeconds: number; positionX: number; positionY: number }> {
 	return reframes.map((r) => {
-		const positionX = (r.centerX - 0.5) * 100;
+		// Transform positions are canvas pixels. Both axes must use the canvas
+		// dimension; X previously used a hardcoded 100, making horizontal
+		// correction ~10× too small on a 1080p canvas.
+		const positionX = (r.centerX - 0.5) * canvasWidth;
 		const positionY = (r.centerY - 0.5) * canvasHeight;
 		return {
 			timeSeconds: r.timeSeconds,

@@ -49,6 +49,10 @@ export function AudioMetersCard() {
 
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const requestRef = useRef<number | null>(null);
+	// Last integer percentages published to React. Bars render at whole
+	// percentages, so publishing only on a visible change avoids a setState
+	// on every animation frame while the meter is silent.
+	const lastLevelsRef = useRef({ left: -1, right: -1 });
 
 	// Meter levels
 	const [levels, setLevels] = useState({ left: 0, right: 0 });
@@ -69,6 +73,7 @@ export function AudioMetersCard() {
 		animState.current.hasAudio = hasAudio;
 	}, [hasAudio]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: isPlaying/hasAudio restart the loop after it sleeps when idle
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
@@ -155,11 +160,17 @@ export function AudioMetersCard() {
 				state.right = Math.max(0, state.right - 4);
 			}
 
-			// Push levels to React state for UI rendering
-			setLevels({
-				left: state.left,
-				right: state.right,
-			});
+			// Push levels to React state only when the rendered (integer) value
+			// actually changes.
+			const nextLeft = Math.round(state.left);
+			const nextRight = Math.round(state.right);
+			if (
+				lastLevelsRef.current.left !== nextLeft ||
+				lastLevelsRef.current.right !== nextRight
+			) {
+				lastLevelsRef.current = { left: nextLeft, right: nextRight };
+				setLevels({ left: nextLeft, right: nextRight });
+			}
 
 			// 2. Particle Starfield Visualizer
 			const maxVal = Math.max(state.left, state.right) / 100;
@@ -179,19 +190,6 @@ export function AudioMetersCard() {
 					size: Math.random() * 2.2 + 0.6,
 					alpha: 0.9 + Math.random() * 0.1,
 					decay: 0.008 + Math.random() * 0.015,
-				});
-			}
-
-			// Gentle drift particles when idle
-			if (!state.isPlaying && Math.random() < 0.08) {
-				particles.push({
-					x: w * (0.2 + Math.random() * 0.7),
-					y: h * 0.9,
-					vx: (Math.random() - 0.5) * 0.4,
-					vy: -0.2 - Math.random() * 0.4,
-					size: Math.random() * 1.5 + 0.5,
-					alpha: 0.5 + Math.random() * 0.3,
-					decay: 0.005 + Math.random() * 0.008,
 				});
 			}
 
@@ -224,6 +222,19 @@ export function AudioMetersCard() {
 				return true;
 			});
 
+			// When paused, fully decayed, and no particles remain, let the
+			// loop sleep instead of burning a frame every 16ms. `isPlaying`
+			// is a dependency, so playback restarts the loop.
+			const shouldContinue =
+				state.isPlaying ||
+				state.left > 0 ||
+				state.right > 0 ||
+				particles.length > 0;
+			if (!shouldContinue) {
+				requestRef.current = null;
+				return;
+			}
+
 			requestRef.current = requestAnimationFrame(render);
 		};
 
@@ -235,7 +246,7 @@ export function AudioMetersCard() {
 			}
 			window.removeEventListener("resize", resizeCanvas);
 		};
-	}, [editor]);
+	}, [editor, isPlaying, hasAudio]);
 
 	return (
 		<aside className="panel glass-strong relative flex h-full w-[135px] sm:w-[150px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0d0d0e] p-2.5 select-none">

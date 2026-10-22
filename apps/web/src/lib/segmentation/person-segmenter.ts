@@ -87,7 +87,12 @@ export async function segmentPerson({
 }): Promise<SegmentationResult> {
 	const segmenter = (await getSegmenter()) as {
 		segment: (input: SegmentationSource) => Promise<{
-			categoryMask: { getViews: () => Uint8Array[] };
+			categoryMask?: {
+				getAsUint8Array: () => Uint8Array;
+				readonly width: number;
+				readonly height: number;
+				close: () => void;
+			} | null;
 		}>;
 	};
 
@@ -106,7 +111,27 @@ export async function segmentPerson({
 
 	// Run segmentation — MediaPipe handles resizing internally.
 	const result = await segmenter.segment(source);
-	const maskData = result.categoryMask.getViews()[0];
+	const mask = result.categoryMask;
+	if (!mask) {
+		throw new Error("Person segmentation returned no category mask");
+	}
+
+	// @mediapipe/tasks-vision 0.10.35 exposes MPMask.getAsUint8Array(), not
+	// getViews(). The mask is owned by the underlying C++ task, so release it
+	// as soon as the pixel data has been copied out.
+	let maskData: Uint8Array | null = null;
+	let maskW = 0;
+	let maskH = 0;
+	try {
+		maskData = mask.getAsUint8Array();
+		maskW = mask.width;
+		maskH = mask.height;
+	} finally {
+		mask.close();
+	}
+	if (!maskData) {
+		throw new Error("Person segmentation mask has no pixel data");
+	}
 
 	// Draw the original image to a canvas, then apply the mask as alpha.
 	const canvas = document.createElement("canvas");
@@ -123,9 +148,7 @@ export async function segmentPerson({
 	const pixels = imageData.data;
 
 	// The category mask is a 1-channel Uint8Array at the model's internal
-	// resolution (256x256). We need to map it to the output resolution.
-	const maskW = 256;
-	const maskH = 256;
+	// resolution. Map it to the output resolution using its actual size.
 	const scaleX = maskW / srcWidth;
 	const scaleY = maskH / srcHeight;
 

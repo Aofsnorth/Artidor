@@ -139,9 +139,12 @@ const nextConfig: NextConfig = {
 					{ key: "X-Content-Type-Options", value: "nosniff" },
 					{ key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 					{
+						// Same-origin camera/microphone access is required by the
+						// editor (voiceover recording, camera capture). The
+						// remaining features stay denied for the whole app.
 						key: "Permissions-Policy",
 						value:
-							"camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
+							"camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), serial=()",
 					},
 					{ key: "Content-Security-Policy", value: contentSecurityPolicy },
 					{

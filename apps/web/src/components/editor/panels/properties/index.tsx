@@ -371,13 +371,6 @@ function InspectorHeader({ disabled }: { disabled?: boolean }) {
 				<div className="min-w-0 truncate text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-white/85">
 					Inspector
 				</div>
-				<button
-					type="button"
-					disabled={disabled}
-					className="shrink-0 rounded-md border border-white/8 bg-white/4.5 px-2 py-1 text-[0.65rem] text-white/55 transition hover:border-white/15 hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-				>
-					Reset all
-				</button>
 			</div>
 			{/* Only render the 5-tab quick switcher when an element IS
 			   actually selected. When `disabled` (nothing selected,

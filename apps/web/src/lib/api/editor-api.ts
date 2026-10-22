@@ -331,7 +331,11 @@ export function createEditorApi(editor: EditorCore): EditorApi {
 				};
 			}
 
-			const registered = runtime.registry.TOOLS_BY_NAME[name];
+			// Own properties only — `TOOLS_BY_NAME["constructor"]` and other
+			// prototype keys must be reported as unknown commands, not executed.
+			const registered = Object.hasOwn(runtime.registry.TOOLS_BY_NAME, name)
+				? runtime.registry.TOOLS_BY_NAME[name]
+				: undefined;
 			if (!registered) {
 				return { ok: false, message: `Unknown command: ${name}` };
 			}

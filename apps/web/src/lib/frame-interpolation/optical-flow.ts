@@ -20,7 +20,10 @@ interface MotionField {
 	width: number;
 	height: number;
 	blockSize: number;
+	/** Blocks per row (columns). */
 	stride: number;
+	/** Blocks per column (rows). */
+	rows: number;
 	vectors: Int16Array;
 }
 
@@ -40,6 +43,7 @@ function buildMotionField({
 		height,
 		blockSize,
 		stride: cols,
+		rows,
 		vectors: new Int16Array(cols * rows * 2),
 	};
 }
@@ -115,10 +119,11 @@ function estimateMotion({
 	blockSize?: number;
 }): MotionField {
 	const field = buildMotionField({ width, height, blockSize });
-	for (let by = 0; by < field.stride; by++) {
-		for (let bx = 0; bx < field.stride; bx++) {
-			const ax = bx * blockSize;
-			const ay = by * blockSize;
+	// Rows and columns differ for non-square frames (portrait especially).
+	for (let row = 0; row < field.rows; row++) {
+		for (let col = 0; col < field.stride; col++) {
+			const ax = col * blockSize;
+			const ay = row * blockSize;
 			let bestSAD = Number.POSITIVE_INFINITY;
 			let bestDx = 0;
 			let bestDy = 0;
@@ -142,7 +147,7 @@ function estimateMotion({
 					}
 				}
 			}
-			const i = indexBlock(field, bx, by);
+			const i = indexBlock(field, col, row);
 			field.vectors[i] = bestDx;
 			field.vectors[i + 1] = bestDy;
 		}
@@ -165,14 +170,12 @@ function warp({
 	factor: number;
 	out: RGBA;
 }): void {
-	const { blockSize, stride, vectors } = field;
+	const { blockSize, stride, rows, vectors } = field;
 	for (let y = 0; y < height; y++) {
-		const bx = Math.min(stride - 1, Math.floor(y / blockSize));
-		const _dy = y - bx * blockSize;
+		const row = Math.min(rows - 1, Math.floor(y / blockSize));
 		for (let x = 0; x < width; x++) {
-			const by = Math.min(stride - 1, Math.floor(x / blockSize));
-			const _dx = x - by * blockSize;
-			const v = indexBlock(field, by, bx);
+			const col = Math.min(stride - 1, Math.floor(x / blockSize));
+			const v = indexBlock(field, col, row);
 			const mvx = (vectors[v] ?? 0) * factor;
 			const mvy = (vectors[v + 1] ?? 0) * factor;
 			const sx = Math.max(0, Math.min(width - 1, Math.round(x + mvx)));

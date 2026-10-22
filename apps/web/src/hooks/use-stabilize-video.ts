@@ -59,6 +59,13 @@ export function useStabilizeVideo() {
 					toast.info("Video is too short to analyze", { id: toastId });
 					return;
 				}
+				// Stabilization shifts the frame to hide shake, which would
+				// expose the edges; zoom by the planned crop ratio so the
+				// shifted frame still covers the canvas.
+				const cropScale =
+					result.croppedWidth > 0
+						? result.originalWidth / result.croppedWidth
+						: 1;
 				const keyframes = result.frames.flatMap((f) => [
 					{
 						trackId: ref.trackId,
@@ -74,6 +81,24 @@ export function useStabilizeVideo() {
 						time: f.timeSeconds * TICKS_PER_SECOND,
 						value: f.offsetY,
 					},
+					...(cropScale > 1
+						? [
+								{
+									trackId: ref.trackId,
+									elementId: ref.elementId,
+									propertyPath: "transform.scaleX" as AnimationPath,
+									time: f.timeSeconds * TICKS_PER_SECOND,
+									value: cropScale,
+								},
+								{
+									trackId: ref.trackId,
+									elementId: ref.elementId,
+									propertyPath: "transform.scaleY" as AnimationPath,
+									time: f.timeSeconds * TICKS_PER_SECOND,
+									value: cropScale,
+								},
+							]
+						: []),
 				]);
 				editor.timeline.upsertKeyframes({ keyframes });
 				toast.success(`Stabilized: ${result.frames.length} frames analyzed`, {

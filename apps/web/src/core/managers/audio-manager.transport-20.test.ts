@@ -54,6 +54,7 @@ type Internals = {
 	playbackSessionId: number;
 	playbackStartTime: number;
 	playbackStartContextTime: number;
+	playbackLatencyCompensationSeconds: number;
 	activeClipGains: Map<string, Set<GainNode>>;
 	activeClipIds: Set<string>;
 	preparedClipBuffers: Map<string, Promise<AudioBuffer | null>>;
@@ -230,6 +231,30 @@ test("R09 prepared completion after pause cannot schedule audio", async () => {
 	f.transport.playing = false; f.state.stopPlayback();
 	decode.resolve(buffer); await pending;
 	expect(f.clock.sources).toHaveLength(0);
+});
+
+test("CORE-04 a grossly late prepared clip releases its nodes", async () => {
+	const f = fixture();
+	const clip = clipFor();
+	prepared(f, clip, Promise.resolve(buffer));
+	f.state.activeClipIds.add(clip.id);
+	// Pull the schedule target behind the context clock so the catch-up guard
+	// fires (the same window a UI freeze creates).
+	f.state.playbackLatencyCompensationSeconds = -1;
+
+	await f.state.schedulePreparedClip({
+		clip,
+		startTime: 0,
+		sessionId: f.state.playbackSessionId,
+	});
+
+	expect(f.clock.sources).toHaveLength(1);
+	expect(f.clock.sources[0].start).not.toHaveBeenCalled();
+	expect(f.clock.sources[0].disconnect).toHaveBeenCalledTimes(1);
+	expect(f.clock.gains).toHaveLength(1);
+	expect(f.clock.gains[0].disconnect).toHaveBeenCalledTimes(1);
+	expect(f.state.activeClipGains.get(clip.id)?.size ?? 0).toBe(0);
+	expect(f.state.activeClipIds.has(clip.id)).toBe(false);
 });
 
 test("R10 fade-free base survives subsequent buffer scheduling", async () => {

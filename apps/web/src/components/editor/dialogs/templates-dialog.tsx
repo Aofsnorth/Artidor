@@ -112,20 +112,6 @@ export function TemplatesDialog({
 		});
 	}, [query, category]);
 
-	const handleApply = () => {
-		if (!selectedId) return;
-		// Real template application would push a command onto the
-		// editor's undo stack (template-apply command). For the
-		// dialog stub we just close and toast; the action stays
-		// discoverable but the heavy lifting is the next milestone.
-		const template = TEMPLATES.find((t) => t.id === selectedId);
-		if (template) {
-			// eslint-disable-next-line no-console
-			console.info("[templates] apply requested", template.id);
-		}
-		onOpenChange(false);
-	};
-
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-3xl border-white/10 bg-[#0c0c0e]/95 backdrop-blur-xl">
@@ -222,18 +208,21 @@ export function TemplatesDialog({
 					</div>
 
 					<div className="flex items-center justify-end gap-2 pt-1">
+						<span className="mr-auto text-[0.7rem] text-white/40">
+							Template application isn't available yet.
+						</span>
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							Close
 						</Button>
 						<Button
 							variant="default"
 							size="sm"
-							disabled={!selectedId}
-							onClick={handleApply}
+							disabled
+							title="Template application isn't available yet"
 						>
 							Apply template
 						</Button>

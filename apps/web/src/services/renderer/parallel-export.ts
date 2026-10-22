@@ -177,10 +177,20 @@ async function launchSegments(
 		plan: SegmentPlan,
 		onGpuReady: () => void,
 	) => Promise<ExportWorkerResult>,
+	getCancelled?: () => boolean,
 ): Promise<ExportWorkerResult[]> {
-	const settled: ExportWorkerResult[] = new Array(plans.length);
+	// Unlaunched segments are reported as cancelled so a cancelled round has a
+	// well-defined result for every plan index (the caller indexes `settled`).
+	const settled: ExportWorkerResult[] = plans.map(() => ({
+		success: false,
+		cancelled: true,
+	}));
 	const pending: Promise<void>[] = [];
 	for (const [i, plan] of plans.entries()) {
+		// Stop spawning workers once the user has cancelled: initializing the
+		// remaining segments would burn CPU/GPU on an export that is already
+		// being torn down.
+		if (getCancelled?.()) break;
 		let signalGpuReady: (() => void) | undefined;
 		const gpuReady = new Promise<void>((resolve) => {
 			signalGpuReady = resolve;
@@ -307,14 +317,17 @@ export async function runParallelExport({
 
 	// Pin one codec for every segment up-front so the bitstreams are mutually
 	// compatible and can be stitched without a re-encode.
-	const { codec: videoCodec, outputFormat: negotiatedFormat } =
-		await negotiateVideoCodec({
-			format,
-			quality,
-			width,
-			height,
-			fpsFloat,
-		});
+	const {
+		codec: videoCodec,
+		outputFormat: negotiatedFormat,
+		hardwareAcceleration: negotiatedHardwareAcceleration,
+	} = await negotiateVideoCodec({
+		format,
+		quality,
+		width,
+		height,
+		fpsFloat,
+	});
 
 	const plans = buildSegmentPlans({
 		totalFrames,
@@ -368,11 +381,18 @@ export async function runParallelExport({
 			width,
 			height,
 			fps,
-			format,
+			// Use the container negotiated once for the whole export: a VP9
+			// fallback switches mp4 → webm, and every segment must be muxed in
+			// the same container or the stitch produces VP9-in-MP4 segments.
+			format: negotiatedFormat,
 			quality,
 			shouldIncludeAudio: false,
 			videoOnly: true,
 			videoCodec,
+			// The codec probe already decided whether hardware encoding is
+			// available. Passing it down avoids paying a failed hardware
+			// attempt (and a full retry) on every segment.
+			hardwareAcceleration: negotiatedHardwareAcceleration,
 			startFrame: plan.startFrame,
 			endFrame: plan.endFrame,
 			// 60s no-activity timeout. Segments that are just slow keep
@@ -394,14 +414,18 @@ export async function runParallelExport({
 		targets: SegmentPlan[],
 		forceSoftwareEncoding: (plan: SegmentPlan) => boolean,
 	) =>
-		launchSegments(targets, (plan, onGpuReady) => {
-			const force = forceSoftwareEncoding(plan);
-			// A retried segment restarts from 0%; its finished siblings keep
-			// their reported progress so the bar never jumps backwards overall.
-			segmentProgress[plan.index] = 0;
-			reportProgress();
-			return runSegment(plan, { forceSoftwareEncoding: force, onGpuReady });
-		});
+		launchSegments(
+			targets,
+			(plan, onGpuReady) => {
+				const force = forceSoftwareEncoding(plan);
+				// A retried segment restarts from 0%; its finished siblings keep
+				// their reported progress so the bar never jumps backwards overall.
+				segmentProgress[plan.index] = 0;
+				reportProgress();
+				return runSegment(plan, { forceSoftwareEncoding: force, onGpuReady });
+			},
+			getCancelled,
+		);
 
 	const results = await launch(plans, () => false);
 

@@ -20,4 +20,10 @@ pub enum GpuError {
     CreateSurface(#[from] wgpu::CreateSurfaceError),
     #[error("The output surface does not support the required texture format")]
     UnsupportedSurfaceFormat,
+    #[error("Invalid texture dimensions {width}x{height}")]
+    InvalidTextureSize { width: u32, height: u32 },
+    #[error("Readback buffer of {size} bytes exceeds the device limit of {max} bytes")]
+    ReadbackBufferTooLarge { size: u64, max: u64 },
+    #[error("Failed to map the readback buffer")]
+    BufferMapFailed,
 }

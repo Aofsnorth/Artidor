@@ -105,6 +105,46 @@ function generateId(): string {
 }
 
 /**
+ * Minimal persisted shape produced by zustand's `persist` middleware:
+ * `{ state: { providers }, version }`. Older builds wrote the flat
+ * `{ providers }` shape, so both are accepted.
+ */
+interface PersistedProvidersShape {
+	state?: { providers?: Array<{ apiKey?: string }> };
+	providers?: Array<{ apiKey?: string }>;
+}
+
+function collectStoredProviders(
+	parsed: PersistedProvidersShape,
+): Array<{ apiKey?: string }> | null {
+	// Current zustand envelope — the one the middleware actually writes.
+	if (Array.isArray(parsed.state?.providers)) return parsed.state.providers;
+	// Legacy flat shape from an earlier store version.
+	if (Array.isArray(parsed.providers)) return parsed.providers;
+	return null;
+}
+
+/**
+ * Apply a key transform (encrypt/decrypt) to every persisted provider,
+ * preserving the zustand envelope (`state.providers`) or legacy flat
+ * (`providers`) shape. Exported for regression tests.
+ */
+export async function transformPersistedProviderKeys(
+	raw: string,
+	transform: (apiKey: string) => Promise<string>,
+): Promise<string> {
+	const parsed = JSON.parse(raw) as PersistedProvidersShape;
+	const providers = collectStoredProviders(parsed);
+	if (!providers) return raw;
+	for (const provider of providers) {
+		if (provider.apiKey) {
+			provider.apiKey = await transform(provider.apiKey);
+		}
+	}
+	return JSON.stringify(parsed);
+}
+
+/**
  * Zustand storage adapter that encrypts `apiKey` fields before
  * writing to localStorage and decrypts them after reading.
  *
@@ -125,34 +165,18 @@ function createEncryptedStorage() {
 			const raw = window.localStorage.getItem(name);
 			if (!raw) return null;
 			try {
-				const parsed = JSON.parse(raw) as {
-					providers?: Array<{ apiKey?: string }>;
-				};
-				if (parsed.providers) {
-					for (const p of parsed.providers) {
-						if (p.apiKey) {
-							p.apiKey = await decryptApiKey(p.apiKey);
-						}
-					}
-				}
-				return JSON.stringify(parsed);
+				return await transformPersistedProviderKeys(raw, decryptApiKey);
 			} catch {
 				return raw;
 			}
 		},
 		setItem: async (name: string, value: string): Promise<void> => {
 			try {
-				const parsed = JSON.parse(value) as {
-					providers?: Array<{ apiKey?: string }>;
-				};
-				if (parsed.providers) {
-					for (const p of parsed.providers) {
-						if (p.apiKey) {
-							p.apiKey = await encryptApiKey(p.apiKey);
-						}
-					}
-				}
-				window.localStorage.setItem(name, JSON.stringify(parsed));
+				const encrypted = await transformPersistedProviderKeys(
+					value,
+					encryptApiKey,
+				);
+				window.localStorage.setItem(name, encrypted);
 			} catch {
 				window.localStorage.setItem(name, value);
 			}

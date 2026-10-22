@@ -203,6 +203,32 @@ DOMAIN_MAX 1.5 1 0.9
 		expect(lut.domainMax).toEqual([1.5, 1, 0.8999999761581421]);
 	});
 
+	test("rejects a degenerate domain instead of dividing by zero", () => {
+		const error = expectErr(
+			parseCubeLut(`LUT_1D_SIZE 2
+DOMAIN_MIN 0.5 0 0
+DOMAIN_MAX 0.5 1 1
+0 0 0
+1 1 1`),
+		);
+
+		expect(error.reason).toBe("invalid-domain");
+		expect(error.message).toContain("DOMAIN_MAX");
+		expect(error.message).toContain("R");
+	});
+
+	test("rejects an inverted domain", () => {
+		const error = expectErr(
+			parseCubeLut(`LUT_1D_SIZE 2
+DOMAIN_MIN 0 0 2
+DOMAIN_MAX 1 1 1
+0 0 0
+1 1 1`),
+		);
+
+		expect(error.reason).toBe("invalid-domain");
+	});
+
 	test("keeps the default when a DOMAIN line is unusable", () => {
 		const lut = expectOk(
 			parseCubeLut(`LUT_1D_SIZE 2

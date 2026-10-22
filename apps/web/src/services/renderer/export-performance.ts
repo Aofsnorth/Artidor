@@ -283,7 +283,9 @@ export function planExportMemory({
 			`(${deviceMemoryGb}GB reported). Try a smaller resolution or quality.`;
 	} else if (
 		ramBudgetBytes !== null &&
-		bufferOutputBytes + estimatedPeakBytes > ramBudgetBytes
+		// `estimatedPeakBytes` already includes `bufferOutputBytes`; adding it
+		// again double-charged RAM mode and refused exports that actually fit.
+		estimatedPeakBytes > ramBudgetBytes
 	) {
 		reason =
 			`The rendered output alone needs about ${formatMegabytes(bufferOutputBytes)}, ` +

@@ -52,7 +52,13 @@ export function detectBeats({
 
 	const windowSize = Math.max(256, Math.floor(sampleRate * 0.02));
 	const hopSize = Math.max(64, Math.floor(windowSize / 2));
-	const totalHops = Math.ceil((samples.length - windowSize) / hopSize);
+	// A clip shorter than one analysis window has no complete window: clamp
+	// to zero so fewer than ~20 ms of audio does not throw a negative-length
+	// Float32Array RangeError.
+	const totalHops = Math.max(
+		0,
+		Math.ceil((samples.length - windowSize) / hopSize),
+	);
 	const energies = new Float32Array(totalHops);
 
 	for (

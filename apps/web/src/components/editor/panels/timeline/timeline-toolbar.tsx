@@ -403,6 +403,12 @@ function SceneItem({
 					onChange={(e) => setRenameValue(e.target.value)}
 					onBlur={handleRename}
 					onKeyDown={(e) => {
+						// Keep Enter/Escape inside the rename input. Without
+						// this, Enter bubbles to the parent role=button and
+						// switches scenes right after the rename commits.
+						if (e.key === "Enter" || e.key === "Escape") {
+							e.stopPropagation();
+						}
 						if (e.key === "Enter") handleRename();
 						if (e.key === "Escape") setIsRenaming(false);
 					}}

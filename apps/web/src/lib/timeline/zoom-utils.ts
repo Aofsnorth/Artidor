@@ -1,6 +1,7 @@
 import {
 	BASE_TIMELINE_PIXELS_PER_SECOND,
 	TIMELINE_ZOOM_MAX,
+	TIMELINE_ZOOM_MIN,
 } from "@/lib/timeline/scale";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 
@@ -22,7 +23,33 @@ export function getTimelineZoomMin({
 	const zoomToFit =
 		availableWidth / (safeDurationSeconds * BASE_TIMELINE_PIXELS_PER_SECOND);
 
-	return Math.min(TIMELINE_ZOOM_MAX, zoomToFit);
+	// The fit calculation has no lower bound of its own: a long timeline in a
+	// narrow container would otherwise push the zoom below the documented
+	// domain (and into sub-pixel-per-minute territory). Keep the result inside
+	// [TIMELINE_ZOOM_MIN, TIMELINE_ZOOM_MAX], including for invalid inputs.
+	if (!Number.isFinite(zoomToFit)) return TIMELINE_ZOOM_MIN;
+	return Math.min(TIMELINE_ZOOM_MAX, Math.max(TIMELINE_ZOOM_MIN, zoomToFit));
+}
+
+/**
+ * Clamp a zoom level into the usable slider domain. Used by the timeline zoom
+ * hook so a duration/container change that moves `minZoom` can never leave the
+ * current zoom outside [minZoom, TIMELINE_ZOOM_MAX].
+ */
+export function clampTimelineZoom({
+	zoomLevel,
+	minZoom,
+	maxZoom = TIMELINE_ZOOM_MAX,
+}: {
+	zoomLevel: number;
+	minZoom: number;
+	maxZoom?: number;
+}): number {
+	const lowerBound = Number.isFinite(minZoom)
+		? Math.min(minZoom, maxZoom)
+		: TIMELINE_ZOOM_MIN;
+	if (!Number.isFinite(zoomLevel)) return lowerBound;
+	return Math.max(lowerBound, Math.min(maxZoom, zoomLevel));
 }
 
 export function getTimelinePaddingPx({
@@ -53,7 +80,15 @@ export function getZoomPercent({
 	zoomLevel: number;
 	minZoom: number;
 }): number {
-	return (zoomLevel - minZoom) / (TIMELINE_ZOOM_MAX - minZoom);
+	const span = TIMELINE_ZOOM_MAX - minZoom;
+	// A zoom range can collapse (minZoom === max, or a caller passing a bad
+	// value). Dividing by that span produced Infinity/NaN which then leaked
+	// into padding and clip positions, so report "no range" as 0%.
+	if (!Number.isFinite(span) || span <= 0) return 0;
+
+	const zoomPercent = (zoomLevel - minZoom) / span;
+	if (!Number.isFinite(zoomPercent)) return 0;
+	return Math.max(0, Math.min(1, zoomPercent));
 }
 
 /**

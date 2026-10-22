@@ -41,6 +41,7 @@ export function MediaAssetPreview() {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
 	const closeOnTimelinePlayRef = useRef(false);
+	const closeTimeoutRef = useRef<number | null>(null);
 
 	// Slider state
 	const [currentTime, setCurrentTime] = useState(0);
@@ -145,11 +146,24 @@ export function MediaAssetPreview() {
 		videoRef.current?.pause();
 		audioRef.current?.pause();
 		setIsClosing(true);
-		window.setTimeout(() => {
+		if (closeTimeoutRef.current !== null) {
+			window.clearTimeout(closeTimeoutRef.current);
+		}
+		closeTimeoutRef.current = window.setTimeout(() => {
+			closeTimeoutRef.current = null;
 			clearPreview();
 			setIsClosing(false);
 		}, 180);
 	}, [clearPreview]);
+
+	// Never leave the close timer firing after unmount.
+	useEffect(() => {
+		return () => {
+			if (closeTimeoutRef.current !== null) {
+				window.clearTimeout(closeTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	// Clear preview when Escape is pressed.
 	useEffect(() => {

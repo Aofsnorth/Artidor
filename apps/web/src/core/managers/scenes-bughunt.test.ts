@@ -25,6 +25,7 @@ interface MockScene {
 let scenes: MockScene[];
 let activeSceneId: string | null;
 let selectedElements: ElementRef[] = [];
+let projectActive = true;
 
 const editorMock = {
 	scenes: {
@@ -62,7 +63,11 @@ const editorMock = {
 		},
 	},
 	project: {
-		getActive: () => ({ id: "p" }),
+		getActive: () => {
+			if (!projectActive) throw new Error("No active project");
+			return { id: "p" };
+		},
+		getActiveOrNull: () => (projectActive ? { id: "p" } : null),
 		setActiveProject: () => undefined,
 	},
 	save: { markDirty: () => undefined },
@@ -90,6 +95,7 @@ function reset(next: MockScene[], active: string | null) {
 	scenes = next;
 	activeSceneId = active;
 	selectedElements = [];
+	projectActive = true;
 }
 
 function scene(id: string, isMain: boolean): MockScene {
@@ -176,6 +182,17 @@ describe("scene delete selection + undo", () => {
 		command.undo();
 		expect(scenes.map((s) => s.id).sort()).toEqual(["b", "main"]);
 		expect(activeSceneId).toBe("b");
+	});
+
+	test("CORE-20 guards survive a missing active project", async () => {
+		const manager = seedManager([scene("main", true)], "main");
+		projectActive = false;
+
+		expect(manager.isBookmarked({ time: 0 })).toBe(false);
+		expect(manager.getBookmarkAtTime({ time: 0 })).toBeNull();
+		await expect(
+			manager.createScene({ name: "x", isMain: false }),
+		).rejects.toThrow("No active project");
 	});
 
 	test("deleting the last non-main scene falls back to main, never empty", async () => {

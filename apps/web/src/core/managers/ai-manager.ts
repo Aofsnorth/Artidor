@@ -39,6 +39,7 @@ import {
 	puterTxt2Speech,
 } from "@/lib/ai/puter-client";
 import { buildSystemPrompt } from "@/lib/ai/system-prompt";
+import { parseSseEventBlock, splitSseBuffer } from "@/lib/ai/sse";
 import { getFilteredToolDefinitions } from "@/lib/ai/tools/registry";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { getMcpConnectionManager, useMcpStore } from "@/stores/mcp-store";
@@ -72,6 +73,16 @@ interface ToolCallRound {
  */
 function estimateTokens(messages: { content: string }[]): number {
 	return Math.ceil(messages.reduce((sum, m) => sum + m.content.length, 0) / 4);
+}
+
+/**
+ * Transient failures worth retrying: network/timeouts (handled by the caller),
+ * 408 Request Timeout, 409 Conflict, 429 Too Many Requests and any 5xx.
+ * Other 4xx responses (auth, bad request, model not found, ...) are permanent —
+ * retrying them just burns the whole retry budget on the same failure.
+ */
+export function isRetryableHttpStatus(status: number): boolean {
+	return status === 408 || status === 409 || status === 429 || status >= 500;
 }
 
 /**
@@ -642,13 +653,12 @@ export class AIManager {
 				// progress from previous rounds.
 				let result:
 					| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-					| { kind: "error"; message: string }
+					| { kind: "error"; message: string; retryable?: boolean }
 					| null = null;
 				let lastError = "Connection error";
 				for (let attempt = 0; attempt < MAX_IN_ROUND_RETRIES; attempt++) {
 					if (signal.aborted) return;
 					result = await this.streamLLMResponse(
-						text,
 						recentEvents,
 						signal,
 						learningScope,
@@ -657,11 +667,14 @@ export class AIManager {
 					lastError = result.message;
 					// If aborted, don't retry.
 					if (signal.aborted) return;
-					// On the first attempt's error, streamLLMResponse may
-					// have scheduled a retry timer. Cancel it — we handle
-					// the retry here instead.
+					// Clear any timer/state left by a previous attempt; the retry loop
+					// below owns the backoff.
 					this.clearRetryTimer();
 					useAIStore.getState().clearRetry();
+					// Permanent errors (4xx other than 408/409/429) will not
+					// succeed on a retry — surface them now instead of
+					// burning the retry budget.
+					if (result.retryable === false) break;
 					// Show a transient retry status to the user.
 					if (attempt < MAX_IN_ROUND_RETRIES - 1) {
 						const delay = RETRY_DELAY_BASE_MS * 2 ** attempt;
@@ -704,6 +717,17 @@ export class AIManager {
 					}
 				}
 				if (!result || result.kind === "error") {
+					// Permanent error (or no attempt ran): do not retry.
+					if (!result || result.retryable === false) {
+						this.clearRetryTimer();
+						useAIStore.getState().clearRetry();
+						useAIStore.getState().setStatus("error");
+						useAIStore.getState().setError(lastError);
+						useAIControlStore.getState().endTakeover();
+						this.notify();
+						void this.drainQueue();
+						return;
+					}
 					// If we already executed tool calls in a previous round,
 					// don't retry the whole message — that would re-execute
 					// the tools and likely cause duplicate edits. Instead,
@@ -737,7 +761,9 @@ export class AIManager {
 						this.notify();
 						return;
 					}
-					// Round 0 error: schedule a full retry cycle.
+					// Round 0 error: schedule a full retry cycle. Never retry after
+					// the user aborted or the manager was disposed.
+					if (signal.aborted) return;
 					this.scheduleRetry(text, lastError);
 					return;
 				}
@@ -795,6 +821,22 @@ export class AIManager {
 
 			// If there are queued messages, send the next one.
 			this.drainQueue();
+		} catch (err) {
+			// A thrown error (tool executor, store action, unexpected bug) used
+			// to escape `processMessage` with the UI still claiming streaming /
+			// awaiting-tools forever. Record it, settle the state and let the
+			// queue continue.
+			if (this.processCycle !== myCycle) return;
+			const aborted = this.abortController?.signal.aborted ?? false;
+			const message = err instanceof Error ? err.message : String(err);
+			this.clearRetryTimer();
+			const ai = useAIStore.getState();
+			ai.clearRetry();
+			ai.setStatus(aborted ? "idle" : "error");
+			ai.setError(aborted ? null : message);
+			useAIControlStore.getState().endTakeover();
+			this.notify();
+			void this.drainQueue();
 		} finally {
 			// Only clean up if we're still the latest cycle. If a newer
 			// processMessage has started (cancel+resend, steer), it has
@@ -819,17 +861,16 @@ export class AIManager {
 	 * and stream the response into a new assistant bubble.
 	 *
 	 * Returns the assistant message id, the assembled text, and any tool
-	 * calls the model requested. On error, schedules a retry and returns
-	 * `{ kind: "error" }`.
+	 * calls the model requested. On error, returns `{ kind: "error" }` with
+	 * `retryable: false` for permanent failures (e.g. 4xx).
 	 */
 	private async streamLLMResponse(
-		text: string,
 		recent: ReturnType<ReturnType<typeof useTelemetryStore.getState>["recent"]>,
 		signal: AbortSignal,
 		learningScope: "project" | "global" | "off" = "project",
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-		| { kind: "error"; message: string }
+		| { kind: "error"; message: string; retryable?: boolean }
 	> {
 		const storeState = useAIStore.getState();
 		const messages: ChatMessage[] = [];
@@ -1055,11 +1096,10 @@ export class AIManager {
 			// User aborted — don't schedule a retry, just return error
 			// so the loop can check signal.aborted and exit cleanly.
 			if (signal.aborted || err instanceof DOMException) {
-				return { kind: "error", message: "Aborted" };
+				return { kind: "error", message: "Aborted", retryable: false };
 			}
 			const message = err instanceof Error ? err.message : "Network error";
-			this.scheduleRetry(text, message);
-			return { kind: "error", message };
+			return { kind: "error", message, retryable: true };
 		}
 
 		if (!res.ok) {
@@ -1073,8 +1113,11 @@ export class AIManager {
 			if (res.status === 501) {
 				message = `${message} — open the AI providers manager to add one.`;
 			}
-			this.scheduleRetry(text, message);
-			return { kind: "error", message };
+			return {
+				kind: "error",
+				message,
+				retryable: isRetryableHttpStatus(res.status),
+			};
 		}
 
 		// Reserve an assistant bubble; we'll stream into it.
@@ -1086,8 +1129,8 @@ export class AIManager {
 
 		const reader = res.body?.getReader();
 		if (!reader) {
-			this.scheduleRetry(text, "No response body");
-			return { kind: "error", message: "No response body" };
+			useAIStore.getState().removeMessage(assistantId);
+			return { kind: "error", message: "No response body", retryable: true };
 		}
 
 		const decoder = new TextDecoder();
@@ -1095,55 +1138,91 @@ export class AIManager {
 		let assembledText = "";
 		let toolCalls: ToolCallRound[] = [];
 		let finished = false;
+		let streamError: string | null = null;
+
+		const applyPayload = (payload: string): void => {
+			if (!payload) return;
+			if (payload === "[DONE]") {
+				finished = true;
+				return;
+			}
+			let parsed: {
+				delta?: string;
+				toolCalls?: ToolCallRound[];
+				done?: boolean;
+				error?: string;
+			};
+			try {
+				parsed = JSON.parse(payload);
+			} catch {
+				return;
+			}
+			if (parsed.error) {
+				streamError = parsed.error;
+				return;
+			}
+			if (parsed.delta) {
+				assembledText += parsed.delta;
+				const sanitized = sanitizeAssistantText(assembledText);
+				useAIStore.getState().updateMessage(assistantId, {
+					content: sanitized,
+				});
+				this.scheduleNotify();
+			}
+			if (parsed.toolCalls?.length) {
+				toolCalls = parsed.toolCalls;
+			}
+			if (parsed.done) {
+				finished = true;
+			}
+		};
+
+		const consumeEvents = (events: string[]): void => {
+			for (const evt of events) {
+				const payload = parseSseEventBlock(evt);
+				if (payload === null) continue;
+				applyPayload(payload);
+				if (finished || streamError) return;
+			}
+		};
 
 		try {
 			while (!finished) {
 				const { value, done } = await reader.read();
 				if (done) break;
 				buffer += decoder.decode(value, { stream: true });
-				const events = buffer.split("\n\n");
-				buffer = events.pop() ?? "";
+				const { events, rest } = splitSseBuffer(buffer);
+				buffer = rest;
+				consumeEvents(events);
+				if (streamError) break;
+			}
 
-				for (const evt of events) {
-					if (!evt.startsWith("data:")) continue;
-					const payload = evt.slice(5).trim();
-					if (!payload) continue;
-					let parsed: {
-						delta?: string;
-						toolCalls?: ToolCallRound[];
-						done?: boolean;
-						error?: string;
-					};
-					try {
-						parsed = JSON.parse(payload);
-					} catch {
-						continue;
-					}
-					if (parsed.error) {
-						useAIStore.getState().removeMessage(assistantId);
-						this.scheduleRetry(text, parsed.error);
-						return { kind: "error", message: parsed.error };
-					}
-					if (parsed.delta) {
-						assembledText += parsed.delta;
-						const sanitized = sanitizeAssistantText(assembledText);
-						useAIStore.getState().updateMessage(assistantId, {
-							content: sanitized,
-						});
-						this.scheduleNotify();
-					}
-					if (parsed.toolCalls?.length) {
-						toolCalls = parsed.toolCalls;
-					}
-					if (parsed.done) {
-						finished = true;
-					}
+			// A closed stream is only a success if we actually saw the `done`
+			// event. Flush the decoder + trailing buffer first: the final event
+			// may have arrived without its terminating blank line.
+			if (!finished && !streamError) {
+				buffer += decoder.decode();
+				const { events } = splitSseBuffer(`${buffer}\n\n`);
+				consumeEvents(events);
+				if (!finished && !streamError) {
+					streamError = "The response stream ended before completion.";
 				}
 			}
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Stream error";
-			this.scheduleRetry(text, message);
-			return { kind: "error", message };
+			// Aborted by the user — leave the partial bubble in place and let
+			// processMessage exit; this is not a retryable failure.
+			if (signal.aborted) {
+				return { kind: "error", message: "Aborted", retryable: false };
+			}
+			streamError = err instanceof Error ? err.message : "Stream error";
+		}
+
+		if (streamError) {
+			// Drop the partial assistant bubble so a retry does not stack a
+			// second empty/duplicate response next to it.
+			useAIStore.getState().removeMessage(assistantId);
+			this.flushNotify();
+			return { kind: "error", message: streamError, retryable: true };
 		}
 
 		// Flush any pending throttled notify so the final state is
@@ -1244,7 +1323,7 @@ export class AIManager {
 		signal: AbortSignal,
 	): Promise<
 		| { kind: "ok"; assistantId: string; toolCalls: ToolCallRound[] }
-		| { kind: "error"; message: string }
+		| { kind: "error"; message: string; retryable?: boolean }
 	> {
 		// Reserve an assistant bubble; we'll stream into it.
 		const assistantId = useAIStore.getState().appendMessage({
@@ -1255,6 +1334,7 @@ export class AIManager {
 
 		let assembledText = "";
 		let toolCalls: ToolCallRound[] = [];
+		let finished = false;
 
 		try {
 			for await (const chunk of streamPuterChat(
@@ -1263,12 +1343,14 @@ export class AIManager {
 				externalTools,
 				signal,
 			)) {
-				if (signal.aborted) return { kind: "error", message: "Aborted" };
+				if (signal.aborted) {
+					return { kind: "error", message: "Aborted", retryable: false };
+				}
 
 				if (chunk.error) {
 					useAIStore.getState().removeMessage(assistantId);
-					this.scheduleRetry("", chunk.error);
-					return { kind: "error", message: chunk.error };
+					this.flushNotify();
+					return { kind: "error", message: chunk.error, retryable: true };
 				}
 				if (chunk.delta) {
 					assembledText += chunk.delta;
@@ -1279,25 +1361,47 @@ export class AIManager {
 					this.scheduleNotify();
 				}
 				if (chunk.toolCalls?.length) {
-					toolCalls = chunk.toolCalls.map((tc) => ({
-						id: tc.id,
-						name: tc.name,
-						arguments: tc.arguments,
-					}));
+					// Puter emits parallel tool calls one per chunk. Accumulate
+					// instead of overwriting, de-duplicating by id (a provider
+					// may repeat the same call id across chunks).
+					const byId = new Map(toolCalls.map((tc) => [tc.id, tc]));
+					for (const tc of chunk.toolCalls) {
+						byId.set(tc.id, {
+							id: tc.id,
+							name: tc.name,
+							arguments: tc.arguments,
+						});
+					}
+					toolCalls = [...byId.values()];
 				}
-				if (chunk.done) break;
+				if (chunk.done) {
+					finished = true;
+					break;
+				}
 			}
 		} catch (err) {
 			// User aborted — don't schedule retry.
 			if (signal.aborted || err instanceof DOMException) {
-				return { kind: "error", message: "Aborted" };
+				return { kind: "error", message: "Aborted", retryable: false };
 			}
 			useAIStore.getState().removeMessage(assistantId);
 			const baseMessage =
 				err instanceof Error ? err.message : "Puter.js stream error";
 			const message = `Puter.js (${model}): ${baseMessage}`;
-			this.scheduleRetry("", message);
-			return { kind: "error", message };
+			this.flushNotify();
+			return { kind: "error", message, retryable: true };
+		}
+
+		if (!finished) {
+			// The SDK stream closed without a `done` chunk — treat it as a
+			// truncated (retryable) response instead of a successful answer.
+			useAIStore.getState().removeMessage(assistantId);
+			this.flushNotify();
+			return {
+				kind: "error",
+				message: "Puter.js stream ended before completion.",
+				retryable: true,
+			};
 		}
 
 		// Flush any pending throttled notify so the final state is
@@ -2017,7 +2121,7 @@ export class AIManager {
 	 * is being trimmed.
 	 *
 	 * Returns true if the revert was performed, false if no snapshot
-	 * was found for the given message id.
+	 * was found (or the editor is read-only).
 	 */
 	revertToMessage(messageId: string): boolean {
 		const ai = useAIStore.getState();
@@ -2025,10 +2129,17 @@ export class AIManager {
 		if (snapshot === undefined) return false;
 
 		const commands = this.editor.command;
+		// `undo()` is a no-op in read-only (shared viewer) sessions, so the
+		// history length would never shrink and this loop would spin forever.
+		if (commands.readOnly) return false;
 		const targetLength = snapshot;
 		let undone = 0;
 		while (commands.getHistoryLength() > targetLength && commands.canUndo()) {
+			const before = commands.getHistoryLength();
 			commands.undo();
+			// Defensive progress guard: if undo did not shrink the history for
+			// any reason, stop rather than loop forever.
+			if (commands.getHistoryLength() >= before) break;
 			undone++;
 		}
 
