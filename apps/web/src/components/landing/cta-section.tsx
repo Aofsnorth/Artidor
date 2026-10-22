@@ -1,60 +1,75 @@
-/**
- * Final CTA — a single glassmorphic surface asking the visitor
- * to open the editor. Big serif headline, a one-line value
- * statement, and two buttons. Above the footer.
- */
-
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
+import { ArrowUpRight, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
 
 export function CtaSection() {
 	const { t } = useI18n();
+
 	return (
-		<section className="relative mx-auto w-full max-w-5xl px-6 py-20 text-center">
-			<h2 className="text-balance mx-auto max-w-2xl font-serif text-5xl font-medium italic leading-[1.02] tracking-[-0.02em] md:text-6xl">
-				{t("home.cta.headline.line1")}
-				<span className="block bg-gradient-to-br from-white via-white/85 to-white/40 bg-clip-text text-transparent">
-					{t("home.cta.headline.line2")}
-				</span>
-			</h2>
-			<p className="text-pretty mx-auto mt-6 max-w-xl text-[15px] font-light leading-relaxed text-white/65">
-				{t("home.cta.body")}
-			</p>
-			<div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-				<Link href="/projects">
-					<Button
-						size="lg"
-						className="h-12 rounded-full bg-white px-6 text-[15px] font-medium text-[#0a0a0c] shadow-[0_8px_30px_rgba(255,255,255,0.18)] hover:bg-white/90"
+		<section
+			aria-labelledby="cta-heading"
+			className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-6 sm:px-6 md:pb-24 lg:px-8"
+		>
+			<div className="grid grid-cols-1 items-end gap-8 border-t-2 border-[#141413] pt-12 lg:grid-cols-12">
+				<div className="lg:col-span-8">
+					<div className="mb-4 flex items-center gap-3">
+						<span className="ed-rule" aria-hidden="true" />
+						<span className="font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-[#4A4741]">
+							COLOPHON / READY TO CUT
+						</span>
+					</div>
+
+					<h2
+						id="cta-heading"
+						className="font-serif text-[clamp(2.35rem,5vw,4.5rem)] font-normal leading-[0.98] tracking-[-0.03em] text-[#141413]"
 					>
-						{t("home.cta.openEditor")}
-						<ArrowRight className="ml-2 size-4" />
+						<span className="block">{t("home.cta.headline.line1")}</span>
+						<span className="block italic text-[#282725]">
+							{t("home.cta.headline.line2")}
+						</span>
+					</h2>
+
+					<p className="mt-5 max-w-[54ch] text-[15.5px] leading-[1.65] text-[#282725]">
+						{t("home.cta.body")}
+					</p>
+				</div>
+
+				<div className="flex flex-col items-start gap-3 lg:col-span-4 lg:items-end">
+					<Button
+						asChild
+						variant="editorial"
+						size="editorial-lg"
+						className="w-full justify-between sm:w-auto"
+					>
+						<Link href="/projects">
+							<span>{t("home.cta.openEditor")}</span>
+							<ArrowUpRight className="size-4" aria-hidden="true" />
+						</Link>
 					</Button>
-				</Link>
-				{/* Desktop button is locked. Still visible, still rendered
-				   with the same outline treatment so the design reads
-				   symmetric, but `disabled` + `aria-disabled` prevents
-				   the click and a hover tooltip ("Coming soon") explains
-				   why. The actual download surface (GitHub releases)
-				   lives in the tooltip's action area if the user
-				   really wants to go fetch a pre-release. */}
-				<Button
-					size="lg"
-					variant="outline"
-					disabled
-					title={t("home.cta.tooltip")}
-					aria-label={t("home.cta.downloadAria")}
-					className="h-12 cursor-not-allowed rounded-full border-white/15 bg-white/[0.04] px-6 text-[15px] font-medium text-white/55 backdrop-blur hover:bg-white/[0.04]"
-				>
-					<Download className="mr-2 size-4" />
-					{t("home.cta.downloadDesktop")}
-					<span className="ml-2 rounded-full border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/65">
-						{t("home.cta.badge")}
-					</span>
-				</Button>
+
+					<Button
+						asChild
+						variant="editorial-outline"
+						size="editorial-lg"
+						className="w-full justify-between sm:w-auto"
+					>
+						<Link
+							href="/roadmap"
+							title={t("home.cta.tooltip")}
+							aria-label={t("home.cta.downloadAria")}
+						>
+							<Terminal className="size-4" aria-hidden="true" />
+							<span>{t("home.cta.downloadDesktop")}</span>
+							<Badge variant="editorial" className="ml-1">
+								{t("home.cta.badge")}
+							</Badge>
+						</Link>
+					</Button>
+				</div>
 			</div>
 		</section>
 	);

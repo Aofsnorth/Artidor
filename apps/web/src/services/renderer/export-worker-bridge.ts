@@ -165,6 +165,7 @@ export async function runExportInWorker({
 	videoCodec,
 	audioCodec,
 	forceSoftwareEncoding = false,
+	hardwareAcceleration,
 	onProgress,
 	onReady,
 	getCancelled,
@@ -197,6 +198,13 @@ export async function runExportInWorker({
 	 * retry path after a hardware encoder configuration error.
 	 */
 	forceSoftwareEncoding?: boolean;
+	/**
+	 * Hardware-acceleration hint negotiated once by the caller. The parallel
+	 * pipeline probes the codec up-front and passes the result to every
+	 * segment so a hardware-unsupported machine does not pay a failed
+	 * hardware attempt per segment. Omitted keeps the legacy behavior.
+	 */
+	hardwareAcceleration?: "prefer-hardware" | "prefer-software";
 	onProgress?: ({ progress }: { progress: number }) => void;
 	/** Called when the worker signals it has finished GPU init. */
 	onReady?: () => void;
@@ -332,7 +340,9 @@ export async function runExportInWorker({
 					// "cancel" message — so we must terminate from this side.
 					completed = true;
 					discardPendingStreamedFile();
-					cleanup();
+					// A cancelled worker may still be mid-export and cannot be
+					// trusted to accept the next init. Never return it to the pool.
+					cleanup(true);
 					resolve({ success: false, cancelled: true });
 				}
 			}, 100);
@@ -367,7 +377,10 @@ export async function runExportInWorker({
 				}
 				completed = true;
 				discardPendingStreamedFile();
-				cleanup();
+				// A timed-out worker is presumed stuck; keeping it warm would
+				// feed the next export's init to a worker that may still settle
+				// the previous run. Terminate and clear the pool slot.
+				cleanup(true);
 				resolve({
 					success: false,
 					error: hasReceivedMessage
@@ -377,7 +390,7 @@ export async function runExportInWorker({
 			}, effectiveTimeout);
 		};
 
-		const cleanup = () => {
+		const cleanup = (terminate = false) => {
 			if (timeout) clearTimeout(timeout);
 			if (cancelInterval) clearInterval(cancelInterval);
 			// Detach the handlers so a settled export stops retaining the scene
@@ -387,6 +400,18 @@ export async function runExportInWorker({
 			worker.onmessage = null;
 			worker.onmessageerror = null;
 			worker.onerror = null;
+			if (terminate) {
+				// Cancel/timeout: the worker may still be executing the old
+				// export, so it must never be reused. Terminating it and clearing
+				// the pool slot is what stops the next export from sending init
+				// to a busy worker whose old run could settle the new promise.
+				worker.terminate();
+				if (worker === warmWorker) {
+					warmWorker = null;
+					warmWorkerBusy = false;
+				}
+				return;
+			}
 			// Warm-reuse: keep the worker alive for the next export.
 			// Parallel/fresh: terminate immediately.
 			releaseWarmWorker(worker, reuseWorker);
@@ -570,6 +595,7 @@ export async function runExportInWorker({
 					videoCodec,
 					audioCodec,
 					forceSoftwareEncoding,
+					hardwareAcceleration,
 					streamToDisk,
 				},
 				transferables,

@@ -87,6 +87,7 @@ const driveUploads: Array<{
 	name: string;
 }> = [];
 let accessToken: string | null = "token";
+let driveFailures = 0;
 
 mock.module("@/lib/drive/api", () => ({
 	...realDrive,
@@ -100,6 +101,10 @@ mock.module("@/lib/drive/api", () => ({
 		project: TProject,
 	) => {
 		driveUploads.push({ folderId, fileId, name: project.metadata.name });
+		if (driveFailures > 0) {
+			driveFailures -= 1;
+			throw new Error("drive unavailable");
+		}
 		return "drive-file";
 	},
 	createDriveFolder: async () => "folder",
@@ -210,6 +215,7 @@ async function settle(): Promise<void> {
 beforeEach(() => {
 	driveUploads.length = 0;
 	accessToken = "token";
+	driveFailures = 0;
 	fakeDocument.visibilityState = "visible";
 	savedProjects.clear();
 	windowEvents.clear();
@@ -284,6 +290,22 @@ test("prepareExit flushes the pending Drive sync", async () => {
 	await settle();
 
 	expect(driveUploads).toHaveLength(1);
+});
+
+test("CORE-05 a failed upload keeps the snapshot queued for the next flush", async () => {
+	const { manager } = createLinkedManager();
+	await manager.saveCurrentProject();
+
+	driveFailures = 1;
+	windowEvents.emit("pagehide");
+	await settle();
+	expect(driveUploads).toHaveLength(1);
+
+	// The failed snapshot must still be pending: a later flush retries it.
+	windowEvents.emit("pagehide");
+	await settle();
+	expect(driveUploads).toHaveLength(2);
+	expect(driveUploads[1].name).toBe("v0");
 });
 
 test("a project that is not linked to Drive never schedules a sync", async () => {

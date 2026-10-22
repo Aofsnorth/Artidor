@@ -224,6 +224,9 @@ async function fetchModelsFromProvider({
 	const response = await fetch(url, {
 		method: "GET",
 		headers,
+		// Never follow redirects: a public provider URL could bounce the
+		// server to a private address after the DNS check above.
+		redirect: "manual",
 		signal: AbortSignal.timeout(15_000),
 	});
 

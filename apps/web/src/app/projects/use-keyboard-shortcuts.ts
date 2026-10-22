@@ -17,7 +17,7 @@
  * menu / dialog.
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useProjectsStore } from "@/app/projects/store";
 
 const isEditable = (el: EventTarget | null): boolean => {
@@ -58,6 +58,14 @@ export function useProjectsKeyboardShortcuts({
 		selectProjectRange,
 	} = useProjectsStore();
 
+	// Callers commonly pass a fresh `handlers` object each render. Keeping the
+	// latest value in a ref means the window listener stays subscribed across
+	// renders instead of being torn down and re-added on every keystroke.
+	const handlersRef = useRef(handlers);
+	useEffect(() => {
+		handlersRef.current = handlers;
+	}, [handlers]);
+
 	useEffect(() => {
 		const handler = (event: KeyboardEvent) => {
 			// Don't hijack typing in an input / textarea.
@@ -85,7 +93,7 @@ export function useProjectsKeyboardShortcuts({
 				case "n":
 				case "N": {
 					event.preventDefault();
-					handlers.onCreateNew();
+					handlersRef.current.onCreateNew();
 					return;
 				}
 				case "Escape": {
@@ -127,13 +135,13 @@ export function useProjectsKeyboardShortcuts({
 						}
 						setProjectSelected({ projectId: nextId, isSelected: true });
 					}
-					handlers.onFocusProject(nextId);
+					handlersRef.current.onFocusProject(nextId);
 					return;
 				}
 				case "Enter": {
 					if (selectedProjectIds.length === 1) {
 						event.preventDefault();
-						handlers.onOpenProject(selectedProjectIds[0]);
+						handlersRef.current.onOpenProject(selectedProjectIds[0]);
 					}
 					return;
 				}
@@ -149,6 +157,5 @@ export function useProjectsKeyboardShortcuts({
 		clearSelectedProjects,
 		setProjectSelected,
 		selectProjectRange,
-		handlers,
 	]);
 }

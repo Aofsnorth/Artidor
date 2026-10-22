@@ -11,7 +11,7 @@
 //! The accounting under test — what gets retained, when, and how much — is
 //! identical either way.
 
-use super::texture_pool::{MAX_POOLED_PER_SIZE, TexturePool};
+use super::texture_pool::{MAX_POOLED_PER_SIZE, MAX_POOLED_TOTAL, TexturePool};
 
 type Pool = TexturePool<usize>;
 
@@ -141,6 +141,42 @@ fn the_cap_is_applied_per_size_not_globally() {
 
     assert_eq!(pool.free_count_at(1920, 1080), MAX_POOLED_PER_SIZE);
     assert_eq!(pool.free_count_at(1280, 720), MAX_POOLED_PER_SIZE);
+}
+
+#[test]
+fn total_retention_is_bounded_across_size_changes() {
+    let mut pool = Pool::default();
+    let sizes = [
+        (1920, 1080),
+        (1280, 720),
+        (640, 360),
+        (320, 180),
+        (160, 90),
+        (3840, 2160),
+    ];
+
+    for &(width, height) in &sizes {
+        let mut targets = Vec::new();
+        for _ in 0..(MAX_POOLED_PER_SIZE * 2) {
+            targets.push(pool.acquire(width, height, create));
+        }
+        for target in targets {
+            pool.release(width, height, target);
+        }
+    }
+
+    assert!(
+        pool.free_count() <= MAX_POOLED_TOTAL,
+        "stale sizes must not accumulate past the global bound: {} > {}",
+        pool.free_count(),
+        MAX_POOLED_TOTAL
+    );
+    let (last_width, last_height) = *sizes.last().unwrap();
+    assert_eq!(
+        pool.free_count_at(last_width, last_height),
+        MAX_POOLED_PER_SIZE,
+        "the active (last) size keeps its full per-size working set"
+    );
 }
 
 #[test]

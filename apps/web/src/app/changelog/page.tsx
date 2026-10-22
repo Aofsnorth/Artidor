@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
 			type: "website",
 			images: [
 				{
-					url: "/open-graph/changlog.jpg",
+					url: "/open-graph/changelog.jpg",
 					width: 1200,
 					height: 630,
 					alt: translate({ locale, key: "changelog.openGraphImageAlt" }),
@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
 			card: "summary_large_image",
 			title: translate({ locale, key: "changelog.twitterTitle" }),
 			description: translate({ locale, key: "changelog.twitterDescription" }),
-			images: ["/open-graph/changlog.jpg"],
+			images: ["/open-graph/changelog.jpg"],
 		},
 	};
 }

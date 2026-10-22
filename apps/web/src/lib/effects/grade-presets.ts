@@ -355,9 +355,21 @@ const ADJUSTMENT_TYPES: GradePreset["adjustments"] = {
 };
 
 /**
+ * Primitives whose `amount` param is neutral at 100 (uniform `amount / 100`).
+ * Their DonkeyCut delta must be written as `100 + delta * k`, not as the delta
+ * itself, or a +10 contrast grade renders at 0.1x instead of 1.1x.
+ */
+const CENTRED_AT_100 = new Set<keyof GradePreset["adjustments"]>([
+	"brightness",
+	"contrast",
+	"saturation",
+]);
+
+/**
  * Build the effect instances for one grade preset at `amount` (0..1). Values
- * scale linearly toward identity as the amount drops, the same way
- * DonkeyCut's grades interpolate.
+ * scale linearly toward identity as the amount drops: centred primitives
+ * approach 100, the rest approach 0. At `amount` 0 every adjustment is at its
+ * neutral, so no effects are emitted at all.
  */
 export function buildGradePresetEffects({
 	preset,
@@ -372,9 +384,14 @@ export function buildGradePresetEffects({
 	)
 		.map((type) => {
 			const value = preset.adjustments[type] ?? 0;
-			return { type, scaled: Math.round(value * k) };
+			const neutral = CENTRED_AT_100.has(type) ? 100 : 0;
+			const raw = neutral + value * k;
+			const scaled = CENTRED_AT_100.has(type)
+				? Math.max(0, Math.min(200, Math.round(raw)))
+				: Math.round(raw);
+			return { type, neutral, scaled };
 		})
-		.filter(({ scaled }) => Math.abs(scaled) > 0)
+		.filter(({ neutral, scaled }) => scaled !== neutral)
 		.map(({ type, scaled }) => ({
 			id: generateUUID(),
 			type,

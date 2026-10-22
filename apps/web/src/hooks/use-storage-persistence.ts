@@ -15,7 +15,11 @@ export function useStoragePersistence() {
 		if (!navigator.storage?.persist) return;
 
 		const run = async () => {
-			const alreadyPersisted = await navigator.storage.persisted();
+			const persisted = navigator.storage.persisted;
+			const alreadyPersisted =
+				typeof persisted === "function"
+					? await persisted.call(navigator.storage)
+					: false;
 			if (alreadyPersisted) return;
 
 			const dismissed = localStorage.getItem(DISMISSED_KEY) === "true";
@@ -24,16 +28,24 @@ export function useStoragePersistence() {
 			if (isFirefox()) {
 				setShowDialog(true);
 			} else {
-				await navigator.storage.persist();
+				await navigator.storage.persist?.();
 			}
 		};
 
-		run();
+		void run().catch((error: unknown) => {
+			// Permission/API failures must not become unhandled rejections; the
+			// app keeps working on best-effort storage.
+			console.warn("Storage persistence request failed:", error);
+		});
 	}, []);
 
 	const onConfirm = async () => {
 		setShowDialog(false);
-		await navigator.storage.persist();
+		try {
+			await navigator.storage.persist?.();
+		} catch (error) {
+			console.warn("Storage persistence request failed:", error);
+		}
 	};
 
 	const onDismiss = () => {

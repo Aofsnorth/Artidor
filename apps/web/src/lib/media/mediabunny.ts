@@ -95,6 +95,14 @@ export async function getVideoInfo({
 
 const SAMPLE_RATE = 44100;
 const NUM_CHANNELS = 2;
+/**
+ * Speech transcription only needs 16 kHz mono. Rendering timeline audio at
+ * that rate avoids materialising a 44.1 kHz stereo buffer (plus its interleaved
+ * copy and WAV) for long timelines — the caller decodes the result at 16 kHz
+ * anyway.
+ */
+const TRANSCRIPTION_AUDIO_SAMPLE_RATE = 16000;
+const TRANSCRIPTION_AUDIO_CHANNELS = 1;
 const EMPTY_TIMELINE_SILENT_DURATION_SECONDS = 0.1;
 const MIN_SILENT_DURATION_SECONDS = 0.001;
 
@@ -125,17 +133,25 @@ export const extractTimelineAudio = async ({
 	mediaAssets,
 	totalDuration,
 	onProgress,
+	sampleRate = TRANSCRIPTION_AUDIO_SAMPLE_RATE,
+	channels = TRANSCRIPTION_AUDIO_CHANNELS,
 }: {
 	tracks: SceneTracks;
 	mediaAssets: MediaAsset[];
 	totalDuration: number;
 	onProgress?: (progress: number) => void;
+	/** Output sample rate. Defaults to the 16 kHz speech rate. */
+	sampleRate?: number;
+	/** Output channel count (1 = mono). Defaults to mono. */
+	channels?: 1 | 2;
 }): Promise<Blob> => {
 	if (totalDuration === 0) {
 		return createWavBlob({
 			samples: new Float32Array(
-				SAMPLE_RATE * EMPTY_TIMELINE_SILENT_DURATION_SECONDS,
+				sampleRate * EMPTY_TIMELINE_SILENT_DURATION_SECONDS,
 			),
+			sampleRate,
+			channels,
 		});
 	}
 
@@ -145,7 +161,7 @@ export const extractTimelineAudio = async ({
 		tracks,
 		mediaAssets,
 		duration: totalDuration,
-		sampleRate: SAMPLE_RATE,
+		sampleRate,
 	});
 
 	if (!audioBuffer) {
@@ -154,34 +170,54 @@ export const extractTimelineAudio = async ({
 			totalDuration / TICKS_PER_SECOND,
 		);
 		const silentSamples = new Float32Array(
-			Math.ceil(silentDurationSeconds * SAMPLE_RATE) * NUM_CHANNELS,
+			Math.ceil(silentDurationSeconds * sampleRate) * channels,
 		);
-		return createWavBlob({ samples: silentSamples });
+		return createWavBlob({ samples: silentSamples, sampleRate, channels });
 	}
 
 	onProgress?.(90);
 
-	const interleavedSamples = await interleaveAudioBuffer({ audioBuffer });
+	const interleavedSamples = await interleaveAudioBuffer({
+		audioBuffer,
+		channels,
+	});
 	onProgress?.(100);
 
-	return createWavBlob({ samples: interleavedSamples });
+	return createWavBlob({
+		samples: interleavedSamples,
+		sampleRate: audioBuffer.sampleRate,
+		channels,
+	});
 };
 
 async function interleaveAudioBuffer({
 	audioBuffer,
+	channels = NUM_CHANNELS,
 }: {
 	audioBuffer: AudioBuffer;
+	channels?: 1 | 2;
 }): Promise<Float32Array> {
-	const numChannels = Math.min(NUM_CHANNELS, audioBuffer.numberOfChannels);
-	const interleavedSamples = new Float32Array(
-		audioBuffer.length * NUM_CHANNELS,
+	const sourceChannels = Math.min(
+		NUM_CHANNELS,
+		Math.max(1, audioBuffer.numberOfChannels),
 	);
+	const interleavedSamples = new Float32Array(audioBuffer.length * channels);
 
 	for (let sampleIndex = 0; sampleIndex < audioBuffer.length; sampleIndex++) {
-		for (let channel = 0; channel < NUM_CHANNELS; channel++) {
-			const sourceChannel = Math.min(channel, Math.max(0, numChannels - 1));
-			interleavedSamples[sampleIndex * NUM_CHANNELS + channel] =
-				audioBuffer.getChannelData(sourceChannel)[sampleIndex] ?? 0;
+		if (channels === 1) {
+			// Downmix to mono instead of writing one source channel (which
+			// would drop the right channel) or a second full stereo copy.
+			let sum = 0;
+			for (let channel = 0; channel < sourceChannels; channel++) {
+				sum += audioBuffer.getChannelData(channel)[sampleIndex] ?? 0;
+			}
+			interleavedSamples[sampleIndex] = sum / sourceChannels;
+		} else {
+			for (let channel = 0; channel < channels; channel++) {
+				const sourceChannel = Math.min(channel, sourceChannels - 1);
+				interleavedSamples[sampleIndex * channels + channel] =
+					audioBuffer.getChannelData(sourceChannel)[sampleIndex] ?? 0;
+			}
 		}
 		// Yield periodically so the main thread stays responsive on
 		// long audio files (millions of samples).
@@ -193,12 +229,23 @@ async function interleaveAudioBuffer({
 	return interleavedSamples;
 }
 
-async function createWavBlob({
+/**
+ * Encode interleaved float samples as a 16-bit PCM WAV blob.
+ *
+ * `sampleRate` must match the sample rate of `samples`; the header previously
+ * always claimed 44.1 kHz even when the buffer kept the source rate (48 kHz),
+ * so players decoded the clip at the wrong speed.
+ */
+export async function createWavBlob({
 	samples,
+	sampleRate = SAMPLE_RATE,
+	channels = NUM_CHANNELS,
 }: {
 	samples: Float32Array;
+	sampleRate?: number;
+	channels?: 1 | 2;
 }): Promise<Blob> {
-	const numChannels = NUM_CHANNELS;
+	const numChannels = channels;
 	const bitsPerSample = 16;
 	const bytesPerSample = bitsPerSample / 8;
 	const numSamples = samples.length / numChannels;
@@ -216,8 +263,8 @@ async function createWavBlob({
 	view.setUint32(16, 16, true);
 	view.setUint16(20, 1, true);
 	view.setUint16(22, numChannels, true);
-	view.setUint32(24, SAMPLE_RATE, true);
-	view.setUint32(28, SAMPLE_RATE * numChannels * bytesPerSample, true);
+	view.setUint32(24, sampleRate, true);
+	view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
 	view.setUint16(32, numChannels * bytesPerSample, true);
 	view.setUint16(34, bitsPerSample, true);
 
@@ -295,11 +342,13 @@ export async function extractClipAudio({
 		const sink = new AudioBufferSink(audioTrack);
 		const collected: Float32Array[] = [];
 		let totalLength = 0;
+		let nativeSampleRate = SAMPLE_RATE;
 		const startTime = Math.max(0, startSeconds);
 		const endTime = Math.max(startTime + 0.01, endSeconds);
 
 		for await (const wrapped of sink.buffers()) {
 			const { buffer, timestamp: bufStart, duration: bufDuration } = wrapped;
+			nativeSampleRate = buffer.sampleRate;
 			const bufEnd = bufStart + bufDuration;
 			if (bufEnd <= startTime) continue;
 			if (bufStart >= endTime) break;
@@ -350,7 +399,10 @@ export async function extractClipAudio({
 			if (arr.length > 8192) await yieldToEventLoop();
 		}
 
-		return createWavBlob({ samples: interleaved });
+		return createWavBlob({
+			samples: interleaved,
+			sampleRate: nativeSampleRate,
+		});
 	} catch (error) {
 		console.warn("extractClipAudio failed:", error);
 		return createWavBlob({ samples: new Float32Array(0) });
@@ -378,9 +430,11 @@ export async function extractAssetAudio({
 		const sink = new AudioBufferSink(audioTrack);
 		const collected: Float32Array[] = [];
 		let totalLength = 0;
+		let nativeSampleRate = SAMPLE_RATE;
 
 		for await (const wrapped of sink.buffers()) {
 			const { buffer } = wrapped;
+			nativeSampleRate = buffer.sampleRate;
 			const length = buffer.length;
 			if (length <= 0) continue;
 
@@ -417,7 +471,10 @@ export async function extractAssetAudio({
 			if (arr.length > 8192) await yieldToEventLoop();
 		}
 
-		return createWavBlob({ samples: interleaved });
+		return createWavBlob({
+			samples: interleaved,
+			sampleRate: nativeSampleRate,
+		});
 	} catch (error) {
 		console.warn("extractAssetAudio failed:", error);
 		return createWavBlob({ samples: new Float32Array(0) });

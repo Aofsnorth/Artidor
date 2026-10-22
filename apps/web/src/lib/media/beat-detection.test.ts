@@ -36,6 +36,17 @@ describe("detectBeats", () => {
 		).toEqual([]);
 	});
 
+	test("returns empty array for clips shorter than one analysis window", () => {
+		// 100 samples at 8 kHz is 12.5 ms; the old negative hop count threw a
+		// Float32Array RangeError instead of returning no beats.
+		expect(
+			detectBeats({
+				samples: new Float32Array(100).fill(0.5),
+				sampleRate: SAMPLE_RATE,
+			}),
+		).toEqual([]);
+	});
+
 	test("detects beats in a regular impulse train", () => {
 		const bpm = 120;
 		const durationSeconds = 4;

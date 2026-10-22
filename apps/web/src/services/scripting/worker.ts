@@ -18,13 +18,31 @@ export type ScriptingWorkerResponse =
 	| { type: "done" }
 	| { type: "error"; text: string };
 
+/** Matches the main thread's 30s command budget so a dropped message fails. */
+const CALL_TIMEOUT_MS = 30_000;
+
 let nextCallId = 0;
-const pending = new Map<number, (value: unknown) => void>();
+const pending = new Map<
+	number,
+	{
+		resolve: (value: unknown) => void;
+		reject: (error: Error) => void;
+		timer: ReturnType<typeof setTimeout>;
+	}
+>();
 
 function callMain(method: "run" | "list", payload: unknown): Promise<unknown> {
 	const callId = nextCallId++;
-	return new Promise((resolve) => {
-		pending.set(callId, resolve);
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => {
+			pending.delete(callId);
+			reject(
+				new Error(
+					`Editor call "${method}" timed out after ${CALL_TIMEOUT_MS}ms — the editor did not reply.`,
+				),
+			);
+		}, CALL_TIMEOUT_MS);
+		pending.set(callId, { resolve, reject, timer });
 		self.postMessage({
 			type: "call",
 			callId,
@@ -77,10 +95,11 @@ self.onmessage = async (event: MessageEvent<ScriptingWorkerMessage>) => {
 	const message = event.data;
 
 	if (message.type === "result") {
-		const resolve = pending.get(message.callId);
-		if (resolve) {
+		const call = pending.get(message.callId);
+		if (call) {
 			pending.delete(message.callId);
-			resolve(message.result);
+			clearTimeout(call.timer);
+			call.resolve(message.result);
 		}
 		return;
 	}

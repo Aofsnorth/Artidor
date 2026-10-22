@@ -25,7 +25,10 @@ import { headers } from "next/headers";
 import { AI_FEATURE_ENABLED } from "@/lib/ai/config";
 import { auth } from "@/lib/auth/server";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { normalizeProviderBaseUrl } from "@/lib/ai/provider-url";
+import {
+	assertSafeProviderUrlDns,
+	normalizeProviderBaseUrl,
+} from "@/lib/ai/provider-url";
 import {
 	resolveProvider,
 	type ChatMessage,
@@ -280,6 +283,10 @@ export async function POST(request: Request) {
 	if (config?.baseUrl) {
 		try {
 			normalizeProviderBaseUrl(config.baseUrl);
+			// DNS rebinding defense — the synchronous check only sees the
+			// hostname, so a domain that initially resolves to a public IP
+			// can still point at an internal address by fetch time.
+			await assertSafeProviderUrlDns(new URL(config.baseUrl));
 		} catch (err) {
 			return new Response(
 				JSON.stringify({

@@ -587,12 +587,12 @@ describe("scene switch selection + playhead", () => {
 		(
 			editorMock as unknown as {
 				project: {
-					getActive: () => unknown;
+					getActiveOrNull: () => unknown;
 					setActiveProject: (arg: unknown) => void;
 				};
 			}
 		).project = {
-			getActive: () => project,
+			getActiveOrNull: () => project,
 			setActiveProject: () => undefined,
 		};
 		Object.defineProperty(manager, "list", { value: scenes });

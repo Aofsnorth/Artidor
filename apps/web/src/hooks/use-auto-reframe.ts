@@ -83,6 +83,7 @@ export function useAutoReframe() {
 					});
 					const reframeKeyframes = reframeFramesToKeyframes({
 						reframes,
+						canvasWidth: activeProject.settings.canvasSize.width,
 						canvasHeight: activeProject.settings.canvasSize.height,
 					});
 					const keyframes = reframeKeyframes.flatMap((k) => [

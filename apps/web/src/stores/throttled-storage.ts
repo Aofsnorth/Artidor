@@ -30,11 +30,14 @@ import type { PersistStorage } from "zustand/middleware";
 export function createThrottledStorage<S>({
 	storage,
 	waitMs,
+	onError,
 }: {
 	/** Underlying persist storage (usually `browserStorage`). */
 	storage: PersistStorage<S> | undefined;
 	/** Coalescing window in ms. 250–500 suits drag/slider bursts. */
 	waitMs: number;
+	/** Called when the underlying `setItem` fails (e.g. quota exceeded). */
+	onError?: (error: unknown) => void;
 }): PersistStorage<S> | undefined {
 	if (!storage) return undefined;
 	// `browserStorage` is a lazy `createJSONStorage(() => localStorage)` that
@@ -47,13 +50,23 @@ export function createThrottledStorage<S>({
 	let pending: { name: string; value: PersistValue } | null = null;
 	let lastWriteAt = 0;
 
-	const flush = () => {
+	const flush = (isRetry = false) => {
 		timer = null;
 		if (!pending) return;
 		const { name, value } = pending;
+		try {
+			inner.setItem(name, value);
+		} catch (error) {
+			// Keep the value pending so it is not silently dropped. Retry once;
+			// a persistent failure (quota) is surfaced instead of looping forever.
+			onError?.(error);
+			if (!isRetry) {
+				timer = setTimeout(() => flush(true), waitMs);
+			}
+			return;
+		}
 		pending = null;
 		lastWriteAt = Date.now();
-		inner.setItem(name, value);
 	};
 
 	return {
@@ -63,8 +76,16 @@ export function createThrottledStorage<S>({
 			// First write after an idle window goes through immediately so a
 			// single discrete edit persists with zero added latency.
 			if (timer === null && now - lastWriteAt >= waitMs) {
+				try {
+					inner.setItem(name, value);
+				} catch (error) {
+					onError?.(error);
+					pending = { name, value };
+					timer = setTimeout(() => flush(true), waitMs);
+					return;
+				}
+				pending = null;
 				lastWriteAt = now;
-				inner.setItem(name, value);
 				return;
 			}
 			// Inside a burst: keep only the latest value, flush on trailing edge.

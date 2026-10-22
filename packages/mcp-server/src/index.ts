@@ -24,8 +24,12 @@ import {
 	ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { WebSocket, WebSocketServer } from "ws";
+import {
+	configuredAppOrigins,
+	isAllowedOrigin,
+	parseRelayPort,
+} from "./relay-policy.js";
 
-const PORT = Number(process.env.ARTIDOR_MCP_PORT ?? 8765);
 const CALL_TIMEOUT_MS = 30_000;
 
 const log = (...args: unknown[]): void => {
@@ -70,32 +74,116 @@ let editor: WebSocket | null = null;
 let nextId = 1;
 const pending = new Map<number, Pending>();
 
-const wss = new WebSocketServer({ host: "127.0.0.1", port: PORT });
+/** Fail every in-flight MCP request so callers don't wait for the timeout. */
+function failPending(message: string): void {
+	for (const [id, request] of pending) {
+		clearTimeout(request.timer);
+		pending.delete(id);
+		request.reject(new Error(message));
+	}
+}
+
+let port: number;
+try {
+	port = parseRelayPort(process.env.ARTIDOR_MCP_PORT);
+} catch (err) {
+	log("fatal:", err instanceof Error ? err.message : err);
+	process.exit(1);
+	throw err;
+}
+const appOrigins = configuredAppOrigins();
+
+let wss: WebSocketServer;
+try {
+	wss = new WebSocketServer({
+		host: "127.0.0.1",
+		port,
+		verifyClient: ({ origin }, done) => {
+			if (isAllowedOrigin({ origin, appOrigins })) {
+				done(true);
+				return;
+			}
+			log(
+				`rejected WebSocket connection from disallowed origin: ${origin ?? "<missing>"}`,
+			);
+			// 403 during the HTTP upgrade — the browser never gets a socket.
+			done(false, 403, "Forbidden");
+		},
+	});
+} catch (err) {
+	log("fatal: could not start the relay WebSocket server:", err);
+	process.exit(1);
+	throw err;
+}
 
 wss.on("listening", () => {
-	log(`relay listening on ws://127.0.0.1:${PORT}`);
+	log(`relay listening on ws://127.0.0.1:${port}`);
+	if (appOrigins.length > 0) {
+		log(`allowed app origins: ${appOrigins.join(", ")}`);
+	}
+});
+
+wss.on("error", (err: Error) => {
+	if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+		log(
+			`fatal: port ${port} is already in use. Stop the other Artidor MCP relay or set ARTIDOR_MCP_PORT to a free port.`,
+		);
+	} else {
+		log("fatal: relay server error:", err);
+	}
+	process.exit(1);
 });
 
 wss.on("connection", (socket: WebSocket) => {
+	// Only one editor tab may own the relay. Reject the newcomer instead of
+	// silently overwriting the existing connection, which used to leave its
+	// pending requests hanging and rebind replies to the wrong tab.
+	if (editor) {
+		if (editor.readyState === WebSocket.OPEN) {
+			log(
+				"rejected additional editor connection — one tab is already connected",
+			);
+			socket.close(4009, "Another Artidor editor tab is already connected");
+			return;
+		}
+		log("replacing stale editor connection");
+		failPending("The editor connection was replaced by a newer tab.");
+		editor = null;
+	}
+
 	log("editor tab connected");
 	editor = socket;
 
 	socket.on("message", (data) => {
+		// Replies are bound to the socket that owns the relay. A stale socket
+		// closing after a replacement must not resolve another tab's requests.
+		if (editor !== socket) {
+			log("ignoring message from stale editor socket");
+			return;
+		}
 		try {
 			const reply = JSON.parse(data.toString()) as RelayReply;
-			const p = pending.get(reply.id);
-			if (p) {
+			if (typeof reply.id !== "number") return;
+			const request = pending.get(reply.id);
+			if (request) {
 				pending.delete(reply.id);
-				clearTimeout(p.timer);
-				p.resolve(reply);
+				clearTimeout(request.timer);
+				request.resolve(reply);
 			}
 		} catch (err) {
 			log("ignoring malformed message from editor:", err);
 		}
 	});
 
+	socket.on("error", (err) => {
+		log("editor socket error:", err.message);
+	});
+
 	socket.on("close", () => {
-		if (editor === socket) editor = null;
+		if (editor === socket) {
+			editor = null;
+			failPending("The editor tab disconnected before replying.");
+		}
 		log("editor tab disconnected");
 	});
 
@@ -157,7 +245,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 	} catch (err) {
 		return {
 			content: [
-				{ type: "text", text: err instanceof Error ? err.message : String(err) },
+				{
+					type: "text",
+					text: err instanceof Error ? err.message : String(err),
+				},
 			],
 			isError: true,
 		};

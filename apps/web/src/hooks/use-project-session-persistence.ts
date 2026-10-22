@@ -95,14 +95,20 @@ export function useProjectSessionPersistence({
 		(state) => state.activeTabPerType,
 	);
 	const setInspectorTab = usePropertiesStore((state) => state.setActiveTab);
-	const restoredRef = useRef(false);
+	// Restore once per project id: switching projects client-side must load the
+	// new project's tabs/playhead instead of being skipped by a boolean flag.
+	const restoredProjectIdRef = useRef<string | null>(null);
 	const pendingSnapshotRef = useRef<ProjectSessionSnapshot | null>(null);
 	const saveTimerRef = useRef<number | null>(null);
 
 	useEffect(() => {
-		if (restoredRef.current || !projectId) return;
+		if (!projectId) {
+			restoredProjectIdRef.current = null;
+			return;
+		}
+		if (restoredProjectIdRef.current === projectId) return;
 		const snapshot = readSession({ projectId });
-		restoredRef.current = true;
+		restoredProjectIdRef.current = projectId;
 		if (!snapshot) return;
 		if (
 			typeof snapshot.activeAssetsTab === "string" &&
@@ -129,26 +135,54 @@ export function useProjectSessionPersistence({
 
 	useEffect(() => {
 		if (!projectId) return;
-		const snapshot: ProjectSessionSnapshot = {
+
+		// Read the playhead when the snapshot is written, not when the tab or
+		// inspector last changed; otherwise a paused playhead is saved stale.
+		const captureSnapshot = (): ProjectSessionSnapshot => ({
 			activeAssetsTab: activeTab,
 			activeInspectorTabs: { ...activeInspectorTabs },
 			playheadTime: editor.playback.getCurrentTime(),
+		});
+
+		const flush = () => {
+			pendingSnapshotRef.current = null;
+			try {
+				writeSession({ projectId, snapshot: captureSnapshot() });
+			} catch {
+				// Session restore is best-effort; never break pagehide/unmount.
+			}
 		};
-		pendingSnapshotRef.current = snapshot;
-		if (saveTimerRef.current !== null) return;
-		saveTimerRef.current = window.setTimeout(() => {
-			const next = pendingSnapshotRef.current;
-			saveTimerRef.current = null;
-			if (next) writeSession({ projectId, snapshot: next });
-		}, 250);
+
+		pendingSnapshotRef.current = captureSnapshot();
+
+		if (saveTimerRef.current === null) {
+			saveTimerRef.current = window.setTimeout(() => {
+				saveTimerRef.current = null;
+				const next = pendingSnapshotRef.current;
+				pendingSnapshotRef.current = null;
+				if (!next) return;
+				writeSession({
+					projectId,
+					snapshot: {
+						...next,
+						playheadTime: editor.playback.getCurrentTime(),
+					},
+				});
+			}, 250);
+		}
+
+		// A tab close does not run React cleanups, so persist the current
+		// playhead explicitly.
+		window.addEventListener("pagehide", flush);
+
 		return () => {
+			window.removeEventListener("pagehide", flush);
 			if (saveTimerRef.current !== null) {
 				window.clearTimeout(saveTimerRef.current);
 				saveTimerRef.current = null;
 			}
-			const next = pendingSnapshotRef.current;
 			pendingSnapshotRef.current = null;
-			if (next) writeSession({ projectId, snapshot: next });
+			flush();
 		};
 	}, [activeTab, activeInspectorTabs, editor, projectId]);
 }

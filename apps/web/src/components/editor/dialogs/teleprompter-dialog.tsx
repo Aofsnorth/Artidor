@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Cancel01Icon, PlayIcon, TextIcon } from "@hugeicons/core-free-icons";
 import {
@@ -43,6 +43,15 @@ export function TeleprompterDialog({
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [fontSizePx, setFontSizePx] = useState(40);
 	const [scrollSpeedPxPerSec, setScrollSpeedPxPerSec] = useState(40);
+	// Stable position-based ids: duplicate blank lines would otherwise
+	// collide when the line text is used as the React key.
+	const scriptLines = useMemo(
+		() =>
+			script
+				.split("\n")
+				.map((text, index) => ({ id: `${index}-${text}`, text })),
+		[script],
+	);
 
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const lastTickRef = useRef<number | null>(null);
@@ -167,9 +176,9 @@ export function TeleprompterDialog({
 						)}
 						style={{ fontSize: `${fontSizePx}px` }}
 					>
-						{script.split("\n").map((line) => (
-							<p key={line} className="my-6">
-								{line || " "}
+						{scriptLines.map((line) => (
+							<p key={line.id} className="my-6">
+								{line.text || " "}
 							</p>
 						))}
 						<p className="my-6">· · ·</p>

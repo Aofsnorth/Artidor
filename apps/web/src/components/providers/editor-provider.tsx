@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { EditorCore } from "@/core";
@@ -41,6 +41,10 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	// or any shortcut rebind.
 	const setLoadingProject = useKeybindingsStore((s) => s.setLoadingProject);
 	const setViewer = useViewerStore((s) => s.setViewer);
+	// Every project load gets a monotonically increasing token. A slow load
+	// for project A that resolves after the user switched to project B must
+	// not publish its result (or clear B's loading/error state).
+	const loadSequenceRef = useRef(0);
 
 	useEffect(() => {
 		setLoadingProject(isLoading);
@@ -71,6 +75,9 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 	useEffect(() => {
 		let cancelled = false;
+		const loadSequence = ++loadSequenceRef.current;
+		const isStale = () =>
+			cancelled || loadSequence !== loadSequenceRef.current;
 		const editor = EditorCore.getInstance();
 
 		const loadProject = async () => {
@@ -84,7 +91,7 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 				// sticking, so it renders as soon as the GPU is ready.
 				await editor.project.loadProject({ id: projectId });
 
-				if (cancelled) return;
+				if (isStale()) return;
 
 				setIsLoading(false);
 				loadFontAtlas();
@@ -92,12 +99,12 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 				// Warm up the GPU renderer in the background; flip the degraded
 				// flag once it resolves (or fails).
 				void initializeGpuRenderer().then(() => {
-					if (!cancelled) {
+					if (!isStale()) {
 						editor.renderer.setDegraded(!isGpuAvailable());
 					}
 				});
 			} catch (err) {
-				if (cancelled) return;
+				if (isStale()) return;
 
 				const isNotFound =
 					err instanceof Error &&
@@ -118,8 +125,10 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 						const newProjectId = await editor.project.createNewProject({
 							name: placeholderName,
 						});
+						if (isStale()) return;
 						router.replace(`/editor/${newProjectId}`);
 					} catch (_createErr) {
+						if (isStale()) return;
 						setError("Failed to create project");
 						setIsLoading(false);
 					}

@@ -924,6 +924,12 @@ export class AudioManager {
 			// at currentTime — that stacks against whatever should be playing now.
 			// Skip it; the next schedule pass starts a fresh node at the right spot.
 			if (lateOffset > AudioManager.MAX_AUDIO_CATCH_UP_SECONDS) {
+				// The nodes were created and the gain registered before the
+				// catch-up budget was known. Dropping the clip without releasing
+				// them leaked both and left a stale gain in the live-update map.
+				node.disconnect();
+				clipGain.disconnect();
+				this.unregisterClipGain({ clipId: clip.id, gain: clipGain });
 				this.activeClipIds.delete(clip.id);
 				return;
 			}

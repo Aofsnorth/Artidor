@@ -149,14 +149,25 @@ export function getExportFileExtension({
 	return `.${EXPORT_FORMAT_EXTENSIONS[format]}`;
 }
 
+/**
+ * How long a download object URL is kept alive after the synthetic click.
+ *
+ * Revoking synchronously can cancel a large download in Firefox/Safari before
+ * the browser has started fetching it.
+ */
+export const EXPORT_DOWNLOAD_REVOKE_DELAY_MS = 1_000;
+
 export function downloadBuffer({
 	buffer,
 	filename,
 	mimeType,
+	revokeDelayMs = EXPORT_DOWNLOAD_REVOKE_DELAY_MS,
 }: {
 	buffer: ArrayBuffer;
 	filename: string;
 	mimeType: string;
+	/** Override the revoke delay (tests / platform-specific tuning). */
+	revokeDelayMs?: number;
 }): void {
 	const blob = new Blob([buffer], { type: mimeType });
 	const url = URL.createObjectURL(blob);
@@ -166,5 +177,9 @@ export function downloadBuffer({
 	document.body.appendChild(downloadLink);
 	downloadLink.click();
 	document.body.removeChild(downloadLink);
-	URL.revokeObjectURL(url);
+	// Keep the URL valid past the click so the browser can start the download.
+	const delay = Number.isFinite(revokeDelayMs)
+		? Math.max(0, revokeDelayMs)
+		: EXPORT_DOWNLOAD_REVOKE_DELAY_MS;
+	setTimeout(() => URL.revokeObjectURL(url), delay);
 }

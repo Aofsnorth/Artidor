@@ -280,8 +280,14 @@ const resolveLinearAngle = ({
 };
 
 const angleFromDirectional = ({ value }: { value: string }): number => {
-	const normalized = value.toLowerCase().replace("to", "").trim();
-	const parts = normalized.split(/\s+/).filter(Boolean);
+	const normalized = value.toLowerCase().trim();
+	// Only the modern syntax has a leading "to ". Legacy keywords name the
+	// side the gradient STARTS from (`linear-gradient(left, ...)` is `to
+	// right`), so they are inverted below. A blind replace("to", "") mangles
+	// `bottom` and is why legacy gradients pointed the wrong way.
+	const isModern = /^to\s+/.test(normalized);
+	const body = isModern ? normalized.replace(/^to\s+/, "") : normalized;
+	const parts = body.split(/\s+/).filter(Boolean);
 	let dx = 0;
 	let dy = 0;
 
@@ -302,6 +308,11 @@ const angleFromDirectional = ({ value }: { value: string }): number => {
 
 	if (dx === 0 && dy === 0) {
 		return 180;
+	}
+
+	if (!isModern) {
+		dx = -dx;
+		dy = -dy;
 	}
 
 	const angle = (Math.atan2(dx, -dy) * 180) / Math.PI;

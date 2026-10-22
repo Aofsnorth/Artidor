@@ -67,7 +67,10 @@ impl MediaTime {
 
     pub fn floor_to_frame(self, rate: FrameRate) -> Option<Self> {
         let ticks_per_frame = rate.ticks_per_frame()?;
-        Some(Self(self.0.div_euclid(ticks_per_frame) * ticks_per_frame))
+        let frame = self.0.div_euclid(ticks_per_frame);
+        // `frame * ticks_per_frame` overflows for extreme inputs such as
+        // `i64::MIN` with a frame size that does not divide it evenly.
+        Some(Self(frame.checked_mul(ticks_per_frame)?))
     }
 
     pub fn is_frame_aligned(self, rate: FrameRate) -> Option<bool> {
@@ -86,11 +89,20 @@ impl MediaTime {
 
     pub fn snapped_seek_time(self, duration: Self, rate: FrameRate) -> Option<Self> {
         let snapped = self.round_to_frame(rate)?;
-        Some(snapped.clamp(Self::ZERO, duration))
+        snapped.clamp(Self::ZERO, duration)
     }
 
-    pub fn clamp(self, min: Self, max: Self) -> Self {
-        Self(self.0.clamp(min.0, max.0))
+    /// Clamps to `[min, max]`.
+    ///
+    /// Returns `None` when the bounds are inverted (`min > max`).
+    /// `i64::clamp` asserts `min <= max` and panics even in release builds;
+    /// these bounds come from caller-supplied project data, so a bad value
+    /// must be an error rather than a crash.
+    pub fn clamp(self, min: Self, max: Self) -> Option<Self> {
+        if min > max {
+            return None;
+        }
+        Some(Self(self.0.clamp(min.0, max.0)))
     }
 
     pub fn min(self, other: Self) -> Self {
@@ -356,7 +368,7 @@ pub struct MediaTimeClampOptions {
 #[export]
 pub fn media_time_clamp(
     MediaTimeClampOptions { time, min, max }: MediaTimeClampOptions,
-) -> MediaTime {
+) -> Option<MediaTime> {
     time.clamp(min, max)
 }
 
@@ -407,6 +419,40 @@ mod tests {
         let almost_next = MediaTime::from_ticks(ticks_per_frame * 5 + ticks_per_frame / 2);
         assert_eq!(almost_next.to_frame_floor(rate), Some(5));
         assert_eq!(almost_next.to_frame_round(rate), Some(6));
+    }
+
+    #[test]
+    fn clamp_returns_none_for_inverted_bounds() {
+        let min = MediaTime::from_ticks(10);
+        let max = MediaTime::from_ticks(0);
+
+        assert_eq!(MediaTime::from_ticks(5).clamp(min, max), None);
+        assert_eq!(
+            MediaTime::from_ticks(15).clamp(MediaTime::ZERO, min),
+            Some(min)
+        );
+        assert_eq!(
+            MediaTime::from_ticks(-5).clamp(MediaTime::ZERO, min),
+            Some(MediaTime::ZERO)
+        );
+    }
+
+    #[test]
+    fn snapped_seek_time_rejects_an_inverted_duration() {
+        let rate = FrameRate::FPS_30;
+        let time = MediaTime::from_seconds_f64(1.0).unwrap();
+
+        assert_eq!(
+            time.snapped_seek_time(MediaTime::from_ticks(-1), rate),
+            None
+        );
+    }
+
+    #[test]
+    fn floor_to_frame_reports_overflow_instead_of_wrapping() {
+        let rate = FrameRate::FPS_30;
+
+        assert_eq!(MediaTime::from_ticks(i64::MIN).floor_to_frame(rate), None);
     }
 
     #[test]

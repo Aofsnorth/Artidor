@@ -1106,3 +1106,164 @@ body::-webkit-scrollbar,
 		animation: none;
 	}
 }
+
+
+/* ── Editorial Monograph Design System (Landing Page Overhaul) ──────
+   Grounded in the print-poster visual reference (821761.jpg):
+   - Palette: Warm stone canvas (#D2CEC5), parchment surface (#DFDCD4),
+     chalk ivory highlight (#EAE7DF), carbon ink (#141413), slate-taupe
+     muted ink (#4A4741), and a single oxide terracotta signal (#8C3B2B).
+   - Typography: Playfair Display (upright + italic) paired with Inter
+     body and tracked uppercase technical marginalia.
+   - Elevation: MengTo beautiful-shadows layered neutral recipes.
+   - Scoped to `.editorial-landing` so the dark video editor workspace
+     at `/editor` remains untouched.
+──────────────────────────────────────────────────────────────────── */
+
+.editorial-landing {
+	--ed-bg: #d2cec5;
+	--ed-surface: #dfdcd4;
+	--ed-surface-raised: #eae7df;
+	--ed-ivory: #f4f1ea;
+	--ed-ink: #141413;
+	--ed-ink-soft: #282725;
+	--ed-muted: #4a4741;
+	--ed-subtle: #66625a;
+	--ed-border: rgba(20, 20, 19, 0.16);
+	--ed-border-strong: #141413;
+	--ed-accent: #8c3b2b;
+
+	/* Map shadcn semantic tokens inside the editorial landing scope */
+	--background: #d2cec5;
+	--foreground: #141413;
+	--card: #dfdcd4;
+	--card-foreground: #141413;
+	--popover: #eae7df;
+	--popover-hover: #dfdcd4;
+	--popover-foreground: #141413;
+	--primary: #141413;
+	--primary-foreground: #f4f1ea;
+	--secondary: #dfdcd4;
+	--secondary-border: rgba(20, 20, 19, 0.2);
+	--secondary-foreground: #141413;
+	--muted: #c6c1b7;
+	--muted-foreground: #4a4741;
+	--accent: #eae7df;
+	--accent-foreground: #141413;
+	--border: rgba(20, 20, 19, 0.16);
+	--input: #eae7df;
+	--ring: #141413;
+
+	/* Type scale tokens */
+	--ed-text-hero: clamp(2.75rem, 6.4vw, 6.15rem);
+	--ed-text-h2: clamp(2.1rem, 4.1vw, 3.65rem);
+	--ed-text-h3: clamp(1.2rem, 1.8vw, 1.55rem);
+	--ed-text-body: clamp(0.95rem, 1.05vw, 1.0625rem);
+	--ed-text-meta: 0.75rem;
+
+	/* Radius scale */
+	--ed-radius-sm: 2px;
+	--ed-radius-md: 4px;
+	--ed-radius-lg: 6px;
+
+	/* Easing tokens (emil-design-eng & interaction-design) */
+	--ease-out-quart: cubic-bezier(0.23, 1, 0.32, 1);
+	--ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+
+	background-color: var(--ed-bg);
+	color: var(--ed-ink);
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.editorial-landing * {
+	user-select: text;
+	-webkit-user-select: text;
+}
+
+.editorial-landing ::selection {
+	background-color: #141413;
+	color: #f4f1ea;
+}
+
+/* WCAG 2.2 (2.4.11 Focus Not Obscured): ensure sticky header never covers focused targets */
+.editorial-landing [id],
+.editorial-landing :focus-visible {
+	scroll-margin-top: 5.5rem;
+}
+
+/* Explicit high-contrast keyboard focus ring across landing controls */
+.editorial-landing a:focus-visible,
+.editorial-landing button:focus-visible,
+.editorial-landing [role="tab"]:focus-visible,
+.editorial-landing [role="button"]:focus-visible,
+.editorial-landing input:focus-visible,
+.editorial-landing select:focus-visible {
+	outline: 2px solid var(--ed-ink);
+	outline-offset: 2px;
+}
+
+/* Signature 32px × 1px horizontal ink rule from the reference poster */
+@utility ed-rule {
+	display: inline-block;
+	width: 2rem;
+	height: 1px;
+	background-color: #141413;
+	flex-shrink: 0;
+}
+
+@utility ed-rule-light {
+	display: inline-block;
+	width: 2rem;
+	height: 1px;
+	background-color: #f4f1ea;
+	flex-shrink: 0;
+}
+
+/* MengTo beautiful-shadows exact layered neutral shadow utilities */
+@utility shadow-beautiful-sm {
+	box-shadow:
+		0px 2px 3px -1px rgba(0, 0, 0, 0.1),
+		0px 1px 0px 0px rgba(25, 28, 33, 0.02),
+		0px 0px 0px 1px rgba(25, 28, 33, 0.08);
+}
+
+@utility shadow-beautiful-md {
+	box-shadow:
+		0px 0px 0px 1px rgba(0, 0, 0, 0.06),
+		0px 1px 1px -0.5px rgba(0, 0, 0, 0.06),
+		0px 3px 3px -1.5px rgba(0, 0, 0, 0.06),
+		0px 6px 6px -3px rgba(0, 0, 0, 0.06),
+		0px 12px 12px -6px rgba(0, 0, 0, 0.06),
+		0px 24px 24px -12px rgba(0, 0, 0, 0.06);
+}
+
+@utility shadow-beautiful-lg {
+	box-shadow:
+		0 2.8px 2.2px rgba(0, 0, 0, 0.034),
+		0 6.7px 5.3px rgba(0, 0, 0, 0.048),
+		0 12.5px 10px rgba(0, 0, 0, 0.06),
+		0 22.3px 17.9px rgba(0, 0, 0, 0.072),
+		0 41.8px 33.4px rgba(0, 0, 0, 0.086),
+		0 100px 80px rgba(0, 0, 0, 0.12);
+}
+
+/* Fine-pointer hover lift for interactive editorial surfaces */
+@media (hover: hover) and (pointer: fine) {
+	.ed-interactive-card:hover {
+		background-color: var(--ed-surface-raised);
+		border-color: rgba(20, 20, 19, 0.36);
+	}
+}
+
+/* Respect user motion preferences across the landing page */
+@media (prefers-reduced-motion: reduce) {
+	.editorial-landing *,
+	.editorial-landing *::before,
+	.editorial-landing *::after {
+		animation-duration: 0.01ms;
+		animation-iteration-count: 1;
+		transition-duration: 0.01ms;
+		scroll-behavior: auto;
+	}
+}

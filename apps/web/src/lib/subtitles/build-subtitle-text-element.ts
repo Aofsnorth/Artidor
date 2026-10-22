@@ -13,17 +13,27 @@ import type { SubtitleCue, SubtitleStyleOverrides } from "./types";
 const SUBTITLE_MAX_WIDTH_RATIO = 0.8;
 const SUBTITLE_BOTTOM_MARGIN_RATIO = 0.05;
 const SUBTITLE_FONT_SIZE = 5;
-const MEASUREMENT_CANVAS_SIZE = 4096;
+// Text measurement only reads metrics; the backing store stays tiny and is
+// reused for every cue. Creating a 4096×4096 canvas per cue allocated ~64 MB
+// that was never released.
+const MEASUREMENT_CANVAS_SIZE = 256;
 
 function quoteFontFamily({ fontFamily }: { fontFamily: string }): string {
 	return `"${fontFamily.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
+let measurementContext: CanvasRenderingContext2D | null | undefined;
+
 function createMeasurementContext(): CanvasRenderingContext2D | null {
+	if (measurementContext !== undefined) return measurementContext;
 	const canvas = document.createElement("canvas");
 	canvas.width = MEASUREMENT_CANVAS_SIZE;
 	canvas.height = MEASUREMENT_CANVAS_SIZE;
-	return canvas.getContext("2d");
+	const context = canvas.getContext("2d");
+	// Only cache a usable context; a null context (headless test env) should
+	// not permanently disable measurement.
+	if (context) measurementContext = context;
+	return context;
 }
 
 function measureLineWidth({

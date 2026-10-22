@@ -168,6 +168,9 @@ export async function POST(request: Request): Promise<Response> {
 				}),
 				// Hard ceiling so a hung endpoint doesn't block the UI forever.
 				signal: AbortSignal.timeout(15_000),
+				// Never follow redirects: a public provider URL could bounce
+				// the server to a private address after the DNS check above.
+				redirect: "manual",
 			});
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);

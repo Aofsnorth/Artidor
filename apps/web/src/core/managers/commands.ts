@@ -101,20 +101,33 @@ export class CommandManager {
 		if (this.readOnly) return;
 		if (this.history.length === 0) return;
 		const entry = this.history.pop();
-		entry?.command.undo();
-		if (entry) {
-			// Only restore selection for commands that explicitly changed it.
-			// Commands without selection intent leave selection untouched,
-			// preserving any UI-driven selection changes (clicks, box select)
-			// that happened between commands. Commands that remove elements
-			// must declare { select: [] } to clear stale refs.
-			if (entry.selectionOverride !== undefined) {
-				this.editor.selection.setSelectedElements({
-					elements: [...entry.previousSelection],
-				});
-			}
-			this.redoStack.push(entry);
+		if (!entry) return;
+
+		try {
+			entry.command.undo();
+		} catch (error) {
+			// Never lose a command whose undo failed: put it back on top of the
+			// history so a retry (or a later revert loop) can still apply it,
+			// instead of silently dropping the entry and desyncing the stack.
+			this.history.push(entry);
+			throw error;
 		}
+
+		// Only restore selection for commands that explicitly changed it.
+		// Commands without selection intent leave selection untouched,
+		// preserving any UI-driven selection changes (clicks, box select)
+		// that happened between commands. Commands that remove elements
+		// must declare { select: [] } to clear stale refs.
+		if (entry.selectionOverride !== undefined) {
+			this.editor.selection.setSelectedElements({
+				elements: [...entry.previousSelection],
+			});
+		}
+		// Reactors (collab broadcast, history pruning, etc.) must observe undos
+		// exactly like redos; otherwise a collaborative peer never hears about
+		// an undone edit.
+		this.runReactors(entry.command);
+		this.redoStack.push(entry);
 	}
 
 	redo(): void {

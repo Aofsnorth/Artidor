@@ -4,6 +4,7 @@ import { processMediaAssets } from "@/lib/media/processing";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import { buildUploadAudioElement } from "@/lib/timeline/element-utils";
 import { toast } from "sonner";
+import { resolveVoiceoverDurationTicks } from "./voiceover-duration";
 
 export interface VoiceoverState {
 	isRecording: boolean;
@@ -35,6 +36,10 @@ export function useVoiceover(): {
 	const streamRef = useRef<MediaStream | null>(null);
 	const chunksRef = useRef<Blob[]>([]);
 	const startedAtRef = useRef<number>(0);
+	// Wall-clock duration captured at stop time. Kept in a ref because the
+	// recorder's `onstop` closure runs after `stop()` and would otherwise read
+	// a stale `state.durationMs` (0 on the first recording).
+	const elapsedMsRef = useRef<number>(0);
 	const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const analyserRef = useRef<AnalyserNode | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
@@ -87,10 +92,11 @@ export function useVoiceover(): {
 				}
 
 				const startTime = editor.playback.getCurrentTime();
-				const durationTicks = Math.max(
-					TICKS_PER_SECOND / 4,
-					Math.round((state.durationMs / 1000) * TICKS_PER_SECOND),
-				);
+				const durationTicks = resolveVoiceoverDurationTicks({
+					recordedSeconds: processed.duration,
+					elapsedMs: elapsedMsRef.current,
+					ticksPerSecond: TICKS_PER_SECOND,
+				});
 				const element = buildUploadAudioElement({
 					mediaId: stored.id,
 					name: stored.name,
@@ -110,7 +116,7 @@ export function useVoiceover(): {
 				setState(DEFAULT_STATE);
 			}
 		},
-		[activeProject, cleanup, editor, state.durationMs],
+		[activeProject, cleanup, editor],
 	);
 
 	useEffect(() => cleanup, [cleanup]);
@@ -121,12 +127,21 @@ export function useVoiceover(): {
 			return;
 		}
 		stoppedRef.current = false;
+		elapsedMsRef.current = 0;
 		setState({ ...DEFAULT_STATE, isPreparing: true });
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({
 				audio: true,
 				video: false,
 			});
+			// `cancel()` may run while the permission prompt is pending. The
+			// resolved stream would otherwise stay live (mic indicator on) with
+			// no recorder attached, so stop it before creating any audio nodes.
+			if (stoppedRef.current) {
+				for (const track of stream.getTracks()) track.stop();
+				cleanup();
+				return;
+			}
 			streamRef.current = stream;
 
 			const AudioContextCtor =
@@ -168,9 +183,11 @@ export function useVoiceover(): {
 			});
 
 			timerRef.current = setInterval(() => {
+				const elapsedMs = performance.now() - startedAtRef.current;
+				elapsedMsRef.current = elapsedMs;
 				setState((prev) => ({
 					...prev,
-					durationMs: performance.now() - startedAtRef.current,
+					durationMs: elapsedMs,
 				}));
 			}, 100);
 
@@ -206,6 +223,14 @@ export function useVoiceover(): {
 		const recorder = mediaRecorderRef.current;
 		if (!recorder) return;
 		if (recorder.state !== "inactive") {
+			// Freeze the measured duration before the async `onstop` handler
+			// runs; this is the value the inserted clip uses. The interval must
+			// stop here too, otherwise ingest/processing time keeps inflating it.
+			if (timerRef.current) {
+				clearInterval(timerRef.current);
+				timerRef.current = null;
+			}
+			elapsedMsRef.current = performance.now() - startedAtRef.current;
 			recorder.stop();
 		}
 	}, []);

@@ -1,6 +1,6 @@
 #![cfg(target_arch = "wasm32")]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use effects::EffectPipeline;
 use gpu::{GpuContext, wgpu};
@@ -15,8 +15,16 @@ pub(crate) struct GpuRuntime {
     pub(crate) masks: MaskFeatherPipeline,
 }
 
+/// Fallback limit used before `initializeGpu` has read the real device limit.
+/// 8192 is WebGPU's default `maxTextureDimension2D`.
+const DEFAULT_MAX_TEXTURE_DIMENSION_2D: u32 = 8192;
+
 thread_local! {
     static GPU_RUNTIME: RefCell<Option<GpuRuntime>> = const { RefCell::new(None) };
+    /// Device limit captured at initialization so the JS-boundary readers can
+    /// reject oversized dimensions before they reach texture creation.
+    static MAX_TEXTURE_DIMENSION_2D: Cell<u32> =
+        const { Cell::new(DEFAULT_MAX_TEXTURE_DIMENSION_2D) };
 }
 
 #[wasm_bindgen(js_name = initializeGpu)]
@@ -30,6 +38,9 @@ pub async fn initialize_gpu() -> Result<(), JsValue> {
     let context = GpuContext::new()
         .await
         .map_err(|error| JsValue::from_str(&error.to_string()))?;
+    MAX_TEXTURE_DIMENSION_2D.with(|max| {
+        max.set(context.device().limits().max_texture_dimension_2d);
+    });
     let effects = EffectPipeline::new(&context);
     let masks = MaskFeatherPipeline::new(&context);
 
@@ -51,6 +62,7 @@ pub fn destroy_gpu() {
     GPU_RUNTIME.with(|runtime| {
         runtime.replace(None);
     });
+    MAX_TEXTURE_DIMENSION_2D.with(|max| max.set(DEFAULT_MAX_TEXTURE_DIMENSION_2D));
 }
 
 /// Run `action` against the GPU runtime.
@@ -155,6 +167,12 @@ pub(crate) fn parse_external_image_source(
     ))
 }
 
+/// Reads a texture dimension from a JS options object.
+///
+/// Dimensions must be finite whole numbers in `1..=maxTextureDimension2D`.
+/// Accepting the raw `as u32` cast would turn `NaN`/negatives into `0` and
+/// huge values into `u32::MAX`, which fail later inside texture/canvas
+/// creation rather than as a clear error here.
 pub(crate) fn read_u32_property(object: &Object, name: &str) -> Result<u32, JsValue> {
     let value = read_property(object, name)?;
     let Some(number) = value.as_f64() else {
@@ -162,7 +180,12 @@ pub(crate) fn read_u32_property(object: &Object, name: &str) -> Result<u32, JsVa
             "Property '{name}' must be a number"
         )));
     };
-    Ok(number as u32)
+    let max = MAX_TEXTURE_DIMENSION_2D.with(Cell::get);
+    GpuContext::validate_texture_dimension(number, max).ok_or_else(|| {
+        JsValue::from_str(&format!(
+            "Property '{name}' must be an integer in 1..={max}, got {number}"
+        ))
+    })
 }
 
 pub(crate) fn read_f32_property(object: &Object, name: &str) -> Result<f32, JsValue> {

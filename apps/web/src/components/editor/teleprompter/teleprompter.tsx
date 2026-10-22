@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { toast } from "sonner";
 import {
 	PlayIcon,
 	StopIcon,
@@ -68,21 +69,28 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 		setScrollOffset(0);
 	};
 
-	const fullscreen = () => {
+	const fullscreen = async () => {
 		const el = containerRef.current;
 		if (!el) return;
-		if (document.fullscreenElement) {
-			document.exitFullscreen();
-		} else {
-			el.requestFullscreen?.();
+		try {
+			if (document.fullscreenElement) {
+				await document.exitFullscreen();
+			} else {
+				await el.requestFullscreen?.();
+			}
+		} catch (error) {
+			toast.error("Could not toggle fullscreen", {
+				description: error instanceof Error ? error.message : undefined,
+			});
 		}
 	};
 
 	const copyScript = async () => {
 		try {
 			await navigator.clipboard.writeText(script);
+			toast.success("Script copied to clipboard");
 		} catch {
-			// ignore
+			toast.error("Could not copy script");
 		}
 	};
 
@@ -276,7 +284,7 @@ export function Teleprompter({ onClose }: { onClose: () => void }) {
 
 				<div
 					ref={containerRef}
-					className="flex-1 overflow-hidden"
+					className="relative flex-1 overflow-hidden"
 					style={{ backgroundColor: settings.backgroundColor }}
 				>
 					<div

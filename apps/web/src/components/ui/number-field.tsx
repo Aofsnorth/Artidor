@@ -2,12 +2,7 @@
 
 import { cn } from "@/utils/ui";
 import { clamp } from "@/utils/math";
-import {
-	useEffect,
-	useRef,
-	useState,
-	type ComponentProps,
-} from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { useFocusLock } from "@/hooks/use-focus-lock";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -177,6 +172,9 @@ function NumberField({
 	const startXRef = useRef(0);
 	const cumulativeDeltaRef = useRef(0);
 	const lastPointerXRef = useRef(0);
+	// Removes the drag listeners + restores body styles. Kept in a ref so an
+	// unmount mid-drag can clean up even though pointerup never fired.
+	const dragCleanupRef = useRef<(() => void) | null>(null);
 	const [isInputFocused, setIsInputFocused] = useState(false);
 	// While the field has focus the typed text is the source of truth: the parent
 	// echoes a clamped/formatted `value` back (e.g. `val.toFixed(2)`), which
@@ -195,7 +193,8 @@ function NumberField({
 
 	useEffect(() => {
 		return () => {
-			setScrubPreview(null);
+			dragCleanupRef.current?.();
+			dragCleanupRef.current = null;
 		};
 	}, []);
 
@@ -208,6 +207,9 @@ function NumberField({
 
 	const handleIconPointerDown = (event: React.PointerEvent) => {
 		if (!onScrub || disabled || event.button !== 0) return;
+		// A previous drag that never saw pointerup must not leave listeners
+		// behind when a new drag starts.
+		dragCleanupRef.current?.();
 		const parsed = parseFloat(String(value ?? "0"));
 		startValueRef.current = Number.isNaN(parsed) ? 0 : parsed;
 		startXRef.current = event.clientX;
@@ -242,14 +244,20 @@ function NumberField({
 			onScrub(newValue);
 		};
 
-		const handlePointerUp = () => {
+		function cleanup() {
 			document.removeEventListener("pointermove", handlePointerMove);
 			document.removeEventListener("pointerup", handlePointerUp);
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
+		}
+		dragCleanupRef.current = cleanup;
+
+		function handlePointerUp() {
+			cleanup();
+			dragCleanupRef.current = null;
 			setScrubPreview(null);
 			onScrubEnd?.();
-		};
+		}
 
 		document.addEventListener("pointermove", handlePointerMove);
 		document.addEventListener("pointerup", handlePointerUp);
@@ -297,6 +305,15 @@ function NumberField({
 				onFocus?.(event);
 			}}
 			onKeyDown={(event) => {
+				// Enter/Escape during IME composition confirm/cancel the
+				// candidate — do not blur and discard the composition.
+				if (
+					event.nativeEvent.isComposing ||
+					event.nativeEvent.keyCode === 229
+				) {
+					onKeyDown?.(event);
+					return;
+				}
 				const shouldBlurInput = event.key === "Enter" || event.key === "Escape";
 				if (shouldBlurInput) event.currentTarget.blur();
 				onKeyDown?.(event);

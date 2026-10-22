@@ -103,6 +103,12 @@ type WorkerInMessage = {
 	 */
 	forceSoftwareEncoding?: boolean;
 	/**
+	 * Hardware-acceleration hint negotiated by the caller (parallel pipeline).
+	 * When omitted, the worker falls back to `prefer-hardware` (or
+	 * `prefer-software` when `forceSoftwareEncoding` is set).
+	 */
+	hardwareAcceleration?: "prefer-hardware" | "prefer-software";
+	/**
 	 * Stream the muxed output to an OPFS temp file instead of buffering it in
 	 * RAM (Part 1 of streaming export). The worker creates the temp file AFTER
 	 * codec negotiation with the negotiated container's extension, muxes via
@@ -363,9 +369,11 @@ async function handleExport(msg: WorkerInMessage) {
 	let effectiveFormat = format;
 	if (msg.videoCodec) {
 		videoCodec = msg.videoCodec;
+		// A forced-software retry always wins over the negotiated hint: the
+		// retry exists precisely because the hardware attempt was rejected.
 		hardwareAcceleration = msg.forceSoftwareEncoding
 			? "prefer-software"
-			: "prefer-hardware";
+			: (msg.hardwareAcceleration ?? "prefer-hardware");
 	} else {
 		const negotiated = await negotiateVideoCodec({
 			format,
@@ -535,6 +543,29 @@ async function handleExport(msg: WorkerInMessage) {
 		height: safeHeight,
 	});
 	const pendingEncodes: Promise<void>[] = [];
+	// Encode rejections are captured the moment they happen. Leaving them
+	// unhandled until the queue is drained would fire the worker's global
+	// `unhandledrejection` handler, which posts an error and settles the export
+	// while this render loop is still producing frames. Storing the first
+	// failure and checking it at the loop's checkpoints keeps the failure on
+	// the normal error path.
+	let encodeFailed = false;
+	let firstEncodeError: unknown = null;
+	const queueEncode = (encode: Promise<void>): void => {
+		pendingEncodes.push(
+			encode.catch((error) => {
+				if (encodeFailed) return;
+				encodeFailed = true;
+				firstEncodeError = error;
+			}),
+		);
+	};
+	const throwIfEncodeFailed = (): void => {
+		if (!encodeFailed) return;
+		throw firstEncodeError instanceof Error
+			? firstEncodeError
+			: new Error(String(firstEncodeError));
+	};
 	const frameDuration = 1 / fpsFloat;
 	const progressDenominator = Math.max(1, segmentFrameCount);
 
@@ -588,7 +619,7 @@ async function handleExport(msg: WorkerInMessage) {
 		const renderStart = performance.now();
 		await renderWithGpuRecovery(startFrame * ticksPerFrame, 0);
 		renderMs += performance.now() - renderStart;
-		pendingEncodes.push(videoSource.add(0, segmentFrameCount * frameDuration));
+		queueEncode(videoSource.add(0, segmentFrameCount * frameDuration));
 		self.postMessage({
 			type: "progress",
 			progress: 0.98,
@@ -606,6 +637,10 @@ async function handleExport(msg: WorkerInMessage) {
 				self.postMessage({ type: "cancelled" } satisfies WorkerOutMessage);
 				return;
 			}
+
+			// Surface an encode failure after the cancellation check so a
+			// cancelled export still reports cancellation, not an encoder error.
+			throwIfEncodeFailed();
 
 			// The scene is composited at the *global* timeline time so the rendered
 			// pixels are correct, but the frame is encoded at a segment-*local*
@@ -629,6 +664,7 @@ async function handleExport(msg: WorkerInMessage) {
 				if (!oldest) throw new Error("Pending encode queue unexpectedly empty");
 				await oldest;
 				encodeWaitMs += performance.now() - waitStart;
+				throwIfEncodeFailed();
 			}
 
 			// Composite frame (GPU) — runs continuously while encoder processes
@@ -641,7 +677,7 @@ async function handleExport(msg: WorkerInMessage) {
 			renderMs += performance.now() - renderStart;
 
 			// Snapshot canvas → VideoFrame → encoder (async, returns immediately)
-			pendingEncodes.push(videoSource.add(localTimeSeconds, frameDuration));
+			queueEncode(videoSource.add(localTimeSeconds, frameDuration));
 
 			// Report progress every 10 frames (reduces postMessage overhead).
 			// The last frame reports (count - 1) / count, so the loop alone can
@@ -689,6 +725,7 @@ async function handleExport(msg: WorkerInMessage) {
 		const drainStart = performance.now();
 		await Promise.all(pendingEncodes);
 		drainMs = performance.now() - drainStart;
+		throwIfEncodeFailed();
 
 		// Final timing summary — this is the key diagnostic. Compare renderMs
 		// (compositor) vs encodeWaitMs + drainMs (encoder) to find the bottleneck.

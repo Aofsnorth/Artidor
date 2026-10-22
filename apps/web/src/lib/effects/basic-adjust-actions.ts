@@ -46,7 +46,13 @@ export const ADJUSTMENT_PRESETS: readonly {
 	{
 		id: "warm",
 		label: "Warm",
-		values: { temperature: 18, tint: 6, saturation: 8, vibrance: 6, fade: 6 },
+		values: {
+			temperature: 18,
+			"tint-shift": 6,
+			saturation: 8,
+			vibrance: 6,
+			fade: 6,
+		},
 	},
 	{
 		id: "cool",

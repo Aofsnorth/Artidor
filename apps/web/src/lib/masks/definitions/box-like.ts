@@ -165,6 +165,8 @@ export function computeBoxMaskParamUpdate({
 	startParams,
 	deltaX,
 	deltaY,
+	startCanvasX,
+	startCanvasY,
 	bounds,
 }: MaskParamUpdateArgs<RectangleMaskParams>): ParamValues {
 	if (handleId === "position") {
@@ -175,9 +177,29 @@ export function computeBoxMaskParamUpdate({
 	}
 
 	if (handleId === "rotation") {
-		const currentAngle = (Math.atan2(deltaY, deltaX) * 180) / Math.PI;
-		const newRotation = (startParams.rotation + currentAngle) % 360;
-		return { rotation: newRotation < 0 ? newRotation + 360 : newRotation };
+		// Rotate around the MASK centre, not the pointer's initial position.
+		// Using the drag vector angle makes the mask jump by its offset from
+		// the handle whenever the drag starts.
+		const pivotX = bounds.cx + startParams.centerX * bounds.width;
+		const pivotY = bounds.cy + startParams.centerY * bounds.height;
+		const startAngle =
+			(Math.atan2(startCanvasY - pivotY, startCanvasX - pivotX) * 180) /
+			Math.PI;
+		const currentAngle =
+			(Math.atan2(
+				startCanvasY + deltaY - pivotY,
+				startCanvasX + deltaX - pivotX,
+			) *
+				180) /
+			Math.PI;
+
+		let deltaAngle = currentAngle - startAngle;
+		if (deltaAngle > 180) deltaAngle -= 360;
+		if (deltaAngle < -180) deltaAngle += 360;
+
+		return {
+			rotation: (((startParams.rotation + deltaAngle) % 360) + 360) % 360,
+		};
 	}
 
 	if (handleId === "feather") {

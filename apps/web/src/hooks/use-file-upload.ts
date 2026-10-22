@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { hasDragData } from "@/lib/drag-data";
 import { isTauri } from "@/lib/tauri/detect";
 import { importMediaNative } from "@/lib/tauri/media-bridge";
@@ -22,6 +22,25 @@ export function useFileUpload({
 	const dragCounterRef = useRef(0);
 	const justDroppedRef = useRef(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	// A drag that ends outside the drop target (or while the window loses
+	// focus) never fires `dragleave` on it, which used to leave the overlay
+	// stuck on. Reset on every terminal drag event as a safety net.
+	useEffect(() => {
+		const resetDragState = () => {
+			dragCounterRef.current = 0;
+			setIsDragOver(false);
+		};
+
+		window.addEventListener("dragend", resetDragState);
+		window.addEventListener("drop", resetDragState);
+		window.addEventListener("blur", resetDragState);
+		return () => {
+			window.removeEventListener("dragend", resetDragState);
+			window.removeEventListener("drop", resetDragState);
+			window.removeEventListener("blur", resetDragState);
+		};
+	}, []);
 
 	const openFilePicker = useCallback(async () => {
 		// Native file picker when in Tauri
@@ -71,7 +90,7 @@ export function useFileUpload({
 
 		if (!containsFiles(e.dataTransfer)) return;
 
-		dragCounterRef.current -= 1;
+		dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
 		if (dragCounterRef.current === 0) {
 			setIsDragOver(false);
 		}

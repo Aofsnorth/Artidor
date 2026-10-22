@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSoundsStore } from "@/stores/sounds-store";
 import { useSession } from "@/lib/auth/client";
 import { useShallow } from "zustand/shallow";
+import { buildSoundSearchParams } from "./sound-search-params";
 
 export function useSoundSearch({
 	query,
@@ -62,6 +63,11 @@ export function useSoundSearch({
 		})),
 	);
 
+	// Tracks the commercial-only value the currently displayed results were
+	// fetched with, so the effect can tell a filter change apart from a plain
+	// re-render of the same query.
+	const lastSearchCommercialRef = useRef<boolean | null>(null);
+
 	const loadMore = async () => {
 		if (!signedIn || isLoadingMore || !hasNextPage) return;
 
@@ -69,16 +75,11 @@ export function useSoundSearch({
 			setLoadingMore({ loading: true });
 			const nextPage = currentPage + 1;
 
-			const searchParams = new URLSearchParams({
-				page: nextPage.toString(),
-				type: "effects",
+			const searchParams = buildSoundSearchParams({
+				query,
+				page: nextPage,
+				commercialOnly,
 			});
-
-			if (query.trim()) {
-				searchParams.set("q", query);
-			}
-
-			searchParams.set("commercial_only", commercialOnly.toString());
 			const response = await fetch(
 				`/api/sounds/search?${searchParams.toString()}`,
 			);
@@ -129,7 +130,11 @@ export function useSoundSearch({
 			return;
 		}
 
-		if (query === lastSearchQuery && searchResults.length > 0) {
+		if (
+			query === lastSearchQuery &&
+			searchResults.length > 0 &&
+			lastSearchCommercialRef.current === commercialOnly
+		) {
 			return;
 		}
 
@@ -141,8 +146,13 @@ export function useSoundSearch({
 				setSearchError({ error: null });
 				resetPagination();
 
+				const searchParams = buildSoundSearchParams({
+					query,
+					page: 1,
+					commercialOnly,
+				});
 				const response = await fetch(
-					`/api/sounds/search?q=${encodeURIComponent(query)}&type=effects&page=1`,
+					`/api/sounds/search?${searchParams.toString()}`,
 				);
 
 				if (!ignore) {
@@ -151,6 +161,7 @@ export function useSoundSearch({
 						setHasNextPage({ hasNext: false });
 						setTotalCount({ count: 0 });
 						setLastSearchQuery({ query });
+						lastSearchCommercialRef.current = commercialOnly;
 						return;
 					}
 
@@ -162,6 +173,7 @@ export function useSoundSearch({
 					const data = await response.json();
 					setSearchResults({ results: data.results });
 					setLastSearchQuery({ query });
+					lastSearchCommercialRef.current = commercialOnly;
 					setHasNextPage({ hasNext: !!data.next });
 					setTotalCount({ count: data.count });
 					setCurrentPage({ page: 1 });
@@ -186,6 +198,7 @@ export function useSoundSearch({
 	}, [
 		signedIn,
 		query,
+		commercialOnly,
 		lastSearchQuery,
 		searchResults.length,
 		setSearchResults,

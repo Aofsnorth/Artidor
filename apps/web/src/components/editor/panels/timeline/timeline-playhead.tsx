@@ -165,12 +165,22 @@ export function TimelinePlayhead({
 		};
 	}, [isHandlePressed]);
 
-	// While the bubble is shown, Tab drops a marker (bookmark) at the playhead
-	// instead of moving focus. Restores default Tab behaviour when hidden.
+	// While the bubble is shown and the playhead has focus, Tab drops a marker
+	// (bookmark) at the playhead instead of moving focus. The handler is scoped
+	// to the playhead element so it never steals Tab from the rest of the
+	// document, and typing targets keep their default behaviour.
 	useEffect(() => {
 		if (!showTimeBubble) return;
+		const element = playheadRef.current;
+		if (!element) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key !== "Tab") return;
+			const target = e.target as HTMLElement | null;
+			if (
+				target?.closest("input, textarea, select, [contenteditable='true']")
+			) {
+				return;
+			}
 			e.preventDefault();
 			e.stopPropagation();
 			try {
@@ -182,9 +192,9 @@ export function TimelinePlayhead({
 				toast.error("Could not toggle marker");
 			}
 		};
-		document.addEventListener("keydown", onKeyDown, true);
-		return () => document.removeEventListener("keydown", onKeyDown, true);
-	}, [showTimeBubble, editor.scenes, editor.playback]);
+		element.addEventListener("keydown", onKeyDown);
+		return () => element.removeEventListener("keydown", onKeyDown);
+	}, [showTimeBubble, editor.scenes, editor.playback, playheadRef]);
 
 	// The playhead line is sized with CSS percentages instead of reading
 	// `clientHeight` during render: a DOM geometry read inside React's render

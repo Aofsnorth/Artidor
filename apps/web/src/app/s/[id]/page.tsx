@@ -13,10 +13,15 @@ import {
 	type SharePayload,
 	unlockShare,
 } from "@/lib/share/client";
+import { TimeoutError, withTimeout } from "@/lib/share/with-timeout";
+
+/** Give up on a hung bootstrap request instead of spinning forever. */
+const SHARE_BOOTSTRAP_TIMEOUT_MS = 15_000;
 
 type State =
 	| { status: "loading" }
 	| { status: "not_found" }
+	| { status: "error"; message: string }
 	| { status: "locked"; meta: ShareMeta }
 	| { status: "ready"; meta: ShareMeta; payload: SharePayload };
 
@@ -30,12 +35,19 @@ export default function SharePage({
 	const [state, setState] = useState<State>({ status: "loading" });
 	const [password, setPassword] = useState("");
 	const [submitting, setSubmitting] = useState(false);
+	// Bumped by "Try again" to re-run the bootstrap effect.
+	const [attempt, setAttempt] = useState(0);
 
 	useEffect(() => {
+		// `attempt` is read only to re-run this effect when the user retries.
+		void attempt;
 		let cancelled = false;
 		(async () => {
 			try {
-				const meta = await fetchShareMeta(id);
+				const meta = await withTimeout(
+					fetchShareMeta(id),
+					SHARE_BOOTSTRAP_TIMEOUT_MS,
+				);
 				if (cancelled) return;
 				if (!meta) {
 					setState({ status: "not_found" });
@@ -46,17 +58,34 @@ export default function SharePage({
 					return;
 				}
 				// No password — unlock immediately.
-				const payload = await unlockShare({ shareId: id });
+				const payload = await withTimeout(
+					unlockShare({ shareId: id }),
+					SHARE_BOOTSTRAP_TIMEOUT_MS,
+				);
 				if (cancelled) return;
 				setState({ status: "ready", meta, payload });
-			} catch {
-				if (!cancelled) setState({ status: "not_found" });
+			} catch (err) {
+				if (cancelled) return;
+				setState({
+					status: "error",
+					message:
+						err instanceof TimeoutError
+							? "Loading this share timed out. Check your connection and try again."
+							: err instanceof Error
+								? err.message
+								: "Could not load this share.",
+				});
 			}
 		})();
 		return () => {
 			cancelled = true;
 		};
-	}, [id]);
+	}, [id, attempt]);
+
+	const retry = () => {
+		setState({ status: "loading" });
+		setAttempt((value) => value + 1);
+	};
 
 	const handleUnlock = async () => {
 		if (state.status !== "locked") return;
@@ -110,6 +139,16 @@ export default function SharePage({
 							onClick={() => router.push("/projects")}
 						>
 							Go to your projects
+						</Button>
+					</div>
+				)}
+
+				{state.status === "error" && (
+					<div className="flex flex-col items-center gap-2 py-8 text-center">
+						<h1 className="text-lg font-semibold">Could not load share</h1>
+						<p className="text-sm text-white/55">{state.message}</p>
+						<Button variant="outline" className="mt-3" onClick={retry}>
+							Try again
 						</Button>
 					</div>
 				)}

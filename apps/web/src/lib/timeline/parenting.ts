@@ -33,7 +33,9 @@ export function getEffectiveTransform({
 		element,
 		baseTransform,
 		allElements,
-		visited: new Set<string>(),
+		// Tracks the current ancestor path, not every node ever visited: a
+		// node shared by sibling branches must not be treated as a cycle.
+		path: new Set<string>(),
 	});
 }
 
@@ -41,22 +43,22 @@ function composeParentTransform({
 	element,
 	baseTransform,
 	allElements,
-	visited,
+	path,
 }: {
 	element: TimelineElement;
 	baseTransform: Transform;
 	allElements: Map<string, { element: TimelineElement; trackId: string }>;
-	visited: Set<string>;
+	path: Set<string>;
 }): Transform {
 	const parentId = (element as { parentId?: string }).parentId;
-	if (!parentId || visited.has(parentId)) {
+	if (!parentId || parentId === element.id || path.has(parentId)) {
 		return baseTransform;
 	}
 	const parentEntry = allElements.get(parentId);
 	if (!parentEntry) {
 		return baseTransform;
 	}
-	visited.add(element.id);
+	path.add(element.id);
 
 	const parentElement = parentEntry.element;
 	const parentBaseTransform =
@@ -67,8 +69,10 @@ function composeParentTransform({
 		element: parentElement,
 		baseTransform: parentBaseTransform,
 		allElements,
-		visited,
+		path,
 	});
+	// Pop after the branch so sibling chains can visit the same ancestor.
+	path.delete(element.id);
 
 	return composeTransforms({ child: baseTransform, parent: parentWorld });
 }
@@ -153,6 +157,9 @@ export function isValidParentChain({
 		if (cursor === element.id) return false;
 		if (seen.has(cursor)) return false; // existing cycle
 		seen.add(cursor);
+		// Defensive bound: a valid chain cannot be longer than the number of
+		// distinct elements, so treat an overlong traversal as a cycle.
+		if (seen.size > map.size) return false;
 		const parent = map.get(cursor);
 		cursor = parent?.element
 			? (parent.element as { parentId?: string }).parentId

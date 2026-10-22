@@ -4,6 +4,9 @@ import { getProjectDurationFromScenes } from "@/lib/scenes";
 import { generateUUID } from "@/utils/id";
 import { decodeArtprProject, isArtprFileName } from "@/lib/project-file/artpr";
 import { getOrderedTracks } from "@/lib/timeline";
+import { reviveProjectDates } from "./dates";
+
+export { reviveProjectDates };
 
 export type ArtidorFileKind = "artidor-project" | "artidor-preset";
 
@@ -132,22 +135,6 @@ function downloadJson({ name, data }: { name: string; data: unknown }) {
 
 function safeFileName(name: string): string {
 	return name.replace(/[<>:"/\\|?*]+/g, "-").trim() || "artidor";
-}
-
-function reviveProjectDates(project: TProject): TProject {
-	return {
-		...project,
-		metadata: {
-			...project.metadata,
-			createdAt: new Date(project.metadata.createdAt),
-			updatedAt: new Date(project.metadata.updatedAt),
-		},
-		scenes: project.scenes.map((scene) => ({
-			...scene,
-			createdAt: new Date(scene.createdAt),
-			updatedAt: new Date(scene.updatedAt),
-		})),
-	};
 }
 
 export interface ImportedMediaRef {

@@ -362,10 +362,18 @@ class StorageService {
 			return;
 		}
 
-		this.migrationsPromise = runStorageMigrations({ migrations }).then(
+		const migrationsPromise = runStorageMigrations({ migrations }).then(
 			() => undefined,
+			(error: unknown) => {
+				// A failed migration must not be cached forever: the next storage
+				// operation should be able to retry (the failure may be transient,
+				// e.g. a quota or blocked-database error).
+				this.migrationsPromise = null;
+				throw error;
+			},
 		);
-		await this.migrationsPromise;
+		this.migrationsPromise = migrationsPromise;
+		await migrationsPromise;
 	}
 
 	private getProjectMediaAdapters({ projectId }: { projectId: string }) {
@@ -526,8 +534,11 @@ class StorageService {
 		thumbnail?: string;
 	}): Promise<void> {
 		if (!thumbnail) {
-			if (this.trackedThumbnails.has(projectId)) {
-				this.trackedThumbnails.delete(projectId);
+			// Check the adapter, not the in-memory map: a fresh service instance
+			// (or a reload) has an empty map but the stored record still exists.
+			this.trackedThumbnails.delete(projectId);
+			const stored = await this.projectThumbnailsAdapter.get(projectId);
+			if (stored) {
 				await this.projectThumbnailsAdapter.remove(projectId);
 			}
 			return;
@@ -544,8 +555,10 @@ class StorageService {
 			return;
 		}
 
-		this.trackedThumbnails.set(projectId, thumbnail);
 		await this.projectThumbnailsAdapter.set(projectId, { blob });
+		// Mark only after the transaction committed, otherwise a failed write is
+		// never retried by the next save.
+		this.trackedThumbnails.set(projectId, thumbnail);
 	}
 
 	/**
@@ -798,7 +811,13 @@ class StorageService {
 	async deleteProject({ id }: { id: string }): Promise<void> {
 		this.trackedScenes.delete(id);
 		this.trackedThumbnails.delete(id);
-		this.mediaAdapterCache.delete(id);
+		// Close the cached media connection before dropping the cache entry so the
+		// per-project database is not left open for the rest of the tab session.
+		const cachedMediaAdapters = this.mediaAdapterCache.get(id);
+		if (cachedMediaAdapters) {
+			this.mediaAdapterCache.delete(id);
+			cachedMediaAdapters.mediaMetadataAdapter.close();
+		}
 
 		await Promise.all([
 			this.projectsAdapter.remove(id),
@@ -1002,19 +1021,20 @@ class StorageService {
 		};
 	}
 
+	/**
+	 * Reads the saved-sound list. A read failure is thrown, never reported as
+	 * an empty list: callers like `saveSoundEffect` merge into this result, and
+	 * treating a failure as "no sounds" would overwrite the whole list with one
+	 * item.
+	 */
 	async loadSavedSounds(): Promise<SavedSoundsData> {
-		try {
-			const savedSoundsData = await this.savedSoundsAdapter.get("user-sounds");
-			return (
-				savedSoundsData || {
-					sounds: [],
-					lastModified: new Date().toISOString(),
-				}
-			);
-		} catch (error) {
-			console.error("Failed to load saved sounds:", error);
-			return { sounds: [], lastModified: new Date().toISOString() };
-		}
+		const savedSoundsData = await this.savedSoundsAdapter.get("user-sounds");
+		return (
+			savedSoundsData || {
+				sounds: [],
+				lastModified: new Date().toISOString(),
+			}
+		);
 	}
 
 	async saveSoundEffect({

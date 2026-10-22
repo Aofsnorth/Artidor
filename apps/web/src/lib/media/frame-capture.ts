@@ -8,14 +8,66 @@ export interface CapturedFrame {
 	fileName: string;
 }
 
+/**
+ * Upper bound on how long the browser may take to emit `seeked` for a frame
+ * capture. A corrupt or unsupported file can otherwise leave the seek promise
+ * pending forever, which hangs thumbnail generation.
+ */
+export const FRAME_CAPTURE_SEEK_TIMEOUT_MS = 10_000;
+
+/**
+ * Wait for a video seek to finish, failing on a media error or after
+ * `timeoutMs` instead of waiting indefinitely.
+ */
+function waitForVideoSeek(
+	video: HTMLVideoElement,
+	timeoutMs: number,
+): Promise<void> {
+	return new Promise<void>((resolve, reject) => {
+		let settled = false;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const cleanup = () => {
+			if (settled) return;
+			settled = true;
+			if (timer !== null) clearTimeout(timer);
+			video.removeEventListener("seeked", onSeeked);
+			video.removeEventListener("error", onError);
+		};
+		const onSeeked = () => {
+			cleanup();
+			resolve();
+		};
+		const onError = () => {
+			cleanup();
+			reject(new Error("Could not seek video"));
+		};
+		video.addEventListener("seeked", onSeeked);
+		video.addEventListener("error", onError);
+		timer = setTimeout(
+			() => {
+				cleanup();
+				reject(
+					new Error(
+						`Timed out seeking video after ${timeoutMs}ms (the file may be corrupt or unsupported)`,
+					),
+				);
+			},
+			Math.max(0, timeoutMs),
+		);
+	});
+}
+
 export async function captureFrameFromVideo({
 	file,
 	timeSeconds,
 	fileName,
+	seekTimeoutMs = FRAME_CAPTURE_SEEK_TIMEOUT_MS,
 }: {
 	file: File;
 	timeSeconds: number;
 	fileName: string;
+	/** Override for slow devices/tests; defaults to the module timeout. */
+	seekTimeoutMs?: number;
 }): Promise<CapturedFrame | null> {
 	const url = URL.createObjectURL(file);
 	const video = document.createElement("video");
@@ -43,13 +95,7 @@ export async function captureFrameFromVideo({
 
 		const safeTime = Math.max(0, Math.min(timeSeconds, video.duration - 0.01));
 		video.currentTime = safeTime;
-		await new Promise<void>((resolve) => {
-			const onSeeked = () => {
-				video.removeEventListener("seeked", onSeeked);
-				resolve();
-			};
-			video.addEventListener("seeked", onSeeked);
-		});
+		await waitForVideoSeek(video, seekTimeoutMs);
 
 		const canvas = document.createElement("canvas");
 		canvas.width = video.videoWidth;

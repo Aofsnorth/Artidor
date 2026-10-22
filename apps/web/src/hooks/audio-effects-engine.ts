@@ -76,11 +76,15 @@ export async function processAudioEffects({
 	source.buffer = buffer;
 
 	let current: AudioNode = source;
-	const connects: Array<{ node: AudioNode; input: AudioNode }> = [];
-	const connect = (input: AudioNode, output: AudioNode) => {
-		current.connect(input);
-		current = output;
-		connects.push({ node: input, input: output });
+	/**
+	 * Append a node to the serial chain. Every stage must have exactly one
+	 * input and one output: the old helper also created a self-connection
+	 * (`node.connect(node)`), which Web Audio treats as an invalid cycle and
+	 * mutes (or at least corrupts) the rest of the graph.
+	 */
+	const connectSerial = (node: AudioNode) => {
+		current.connect(node);
+		current = node;
 	};
 
 	// 1) Noise reduction (spectral gate) — done by simple high-pass for now
@@ -89,21 +93,18 @@ export async function processAudioEffects({
 		hp.type = "highpass";
 		hp.frequency.value = 80 + (1 - chain.noiseReduction.strength) * 100;
 		hp.Q.value = 0.5;
-		connect(hp, hp);
+		connectSerial(hp);
 	}
 
 	// 2) Equalizer — 10 bands
 	if (chain.eq.enabled) {
-		const filters = EQ_BANDS.map((band) => {
+		for (const band of EQ_BANDS) {
 			const f = offline.createBiquadFilter();
 			f.type = "peaking";
 			f.frequency.value = band.frequency;
 			f.Q.value = 1.0;
 			f.gain.value = chain.eq.gains[band.id] ?? 0;
-			return f;
-		});
-		for (const f of filters) {
-			connect(f, f);
+			connectSerial(f);
 		}
 	}
 
@@ -115,48 +116,38 @@ export async function processAudioEffects({
 		comp.attack.value = chain.compressor.attack;
 		comp.release.value = chain.compressor.release;
 		comp.knee.value = chain.compressor.knee;
-		connect(comp, comp);
+		connectSerial(comp);
 		// Makeup gain
 		if (chain.compressor.gain !== 0) {
 			const g = offline.createGain();
 			g.gain.value = 10 ** (chain.compressor.gain / 20);
-			connect(g, g);
+			connectSerial(g);
 		}
 	}
 
-	// 4) Distortion (WaveShaper with mix dry/wet)
+	// 4) Distortion (WaveShaper with one dry/wet mix)
 	if (chain.distortion.enabled) {
-		const inputGain = offline.createGain();
-		inputGain.gain.value = 1;
 		const ws = offline.createWaveShaper();
 		ws.curve = buildDistortionCurve({
 			type: chain.distortion.type,
 			amount: chain.distortion.amount,
 		});
-		const mix = offline.createGain();
-		mix.gain.value = chain.distortion.mix;
-		const dryGain = offline.createGain();
-		dryGain.gain.value = 1 - chain.distortion.mix;
-
-		current.connect(inputGain);
-		inputGain.connect(ws);
-		ws.connect(mix);
-		mix.connect(current); // will be reconnected
-		inputGain.connect(dryGain);
-		dryGain.connect(current);
-
-		// Make a passthrough: sum mix + dry into next stage
+		const wet = offline.createGain();
+		wet.gain.value = chain.distortion.mix;
+		const dry = offline.createGain();
+		dry.gain.value = 1 - chain.distortion.mix;
 		const sum = offline.createGain();
-		mix.disconnect();
-		dryGain.disconnect();
-		ws.connect(mix);
-		inputGain.connect(dryGain);
-		mix.connect(sum);
-		dryGain.connect(sum);
-		connect(sum, sum);
+
+		current.connect(ws);
+		ws.connect(wet);
+		// The dry path taps the same input exactly once.
+		current.connect(dry);
+		wet.connect(sum);
+		dry.connect(sum);
+		current = sum;
 	}
 
-	// 5) Modulation
+	// 5) Modulation (modulated delay, one dry/wet mix)
 	if (chain.modulation.enabled) {
 		const lfoRate = chain.modulation.rate;
 		const lfoDepth = chain.modulation.depth * 0.002; // in seconds
@@ -173,25 +164,22 @@ export async function processAudioEffects({
 		lfoGain.connect(delayNode.delayTime);
 		lfo.start(0);
 
-		connect(delayNode, delayNode);
-
-		const mix = offline.createGain();
-		mix.gain.value = chain.modulation.mix;
+		const wet = offline.createGain();
+		wet.gain.value = chain.modulation.mix;
 		const dry = offline.createGain();
 		dry.gain.value = 1 - chain.modulation.mix;
-
 		const sum = offline.createGain();
-		delayNode.connect(mix);
-		delayNode.connect(dry);
-		mix.connect(sum);
+
+		current.connect(delayNode);
+		current.connect(dry);
+		delayNode.connect(wet);
+		wet.connect(sum);
 		dry.connect(sum);
-		connect(sum, sum);
+		current = sum;
 	}
 
-	// 6) Delay
+	// 6) Delay (feedback network with one dry/wet mix)
 	if (chain.delay.enabled) {
-		const inputGain = offline.createGain();
-		inputGain.gain.value = 1;
 		const delayNode = offline.createDelay(2.0);
 		delayNode.delayTime.value = chain.delay.time;
 		const feedback = offline.createGain();
@@ -199,24 +187,18 @@ export async function processAudioEffects({
 		delayNode.connect(feedback);
 		feedback.connect(delayNode);
 
-		const mix = offline.createGain();
-		mix.gain.value = chain.delay.mix;
+		const wet = offline.createGain();
+		wet.gain.value = chain.delay.mix;
 		const dry = offline.createGain();
 		dry.gain.value = 1 - chain.delay.mix;
 		const sum = offline.createGain();
 
-		inputGain.connect(delayNode);
-		inputGain.connect(dry);
-		delayNode.connect(mix);
-		mix.connect(sum);
+		current.connect(delayNode);
+		current.connect(dry);
+		delayNode.connect(wet);
+		wet.connect(sum);
 		dry.connect(sum);
-
-		// Replace the connection: input → current
-		const last = current;
-		last.disconnect();
-		last.connect(inputGain);
 		current = sum;
-		connect(sum, sum);
 	}
 
 	// 7) Reverb
@@ -229,36 +211,22 @@ export async function processAudioEffects({
 			audioContext: offline,
 			preset,
 		});
-		const mix = offline.createGain();
-		mix.gain.value = chain.reverb.mix;
+		const wet = offline.createGain();
+		wet.gain.value = chain.reverb.mix;
 		const dry = offline.createGain();
 		dry.gain.value = 1 - chain.reverb.mix;
 		const sum = offline.createGain();
+
 		current.connect(convolver);
-		convolver.connect(mix);
 		current.connect(dry);
-		mix.connect(sum);
+		convolver.connect(wet);
+		wet.connect(sum);
 		dry.connect(sum);
 		current = sum;
-		connect(sum, sum);
 	}
 
-	// 8) Voice changer (post processing): pitch shift via simple resample + interpolation
-	if (chain.voiceChanger.enabled) {
-		const semitones = chain.voiceChanger.pitchShift;
-		if (semitones !== 0) {
-			// Render through, then re-sample
-			const out = offline.createGain();
-			connect(out, out);
-
-			// We will post-process the rendered buffer for pitch shifting.
-			// Web Audio doesn't have a free pitch shifter; approximate with
-			// playbackRate won't work in offline context for non-1.0 rates.
-			// For a simple approach, skip the pitch shift here and let the
-			// audio element use the pitch shift at playback time via the
-			// AudioBufferSourceNode.playbackRate + preservePitch flag.
-		}
-	}
+	// 8) Voice changer: pitch shifting is applied separately by
+	// `pitchShiftBuffer`; the offline graph only carries the signal through.
 
 	// Wire to destination
 	current.connect(offline.destination);
@@ -276,13 +244,13 @@ export async function processAudioEffects({
  * Apply only a single voice changer preset to a buffer. We dispatch on the
  * preset to apply the right combination of pitch shift + filtering.
  */
-export function pitchShiftBuffer({
+export async function pitchShiftBuffer({
 	buffer,
 	semitones,
 }: {
 	buffer: AudioBuffer;
 	semitones: number;
-}): AudioBuffer {
+}): Promise<AudioBuffer> {
 	if (semitones === 0) return buffer;
 	// Simple resampling-based pitch shift
 	const ratio = 2 ** (semitones / 12);
@@ -298,16 +266,15 @@ export function pitchShiftBuffer({
 	source.connect(ctx.destination);
 	source.start(0);
 
-	return ctx.startRendering().then((rendered) => {
-		// After rendering at faster rate, the buffer is shorter. We re-construct
-		// a new buffer of the same length as the input by re-sampling the output
-		// back to the original length.
-		const out = new OfflineAudioContext(numChannels, buffer.length, sampleRate);
-		const source2 = out.createBufferSource();
-		source2.buffer = rendered;
-		source2.playbackRate.value = 1 / ratio;
-		source2.connect(out.destination);
-		source2.start(0);
-		return out.startRendering();
-	}) as unknown as AudioBuffer;
+	const rendered = await ctx.startRendering();
+
+	// After rendering at faster rate, the buffer is shorter. Re-construct a
+	// buffer of the same length as the input by re-sampling it back.
+	const out = new OfflineAudioContext(numChannels, buffer.length, sampleRate);
+	const source2 = out.createBufferSource();
+	source2.buffer = rendered;
+	source2.playbackRate.value = 1 / ratio;
+	source2.connect(out.destination);
+	source2.start(0);
+	return out.startRendering();
 }

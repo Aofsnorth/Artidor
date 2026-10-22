@@ -26,6 +26,32 @@ export interface StabilizationResult {
 	croppedHeight: number;
 }
 
+/**
+ * Convert a translation estimated on the downscaled proxy (128 px wide) into
+ * source-video pixels. Applying proxy pixels directly to canvas-space
+ * keyframes made the correction ~15× too weak for a 1080p source.
+ */
+export function scaleProxyOffsetsToSource({
+	offsetX,
+	offsetY,
+	proxyWidth,
+	proxyHeight,
+	sourceWidth,
+	sourceHeight,
+}: {
+	offsetX: number;
+	offsetY: number;
+	proxyWidth: number;
+	proxyHeight: number;
+	sourceWidth: number;
+	sourceHeight: number;
+}): { x: number; y: number } {
+	return {
+		x: offsetX * (sourceWidth / Math.max(1, proxyWidth)),
+		y: offsetY * (sourceHeight / Math.max(1, proxyHeight)),
+	};
+}
+
 export async function stabilizeVideo({
 	videoUrl,
 	duration,
@@ -137,10 +163,18 @@ export async function stabilizeVideo({
 	const frames: StabilizationFrame[] = [];
 	for (let i = 0; i < smoothed.length; i++) {
 		const off = smoothed[i] ?? { x: 0, y: 0 };
-		frames.push({
-			timeSeconds: (i * duration) / Math.max(1, samples - 1),
+		const sourceOffset = scaleProxyOffsetsToSource({
 			offsetX: -off.x,
 			offsetY: -off.y,
+			proxyWidth: tmpW,
+			proxyHeight: tmpH,
+			sourceWidth: width,
+			sourceHeight: height,
+		});
+		frames.push({
+			timeSeconds: (i * duration) / Math.max(1, samples - 1),
+			offsetX: sourceOffset.x,
+			offsetY: sourceOffset.y,
 		});
 	}
 

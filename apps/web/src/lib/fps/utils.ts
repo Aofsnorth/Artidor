@@ -18,6 +18,9 @@ const STANDARD_FRAME_RATES: Array<{ value: number; rate: FrameRate }> = [
 
 const STANDARD_FRAME_RATE_TOLERANCE = 0.01;
 
+/** Safe fallback for unusable fps input (0, negative, NaN, Infinity). */
+export const DEFAULT_FRAME_RATE: FrameRate = { numerator: 30, denominator: 1 };
+
 export function frameRateToFloat(rate: FrameRate): number {
 	return rate.numerator / rate.denominator;
 }
@@ -27,6 +30,7 @@ export function frameRatesEqual(a: FrameRate, b: FrameRate): boolean {
 }
 
 export function floatToFrameRate(fps: number): FrameRate {
+	if (!Number.isFinite(fps) || fps <= 0) return DEFAULT_FRAME_RATE;
 	const standard = STANDARD_FRAME_RATES.find(
 		(candidate) =>
 			Math.abs(fps - candidate.value) <= STANDARD_FRAME_RATE_TOLERANCE,

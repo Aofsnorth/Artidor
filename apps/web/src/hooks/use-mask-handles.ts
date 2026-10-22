@@ -31,6 +31,15 @@ interface DragState {
 	startParams: BaseMaskParams & ParamValues;
 }
 
+interface PendingMaskPreview {
+	update: {
+		trackId: string;
+		elementId: string;
+		updates: Partial<MaskableElement>;
+	};
+	activeLines: SnapLine[];
+}
+
 export function useMaskHandles({
 	onSnapLinesChange,
 }: {
@@ -44,6 +53,10 @@ export function useMaskHandles({
 	const captureRef = useRef<{ element: HTMLElement; pointerId: number } | null>(
 		null,
 	);
+	// One preview per animation frame: pointermove can fire far faster than
+	// the compositor can render, and each preview walks the timeline.
+	const pendingPreviewRef = useRef<PendingMaskPreview | null>(null);
+	const previewRafRef = useRef<number | null>(null);
 
 	const tracks = useEditor(
 		(e) => e.timeline.getPreviewTracks() ?? e.scenes.getActiveScene().tracks,
@@ -129,11 +142,49 @@ export function useMaskHandles({
 		captureRef.current = null;
 	}, []);
 
+	const cancelScheduledPreview = useCallback(() => {
+		if (previewRafRef.current !== null) {
+			cancelAnimationFrame(previewRafRef.current);
+			previewRafRef.current = null;
+		}
+		pendingPreviewRef.current = null;
+	}, []);
+
+	const flushScheduledPreview = useCallback(() => {
+		if (previewRafRef.current !== null) {
+			cancelAnimationFrame(previewRafRef.current);
+			previewRafRef.current = null;
+		}
+		const pending = pendingPreviewRef.current;
+		pendingPreviewRef.current = null;
+		if (!pending) return;
+
+		editor.timeline.previewElements({ updates: [pending.update] });
+		onSnapLinesChange?.(pending.activeLines);
+	}, [editor, onSnapLinesChange]);
+
+	const schedulePreview = useCallback(
+		(pending: PendingMaskPreview) => {
+			pendingPreviewRef.current = pending;
+			if (previewRafRef.current !== null) return;
+
+			previewRafRef.current = requestAnimationFrame(() => {
+				previewRafRef.current = null;
+				flushScheduledPreview();
+			});
+		},
+		[flushScheduledPreview],
+	);
+
+	// Drop any queued frame when the handle tree unmounts.
+	useEffect(() => cancelScheduledPreview, [cancelScheduledPreview]);
+
 	useEffect(() => {
 		if (!activeHandleId) return;
 
 		return registerCanceller({
 			fn: () => {
+				cancelScheduledPreview();
 				editor.timeline.discardPreview();
 				clearMaskHandleState();
 				releaseCapturedPointer();
@@ -141,6 +192,7 @@ export function useMaskHandles({
 		});
 	}, [
 		activeHandleId,
+		cancelScheduledPreview,
 		clearMaskHandleState,
 		editor.timeline,
 		releaseCapturedPointer,
@@ -217,40 +269,33 @@ export function useMaskHandles({
 						snapThreshold,
 					});
 
-			onSnapLinesChange?.(activeLines);
-
 			const updatedMask = {
 				...selectedWithMask.mask,
 				params: nextParams,
 			};
-			editor.timeline.previewElements({
-				updates: [
-					{
-						trackId: drag.trackId,
-						elementId: drag.elementId,
-						updates: {
-							masks: [
-								updatedMask,
-								...(selectedWithMask.element.masks?.slice(1) ?? []),
-							],
-						} as Partial<MaskableElement>,
-					},
-				],
+			schedulePreview({
+				update: {
+					trackId: drag.trackId,
+					elementId: drag.elementId,
+					updates: {
+						masks: [
+							updatedMask,
+							...(selectedWithMask.element.masks?.slice(1) ?? []),
+						],
+					} as Partial<MaskableElement>,
+				},
+				activeLines,
 			});
 		},
-		[
-			selectedWithMask,
-			canvasSize,
-			editor,
-			isShiftHeldRef,
-			onSnapLinesChange,
-			viewport,
-		],
+		[selectedWithMask, canvasSize, isShiftHeldRef, schedulePreview, viewport],
 	);
 
 	const handlePointerUp = useCallback(() => {
 		const drag = dragStateRef.current;
 		if (drag) {
+			// Apply the final pointer position before committing, otherwise the
+			// last frame between the last rAF and pointerup is dropped.
+			flushScheduledPreview();
 			// Scoped: this handle drag stages ONE clip, so it must never promote a
 			// staged entry another clip left behind.
 			editor.timeline.commitPreviewForElement({
@@ -260,7 +305,12 @@ export function useMaskHandles({
 			clearMaskHandleState();
 		}
 		releaseCapturedPointer();
-	}, [clearMaskHandleState, editor, releaseCapturedPointer]);
+	}, [
+		clearMaskHandleState,
+		editor,
+		flushScheduledPreview,
+		releaseCapturedPointer,
+	]);
 
 	return {
 		selectedWithMask,
