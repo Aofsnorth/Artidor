@@ -18,7 +18,20 @@ import {
  * chasing every intermediate position made frames land late in bursts
  * (fast-forward / repeat / freeze artifacts during a fast drag).
  */
-const SCRUB_SETTLE_MS = 120;
+const SCRUB_SETTLE_MS = 80;
+
+/** Exposed for the scrub-latency tests. */
+export const SCRUB_SETTLE_WINDOW_MS = SCRUB_SETTLE_MS;
+
+/**
+ * A request that arrives this long after the previous one did not come from
+ * the same drag: it starts a new gesture (a click on the ruler, a jump in the
+ * timeline). Such a request must NOT sit behind the scrub-settle window — the
+ * picture would hold the previous moment of the clip for the whole window,
+ * which is what made "click second 0 after a fast scrub" look frozen: the
+ * frame from the end of the clip stayed on screen until the settle expired.
+ */
+const ISOLATED_REQUEST_MS = 40;
 
 /**
  * Number of frames to prefetch ahead of the playhead during forward
@@ -176,6 +189,12 @@ interface VideoSinkData {
 		lastRequestAt: number;
 		/** Whether the most recent getFrameAt was a forward playback step. */
 		lastRequestForward: boolean;
+		/**
+		 * Whether the most recent getFrameAt arrived in isolation — no sibling
+		 * request right before it. An isolated request starts a new gesture and
+		 * skips the scrub-settle window.
+		 */
+		isolatedRequest: boolean;
 		/**
 		 * performance.now() when the running `backgroundTask` started, 0 when
 		 * idle. A fetch that never settles — a decoder parked on a seek that
@@ -394,8 +413,13 @@ export class VideoCache {
 			time - previousTime <= MAX_FRAME_STEP_SECONDS;
 		// Scrub-settle inputs: the background fetch waits out the drag and
 		// decodes once for the final position instead of chasing each tick.
+		// A request that arrives in isolation is a new gesture, not a drag
+		// tick: it must not wait for the settle window.
+		const sinceLastRequest = performance.now() - sinkData.lastRequestAt;
+		const isolatedRequest = sinceLastRequest > ISOLATED_REQUEST_MS;
 		sinkData.lastRequestAt = performance.now();
 		sinkData.lastRequestForward = isForwardStep;
+		sinkData.isolatedRequest = isolatedRequest;
 		if (!isForwardStep) {
 			sinkData.seekGeneration++;
 		}
@@ -630,6 +654,7 @@ export class VideoCache {
 				// settle instead of per tick.
 				while (
 					!sinkData.lastRequestForward &&
+					!sinkData.isolatedRequest &&
 					performance.now() - sinkData.lastRequestAt < SCRUB_SETTLE_MS
 				) {
 					await new Promise((resolve) => setTimeout(resolve, 30));
@@ -1222,6 +1247,7 @@ export class VideoCache {
 				pendingExactTime: null,
 				lastRequestAt: 0,
 				lastRequestForward: true,
+				isolatedRequest: false,
 			});
 
 			// Build the GOP index in the BACKGROUND (do NOT await it here).
