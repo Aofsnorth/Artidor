@@ -176,6 +176,22 @@ interface VideoSinkData {
 		lastRequestAt: number;
 		/** Whether the most recent getFrameAt was a forward playback step. */
 		lastRequestForward: boolean;
+		/**
+		 * performance.now() when the running `backgroundTask` started, 0 when
+		 * idle. A fetch that never settles — a decoder parked on a seek that
+		 * cannot land, e.g. after jumping to the very end of a clip — used to
+		 * leave `backgroundTask` set forever, so every later request only
+		 * recorded its position and the preview stayed frozen on the old frame
+		 * while the audio carried on. The watchdog in `getFrameAt` uses this to
+		 * abandon such a fetch.
+		 */
+		backgroundTaskStartedAt: number;
+		/**
+		 * Identifies the current `backgroundTask`. A watchdog restart replaces the
+		 * promise while the abandoned one is still unwinding; its `finally` must
+		 * not clear the state of the fetch that replaced it.
+		 */
+		backgroundTaskId: number;
 	}
 
 /**
@@ -240,6 +256,19 @@ const FORWARD_ITERATE_WINDOW_SECONDS = 8;
  * stays valid for the whole FORWARD_ITERATE_WINDOW_SECONDS.
  */
 const PREFER_ITERATE_GAP_SECONDS = 0.5;
+
+/**
+ * How long a background catch-up fetch may run before a newer request treats
+ * it as dead and starts a fresh one.
+ *
+ * A preview frame costs 10-30 ms to seek and warm up, so two seconds is far
+ * beyond any healthy decode — including a 4K software fallback. Anything still
+ * running at that point is stuck, and waiting on it leaves the preview frozen
+ * indefinitely: the frame shown stays the stale one while the audio (a
+ * completely separate Web Audio path) keeps playing. Retrying is always better
+ * than a permanent freeze, because a retry can only serve a newer position.
+ */
+const BACKGROUND_FETCH_STALL_MS = 2000;
 
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
@@ -342,6 +371,14 @@ export class VideoCache {
 
 		const sinkData = this.sinks.get(mediaId);
 		if (!sinkData) return null;
+
+		// Never wait behind a fetch that stopped making progress. Without this
+		// a single hung decode froze the picture for the rest of the session:
+		// this request would only record its position and re-serve the stale
+		// `currentFrame` forever.
+		if (this.isBackgroundFetchStalled(sinkData)) {
+			this.abandonBackgroundFetch(sinkData);
+		}
 
 		// Invalidate in-flight work only when the playhead jumped or moved
 		// backwards (a scrub or seek): those decodes would serve a position the
@@ -487,6 +524,38 @@ export class VideoCache {
 		return sinkData.currentFrame;
 	}
 
+	/** True when the running background fetch has outlived the stall budget. */
+	private isBackgroundFetchStalled(sinkData: VideoSinkData): boolean {
+		if (!sinkData.backgroundTask || sinkData.backgroundTaskStartedAt === 0) {
+			return false;
+		}
+		return (
+			performance.now() - sinkData.backgroundTaskStartedAt >
+			BACKGROUND_FETCH_STALL_MS
+		);
+	}
+
+	/**
+	 * Drops a background fetch that stopped making progress so the next request
+	 * can decode the current position instead of queueing behind it.
+	 *
+	 * The abandoned task is left to unwind on its own: its own generation and
+	 * task-id checks make every step it has left a no-op.
+	 */
+	private abandonBackgroundFetch(sinkData: VideoSinkData): void {
+		// Stale decodes bail at their next generation check.
+		sinkData.seekGeneration++;
+		// Invalidate the unwinding task's `finally` before dropping the promise.
+		sinkData.backgroundTaskId++;
+		sinkData.backgroundTask = null;
+		sinkData.backgroundTaskStartedAt = 0;
+		sinkData.pendingExactTime = null;
+		// The parked frame source is the usual reason a sink stops answering:
+		// its decoder pump is still waiting for a grid time that never comes.
+		// Closing it here is what lets the fresh decode through.
+		this.releasePrefetchIterator(sinkData);
+	}
+
 	/**
 	 * Background fetch for the frame at `time`: a nearest-keyframe hop first
 	 * (a single-frame decode that lands within ~10-30 ms even for a jump of
@@ -550,6 +619,8 @@ export class VideoCache {
 		};
 
 		sinkData.pendingExactTime = null;
+		sinkData.backgroundTaskStartedAt = performance.now();
+		const taskId = ++sinkData.backgroundTaskId;
 		const task = (async () => {
 			let target = time;
 			for (;;) {
@@ -579,7 +650,21 @@ export class VideoCache {
 		})();
 
 		sinkData.backgroundTask = task.finally(() => {
+			// A watchdog restart already owns the sink state now; leave it alone.
+			if (sinkData.backgroundTaskId !== taskId) return;
 			sinkData.backgroundTask = null;
+			sinkData.backgroundTaskStartedAt = 0;
+			// A request that landed between the loop's last `pendingExactTime`
+			// drain and this callback still saw `backgroundTask` set, so all it
+			// did was record its position. Nothing else would ever fetch it: the
+			// picture stayed on the stale frame while the audio played on — the
+			// "scrub to the end, hit 0, preview freezes" bug. Hand it to a fresh
+			// fetch instead of dropping it.
+			const stranded = sinkData.pendingExactTime;
+			sinkData.pendingExactTime = null;
+			if (stranded !== null) {
+				this.startBackgroundFetch({ sinkData, time: stranded });
+			}
 			if (typeof window !== "undefined") {
 				window.dispatchEvent(new CustomEvent("artidor:video-frame-updated"));
 			}
@@ -1132,6 +1217,8 @@ export class VideoCache {
 				lastUsedAt: ++this.useCounter,
 				activeRequests: 0,
 				backgroundTask: null,
+				backgroundTaskStartedAt: 0,
+				backgroundTaskId: 0,
 				pendingExactTime: null,
 				lastRequestAt: 0,
 				lastRequestForward: true,
