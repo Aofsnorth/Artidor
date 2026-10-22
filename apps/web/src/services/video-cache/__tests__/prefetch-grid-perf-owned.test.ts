@@ -16,6 +16,7 @@ import { describe, expect, mock, test } from "bun:test";
 import type { WrappedCanvas } from "mediabunny";
 import {
 	PREFETCH_BUFFER,
+	SCRUB_SETTLE_WINDOW_MS,
 	isFrameValid,
 	VideoCache,
 } from "../service";
@@ -62,6 +63,7 @@ interface SinkData {
 	pendingExactTime: number | null;
 	lastRequestAt: number;
 	lastRequestForward: boolean;
+	isolatedRequest: boolean;
 	backgroundTaskStartedAt: number;
 	backgroundTaskId: number;
 }
@@ -264,6 +266,7 @@ function makeSinkData(sink: SinkData["sink"]): SinkData {
 		pendingExactTime: null,
 		lastRequestAt: 0,
 		lastRequestForward: true,
+		isolatedRequest: false,
 	};
 }
 
@@ -734,6 +737,54 @@ describe("video cache: project frame step learning", () => {
 		expect(stats.getCanvasCalls).toBe(callsBefore);
 		expect(sinkData.pendingExactTime).toBe(5);
 		expect(sinkData.backgroundTaskStartedAt).toBeGreaterThan(0);
+	});
+
+	test("an isolated seek decodes at once instead of waiting out the scrub settle", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "click", makeSinkData(sink));
+		sinkData.lastRequestedTime = 240;
+		sinkData.lastTime = 240;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			240,
+		);
+		// The previous request was long ago, so this one starts a new gesture
+		// (a click on the timeline) instead of continuing a drag.
+		sinkData.lastRequestAt = performance.now() - 500;
+
+		const started = Date.now();
+		await cache.getFrameAt({ mediaId: "click", file: fakeFile(), time: 0 });
+		await sinkData.backgroundTask;
+		const elapsed = Date.now() - started;
+
+		expect(stats.getCanvasCalls).toBeGreaterThan(0);
+		// The settle window is what an isolated request must NOT pay.
+		expect(elapsed).toBeLessThan(SCRUB_SETTLE_WINDOW_MS);
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeLessThan(1);
+	});
+
+	test("a drag tick waits for the settle window before it decodes", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "drag", makeSinkData(sink));
+		sinkData.lastRequestedTime = 240;
+		sinkData.lastTime = 240;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			240,
+		);
+		// A sibling request just arrived: this one is a drag tick.
+		sinkData.lastRequestAt = performance.now();
+
+		const started = Date.now();
+		await cache.getFrameAt({ mediaId: "drag", file: fakeFile(), time: 5 });
+		await sinkData.backgroundTask;
+		const elapsed = Date.now() - started;
+
+		expect(stats.getCanvasCalls).toBeGreaterThan(0);
+		// The drag tick waits out the window instead of decoding per tick.
+		expect(elapsed).toBeGreaterThanOrEqual(SCRUB_SETTLE_WINDOW_MS - 30);
 	});
 
 	test("steady forward playback does not invalidate in-flight work", async () => {
