@@ -134,8 +134,7 @@ export function Hero() {
 					className="mt-12 grid w-full max-w-3xl grid-cols-2 gap-6 text-left md:grid-cols-4"
 				>
 					{STATS.map((s) => {
-						const isStars = s.key === "stars";
-						const display = isStars ? starsLabel : s.value;
+						const display = "value" in s ? s.value : starsLabel;
 						return (
 							<div key={s.labelKey} className="flex flex-col gap-1">
 								<div className="font-serif text-2xl font-medium italic text-white md:text-3xl">
