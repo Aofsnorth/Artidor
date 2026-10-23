@@ -11,7 +11,6 @@ import Image from "next/image";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
 import { useI18n } from "@/lib/i18n";
-import { cn } from "@/utils/ui";
 
 type Category = "resources" | "company";
 
@@ -47,67 +46,36 @@ const links: CategoryLinks = {
 	],
 };
 
-export function Footer({
-	variant = "default",
-}: {
-	variant?: "default" | "editorial";
-}) {
+export function Footer() {
 	const { t } = useI18n();
-	const isEditorial = variant === "editorial";
-
 	return (
-		<footer
-			className={cn(
-				"relative mx-auto w-full max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8",
-				!isEditorial && "mt-12 max-w-6xl",
-			)}
-		>
-			<div
-				className={cn(
-					"relative overflow-hidden p-6 sm:p-8 md:p-12",
-					isEditorial
-						? "rounded-[4px] border border-[#141413]/20 bg-[#DFDCD4] text-[#141413] shadow-beautiful-md"
-						: "panel glass-strong rounded-3xl border border-white/10 text-white backdrop-blur",
-				)}
-			>
-				<div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
-					<div className="flex flex-col justify-between gap-6 lg:col-span-5">
-						<div>
-							<div className="mb-4 flex items-center gap-3">
-								<Image
-									src={DEFAULT_LOGO_URL}
-									alt="Artidor"
-									width={30}
-									height={30}
-									className={cn(
-										"size-7.5 rounded-[3px]",
-										isEditorial &&
-											"border border-[#141413]/20 bg-[#141413] p-0.5",
-									)}
-								/>
-								<span className="font-serif text-xl font-medium tracking-[-0.02em]">
-									Artidor
-								</span>
-							</div>
-							<p
-								className={cn(
-									"max-w-sm text-[14px] leading-relaxed",
-									isEditorial ? "text-[#4A4741]" : "text-white/60",
-								)}
-							>
-								{t("home.footer.tagline")}
-							</p>
+		<footer className="relative mx-auto mt-12 w-full max-w-6xl px-6 pb-12">
+			<div className="panel glass-strong relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur md:p-10">
+				<div
+					aria-hidden
+					className="pointer-events-none absolute -top-20 right-0 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] blur-3xl"
+				/>
+				<div className="grid grid-cols-1 gap-10 md:grid-cols-[1.2fr_2fr]">
+					<div>
+						<div className="mb-4 flex items-center gap-2.5">
+							<Image
+								src={DEFAULT_LOGO_URL}
+								alt="Artidor"
+								width={32}
+								height={32}
+								className="size-8 rounded-md"
+							/>
+							<span className="text-lg font-semibold tracking-[-0.01em] text-white">
+								Artidor
+							</span>
 						</div>
-
-						<div className="flex items-center gap-2">
+						<p className="max-w-xs text-[13.5px] font-light leading-relaxed text-white/55">
+							{t("home.footer.tagline")}
+						</p>
+						<div className="mt-5 flex gap-2">
 							<Link
 								href={SOCIAL_LINKS.github}
-								className={cn(
-									"inline-flex size-11 items-center justify-center rounded-[3px] border transition-[transform,background-color,border-color] duration-150 active:scale-[0.97]",
-									isEditorial
-										? "border-[#141413]/25 bg-[#EAE7DF] text-[#141413] shadow-beautiful-sm hover:border-[#141413] hover:bg-[#141413] hover:text-[#F4F1EA]"
-										: "border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08] hover:text-white",
-								)}
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.github")}
@@ -116,12 +84,7 @@ export function Footer({
 							</Link>
 							<Link
 								href={SOCIAL_LINKS.x}
-								className={cn(
-									"inline-flex size-11 items-center justify-center rounded-[3px] border transition-[transform,background-color,border-color] duration-150 active:scale-[0.97]",
-									isEditorial
-										? "border-[#141413]/25 bg-[#EAE7DF] text-[#141413] shadow-beautiful-sm hover:border-[#141413] hover:bg-[#141413] hover:text-[#F4F1EA]"
-										: "border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08] hover:text-white",
-								)}
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.x")}
@@ -131,12 +94,7 @@ export function Footer({
 							{SOCIAL_LINKS.discord && (
 								<Link
 									href={SOCIAL_LINKS.discord}
-									className={cn(
-										"inline-flex size-11 items-center justify-center rounded-[3px] border transition-[transform,background-color,border-color] duration-150 active:scale-[0.97]",
-										isEditorial
-											? "border-[#141413]/25 bg-[#EAE7DF] text-[#141413] shadow-beautiful-sm hover:border-[#141413] hover:bg-[#141413] hover:text-[#F4F1EA]"
-											: "border-white/10 bg-white/[0.04] text-white/65 hover:bg-white/[0.08] hover:text-white",
-									)}
+									className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
 									target="_blank"
 									rel="noopener noreferrer"
 									aria-label={t("home.footer.social.discord")}
@@ -147,33 +105,18 @@ export function Footer({
 						</div>
 					</div>
 
-					<div className="grid grid-cols-2 gap-8 sm:grid-cols-2 lg:col-span-7">
+					<div className="grid grid-cols-2 gap-6">
 						{(Object.keys(links) as Category[]).map((category) => (
 							<div key={category} className="flex flex-col gap-3">
-								<div className="flex items-center gap-2.5">
-									{isEditorial && (
-										<span className="ed-rule" aria-hidden="true" />
-									)}
-									<h3
-										className={cn(
-											"font-mono text-[11px] font-medium uppercase tracking-[0.16em]",
-											isEditorial ? "text-[#4A4741]" : "text-white/45",
-										)}
-									>
-										{t(CATEGORY_KEYS[category])}
-									</h3>
-								</div>
-								<ul className="flex flex-col gap-1 text-[14px]">
+								<h3 className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">
+									{t(CATEGORY_KEYS[category])}
+								</h3>
+								<ul className="flex flex-col gap-2 text-[13.5px]">
 									{links[category].map((link) => (
 										<li key={link.href}>
 											<Link
 												href={link.href}
-												className={cn(
-													"inline-flex min-h-11 items-center rounded-[3px] px-1 transition-colors",
-													isEditorial
-														? "text-[#141413]/85 underline-offset-4 hover:text-[#141413] hover:underline"
-														: "text-white/65 hover:text-white",
-												)}
+												className="text-white/65 transition-colors hover:text-white"
 												target={
 													link.href.startsWith("http") ? "_blank" : undefined
 												}
@@ -193,26 +136,13 @@ export function Footer({
 					</div>
 				</div>
 
-				<div
-					className={cn(
-						"mt-10 flex flex-col items-start justify-between gap-4 border-t pt-6 font-mono text-[11.5px] sm:flex-row sm:items-center",
-						isEditorial
-							? "border-[#141413]/15 text-[#4A4741]"
-							: "border-white/10 text-white/45",
-					)}
-				>
+				<div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-6 text-[12px] text-white/45 md:flex-row md:items-center">
 					<span>
 						{t("home.footer.copyright", { year: new Date().getFullYear() })}
 					</span>
-					<span className="inline-flex items-center gap-2">
-						<span
-							aria-hidden="true"
-							className={cn(
-								"size-2 rounded-[1px]",
-								isEditorial ? "bg-[#141413]" : "rounded-full bg-emerald-400",
-							)}
-						/>
-						<span>{t("home.footer.status")}</span>
+					<span className="flex items-center gap-2 text-white/40">
+						<span className="size-1.5 rounded-full bg-emerald-400" />
+						{t("home.footer.status")}
 					</span>
 				</div>
 			</div>

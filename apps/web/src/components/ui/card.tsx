@@ -1,38 +1,17 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/utils/ui";
 
-const cardVariants = cva("text-card-foreground border", {
-	variants: {
-		variant: {
-			default: "bg-card rounded-2xl",
-			editorial:
-				"rounded-[4px] border-[#141413]/18 bg-[#DFDCD4] text-[#141413] shadow-beautiful-md",
-			"editorial-raised":
-				"rounded-[4px] border-[#141413]/22 bg-[#EAE7DF] text-[#141413] shadow-beautiful-md",
-			"editorial-ink":
-				"rounded-[4px] border-[#141413] bg-[#141413] text-[#F4F1EA] shadow-beautiful-lg",
-		},
-	},
-	defaultVariants: {
-		variant: "default",
-	},
-});
-
-export interface CardProps
-	extends React.HTMLAttributes<HTMLDivElement>,
-		VariantProps<typeof cardVariants> {}
-
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-	({ className, variant, ...props }, ref) => (
-		<div
-			ref={ref}
-			className={cn(cardVariants({ variant }), className)}
-			{...props}
-		/>
-	),
-);
+const Card = React.forwardRef<
+	HTMLDivElement,
+	React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+	<div
+		ref={ref}
+		className={cn("bg-card text-card-foreground rounded-2xl border", className)}
+		{...props}
+	/>
+));
 Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<
@@ -41,7 +20,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
 	<div
 		ref={ref}
-		className={cn("flex flex-col gap-1.5 p-6", className)}
+		className={cn("flex flex-col space-y-1.5 p-6", className)}
 		{...props}
 	/>
 ));
@@ -98,5 +77,4 @@ export {
 	CardTitle,
 	CardDescription,
 	CardContent,
-	cardVariants,
 };

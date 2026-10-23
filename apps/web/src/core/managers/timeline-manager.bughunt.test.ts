@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { afterAll, expect, mock, test } from "bun:test";
 import type { EditorCore } from "@/core";
 import type { SceneTracks } from "@/lib/timeline/types";
 import type { TimelineElement } from "@/lib/timeline";
@@ -7,7 +7,89 @@ import {
 	buildVideoElement,
 	buildVideoTrack,
 } from "@/tests/factories/editor";
-import { TimelineManager } from "./timeline-manager";
+
+// `mock.module` replaces the whole namespace for the rest of the process, so
+// this stub must cover every export the import graph links against — a partial
+// stub fails with "Export named '…' not found" before the first test runs.
+mock.module("artidor-wasm", () => ({
+	TICKS_PER_SECOND: 120_000,
+	roundToFrame: ({
+		time,
+		rate,
+	}: {
+		time: number;
+		rate?: { numerator: number; denominator: number };
+	}) => {
+		const fps = rate ? rate.numerator / rate.denominator : 30;
+		const ticksPerFrame = 120_000 / fps;
+		return Math.round(time / ticksPerFrame) * ticksPerFrame;
+	},
+	lastFrameTime: ({ time }: { time: number }) => time,
+	snappedSeekTime: ({ time }: { time: number }) => time,
+	floorToFrame: ({ time }: { time: number }) => time,
+	isFrameAligned: () => true,
+	mediaTimeAdd: ({ lhs, rhs }: { lhs: number; rhs: number }) => lhs + rhs,
+	mediaTimeSub: ({ lhs, rhs }: { lhs: number; rhs: number }) => lhs - rhs,
+	mediaTimeMin: ({ lhs, rhs }: { lhs: number; rhs: number }) =>
+		Math.min(lhs, rhs),
+	mediaTimeMax: ({ lhs, rhs }: { lhs: number; rhs: number }) =>
+		Math.max(lhs, rhs),
+	mediaTimeClamp: ({
+		time,
+		min,
+		max,
+	}: {
+		time: number;
+		min: number;
+		max: number;
+	}) => Math.min(max, Math.max(min, time)),
+	mediaTimeFromSeconds: ({ seconds }: { seconds: number }) =>
+		Math.round(seconds * 120_000),
+	mediaTimeToSeconds: ({ time }: { time: number }) => time / 120_000,
+	mediaTimeFromFrame: ({
+		frame,
+		rate,
+	}: {
+		frame: number;
+		rate: { numerator: number; denominator: number };
+	}) =>
+		Math.round(
+			(frame * 120_000 * rate.denominator) / rate.numerator,
+		),
+	mediaTimeToFrame: ({
+		time,
+		rate,
+	}: {
+		time: number;
+		rate: { numerator: number; denominator: number };
+	}) =>
+		BigInt(
+			Math.round((time * rate.numerator) / (120_000 * rate.denominator)),
+		),
+	formatTimecode: () => "0:00",
+	parseTimecode: () => 0,
+	guessTimecodeFormat: () => "HH:MM:SS:FF",
+	initializeGpu: () => Promise.resolve(),
+	destroyGpu: () => {},
+	initCompositor: () => {},
+	initCompositorWithCanvas: () => {},
+	destroyCompositor: () => {},
+	getCompositorCanvas: () => undefined as unknown as OffscreenCanvas,
+	resizeCompositor: () => {},
+	renderFrame: () => {},
+	uploadTexture: () => {},
+	releaseTexture: () => {},
+	applyEffectPasses: () => [0, 0, 0],
+	applyMaskFeather: () => [0, 0, 0],
+	initSync: () => ({}),
+	default: () => Promise.resolve({}),
+}));
+
+const { TimelineManager } = await import("./timeline-manager");
+
+afterAll(() => {
+	mock.restore();
+});
 
 const cameraTrack = {
 	id: "camera-track",

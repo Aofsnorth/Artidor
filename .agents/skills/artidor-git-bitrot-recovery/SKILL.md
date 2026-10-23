@@ -1,6 +1,11 @@
 ---
 name: artidor-git-bitrot-recovery
-description: Use when D:\Artidor git objects or Delta worktrees break - "inflate: data stream error", "pack has bad object", "packed object ... is corrupt", "bad file", fsck missing blobs, or Delta failing to prepare a worktree ("repository local:<uuid> has not been shared", "git cat-file --batch request failed: failed to fill whole buffer").
+description: >-
+  Use when D:\Artidor git objects or Delta worktrees break - "inflate: data
+  stream error", "pack has bad object", "packed object ... is corrupt", "bad
+  file", fsck missing blobs, or Delta failing to prepare a worktree
+  ("repository local:<uuid> has not been shared", "git cat-file --batch request
+  failed: failed to fill whole buffer").
 ---
 
 # Artidor git bit-rot recovery
@@ -15,6 +20,11 @@ description: Use when D:\Artidor git objects or Delta worktrees break - "inflate
 - `git fsck` reports `missing blob` / `broken link from tree ... to blob ...`.
 - Working-tree binaries differ from HEAD by only a few bytes.
 - Every `git` command prints `error: HEAD: invalid reflog entry <sha>`.
+- Tooling fails with nonsense syntax errors: `tsc` throws
+  `SyntaxError: Unexpected identifier 'numberTypolToumericStringType'`, Biome exits
+  29/132 or segfaults, `next build` reports invalid JSON in
+  `capsize-font-metrics.json`, or bun:test resolves a bogus export
+  (`export 'Check' not found in './Tick01Icon.js'`).
 
 ## When NOT to Use
 
@@ -39,6 +49,46 @@ description: Use when D:\Artidor git objects or Delta worktrees break - "inflate
 - Prior repair backups live in `C:\Users\Axeliory\delta-artidor-backup\<timestamp>\`.
 
 ## Procedure
+
+### 0. Sweep the working tree before trusting any result
+
+In-place corruption keeps the file's size and mtime, so `git status` can report a
+clean tree while the bytes are wrong. Compare every tracked blob:
+
+```bash
+git ls-files -s | while read mode hash stage path; do
+  actual=$(git hash-object "$path" 2>/dev/null)
+  [ "$actual" = "$hash" ] || echo "$path"
+done
+```
+
+Do not `rm` a file before its replacement is already readable: a damaged pack can
+make `git checkout` abort mid-way and leave the path empty. Prefer
+`git cat-file blob <oid> > <path>`, then verify with `git hash-object`.
+
+### 0.1 Repair `node_modules` and tooling
+
+The bun store under `node_modules/.bun/` rots too, and a plain reinstall re-creates
+the same bad bytes because the cached tarball is damaged as well.
+
+1. Prove the file is bad with a parser, not a build:
+   `node -e "JSON.parse(require('fs').readFileSync(p,'utf8'))"` or
+   `node -e "new Function(require('fs').readFileSync(p,'utf8'))"`.
+2. `bun pm cache rm`
+3. `rm -rf node_modules/.bun/<pkg>@<version>+<hash>` (the exact directory the
+   symlink resolves to, e.g. `node_modules/.bun/next@16.4.0+<hash>`)
+4. `bun install --frozen-lockfile`
+5. Re-run the parser check. Repeat for each package the build reports.
+
+When `typescript` itself keeps rotting, bypass `node_modules` entirely:
+
+```bash
+mkdir -p .tmp-tscheck
+curl -sSL -o .tmp-tscheck/ts.tgz https://registry.npmjs.org/typescript/-/typescript-<ver>.tgz
+tar -xzf .tmp-tscheck/ts.tgz -C .tmp-tscheck
+node .tmp-tscheck/package/lib/tsc.js --noEmit -p apps/web/tsconfig.json
+rm -rf .tmp-tscheck
+```
 
 ### 1. Confirm the cause
 
@@ -124,6 +174,13 @@ The app caches the failed mount and does not retry in-session.
 
 ## Pitfalls
 
+- `git cat-file blob <oid> > <path>` silently truncates when the pack entry is
+  damaged. Always verify the written file's `git hash-object`; if the object is
+  unreadable, fetch that one blob from origin
+  (`https://raw.githubusercontent.com/Aofsnorth/Artidor/<commit>/<path>`) and check
+  the hash again.
+- Corrupted YAML frontmatter blocks Zed from loading a skill. A plain scalar
+  `description` cannot contain `: `; use `>-` folded style or quote it.
 - `git fsck` can look clean while `git cat-file blob <sha>` fails. Always test
   content reads, not just headers.
 - `git hash-object -w` does NOT overwrite an existing loose object file, even a

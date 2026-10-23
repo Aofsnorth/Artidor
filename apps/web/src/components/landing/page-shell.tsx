@@ -1,14 +1,29 @@
-import type { ReactNode } from "react";
-import { cn } from "@/utils/ui";
-
 /**
- * Page-level chrome shared by landing, marketing, and content routes.
+ * Editorial page-level chrome shared by landing, marketing and
+ * long-form content pages. Sets the dark luxury atmosphere on top
+ * of the global theme.
  *
- * When `variant="marketing"`, applies the Editorial Monograph design
- * system (`.editorial-landing`) inspired by the print-poster reference:
- * warm stone canvas (#D2CEC5), crisp 1px architectural hairlines, and
- * subtle matte paper grain without dark cosmic wallpapers or glassmorphism.
+ * Backdrop: a dark cosmic nebula from Unsplash
+ * (see public/wallpaper/README.md for attribution and license).
+ * We use a plain CSS `background-image` here — not Next.js Image —
+ * so the source image renders at its native quality without
+ * Next's re-optimisation pipeline re-compressing it. `min-h-screen`
+ * keeps the image covering at least the viewport even if the page
+ * content is short.
+ *
+ * Note: this wrapper does NOT have `overflow-hidden` because
+ * that would break `position: sticky` on the header.
+ *
+ * This is a Server Component: it used to be `"use client"` with a
+ * `mounted` state that held the whole page at `opacity-0` until
+ * hydration, which meant every visitor stared at an empty page for the
+ * length of the 700ms fade and LCP could not be recorded until hydration
+ * finished. The chrome here is entirely static, so it renders in the
+ * SSR response and is visible on first paint.
  */
+
+import type { ReactNode } from "react";
+
 export function PageShell({
 	children,
 	variant = "default",
@@ -16,70 +31,64 @@ export function PageShell({
 	children: ReactNode;
 	variant?: "default" | "marketing" | "docs";
 }) {
-	const isMarketing = variant === "marketing";
-
 	return (
 		<div
-			className={cn(
-				"relative isolate min-h-screen overflow-x-clip",
-				isMarketing
-					? "editorial-landing bg-[#D2CEC5] text-[#141413]"
-					: "bg-[#0a0a0c] text-white",
-			)}
+			className="relative isolate min-h-screen bg-[#0a0a0c] text-white"
 			data-page-shell={variant}
 		>
-			{isMarketing ? (
-				<>
-					{/* Subtle warm tonal vignette matching the studio lighting of the poster reference */}
-					<div
-						aria-hidden="true"
-						className="pointer-events-none fixed inset-0 -z-20"
-						style={{
-							background:
-								"radial-gradient(ellipse 85% 75% at 62% 34%, rgba(234, 231, 223, 0.55) 0%, rgba(210, 206, 197, 0.2) 55%, rgba(182, 176, 165, 0.45) 100%)",
-						}}
-					/>
+			{/* Fantasy artwork backdrop. Plain CSS background so
+			   the original 2084×4632 image renders at full quality
+			   (no Next.js re-compression). `background-position:
+			   center 30%` keeps the figure in the lower-centre of
+			   the visible area on wide screens; the dark cosmic
+			   fills the top, which doubles as a "sky" for the
+			   sticky header. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 -z-20 min-h-screen"
+				style={{
+					backgroundImage: "url(/wallpaper/hero-fantasy-2x.webp)",
+					backgroundRepeat: "no-repeat",
+					backgroundSize: "cover",
+					backgroundPosition: "center",
+				}}
+			/>
 
-					{/* Fine matte print grain — pure CSS, zero external network or heavy image decode */}
-					<div
-						aria-hidden="true"
-						className="pointer-events-none fixed inset-0 -z-10 opacity-[0.045] mix-blend-multiply"
-						style={{
-							backgroundImage:
-								"radial-gradient(rgba(20, 20, 19, 0.75) 0.55px, transparent 0.65px)",
-							backgroundSize: "3px 3px",
-						}}
-					/>
+			{/* Atmospheric overlays — subtle, on top of the artwork
+			   but under the page content. Two layers:
+			   1. A top-to-bottom vignette so the sticky header
+			      stays legible even when it overlays the figure.
+			   2. A persistent black scrim so translucent cards and
+			      secondary text remain readable over bright artwork.
+			   All absolute so they scroll with the artwork. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 -z-10 min-h-screen"
+				style={{
+					background:
+						"linear-gradient(180deg, rgba(4,4,6,0.86) 0%, rgba(4,4,6,0.76) 18%, rgba(4,4,6,0.72) 50%, rgba(4,4,6,0.80) 80%, rgba(4,4,6,0.90) 100%)",
+				}}
+			/>
 
-					{/* Architectural vertical margin hairlines on wide viewports */}
-					<div
-						aria-hidden="true"
-						className="pointer-events-none fixed inset-y-0 left-1/2 -z-10 hidden w-full max-w-[1440px] -translate-x-1/2 border-x border-[#141413]/[0.08] xl:block"
-					/>
-				</>
-			) : (
-				<>
-					<div
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-0 -z-20 min-h-screen"
-						style={{
-							backgroundImage: "url(/wallpaper/hero-fantasy-2x.webp)",
-							backgroundRepeat: "no-repeat",
-							backgroundSize: "cover",
-							backgroundPosition: "center",
-						}}
-					/>
-					<div
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-0 -z-10 min-h-screen"
-						style={{
-							background:
-								"linear-gradient(180deg, rgba(4,4,6,0.86) 0%, rgba(4,4,6,0.76) 18%, rgba(4,4,6,0.72) 50%, rgba(4,4,6,0.80) 80%, rgba(4,4,6,0.90) 100%)",
-						}}
-					/>
-				</>
-			)}
+			{/* Subtle film grain — pure CSS, no asset download. Sits
+			   above the artwork + vignette, below the page content,
+			   so it adds texture without darkening text. */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 -z-10 min-h-screen opacity-[0.04] mix-blend-overlay"
+				style={{
+					backgroundImage:
+						"radial-gradient(rgba(255,255,255,0.5) 0.5px, transparent 0.6px)",
+					backgroundSize: "3px 3px",
+				}}
+			/>
 
+			{/* Content is not gated on hydration: the landing tree is
+			    server-rendered, so it paints on the first frame instead of
+			    after a blank 700ms fade. Entrance motion for the sections
+			    that want it is handled per-section (`motion`'s
+			    `whileInView`), which is opt-in rather than a page-wide
+			    `opacity-0` that has to be undone after hydration. */}
 			<div className="relative">{children}</div>
 		</div>
 	);
