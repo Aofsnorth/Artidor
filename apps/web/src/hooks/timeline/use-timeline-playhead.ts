@@ -361,17 +361,24 @@ export function useTimelinePlayhead({
 			scheduleScrub({ event });
 		};
 
-		const handleMouseUp = ({ event }: { event: MouseEvent }) => {
+		const handleMouseUp = () => {
+			const hadPendingScrub = pendingScrubRef.current !== null;
 			flushScheduledScrub();
 			editor.playback.setScrubbing({ isScrubbing: false });
 			const finalTime = scrubTimeRef.current;
 			if (finalTime !== null) {
-				seek({ time: finalTime });
+				if (
+					!hadPendingScrub &&
+					!editor.playback.getIsPlaying() &&
+					editor.playback.getCurrentTime() !== finalTime
+				) {
+					seek({ time: finalTime });
+				}
 				editor.project.setTimelineViewState({
 					viewState: {
 						zoomLevel,
 						scrollLeft: tracksScrollRef.current?.scrollLeft ?? 0,
-						playheadTime: finalTime,
+						playheadTime: editor.playback.getCurrentTime(),
 					},
 				});
 			}
@@ -380,16 +387,13 @@ export function useTimelinePlayhead({
 
 			if (isDraggingRulerRef.current) {
 				isDraggingRulerRef.current = false;
-				if (!hasDraggedRulerRef.current) {
-					handleScrub({ event, snappingEnabled: false });
-				}
 				hasDraggedRulerRef.current = false;
 			}
 			rulerRectRef.current = null;
 		};
 
 		const onMouseMove = (event: MouseEvent) => handleMouseMove({ event });
-		const onMouseUp = (event: MouseEvent) => handleMouseUp({ event });
+		const onMouseUp = () => handleMouseUp();
 
 		window.addEventListener("mousemove", onMouseMove);
 		window.addEventListener("mouseup", onMouseUp);
@@ -401,7 +405,6 @@ export function useTimelinePlayhead({
 	}, [
 		isScrubbing,
 		seek,
-		handleScrub,
 		scheduleScrub,
 		flushScheduledScrub,
 		editor,

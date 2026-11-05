@@ -121,8 +121,12 @@ export class PlaybackManager {
 	}
 
 	setScrubbing({ isScrubbing }: { isScrubbing: boolean }): void {
+		const wasScrubbing = this.isScrubbing;
 		this.isScrubbing = isScrubbing;
 		this.notify();
+		if (wasScrubbing && !isScrubbing) {
+			this.dispatchUpdateEvent(this.currentTime);
+		}
 	}
 
 	getIsScrubbing(): boolean {
@@ -219,6 +223,15 @@ export class PlaybackManager {
 		const maxTime = this.editor.timeline.getTotalDuration();
 
 		if (newTime >= maxTime) {
+			if (this.isScrubbing) {
+				this.currentTime = maxTime;
+				this.playbackStartWallTime = performance.now();
+				this.playbackStartTime = maxTime;
+				if (this.isPlaying) {
+					this.playbackTimer = requestAnimationFrame(this.updateTime);
+				}
+				return;
+			}
 			if (this.loop && maxTime > 0) {
 				// Restart from 0 in the same tick: a UI-side listener had to beat the
 				// pause path and could miss the window on a long rAF gap, stalling

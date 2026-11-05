@@ -5,7 +5,12 @@ import {
 	getTimelineZoomMin,
 	getZoomPercent,
 } from "./zoom-utils";
-import { TIMELINE_ZOOM_MAX, TIMELINE_ZOOM_MIN } from "./scale";
+import { getRulerConfig } from "./ruler-utils";
+import {
+	BASE_TIMELINE_PIXELS_PER_SECOND,
+	TIMELINE_ZOOM_MAX,
+	TIMELINE_ZOOM_MIN,
+} from "./scale";
 import { TICKS_PER_SECOND } from "../wasm";
 
 describe("getTimelineZoomMin", () => {
@@ -45,6 +50,28 @@ describe("getTimelineZoomMin", () => {
 				containerWidth: 800,
 			}),
 		).toBe(TIMELINE_ZOOM_MIN);
+	});
+
+	test("shrinks a 1-hour video into a compact strip and keeps multi-hour ruler ticks sparse", () => {
+		const oneHourSeconds = 3600;
+		const fitZoom = getTimelineZoomMin({
+			duration: oneHourSeconds * TICKS_PER_SECOND,
+			containerWidth: 1000,
+		});
+		// At fitZoom in a 1000px container, 1 hour occupies 250px; at TIMELINE_ZOOM_MIN it is 36px.
+		const fitWidthPx =
+			oneHourSeconds * BASE_TIMELINE_PIXELS_PER_SECOND * fitZoom;
+		const minWidthPx =
+			oneHourSeconds * BASE_TIMELINE_PIXELS_PER_SECOND * TIMELINE_ZOOM_MIN;
+		expect(fitWidthPx).toBeCloseTo(250, 5);
+		expect(minWidthPx).toBeLessThanOrEqual(50);
+
+		const ruler = getRulerConfig({
+			zoomLevel: TIMELINE_ZOOM_MIN,
+			fps: { numerator: 30, denominator: 1 },
+		});
+		expect(ruler.labelIntervalSeconds).toBeGreaterThanOrEqual(3600);
+		expect(ruler.tickIntervalSeconds).toBeGreaterThanOrEqual(1800);
 	});
 });
 

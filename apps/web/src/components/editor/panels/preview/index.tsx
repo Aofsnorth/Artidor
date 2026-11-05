@@ -6,6 +6,7 @@ import { useRafLoop } from "@/hooks/use-raf-loop";
 import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
+import { videoCache } from "@/services/video-cache/service";
 import { TICKS_PER_SECOND } from "@/lib/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
@@ -273,7 +274,9 @@ function PreviewCanvas({
 				(TICKS_PER_SECOND * renderer.fps.denominator) / renderer.fps.numerator,
 			);
 			const frame = Math.floor(renderTime / ticksPerFrame);
-			const scaleInputs = `${previewQuality}|${isPlaying}|${gpuDegraded}`;
+			const isScrubbing = editor.playback.getIsScrubbing();
+			const isInteractive = isPlaying || isScrubbing;
+			const scaleInputs = `${previewQuality}|${isInteractive}|${gpuDegraded}`;
 
 			if (renderingRef.current) {
 				pendingRenderRef.current = shouldQueuePreviewRender({
@@ -335,7 +338,7 @@ function PreviewCanvas({
 			} else {
 				scale = qualityGovernorRef.current.resolve({
 					quality: previewQuality,
-					isPlaying,
+					isPlaying: isInteractive,
 					gpuDegraded,
 					avgRenderMs: avgRenderMs || undefined,
 					frameBudgetMs,
@@ -448,6 +451,7 @@ function PreviewCanvas({
 							if (
 								!isPlaying &&
 								!isScrubbing &&
+								!videoCache.hasPendingFetch() &&
 								typeof createImageBitmap === "function"
 							) {
 								const sourceCanvas = renderer.getOutputCanvas();
@@ -482,6 +486,10 @@ function PreviewCanvas({
 						if (isLoadingRef.current && loadingOverlayRef.current) {
 							isLoadingRef.current = false;
 							loadingOverlayRef.current.style.opacity = "0";
+						}
+						if (pendingRenderRef.current) {
+							pendingRenderRef.current = false;
+							setNeedsRender(true);
 						}
 					});
 			}
@@ -573,8 +581,16 @@ function PreviewCanvas({
 	// already running and picks the frame up on its own.
 	useEffect(() => {
 		const onFrameUpdated = () => {
-			// Bypass the delta-frame skip: the timeline frame number did not
-			// change, but the source pixels did.
+			// Bypass the delta-frame skip and evict only bitmaps for the active
+			// or last frame so the rest of the L1 ImageBitmap scrub cache stays warm.
+			const targetFrame = lastFrameRef.current;
+			const activeFrame = activeRenderFrameRef.current;
+			for (const [key, entry] of frameCacheRef.current.entries()) {
+				if (entry.frame === targetFrame || entry.frame === activeFrame) {
+					entry.bitmap.close();
+					frameCacheRef.current.delete(key);
+				}
+			}
 			lastFrameRef.current = -1;
 			setNeedsRender(true);
 		};

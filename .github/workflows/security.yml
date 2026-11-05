@@ -93,7 +93,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
-      - uses: github/codeql-action/init@fb84f6228fd846d3c392887f22b18ce2d9139495 # v4
+      - uses: github/codeql-action/init@1f8cacc39019c823a7cedf81adf1819b6deeb96c # v4
         with:
           languages: javascript-typescript
-      - uses: github/codeql-action/analyze@fb84f6228fd846d3c392887f22b18ce2d9139495 # v4
+      - uses: github/codeql-action/analyze@1f8cacc39019c823a7cedf81adf1819b6deeb96c # v4

@@ -56,9 +56,11 @@ describe("WHATS_NEW feed (real entries)", () => {
 		expect(new Set(ids).size).toBe(ids.length);
 	});
 
-	test("the newest entry describes the Audio tab crash fix", () => {
+	test("the newest entry describes the Prismatic landing and GOP preview engine", () => {
 		// Guards against accidentally pushing a newer entry above this
 		// one without updating the assertion.
-		expect(getLatestWhatsNewId()).toBe("2026-10-01-audio-tab-crash-fix");
+		expect(getLatestWhatsNewId()).toBe(
+			"2026-11-05-prismatic-landing-and-preview-engine",
+		);
 	});
 });

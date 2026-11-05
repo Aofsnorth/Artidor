@@ -49,33 +49,33 @@ const links: CategoryLinks = {
 export function Footer() {
 	const { t } = useI18n();
 	return (
-		<footer className="relative mx-auto mt-12 w-full max-w-6xl px-6 pb-12">
-			<div className="panel glass-strong relative overflow-hidden rounded-3xl border border-white/10 p-8 backdrop-blur md:p-10">
+		<footer className="relative mx-auto mt-8 w-full max-w-7xl px-4 pb-14 sm:px-6">
+			<div className="prism-surface relative overflow-hidden rounded-3xl p-8 md:p-12">
 				<div
 					aria-hidden
-					className="pointer-events-none absolute -top-20 right-0 size-72 rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_70%)] blur-3xl"
+					className="prism-hairline pointer-events-none absolute inset-x-0 top-0 h-[1px] opacity-60"
 				/>
-				<div className="grid grid-cols-1 gap-10 md:grid-cols-[1.2fr_2fr]">
+				<div className="grid grid-cols-1 gap-10 md:grid-cols-[1.3fr_2fr]">
 					<div>
 						<div className="mb-4 flex items-center gap-2.5">
 							<Image
 								src={DEFAULT_LOGO_URL}
 								alt="Artidor"
-								width={32}
-								height={32}
-								className="size-8 rounded-md"
+								width={28}
+								height={28}
+								className="size-7 rounded-md"
 							/>
-							<span className="text-lg font-semibold tracking-[-0.01em] text-white">
+							<span className="font-serif text-xl font-normal italic tracking-[-0.01em] text-white">
 								Artidor
 							</span>
 						</div>
-						<p className="max-w-xs text-[13.5px] font-light leading-relaxed text-white/55">
+						<p className="max-w-xs text-[13.5px] font-light leading-relaxed text-white/60">
 							{t("home.footer.tagline")}
 						</p>
-						<div className="mt-5 flex gap-2">
+						<div className="mt-6 flex gap-2.5">
 							<Link
 								href={SOCIAL_LINKS.github}
-								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.github")}
@@ -84,7 +84,7 @@ export function Footer() {
 							</Link>
 							<Link
 								href={SOCIAL_LINKS.x}
-								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
 								target="_blank"
 								rel="noopener noreferrer"
 								aria-label={t("home.footer.social.x")}
@@ -94,7 +94,7 @@ export function Footer() {
 							{SOCIAL_LINKS.discord && (
 								<Link
 									href={SOCIAL_LINKS.discord}
-									className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+									className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
 									target="_blank"
 									rel="noopener noreferrer"
 									aria-label={t("home.footer.social.discord")}
@@ -105,13 +105,13 @@ export function Footer() {
 						</div>
 					</div>
 
-					<div className="grid grid-cols-2 gap-6">
+					<div className="grid grid-cols-2 gap-8">
 						{(Object.keys(links) as Category[]).map((category) => (
-							<div key={category} className="flex flex-col gap-3">
+							<div key={category} className="flex flex-col gap-3.5">
 								<h3 className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">
 									{t(CATEGORY_KEYS[category])}
 								</h3>
-								<ul className="flex flex-col gap-2 text-[13.5px]">
+								<ul className="flex flex-col gap-2.5 text-[13.5px]">
 									{links[category].map((link) => (
 										<li key={link.href}>
 											<Link
@@ -140,7 +140,7 @@ export function Footer() {
 					<span>
 						{t("home.footer.copyright", { year: new Date().getFullYear() })}
 					</span>
-					<span className="flex items-center gap-2 text-white/40">
+					<span className="flex items-center gap-2 text-white/45">
 						<span className="size-1.5 rounded-full bg-emerald-400" />
 						{t("home.footer.status")}
 					</span>

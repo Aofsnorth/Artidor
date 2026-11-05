@@ -18,7 +18,8 @@ const TICK_FRAME_INTERVALS = [1, 2, 3, 5, 10, 15] as const;
  * second intervals for when we're zoomed out past frame-level detail.
  */
 const SECOND_MULTIPLIERS = [
-	1, 2, 3, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600,
+	1, 2, 3, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800,
+	14400, 21600, 43200, 86400,
 ] as const;
 
 /**
@@ -171,7 +172,7 @@ function findOptimalInterval({
 		}
 	}
 
-	return 60;
+	return SECOND_MULTIPLIERS[SECOND_MULTIPLIERS.length - 1];
 }
 
 /**

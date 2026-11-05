@@ -14,8 +14,10 @@
  */
 import { describe, expect, mock, test } from "bun:test";
 import type { WrappedCanvas } from "mediabunny";
+import type { GOPIndex } from "../gop-index";
 import {
 	PREFETCH_BUFFER,
+	SCRUB_SETTLE_WINDOW_MS,
 	isFrameValid,
 	VideoCache,
 } from "../service";
@@ -52,7 +54,7 @@ interface SinkData {
 	prefetchPromise: Promise<void> | null;
 	maxDim: number | undefined;
 	seekGeneration: number;
-	gopIndex: null;
+	gopIndex: GOPIndex | null;
 	frameStepSeconds: number;
 	lastRequestedTime: number;
 	sourceFrameDuration: number;
@@ -62,6 +64,7 @@ interface SinkData {
 	pendingExactTime: number | null;
 	lastRequestAt: number;
 	lastRequestForward: boolean;
+	isolatedRequest: boolean;
 	backgroundTaskStartedAt: number;
 	backgroundTaskId: number;
 }
@@ -169,8 +172,8 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 		canvasesAtTimestamps(times: AsyncIterable<number>): PrefetchIterator {
 			stats.canvasesAtTimestampsCalls++;
 			const queue: Array<WrappedCanvas | null> = [];
-			let wake: (() => void) | null = null;
-			let drained: (() => void) | null = null;
+			let wake: (() => void) | undefined;
+			let drained: (() => void) | undefined;
 			let finished = false;
 			let previousIndex = 0;
 			// Models mediabunny's decoder pump: it only pulls the next timestamp
@@ -195,13 +198,13 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 						if (frame) stats.gridRenders++;
 						queue.push(frame);
 						const resume = wake;
-						wake = null;
+						wake = undefined;
 						resume?.();
 					}
 					finished = true;
 				} finally {
 					const resume = wake;
-					wake = null;
+					wake = undefined;
 					resume?.();
 					signalPumpDone();
 				}
@@ -216,24 +219,24 @@ function createFakeSink({ fps, frames }: { fps: number; frames: number }) {
 					}
 					const value = queue.shift() ?? null;
 					const resume = drained;
-					drained = null;
+					drained = undefined;
 					resume?.();
 					return { value, done: false };
 				},
 				async return() {
 					finished = true;
 					const resume = drained;
-					drained = null;
+					drained = undefined;
 					resume?.();
 					const resumeWake = wake;
-					wake = null;
+					wake = undefined;
 					resumeWake?.();
 					return { value: undefined, done: true };
 				},
 				[Symbol.asyncIterator]() {
 					return this;
 				},
-			};
+			} as unknown as PrefetchIterator;
 		},
 	};
 	return { sink, stats, pumpDone };
@@ -264,6 +267,7 @@ function makeSinkData(sink: SinkData["sink"]): SinkData {
 		pendingExactTime: null,
 		lastRequestAt: 0,
 		lastRequestForward: true,
+		isolatedRequest: false,
 	};
 }
 
@@ -481,12 +485,12 @@ describe("video cache: project frame step learning", () => {
 			from: 2,
 		});
 
-		const inner = iterable[Symbol.asyncIterator]();
+		const inner = iterable[Symbol.asyncIterator]() as unknown as AsyncIterable<number>;
 		expect(typeof inner[Symbol.asyncIterator]).toBe("function");
 
 		// Reproduce the exact unwrap mediabunny performs.
 		async function* toAsyncIterator(source: AsyncIterable<number>) {
-			yield* source[Symbol.asyncIterator]();
+			yield* source[Symbol.asyncIterator]() as unknown as AsyncIterable<number>;
 		}
 
 		const times: number[] = [];
@@ -756,6 +760,133 @@ describe("video cache: project frame step learning", () => {
 		// A backward move (scrub) still invalidates.
 		await cache.getFrameAt({ mediaId: "live", file: fakeFile(), time: 0 });
 		expect(sinkData.seekGeneration).toBe(generation + 1);
+	});
+
+	test("teleporting from the end back to 0 updates lastRequestedTime so playback does not livelock", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 900 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "teleport", makeSinkData(sink));
+
+		// Jump to the end of the clip (25s).
+		await cache.getFrameAt({ mediaId: "teleport", file: fakeFile(), time: 25 });
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		expect(sinkData.lastRequestedTime).toBe(25);
+
+		// Teleport straight back to the beginning (0s).
+		await cache.getFrameAt({ mediaId: "teleport", file: fakeFile(), time: 0 });
+		expect(sinkData.lastRequestedTime).toBe(0);
+		const genAfterTeleport = sinkData.seekGeneration;
+
+		// Immediately stepping one frame forward from 0 must be treated as a
+		// normal forward step (not another backward seek against 25s), so the
+		// in-flight decode at 0s is not aborted.
+		await cache.getFrameAt({
+			mediaId: "teleport",
+			file: fakeFile(),
+			time: 1 / 30,
+		});
+		expect(sinkData.seekGeneration).toBe(genAfterTeleport);
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeLessThanOrEqual(1 / 30 + 1e-6);
+	});
+
+	test("hasPendingFetch reflects in-flight background seeks so stale frames are not cached", async () => {
+		const { sink } = createFakeSink({ fps: 30, frames: 300 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "pending-flag", makeSinkData(sink));
+
+		expect(cache.hasPendingFetch()).toBe(false);
+		await cache.getFrameAt({
+			mediaId: "pending-flag",
+			file: fakeFile(),
+			time: 5,
+		});
+		expect(cache.hasPendingFetch()).toBe(true);
+		if (sinkData.backgroundTask) await sinkData.backgroundTask;
+		expect(cache.hasPendingFetch()).toBe(false);
+	});
+
+	test("iterateToTime does not pull 1s of future frames from iterator when prefetchBuffer is already ahead", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 900 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "no-loop", makeSinkData(sink));
+		const frames = makeSourceFrames({ fps: 30, count: 900 });
+
+		// Simulate state right after a teleport seek landed at 10.0s and
+		// prefetch already filled frames 10.200s..10.500s while resolveFrame
+		// advanced currentFrame to 10.166s.
+		sinkData.iterator = sink.canvases(10.5);
+		sinkData.currentFrame = frameCovering(frames, 10.166);
+		sinkData.lastTime = 10.166;
+		sinkData.lastRequestedTime = 10.166;
+		sinkData.prefetchBuffer = [
+			frameCovering(frames, 10.2) as WrappedCanvas,
+			frameCovering(frames, 10.233) as WrappedCanvas,
+		];
+
+		// An older pending target (10.1s) must not pull 10.5s..11.1s from the
+		// iterator and then trigger a backward re-seek to 10.1s.
+		const walksBefore = stats.walkedSourceFrames;
+		const result = await (
+			cache as unknown as {
+				iterateToTime(args: {
+					sinkData: SinkData;
+					targetTime: number;
+					generation: number;
+				}): Promise<WrappedCanvas | null>;
+			}
+		).iterateToTime({
+			sinkData,
+			targetTime: 10.1,
+			generation: sinkData.seekGeneration,
+		});
+
+		expect(result?.timestamp).toBeCloseTo(10.133, 2);
+		expect(stats.walkedSourceFrames).toBe(walksBefore);
+		expect(sinkData.prefetchBuffer.length).toBe(2);
+	});
+
+	test("an isolated seek decodes at once instead of waiting out the scrub settle", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "click", makeSinkData(sink));
+		sinkData.lastRequestedTime = 240;
+		sinkData.lastTime = 240;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			240,
+		);
+		sinkData.lastRequestAt = performance.now() - 500;
+
+		const started = Date.now();
+		await cache.getFrameAt({ mediaId: "click", file: fakeFile(), time: 0 });
+		await sinkData.backgroundTask;
+		const elapsed = Date.now() - started;
+
+		expect(stats.getCanvasCalls).toBeGreaterThan(0);
+		expect(elapsed).toBeLessThan(SCRUB_SETTLE_WINDOW_MS);
+		expect(sinkData.currentFrame?.timestamp ?? -1).toBeLessThan(1);
+	});
+
+	test("a drag tick waits for the settle window before it decodes", async () => {
+		const { sink, stats } = createFakeSink({ fps: 30, frames: 1200 });
+		const cache = cacheWithStubbedInit();
+		const sinkData = install(cache, "drag", makeSinkData(sink));
+		sinkData.lastRequestedTime = 240;
+		sinkData.lastTime = 240;
+		sinkData.currentFrame = frameCovering(
+			makeSourceFrames({ fps: 30, count: 1200 }),
+			240,
+		);
+		sinkData.lastRequestAt = performance.now();
+
+		const started = Date.now();
+		await cache.getFrameAt({ mediaId: "drag", file: fakeFile(), time: 5 });
+		await sinkData.backgroundTask;
+		const elapsed = Date.now() - started;
+
+		expect(stats.getCanvasCalls).toBeGreaterThan(0);
+		expect(elapsed).toBeGreaterThanOrEqual(SCRUB_SETTLE_WINDOW_MS - 30);
 	});
 
 	test("a dry buffer serves the stale frame and catches up in the background", async () => {

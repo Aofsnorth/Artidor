@@ -1,8 +1,8 @@
 /**
- * Core features grid. Six cards, mixed sizing, glassmorphic. Built
- * around the four reasons people actually switch video editors
- * (privacy, cost, platform reach, no AI paywall) plus two capability
- * tiles that highlight what's possible in v1.
+ * Core Features Bento Grid.
+ *
+ * Sculptural smoked-glass panels with subtle optical refraction and
+ * editorial serif headings — zero artificial spec tags or HUD labels.
  */
 
 "use client";
@@ -13,107 +13,112 @@ import type { ComponentType, SVGProps } from "react";
 import { useI18n } from "@/lib/i18n";
 
 interface Feature {
+	span: string;
 	icon: ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
 	titleKey: string;
 	bodyKey: string;
-	tone: "warm" | "cool" | "violet" | "neutral";
+	accent: string;
 }
 
 const FEATURES: Feature[] = [
 	{
+		span: "lg:col-span-2",
 		icon: Lock,
 		titleKey: "home.features.card.localFirst.title",
 		bodyKey: "home.features.card.localFirst.body",
-		tone: "cool",
+		accent: "from-cyan-400/20 via-sky-300/5 to-transparent",
 	},
 	{
+		span: "lg:col-span-1",
 		icon: Monitor,
 		titleKey: "home.features.card.platforms.title",
 		bodyKey: "home.features.card.platforms.body",
-		tone: "neutral",
+		accent: "from-white/15 via-white/5 to-transparent",
 	},
 	{
+		span: "lg:col-span-1",
 		icon: Sparkles,
 		titleKey: "home.features.card.aiControl.title",
 		bodyKey: "home.features.card.aiControl.body",
-		tone: "violet",
+		accent: "from-fuchsia-400/20 via-violet-400/5 to-transparent",
 	},
 	{
+		span: "lg:col-span-2",
 		icon: Zap,
 		titleKey: "home.features.card.gpu.title",
 		bodyKey: "home.features.card.gpu.body",
-		tone: "warm",
+		accent: "from-amber-300/20 via-rose-400/5 to-transparent",
 	},
 	{
+		span: "lg:col-span-1",
 		icon: Layers,
 		titleKey: "home.features.card.compositing.title",
 		bodyKey: "home.features.card.compositing.body",
-		tone: "neutral",
+		accent: "from-emerald-300/20 via-teal-300/5 to-transparent",
 	},
 	{
+		span: "lg:col-span-2",
 		icon: Workflow,
 		titleKey: "home.features.card.autosave.title",
 		bodyKey: "home.features.card.autosave.body",
-		tone: "cool",
+		accent: "from-sky-300/20 via-indigo-400/5 to-transparent",
 	},
 ];
-
-const TONE_RING: Record<Feature["tone"], string> = {
-	warm: "from-amber-200/30 to-amber-100/0",
-	cool: "from-sky-300/25 to-cyan-200/0",
-	violet: "from-violet-300/30 to-fuchsia-200/0",
-	neutral: "from-white/15 to-white/0",
-};
 
 export function FeaturesSection() {
 	const { t } = useI18n();
 	return (
 		<section
 			id="features"
-			className="relative mx-auto w-full max-w-7xl px-6 py-24 md:py-32"
+			className="relative mx-auto w-full max-w-7xl px-4 py-24 sm:px-6 md:py-32"
 		>
-			<div className="mb-12 max-w-2xl">
-				<div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10.5px] uppercase tracking-[0.18em] text-white/65 backdrop-blur">
-					<Layers className="size-3" />
-					{t("home.features.eyebrow")}
+			<div className="mb-14 grid items-end gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+				<div>
+					<p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-white/45">
+						{t("home.features.eyebrow")}
+					</p>
+					<h2 className="halated-serif text-balance font-serif text-4xl font-normal italic leading-[1.04] tracking-[-0.02em] text-white sm:text-5xl md:text-[3.5rem]">
+						{t("home.features.headline.line1")}
+						<span className="text-white/60">
+							{t("home.features.headline.line2")}
+						</span>
+					</h2>
 				</div>
-				<h2 className="text-balance font-serif text-4xl font-medium italic leading-[1.05] tracking-[-0.01em] md:text-5xl">
-					{t("home.features.headline.line1")}
-					<span className="text-white/55">
-						{t("home.features.headline.line2")}
-					</span>
-				</h2>
-				<p className="text-pretty mt-4 text-[15px] font-light leading-relaxed text-white/65">
+				<p className="text-pretty text-[15px] font-light leading-relaxed text-white/65 lg:pb-1">
 					{t("home.features.body")}
 				</p>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 				{FEATURES.map((f, i) => (
 					<motion.div
 						key={f.titleKey}
-						initial={{ opacity: 0, y: 12 }}
+						initial={{ opacity: 0, y: 14 }}
 						whileInView={{ opacity: 1, y: 0 }}
 						viewport={{ once: true, margin: "-50px" }}
 						transition={{ duration: 0.5, delay: i * 0.05 }}
-						className="panel glass-strong group relative overflow-hidden rounded-2xl border border-white/10 p-6 backdrop-blur"
+						className={`prism-surface group relative flex flex-col justify-between overflow-hidden rounded-2xl p-7 ${f.span}`}
 					>
 						<div
 							aria-hidden
-							className={`absolute -right-12 -top-12 size-48 rounded-full bg-gradient-to-br ${TONE_RING[f.tone]} blur-3xl opacity-0 transition-opacity duration-700 group-hover:opacity-100`}
+							className="prism-hairline pointer-events-none absolute inset-x-0 top-0 h-[1px] opacity-25 transition-opacity duration-500 group-hover:opacity-90"
 						/>
-						<div className="relative flex flex-col gap-4">
-							<div className="flex size-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-white/85">
-								<f.icon className="size-4" />
-							</div>
-							<div>
-								<h3 className="text-[15px] font-semibold tracking-tight text-white">
-									{t(f.titleKey)}
-								</h3>
-								<p className="mt-2 text-[13.5px] font-light leading-relaxed text-white/65">
-									{t(f.bodyKey)}
-								</p>
-							</div>
+						<div
+							aria-hidden
+							className={`pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-gradient-to-br ${f.accent} blur-3xl opacity-40 transition-opacity duration-700 group-hover:opacity-90`}
+						/>
+
+						<div className="relative flex size-9 items-center justify-center rounded-lg border border-white/12 bg-white/[0.04] text-white/85">
+							<f.icon className="size-4" />
+						</div>
+
+						<div className="relative mt-6">
+							<h3 className="font-serif text-2xl font-normal italic tracking-[-0.01em] text-white md:text-[1.6rem]">
+								{t(f.titleKey)}
+							</h3>
+							<p className="mt-2.5 max-w-2xl text-[14px] font-light leading-relaxed text-white/65">
+								{t(f.bodyKey)}
+							</p>
 						</div>
 					</motion.div>
 				))}

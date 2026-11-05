@@ -1,25 +1,9 @@
 /**
- * Editorial page-level chrome shared by landing, marketing and
- * long-form content pages. Sets the dark luxury atmosphere on top
- * of the global theme.
+ * Prismatic Optical Darkroom Shell.
  *
- * Backdrop: a dark cosmic nebula from Unsplash
- * (see public/wallpaper/README.md for attribution and license).
- * We use a plain CSS `background-image` here — not Next.js Image —
- * so the source image renders at its native quality without
- * Next's re-optimisation pipeline re-compressing it. `min-h-screen`
- * keeps the image covering at least the viewport even if the page
- * content is short.
- *
- * Note: this wrapper does NOT have `overflow-hidden` because
- * that would break `position: sticky` on the header.
- *
- * This is a Server Component: it used to be `"use client"` with a
- * `mounted` state that held the whole page at `opacity-0` until
- * hydration, which meant every visitor stared at an empty page for the
- * length of the 700ms fade and LCP could not be recorded until hydration
- * finished. The chrome here is entirely static, so it renders in the
- * SSR response and is visible on first paint.
+ * Establishes the pitch-black obsidian canvas (`#020204`), blown-glass
+ * chromatic refraction plates, and subtle analog film grain shared across
+ * the landing experience — free of decorative grid clutter or HUD chrome.
  */
 
 import type { ReactNode } from "react";
@@ -33,62 +17,74 @@ export function PageShell({
 }) {
 	return (
 		<div
-			className="relative isolate min-h-screen bg-[#0a0a0c] text-white"
+			className="relative isolate min-h-screen bg-[#020204] text-white selection:bg-white/20 selection:text-white"
 			data-page-shell={variant}
 		>
-			{/* Fantasy artwork backdrop. Plain CSS background so
-			   the original 2084×4632 image renders at full quality
-			   (no Next.js re-compression). `background-position:
-			   center 30%` keeps the figure in the lower-centre of
-			   the visible area on wide screens; the dark cosmic
-			   fills the top, which doubles as a "sky" for the
-			   sticky header. */}
+			{/* Upper Prismatic Crystalline Refraction Field */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-20 min-h-screen"
-				style={{
-					backgroundImage: "url(/wallpaper/hero-fantasy-2x.webp)",
-					backgroundRepeat: "no-repeat",
-					backgroundSize: "cover",
-					backgroundPosition: "center",
-				}}
-			/>
+				className="pointer-events-none absolute inset-x-0 top-0 -z-30 h-[120svh] overflow-hidden"
+			>
+				<div
+					className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 mix-blend-screen"
+					style={{
+						backgroundImage: "url(/wallpaper/prism-butterfly.jpg)",
+						maskImage:
+							"radial-gradient(ellipse 72% 65% at 50% 38%, black 15%, rgba(0,0,0,0.5) 55%, transparent 85%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 72% 65% at 50% 38%, black 15%, rgba(0,0,0,0.5) 55%, transparent 85%)",
+					}}
+				/>
+				<div
+					className="absolute -top-24 left-1/2 h-[920px] w-[1400px] -translate-x-1/2 bg-cover bg-center bg-no-repeat opacity-25 mix-blend-screen blur-[2px]"
+					style={{
+						backgroundImage: "url(/wallpaper/liquid-dispersion.jpg)",
+						maskImage:
+							"radial-gradient(ellipse 62% 55% at 50% 36%, black 10%, transparent 76%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 62% 55% at 50% 36%, black 10%, transparent 76%)",
+					}}
+				/>
+			</div>
 
-			{/* Atmospheric overlays — subtle, on top of the artwork
-			   but under the page content. Two layers:
-			   1. A top-to-bottom vignette so the sticky header
-			      stays legible even when it overlays the figure.
-			   2. A persistent black scrim so translucent cards and
-			      secondary text remain readable over bright artwork.
-			   All absolute so they scroll with the artwork. */}
+			{/* Mid & Lower Iridescent Blown-Glass Caustics */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10 min-h-screen"
+				className="pointer-events-none absolute inset-x-0 top-[105svh] bottom-0 -z-30 overflow-hidden"
+			>
+				<div
+					className="sticky top-0 h-screen w-full bg-cover bg-center bg-no-repeat opacity-[0.18] mix-blend-screen"
+					style={{
+						backgroundImage: "url(/wallpaper/optical-caustics.jpg)",
+						maskImage:
+							"radial-gradient(ellipse 78% 68% at 50% 50%, black 10%, transparent 80%)",
+						WebkitMaskImage:
+							"radial-gradient(ellipse 78% 68% at 50% 50%, black 10%, transparent 80%)",
+					}}
+				/>
+			</div>
+
+			{/* Deep Obsidian Vignette */}
+			<div
+				aria-hidden
+				className="pointer-events-none absolute inset-0 -z-20 overflow-hidden"
 				style={{
 					background:
-						"linear-gradient(180deg, rgba(4,4,6,0.86) 0%, rgba(4,4,6,0.76) 18%, rgba(4,4,6,0.72) 50%, rgba(4,4,6,0.80) 80%, rgba(4,4,6,0.90) 100%)",
+						"linear-gradient(180deg, rgba(2,2,4,0.3) 0%, rgba(2,2,4,0.72) 48%, rgba(2,2,4,0.92) 100%)",
 				}}
 			/>
 
-			{/* Subtle film grain — pure CSS, no asset download. Sits
-			   above the artwork + vignette, below the page content,
-			   so it adds texture without darkening text. */}
+			{/* Subtle Analog Film Grain */}
 			<div
 				aria-hidden
-				className="pointer-events-none absolute inset-0 -z-10 min-h-screen opacity-[0.04] mix-blend-overlay"
+				className="pointer-events-none fixed inset-0 -z-10 opacity-[0.038] mix-blend-overlay"
 				style={{
 					backgroundImage:
-						"radial-gradient(rgba(255,255,255,0.5) 0.5px, transparent 0.6px)",
+						"radial-gradient(rgba(255,255,255,0.7) 0.5px, transparent 0.6px)",
 					backgroundSize: "3px 3px",
 				}}
 			/>
 
-			{/* Content is not gated on hydration: the landing tree is
-			    server-rendered, so it paints on the first frame instead of
-			    after a blank 700ms fade. Entrance motion for the sections
-			    that want it is handled per-section (`motion`'s
-			    `whileInView`), which is opt-in rather than a page-wide
-			    `opacity-0` that has to be undone after hydration. */}
 			<div className="relative">{children}</div>
 		</div>
 	);

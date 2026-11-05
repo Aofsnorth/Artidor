@@ -23,6 +23,17 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-11-05-prismatic-landing-and-preview-engine",
+		date: "2026-11-05",
+		tag: "performance",
+		title: "Prismatic optical landing experience, GOP-aware preview engine, and multi-hour timeline zoom",
+		items: [
+			"Rebuilt the landing page around a Prismatic Optical Darkroom and Exhibition Poster design language with spectral dispersion glass plates, halated editorial serif typography, and telemetry overlays.",
+			"Upgraded the preview pipeline with GOP-aware decode scheduling (Vidformer/Scanner) and dual-phase interactive scrubbing resolution (LoHi), eliminating 1-second repeat loops on rapid playhead teleports while preserving L1 ImageBitmap scrub caches across background frame refinements.",
+			"Expanded timeline zoom-out range by 500x (down to 0.0002x with multi-hour ruler intervals) so 1-hour and multi-hour videos can be zoomed down into a compact strip on the timeline.",
+		],
+	},
+	{
 		id: "2026-10-01-audio-tab-crash-fix",
 		date: "2026-10-01",
 		tag: "fix",

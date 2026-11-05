@@ -67,7 +67,10 @@ import {
 	getTimelineZoomMin,
 	getTimelinePaddingPx,
 } from "@/lib/timeline";
-import { BASE_TIMELINE_PIXELS_PER_SECOND } from "@/lib/timeline/scale";
+import {
+	BASE_TIMELINE_PIXELS_PER_SECOND,
+	TIMELINE_ZOOM_MIN,
+} from "@/lib/timeline/scale";
 import { timelineTimeToPixels } from "@/lib/timeline/pixel-utils";
 import {
 	computeTrackVerticalSpans,
@@ -406,10 +409,14 @@ export function Timeline() {
 	);
 
 	const timelineDuration = timeline.getTotalDuration() || 0;
-	const minZoomLevel = getTimelineZoomMin({
+	const fitZoomLevel = getTimelineZoomMin({
 		duration: timelineDuration,
 		containerWidth: tracksViewportWidth || undefined,
 	});
+	// Allow zooming out up to 4x smaller than the default fit-to-view level
+	// (down to TIMELINE_ZOOM_MIN) so multi-hour videos can be shrunk into a
+	// compact strip on the timeline.
+	const minZoomLevel = Math.max(TIMELINE_ZOOM_MIN, fitZoomLevel * 0.25);
 
 	const savedViewState = editor.project.getTimelineViewState();
 
@@ -417,7 +424,7 @@ export function Timeline() {
 		useTimelineZoom({
 			containerRef: timelineRef,
 			minZoom: minZoomLevel,
-			initialZoom: savedViewState?.zoomLevel,
+			initialZoom: savedViewState?.zoomLevel ?? fitZoomLevel,
 			initialScrollLeft: savedViewState?.scrollLeft,
 			initialPlayheadTime: savedViewState?.playheadTime,
 			tracksScrollRef,
