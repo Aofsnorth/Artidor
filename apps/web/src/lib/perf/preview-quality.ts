@@ -73,7 +73,7 @@ export function detectDeviceTier({
 
 /**
  * Resolve the render scale for the current quality setting and playback
- * state. Clamped to [0.2, 1].
+ * state. Clamped to [0.15, 1].
  */
 export function resolvePreviewScale({
 	quality,

@@ -145,7 +145,7 @@ export function lastFrameTime(arg0: LastFrameTimeOptions): MediaTime | undefined
 
 export function mediaTimeAdd(arg0: MediaTimeAddOptions): MediaTime;
 
-export function mediaTimeClamp(arg0: MediaTimeClampOptions): MediaTime;
+export function mediaTimeClamp(arg0: MediaTimeClampOptions): MediaTime | undefined;
 
 export function mediaTimeFromFrame(arg0: MediaTimeFromFrameOptions): MediaTime | undefined;
 
@@ -179,10 +179,10 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly applyMaskFeather: (a: any) => [number, number, number];
     readonly initializeGpu: () => any;
     readonly destroyGpu: () => void;
     readonly applyEffectPasses: (a: any) => [number, number, number];
+    readonly applyMaskFeather: (a: any) => [number, number, number];
     readonly destroyCompositor: () => [number, number];
     readonly getCompositorCanvas: () => [number, number, number];
     readonly initCompositor: (a: number, b: number) => [number, number];
@@ -209,9 +209,9 @@ export interface InitOutput {
     readonly formatTimecode: (a: any) => [number, number];
     readonly guessTimecodeFormat: (a: any) => any;
     readonly parseTimecode: (a: any) => any;
-    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue__core_ed718c3d60ebd546___result__Result_____wasm_bindgen_3c33037414290827___JsError___true_: (a: number, b: number, c: any) => [number, number];
-    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___js_sys_4b223c32832ce6bf___Function_fn_wasm_bindgen_3c33037414290827___JsValue_____wasm_bindgen_3c33037414290827___sys__Undefined___js_sys_4b223c32832ce6bf___Function_fn_wasm_bindgen_3c33037414290827___JsValue_____wasm_bindgen_3c33037414290827___sys__Undefined_______true_: (a: number, b: number, c: any, d: any) => void;
-    readonly wasm_bindgen_3c33037414290827___convert__closures_____invoke___wasm_bindgen_3c33037414290827___JsValue______true_: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen_d77b3d83dc672b8e___convert__closures_____invoke___wasm_bindgen_d77b3d83dc672b8e___JsValue__core_608f92abc48d28da___result__Result_____wasm_bindgen_d77b3d83dc672b8e___JsError___true_: (a: number, b: number, c: any) => [number, number];
+    readonly wasm_bindgen_d77b3d83dc672b8e___convert__closures_____invoke___js_sys_78ab2359bef1747c___Function_fn_wasm_bindgen_d77b3d83dc672b8e___JsValue_____wasm_bindgen_d77b3d83dc672b8e___sys__Undefined___js_sys_78ab2359bef1747c___Function_fn_wasm_bindgen_d77b3d83dc672b8e___JsValue_____wasm_bindgen_d77b3d83dc672b8e___sys__Undefined_______true_: (a: number, b: number, c: any, d: any) => void;
+    readonly wasm_bindgen_d77b3d83dc672b8e___convert__closures_____invoke___wasm_bindgen_d77b3d83dc672b8e___JsValue______true_: (a: number, b: number, c: any) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_exn_store: (a: number) => void;

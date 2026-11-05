@@ -1,0 +1,1427 @@
+{
+  "label": "base2",
+  "video": "C:/Users/Axeliory/AppData/Local/Temp/artidor-qa/sample-1080p60.mp4",
+  "channel": "chrome",
+  "quality": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    },
+    {
+      "type": "warning",
+      "text": "A valid external Instance reference no longer exists."
+    },
+    {
+      "type": "warning",
+      "text": "[export] 4 parallel segment(s) failed, retrying only those"
+    }
+  ],
+  "setup": {
+    "timeline": {
+      "main": {
+        "id": "66f93491-f4b2-47e6-b3e9-c6b6dbbe6160",
+        "name": "Main Track",
+        "elementCount": 1
+      },
+      "overlay": [],
+      "overlayAfter": [],
+      "audio": []
+    },
+    "canvases": [
+      {
+        "w": 1920,
+        "h": 1080,
+        "cssW": 614,
+        "cssH": 345
+      },
+      {
+        "w": 1098,
+        "h": 38,
+        "cssW": 1098,
+        "cssH": 38
+      },
+      {
+        "w": 1098,
+        "h": 26,
+        "cssW": 1098,
+        "cssH": 26
+      }
+    ],
+    "project": {
+      "name": "New project",
+      "fps": "60/1",
+      "canvasWidth": 1920,
+      "canvasHeight": 1080,
+      "duration": 3600000
+    }
+  },
+  "playback": {
+    "windowMs": 6026,
+    "raf": {
+      "frames": 427,
+      "meanMs": 14.1,
+      "fps": 70.9,
+      "p50": 13.9,
+      "p95": 27.7,
+      "p99": 34.8,
+      "max": 55.7,
+      "over20ms": 122,
+      "over33ms": 5,
+      "over50ms": 1
+    },
+    "previewPresentsPerSec": 54.3,
+    "presentedDistinctPerSec": 16.3,
+    "sourceFramesPerSec": 17.6,
+    "reactCommitsPerSec": 58.9,
+    "reactRendersPerSec": [
+      {
+        "name": "SelectItem",
+        "perSec": 1839.2
+      },
+      {
+        "name": "Primitive.div",
+        "perSec": 1355
+      },
+      {
+        "name": "SelectItemProvider",
+        "perSec": 919.6
+      },
+      {
+        "name": "SelectCollectionItemSlot",
+        "perSec": 919.6
+      },
+      {
+        "name": "SelectCollectionItemSlot.Slot",
+        "perSec": 919.6
+      },
+      {
+        "name": "SectionField",
+        "perSec": 541
+      },
+      {
+        "name": "SelectSeparator",
+        "perSec": 541
+      },
+      {
+        "name": "NumberField",
+        "perSec": 432.8
+      },
+      {
+        "name": "Button",
+        "perSec": 326.6
+      },
+      {
+        "name": "SelectProvider",
+        "perSec": 162.3
+      },
+      {
+        "name": "KeyframeToggle",
+        "perSec": 162.3
+      },
+      {
+        "name": "Primitive.div.Slot",
+        "perSec": 110.2
+      },
+      {
+        "name": "HugeiconsIcon",
+        "perSec": 110.2
+      },
+      {
+        "name": "Section",
+        "perSec": 108.2
+      },
+      {
+        "name": "SectionContent",
+        "perSec": 108.2
+      },
+      {
+        "name": "Select",
+        "perSec": 108.2
+      },
+      {
+        "name": "SelectContent",
+        "perSec": 108.2
+      },
+      {
+        "name": "SelectCollectionSlot",
+        "perSec": 108.2
+      },
+      {
+        "name": "SelectCollectionSlot.Slot",
+        "perSec": 108.2
+      },
+      {
+        "name": "SelectTrigger",
+        "perSec": 108.2
+      },
+      {
+        "name": "Presence",
+        "perSec": 69
+      },
+      {
+        "name": "Popper",
+        "perSec": 59.7
+      },
+      {
+        "name": "PopperProvider",
+        "perSec": 59.7
+      },
+      {
+        "name": "PopperAnchor",
+        "perSec": 58.4
+      },
+      {
+        "name": "Primitive.span",
+        "perSec": 56.4
+      },
+      {
+        "name": "Primitive.button",
+        "perSec": 56.1
+      },
+      {
+        "name": "TransformTab",
+        "perSec": 54.1
+      },
+      {
+        "name": "BlendingTab",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectCollectionProvider",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectCollectionProviderProvider",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectPortal",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectPortalProvider",
+        "perSec": 54.1
+      },
+      {
+        "name": "Portal",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectContentFragment",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectContentProvider",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectViewport",
+        "perSec": 54.1
+      },
+      {
+        "name": "SelectValue",
+        "perSec": 54.1
+      },
+      {
+        "name": "OcCheckerboardIcon",
+        "perSec": 54.1
+      },
+      {
+        "name": "SectionHeader",
+        "perSec": 54.1
+      },
+      {
+        "name": "CopyPasteButtons",
+        "perSec": 54.1
+      },
+      {
+        "name": "SectionTitle",
+        "perSec": 54.1
+      },
+      {
+        "name": "SectionFields",
+        "perSec": 54.1
+      },
+      {
+        "name": "TimecodeDisplay",
+        "perSec": 54.1
+      },
+      {
+        "name": "EditableTimecode",
+        "perSec": 54.1
+      },
+      {
+        "name": "TimelineTick",
+        "perSec": 35.2
+      }
+    ],
+    "renderPhases": {
+      "resolveMs": 0.05999999990065893,
+      "descriptorMs": 0.026666666318972906,
+      "compositeMs": 0.4100000001490116,
+      "blitMs": 0.05999999965230624,
+      "totalMs": 0.5566666660209497,
+      "samples": 30
+    },
+    "previewBackingStore": {
+      "w": 1920,
+      "h": 1080
+    },
+    "heapMb": 122,
+    "cacheStats": {
+      "totalSinks": 1,
+      "prefetchBuffered": 0,
+      "sinks": [
+        {
+          "currentFrameTs": 8.116666666666667,
+          "bufferLength": 0,
+          "bufferFirstTs": null,
+          "bufferLastTs": null,
+          "hasIterator": true,
+          "frameStepSeconds": 0.01666666666666572,
+          "lastRequestedTime": 8.633333333333333,
+          "lastTime": 8.116666666666667,
+          "backgroundActive": true,
+          "seekGeneration": 10
+        }
+      ]
+    },
+    "loaf": {
+      "count": 1,
+      "perSecond": 0.17,
+      "totalMs": 1155,
+      "blockingMs": 0,
+      "renderMs": 4,
+      "styleLayoutMs": 1,
+      "topScripts": []
+    },
+    "cpu": {
+      "totalMs": 7228.9,
+      "byBundle": [
+        {
+          "bundle": "(program)",
+          "ms": 3535.7
+        },
+        {
+          "bundle": "react-dom",
+          "ms": 1027.1
+        },
+        {
+          "bundle": "node_modules(other)",
+          "ms": 693
+        },
+        {
+          "bundle": "other",
+          "ms": 568.1
+        },
+        {
+          "bundle": "app",
+          "ms": 249.4
+        },
+        {
+          "bundle": "run",
+          "ms": 205.2
+        },
+        {
+          "bundle": "(idle)",
+          "ms": 134.8
+        },
+        {
+          "bundle": "mediabunny",
+          "ms": 117.4
+        },
+        {
+          "bundle": "drawImage",
+          "ms": 95.5
+        },
+        {
+          "bundle": "measure",
+          "ms": 89.6
+        },
+        {
+          "bundle": "(garbage collector)",
+          "ms": 73.2
+        },
+        {
+          "bundle": "artidor-wasm",
+          "ms": 61.9
+        },
+        {
+          "bundle": "decode",
+          "ms": 56.2
+        },
+        {
+          "bundle": "now",
+          "ms": 46.7
+        },
+        {
+          "bundle": "createTask",
+          "ms": 24
+        },
+        {
+          "bundle": "EncodedVideoChunk",
+          "ms": 23.7
+        },
+        {
+          "bundle": "walkCommit",
+          "ms": 22.3
+        },
+        {
+          "bundle": "close",
+          "ms": 17.3
+        },
+        {
+          "bundle": "getCurrentTexture",
+          "ms": 14.7
+        },
+        {
+          "bundle": "wasm-to-js",
+          "ms": 13.9
+        },
+        {
+          "bundle": "requestAnimationFrame",
+          "ms": 12.3
+        },
+        {
+          "bundle": "clearMeasures",
+          "ms": 11.1
+        },
+        {
+          "bundle": "read",
+          "ms": 10.3
+        },
+        {
+          "bundle": "beginRenderPass",
+          "ms": 9.2
+        },
+        {
+          "bundle": "copyExternalImageToTexture",
+          "ms": 7.9
+        },
+        {
+          "bundle": "postMessage",
+          "ms": 7.7
+        },
+        {
+          "bundle": "createView",
+          "ms": 6.6
+        },
+        {
+          "bundle": "getByteFrequencyData",
+          "ms": 6.5
+        },
+        {
+          "bundle": "createBindGroup",
+          "ms": 6.1
+        },
+        {
+          "bundle": "createBufferSource",
+          "ms": 5.7
+        },
+        {
+          "bundle": "dispatchEvent",
+          "ms": 5.5
+        },
+        {
+          "bundle": "connect",
+          "ms": 4.7
+        },
+        {
+          "bundle": "submit",
+          "ms": 4.1
+        },
+        {
+          "bundle": "closest",
+          "ms": 4
+        },
+        {
+          "bundle": "fiberName",
+          "ms": 3.5
+        },
+        {
+          "bundle": "getBoundingClientRect",
+          "ms": 3.5
+        },
+        {
+          "bundle": "queueMicrotask",
+          "ms": 3.4
+        },
+        {
+          "bundle": "send",
+          "ms": 3.1
+        },
+        {
+          "bundle": "translate",
+          "ms": 3.1
+        },
+        {
+          "bundle": "resetTransform",
+          "ms": 3.1
+        },
+        {
+          "bundle": "clearRect",
+          "ms": 2.8
+        },
+        {
+          "bundle": "addEventListener",
+          "ms": 2.7
+        },
+        {
+          "bundle": "CustomEvent",
+          "ms": 2.7
+        },
+        {
+          "bundle": "writeBuffer",
+          "ms": 2.3
+        },
+        {
+          "bundle": "getContext",
+          "ms": 2.3
+        },
+        {
+          "bundle": "tick",
+          "ms": 2.1
+        },
+        {
+          "bundle": "EncodedAudioChunk",
+          "ms": 1.9
+        },
+        {
+          "bundle": "setBindGroup",
+          "ms": 1.7
+        },
+        {
+          "bundle": "isConfigSupported",
+          "ms": 1.6
+        },
+        {
+          "bundle": "onCommitFiberRoot",
+          "ms": 1.4
+        },
+        {
+          "bundle": "rotate",
+          "ms": 1.3
+        },
+        {
+          "bundle": "finish",
+          "ms": 1.2
+        },
+        {
+          "bundle": "createGain",
+          "ms": 1.2
+        },
+        {
+          "bundle": "disconnect",
+          "ms": 1.2
+        },
+        {
+          "bundle": "removeAttribute",
+          "ms": 1.1
+        },
+        {
+          "bundle": "slice",
+          "ms": 1.1
+        },
+        {
+          "bundle": "VideoDecoder",
+          "ms": 1.1
+        },
+        {
+          "bundle": "setVertexBuffer",
+          "ms": 1.1
+        },
+        {
+          "bundle": "createCommandEncoder",
+          "ms": 1
+        },
+        {
+          "bundle": "copyTo",
+          "ms": 1
+        },
+        {
+          "bundle": "CanvasRenderingContext2D.drawImage",
+          "ms": 0.6
+        },
+        {
+          "bundle": "get value",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setInterval",
+          "ms": 0.6
+        },
+        {
+          "bundle": "innerSerialize",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setPipeline",
+          "ms": 0.6
+        },
+        {
+          "bundle": "get deviceMemory",
+          "ms": 0.6
+        },
+        {
+          "bundle": "end",
+          "ms": 0.6
+        },
+        {
+          "bundle": "(native)",
+          "ms": 0.5
+        },
+        {
+          "bundle": "scale",
+          "ms": 0.5
+        }
+      ],
+      "topSelf": [
+        {
+          "fn": "(program) @ :0",
+          "ms": 3535.7
+        },
+        {
+          "fn": "exports.jsxDEV @ node_modules__bun_0qlgo-2ltf38v._.js:7695",
+          "ms": 428.3
+        },
+        {
+          "fn": "exports.jsx @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:961",
+          "ms": 275.6
+        },
+        {
+          "fn": "run @ :0",
+          "ms": 205.2
+        },
+        {
+          "fn": "(idle) @ :0",
+          "ms": 134.8
+        },
+        {
+          "fn": "jsxDEVImpl @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:916",
+          "ms": 111.5
+        },
+        {
+          "fn": "ReactElement @ node_modules__bun_0qlgo-2ltf38v._.js:7606",
+          "ms": 96.4
+        },
+        {
+          "fn": "drawImage @ :0",
+          "ms": 95.5
+        },
+        {
+          "fn": "measure @ :0",
+          "ms": 89.6
+        },
+        {
+          "fn": "logComponentRender @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2624",
+          "ms": 78.3
+        },
+        {
+          "fn": "(garbage collector) @ :0",
+          "ms": 73.2
+        },
+        {
+          "fn": "runWithFiberInDEV @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:773",
+          "ms": 56.9
+        },
+        {
+          "fn": "decode @ :0",
+          "ms": 56.2
+        },
+        {
+          "fn": "addObjectDiffToProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2522",
+          "ms": 50.9
+        },
+        {
+          "fn": "now @ :0",
+          "ms": 46.7
+        },
+        {
+          "fn": "react_stack_bottom_frame @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:15009",
+          "ms": 45.4
+        },
+        {
+          "fn": "validateProperty @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1886",
+          "ms": 43.6
+        },
+        {
+          "fn": "propagateParentContextChanges @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:3341",
+          "ms": 42.6
+        },
+        {
+          "fn": "ReactStrictModeWarnings.recordLegacyContextWarning @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:14979",
+          "ms": 38.3
+        },
+        {
+          "fn": "exports.createElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1641",
+          "ms": 32.5
+        },
+        {
+          "fn": "mergeProps @ node_modules__bun_0qlgo-2ltf38v._.js:4075",
+          "ms": 29.8
+        },
+        {
+          "fn": "ReactElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1129",
+          "ms": 28.7
+        },
+        {
+          "fn": "createWorkInProgress @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2891",
+          "ms": 27.7
+        },
+        {
+          "fn": "reconcileChildFibersImpl @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4000",
+          "ms": 25.9
+        },
+        {
+          "fn": "updateProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11032",
+          "ms": 24.7
+        },
+        {
+          "fn": "createTask @ :0",
+          "ms": 24
+        },
+        {
+          "fn": "_c9 @ apps_web_src_components_ui_0ju8dvgj5c_fw._.js:6524",
+          "ms": 23.7
+        },
+        {
+          "fn": "EncodedVideoChunk @ :0",
+          "ms": 23.7
+        },
+        {
+          "fn": "beginWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6483",
+          "ms": 22.8
+        },
+        {
+          "fn": "(anon) @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4087",
+          "ms": 22.5
+        },
+        {
+          "fn": "walkCommit @ :36",
+          "ms": 22.3
+        },
+        {
+          "fn": "bailoutOnAlreadyFinishedWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6400",
+          "ms": 22.2
+        },
+        {
+          "fn": "(anon) @ node_modules__bun_0qlgo-2ltf38v._.js:3964",
+          "ms": 21.4
+        },
+        {
+          "fn": "commitUpdate @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11790",
+          "ms": 21.3
+        },
+        {
+          "fn": "commitPassiveMountOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8562",
+          "ms": 21.3
+        },
+        {
+          "fn": "(anon) @ 136c_%40radix-ui_react-select_dist_index_mjs_1ci77u2hahvzd._.js:1005",
+          "ms": 21.1
+        },
+        {
+          "fn": "VideoSample @ 1ny2_mediabunny_dist_modules_src_15qsc4_vpr480._.js:14344",
+          "ms": 19.9
+        },
+        {
+          "fn": "updateForwardRef @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:5735",
+          "ms": 19.1
+        },
+        {
+          "fn": "commitMutationEffectsOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8071",
+          "ms": 18.5
+        },
+        {
+          "fn": "(anon) @ turbopack-apps_web_1xfotzx6p_1ag._.js:422",
+          "ms": 18.5
+        }
+      ]
+    }
+  },
+  "scrub": {
+    "windowMs": 4195,
+    "raf": {
+      "frames": 422,
+      "meanMs": 9.92,
+      "fps": 100.8,
+      "p50": 7,
+      "p95": 20.9,
+      "p99": 27.8,
+      "max": 55.7,
+      "over20ms": 44,
+      "over33ms": 3,
+      "over50ms": 1
+    },
+    "previewPresents": 119,
+    "loaf": {
+      "count": 2,
+      "perSecond": 0.48,
+      "totalMs": 371,
+      "blockingMs": 0,
+      "renderMs": 5,
+      "styleLayoutMs": 4,
+      "topScripts": [
+        {
+          "key": "(anon) @ apps_web_src_services_0_6yj-3viejec._.js [event-listener:IDBTransaction.oncomplete]",
+          "dur": 31,
+          "count": 1,
+          "forcedLayout": 0
+        },
+        {
+          "key": "(anon) @ ? [user-callback:TimerHandler:setTimeout]",
+          "dur": 21,
+          "count": 1,
+          "forcedLayout": 0
+        }
+      ]
+    },
+    "cpu": {
+      "totalMs": 4509.3,
+      "byBundle": [
+        {
+          "bundle": "(program)",
+          "ms": 1658.4
+        },
+        {
+          "bundle": "(idle)",
+          "ms": 705.8
+        },
+        {
+          "bundle": "react-dom",
+          "ms": 651.5
+        },
+        {
+          "bundle": "node_modules(other)",
+          "ms": 426.4
+        },
+        {
+          "bundle": "other",
+          "ms": 281.6
+        },
+        {
+          "bundle": "app",
+          "ms": 190.5
+        },
+        {
+          "bundle": "run",
+          "ms": 120.7
+        },
+        {
+          "bundle": "mediabunny",
+          "ms": 58.1
+        },
+        {
+          "bundle": "(garbage collector)",
+          "ms": 50.9
+        },
+        {
+          "bundle": "decode",
+          "ms": 45.3
+        },
+        {
+          "bundle": "measure",
+          "ms": 42
+        },
+        {
+          "bundle": "now",
+          "ms": 37
+        },
+        {
+          "bundle": "artidor-wasm",
+          "ms": 28.8
+        },
+        {
+          "bundle": "drawImage",
+          "ms": 26.4
+        },
+        {
+          "bundle": "close",
+          "ms": 17.5
+        },
+        {
+          "bundle": "createTask",
+          "ms": 16.8
+        },
+        {
+          "bundle": "walkCommit",
+          "ms": 16.2
+        },
+        {
+          "bundle": "EncodedVideoChunk",
+          "ms": 14.7
+        },
+        {
+          "bundle": "read",
+          "ms": 11.5
+        },
+        {
+          "bundle": "createImageBitmap",
+          "ms": 10.1
+        },
+        {
+          "bundle": "requestAnimationFrame",
+          "ms": 10.1
+        },
+        {
+          "bundle": "getBoundingClientRect",
+          "ms": 9.3
+        },
+        {
+          "bundle": "fiberName",
+          "ms": 6.9
+        },
+        {
+          "bundle": "removeChild",
+          "ms": 6.9
+        },
+        {
+          "bundle": "resetTransform",
+          "ms": 6.6
+        },
+        {
+          "bundle": "createBindGroup",
+          "ms": 6.2
+        },
+        {
+          "bundle": "wasm-to-js",
+          "ms": 6.2
+        },
+        {
+          "bundle": "clearMeasures",
+          "ms": 4.5
+        },
+        {
+          "bundle": "tick",
+          "ms": 4.5
+        },
+        {
+          "bundle": "getCurrentTexture",
+          "ms": 4
+        },
+        {
+          "bundle": "postMessage",
+          "ms": 3.5
+        },
+        {
+          "bundle": "submit",
+          "ms": 3.3
+        },
+        {
+          "bundle": "slice",
+          "ms": 2.9
+        },
+        {
+          "bundle": "createView",
+          "ms": 2.8
+        },
+        {
+          "bundle": "(native)",
+          "ms": 2.7
+        },
+        {
+          "bundle": "onCommitFiberRoot",
+          "ms": 1.9
+        },
+        {
+          "bundle": "createElement",
+          "ms": 1.9
+        },
+        {
+          "bundle": "fillRect",
+          "ms": 1.8
+        },
+        {
+          "bundle": "dispatchEvent",
+          "ms": 1.8
+        },
+        {
+          "bundle": "insertBefore",
+          "ms": 1.8
+        },
+        {
+          "bundle": "writeBuffer",
+          "ms": 1.7
+        },
+        {
+          "bundle": "translate",
+          "ms": 1.6
+        },
+        {
+          "bundle": "setTimeout",
+          "ms": 1.5
+        },
+        {
+          "bundle": "getContext",
+          "ms": 1.2
+        },
+        {
+          "bundle": "setAttribute",
+          "ms": 0.6
+        },
+        {
+          "bundle": "removeAttribute",
+          "ms": 0.6
+        },
+        {
+          "bundle": "get value",
+          "ms": 0.6
+        },
+        {
+          "bundle": "js-to-wasm:n:d",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setPipeline",
+          "ms": 0.6
+        },
+        {
+          "bundle": "createCommandEncoder",
+          "ms": 0.6
+        }
+      ],
+      "topSelf": [
+        {
+          "fn": "(program) @ :0",
+          "ms": 1658.4
+        },
+        {
+          "fn": "(idle) @ :0",
+          "ms": 705.8
+        },
+        {
+          "fn": "exports.jsxDEV @ node_modules__bun_0qlgo-2ltf38v._.js:7695",
+          "ms": 253.8
+        },
+        {
+          "fn": "run @ :0",
+          "ms": 120.7
+        },
+        {
+          "fn": "exports.jsx @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:961",
+          "ms": 119.4
+        },
+        {
+          "fn": "ReactElement @ node_modules__bun_0qlgo-2ltf38v._.js:7606",
+          "ms": 68.2
+        },
+        {
+          "fn": "(garbage collector) @ :0",
+          "ms": 50.9
+        },
+        {
+          "fn": "jsxDEVImpl @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:916",
+          "ms": 50.6
+        },
+        {
+          "fn": "decode @ :0",
+          "ms": 45.3
+        },
+        {
+          "fn": "runWithFiberInDEV @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:773",
+          "ms": 42.2
+        },
+        {
+          "fn": "measure @ :0",
+          "ms": 42
+        },
+        {
+          "fn": "now @ :0",
+          "ms": 37
+        },
+        {
+          "fn": "propagateParentContextChanges @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:3341",
+          "ms": 34.4
+        },
+        {
+          "fn": "addObjectDiffToProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2522",
+          "ms": 32
+        },
+        {
+          "fn": "ReactStrictModeWarnings.recordLegacyContextWarning @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:14979",
+          "ms": 31.8
+        },
+        {
+          "fn": "logComponentRender @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2624",
+          "ms": 31.3
+        },
+        {
+          "fn": "exports.createElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1641",
+          "ms": 28.7
+        },
+        {
+          "fn": "react_stack_bottom_frame @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:15009",
+          "ms": 28.7
+        },
+        {
+          "fn": "drawImage @ :0",
+          "ms": 26.4
+        },
+        {
+          "fn": "createWorkInProgress @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2891",
+          "ms": 26
+        },
+        {
+          "fn": "ReactElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1129",
+          "ms": 19.3
+        },
+        {
+          "fn": "validateProperty @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1886",
+          "ms": 18.6
+        },
+        {
+          "fn": "bailoutOnAlreadyFinishedWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6400",
+          "ms": 18.1
+        },
+        {
+          "fn": "close @ :0",
+          "ms": 17.5
+        },
+        {
+          "fn": "createTask @ :0",
+          "ms": 16.8
+        },
+        {
+          "fn": "updatedAncestorInfoDev @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1622",
+          "ms": 16.4
+        },
+        {
+          "fn": "walkCommit @ :36",
+          "ms": 16.2
+        },
+        {
+          "fn": "VideoSample @ 1ny2_mediabunny_dist_modules_src_15qsc4_vpr480._.js:14344",
+          "ms": 15.3
+        },
+        {
+          "fn": "EncodedVideoChunk @ :0",
+          "ms": 14.7
+        },
+        {
+          "fn": "PreviewCanvas @ apps_web_src_components_editor_panels_preview_1609hvqjbv0--._.js:2875",
+          "ms": 14.5
+        },
+        {
+          "fn": "reconcileChildFibersImpl @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4000",
+          "ms": 13.7
+        },
+        {
+          "fn": "commitUpdate @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11790",
+          "ms": 13.5
+        },
+        {
+          "fn": "commitMutationEffectsOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8071",
+          "ms": 13.3
+        },
+        {
+          "fn": "updateProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11032",
+          "ms": 12.7
+        },
+        {
+          "fn": "jsxDEVImpl @ node_modules__bun_0qlgo-2ltf38v._.js:7650",
+          "ms": 12.5
+        },
+        {
+          "fn": "(anon) @ turbopack-apps_web_1xfotzx6p_1ag._.js:422",
+          "ms": 12.4
+        },
+        {
+          "fn": "updateForwardRef @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:5735",
+          "ms": 11.7
+        },
+        {
+          "fn": "areHookInputsEqual @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4432",
+          "ms": 11.6
+        },
+        {
+          "fn": "read @ :0",
+          "ms": 11.5
+        },
+        {
+          "fn": "useCallback @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:15405",
+          "ms": 11.3
+        }
+      ]
+    }
+  },
+  "trace": {
+    "windowMs": 8724,
+    "rendererMainBusyMs": 3997,
+    "rendererMainBusyPct": 45.8,
+    "gpuMainBusyPct": 16.8,
+    "vizCompositorBusyPct": 4.4,
+    "rendererCompositorBusyPct": 3.7,
+    "mainSelfByEvent": [
+      {
+        "name": "FunctionCall",
+        "ms": 2103,
+        "pct": 24.1
+      },
+      {
+        "name": "Layerize",
+        "ms": 546,
+        "pct": 6.3
+      },
+      {
+        "name": "Layout",
+        "ms": 348,
+        "pct": 4
+      },
+      {
+        "name": "RunMicrotasks",
+        "ms": 242,
+        "pct": 2.8
+      },
+      {
+        "name": "PrePaint",
+        "ms": 180,
+        "pct": 2.1
+      },
+      {
+        "name": "ThreadControllerImpl::RunTask",
+        "ms": 137,
+        "pct": 1.6
+      },
+      {
+        "name": "UserTiming::Measure",
+        "ms": 100,
+        "pct": 1.2
+      },
+      {
+        "name": "Paint",
+        "ms": 71,
+        "pct": 0.8
+      },
+      {
+        "name": "UpdateLayoutTree",
+        "ms": 65,
+        "pct": 0.7
+      },
+      {
+        "name": "RunTask",
+        "ms": 58,
+        "pct": 0.7
+      },
+      {
+        "name": "HitTest",
+        "ms": 57,
+        "pct": 0.6
+      },
+      {
+        "name": "Commit",
+        "ms": 19,
+        "pct": 0.2
+      },
+      {
+        "name": "FireAnimationFrame",
+        "ms": 16,
+        "pct": 0.2
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE_PARALLEL_PHASE",
+        "ms": 15,
+        "pct": 0.2
+      },
+      {
+        "name": "Receive mojo message",
+        "ms": 12,
+        "pct": 0.1
+      },
+      {
+        "name": "IntersectionObserverController::computeIntersections",
+        "ms": 8,
+        "pct": 0.1
+      },
+      {
+        "name": "BlinkScheduler_PerformMicrotaskCheckpoint",
+        "ms": 4,
+        "pct": 0
+      },
+      {
+        "name": "UpdateLayer",
+        "ms": 3,
+        "pct": 0
+      },
+      {
+        "name": "V8.HandleInterrupts",
+        "ms": 3,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE_ROOTS",
+        "ms": 2,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_TRACED_HANDLES_COMPUTE_WEAKNESS_PARALLEL",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_TRACED_HANDLES_RESET_PARALLEL",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "SimpleWatcher::OnHandleReady",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE_FINALIZE",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_FREE_REMEMBERED_SET",
+        "ms": 1,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE_WEAK_GLOBAL_HANDLES_IDENTIFY",
+        "ms": 0,
+        "pct": 0
+      },
+      {
+        "name": "V8.GC_SCAVENGER_SCAVENGE_COLLECT_OLD_TO_NEW_PAGES",
+        "ms": 0,
+        "pct": 0
+      }
+    ]
+  },
+  "export": {
+    "wallMs": 171020,
+    "ok": false,
+    "message": "Export failed",
+    "byteLength": null,
+    "lines": [
+      "[export] pre-flight: ~82MB output, ~165MB on disk, peak ~3753MB, at most 16 worker(s)",
+      "[export] audio mixing took 0.5s",
+      "[export] worker path supported, serializing scene tree",
+      "[export] scene serialized: 1 files",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 0..450 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 450..900 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 900..1350 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 1350..1800 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export] 4 parallel segment(s) failed, retrying only those",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 0..450 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 450..900 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 900..1350 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality",
+      "[export-worker] module loaded",
+      "[export-worker] ready signal sent",
+      "[export-worker] received init message",
+      "[export-worker] importing wasm module",
+      "[export-worker] initializing GPU",
+      "[export-worker] GPU initialized",
+      "[export-worker] initializing compositor",
+      "[export-worker] compositor initialized",
+      "[export-worker] scene tree reconstructed",
+      "[export-worker] exporting frames 1350..1800 (450 frames)",
+      "[export-worker] starting output",
+      "[export-worker] output started, entering render loop (450 frames)",
+      "[export-worker] render queue depth: 16",
+      "[export-worker] encoder config: hardwareAcceleration=prefer-hardware, codec=avc1.640028, latencyMode=quality"
+    ]
+  }
+}

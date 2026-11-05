@@ -1,0 +1,943 @@
+{
+  "label": "run",
+  "video": "C:/Users/Axeliory/AppData/Local/Temp/artidor-qa/sample-1080p60.mp4",
+  "channel": "chrome",
+  "quality": null,
+  "console": [
+    {
+      "type": "warning",
+      "text": "The powerPreference option is currently ignored when calling requestAdapter() on Windows. See https://crbug.com/369219127"
+    }
+  ],
+  "setup": {
+    "timeline": {
+      "main": {
+        "id": "5da22566-e1f7-4762-b295-e3cb4dbfe606",
+        "name": "Main Track",
+        "elementCount": 1
+      },
+      "overlay": [],
+      "overlayAfter": [],
+      "audio": []
+    },
+    "canvases": [
+      {
+        "w": 1920,
+        "h": 1080,
+        "cssW": 614,
+        "cssH": 345
+      },
+      {
+        "w": 1098,
+        "h": 38,
+        "cssW": 1098,
+        "cssH": 38
+      },
+      {
+        "w": 1098,
+        "h": 26,
+        "cssW": 1098,
+        "cssH": 26
+      }
+    ]
+  },
+  "playback": {
+    "windowMs": 6021,
+    "raf": {
+      "frames": 419,
+      "meanMs": 14.37,
+      "fps": 69.6,
+      "p50": 13.9,
+      "p95": 27.8,
+      "p99": 27.8,
+      "max": 62.5,
+      "over20ms": 133,
+      "over33ms": 3,
+      "over50ms": 1
+    },
+    "previewPresentsPerSec": 53.6,
+    "sourceFramesPerSec": 21.1,
+    "renderPhases": {
+      "resolveMs": 0.03333333283662796,
+      "descriptorMs": 0.04000000022351742,
+      "compositeMs": 0.4100000000248353,
+      "blitMs": 0.04666666674117247,
+      "totalMs": 0.5299999998261531,
+      "samples": 30
+    },
+    "previewBackingStore": {
+      "w": 1920,
+      "h": 1080
+    },
+    "heapMb": 163,
+    "cacheStats": {
+      "totalSinks": 1,
+      "prefetchBuffered": 6,
+      "sinks": [
+        {
+          "currentFrameTs": 8.666666666666666,
+          "bufferLength": 6,
+          "bufferFirstTs": 8.683333333333334,
+          "bufferLastTs": 8.766666666666667,
+          "hasIterator": true,
+          "frameStepSeconds": 0.01666666666666572,
+          "lastRequestedTime": 8.683333333333334,
+          "lastTime": 8.166666666666666,
+          "backgroundActive": true,
+          "seekGeneration": 11
+        }
+      ]
+    },
+    "loaf": {
+      "count": 2,
+      "perSecond": 0.33,
+      "totalMs": 1280,
+      "blockingMs": 0,
+      "renderMs": 14,
+      "styleLayoutMs": 3,
+      "topScripts": [
+        {
+          "key": "performWorkUntilDeadline @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js [event-listener:MessagePort.onmessage]",
+          "dur": 15,
+          "count": 2,
+          "forcedLayout": 0
+        }
+      ]
+    },
+    "cpu": {
+      "totalMs": 7298.4,
+      "byBundle": [
+        {
+          "bundle": "(program)",
+          "ms": 3604.5
+        },
+        {
+          "bundle": "react-dom",
+          "ms": 1035.3
+        },
+        {
+          "bundle": "node_modules(other)",
+          "ms": 678.5
+        },
+        {
+          "bundle": "other",
+          "ms": 606.7
+        },
+        {
+          "bundle": "app",
+          "ms": 233.5
+        },
+        {
+          "bundle": "run",
+          "ms": 196.1
+        },
+        {
+          "bundle": "(idle)",
+          "ms": 156.6
+        },
+        {
+          "bundle": "mediabunny",
+          "ms": 112.7
+        },
+        {
+          "bundle": "drawImage",
+          "ms": 104.4
+        },
+        {
+          "bundle": "measure",
+          "ms": 96
+        },
+        {
+          "bundle": "artidor-wasm",
+          "ms": 70.4
+        },
+        {
+          "bundle": "now",
+          "ms": 56.9
+        },
+        {
+          "bundle": "(garbage collector)",
+          "ms": 54
+        },
+        {
+          "bundle": "decode",
+          "ms": 46.8
+        },
+        {
+          "bundle": "createTask",
+          "ms": 22.4
+        },
+        {
+          "bundle": "close",
+          "ms": 19.4
+        },
+        {
+          "bundle": "wasm-to-js",
+          "ms": 19.1
+        },
+        {
+          "bundle": "EncodedVideoChunk",
+          "ms": 15.8
+        },
+        {
+          "bundle": "clearMeasures",
+          "ms": 12.8
+        },
+        {
+          "bundle": "read",
+          "ms": 12.3
+        },
+        {
+          "bundle": "getCurrentTexture",
+          "ms": 10
+        },
+        {
+          "bundle": "copyExternalImageToTexture",
+          "ms": 9
+        },
+        {
+          "bundle": "dispatchEvent",
+          "ms": 8.5
+        },
+        {
+          "bundle": "beginRenderPass",
+          "ms": 8.1
+        },
+        {
+          "bundle": "createBufferSource",
+          "ms": 8
+        },
+        {
+          "bundle": "clearRect",
+          "ms": 8
+        },
+        {
+          "bundle": "createBindGroup",
+          "ms": 7.4
+        },
+        {
+          "bundle": "createView",
+          "ms": 7.4
+        },
+        {
+          "bundle": "getContext",
+          "ms": 6.8
+        },
+        {
+          "bundle": "requestAnimationFrame",
+          "ms": 6.6
+        },
+        {
+          "bundle": "getByteFrequencyData",
+          "ms": 5.8
+        },
+        {
+          "bundle": "postMessage",
+          "ms": 5.4
+        },
+        {
+          "bundle": "getBoundingClientRect",
+          "ms": 5.2
+        },
+        {
+          "bundle": "tick",
+          "ms": 4.7
+        },
+        {
+          "bundle": "copyTo",
+          "ms": 3.7
+        },
+        {
+          "bundle": "submit",
+          "ms": 3.5
+        },
+        {
+          "bundle": "CustomEvent",
+          "ms": 3.1
+        },
+        {
+          "bundle": "removeAttribute",
+          "ms": 2.8
+        },
+        {
+          "bundle": "createGain",
+          "ms": 2.4
+        },
+        {
+          "bundle": "queueMicrotask",
+          "ms": 1.9
+        },
+        {
+          "bundle": "disconnect",
+          "ms": 1.8
+        },
+        {
+          "bundle": "setBindGroup",
+          "ms": 1.8
+        },
+        {
+          "bundle": "AudioBuffer",
+          "ms": 1.7
+        },
+        {
+          "bundle": "slice",
+          "ms": 1.7
+        },
+        {
+          "bundle": "VideoDecoder",
+          "ms": 1.7
+        },
+        {
+          "bundle": "closest",
+          "ms": 1.7
+        },
+        {
+          "bundle": "addEventListener",
+          "ms": 1.2
+        },
+        {
+          "bundle": "EncodedAudioChunk",
+          "ms": 1.2
+        },
+        {
+          "bundle": "translate",
+          "ms": 1.2
+        },
+        {
+          "bundle": "save",
+          "ms": 1.2
+        },
+        {
+          "bundle": "writeBuffer",
+          "ms": 1.1
+        },
+        {
+          "bundle": "CanvasRenderingContext2D.drawImage",
+          "ms": 1.1
+        },
+        {
+          "bundle": "PerformanceObserver.observe.type",
+          "ms": 0.6
+        },
+        {
+          "bundle": "serialize",
+          "ms": 0.6
+        },
+        {
+          "bundle": "resetTransform",
+          "ms": 0.6
+        },
+        {
+          "bundle": "get value",
+          "ms": 0.6
+        },
+        {
+          "bundle": "isConfigSupported",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setPipeline",
+          "ms": 0.6
+        },
+        {
+          "bundle": "URL",
+          "ms": 0.6
+        },
+        {
+          "bundle": "getByteTimeDomainData",
+          "ms": 0.6
+        },
+        {
+          "bundle": "clearInterval",
+          "ms": 0.6
+        },
+        {
+          "bundle": "stream",
+          "ms": 0.6
+        },
+        {
+          "bundle": "configure",
+          "ms": 0.6
+        },
+        {
+          "bundle": "(native)",
+          "ms": 0.5
+        },
+        {
+          "bundle": "getRootNode",
+          "ms": 0.5
+        },
+        {
+          "bundle": "connect",
+          "ms": 0.5
+        }
+      ],
+      "topSelf": [
+        {
+          "fn": "(program) @ :0",
+          "ms": 3604.5
+        },
+        {
+          "fn": "exports.jsxDEV @ node_modules__bun_0qlgo-2ltf38v._.js:7695",
+          "ms": 438.5
+        },
+        {
+          "fn": "exports.jsx @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:961",
+          "ms": 298.8
+        },
+        {
+          "fn": "run @ :0",
+          "ms": 196.1
+        },
+        {
+          "fn": "(idle) @ :0",
+          "ms": 156.6
+        },
+        {
+          "fn": "jsxDEVImpl @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:916",
+          "ms": 115.7
+        },
+        {
+          "fn": "drawImage @ :0",
+          "ms": 104.4
+        },
+        {
+          "fn": "measure @ :0",
+          "ms": 96
+        },
+        {
+          "fn": "ReactElement @ node_modules__bun_0qlgo-2ltf38v._.js:7606",
+          "ms": 86.5
+        },
+        {
+          "fn": "logComponentRender @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2624",
+          "ms": 73.7
+        },
+        {
+          "fn": "runWithFiberInDEV @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:773",
+          "ms": 61.1
+        },
+        {
+          "fn": "now @ :0",
+          "ms": 56.9
+        },
+        {
+          "fn": "(garbage collector) @ :0",
+          "ms": 54
+        },
+        {
+          "fn": "addObjectDiffToProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2522",
+          "ms": 53.7
+        },
+        {
+          "fn": "propagateParentContextChanges @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:3341",
+          "ms": 49.7
+        },
+        {
+          "fn": "decode @ :0",
+          "ms": 46.8
+        },
+        {
+          "fn": "validateProperty @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1886",
+          "ms": 39.2
+        },
+        {
+          "fn": "createWorkInProgress @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2891",
+          "ms": 33.8
+        },
+        {
+          "fn": "ReactStrictModeWarnings.recordLegacyContextWarning @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:14979",
+          "ms": 32.9
+        },
+        {
+          "fn": "exports.createElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1641",
+          "ms": 32.5
+        },
+        {
+          "fn": "renderWithHooks @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4439",
+          "ms": 30.4
+        },
+        {
+          "fn": "reconcileChildFibersImpl @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4000",
+          "ms": 29.9
+        },
+        {
+          "fn": "mergeProps @ node_modules__bun_0qlgo-2ltf38v._.js:4075",
+          "ms": 28.6
+        },
+        {
+          "fn": "commitUpdate @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11790",
+          "ms": 28.2
+        },
+        {
+          "fn": "exports.cloneElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1596",
+          "ms": 26.9
+        },
+        {
+          "fn": "ReactElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1129",
+          "ms": 23.8
+        },
+        {
+          "fn": "updateProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11032",
+          "ms": 23.3
+        },
+        {
+          "fn": "(anon) @ turbopack-apps_web_1xfotzx6p_1ag._.js:422",
+          "ms": 23
+        },
+        {
+          "fn": "(anon) @ 136c_%40radix-ui_react-select_dist_index_mjs_1ci77u2hahvzd._.js:1005",
+          "ms": 22.9
+        },
+        {
+          "fn": "updatedAncestorInfoDev @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1622",
+          "ms": 22.7
+        },
+        {
+          "fn": "createTask @ :0",
+          "ms": 22.4
+        },
+        {
+          "fn": "beginWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6483",
+          "ms": 21.4
+        },
+        {
+          "fn": "commitMutationEffectsOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8071",
+          "ms": 20.7
+        },
+        {
+          "fn": "_c9 @ apps_web_src_components_ui_0ju8dvgj5c_fw._.js:6524",
+          "ms": 20.6
+        },
+        {
+          "fn": "close @ :0",
+          "ms": 19.4
+        },
+        {
+          "fn": "setIsStrictModeForDevtools @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:822",
+          "ms": 18.4
+        },
+        {
+          "fn": "updateForwardRef @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:5735",
+          "ms": 18.3
+        },
+        {
+          "fn": "commitPassiveMountOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8562",
+          "ms": 17.7
+        },
+        {
+          "fn": "bailoutOnAlreadyFinishedWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6400",
+          "ms": 17.6
+        },
+        {
+          "fn": "(anon) @ node_modules__bun_0qlgo-2ltf38v._.js:3964",
+          "ms": 17.2
+        }
+      ]
+    }
+  },
+  "scrub": {
+    "windowMs": 4330,
+    "raf": {
+      "frames": 421,
+      "meanMs": 10.28,
+      "fps": 97.3,
+      "p50": 7,
+      "p95": 20.9,
+      "p99": 27.9,
+      "max": 34.7,
+      "over20ms": 52,
+      "over33ms": 4,
+      "over50ms": 0
+    },
+    "previewPresents": 120,
+    "loaf": {
+      "count": 1,
+      "perSecond": 0.23,
+      "totalMs": 320,
+      "blockingMs": 0,
+      "renderMs": 1,
+      "styleLayoutMs": 1,
+      "topScripts": []
+    },
+    "cpu": {
+      "totalMs": 4652.5,
+      "byBundle": [
+        {
+          "bundle": "(program)",
+          "ms": 1783.2
+        },
+        {
+          "bundle": "react-dom",
+          "ms": 672.7
+        },
+        {
+          "bundle": "(idle)",
+          "ms": 645.2
+        },
+        {
+          "bundle": "node_modules(other)",
+          "ms": 459.2
+        },
+        {
+          "bundle": "other",
+          "ms": 340
+        },
+        {
+          "bundle": "app",
+          "ms": 188.5
+        },
+        {
+          "bundle": "run",
+          "ms": 108.3
+        },
+        {
+          "bundle": "(garbage collector)",
+          "ms": 85.3
+        },
+        {
+          "bundle": "mediabunny",
+          "ms": 64.3
+        },
+        {
+          "bundle": "measure",
+          "ms": 42
+        },
+        {
+          "bundle": "now",
+          "ms": 38.8
+        },
+        {
+          "bundle": "artidor-wasm",
+          "ms": 30.5
+        },
+        {
+          "bundle": "drawImage",
+          "ms": 30.1
+        },
+        {
+          "bundle": "createTask",
+          "ms": 18.6
+        },
+        {
+          "bundle": "decode",
+          "ms": 17.4
+        },
+        {
+          "bundle": "getBoundingClientRect",
+          "ms": 15.3
+        },
+        {
+          "bundle": "EncodedVideoChunk",
+          "ms": 13.3
+        },
+        {
+          "bundle": "close",
+          "ms": 12
+        },
+        {
+          "bundle": "clearMeasures",
+          "ms": 8
+        },
+        {
+          "bundle": "requestAnimationFrame",
+          "ms": 6.9
+        },
+        {
+          "bundle": "createImageBitmap",
+          "ms": 6.8
+        },
+        {
+          "bundle": "removeChild",
+          "ms": 6.4
+        },
+        {
+          "bundle": "wasm-to-js",
+          "ms": 6.2
+        },
+        {
+          "bundle": "getCurrentTexture",
+          "ms": 6.1
+        },
+        {
+          "bundle": "resetTransform",
+          "ms": 5.2
+        },
+        {
+          "bundle": "postMessage",
+          "ms": 5.2
+        },
+        {
+          "bundle": "tick",
+          "ms": 4.1
+        },
+        {
+          "bundle": "dispatchEvent",
+          "ms": 4.1
+        },
+        {
+          "bundle": "createView",
+          "ms": 3.8
+        },
+        {
+          "bundle": "setTimeout",
+          "ms": 3.2
+        },
+        {
+          "bundle": "read",
+          "ms": 2.9
+        },
+        {
+          "bundle": "getContext",
+          "ms": 2.4
+        },
+        {
+          "bundle": "createElement",
+          "ms": 2.3
+        },
+        {
+          "bundle": "insertBefore",
+          "ms": 1.2
+        },
+        {
+          "bundle": "clearRect",
+          "ms": 1.2
+        },
+        {
+          "bundle": "beginRenderPass",
+          "ms": 1.1
+        },
+        {
+          "bundle": "createBindGroup",
+          "ms": 1.1
+        },
+        {
+          "bundle": "removeEventListener",
+          "ms": 0.7
+        },
+        {
+          "bundle": "(native)",
+          "ms": 0.6
+        },
+        {
+          "bundle": "queueMicrotask",
+          "ms": 0.6
+        },
+        {
+          "bundle": "slice",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setBindGroup",
+          "ms": 0.6
+        },
+        {
+          "bundle": "writeBuffer",
+          "ms": 0.6
+        },
+        {
+          "bundle": "scale",
+          "ms": 0.6
+        },
+        {
+          "bundle": "configure",
+          "ms": 0.6
+        },
+        {
+          "bundle": "appendChild",
+          "ms": 0.6
+        },
+        {
+          "bundle": "innerSerialize",
+          "ms": 0.6
+        },
+        {
+          "bundle": "setPipeline",
+          "ms": 0.6
+        },
+        {
+          "bundle": "closest",
+          "ms": 0.6
+        },
+        {
+          "bundle": "send",
+          "ms": 0.6
+        },
+        {
+          "bundle": "fillRect",
+          "ms": 0.6
+        },
+        {
+          "bundle": "createCommandEncoder",
+          "ms": 0.5
+        },
+        {
+          "bundle": "setAttribute",
+          "ms": 0.5
+        }
+      ],
+      "topSelf": [
+        {
+          "fn": "(program) @ :0",
+          "ms": 1783.2
+        },
+        {
+          "fn": "(idle) @ :0",
+          "ms": 645.2
+        },
+        {
+          "fn": "exports.jsxDEV @ node_modules__bun_0qlgo-2ltf38v._.js:7695",
+          "ms": 257.4
+        },
+        {
+          "fn": "exports.jsx @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:961",
+          "ms": 136
+        },
+        {
+          "fn": "run @ :0",
+          "ms": 108.3
+        },
+        {
+          "fn": "(garbage collector) @ :0",
+          "ms": 85.3
+        },
+        {
+          "fn": "ReactElement @ node_modules__bun_0qlgo-2ltf38v._.js:7606",
+          "ms": 82.4
+        },
+        {
+          "fn": "jsxDEVImpl @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:916",
+          "ms": 67.5
+        },
+        {
+          "fn": "measure @ :0",
+          "ms": 42
+        },
+        {
+          "fn": "now @ :0",
+          "ms": 38.8
+        },
+        {
+          "fn": "propagateParentContextChanges @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:3341",
+          "ms": 36.9
+        },
+        {
+          "fn": "addObjectDiffToProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2522",
+          "ms": 36.2
+        },
+        {
+          "fn": "runWithFiberInDEV @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:773",
+          "ms": 35.9
+        },
+        {
+          "fn": "exports.createElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1641",
+          "ms": 34.8
+        },
+        {
+          "fn": "logComponentRender @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2624",
+          "ms": 34.2
+        },
+        {
+          "fn": "drawImage @ :0",
+          "ms": 30.1
+        },
+        {
+          "fn": "ReactStrictModeWarnings.recordLegacyContextWarning @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:14979",
+          "ms": 25.8
+        },
+        {
+          "fn": "renderWithHooks @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4439",
+          "ms": 24.7
+        },
+        {
+          "fn": "validateProperty @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:1886",
+          "ms": 23.2
+        },
+        {
+          "fn": "(anon) @ turbopack-apps_web_1xfotzx6p_1ag._.js:422",
+          "ms": 20.1
+        },
+        {
+          "fn": "ReactElement @ 0nrg_next_dist_compiled_070hpmcrhsfnw._.js:1129",
+          "ms": 20.1
+        },
+        {
+          "fn": "createWorkInProgress @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:2891",
+          "ms": 19.6
+        },
+        {
+          "fn": "bailoutOnAlreadyFinishedWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6400",
+          "ms": 19.3
+        },
+        {
+          "fn": "createTask @ :0",
+          "ms": 18.6
+        },
+        {
+          "fn": "decode @ :0",
+          "ms": 17.4
+        },
+        {
+          "fn": "updateProperties @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11032",
+          "ms": 16.9
+        },
+        {
+          "fn": "VideoSample @ 1ny2_mediabunny_dist_modules_src_15qsc4_vpr480._.js:14344",
+          "ms": 16.8
+        },
+        {
+          "fn": "commitUpdate @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:11790",
+          "ms": 15.9
+        },
+        {
+          "fn": "getBoundingClientRect @ :0",
+          "ms": 15.3
+        },
+        {
+          "fn": "(anon) @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4087",
+          "ms": 14.6
+        },
+        {
+          "fn": "updateWorkInProgressHook @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:4557",
+          "ms": 14.6
+        },
+        {
+          "fn": "jsxDEVImpl @ node_modules__bun_0qlgo-2ltf38v._.js:7650",
+          "ms": 13.4
+        },
+        {
+          "fn": "EncodedVideoChunk @ :0",
+          "ms": 13.3
+        },
+        {
+          "fn": "updateForwardRef @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:5735",
+          "ms": 13.1
+        },
+        {
+          "fn": "mergeProps @ node_modules__bun_0qlgo-2ltf38v._.js:4075",
+          "ms": 12.9
+        },
+        {
+          "fn": "NumberField @ apps_web_src_components_ui_0ju8dvgj5c_fw._.js:4804",
+          "ms": 12.7
+        },
+        {
+          "fn": "useCallback @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:15405",
+          "ms": 12.6
+        },
+        {
+          "fn": "commitMutationEffectsOnFiber @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:8071",
+          "ms": 12.3
+        },
+        {
+          "fn": "close @ :0",
+          "ms": 12
+        },
+        {
+          "fn": "beginWork @ 0nrg_next_dist_compiled_react-dom_cjs_react-dom-client_development_1lhf_sgpyc-dw.js:6483",
+          "ms": 11.9
+        }
+      ]
+    }
+  }
+}

@@ -571,13 +571,19 @@ function buildMediaGraphicStyleLayers({
 	}): FrameItemDescriptor | null => {
 		const width = sourceWidth + padding * 2;
 		const height = sourceHeight + padding * 2;
-		const canvas = createOffscreenCanvas({ width, height });
-		const ctx = canvas.getContext("2d") as
-			| CanvasRenderingContext2D
-			| OffscreenCanvasRenderingContext2D
-			| null;
-		if (!ctx) return null;
-		draw(ctx);
+		// Cached by content key, exactly like the colour / text / mask rasters.
+		// These pixels are fully determined by the style bag + source size +
+		// padding, so reusing the SAME canvas object across frames lets the
+		// compositor's identity-based upload dedupe skip the re-upload.
+		// Allocating a fresh OffscreenCanvas per frame (the previous behaviour)
+		// forced a full texture upload for every styled layer, every frame.
+		const canvas = getCachedRaster({
+			key: `media-style:${id}:${sourceWidth}x${sourceHeight}:${padding}:${paramValuesKey(style)}`,
+			width,
+			height,
+			draw,
+		});
+		if (!canvas) return null;
 		const textureId = `${path}:${id}`;
 		textures.set(textureId, { id: textureId, source: canvas, width, height });
 		const scaleX = transform.width / Math.max(1, sourceWidth);

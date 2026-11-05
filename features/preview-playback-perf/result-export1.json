@@ -1,0 +1,17 @@
+{
+  "label": "export1",
+  "video": "C:/Users/Axeliory/AppData/Local/Temp/artidor-qa/sample-1080p60.mp4",
+  "quality": "high",
+  "format": "mp4",
+  "console": [],
+  "export": null,
+  "project": {
+    "name": "New project",
+    "fps": "60/1",
+    "canvasWidth": 1920,
+    "canvasHeight": 1080,
+    "duration": 3600000
+  },
+  "opfsBefore": [],
+  "error": "page.evaluate: Target page, context or browser has been closed\n    at D:\\Artidor\\features\\preview-playback-perf\\probe-export.mjs:115:30"
+}

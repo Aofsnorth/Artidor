@@ -290,6 +290,16 @@ impl Compositor {
         self.textures.upsert(id, texture);
     }
 
+    /// Existing texture for `id` when its size matches, so an upload can copy
+    /// into it instead of allocating a new GPU texture.
+    ///
+    /// See [`TextureStore::texture_for_reuse`] for why this matters: a video
+    /// layer uploads every frame, and allocating per upload churned a full
+    /// frame-sized texture 60x/second.
+    pub fn texture_for_reuse(&self, id: &str, width: u32, height: u32) -> Option<&wgpu::Texture> {
+        self.textures.texture_for_reuse(id, width, height)
+    }
+
     pub fn release_texture(&mut self, id: &str) {
         self.textures.remove(id);
     }

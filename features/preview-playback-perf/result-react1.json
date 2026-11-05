@@ -1,0 +1,390 @@
+{
+  "label": "react1",
+  "phases": {
+    "idleSelected": {
+      "windowSeconds": 4,
+      "commitsPerSec": 2.7,
+      "rendersPerSec": [
+        {
+          "name": "lx",
+          "perSec": 8.2
+        },
+        {
+          "name": "b",
+          "perSec": 2.7
+        },
+        {
+          "name": "l_",
+          "perSec": 2.7
+        },
+        {
+          "name": "L",
+          "perSec": 2.7
+        },
+        {
+          "name": "eH",
+          "perSec": 2.7
+        },
+        {
+          "name": "eW",
+          "perSec": 2.7
+        },
+        {
+          "name": "ty",
+          "perSec": 2.7
+        },
+        {
+          "name": "to",
+          "perSec": 2.7
+        },
+        {
+          "name": "lp",
+          "perSec": 2.7
+        },
+        {
+          "name": "eZ",
+          "perSec": 2.7
+        },
+        {
+          "name": "eY",
+          "perSec": 2.7
+        }
+      ],
+      "dom": {
+        "totalElements": 1337,
+        "roleOption": 1,
+        "roleListbox": 1,
+        "popperWrapper": 0,
+        "openStateCount": 0,
+        "canvasCount": 3
+      }
+    },
+    "playingSelected": {
+      "windowSeconds": 4.02,
+      "commitsPerSec": 44.1,
+      "rendersPerSec": [
+        {
+          "name": "SelectItem",
+          "perSec": 1370.8
+        },
+        {
+          "name": "Primitive.div",
+          "perSec": 1008.9
+        },
+        {
+          "name": "SelectItemProvider",
+          "perSec": 685.4
+        },
+        {
+          "name": "SelectCollectionItemSlot",
+          "perSec": 685.4
+        },
+        {
+          "name": "SelectCollectionItemSlot.Slot",
+          "perSec": 685.4
+        },
+        {
+          "name": "SectionField",
+          "perSec": 403.2
+        },
+        {
+          "name": "SelectSeparator",
+          "perSec": 403.2
+        },
+        {
+          "name": "NumberField",
+          "perSec": 322.5
+        },
+        {
+          "name": "Button",
+          "perSec": 242.7
+        },
+        {
+          "name": "SelectProvider",
+          "perSec": 121
+        },
+        {
+          "name": "KeyframeToggle",
+          "perSec": 121
+        },
+        {
+          "name": "Primitive.div.Slot",
+          "perSec": 81.4
+        },
+        {
+          "name": "HugeiconsIcon",
+          "perSec": 81.4
+        },
+        {
+          "name": "Section",
+          "perSec": 80.6
+        },
+        {
+          "name": "SectionContent",
+          "perSec": 80.6
+        },
+        {
+          "name": "Select",
+          "perSec": 80.6
+        },
+        {
+          "name": "SelectContent",
+          "perSec": 80.6
+        },
+        {
+          "name": "SelectCollectionSlot",
+          "perSec": 80.6
+        },
+        {
+          "name": "SelectCollectionSlot.Slot",
+          "perSec": 80.6
+        },
+        {
+          "name": "SelectTrigger",
+          "perSec": 80.6
+        },
+        {
+          "name": "Presence",
+          "perSec": 46
+        },
+        {
+          "name": "Popper",
+          "perSec": 42.6
+        },
+        {
+          "name": "PopperProvider",
+          "perSec": 42.6
+        },
+        {
+          "name": "PopperAnchor",
+          "perSec": 42.1
+        },
+        {
+          "name": "Primitive.span",
+          "perSec": 41.3
+        },
+        {
+          "name": "Primitive.button",
+          "perSec": 41.1
+        },
+        {
+          "name": "TransformTab",
+          "perSec": 40.3
+        },
+        {
+          "name": "BlendingTab",
+          "perSec": 40.3
+        },
+        {
+          "name": "SelectCollectionProvider",
+          "perSec": 40.3
+        },
+        {
+          "name": "SelectCollectionProviderProvider",
+          "perSec": 40.3
+        }
+      ],
+      "dom": {
+        "totalElements": 1347,
+        "roleOption": 1,
+        "roleListbox": 1,
+        "popperWrapper": 0,
+        "openStateCount": 0,
+        "canvasCount": 3
+      }
+    },
+    "idleDeselected": {
+      "windowSeconds": 4,
+      "commitsPerSec": 3.2,
+      "rendersPerSec": [
+        {
+          "name": "lx",
+          "perSec": 9.7
+        },
+        {
+          "name": "b",
+          "perSec": 3.2
+        },
+        {
+          "name": "l_",
+          "perSec": 3.2
+        },
+        {
+          "name": "L",
+          "perSec": 3.2
+        },
+        {
+          "name": "eH",
+          "perSec": 3.2
+        },
+        {
+          "name": "eW",
+          "perSec": 3.2
+        },
+        {
+          "name": "ty",
+          "perSec": 3.2
+        },
+        {
+          "name": "to",
+          "perSec": 3.2
+        },
+        {
+          "name": "lp",
+          "perSec": 3.2
+        },
+        {
+          "name": "eZ",
+          "perSec": 3.2
+        },
+        {
+          "name": "eY",
+          "perSec": 3.2
+        }
+      ],
+      "dom": {
+        "totalElements": 1027,
+        "roleOption": 1,
+        "roleListbox": 1,
+        "popperWrapper": 0,
+        "openStateCount": 0,
+        "canvasCount": 3
+      }
+    },
+    "playingDeselected": {
+      "windowSeconds": 4.02,
+      "commitsPerSec": 65.5,
+      "rendersPerSec": [
+        {
+          "name": "TimecodeDisplay",
+          "perSec": 58.5
+        },
+        {
+          "name": "EditableTimecode",
+          "perSec": 58.5
+        },
+        {
+          "name": "TimelineTick",
+          "perSec": 52.8
+        },
+        {
+          "name": "Presence",
+          "perSec": 22.4
+        },
+        {
+          "name": "Dialog",
+          "perSec": 16.9
+        },
+        {
+          "name": "MenuProvider",
+          "perSec": 12.9
+        },
+        {
+          "name": "lx",
+          "perSec": 9
+        },
+        {
+          "name": "DialogProvider",
+          "perSec": 9
+        },
+        {
+          "name": "Popper",
+          "perSec": 8.5
+        },
+        {
+          "name": "PopperProvider",
+          "perSec": 8.5
+        },
+        {
+          "name": "DialogPortal",
+          "perSec": 8
+        },
+        {
+          "name": "DialogPortalProvider",
+          "perSec": 8
+        },
+        {
+          "name": "ContextMenu",
+          "perSec": 7
+        },
+        {
+          "name": "DialogContent",
+          "perSec": 7
+        },
+        {
+          "name": "InfoRow",
+          "perSec": 7
+        },
+        {
+          "name": "Menu",
+          "perSec": 6.5
+        },
+        {
+          "name": "MenuPortal",
+          "perSec": 6.5
+        },
+        {
+          "name": "MenuPortalProvider",
+          "perSec": 6.5
+        },
+        {
+          "name": "PopperAnchor",
+          "perSec": 6.5
+        },
+        {
+          "name": "DropdownMenu",
+          "perSec": 6
+        },
+        {
+          "name": "MenuAnchor",
+          "perSec": 5.5
+        },
+        {
+          "name": "TooltipProvider",
+          "perSec": 4
+        },
+        {
+          "name": "Primitive.div",
+          "perSec": 4
+        },
+        {
+          "name": "ContextMenuProvider",
+          "perSec": 3.5
+        },
+        {
+          "name": "ContextMenuContent",
+          "perSec": 3.5
+        },
+        {
+          "name": "ContextMenuPortal",
+          "perSec": 3.5
+        },
+        {
+          "name": "ContextMenuTrigger",
+          "perSec": 3.5
+        },
+        {
+          "name": "Primitive.span",
+          "perSec": 3.5
+        },
+        {
+          "name": "Primitive.span.Slot",
+          "perSec": 3.5
+        },
+        {
+          "name": "b",
+          "perSec": 3
+        }
+      ],
+      "dom": {
+        "totalElements": 1028,
+        "roleOption": 1,
+        "roleListbox": 1,
+        "popperWrapper": 0,
+        "openStateCount": 0,
+        "canvasCount": 3
+      }
+    }
+  },
+  "console": []
+}

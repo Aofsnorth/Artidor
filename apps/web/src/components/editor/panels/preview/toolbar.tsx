@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useEditor } from "@/hooks/use-editor";
 import { formatTimecode, type FrameRate } from "artidor-wasm";
 import { invokeAction } from "@/lib/actions";
@@ -108,20 +108,71 @@ function TimecodeDisplay() {
 	const editor = useEditor();
 	const totalDuration = useEditor((e) => e.timeline.getTotalDuration());
 	const fps = useEditor((e) => e.project.getActive().settings.fps);
+	// Playback time is high-frequency: `playback-update` fires every rendered
+	// frame (60+/s) and a setState per event re-rendered the whole toolbar —
+	// React reconciliation on top of the preview render loop is the classic
+	// "the editor lags while playing" source. A rAF loop that only commits
+	// when the *displayed frame index* changes keeps the DOM in sync with the
+	// picture at frame precision (what HH:MM:SS:FF can show anyway) while
+	// staying idle when paused.
 	const [currentTime, setCurrentTime] = useState(() =>
 		editor.playback.getCurrentTime(),
 	);
+	const lastShownFrameRef = useRef(-1);
+	// Ticks per displayed frame — the timecode only has frame precision, so
+	// committing more often than the frame index changes is wasted renders.
+	const ticksPerFrame = Math.max(
+		1,
+		TICKS_PER_SECOND / (fps.numerator / fps.denominator || 30),
+	);
 
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying(), ["playback"]);
+
+	// Frame-gated rAF loop, running ONLY while the timeline plays. The timecode
+	// has frame precision, so committing more often than the displayed frame
+	// index changes is a wasted React render. Gating on playback also keeps a
+	// permanent 60 Hz callback (and its property reads) off the idle editor.
 	useEffect(() => {
-		const handler = (e: Event) =>
-			setCurrentTime((e as CustomEvent<{ time: number }>).detail.time);
-		window.addEventListener("playback-update", handler);
+		if (!isPlaying) {
+			// Commit once on pause: the loop's last read can precede the final
+			// playback tick, so without this the timecode could sit one frame
+			// behind the frame the playhead actually stopped on. On mount this
+			// sets the value it already holds, which React bails out of.
+			const time = editor.playback.getCurrentTime();
+			lastShownFrameRef.current = Math.floor(time / ticksPerFrame);
+			setCurrentTime(time);
+			return;
+		}
+		let rafId = 0;
+		const tick = () => {
+			const time = editor.playback.getCurrentTime();
+			const frameIndex = Math.floor(time / ticksPerFrame);
+			if (frameIndex !== lastShownFrameRef.current) {
+				lastShownFrameRef.current = frameIndex;
+				setCurrentTime(time);
+			}
+			rafId = requestAnimationFrame(tick);
+		};
+		rafId = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(rafId);
+	}, [editor.playback, ticksPerFrame, isPlaying]);
+
+	// Seeks commit immediately — the rAF loop above is idle while paused, and a
+	// seek must repaint the timecode the moment it lands. `playback-update` is
+	// deliberately NOT listened to here: it fires on every rendered frame during
+	// playback, and a setState per event is precisely the whole-toolbar
+	// reconciliation the frame-gated loop above exists to avoid.
+	useEffect(() => {
+		const handler = (e: Event) => {
+			const time = (e as CustomEvent<{ time: number }>).detail.time;
+			lastShownFrameRef.current = Math.floor(time / ticksPerFrame);
+			setCurrentTime(time);
+		};
 		window.addEventListener("playback-seek", handler);
 		return () => {
-			window.removeEventListener("playback-update", handler);
 			window.removeEventListener("playback-seek", handler);
 		};
-	}, []);
+	}, [ticksPerFrame]);
 
 	return (
 		<div className="flex items-center">

@@ -141,6 +141,9 @@ function PreviewCanvas({
 	onToggleFullscreen: () => void;
 }) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	// Cached 2D context — avoids a per-frame getContext() lookup on the
+	// frame-cache blit path and pins the low-latency context attributes.
+	const ctx2dRef = useRef<CanvasRenderingContext2D | null>(null);
 	const viewportRef = useRef<HTMLDivElement>(null);
 	const lastFrameRef = useRef(-1);
 	const lastSceneRef = useRef<RootNode | null>(null);
@@ -384,7 +387,7 @@ function PreviewCanvas({
 				if (cached && renderTree === lastSceneRef.current) {
 					// Cache hit — blit the cached bitmap to the canvas. This is
 					// ~0.5ms (a single drawImage) vs 5-80ms for a full re-render.
-					const ctx = canvasRef.current.getContext("2d");
+					const ctx = ctx2dRef.current ?? canvasRef.current.getContext("2d");
 					if (ctx) {
 						ctx.drawImage(
 							cached.bitmap,
@@ -594,6 +597,18 @@ function PreviewCanvas({
 	// The handle is updated on every size change and torn down on
 	// unmount so scopes show the empty silhouette when the preview
 	// isn't mounted (e.g. in a fullscreen pop-out).
+	// Acquire the 2D context once, with low-latency attributes:
+	// `desynchronized` lets the browser present preview frames with reduced
+	// latency (a hint — ignored where unsupported) and `alpha` is required for
+	// transparent blur backgrounds. The first getContext call wins: the
+	// renderer's later attr-less calls return this same context.
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		ctx2dRef.current = canvas
+			? canvas.getContext("2d", { alpha: true, desynchronized: true })
+			: null;
+	}, []);
+
 	useEffect(() => {
 		registerPreviewCanvas({
 			canvas: canvasRef.current,

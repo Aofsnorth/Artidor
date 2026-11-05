@@ -735,12 +735,25 @@ body::-webkit-scrollbar,
 	}
 }
 
+@media (prefers-reduced-motion: reduce) {
+	.export-pulse,
+	.export-pulse-strong {
+		animation: none;
+	}
+}
+
 .export-pulse {
 	animation: export-pulse 3.2s ease-in-out infinite;
 }
 
 .export-pulse-strong {
 	animation: export-pulse-strong 1.6s ease-in-out infinite;
+}
+
+/* The trigger sits in its locked state while the popover is open; pausing
+   the aura frees compositor work next to the still-rendering preview. */
+[aria-expanded="true"] .export-pulse {
+	animation-play-state: paused;
 }
 
 /* Marquee text — single keyframe baking in the scroll + pause.

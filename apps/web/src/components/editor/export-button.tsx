@@ -187,11 +187,29 @@ const CustomEmblem = () => (
 export function ExportButton() {
 	const [isExportPopoverOpen, setIsExportPopoverOpen] = useState(false);
 	const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
+	// Format the user actually chose in the popover. The completion overlay
+	// and its download action must use THIS, not the default — otherwise a
+	// WebM/HEVC export downloads with the default MP4 mime and extension.
+	const [exportFormat, setExportFormat] = useState<ExportFormat>(
+		DEFAULT_EXPORT_OPTIONS.format,
+	);
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
-	const exportState = useEditor((e) => e.project.getExportState());
+	// Narrow selectors, deliberately NOT the whole `getExportState()` object:
+	// that object is rebuilt on every progress tick (once per 10 rendered
+	// frames), so subscribing to it re-rendered this button — and the popover
+	// subtree hanging off it — just to advance a number only the modal paints.
+	// `result` keeps its reference across ticks, so the shallow compare drops
+	// those notifies entirely; the modal subscribes to `progress` itself.
+	const isExporting = useEditor(
+		(e) => e.project.getExportState().isExporting,
+		["project"],
+	);
+	const exportResult = useEditor(
+		(e) => e.project.getExportState().result,
+		["project"],
+	);
 	const hasProject = !!activeProject;
-	const { result: exportResult } = exportState;
 
 	// Check for pending export from /project page
 	useEffect(() => {
@@ -216,10 +234,10 @@ export function ExportButton() {
 
 	// Auto-close the popover when export starts so only the blocking modal is visible
 	useEffect(() => {
-		if (exportState.isExporting && isExportPopoverOpen) {
+		if (isExporting && isExportPopoverOpen) {
 			setIsExportPopoverOpen(false);
 		}
-	}, [exportState.isExporting, isExportPopoverOpen]);
+	}, [isExporting, isExportPopoverOpen]);
 
 	// Show completion overlay only for fresh (non-cached) exports.
 	// Cached/history exports already show a toast via handleExport, so the
@@ -227,19 +245,17 @@ export function ExportButton() {
 	useEffect(() => {
 		if (
 			isPlayableExportResult(exportResult) &&
-			!exportState.isExporting &&
+			!isExporting &&
 			!exportResult.cached
 		) {
 			setShowCompletionOverlay(true);
 		}
-	}, [exportResult, exportState.isExporting]);
+	}, [exportResult, isExporting]);
 
 	const handleDownloadFromOverlay = () => {
 		if (!isPlayableExportResult(exportResult) || !activeProject) return;
-		const ext = getExportFileExtension({
-			format: DEFAULT_EXPORT_OPTIONS.format,
-		});
-		const mime = getExportMimeType({ format: DEFAULT_EXPORT_OPTIONS.format });
+		const ext = getExportFileExtension({ format: exportFormat });
+		const mime = getExportMimeType({ format: exportFormat });
 		// Overlay download has no preview URL of its own; the overlay keeps one
 		// internally — this fallback opens the file once (streamed) or wraps
 		// the buffer (legacy).
@@ -252,7 +268,7 @@ export function ExportButton() {
 
 	const handlePopoverOpenChange = ({ open }: { open: boolean }) => {
 		// Don't allow closing the popover during export (modal is shown instead)
-		if (!open && exportState.isExporting) return;
+		if (!open && isExporting) return;
 		if (!open) {
 			editor.project.clearExportState();
 		}
@@ -333,14 +349,14 @@ export function ExportButton() {
 					<ExportPopover
 						onOpenChange={setIsExportPopoverOpen}
 						isOpen={isExportPopoverOpen}
+						onExportStart={({ format }) => setExportFormat(format)}
 					/>
 				)}
 			</Popover>
 			{/* Render the blocking modal at the top level so it isn't affected by the popover lifecycle */}
 			{hasProject && (
 				<ExportModal
-					isOpen={exportState.isExporting}
-					progress={exportState.progress}
+					isOpen={isExporting}
 					onCancel={() => editor.project.cancelExport()}
 				/>
 			)}
@@ -350,10 +366,8 @@ export function ExportButton() {
 				activeProject && (
 					<ExportCompletionOverlay
 						result={exportResult}
-						filename={`${activeProject.metadata.name}${getExportFileExtension({ format: DEFAULT_EXPORT_OPTIONS.format })}`}
-						mimeType={getExportMimeType({
-							format: DEFAULT_EXPORT_OPTIONS.format,
-						})}
+						filename={`${activeProject.metadata.name}${getExportFileExtension({ format: exportFormat })}`}
+						mimeType={getExportMimeType({ format: exportFormat })}
 						onClose={() => {
 							setShowCompletionOverlay(false);
 							editor.project.clearExportState();
@@ -368,14 +382,27 @@ export function ExportButton() {
 function ExportPopover({
 	onOpenChange,
 	isOpen,
+	onExportStart,
 }: {
 	onOpenChange: (open: boolean) => void;
 	isOpen: boolean;
+	onExportStart?: ({ format }: { format: ExportFormat }) => void;
 }) {
 	const editor = useEditor();
 	const activeProject = useEditor((e) => e.project.getActive());
-	const exportState = useEditor((e) => e.project.getExportState());
-	const { result: exportResult } = exportState;
+	// Same narrowing as ExportButton: this component stays mounted (rendering
+	// null) for the whole export, so subscribing to the whole export state made
+	// every progress tick re-render it — and the settings subtree below it —
+	// while the modal was the only thing on screen. `result` is needed to show
+	// the finished/failed card; `isExporting` gates the render.
+	const isExporting = useEditor(
+		(e) => e.project.getExportState().isExporting,
+		["project"],
+	);
+	const exportResult = useEditor(
+		(e) => e.project.getExportState().result,
+		["project"],
+	);
 
 	const [format, setFormat] = useState<ExportFormat>(
 		DEFAULT_EXPORT_OPTIONS.format,
@@ -424,6 +451,10 @@ function ExportPopover({
 			editor.playback.pause();
 		}
 
+		// Record the chosen format so the completion overlay's download uses
+		// the right extension/mime instead of the default.
+		onExportStart?.({ format });
+
 		try {
 			const result = await editor.project.export({
 				options: {
@@ -457,7 +488,7 @@ function ExportPopover({
 	};
 
 	// Don't render the popover at all if it's closed or if export is in progress
-	if (!isOpen || exportState.isExporting) return null;
+	if (!isOpen || isExporting) return null;
 
 	return (
 		<PopoverContent
@@ -722,6 +753,7 @@ function ExportResultCard({
 				{previewUrl ? (
 					<video
 						controls
+						preload="metadata"
 						className="aspect-video w-full bg-black"
 						src={previewUrl}
 					>
@@ -842,7 +874,10 @@ function ExportCompletionOverlay({
 			className={`fixed inset-0 z-9999 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-opacity duration-300 ${isVisible ? "opacity-100" : "opacity-0"}`}
 			onClick={handleClose}
 			onKeyDown={(e) => {
-				if (e.key === "Escape") handleClose();
+				if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					handleClose();
+				}
 			}}
 		>
 			{/* biome-ignore lint/a11y/useSemanticElements: inner card stops click propagation */}
@@ -863,6 +898,7 @@ function ExportCompletionOverlay({
 							controls
 							autoPlay
 							muted
+							preload="metadata"
 							className="aspect-video w-full bg-black"
 							src={previewUrl}
 						>
@@ -876,6 +912,7 @@ function ExportCompletionOverlay({
 					{/* Top-right close button */}
 					<button
 						type="button"
+						aria-label="Close"
 						onClick={handleClose}
 						className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-black/50 text-white/70 backdrop-blur-sm transition hover:bg-black/70 hover:text-white"
 					>

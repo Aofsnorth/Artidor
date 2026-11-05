@@ -115,6 +115,22 @@ pub(crate) fn import_external_image(
     context.import_external_image(source, width, height, label)
 }
 
+/// Refresh an existing texture with new pixels instead of allocating one.
+///
+/// A video layer uploads every frame, and its source object identity changes
+/// every frame (rotating decode canvas pool), so the compositor's
+/// identity-based upload dedupe can never skip it. Allocating a full
+/// frame-sized GPU texture per upload churned VRAM 60x/second.
+pub(crate) fn copy_external_image_into(
+    context: &GpuContext,
+    source: &wgpu::ExternalImageSource,
+    texture: &wgpu::Texture,
+    width: u32,
+    height: u32,
+) {
+    context.copy_external_image_into(source, texture, width, height)
+}
+
 pub(crate) fn render_texture_to_canvas(
     context: &GpuContext,
     texture: &wgpu::Texture,

@@ -30,6 +30,26 @@ impl TextureStore {
         self.textures.get(id)
     }
 
+    /// Returns the stored texture for `id` when it can be written into again.
+    ///
+    /// A video layer re-uploads every frame: its decoded frame comes from a
+    /// rotating canvas pool, so the source object identity always changes and
+    /// the compositor's identity-based upload dedupe can never skip it.
+    /// Creating a fresh GPU texture per upload allocated and freed a full
+    /// frame-sized texture 60x/second, which showed up as periodic hitches
+    /// during playback. Reusing the existing texture when the id and
+    /// dimensions match turns that into a plain copy into a texture that is
+    /// already resident.
+    pub fn texture_for_reuse(&self, id: &str, width: u32, height: u32) -> Option<&wgpu::Texture> {
+        let stored = self.textures.get(id)?;
+        let texture = stored.texture();
+        if texture.width() == width && texture.height() == height {
+            Some(texture)
+        } else {
+            None
+        }
+    }
+
     pub fn remove(&mut self, id: &str) {
         self.textures.remove(id);
     }

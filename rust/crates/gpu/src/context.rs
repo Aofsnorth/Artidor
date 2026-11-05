@@ -546,7 +546,28 @@ impl GpuContext {
         label: &'static str,
     ) -> wgpu::Texture {
         let texture = self.create_render_texture(width, height, label);
+        self.copy_external_image_into(source, &texture, width, height);
+        texture
+    }
 
+    /// Copies `source` into an existing texture of matching dimensions.
+    ///
+    /// Split out of [`GpuContext::import_external_image`] so a caller that
+    /// already owns a texture for a layer can refresh its pixels in place
+    /// instead of allocating a new GPU texture. A video layer uploads every
+    /// frame — its decoded frame comes from a rotating canvas pool, so the
+    /// source object identity changes on every frame and the compositor's
+    /// identity-based upload dedupe can never skip it. Allocating a full
+    /// frame-sized texture per upload churned VRAM 60x/second, which read as
+    /// periodic hitches during playback.
+    #[cfg(all(feature = "wasm", target_arch = "wasm32"))]
+    pub fn copy_external_image_into(
+        &self,
+        source: &wgpu::ExternalImageSource,
+        texture: &wgpu::Texture,
+        width: u32,
+        height: u32,
+    ) {
         // copy_external_image_to_texture can use the source directly for every
         // CanvasImageSource type except OffscreenCanvas, which needs the
         // UNRESTRICTED_EXTERNAL_TEXTURE_COPIES downlevel flag. For unsupported
@@ -563,7 +584,7 @@ impl GpuContext {
                     flip_y: false,
                 },
                 wgpu::CopyExternalImageDestInfo {
-                    texture: &texture,
+                    texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -591,7 +612,7 @@ impl GpuContext {
 
             self.queue.write_texture(
                 wgpu::TexelCopyTextureInfo {
-                    texture: &texture,
+                    texture,
                     mip_level: 0,
                     origin: wgpu::Origin3d::ZERO,
                     aspect: wgpu::TextureAspect::All,
@@ -609,8 +630,6 @@ impl GpuContext {
                 },
             );
         }
-
-        texture
     }
 
     #[cfg(all(feature = "wasm", target_arch = "wasm32"))]

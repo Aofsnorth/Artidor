@@ -8,8 +8,8 @@ use js_sys::Object;
 use wasm_bindgen::{JsCast, JsValue, prelude::wasm_bindgen};
 
 use crate::gpu::{
-    import_external_image, read_external_image_source, read_serde_property, read_u32_property,
-    with_gpu_runtime,
+    copy_external_image_into, import_external_image, read_external_image_source,
+    read_serde_property, read_u32_property, with_gpu_runtime,
 };
 
 /// Canvas type used by the compositor. Both main-thread and Worker paths
@@ -182,6 +182,24 @@ pub fn upload_texture(options: JsValue) -> Result<(), JsValue> {
                 "Compositor is not initialized. Call initCompositor() first.",
             ));
         };
+
+        // Refresh an existing texture in place when this layer already has one
+        // at the same size. A video layer re-uploads every frame — its decoded
+        // frame comes from a rotating canvas pool, so the source object
+        // identity changes on every frame and the identity-based dedupe in the
+        // JS `syncTextures` can never skip it. Allocating a fresh GPU texture
+        // per upload churned a full frame-sized texture 60x/second, which read
+        // as periodic hitches during playback. The handle is cloned out so the
+        // runtime can be moved back into its cell without a live borrow.
+        let reusable = runtime
+            .compositor
+            .texture_for_reuse(&id, width, height)
+            .cloned();
+        if let Some(existing) = reusable {
+            copy_external_image_into(&gpu_runtime.context, &source, &existing, width, height);
+            cell.replace(Some(runtime));
+            return Ok(());
+        }
 
         let texture = import_external_image(
             &gpu_runtime.context,

@@ -4,14 +4,24 @@ import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import { cn } from "@/utils/ui";
 import { Download, X } from "lucide-react";
+import { useEditor } from "@/hooks/use-editor";
 
 interface ExportModalProps {
 	isOpen: boolean;
-	progress: number;
 	onCancel: () => void;
 }
 
-export function ExportModal({ isOpen, progress, onCancel }: ExportModalProps) {
+export function ExportModal({ isOpen, onCancel }: ExportModalProps) {
+	// Progress is subscribed HERE instead of arriving as a prop. It ticks once
+	// per 10 rendered frames, and `getExportState()` returns a fresh object each
+	// tick — so a prop would re-render the header button and its whole popover
+	// subtree just to repaint this ring. The subscription is scoped to the one
+	// number that actually paints, and `isShallowEqual` drops the ticks where
+	// the rounded display would not have changed anyway.
+	const progress = useEditor(
+		(e) => e.project.getExportState().progress,
+		["project"],
+	);
 	// Prevent all keyboard shortcuts and escape key when modal is open
 	useEffect(() => {
 		if (!isOpen) return;

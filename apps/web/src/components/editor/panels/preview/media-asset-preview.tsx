@@ -123,24 +123,49 @@ export function MediaAssetPreview() {
 		if (audioRef.current) audioRef.current.volume = previewVolume;
 	}, [previewVolume]);
 
-	// Time update polling via requestAnimationFrame.
+	// Time update polling via requestAnimationFrame, throttled to ~4 Hz.
+	// A per-frame setState here re-rendered the whole overlay (and everything
+	// up the parent chain that isn't memoized) 60x/s on top of the decoding
+	// video — the main reason the media preview felt laggy. Timecode + play
+	// state don't need frame precision; media events cover the rest.
+	const TIME_POLL_MS = 250;
 	useEffect(() => {
 		if (!asset || asset.type === "image") return;
-		let rafId: number;
-		const tick = () => {
+		const interval = window.setInterval(() => {
 			const el = asset.type === "video" ? videoRef.current : audioRef.current;
-			if (el && !isSeeking) {
-				setCurrentTime(el.currentTime);
-				if (el.duration && Number.isFinite(el.duration)) {
-					setDuration(el.duration);
-				}
-				setIsPlaying(!el.paused);
+			if (!el || isSeeking) return;
+			setIsPlaying(!el.paused);
+			setCurrentTime((prev) => {
+				const next = el.currentTime;
+				// Only re-render when the displayed second actually changed.
+				return Math.abs(next - prev) >= 0.2 ? next : prev;
+			});
+			if (el.duration && Number.isFinite(el.duration)) {
+				setDuration(el.duration);
 			}
-			rafId = requestAnimationFrame(tick);
-		};
-		rafId = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(rafId);
+		}, TIME_POLL_MS);
+		return () => window.clearInterval(interval);
 	}, [asset, isSeeking]);
+
+	// Duration + play state from media events, not polling.
+	useEffect(() => {
+		if (!asset || asset.type === "image") return;
+		const el = asset.type === "video" ? videoRef.current : audioRef.current;
+		if (!el) return;
+		const onPlay = () => setIsPlaying(true);
+		const onPause = () => setIsPlaying(false);
+		const onDuration = () => {
+			if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
+		};
+		el.addEventListener("play", onPlay);
+		el.addEventListener("pause", onPause);
+		el.addEventListener("durationchange", onDuration);
+		return () => {
+			el.removeEventListener("play", onPlay);
+			el.removeEventListener("pause", onPause);
+			el.removeEventListener("durationchange", onDuration);
+		};
+	}, [asset]);
 
 	const handleClose = useCallback(() => {
 		videoRef.current?.pause();
