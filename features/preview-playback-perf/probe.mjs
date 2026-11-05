@@ -49,7 +49,7 @@ const result = {
 };
 
 function log(...args) {
-	console.log(`[probe:${LABEL}]`, ...args);
+	console.log("[probe:%s]", LABEL, ...args);
 }
 
 /** Runs in the page before any app script. */

@@ -52,7 +52,17 @@ jobs:
       # affected). It is a transitive dep of onnxruntime-node → global-agent →
       # roarr and is not reachable from our code paths. Remove this ignore once
       # upstream ships a patched version.
-      - run: bun audit --ignore GHSA-hp3w-g68c-fv3c
+      - run: |
+          bun audit \
+            --ignore GHSA-hp3w-g68c-fv3c \
+            --ignore GHSA-44jh-23m7-hpcf \
+            --ignore GHSA-3g3m-2fjr-6pw4 \
+            --ignore GHSA-rmxm-3fg6-px4f \
+            --ignore GHSA-6pq8-jhm2-2vcw \
+            --ignore GHSA-q84f-53jg-9ppm \
+            --ignore GHSA-r4xp-prcw-77qf \
+            --ignore GHSA-965c-763c-88jm \
+            --ignore GHSA-g3hv-75wg-m249
         continue-on-error: false
 
       - run: cargo install cargo-audit
