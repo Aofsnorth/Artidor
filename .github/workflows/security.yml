@@ -106,4 +106,4 @@ jobs:
       - uses: github/codeql-action/init@1f8cacc39019c823a7cedf81adf1819b6deeb96c # v4
         with:
           languages: javascript-typescript
-      - uses: github/codeql-action/analyze@1f8cacc39019c823a7cedf81adf1819b6deeb96c # v4
+      - uses: github/codeql-action/analyze@fbfa9f37476c0024508d051f3c34fcca3366b0e2 # v4
