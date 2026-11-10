@@ -3,7 +3,6 @@ import Link from "next/link";
 import { GitHubContributeSection } from "@/components/gitHub-contribute-section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { EXTERNAL_TOOLS } from "@/lib/site/external-tools";
 import { BasePage } from "../base-page";
 
 export const metadata: Metadata = {
@@ -84,7 +83,6 @@ export default async function ContributorsPage() {
 				{otherContributors.length > 0 && (
 					<AllContributorsSection contributors={otherContributors} />
 				)}
-				<ExternalToolsSection />
 				<GitHubContributeSection
 					title="Join the community"
 					description="Artidor is built by developers like you. Every contribution, no matter how small, helps make video editing more accessible for everyone."
@@ -199,41 +197,6 @@ function AllContributorsSection({
 								</p>
 							</div>
 						</div>
-					</Link>
-				))}
-			</div>
-		</div>
-	);
-}
-
-function ExternalToolsSection() {
-	return (
-		<div className="flex flex-col gap-10">
-			<div className="flex flex-col gap-2 text-center">
-				<h2 className="text-2xl font-semibold">External tools</h2>
-				<p className="text-muted-foreground">Tools we use to build Artidor</p>
-			</div>
-
-			<div className="mx-auto grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
-				{EXTERNAL_TOOLS.map((tool, index) => (
-					<Link
-						key={tool.url}
-						href={tool.url}
-						target="_blank"
-						className="block"
-						style={{ animationDelay: `${index * 100}ms` }}
-					>
-						<Card className="h-full">
-							<CardContent className="flex items-center justify-center h-full flex-col gap-4 p-6 text-center">
-								<tool.icon className="size-8" />
-								<div className="flex flex-1 flex-col gap-2">
-									<h3 className="text-lg font-semibold">{tool.name}</h3>
-									<p className="text-muted-foreground text-sm">
-										{tool.description}
-									</p>
-								</div>
-							</CardContent>
-						</Card>
 					</Link>
 				))}
 			</div>

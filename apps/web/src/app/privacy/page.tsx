@@ -37,37 +37,44 @@ export default function PrivacyPage() {
 					</AccordionTrigger>
 					<AccordionContent>
 						<h3 className="mb-3 text-lg font-medium">
-							Your content never leaves your device.
+							Local-first by default — you control what leaves your device.
 						</h3>
 						<ol className="list-decimal space-y-2 pl-6">
 							<li>
-								Basic editing happens locally in your browser - we never see
-								your files
+								Core editing and exporting happen locally in your browser — we
+								never upload your raw media files to our servers
 							</li>
 							<li>
-								AI features like auto captions run locally in your browser too -
-								nothing is uploaded
+								On-device AI features (auto captions, frame interpolation) run
+								locally in your browser; Arth AI Co-Pilot connects only to the
+								AI provider you choose (such as local Ollama, Puter.js, OpenAI,
+								or Anthropic)
 							</li>
-							<li>Artidor does not currently require an account or login</li>
-							<li>Project data stays on your device, not our servers</li>
+							<li>Artidor does not require an account or login to edit</li>
 							<li>
-								We use anonymized analytics to improve the app, but no personal
-								video content is tracked
+								Projects stay in your browser's IndexedDB unless you explicitly
+								back them up to Google Drive or create a share/collaboration
+								link
+							</li>
+							<li>
+								We use Vercel Analytics & Speed Insights for anonymized
+								page-view and performance metrics — never to track your video
+								content or timeline edits
 							</li>
 							<li>You can clear local data from your browser at any time</li>
-							<li>
-								We don't sell or share your data with anyone (we don't even have
-								it)
-							</li>
+							<li>We never sell or monetize your data</li>
 						</ol>
 						<p className="mt-4">
-							Questions? Email us at{" "}
+							Questions? Open an issue on{" "}
 							<a
-								href="mailto:oss@artidor.app"
+								href={`${SOCIAL_LINKS.github}/issues`}
+								target="_blank"
+								rel="noopener noreferrer"
 								className="text-primary hover:underline"
 							>
-								oss@artidor.app
+								GitHub
 							</a>
+							.
 						</p>
 					</AccordionContent>
 				</AccordionItem>
@@ -77,30 +84,50 @@ export default function PrivacyPage() {
 				<h2 className="text-2xl font-semibold">How We Handle Your Content</h2>
 				<p>
 					<strong>
-						All editing and processing happens locally on your device.
+						Core video editing, compositing, and exporting happen locally on
+						your device.
 					</strong>{" "}
-					We never upload, store, or have access to your video or audio files.
-					Your content remains completely private and under your control.
-					AI-powered features like auto captions also run in your browser using
-					on-device models - no content ever leaves your device.
+					We do not upload, store, or inspect your raw video or audio files on
+					our servers. On-device AI tools such as Whisper-based auto captions
+					and RIFE frame interpolation also execute directly in your browser.
+				</p>
+				<p>
+					If you choose to use <strong>Arth (AI Co-Pilot)</strong> with a
+					cloud AI provider (such as Puter.js, OpenAI, Anthropic, Google
+					Gemini, or OpenRouter), your chat prompts and relevant timeline
+					context or sample frames are sent to that provider to fulfill your
+					request. If you use a local provider like Ollama, requests stay on
+					your machine. Your AI API keys are encrypted locally in your browser
+					using AES-GCM.
 				</p>
 			</section>
 
 			<section className="flex flex-col gap-3">
-				<h2 className="text-2xl font-semibold">Accounts & Authentication</h2>
+				<h2 className="text-2xl font-semibold">
+					Projects, Cloud Backup & Sharing
+				</h2>
 				<p>
-					Artidor does not currently offer user accounts, login, or Google
-					sign-in.
+					Artidor does not require an account to create, edit, or export
+					projects. By default, all project data — including timelines, names,
+					and thumbnails — is stored locally in your browser using IndexedDB.
 				</p>
-				<p>
-					Because there is no account system today, we do not collect account
-					emails, profile information, or OAuth identity data.
-				</p>
-				<p>
-					Your projects are never stored on our servers. All project data,
-					including names, thumbnails, and creation dates, is stored locally in
-					your browser using IndexedDB.
-				</p>
+				<ul className="list-disc space-y-2 pl-6">
+					<li>
+						<strong>Google Drive Backup (Optional):</strong> If you connect
+						Google Drive to save or load projects, OAuth access tokens are
+						kept in per-tab <code>sessionStorage</code> rather than persistent{" "}
+						<code>localStorage</code>, and files are transferred directly
+						between your browser and your Google Drive account.
+					</li>
+					<li>
+						<strong>Share Links & Collaboration Rooms (Optional):</strong>{" "}
+						When you generate a shareable project link or start a live
+						collaboration room, the shared project snapshot or ephemeral room
+						presence state is stored via Upstash Redis so invited participants
+						can view or join. Collaboration rooms automatically expire after
+						inactivity, and shared links can be password-protected.
+					</li>
+				</ul>
 			</section>
 
 			<section className="flex flex-col gap-3">
@@ -108,47 +135,74 @@ export default function PrivacyPage() {
 				<p>
 					We use{" "}
 					<a
-						href="https://www.databuddy.cc"
+						href="https://vercel.com/analytics"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
-						Databuddy
+						Vercel Analytics
 					</a>{" "}
-					for basic, anonymized visitor counts. We do not track clicks,
-					interactions, or how you use the editor.
-				</p>
-				<p>
-					No personal information is collected, no individual users are tracked,
-					and no data that could identify you is stored.
+					and{" "}
+					<a
+						href="https://vercel.com/docs/speed-insights"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-primary hover:underline"
+					>
+						Vercel Speed Insights
+					</a>{" "}
+					for anonymized visitor counts and Web Vitals performance telemetry.
+					We do not track your timeline contents, media assets, or AI prompts.
 				</p>
 			</section>
 
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Local Storage & Cookies</h2>
-				<p>We use browser local storage and IndexedDB to:</p>
+				<p>We use browser local storage, session storage, and IndexedDB to:</p>
 				<ul className="list-disc space-y-2 pl-6">
-					<li>Save your projects locally on your device</li>
-					<li>Remember your editor preferences and settings</li>
+					<li>Save your projects and media cache locally on your device</li>
 					<li>
-						Store app state needed for the editor to work between sessions
+						Remember your editor preferences, keybindings, and encrypted AI
+						provider configurations
+					</li>
+					<li>
+						Hold temporary per-tab session state (such as optional Google
+						Drive access tokens)
 					</li>
 				</ul>
 				<p>
-					All data stays on your device and can be cleared at any time through
-					your browser settings.
+					All local browser data stays on your device and can be cleared at
+					any time through your browser settings.
 				</p>
 			</section>
 
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Third-Party Services</h2>
-				<p>Artidor integrates with these services:</p>
+				<p>
+					Depending on which features you use, Artidor interacts with these
+					services:
+				</p>
 				<ul className="list-disc space-y-2 pl-6">
 					<li>
-						<strong>Vercel:</strong> For hosting and content delivery
+						<strong>Vercel:</strong> Hosting, content delivery, and anonymized
+						analytics / Web Vitals
 					</li>
 					<li>
-						<strong>Databuddy:</strong> For anonymized analytics
+						<strong>Upstash Redis:</strong> Rate limiting and ephemeral state
+						for optional share links and collaboration rooms
+					</li>
+					<li>
+						<strong>Pexels & Freesound (Optional):</strong> Proxied search for
+						stock videos and audio when you browse the built-in stock library
+					</li>
+					<li>
+						<strong>Google Drive (Optional):</strong> User-initiated cloud
+						project backup and import
+					</li>
+					<li>
+						<strong>AI Providers (Optional):</strong> User-selected LLM
+						endpoints (Ollama, Puter.js, OpenAI, Anthropic, Gemini,
+						OpenRouter) when using Arth AI Co-Pilot
 					</li>
 				</ul>
 			</section>
@@ -157,9 +211,15 @@ export default function PrivacyPage() {
 				<h2 className="text-2xl font-semibold">Your Rights</h2>
 				<p>You have complete control over your data:</p>
 				<ul className="list-disc space-y-2 pl-6">
-					<li>No account is required to use Artidor today</li>
-					<li>Clear local storage to remove all saved projects</li>
-					<li>Contact us with any privacy concerns</li>
+					<li>No account is required to use Artidor</li>
+					<li>
+						Clear browser storage (IndexedDB / localStorage) to remove all
+						locally saved projects and settings
+					</li>
+					<li>
+						Auto-learn style profiling for Arth is opt-in (off by default) and
+						stored locally
+					</li>
 				</ul>
 			</section>
 
@@ -175,7 +235,7 @@ export default function PrivacyPage() {
 					<a
 						href={SOCIAL_LINKS.github}
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
 						GitHub
@@ -192,26 +252,19 @@ export default function PrivacyPage() {
 					<a
 						href={`${SOCIAL_LINKS.github}/issues`}
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
 						GitHub repository
-					</a>
-					, email us at{" "}
+					</a>{" "}
+					or start a thread in{" "}
 					<a
-						href="mailto:oss@artidor.app"
-						className="text-primary hover:underline"
-					>
-						oss@artidor.app
-					</a>
-					, or reach out on{" "}
-					<a
-						href={SOCIAL_LINKS.x}
+						href={`${SOCIAL_LINKS.github}/discussions`}
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
-						X (Twitter)
+						GitHub Discussions
 					</a>
 					.
 				</p>

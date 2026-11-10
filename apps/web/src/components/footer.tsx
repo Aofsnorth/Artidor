@@ -8,6 +8,7 @@ import {
 	NewTwitterIcon,
 } from "@hugeicons/core-free-icons";
 import Image from "next/image";
+import { OcVercelIcon } from "@/components/icons";
 import { DEFAULT_LOGO_URL } from "@/lib/site/brand";
 import { SOCIAL_LINKS } from "@/lib/site/social";
 import { useI18n } from "@/lib/i18n";
@@ -31,13 +32,11 @@ const links: CategoryLinks = {
 		{ labelKey: "home.footer.link.docs", href: "/docs" },
 		{ labelKey: "home.footer.link.roadmap", href: "/roadmap" },
 		{ labelKey: "home.footer.link.changelog", href: "/changelog" },
-		{ labelKey: "home.footer.link.blog", href: "/blog" },
 		{ labelKey: "home.footer.link.privacy", href: "/privacy" },
 		{ labelKey: "home.footer.link.terms", href: "/terms" },
 	],
 	company: [
 		{ labelKey: "home.footer.link.contributors", href: "/contributors" },
-		{ labelKey: "home.footer.link.sponsors", href: "/sponsors" },
 		{ labelKey: "home.footer.link.brand", href: "/brand" },
 		{
 			labelKey: "home.footer.link.about",
@@ -82,15 +81,17 @@ export function Footer() {
 							>
 								<HugeiconsIcon icon={GithubIcon} className="size-4" />
 							</Link>
-							<Link
-								href={SOCIAL_LINKS.x}
-								className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={t("home.footer.social.x")}
-							>
-								<HugeiconsIcon icon={NewTwitterIcon} className="size-4" />
-							</Link>
+							{SOCIAL_LINKS.x && (
+								<Link
+									href={SOCIAL_LINKS.x}
+									className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 transition-colors hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+									target="_blank"
+									rel="noopener noreferrer"
+									aria-label={t("home.footer.social.x")}
+								>
+									<HugeiconsIcon icon={NewTwitterIcon} className="size-4" />
+								</Link>
+							)}
 							{SOCIAL_LINKS.discord && (
 								<Link
 									href={SOCIAL_LINKS.discord}
@@ -140,10 +141,24 @@ export function Footer() {
 					<span>
 						{t("home.footer.copyright", { year: new Date().getFullYear() })}
 					</span>
-					<span className="flex items-center gap-2 text-white/45">
-						<span className="size-1.5 rounded-full bg-emerald-400" />
-						{t("home.footer.status")}
-					</span>
+					<div className="flex flex-wrap items-center gap-4 text-white/45">
+						<Link
+							href="https://vercel.com"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="inline-flex items-center gap-1.5 transition-colors hover:text-white/75"
+						>
+							<OcVercelIcon className="size-3" />
+							<span>{t("home.footer.hostedOn")}</span>
+						</Link>
+						<span aria-hidden className="text-white/20">
+							·
+						</span>
+						<span className="flex items-center gap-2">
+							<span className="size-1.5 rounded-full bg-emerald-400" />
+							{t("home.footer.status")}
+						</span>
+					</div>
 				</div>
 			</div>
 		</footer>

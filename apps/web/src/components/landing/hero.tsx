@@ -34,7 +34,7 @@ export function Hero() {
 	const enter = reducedMotion
 		? { initial: false, animate: { opacity: 1, y: 0 } }
 		: { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } };
-	const starsLabel = repoStats?.stars ?? "40k+";
+	const starsLabel = repoStats?.stars ?? "···";
 
 	return (
 		<section className="relative overflow-hidden px-4 pt-16 pb-24 sm:px-6 md:pt-24 md:pb-32">

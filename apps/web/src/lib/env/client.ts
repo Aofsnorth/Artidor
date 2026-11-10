@@ -15,7 +15,6 @@ import { z } from "zod";
  */
 const clientEnvSchema = z.object({
 	NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
-	NEXT_PUBLIC_MARBLE_API_URL: z.url().optional(),
 	NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 });
 

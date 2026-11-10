@@ -54,8 +54,6 @@ services:
       args:
         - FREESOUND_CLIENT_ID=${FREESOUND_CLIENT_ID}
         - FREESOUND_API_KEY=${FREESOUND_API_KEY}
-        - NEXT_PUBLIC_MARBLE_API_URL=${NEXT_PUBLIC_MARBLE_API_URL:-https://api.marblecms.com}
-        - MARBLE_WORKSPACE_KEY=${MARBLE_WORKSPACE_KEY:?Set MARBLE_WORKSPACE_KEY in your .env}
     restart: unless-stopped
     ports:
       - "3100:3000"
@@ -66,8 +64,6 @@ services:
       - UPSTASH_REDIS_REST_URL=http://serverless-redis-http:80
       - UPSTASH_REDIS_REST_TOKEN=${SRH_TOKEN:?Set SRH_TOKEN in your .env}
       - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL:-http://localhost:3100}
-      - NEXT_PUBLIC_MARBLE_API_URL=${NEXT_PUBLIC_MARBLE_API_URL:-https://api.marblecms.com}
-      - MARBLE_WORKSPACE_KEY=${MARBLE_WORKSPACE_KEY:?Set MARBLE_WORKSPACE_KEY in your .env}
       - FREESOUND_CLIENT_ID=${FREESOUND_CLIENT_ID:?Set FREESOUND_CLIENT_ID in your .env}
       - FREESOUND_API_KEY=${FREESOUND_API_KEY:?Set FREESOUND_API_KEY in your .env}
       - PEXELS_API_KEY=${PEXELS_API_KEY:?Set PEXELS_API_KEY in your .env}

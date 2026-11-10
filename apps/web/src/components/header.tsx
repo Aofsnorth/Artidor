@@ -20,7 +20,6 @@ const NAV_LINKS = [
 	{ labelKey: "home.nav.roadmap", href: "/roadmap" },
 	{ labelKey: "home.nav.changelog", href: "/changelog" },
 	{ labelKey: "home.nav.contributors", href: "/contributors" },
-	{ labelKey: "home.nav.blog", href: "/blog" },
 ];
 
 export function Header() {

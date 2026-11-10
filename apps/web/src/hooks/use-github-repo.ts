@@ -9,9 +9,9 @@
  * Returns a stable shape: `data` is undefined until the first fetch
  * resolves, then either the parsed payload or null (on error).
  *
- * The component should render a sensible skeleton while `loading` is
- * true; the `formatted` helpers below turn raw numbers into the
- * "40k+" / "350+" style strings the marketing site already uses.
+ * The component should render a sensible placeholder while `loading` is
+ * true; the `formatted` helpers below turn raw numbers into compact
+ * human-readable strings for the marketing site.
  */
 
 "use client";

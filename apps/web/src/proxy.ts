@@ -43,7 +43,6 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 			// third-party scripts from these origins run without a nonce.
 			// Next.js framework scripts + inline scripts get the nonce
 			// automatically during SSR.
-			"https://cdn.databuddy.cc",
 			"https://cdn.jsdelivr.net",
 			"https://va.vercel-scripts.com",
 			"https://js.puter.com",
@@ -55,7 +54,6 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 			"blob:",
 			"https://*.googleusercontent.com",
 			"https://*.unsplash.com",
-			"https://images.marblecms.com",
 			"https://avatars.githubusercontent.com",
 			"https://cdn.brandfetch.io",
 			"https://api.iconify.design",
@@ -85,14 +83,9 @@ const EDITOR_CSP_NONCE = (nonce: string, isDev: boolean) => {
 			"https://drive.usercontent.google.com",
 			"https://api.openai.com",
 			"https://api.anthropic.com",
-			"https://fal.ai",
-			"https://*.fal.ai",
 			"https://api.github.com",
 			"https://freesound.org",
-			"https://api.marblecms.com",
 			"https://cdn.brandfetch.io",
-			"https://basket.databuddy.cc",
-			"https://cdn.databuddy.cc",
 			"https://*.vercel-scripts.com",
 			"https://vitals.vercel-insights.com",
 			"https://js.puter.com",

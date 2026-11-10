@@ -9,6 +9,7 @@ import { BasePage } from "@/app/base-page";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { SOCIAL_LINKS } from "@/lib/site/social";
 import { cn } from "@/utils/ui";
 
 function downloadAsset(src: string) {
@@ -178,12 +179,14 @@ export default function BrandPage() {
 						Artidor, that your project integrates with Artidor, or that it was
 						built on top of Artidor. You cannot name your product Artidor, imply
 						we made or endorse your product, or use the marks commercially
-						without asking first. For anything unclear, reach out at{" "}
+						without asking first. For anything unclear, open an issue on{" "}
 						<Link
-							href="mailto:brand@artidor.app"
+							href={`${SOCIAL_LINKS.github}/issues`}
+							target="_blank"
+							rel="noopener noreferrer"
 							className="underline underline-offset-4"
 						>
-							brand@artidor.app
+							GitHub
 						</Link>
 						.
 					</p>
@@ -194,7 +197,7 @@ export default function BrandPage() {
 					<ul className="text-muted-foreground text-base flex flex-col gap-2 leading-relaxed">
 						{[
 							"Using Artidor in the name of your product, service, or domain.",
-							"Implying that Artidor (now Artidor) made, sponsors, or endorses your work.",
+							"Implying that Artidor made, sponsors, or endorses your work.",
 							"Using the logo or name on merchandise or commercial marketing.",
 							"Modifying the marks.",
 						].map((item) => (

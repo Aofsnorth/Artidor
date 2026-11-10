@@ -47,8 +47,6 @@ export const baseMetaData: Metadata = {
 	},
 	twitter: {
 		card: "summary_large_image",
-		site: "@artidorapp",
-		creator: "@artidorapp",
 		title: OG_TITLE,
 		description: OG_DESCRIPTION,
 		images: [SITE_INFO.twitterImage],

@@ -18,11 +18,9 @@ test("client env never throws without server secrets", async () => {
 			key === "BETTER_AUTH_SECRET" ||
 			key === "UPSTASH_REDIS_REST_URL" ||
 			key === "UPSTASH_REDIS_REST_TOKEN" ||
-			key === "MARBLE_WORKSPACE_KEY" ||
 			key === "FREESOUND_CLIENT_ID" ||
 			key === "FREESOUND_API_KEY" ||
-			key === "PEXELS_API_KEY" ||
-			key === "NEXT_PUBLIC_MARBLE_API_URL"
+			key === "PEXELS_API_KEY"
 		) {
 			delete process.env[key];
 		}
@@ -43,7 +41,6 @@ test("client env exposes no server secrets", async () => {
 		"BETTER_AUTH_SECRET",
 		"UPSTASH_REDIS_REST_URL",
 		"UPSTASH_REDIS_REST_TOKEN",
-		"MARBLE_WORKSPACE_KEY",
 		"FREESOUND_CLIENT_ID",
 		"FREESOUND_API_KEY",
 		"PEXELS_API_KEY",

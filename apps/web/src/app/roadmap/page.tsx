@@ -24,7 +24,7 @@ const roadmapItems: RoadmapItem[] = [
 	{
 		title: "Start",
 		description:
-			"This is where it all started. Repository created, initial project structure, and the vision for a free, open-source video editor. [Check out the first tweet](https://x.com/mazeincoding/status/1936706642512388188) to see where it started.",
+			"This is where it all started. Repository created, initial project structure, and the vision for a free, open-source video editor.",
 		status: {
 			text: "Completed",
 			type: "complete",

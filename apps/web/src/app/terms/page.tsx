@@ -41,8 +41,8 @@ export default function TermsPage() {
 						</h3>
 						<ol className="list-decimal space-y-2 pl-6">
 							<li>
-								Everything runs locally in your browser - nothing is ever
-								uploaded to our servers
+								Core editing and rendering run locally in your browser — your
+								media files stay on your device
 							</li>
 							<li>We never claim ownership of your content</li>
 							<li>
@@ -50,27 +50,31 @@ export default function TermsPage() {
 								restrictions
 							</li>
 							<li>
-								You're responsible for how you use it - don't break the law
+								You're responsible for how you use it and any third-party AI or
+								cloud providers you connect — don't break the law
 							</li>
 							<li>
-								Service provided "as is" - we can't guarantee perfect uptime
+								Service provided "as is" — we can't guarantee perfect uptime
 							</li>
 							<li>
 								Open source means you can review our code and self-host if
 								needed
 							</li>
 							<li>
-								No account required - your exported videos are always yours
+								No account required — your exported videos are always yours
 							</li>
 						</ol>
 						<p className="mt-4">
-							Questions? Email us at{" "}
+							Questions? Open an issue on{" "}
 							<a
-								href="mailto:oss@artidor.app"
+								href={`${SOCIAL_LINKS.github}/issues`}
+								target="_blank"
+								rel="noopener noreferrer"
 								className="text-primary hover:underline"
 							>
-								oss@artidor.app
+								GitHub
 							</a>
+							.
 						</p>
 					</AccordionContent>
 				</AccordionItem>
@@ -79,14 +83,16 @@ export default function TermsPage() {
 			<section className="flex flex-col gap-3">
 				<h2 className="text-2xl font-semibold">Your Content, Your Rights</h2>
 				<p>
-					<strong>You own everything you create.</strong> All editing and
-					processing happens locally on your device. We never see, store, or
-					have access to your files. We make no claims to ownership, licensing,
-					or rights over your videos, projects, or any content you create using
-					Artidor.
+					<strong>You own everything you create.</strong> Core editing and
+					rendering happen locally on your device. We make no claims to
+					ownership, licensing, or rights over your videos, projects, or any
+					content you create using Artidor.
 				</p>
 				<ul className="list-disc space-y-2 pl-6">
-					<li>Your content never leaves your device</li>
+					<li>
+						Your local project files stay on your device unless you explicitly
+						share or back them up
+					</li>
 					<li>You retain all intellectual property rights to your content</li>
 					<li>You can export and use your content however you choose</li>
 					<li>No watermarks, no licensing restrictions from Artidor</li>
@@ -113,11 +119,19 @@ export default function TermsPage() {
 			</section>
 
 			<section className="flex flex-col gap-3">
-				<h2 className="text-2xl font-semibold">AI Features</h2>
+				<h2 className="text-2xl font-semibold">
+					AI & Optional Cloud Features
+				</h2>
 				<p>
-					AI features like auto captions run entirely in your browser using
-					on-device models. No content is uploaded to any server. These features
-					are optional - you can use Artidor without them.
+					On-device AI features (such as auto captions and frame
+					interpolation) run directly in your browser. If you use{" "}
+					<strong>Arth (AI Co-Pilot)</strong> with external AI providers
+					(such as Puter.js, OpenAI, Anthropic, Gemini, OpenRouter, or custom
+					endpoints), or if you use optional Google Drive backup, stock media
+					search (Pexels/Freesound), or project share/collaboration links,
+					your use of those third-party services is subject to their
+					respective terms and policies. All AI and cloud features are
+					optional.
 				</p>
 			</section>
 
@@ -197,30 +211,23 @@ export default function TermsPage() {
 				<h2 className="text-2xl font-semibold">Contact Us</h2>
 				<p>Questions about these terms or need to report an issue?</p>
 				<p>
-					Contact us through our{" "}
+					Contact us by opening an issue on our{" "}
 					<a
 						href={`${SOCIAL_LINKS.github}/issues`}
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
 						GitHub repository
-					</a>
-					, email us at{" "}
+					</a>{" "}
+					or starting a thread in{" "}
 					<a
-						href="mailto:oss@artidor.app"
-						className="text-primary hover:underline"
-					>
-						oss@artidor.app
-					</a>
-					, or reach out on{" "}
-					<a
-						href={SOCIAL_LINKS.x}
+						href={`${SOCIAL_LINKS.github}/discussions`}
 						target="_blank"
-						rel="noopener"
+						rel="noopener noreferrer"
 						className="text-primary hover:underline"
 					>
-						X (Twitter)
+						GitHub Discussions
 					</a>
 					.
 				</p>

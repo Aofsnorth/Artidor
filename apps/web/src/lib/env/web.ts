@@ -8,7 +8,6 @@ const webEnvSchema = z.object({
 
 	// Public
 	NEXT_PUBLIC_SITE_URL: z.url().default("http://localhost:3000"),
-	NEXT_PUBLIC_MARBLE_API_URL: z.url(),
 	NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 
 	// Server
@@ -22,7 +21,6 @@ const webEnvSchema = z.object({
 	BETTER_AUTH_SECRET: z.string(),
 	UPSTASH_REDIS_REST_URL: z.url(),
 	UPSTASH_REDIS_REST_TOKEN: z.string(),
-	MARBLE_WORKSPACE_KEY: z.string(),
 	FREESOUND_CLIENT_ID: z.string(),
 	FREESOUND_API_KEY: z.string(),
 	PEXELS_API_KEY: z.string(),

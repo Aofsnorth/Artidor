@@ -23,6 +23,16 @@ export interface WhatsNewEntry {
 
 export const WHATS_NEW: WhatsNewEntry[] = [
 	{
+		id: "2026-11-11-site-metadata-and-third-party-cleanup",
+		date: "2026-11-11",
+		tag: "improvement",
+		title: "Site metadata, third-party scripts, and policy accuracy cleanup",
+		items: [
+			"Removed upstream OpenCut leftovers including the /sponsors page, Fal.ai references, Databuddy analytics script, and Marble CMS /blog integration, keeping only Vercel Analytics & Speed Insights with a subtle 'Hosted on Vercel' credit in the footer.",
+			"Updated Privacy Policy, Terms of Service, Brand guidelines, Roadmap, and Hero star fallback to accurately reflect Artidor's local-first architecture, optional Arth AI / Google Drive / Share & Collab features, and GitHub-based community links.",
+		],
+	},
+	{
 		id: "2026-11-05-prismatic-landing-and-preview-engine",
 		date: "2026-11-05",
 		tag: "performance",
