@@ -22,6 +22,11 @@ function downloadAsset(src: string) {
 
 async function copyAsset(src: string) {
 	const res = await fetch(src);
+	if (src.endsWith(".png")) {
+		const blob = await res.blob();
+		await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+		return;
+	}
 	const text = await res.text();
 	await navigator.clipboard.writeText(text);
 }
@@ -66,6 +71,20 @@ const ASSET_SECTIONS: AssetSection[] = [
 				width: 400,
 				height: 400,
 			},
+			{
+				src: "/logos/artidor/icon.svg",
+				theme: "light",
+				label: "App Icon",
+				width: 400,
+				height: 400,
+			},
+			{
+				src: "/logos/artidor/logo-particles.png",
+				theme: "light",
+				label: "Particle Mark",
+				width: 1024,
+				height: 1024,
+			},
 		],
 	},
 	{
@@ -78,28 +97,28 @@ const ASSET_SECTIONS: AssetSection[] = [
 				src: "/logos/artidor/logo.svg",
 				theme: "dark",
 				label: "Logo",
-				width: 1809,
+				width: 1520,
 				height: 400,
 			},
 			{
 				src: "/logos/artidor/logo-light.svg",
 				theme: "light",
 				label: "Logo",
-				width: 1809,
+				width: 1520,
 				height: 400,
 			},
 			{
 				src: "/logos/artidor/text.svg",
 				theme: "dark",
 				label: "Text",
-				width: 1760,
+				width: 1200,
 				height: 400,
 			},
 			{
 				src: "/logos/artidor/text-light.svg",
 				theme: "light",
 				label: "Text",
-				width: 1760,
+				width: 1200,
 				height: 400,
 			},
 		],

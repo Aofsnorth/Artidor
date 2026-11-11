@@ -1201,14 +1201,14 @@ textPresets.push(
 	),
 );
 
-/* ------------------------------- opencut -------------------------------- */
-// Ported from OpenCut's editor (MIT): its Text page ships a single
+/* ------------------------------- artidor -------------------------------- */
+// Default editor text presets: ships a single
 // "Default text" style, and the Text tab exposes the knobs below
 // (weight, style, decoration, letter spacing, line height, background box).
 textPresets.push(
 	tp(
-		"opencut-default",
-		"OpenCut Default",
+		"artidor-default",
+		"Artidor Default",
 		"basic",
 		"Default text",
 		{
@@ -1218,11 +1218,11 @@ textPresets.push(
 			letterSpacing: 0,
 			lineHeight: 1.2,
 		},
-		["opencut", "default", "arial"],
+		["artidor", "default", "arial"],
 	),
 	tp(
-		"opencut-bold",
-		"OpenCut Bold",
+		"artidor-bold",
+		"Artidor Bold",
 		"basic",
 		"Default text",
 		{
@@ -1232,11 +1232,11 @@ textPresets.push(
 			letterSpacing: 0,
 			lineHeight: 1.2,
 		},
-		["opencut", "bold", "arial"],
+		["artidor", "bold", "arial"],
 	),
 	tp(
-		"opencut-italic",
-		"OpenCut Italic",
+		"artidor-italic",
+		"Artidor Italic",
 		"basic",
 		"Default text",
 		{
@@ -1246,11 +1246,11 @@ textPresets.push(
 			letterSpacing: 0,
 			lineHeight: 1.2,
 		},
-		["opencut", "italic", "arial"],
+		["artidor", "italic", "arial"],
 	),
 	tp(
-		"opencut-underline",
-		"OpenCut Underline",
+		"artidor-underline",
+		"Artidor Underline",
 		"basic",
 		"Default text",
 		{
@@ -1260,11 +1260,11 @@ textPresets.push(
 			letterSpacing: 0,
 			lineHeight: 1.2,
 		},
-		["opencut", "underline", "arial"],
+		["artidor", "underline", "arial"],
 	),
 	tp(
-		"opencut-spaced",
-		"OpenCut Spaced",
+		"artidor-spaced",
+		"Artidor Spaced",
 		"basic",
 		"Default text",
 		{
@@ -1273,11 +1273,11 @@ textPresets.push(
 			letterSpacing: 4,
 			lineHeight: 1.2,
 		},
-		["opencut", "letter spacing", "tracking", "arial"],
+		["artidor", "letter spacing", "tracking", "arial"],
 	),
 	tp(
-		"opencut-loose",
-		"OpenCut Loose",
+		"artidor-loose",
+		"Artidor Loose",
 		"basic",
 		"Default text",
 		{
@@ -1286,11 +1286,11 @@ textPresets.push(
 			letterSpacing: 0,
 			lineHeight: 1.8,
 		},
-		["opencut", "line height", "airy", "arial"],
+		["artidor", "line height", "airy", "arial"],
 	),
 	tp(
-		"opencut-boxed",
-		"OpenCut Box",
+		"artidor-boxed",
+		"Artidor Box",
 		"basic",
 		"Default text",
 		{
@@ -1298,7 +1298,7 @@ textPresets.push(
 			fontSize: 15,
 			letterSpacing: 0,
 			lineHeight: 1.2,
-			// OpenCut's defaultTextBackground (enabled): black, sharp corners,
+			// Default text background (enabled): black, sharp corners,
 			// paddingX 30 / paddingY 42.
 			background: {
 				enabled: true,
@@ -1310,7 +1310,7 @@ textPresets.push(
 				offsetY: 0,
 			},
 		},
-		["opencut", "background", "box", "arial"],
+		["artidor", "background", "box", "arial"],
 	),
 );
 

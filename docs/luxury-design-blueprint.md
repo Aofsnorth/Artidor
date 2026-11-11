@@ -1,6 +1,6 @@
-# OpenCut Luxury macOS Glassmorphism Design System Blueprint
+# Artidor Luxury macOS Glassmorphism Design System Blueprint
 
-This document outlines the visual identity, design guidelines, and technical CSS formulas for the premium, luxury macOS-like web interface of OpenCut.
+This document outlines the visual identity, design guidelines, and technical CSS formulas for the premium, luxury macOS-like web interface of Artidor.
 
 ---
 

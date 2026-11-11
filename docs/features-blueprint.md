@@ -1,6 +1,6 @@
-# CapCut Feature & Implementation Blueprint for OpenCut
+# CapCut Feature & Implementation Blueprint for Artidor
 
-This document serves as a comprehensive technical research and implementation blueprint for mapping CapCut's editing capabilities to the **OpenCut** architecture (Next.js web shell, GPUI desktop shell, and the shared Rust core).
+This document serves as a comprehensive technical research and implementation blueprint for mapping CapCut's editing capabilities to the **Artidor** architecture (Next.js web shell, GPUI desktop shell, and the shared Rust core).
 
 ```mermaid
 graph TD
@@ -42,7 +42,7 @@ The timeline is the backbone of any video editor. CapCut relies on a magnetic ti
 *   **Speed Ramping & Slow-mo**: Standard speed adjustment (0.1x to 100x) paired with speed ramping curves (Presets: *Hero Time, Montage, Bullet, Jump Cut*) and custom speed graphs using Bezier curves.
 *   **Split, Trim, Crop, and Slip**: Precision timeline manipulations down to individual frame boundaries.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 | Sub-system | Platform / Code Path | Tech Stack & Strategy |
 | :--- | :--- | :--- |
@@ -61,7 +61,7 @@ Keyframes allow users to animate parameters smoothly over time. CapCut supports 
 *   **Universal Property Mapping**: Keyframe placement on transform coordinates (X, Y, Z rotation, Scale), opacity sliders, and custom shader parameters.
 *   **Graph Easing Curves**: Curve editing screen where users can set presets (*Ease In 1/2/3, Ease Out, Bounce*) or adjust custom cubic-bezier graphs to control acceleration between keyframes.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +97,7 @@ Modern short-form editors rely heavily on advanced audio tools for music sync, n
 *   **Voice Isolation & Noise Reduction**: Deep learning models that separate human speech from wind, background noise, or background music.
 *   **Extracted Audio & Sound Effects**: Directly extracting audio files from loaded MP4 files.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 *   **Waveform Calculation**:
     *   Calculate RMS/Peak amplitude envelopes on the decoder level in `rust/crates/audio`.
@@ -119,7 +119,7 @@ A core driver of CapCut's popularity is its rich caption generator, which elimin
 *   **Text-to-Speech (TTS)**: Conversion of written text into multiple AI-generated voice characters (e.g., *Scream, Trickster, Kawaii*).
 *   **Dynamic Text Templates**: 3D Text rendering, glowing text outlines, custom bubbles, and animation presets (e.g., *Fade In, Typewriter, Spring*).
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 *   **Auto Captions (STT)**:
     *   Integrate **Whisper.cpp** (via WASM or static C/C++ bindings in Rust) to perform local, high-speed on-device speech-to-text.
@@ -139,7 +139,7 @@ CapCut contains thousands of transitions, filters, and overlays. All render-heav
 *   **Body & Face Effects**: Real-time tracking of human limbs or faces to apply overlay masks (e.g., *Glow outline, angel wings, face distortion*).
 *   **Transitions**: Smooth frame blending, directional pans, page curls, and zoom cuts.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 *   **Shader Architecture**:
     *   Implement as multi-pass WGSL shaders within `rust/crates/gpu`.
@@ -161,7 +161,7 @@ Professional creators use color grading parameters to correct footage lighting a
 *   **LUTs (Look-Up Tables)**: Supporting `.cube` format file imports.
 *   **AI Color Correction**: Auto-balance exposure.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 ```text
 Input Frame
@@ -196,7 +196,7 @@ These tools separate CapCut from legacy editors, automating tasks that used to r
 *   **Auto Reframe**: Tracking the primary subject (e.g., a dancer) and auto-cropping/translating the frame to convert horizontal videos (16:9) to vertical format (9:16).
 *   **Motion Tracking**: Tracking an object (e.g., a face, a moving car) and attaching text or stickers to its position coordinates.
 
-### OpenCut Implementation Strategy
+### Artidor Implementation Strategy
 
 *   **Smart Cutout**:
     *   Implement a background matting network like **U-2-Net** or **MODNet** inside the Rust core, running model inference on frames via **ONNX Runtime (ort)** or WebGPU shaders.

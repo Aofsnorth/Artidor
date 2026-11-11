@@ -174,7 +174,7 @@ export const useKeybindingsStore = create<KeybindingsState>()(
 			},
 		}),
 		{
-			name: "opencut-keybindings",
+			name: "artidor-keybindings",
 			storage: browserStorage,
 			version: CURRENT_VERSION,
 			partialize: (state) => ({
